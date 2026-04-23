@@ -1,5 +1,6 @@
 import { cx } from '@signalco/ui-primitives/cx';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useEffect } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
@@ -206,29 +207,44 @@ export function RaisedBedFieldSuggestions({
         useShoppingCart();
     const { data: allSorts, isLoading: isLoadingSorts } = useAllSorts();
     const setCartItem = useSetShoppingCartItem();
-    const currentTime = useGameState((state) => state.currentTime);
-    if (!currentGarden || !raisedBed || !shoppingCart) return null;
-
-    // Only show suggestions if the raised bed is valid
-    if (!raisedBed.isValid) return null;
+    const season = useGameState((state) => getSeasonForDate(state.currentTime));
+    const hasRequiredData = Boolean(currentGarden && raisedBed && shoppingCart);
+    const isRaisedBedValid = raisedBed?.isValid ?? false;
 
     // Check if there are already 18 plants in the cart or planted for this raised bed (2 blocks × 9 fields)
-    const cartItems = shoppingCart?.items.filter(
-        (item) => item.raisedBedId === raisedBedId,
-    );
-    const cartPlantItems = cartItems?.filter(
+    const cartItems =
+        shoppingCart?.items.filter((item) => item.raisedBedId === raisedBedId) ??
+        [];
+    const cartPlantItems = cartItems.filter(
         (item) => item.entityTypeName === 'plantSort' && item.status === 'new',
     );
-    const plantedFieldsCount = countRaisedBedOccupiedFields(raisedBed.fields);
-    if (plantedFieldsCount + (cartPlantItems?.length ?? 0) >= 18) {
-        console.debug('Skipping planting suggestions: raised bed is full', {
-            plantedFieldsCount,
-            cartPlantItemsCount: cartPlantItems?.length ?? 0,
-        });
-        return null;
-    }
+    const plantedFieldsCount = raisedBed
+        ? countRaisedBedOccupiedFields(raisedBed.fields)
+        : 0;
+    const cartPlantItemsCount = cartPlantItems.length;
+    const isRaisedBedFull =
+        isRaisedBedValid && plantedFieldsCount + cartPlantItemsCount >= 18;
 
-    const season = getSeasonForDate(currentTime);
+    useEffect(() => {
+        if (!hasRequiredData || !isRaisedBedValid || !isRaisedBedFull) return;
+
+        console.debug('Skipping planting suggestions: raised bed is full', {
+            raisedBedId,
+            plantedFieldsCount,
+            cartPlantItemsCount,
+        });
+    }, [
+        cartPlantItemsCount,
+        hasRequiredData,
+        isRaisedBedFull,
+        isRaisedBedValid,
+        plantedFieldsCount,
+        raisedBedId,
+    ]);
+
+    if (!hasRequiredData || !isRaisedBedValid) return null;
+
+    if (isRaisedBedFull) return null;
 
     // Get seasonal option and standard options
     const seasonalOption = quickSeedOptions[season];

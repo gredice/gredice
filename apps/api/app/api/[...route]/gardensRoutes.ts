@@ -122,6 +122,65 @@ function serializeAppliedRaisedBedOperation(
     };
 }
 
+function serializeGardenOperation(
+    operation: Awaited<ReturnType<typeof getOperations>>[number],
+    targetsByRaisedBedFieldId: Map<number, string>,
+    targetsByRaisedBedId: Map<number, string>,
+) {
+    const statusHistory = [
+        {
+            status: 'new',
+            changedAt: operation.createdAt.toISOString(),
+        },
+        operation.scheduledDate
+            ? {
+                  status: 'planned',
+                  changedAt: operation.scheduledDate.toISOString(),
+              }
+            : null,
+        operation.completedAt
+            ? {
+                  status: 'pendingVerification',
+                  changedAt: operation.completedAt.toISOString(),
+              }
+            : null,
+        operation.verifiedAt
+            ? {
+                  status: 'completed',
+                  changedAt: operation.verifiedAt.toISOString(),
+              }
+            : null,
+        operation.canceledAt
+            ? {
+                  status: 'canceled',
+                  changedAt: operation.canceledAt.toISOString(),
+              }
+            : null,
+    ].filter(Boolean);
+
+    return {
+        id: operation.id,
+        entityId: operation.entityId,
+        raisedBedId: operation.raisedBedId,
+        raisedBedFieldId: operation.raisedBedFieldId,
+        status: operation.status,
+        createdAt: operation.createdAt.toISOString(),
+        scheduledDate: operation.scheduledDate?.toISOString() ?? null,
+        completedAt: operation.completedAt?.toISOString() ?? null,
+        verifiedAt: operation.verifiedAt?.toISOString() ?? null,
+        canceledAt: operation.canceledAt?.toISOString() ?? null,
+        targetLabel:
+            (operation.raisedBedFieldId
+                ? targetsByRaisedBedFieldId.get(operation.raisedBedFieldId)
+                : null) ??
+            (operation.raisedBedId
+                ? targetsByRaisedBedId.get(operation.raisedBedId)
+                : null) ??
+            'Vrt',
+        statusHistory,
+    };
+}
+
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
         '/',
@@ -164,27 +223,91 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json({ id: gardenId }, 201);
         },
     )
-    .post(
-        '/',
+    .get(
+        '/:gardenId/operations',
         describeRoute({
-            description: 'Create a new garden for current account',
+            description:
+                'Get garden operations for timeline and history with cursor pagination',
         }),
         zValidator(
-            'json',
+            'param',
             z.object({
-                name: z.string().trim().min(1).optional(),
+                gardenId: z.string(),
+            }),
+        ),
+        zValidator(
+            'query',
+            z.object({
+                cursor: z.coerce.number().int().min(0).optional(),
+                limit: z.coerce.number().int().min(1).max(50).optional(),
+                includeCompleted: z.coerce.boolean().optional(),
             }),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
-            const { accountId, userId } = context.get('authContext');
-            const { name } = context.req.valid('json');
-            const gardenId = await createDefaultGardenForAccount({
-                accountId,
-                name,
+            const { gardenId } = context.req.valid('param');
+            const { cursor, limit, includeCompleted } =
+                context.req.valid('query');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const [garden, operations] = await Promise.all([
+                getGarden(gardenIdNumber),
+                getOperations(accountId, gardenIdNumber),
+            ]);
+
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            const targetsByRaisedBedId = new Map(
+                garden.raisedBeds.map((raisedBed) => [
+                    raisedBed.id,
+                    `Gredica: ${raisedBed.name}`,
+                ]),
+            );
+            const targetsByRaisedBedFieldId = new Map(
+                garden.raisedBeds.flatMap((raisedBed) =>
+                    raisedBed.fields.map((field) => [
+                        field.id,
+                        `Polje ${field.positionIndex + 1} • ${raisedBed.name}`,
+                    ]),
+                ),
+            );
+
+            const sorted = operations.sort((a, b) => {
+                const aDate = a.scheduledDate ?? a.createdAt;
+                const bDate = b.scheduledDate ?? b.createdAt;
+                return aDate.getTime() - bDate.getTime();
             });
-            await trackGardenCreated({ accountId, gardenId, name, userId });
-            return context.json({ id: gardenId }, 201);
+
+            const filtered = includeCompleted
+                ? sorted
+                : sorted.filter(
+                      (operation) => operation.status !== 'completed',
+                  );
+
+            const pageSize = limit ?? 20;
+            const offset = cursor ?? 0;
+            const paginated = filtered.slice(offset, offset + pageSize);
+            const nextCursor =
+                offset + pageSize < filtered.length ? offset + pageSize : null;
+
+            return context.json({
+                items: paginated.map((operation) =>
+                    serializeGardenOperation(
+                        operation,
+                        targetsByRaisedBedFieldId,
+                        targetsByRaisedBedId,
+                    ),
+                ),
+                nextCursor,
+                total: filtered.length,
+            });
         },
     )
     .get(

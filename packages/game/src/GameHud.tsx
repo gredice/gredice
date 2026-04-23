@@ -6,7 +6,6 @@ import { AccountHud } from './hud/AccountHud';
 import { AdventHud } from './hud/AdventHud';
 import { AudioHud } from './hud/AudioHud';
 import { CameraHud } from './hud/CameraHud';
-import { DayNightCycleHud } from './hud/DayNightCycleHud';
 import { DebugHud } from './hud/DebugHud';
 import { GameModeHud } from './hud/GameModeHud';
 import { InventoryHud } from './hud/InventoryHud';
@@ -46,7 +45,6 @@ export function GameHud({
                 </div>
                 <SunflowersHud />
             </div>
-            {!isCloseup && <DayNightCycleHud />}
             <div className="absolute bottom-0 flex flex-col left-0 right-0 md:flex-row md:justify-between md:items-end pointer-events-none">
                 <div className="p-2 flex flex-row">
                     <CameraHud />
