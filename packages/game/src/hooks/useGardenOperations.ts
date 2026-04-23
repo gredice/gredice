@@ -32,6 +32,7 @@ export type GardenOperationItem = {
     status: GardenOperationStatus;
     createdAt: string;
     scheduledDate: string | null;
+    scheduledAt: string | null;
     completedAt: string | null;
     verifiedAt: string | null;
     canceledAt: string | null;
