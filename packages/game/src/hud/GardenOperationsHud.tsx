@@ -149,7 +149,7 @@ function useInfiniteScroll(fetchNextPage: () => void, hasNextPage?: boolean) {
                 observerRef.current = null;
             }
 
-            if (!node) return;
+            if (!node || !hasNextPage) return;
 
             const scrollRoot = node.closest<HTMLElement>(
                 '[data-infinite-scroll-root]',

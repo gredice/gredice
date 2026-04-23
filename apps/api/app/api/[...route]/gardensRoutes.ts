@@ -14,6 +14,7 @@ import {
     getGardenBlocks,
     getGardenStack,
     getOperations,
+    getOperationsPage,
     getRaisedBed,
     getRaisedBedDiaryEntries,
     getRaisedBedFieldDiaryEntries,
@@ -53,6 +54,7 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { queryBooleanSchema } from '../../../lib/http/queryBoolean';
 import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
 
@@ -135,7 +137,9 @@ function serializeGardenOperation(
         operation.scheduledDate
             ? {
                   status: 'planned',
-                  changedAt: operation.scheduledDate.toISOString(),
+                  changedAt:
+                      operation.scheduledAt?.toISOString() ??
+                      operation.scheduledDate.toISOString(),
               }
             : null,
         operation.completedAt
@@ -166,6 +170,7 @@ function serializeGardenOperation(
         status: operation.status,
         createdAt: operation.createdAt.toISOString(),
         scheduledDate: operation.scheduledDate?.toISOString() ?? null,
+        scheduledAt: operation.scheduledAt?.toISOString() ?? null,
         completedAt: operation.completedAt?.toISOString() ?? null,
         verifiedAt: operation.verifiedAt?.toISOString() ?? null,
         canceledAt: operation.canceledAt?.toISOString() ?? null,
@@ -240,7 +245,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             z.object({
                 cursor: z.coerce.number().int().min(0).optional(),
                 limit: z.coerce.number().int().min(1).max(50).optional(),
-                includeCompleted: z.coerce.boolean().optional(),
+                includeCompleted: queryBooleanSchema.optional(),
             }),
         ),
         authValidator(['user', 'admin']),
@@ -255,14 +260,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const { accountId } = context.get('authContext');
-            const [garden, operations] = await Promise.all([
-                getGarden(gardenIdNumber),
-                getOperations(accountId, gardenIdNumber),
-            ]);
+            const garden = await getGarden(gardenIdNumber);
 
             if (!garden || garden.accountId !== accountId) {
                 return context.json({ error: 'Garden not found' }, 404);
             }
+
+            const operationsPage = await getOperationsPage({
+                accountId,
+                gardenId: gardenIdNumber,
+                cursor,
+                limit,
+                includeCompleted,
+            });
 
             const targetsByRaisedBedId = new Map(
                 garden.raisedBeds.map((raisedBed) => [
@@ -279,34 +289,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 ),
             );
 
-            const sorted = operations.sort((a, b) => {
-                const aDate = a.scheduledDate ?? a.createdAt;
-                const bDate = b.scheduledDate ?? b.createdAt;
-                return aDate.getTime() - bDate.getTime();
-            });
-
-            const filtered = includeCompleted
-                ? sorted
-                : sorted.filter(
-                      (operation) => operation.status !== 'completed',
-                  );
-
-            const pageSize = limit ?? 20;
-            const offset = cursor ?? 0;
-            const paginated = filtered.slice(offset, offset + pageSize);
-            const nextCursor =
-                offset + pageSize < filtered.length ? offset + pageSize : null;
-
             return context.json({
-                items: paginated.map((operation) =>
+                items: operationsPage.items.map((operation) =>
                     serializeGardenOperation(
                         operation,
                         targetsByRaisedBedFieldId,
                         targetsByRaisedBedId,
                     ),
                 ),
-                nextCursor,
-                total: filtered.length,
+                nextCursor: operationsPage.nextCursor,
+                total: operationsPage.total,
             });
         },
     )

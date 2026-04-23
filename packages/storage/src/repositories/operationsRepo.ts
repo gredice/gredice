@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, lte } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import {
     events,
     farmUsers,
@@ -39,6 +39,13 @@ export type OperationAssignedUser = {
 
 export type OperationAssignableFarmUser = OperationAssignedUser & {
     farmId: number;
+};
+
+type GetOperationsInput = {
+    accountId: string;
+    gardenId?: number;
+    raisedBedId?: number;
+    raisedBedFieldIds?: number[];
 };
 
 function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
@@ -95,6 +102,10 @@ function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
 }
 
 async function fillOperationAggregates(operations: SelectOperation[]) {
+    if (operations.length === 0) {
+        return [];
+    }
+
     const aggregateIds = operations.map((op) => op.id.toString());
     const aggregatesEvents = await getEvents(
         [
@@ -110,17 +121,24 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
         10000,
     );
 
-    const operationsWithAggregates = operations.map((op) => {
-        const events = aggregatesEvents.filter(
-            (event) => event.aggregateId === op.id.toString(),
-        );
+    const eventsByAggregateId = new Map<string, typeof aggregatesEvents>();
+    for (const event of aggregatesEvents) {
+        const operationEvents =
+            eventsByAggregateId.get(event.aggregateId) ?? [];
+        operationEvents.push(event);
+        eventsByAggregateId.set(event.aggregateId, operationEvents);
+    }
 
-        let status = 'new';
+    const operationsWithAggregates = operations.map((op) => {
+        const operationEvents = eventsByAggregateId.get(op.id.toString()) ?? [];
+
+        let status: OperationStatus = 'new';
         let assignedUserId: string | null | undefined;
         let assignedUserIds: string[] | undefined;
         let assignedBy: string | undefined;
         let assignedAt: Date | undefined;
         let scheduledDate: Date | undefined;
+        let scheduledAt: Date | undefined;
         let completedAt: Date | undefined;
         let completedBy: string | undefined;
         let verifiedAt: Date | undefined;
@@ -136,7 +154,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
         const asString = (v: unknown): string | undefined =>
             typeof v === 'string' ? v : undefined;
 
-        for (const event of events) {
+        for (const event of operationEvents) {
             const data = parseOperationEventData(event.data);
             if (event.type === knownEventTypes.operations.assign) {
                 if ('assignedUserId' in data) {
@@ -178,6 +196,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                 scheduledDate = data?.scheduledDate
                     ? new Date(String(data.scheduledDate))
                     : undefined;
+                scheduledAt = event.createdAt;
             }
         }
 
@@ -198,6 +217,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
             error,
             errorCode,
             scheduledDate,
+            scheduledAt,
             canceledBy,
             canceledAt,
             cancelReason,
@@ -245,26 +265,143 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
     }));
 }
 
+function getOperationsWhere(input: GetOperationsInput) {
+    return and(
+        eq(operations.accountId, input.accountId),
+        eq(operations.isDeleted, false),
+        input.gardenId ? eq(operations.gardenId, input.gardenId) : undefined,
+        input.raisedBedId
+            ? eq(operations.raisedBedId, input.raisedBedId)
+            : undefined,
+        input.raisedBedFieldIds && input.raisedBedFieldIds.length > 0
+            ? inArray(operations.raisedBedFieldId, input.raisedBedFieldIds)
+            : undefined,
+    );
+}
+
+async function getOperationRows(input: GetOperationsInput) {
+    return storage().query.operations.findMany({
+        where: getOperationsWhere(input),
+        orderBy: desc(operations.timestamp),
+    });
+}
+
+const operationTimelineStatusTypes = [
+    knownEventTypes.operations.schedule,
+    knownEventTypes.operations.complete,
+    knownEventTypes.operations.verify,
+    knownEventTypes.operations.fail,
+    knownEventTypes.operations.cancel,
+];
+
+function getLatestOperationStatusTypeExpression() {
+    return sql<string | null>`(
+        select ${events.type}
+        from ${events}
+        where ${events.aggregateId} = CAST(${operations.id} as text)
+          and ${events.type} in (${sql.join(
+              operationTimelineStatusTypes.map((value) => sql`${value}`),
+              sql`, `,
+          )})
+        order by ${events.createdAt} desc, ${events.id} desc
+        limit 1
+    )`;
+}
+
+function getOperationScheduledDateExpression() {
+    return sql<Date | null>`(
+        select nullif((${events.data} ->> 'scheduledDate'), '')::timestamp
+        from ${events}
+        where ${events.aggregateId} = CAST(${operations.id} as text)
+          and ${events.type} = ${knownEventTypes.operations.schedule}
+        order by ${events.createdAt} desc, ${events.id} desc
+        limit 1
+    )`;
+}
+
+function getOperationStatusExpression() {
+    const latestStatusTypeExpression = getLatestOperationStatusTypeExpression();
+
+    return sql<OperationStatus>`(
+        case ${latestStatusTypeExpression}
+            when ${knownEventTypes.operations.schedule} then 'planned'
+            when ${knownEventTypes.operations.complete} then 'pendingVerification'
+            when ${knownEventTypes.operations.verify} then 'completed'
+            when ${knownEventTypes.operations.fail} then 'failed'
+            when ${knownEventTypes.operations.cancel} then 'canceled'
+            else 'new'
+        end
+    )`;
+}
+
+function getOperationTimelineSortExpression() {
+    const scheduledDateExpression = getOperationScheduledDateExpression();
+
+    return sql<Date>`coalesce(${scheduledDateExpression}, ${operations.createdAt})`;
+}
+
 export async function getOperations(
     accountId: string,
     gardenId?: number,
     raisedBedId?: number,
     raisedBedFieldIds?: number[],
 ) {
-    const query = await storage().query.operations.findMany({
-        where: and(
-            eq(operations.accountId, accountId),
-            eq(operations.isDeleted, false),
-            gardenId ? eq(operations.gardenId, gardenId) : undefined,
-            raisedBedId ? eq(operations.raisedBedId, raisedBedId) : undefined,
-            raisedBedFieldIds && raisedBedFieldIds.length > 0
-                ? inArray(operations.raisedBedFieldId, raisedBedFieldIds)
-                : undefined,
-        ),
-        orderBy: desc(operations.timestamp),
+    const query = await getOperationRows({
+        accountId,
+        gardenId,
+        raisedBedId,
+        raisedBedFieldIds,
     });
 
     return await fillOperationAggregates(query);
+}
+
+export async function getOperationsPage(
+    input: GetOperationsInput & {
+        cursor?: number;
+        limit?: number;
+        includeCompleted?: boolean;
+    },
+) {
+    const offset = input.cursor ?? 0;
+    const pageSize = input.limit ?? 20;
+    const statusExpression = getOperationStatusExpression();
+    const timelineSortExpression = getOperationTimelineSortExpression();
+    const includeCompletedWhere = input.includeCompleted
+        ? undefined
+        : sql`${statusExpression} != 'completed'`;
+
+    const [pageRows, totalResult] = await Promise.all([
+        storage()
+            .select({
+                id: operations.id,
+            })
+            .from(operations)
+            .where(and(getOperationsWhere(input), includeCompletedWhere))
+            .orderBy(asc(timelineSortExpression), asc(operations.id))
+            .offset(offset)
+            .limit(pageSize + 1),
+        storage()
+            .select({ count: count() })
+            .from(operations)
+            .where(and(getOperationsWhere(input), includeCompletedWhere)),
+    ]);
+
+    const pageIds = pageRows.slice(0, pageSize).map((row) => row.id);
+    const hydratedItems = await getOperationsByIds(pageIds);
+    const hydratedItemsById = new Map(
+        hydratedItems.map((item) => [item.id, item]),
+    );
+    const items = pageIds.flatMap((id) => {
+        const item = hydratedItemsById.get(id);
+        return item ? [item] : [];
+    });
+
+    return {
+        items,
+        nextCursor: pageRows.length > pageSize ? offset + pageSize : null,
+        total: totalResult[0]?.count ?? 0,
+    };
 }
 
 export async function getAllOperations(filter?: {
