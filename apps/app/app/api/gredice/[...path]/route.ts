@@ -54,7 +54,7 @@ async function proxyRequest(request: NextRequest, params: { path: string[] }) {
     const url = `${API_BASE_URL}/${pathStr}${searchParams ? `?${searchParams}` : ''}`;
 
     // Forward cookies from the request
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const cookieHeader = cookieStore
         .getAll()
         .map((cookie) => `${cookie.name}=${cookie.value}`)
