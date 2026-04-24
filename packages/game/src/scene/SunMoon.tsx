@@ -1,6 +1,6 @@
 'use client';
 
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import chroma from 'chroma-js';
 import { useMemo, useRef } from 'react';
 import { getMoonIllumination, getMoonPosition, getPosition } from 'suncalc';
@@ -45,10 +45,15 @@ const SIZE_MULTIPLIER = 1.5;
 const SUN_SIZE_MULTIPLIER = 0.8;
 const SUN_SCREEN_OFFSET_MULTIPLIER = 0.8;
 
+// Renderer `size` is reported in CSS pixels. These breakpoints map the sun
+// tuning to our mobile/tablet/desktop layout ranges so responsive adjustments
+// stay aligned with the rest of the UI.
 const MOBILE_MAX_WIDTH = 767;
 const TABLET_MAX_WIDTH = 1023;
 
 type SunViewportTuning = {
+    // Multiplies the default billboard scale and camera-space offsets for the
+    // sun so smaller viewports keep it fully visible without affecting the moon.
     sizeMultiplier: number;
     horizontalOffsetMultiplier: number;
     verticalOffsetMultiplier: number;
@@ -183,6 +188,9 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         (state) => state.dayNightCycleDisabled,
     );
     const { data: garden } = useCurrentGarden();
+    const { width: viewportWidth, height: viewportHeight } = useThree(
+        (state) => state.size,
+    );
 
     const location = useMemo(
         () => ({
@@ -230,11 +238,16 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         [],
     );
 
+    const sunViewportTuning = useMemo(
+        () => getSunViewportTuning(viewportWidth, viewportHeight),
+        [viewportHeight, viewportWidth],
+    );
+
     const forwardRef = useRef(new Vector3());
     const rightRef = useRef(new Vector3());
     const viewUpRef = useRef(new Vector3());
 
-    useFrame(({ camera, size }) => {
+    useFrame(({ camera }) => {
         if (!sunMesh.current || !moonMesh.current) return;
 
         const orthographic = camera as OrthographicCamera;
@@ -252,9 +265,10 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         const skyRadius = halfHeight * SKY_SCREEN_FRACTION;
         const screenScale =
             (REFERENCE_ZOOM / orthographic.zoom) * SIZE_MULTIPLIER;
-        const sunTuning = getSunViewportTuning(size.width, size.height);
         sunMesh.current.scale.setScalar(
-            screenScale * SUN_SIZE_MULTIPLIER * sunTuning.sizeMultiplier,
+            screenScale *
+                SUN_SIZE_MULTIPLIER *
+                sunViewportTuning.sizeMultiplier,
         );
         moonMesh.current.scale.setScalar(screenScale);
 
@@ -282,14 +296,14 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
                     sx *
                         skyRadius *
                         SUN_SCREEN_OFFSET_MULTIPLIER *
-                        sunTuning.horizontalOffsetMultiplier,
+                        sunViewportTuning.horizontalOffsetMultiplier,
                 )
                 .addScaledVector(
                     viewUpRef.current,
                     sy *
                         skyRadius *
                         SUN_SCREEN_OFFSET_MULTIPLIER *
-                        sunTuning.verticalOffsetMultiplier,
+                        sunViewportTuning.verticalOffsetMultiplier,
                 );
             sunMesh.current.lookAt(camera.position);
 
