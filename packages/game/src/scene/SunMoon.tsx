@@ -68,23 +68,23 @@ function getSunViewportTuning(
     if (viewportWidth <= MOBILE_MAX_WIDTH) {
         return {
             sizeMultiplier: 0.6,
-            horizontalOffsetMultiplier: isPortrait ? 0.45 : 0.6,
-            verticalOffsetMultiplier: isPortrait ? 0.85 : 0.6,
+            horizontalOffsetMultiplier: isPortrait ? 0.7 : 1,
+            verticalOffsetMultiplier: isPortrait ? 1 : 0.8,
         };
     }
 
     if (viewportWidth <= TABLET_MAX_WIDTH) {
         return {
             sizeMultiplier: 0.9,
-            horizontalOffsetMultiplier: isPortrait ? 0.7 : 0.9,
+            horizontalOffsetMultiplier: isPortrait ? 1 : 0.9,
             verticalOffsetMultiplier: isPortrait ? 1 : 0.9,
         };
     }
 
     return {
         sizeMultiplier: 1,
-        horizontalOffsetMultiplier: isPortrait ? 0.9 : 1,
-        verticalOffsetMultiplier: isPortrait ? 1.05 : 1,
+        horizontalOffsetMultiplier: isPortrait ? 0.9 : 1.6,
+        verticalOffsetMultiplier: isPortrait ? 1.1 : 1,
     };
 }
 
