@@ -1,18 +1,19 @@
 import { createRefreshToken, doUseRefreshToken } from '@gredice/storage';
 import { cookies } from 'next/headers';
 import { createJwt, setCookie } from '../../../../lib/auth/auth';
+import { clearImpersonationCookies } from '../../../../lib/auth/impersonationCookies';
 import { setRefreshCookie } from '../../../../lib/auth/refreshCookies';
-import {
-    cookieDomain,
-    impersonationFlagCookieName,
-    impersonationRefreshCookieName,
-} from '../../../../lib/auth/sessionConfig';
+import { impersonationRefreshCookieName } from '../../../../lib/auth/sessionConfig';
 
 const allowedOrigins = [
     'https://app.gredice.com',
     'https://app.gredice.test',
-    'https://garden.gredice.com',
-    'https://garden.gredice.test',
+    'https://www.gredice.com',
+    'https://www.gredice.test',
+    'https://vrt.gredice.com',
+    'https://vrt.gredice.test',
+    'https://farma.gredice.com',
+    'https://farma.gredice.test',
 ];
 
 function getAdminUrl(request: Request) {
@@ -67,23 +68,4 @@ export async function POST(request: Request) {
     clearImpersonationCookies(cookieStore);
 
     return Response.redirect(getAdminUrl(request));
-}
-
-function clearImpersonationCookies(
-    cookieStore: Awaited<ReturnType<typeof cookies>>,
-) {
-    cookieStore.set(impersonationRefreshCookieName, '', {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'lax',
-        domain: cookieDomain,
-        maxAge: 0,
-    });
-    cookieStore.set(impersonationFlagCookieName, '', {
-        httpOnly: false,
-        secure: true,
-        sameSite: 'lax',
-        domain: cookieDomain,
-        maxAge: 0,
-    });
 }

@@ -9,7 +9,13 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useActionState } from 'react';
 import { queryClient } from '../../../components/providers/ClientAppProvider';
-import { KnownPages } from '../../../src/KnownPages';
+
+function getLandingUrl() {
+    if (window.location.hostname.includes('.test')) {
+        return 'https://www.gredice.test';
+    }
+    return 'https://www.gredice.com';
+}
 
 function autoSubmitForm(form: HTMLFormElement | null) {
     form?.requestSubmit();
@@ -31,7 +37,7 @@ export function LogoutForm() {
         await queryClient.invalidateQueries({
             queryKey: authCurrentUserQueryKeys,
         });
-        window.location.href = KnownPages.Dashboard;
+        window.location.href = getLandingUrl();
     }, null);
 
     return (

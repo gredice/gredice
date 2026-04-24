@@ -6,6 +6,8 @@ import {
 } from '@gredice/storage';
 import { SignedOut } from '@signalco/auth-client/components';
 import { AuthProtectedSection } from '@signalco/auth-server/components';
+import { cookies, headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { type PropsWithChildren, Suspense } from 'react';
 import {
     AdminPageBreadcrumbs,
@@ -16,6 +18,7 @@ import {
 import { AdminClientProvider } from '../../components/admin/providers';
 import { AuthAppProvider } from '../../components/providers/AuthAppProvider';
 import { auth } from '../../lib/auth/auth';
+import { impersonationRefreshCookieName } from '../../lib/auth/sessionConfig';
 import {
     buildDashboardQuickActionOptions,
     getDashboardQuickActionsFromConfig,
@@ -25,11 +28,23 @@ import {
 export const dynamic = 'force-dynamic';
 
 export default async function AdminLayout({ children }: PropsWithChildren) {
+    const requestHeaders = await headers();
+    const requestHost = requestHeaders.get('host') ?? '';
+    const landingUrl = requestHost.includes('.test')
+        ? 'https://www.gredice.test'
+        : 'https://www.gredice.com';
+
     const authAdmin = auth.bind(null, ['admin']);
     const isAdmin = await auth(['admin']).then(
         () => true,
         () => false,
     );
+    const isImpersonating =
+        (await cookies()).get(impersonationRefreshCookieName) !== undefined;
+
+    if (!isAdmin && !isImpersonating) {
+        redirect(landingUrl);
+    }
     const [
         { categorizedTypes, uncategorizedTypes, shadowTypes },
         pendingAchievementsCount,

@@ -1,5 +1,7 @@
 import { revokeRefreshToken } from '@gredice/storage';
+import { cookies } from 'next/headers';
 import { clearCookie } from '../../../lib/auth/auth';
+import { clearImpersonationCookies } from '../../../lib/auth/impersonationCookies';
 import {
     clearRefreshCookie,
     getRefreshTokenCookie,
@@ -20,6 +22,7 @@ export async function POST() {
 
     await clearCookie();
     await clearRefreshCookie();
+    clearImpersonationCookies(await cookies());
 
     return new Response(null, { status: 200 });
 }
