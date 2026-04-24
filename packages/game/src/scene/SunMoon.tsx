@@ -1,6 +1,6 @@
 'use client';
 
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import chroma from 'chroma-js';
 import { useMemo, useRef } from 'react';
 import { getMoonIllumination, getMoonPosition, getPosition } from 'suncalc';
@@ -44,6 +44,49 @@ const REFERENCE_ZOOM = 100;
 const SIZE_MULTIPLIER = 1.5;
 const SUN_SIZE_MULTIPLIER = 0.8;
 const SUN_SCREEN_OFFSET_MULTIPLIER = 0.8;
+
+// Renderer `size` is reported in CSS pixels. These breakpoints map the sun
+// tuning to our mobile/tablet/desktop layout ranges so responsive adjustments
+// stay aligned with the rest of the UI.
+const MOBILE_MAX_WIDTH = 767;
+const TABLET_MAX_WIDTH = 1023;
+
+type SunViewportTuning = {
+    // Multiplies the default billboard scale and camera-space offsets for the
+    // sun so smaller viewports keep it fully visible without affecting the moon.
+    sizeMultiplier: number;
+    horizontalOffsetMultiplier: number;
+    verticalOffsetMultiplier: number;
+};
+
+function getSunViewportTuning(
+    viewportWidth: number,
+    viewportHeight: number,
+): SunViewportTuning {
+    const isPortrait = viewportHeight > viewportWidth;
+
+    if (viewportWidth <= MOBILE_MAX_WIDTH) {
+        return {
+            sizeMultiplier: 0.6,
+            horizontalOffsetMultiplier: isPortrait ? 0.7 : 1,
+            verticalOffsetMultiplier: isPortrait ? 1 : 0.8,
+        };
+    }
+
+    if (viewportWidth <= TABLET_MAX_WIDTH) {
+        return {
+            sizeMultiplier: 0.9,
+            horizontalOffsetMultiplier: isPortrait ? 1 : 0.9,
+            verticalOffsetMultiplier: isPortrait ? 1 : 0.9,
+        };
+    }
+
+    return {
+        sizeMultiplier: 1,
+        horizontalOffsetMultiplier: isPortrait ? 0.9 : 1.6,
+        verticalOffsetMultiplier: isPortrait ? 1.1 : 1,
+    };
+}
 
 const MOON_NIGHT_COLOR = new Color('#c8d8f2');
 const MOON_DAY_COLOR = new Color('#f4f2ec');
@@ -145,6 +188,9 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         (state) => state.dayNightCycleDisabled,
     );
     const { data: garden } = useCurrentGarden();
+    const { width: viewportWidth, height: viewportHeight } = useThree(
+        (state) => state.size,
+    );
 
     const location = useMemo(
         () => ({
@@ -192,6 +238,11 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         [],
     );
 
+    const sunViewportTuning = useMemo(
+        () => getSunViewportTuning(viewportWidth, viewportHeight),
+        [viewportHeight, viewportWidth],
+    );
+
     const forwardRef = useRef(new Vector3());
     const rightRef = useRef(new Vector3());
     const viewUpRef = useRef(new Vector3());
@@ -214,7 +265,11 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         const skyRadius = halfHeight * SKY_SCREEN_FRACTION;
         const screenScale =
             (REFERENCE_ZOOM / orthographic.zoom) * SIZE_MULTIPLIER;
-        sunMesh.current.scale.setScalar(screenScale * SUN_SIZE_MULTIPLIER);
+        sunMesh.current.scale.setScalar(
+            screenScale *
+                SUN_SIZE_MULTIPLIER *
+                sunViewportTuning.sizeMultiplier,
+        );
         moonMesh.current.scale.setScalar(screenScale);
 
         const date = timeOfDayToDate(currentTime, timeOfDay);
@@ -238,11 +293,17 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
                 .addScaledVector(forwardRef.current, FORWARD_DISTANCE)
                 .addScaledVector(
                     rightRef.current,
-                    sx * skyRadius * SUN_SCREEN_OFFSET_MULTIPLIER,
+                    sx *
+                        skyRadius *
+                        SUN_SCREEN_OFFSET_MULTIPLIER *
+                        sunViewportTuning.horizontalOffsetMultiplier,
                 )
                 .addScaledVector(
                     viewUpRef.current,
-                    sy * skyRadius * SUN_SCREEN_OFFSET_MULTIPLIER,
+                    sy *
+                        skyRadius *
+                        SUN_SCREEN_OFFSET_MULTIPLIER *
+                        sunViewportTuning.verticalOffsetMultiplier,
                 );
             sunMesh.current.lookAt(camera.position);
 
