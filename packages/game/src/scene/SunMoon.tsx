@@ -42,6 +42,8 @@ const SKY_SCREEN_FRACTION = 1.05;
 // game camera zoom so on-screen size matches the plane size at default zoom.
 const REFERENCE_ZOOM = 100;
 const SIZE_MULTIPLIER = 1.5;
+const SUN_SIZE_MULTIPLIER = 0.8;
+const SUN_SCREEN_OFFSET_MULTIPLIER = 0.8;
 
 const MOON_NIGHT_COLOR = new Color('#c8d8f2');
 const MOON_DAY_COLOR = new Color('#f4f2ec');
@@ -212,7 +214,7 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         const skyRadius = halfHeight * SKY_SCREEN_FRACTION;
         const screenScale =
             (REFERENCE_ZOOM / orthographic.zoom) * SIZE_MULTIPLIER;
-        sunMesh.current.scale.setScalar(screenScale);
+        sunMesh.current.scale.setScalar(screenScale * SUN_SIZE_MULTIPLIER);
         moonMesh.current.scale.setScalar(screenScale);
 
         const date = timeOfDayToDate(currentTime, timeOfDay);
@@ -234,8 +236,14 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
             sunMesh.current.position
                 .copy(camera.position)
                 .addScaledVector(forwardRef.current, FORWARD_DISTANCE)
-                .addScaledVector(rightRef.current, sx * skyRadius)
-                .addScaledVector(viewUpRef.current, sy * skyRadius);
+                .addScaledVector(
+                    rightRef.current,
+                    sx * skyRadius * SUN_SCREEN_OFFSET_MULTIPLIER,
+                )
+                .addScaledVector(
+                    viewUpRef.current,
+                    sy * skyRadius * SUN_SCREEN_OFFSET_MULTIPLIER,
+                );
             sunMesh.current.lookAt(camera.position);
 
             const sunRgb = sunColorScale(timeOfDay).rgb();
