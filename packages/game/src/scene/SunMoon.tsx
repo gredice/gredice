@@ -45,6 +45,44 @@ const SIZE_MULTIPLIER = 1.5;
 const SUN_SIZE_MULTIPLIER = 0.8;
 const SUN_SCREEN_OFFSET_MULTIPLIER = 0.8;
 
+const MOBILE_MAX_WIDTH = 767;
+const TABLET_MAX_WIDTH = 1023;
+
+type SunViewportTuning = {
+    sizeMultiplier: number;
+    horizontalOffsetMultiplier: number;
+    verticalOffsetMultiplier: number;
+};
+
+function getSunViewportTuning(
+    viewportWidth: number,
+    viewportHeight: number,
+): SunViewportTuning {
+    const isPortrait = viewportHeight > viewportWidth;
+
+    if (viewportWidth <= MOBILE_MAX_WIDTH) {
+        return {
+            sizeMultiplier: 0.6,
+            horizontalOffsetMultiplier: isPortrait ? 0.45 : 0.6,
+            verticalOffsetMultiplier: isPortrait ? 0.85 : 0.6,
+        };
+    }
+
+    if (viewportWidth <= TABLET_MAX_WIDTH) {
+        return {
+            sizeMultiplier: 0.9,
+            horizontalOffsetMultiplier: isPortrait ? 0.7 : 0.9,
+            verticalOffsetMultiplier: isPortrait ? 1 : 0.9,
+        };
+    }
+
+    return {
+        sizeMultiplier: 1,
+        horizontalOffsetMultiplier: isPortrait ? 0.9 : 1,
+        verticalOffsetMultiplier: isPortrait ? 1.05 : 1,
+    };
+}
+
 const MOON_NIGHT_COLOR = new Color('#c8d8f2');
 const MOON_DAY_COLOR = new Color('#f4f2ec');
 
@@ -196,7 +234,7 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
     const rightRef = useRef(new Vector3());
     const viewUpRef = useRef(new Vector3());
 
-    useFrame(({ camera }) => {
+    useFrame(({ camera, size }) => {
         if (!sunMesh.current || !moonMesh.current) return;
 
         const orthographic = camera as OrthographicCamera;
@@ -214,7 +252,10 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         const skyRadius = halfHeight * SKY_SCREEN_FRACTION;
         const screenScale =
             (REFERENCE_ZOOM / orthographic.zoom) * SIZE_MULTIPLIER;
-        sunMesh.current.scale.setScalar(screenScale * SUN_SIZE_MULTIPLIER);
+        const sunTuning = getSunViewportTuning(size.width, size.height);
+        sunMesh.current.scale.setScalar(
+            screenScale * SUN_SIZE_MULTIPLIER * sunTuning.sizeMultiplier,
+        );
         moonMesh.current.scale.setScalar(screenScale);
 
         const date = timeOfDayToDate(currentTime, timeOfDay);
@@ -238,11 +279,17 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
                 .addScaledVector(forwardRef.current, FORWARD_DISTANCE)
                 .addScaledVector(
                     rightRef.current,
-                    sx * skyRadius * SUN_SCREEN_OFFSET_MULTIPLIER,
+                    sx *
+                        skyRadius *
+                        SUN_SCREEN_OFFSET_MULTIPLIER *
+                        sunTuning.horizontalOffsetMultiplier,
                 )
                 .addScaledVector(
                     viewUpRef.current,
-                    sy * skyRadius * SUN_SCREEN_OFFSET_MULTIPLIER,
+                    sy *
+                        skyRadius *
+                        SUN_SCREEN_OFFSET_MULTIPLIER *
+                        sunTuning.verticalOffsetMultiplier,
                 );
             sunMesh.current.lookAt(camera.position);
 
