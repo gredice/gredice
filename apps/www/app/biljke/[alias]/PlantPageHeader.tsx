@@ -9,6 +9,7 @@ import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import Link from 'next/link';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../../components/shared/PageHeader';
@@ -167,6 +168,13 @@ export function PlantPageHeader({
                         }}
                         className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
                     />
+                    <Typography level="body2" secondary>
+                        Nisi zadovoljan uslugom ili proizvodom? Pogledaj{' '}
+                        <Link className="underline" href={KnownPages.Refunds}>
+                            30-dnevnu politiku povrata novca
+                        </Link>
+                        .
+                    </Typography>
                 </Stack>
             </Stack>
         </PageHeader>

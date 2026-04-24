@@ -12,6 +12,7 @@ import { StructuredDataScript } from '../../../components/shared/seo/StructuredD
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
 import { getRecipesData } from '../../../lib/recipes/getRecipesData';
 import { KnownPages } from '../../../src/KnownPages';
+import { merchantReturnPolicy } from '../../../src/merchantReturnPolicy';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
 import { recipesFlag } from '../../flags';
 import { GrowthAttributeCards } from './GrowthAttributeCards';
@@ -118,6 +119,7 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                                           ? 'https://schema.org/OutOfStock'
                                           : 'https://schema.org/InStock',
                                   url: `https://www.gredice.com${KnownPages.Plant(alias)}`,
+                                  hasMerchantReturnPolicy: merchantReturnPolicy,
                               }
                             : undefined,
                 }}

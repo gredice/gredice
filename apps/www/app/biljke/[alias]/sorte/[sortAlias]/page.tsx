@@ -10,6 +10,7 @@ import { StructuredDataScript } from '../../../../../components/shared/seo/Struc
 import { getPlantSortsData } from '../../../../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../../../../lib/plants/getPlantsData';
 import { KnownPages } from '../../../../../src/KnownPages';
+import { merchantReturnPolicy } from '../../../../../src/merchantReturnPolicy';
 import { matchesPageAlias, toPageAlias } from '../../../../../src/pageAliases';
 import { GrowthAttributeCards } from '../../GrowthAttributeCards';
 import { getPlantInforationSections } from '../../getPlantInforationSections';
@@ -197,6 +198,7 @@ export default async function PlantSortPage(
                                           ? 'https://schema.org/OutOfStock'
                                           : 'https://schema.org/InStock',
                                   url: `https://www.gredice.com${KnownPages.PlantSort(alias, sortData.information.name)}`,
+                                  hasMerchantReturnPolicy: merchantReturnPolicy,
                               }
                             : undefined,
                 }}

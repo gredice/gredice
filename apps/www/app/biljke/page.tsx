@@ -19,6 +19,7 @@ import { PageHeader } from '../../components/shared/PageHeader';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
 import { KnownPages } from '../../src/KnownPages';
+import { merchantReturnPolicy } from '../../src/merchantReturnPolicy';
 import { PlantsCalendar } from './PlantsCalendar';
 import { PlantsGallery } from './PlantsGallery';
 import { PlantsSeedTimeFilterToggle } from './PlantsSeedTimeFilterToggle';
@@ -69,6 +70,8 @@ export default async function PlantsPage({
                                                   2,
                                               ),
                                               priceCurrency: 'EUR',
+                                              hasMerchantReturnPolicy:
+                                                  merchantReturnPolicy,
                                           }
                                         : undefined,
                             },
