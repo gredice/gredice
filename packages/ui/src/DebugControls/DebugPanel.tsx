@@ -1,3 +1,4 @@
+import { Down, Up } from '@signalco/ui-icons';
 import {
     Card,
     CardContent,
@@ -5,9 +6,11 @@ import {
     CardTitle,
 } from '@signalco/ui-primitives/Card';
 import { cx } from '@signalco/ui-primitives/cx';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { PointerEvent, PropsWithChildren } from 'react';
+import { useState } from 'react';
 
 interface DebugPanelProps extends PropsWithChildren {
     title: string;
@@ -25,6 +28,8 @@ export function DebugPanel({
     onDragHandlePointerDown,
     children,
 }: DebugPanelProps) {
+    const [collapsed, setCollapsed] = useState(false);
+
     return (
         <Card
             className={cx(
@@ -42,18 +47,37 @@ export function DebugPanel({
                 )}
                 onPointerDown={onDragHandlePointerDown}
             >
-                <CardTitle className="text-base font-semibold">
-                    {title}
-                </CardTitle>
+                <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-base font-semibold">
+                        {title}
+                    </CardTitle>
+                    <IconButton
+                        type="button"
+                        size="sm"
+                        variant="plain"
+                        title={collapsed ? 'Expand' : 'Collapse'}
+                        className="size-7 shrink-0 rounded-full"
+                        onClick={() => setCollapsed((current) => !current)}
+                        onPointerDown={(event) => event.stopPropagation()}
+                    >
+                        {collapsed ? (
+                            <Down className="size-4" />
+                        ) : (
+                            <Up className="size-4" />
+                        )}
+                    </IconButton>
+                </div>
                 {description ? (
                     <Typography level="body3" secondary>
                         {description}
                     </Typography>
                 ) : null}
             </CardHeader>
-            <CardContent noHeader className="space-y-3">
-                {children}
-            </CardContent>
+            {collapsed ? null : (
+                <CardContent noHeader className="space-y-3">
+                    {children}
+                </CardContent>
+            )}
         </Card>
     );
 }
@@ -70,6 +94,8 @@ export function DebugPanelSection({
     className,
     children,
 }: DebugPanelSectionProps) {
+    const [collapsed, setCollapsed] = useState(false);
+
     return (
         <Stack
             spacing={1.5}
@@ -78,17 +104,33 @@ export function DebugPanelSection({
                 className,
             )}
         >
-            <div className="space-y-1">
-                <Typography level="body2" semiBold>
-                    {title}
-                </Typography>
-                {description ? (
-                    <Typography level="body3" secondary>
-                        {description}
+            <div className="flex items-start justify-between gap-2">
+                <div className="space-y-1">
+                    <Typography level="body2" semiBold>
+                        {title}
                     </Typography>
-                ) : null}
+                    {description ? (
+                        <Typography level="body3" secondary>
+                            {description}
+                        </Typography>
+                    ) : null}
+                </div>
+                <IconButton
+                    type="button"
+                    size="sm"
+                    variant="plain"
+                    title={collapsed ? 'Expand' : 'Collapse'}
+                    className="size-7 shrink-0 rounded-full"
+                    onClick={() => setCollapsed((current) => !current)}
+                >
+                    {collapsed ? (
+                        <Down className="size-4" />
+                    ) : (
+                        <Up className="size-4" />
+                    )}
+                </IconButton>
             </div>
-            {children}
+            {collapsed ? null : children}
         </Stack>
     );
 }
