@@ -55,7 +55,7 @@
         "@gredice/storage": "workspace:*",
         "@gredice/stripe": "workspace:*",
         "@gredice/ui": "workspace:*",
-        "@mdxeditor/editor": "3.54.1",
+        "@mdxeditor/editor": "3.55.0",
         "@playwright/experimental-ct-react": "1.59.1",
         "@playwright/test": "1.59.1",
         "@signalco/auth-client": "0.3.0",
