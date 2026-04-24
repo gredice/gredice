@@ -4,7 +4,6 @@ import { DebugPanel, DebugPanelSection } from '@gredice/ui/DebugControls';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Slider } from '@signalco/ui-primitives/Slider';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWeatherNow } from '../hooks/useWeatherNow';
@@ -473,18 +472,14 @@ export function DebugHud() {
         >
             <div ref={panelWrapperRef} className="pointer-events-auto">
                 <DebugPanel
-                    title="Environment"
-                    description="Tune lighting and weather parameters for debugging."
+                    title="Env"
                     dragging={isDraggingPanel}
                     onDragHandlePointerDown={handlePanelPointerDown}
                 >
                     <Stack spacing={2}>
-                        <DebugPanelSection
-                            title="Time of day"
-                            description="Adjust the sun position across the day."
-                        >
+                        <DebugPanelSection title="Time">
                             <Slider
-                                label={`Time: ${formatTimeLabel(timeOfDay)}`}
+                                label={formatTimeLabel(timeOfDay)}
                                 min={0}
                                 max={1}
                                 step={0.01}
@@ -498,22 +493,16 @@ export function DebugHud() {
                                     }
                                 }}
                             />
-                            <Typography level="body3" secondary>
-                                Local time freeze is applied immediately.
-                            </Typography>
                         </DebugPanelSection>
-                        <DebugPanelSection
-                            title="Weather"
-                            description="Override live weather data when necessary."
-                        >
+                        <DebugPanelSection title="Weather">
                             <Checkbox
-                                label="Override live weather"
+                                label="Override"
                                 checked={overrideWeather}
                                 onCheckedChange={handleOverrideChange}
                             />
                             <Stack spacing={1} className="pt-1">
                                 <Slider
-                                    label={`Cloudiness: ${formatPercent(cloudy)}`}
+                                    label={`Cloud ${formatPercent(cloudy)}`}
                                     min={0}
                                     max={1}
                                     step={0.01}
@@ -529,7 +518,7 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Rain: ${formatPercent(rainy)}`}
+                                    label={`Rain ${formatPercent(rainy)}`}
                                     min={0}
                                     max={1}
                                     step={0.01}
@@ -545,7 +534,7 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Snow: ${formatPercent(snowy)}`}
+                                    label={`Snow ${formatPercent(snowy)}`}
                                     min={0}
                                     max={1}
                                     step={0.01}
@@ -561,7 +550,7 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Fog: ${formatPercent(foggy)}`}
+                                    label={`Fog ${formatPercent(foggy)}`}
                                     min={0}
                                     max={1}
                                     step={0.01}
@@ -577,7 +566,7 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Wind Speed: ${formatWindSpeed(windSpeed)}`}
+                                    label={`Wind ${formatWindSpeed(windSpeed)}`}
                                     min={0}
                                     max={3}
                                     step={1}
@@ -593,7 +582,7 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Wind Direction: ${formatWindDirection(windDirection)}`}
+                                    label={`Dir ${formatWindDirection(windDirection)}`}
                                     min={0}
                                     max={315}
                                     step={45}
@@ -609,7 +598,7 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Snow Accumulation: ${snowAccumulation} cm`}
+                                    label={`Accum ${snowAccumulation} cm`}
                                     min={0}
                                     max={50}
                                     step={1}
