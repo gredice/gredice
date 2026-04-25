@@ -17,6 +17,8 @@ import { redirect } from 'next/navigation';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
 
+const noEntityValue = 'none';
+
 function parseQuantity(raw: string | null): number {
     if (!raw) return 1;
     const parsed = Number.parseInt(raw, 10);
@@ -168,7 +170,10 @@ export async function createInventoryItemAction(
     await auth(['admin']);
 
     const entityIdRaw = formData.get('entityId') as string;
-    const entityId = entityIdRaw ? parseInt(entityIdRaw, 10) : undefined;
+    const entityId =
+        entityIdRaw && entityIdRaw !== noEntityValue
+            ? parseInt(entityIdRaw, 10)
+            : undefined;
     const trackingType = (formData.get('trackingType') as string) || 'pieces';
     const serialNumber = (formData.get('serialNumber') as string) || null;
     const quantity = parseQuantity(formData.get('quantity') as string);
@@ -211,7 +216,10 @@ export async function updateInventoryItemAction(
     }
 
     const entityIdRaw = formData.get('entityId') as string;
-    const entityId = entityIdRaw ? parseInt(entityIdRaw, 10) : undefined;
+    const entityId =
+        entityIdRaw && entityIdRaw !== noEntityValue
+            ? parseInt(entityIdRaw, 10)
+            : undefined;
     const trackingType = (formData.get('trackingType') as string) || 'pieces';
     const serialNumber = (formData.get('serialNumber') as string) || null;
     const quantity = parseQuantity(formData.get('quantity') as string);
