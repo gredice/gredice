@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { KnownPages } from '../../../../src/KnownPages';
 import type { AttributeInputProps } from '../AttributeInputProps';
-import { getEntities } from '../actions/entitiesActions';
+import { getRefEntities } from '../actions/entitiesActions';
 
 export function SelectEntity({
     value,
@@ -14,14 +14,14 @@ export function SelectEntity({
 }: AttributeInputProps) {
     const entityTypeName = attributeDefinition?.dataType.split(':')[1];
     const [entities, setEntities] =
-        useState<Awaited<ReturnType<typeof getEntities>>>();
+        useState<Awaited<ReturnType<typeof getRefEntities>>>();
 
     useEffect(() => {
         if (!entityTypeName) {
             return;
         }
 
-        getEntities(entityTypeName)
+        getRefEntities(entityTypeName)
             .then((response) => {
                 setEntities(response);
             })
