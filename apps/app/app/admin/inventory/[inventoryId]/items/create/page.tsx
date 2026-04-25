@@ -73,7 +73,6 @@ export default async function CreateInventoryItemPage({
                 items={[
                     {
                         label: <AdminBreadcrumbLevelSelector />,
-                        href: KnownPages.Inventory,
                     },
                     {
                         label: config.label,

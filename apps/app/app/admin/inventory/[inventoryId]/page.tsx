@@ -20,7 +20,7 @@ import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { Field } from '../../../../components/shared/fields/Field';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../../lib/auth/auth';
@@ -56,7 +56,6 @@ export default async function InventoryConfigPage({
                 items={[
                     {
                         label: <AdminBreadcrumbLevelSelector />,
-                        href: KnownPages.Inventory,
                     },
                     { label: config.label },
                 ]}
