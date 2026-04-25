@@ -49,6 +49,28 @@ export default async function InventoryItemPage({
     ];
 
     const additionalFields = item.additionalFields ?? {};
+    const trackingTypeItems =
+        config.defaultTrackingType === 'serialNumber'
+            ? [
+                  {
+                      value: 'pieces',
+                      label: 'Komadi',
+                  },
+                  {
+                      value: 'serialNumber',
+                      label: 'Serijski broj',
+                  },
+              ]
+            : [
+                  {
+                      value: 'pieces',
+                      label: 'Komadi',
+                  },
+              ];
+    const trackingTypeDefault =
+        config.defaultTrackingType === 'serialNumber'
+            ? item.trackingType
+            : 'pieces';
 
     const updateItemBound = updateInventoryItemAction.bind(
         null,
@@ -90,23 +112,17 @@ export default async function InventoryItemPage({
                                 <SelectItems
                                     name="trackingType"
                                     label="Način praćenja"
-                                    items={[
-                                        {
-                                            value: 'pieces',
-                                            label: 'Komadi',
-                                        },
-                                        {
-                                            value: 'serialNumber',
-                                            label: 'Serijski broj',
-                                        },
-                                    ]}
-                                    defaultValue={item.trackingType}
+                                    items={trackingTypeItems}
+                                    defaultValue={trackingTypeDefault}
                                 />
-                                <Input
-                                    name="serialNumber"
-                                    label="Serijski broj (opcionalno)"
-                                    defaultValue={item.serialNumber ?? ''}
-                                />
+                                {config.defaultTrackingType ===
+                                    'serialNumber' && (
+                                    <Input
+                                        name="serialNumber"
+                                        label="Serijski broj (opcionalno)"
+                                        defaultValue={item.serialNumber ?? ''}
+                                    />
+                                )}
                                 <Input
                                     name="quantity"
                                     label="Količina"
