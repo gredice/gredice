@@ -33,11 +33,10 @@ function parseQuantity(raw: string | null): number {
 function parseQuickActionQuantity(raw: string | null): number | null {
     const normalized = raw?.trim();
     if (!normalized) return null;
-    const parsed = Number(normalized);
-    if (!Number.isInteger(parsed) || parsed < 0) {
+    if (!/^\d+$/.test(normalized)) {
         throw new Error('Please enter a valid quantity (0 or greater).');
     }
-    return parsed;
+    return Number.parseInt(normalized, 10);
 }
 
 function getItemStateFromAdditionalFields(
