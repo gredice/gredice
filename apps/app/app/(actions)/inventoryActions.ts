@@ -358,7 +358,7 @@ export async function quickAdjustInventoryItemAction(
     const nextQuantity = parseQuickActionQuantity(
         formData.get('quantity') as string,
     );
-    const notes = (formData.get('notes') as string) || null;
+    const eventNotes = (formData.get('notes') as string) || null;
     const statusFieldName = existingItem.inventoryConfig.statusAttributeName;
     const nextStateRaw = (formData.get('state') as string) || '';
     const nextState = nextStateRaw.length > 0 ? nextStateRaw : null;
@@ -376,7 +376,7 @@ export async function quickAdjustInventoryItemAction(
     const quantityChanged =
         nextQuantity !== null && nextQuantity !== existingItem.quantity;
     const stateChanged = statusFieldName ? nextState !== previousState : false;
-    const hasEventNotes = notes !== null;
+    const hasEventNotes = eventNotes !== null;
 
     if (!quantityChanged && !stateChanged && !hasEventNotes) {
         throw new Error(
@@ -408,7 +408,7 @@ export async function quickAdjustInventoryItemAction(
         newQuantity: nextQuantity ?? existingItem.quantity,
         previousState,
         newState: statusFieldName ? nextState : previousState,
-        notes,
+        notes: eventNotes,
     });
 
     revalidatePath(KnownPages.InventoryConfig(inventoryConfigId));
