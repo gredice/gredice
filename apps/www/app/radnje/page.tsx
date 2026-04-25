@@ -23,6 +23,7 @@ import { NoDataPlaceholder } from '../../components/shared/placeholders/NoDataPl
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
 import { KnownPages } from '../../src/KnownPages';
+import { merchantReturnPolicy } from '../../src/merchantReturnPolicy';
 import { OperationCard } from './OperationCard';
 
 const stageIcons: Record<
@@ -114,6 +115,8 @@ export default async function OperationsPage({
                                         2,
                                     ),
                                     priceCurrency: 'EUR',
+                                    hasMerchantReturnPolicy:
+                                        merchantReturnPolicy,
                                 },
                             },
                         }),

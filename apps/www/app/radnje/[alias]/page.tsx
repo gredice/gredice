@@ -7,6 +7,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
@@ -14,6 +15,7 @@ import { PageHeader } from '../../../components/shared/PageHeader';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { KnownPages } from '../../../src/KnownPages';
+import { merchantReturnPolicy } from '../../../src/merchantReturnPolicy';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
 import { OperationApplicationsList } from './OperationApplicationsList';
 import { OperationAttributesCards } from './OperationAttributesCards';
@@ -86,6 +88,7 @@ export default async function OperationPage(
                         priceCurrency: 'EUR',
                         availability: 'https://schema.org/InStock',
                         url: `https://www.gredice.com${KnownPages.Operation(operation.information.label)}`,
+                        hasMerchantReturnPolicy: merchantReturnPolicy,
                     },
                 }}
             />
@@ -121,6 +124,16 @@ export default async function OperationPage(
                                 }}
                                 className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
                             />
+                            <Typography level="body2" secondary>
+                                Nisi zadovoljan uslugom? Dostupan je{' '}
+                                <Link
+                                    className="underline"
+                                    href={KnownPages.Refunds}
+                                >
+                                    povrat novca do 30 dana
+                                </Link>
+                                .
+                            </Typography>
                         </Stack>
                         <Typography level="h5" component="h2" gutterBottom>
                             Svojstva
