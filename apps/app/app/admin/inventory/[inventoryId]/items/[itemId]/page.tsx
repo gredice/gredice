@@ -12,6 +12,7 @@ import { KnownPages } from '../../../../../../src/KnownPages';
 import { updateInventoryItemAction } from '../../../../../(actions)/inventoryActions';
 
 export const dynamic = 'force-dynamic';
+const noEntityValue = 'none';
 
 export default async function InventoryItemPage({
     params,
@@ -32,7 +33,7 @@ export default async function InventoryItemPage({
     const config = item.inventoryConfig;
     const entities = await getEntitiesRaw(config.entityTypeName, 'published');
     const entityItems = [
-        { value: '', label: '- Bez entiteta -' },
+        { value: noEntityValue, label: '- Bez entiteta -' },
         ...entities.map((entity) => {
             const nameAttr = entity.attributes.find(
                 (a) =>
@@ -82,7 +83,8 @@ export default async function InventoryItemPage({
                                     label="Entitet (opcionalno)"
                                     items={entityItems}
                                     defaultValue={
-                                        item.entityId?.toString() ?? ''
+                                        item.entityId?.toString() ??
+                                        noEntityValue
                                     }
                                 />
                                 <SelectItems

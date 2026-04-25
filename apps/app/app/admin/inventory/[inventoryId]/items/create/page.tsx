@@ -12,6 +12,7 @@ import { KnownPages } from '../../../../../../src/KnownPages';
 import { createInventoryItemAction } from '../../../../../(actions)/inventoryActions';
 
 export const dynamic = 'force-dynamic';
+const noEntityValue = 'none';
 
 export default async function CreateInventoryItemPage({
     params,
@@ -30,7 +31,7 @@ export default async function CreateInventoryItemPage({
 
     const entities = await getEntitiesRaw(config.entityTypeName, 'published');
     const entityItems = [
-        { value: '', label: '- Bez entiteta -' },
+        { value: noEntityValue, label: '- Bez entiteta -' },
         ...entities.map((entity) => {
             const nameAttr = entity.attributes.find(
                 (a) =>
@@ -78,7 +79,7 @@ export default async function CreateInventoryItemPage({
                                     name="entityId"
                                     label="Entitet (opcionalno)"
                                     items={entityItems}
-                                    defaultValue=""
+                                    defaultValue={noEntityValue}
                                     helperText="Odaberite entitet koji je predložak za ovu stavku"
                                 />
                                 <SelectItems
