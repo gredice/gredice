@@ -2,8 +2,12 @@ import {
     getEntityTypeByNameWithCategory,
     getEntityTypeCategories,
 } from '@gredice/storage';
+import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
+import { Stack } from '@signalco/ui-primitives/Stack';
 import { notFound } from 'next/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../lib/auth/auth';
+import { KnownPages } from '../../../../../src/KnownPages';
 import { EntityTypeEditForm } from './EntityTypeEditForm';
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +26,24 @@ export default async function EditEntityTypePage({
     const categories = await getEntityTypeCategories();
 
     return (
-        <EntityTypeEditForm entityType={entityType} categories={categories} />
+        <Stack spacing={4}>
+            <Breadcrumbs
+                items={[
+                    {
+                        label: <AdminBreadcrumbLevelSelector />,
+                        href: KnownPages.Directories,
+                    },
+                    {
+                        label: entityType.label,
+                        href: KnownPages.DirectoryEntityType(entityTypeName),
+                    },
+                    { label: 'Uredi' },
+                ]}
+            />
+            <EntityTypeEditForm
+                entityType={entityType}
+                categories={categories}
+            />
+        </Stack>
     );
 }

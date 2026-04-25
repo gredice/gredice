@@ -1,5 +1,6 @@
 import { getReceipt } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import {
     Card,
     CardContent,
@@ -12,6 +13,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { ServerActionButton } from '../../../../components/shared/ServerActionButton';
@@ -72,17 +74,26 @@ export default async function ReceiptPage({
 
     return (
         <Stack spacing={2}>
-            <Row spacing={2} justifyContent="space-between">
-                <Row spacing={2}>
-                    <Typography level="h1" className="text-2xl" semiBold>
-                        Fiskalni račun #{receipt.id}
-                    </Typography>
+            <h1 className="sr-only">Fiskalni račun #{receipt.id}</h1>
+            <Row
+                spacing={2}
+                justifyContent="space-between"
+                className="flex-wrap gap-2"
+            >
+                <Row spacing={2} className="flex-wrap">
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.Receipts,
+                            },
+                            { label: `Fiskalni račun #${receipt.id}` },
+                        ]}
+                    />
                     <Chip color={getCisStatusColor(receipt.cisStatus)}>
                         {getCisStatusLabel(receipt.cisStatus)}
                     </Chip>
                 </Row>
-
-                {/* Actions */}
                 <ReceiptActions receipt={receipt} />
             </Row>
 

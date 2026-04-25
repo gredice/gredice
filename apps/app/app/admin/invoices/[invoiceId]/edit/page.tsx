@@ -1,5 +1,8 @@
 import { getInvoice } from '@gredice/storage';
+import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
+import { Stack } from '@signalco/ui-primitives/Stack';
 import { notFound, redirect } from 'next/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../lib/auth/auth';
 import { KnownPages } from '../../../../../src/KnownPages';
 import InvoiceForm from '../../shared/InvoiceForm';
@@ -27,5 +30,22 @@ export default async function EditInvoicePage({
         redirect(KnownPages.Invoice(invoiceId));
     }
 
-    return <InvoiceForm mode="edit" invoice={invoice} />;
+    return (
+        <Stack spacing={2}>
+            <Breadcrumbs
+                items={[
+                    {
+                        label: <AdminBreadcrumbLevelSelector />,
+                        href: KnownPages.Invoices,
+                    },
+                    {
+                        label: `${invoice.invoiceNumber}`,
+                        href: KnownPages.Invoice(invoice.id),
+                    },
+                    { label: 'Uredi' },
+                ]}
+            />
+            <InvoiceForm mode="edit" invoice={invoice} />
+        </Stack>
+    );
 }
