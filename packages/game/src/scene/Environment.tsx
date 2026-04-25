@@ -121,6 +121,44 @@ export type EnvironmentProps = {
     weather?: Partial<GameState['weather']>;
 };
 
+type EnvironmentWeather = {
+    cloudy?: number;
+    foggy?: number;
+    rainy?: number;
+    snowAccumulation?: number;
+    snowy?: number;
+    windDirection?: string | null;
+    windSpeed?: number;
+};
+
+const fallbackWeather = {
+    cloudy: 0,
+    foggy: 0,
+    rainy: 0,
+    snowAccumulation: 0,
+    snowy: 0,
+    windDirection: 'N',
+    windSpeed: 0,
+};
+
+function resolveWindDirection(
+    windDirection:
+        | NonNullable<GameState['weather']>['windDirection']
+        | string
+        | undefined,
+    fallback: string | null | undefined,
+) {
+    const resolvedFallback = fallback ?? fallbackWeather.windDirection;
+    if (typeof windDirection === 'number') {
+        const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+        return (
+            directions[Math.round(windDirection / 45) % 8] ?? resolvedFallback
+        );
+    }
+
+    return windDirection ?? resolvedFallback;
+}
+
 function useEnvironmentElements({
     location,
     currentTime,
@@ -130,7 +168,7 @@ function useEnvironmentElements({
     location: { lat: number; lon: number };
     currentTime: Date;
     timeOfDay: number;
-    weather: ReturnType<typeof useWeatherNow>['data'];
+    weather: EnvironmentWeather | null | undefined;
 }) {
     const {
         sunPosition,
@@ -172,14 +210,14 @@ function useEnvironmentElements({
 
     // Set background color based on weather
     if (weather && ((weather?.cloudy ?? 0) > 0 || (weather?.foggy ?? 0) > 0)) {
+        const cloudy = weather.cloudy ?? 0;
+        const foggy = weather.foggy ?? 0;
         const rainyBackground = { h: 0, s: 0, l: 0 };
         backgroundColor.current.getHSL(rainyBackground);
         backgroundColor.current.setHSL(
             rainyBackground.h,
-            rainyBackground.s *
-                (1 - Math.min(0.7, weather.cloudy + weather.foggy)), // * (weather.cloudy > 0.5 || weather.foggy > 0.5 ? 0.3 : 0.8),
-            rainyBackground.l *
-                (1 - Math.min(0.1, weather.cloudy + weather.foggy)),
+            rainyBackground.s * (1 - Math.min(0.7, cloudy + foggy)), // * (weather.cloudy > 0.5 || weather.foggy > 0.5 ? 0.3 : 0.8),
+            rainyBackground.l * (1 - Math.min(0.1, cloudy + foggy)),
         ); // * (weather.cloudy > 0.9 ? 0.8 : (weather.cloudy > 0.4 ? 0.9 : 0.95)));
     }
 
@@ -263,12 +301,30 @@ export function Environment({
     }, [garden]);
 
     const gameWeather = useGameState((state) => state.weather);
-    const { data: weatherNow } = useWeatherNow(!weatherDisabled);
+    const hasWeatherOverride = Boolean(weather);
+    const { data: weatherNow } = useWeatherNow(
+        !weatherDisabled && !hasWeatherOverride,
+    );
     const overrideWeather = weatherDisabled
         ? undefined
         : (weather ?? gameWeather);
-    const actualWeather = useMemo(() => {
-        if (weatherDisabled || !weatherNow) {
+    const actualWeather = useMemo<EnvironmentWeather | undefined>(() => {
+        if (weatherDisabled) {
+            return undefined;
+        }
+
+        if (weather) {
+            return {
+                ...fallbackWeather,
+                ...weather,
+                windDirection: resolveWindDirection(
+                    weather.windDirection,
+                    fallbackWeather.windDirection,
+                ),
+            };
+        }
+
+        if (!weatherNow) {
             return undefined;
         }
 
@@ -277,11 +333,6 @@ export function Environment({
         }
 
         console.debug('Overriding weather', overrideWeather);
-        const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-        const windDirection =
-            typeof overrideWeather.windDirection === 'number'
-                ? directions[Math.round(overrideWeather.windDirection / 45) % 8]
-                : weatherNow.windDirection;
 
         return {
             ...weatherNow,
@@ -290,11 +341,14 @@ export function Environment({
             cloudy: overrideWeather.cloudy ?? weatherNow.cloudy,
             snowy: overrideWeather.snowy ?? weatherNow.snowy,
             windSpeed: overrideWeather.windSpeed ?? weatherNow.windSpeed,
-            windDirection,
+            windDirection: resolveWindDirection(
+                overrideWeather.windDirection,
+                weatherNow.windDirection,
+            ),
             snowAccumulation:
                 overrideWeather.snowAccumulation ?? weatherNow.snowAccumulation,
         };
-    }, [overrideWeather, weatherDisabled, weatherNow]);
+    }, [overrideWeather, weather, weatherDisabled, weatherNow]);
 
     // Sound management
     const morningAmbient = ambientAudioMixer.useMusic(
@@ -517,8 +571,8 @@ export function Environment({
             </directionalLight>
             {!weatherDisabled && actualWeather && (
                 <CloudLayer
-                    cloudy={actualWeather.cloudy}
-                    foggy={actualWeather.foggy}
+                    cloudy={actualWeather.cloudy ?? 0}
+                    foggy={actualWeather.foggy ?? 0}
                     shadowStrength={cloudShadowStrength}
                     stacks={garden?.stacks}
                     timeOfDay={timeOfDay}

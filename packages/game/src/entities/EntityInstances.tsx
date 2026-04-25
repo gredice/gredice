@@ -30,7 +30,13 @@ export const instancedBlockNames = [
     'StoneLarge',
 ];
 
-export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
+export function EntityInstances({
+    stacks,
+    renderDetails = true,
+}: {
+    stacks: Stack[] | undefined;
+    renderDetails?: boolean;
+}) {
     const { nodes, materials } = useGameGLTF();
     const isEditMode = useGameState((state) => state.mode) === 'edit';
     const snowMaterial = useMemo(
@@ -104,7 +110,7 @@ export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
                 snow={snowPresets.snowAngle}
                 snowLift={0.003}
             />
-            <GroundBlockDecorations stacks={stacks} />
+            {renderDetails && <GroundBlockDecorations stacks={stacks} />}
             <EntityInstancesBlock
                 stacks={stacks}
                 name="Tree"

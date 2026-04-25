@@ -1,3 +1,4 @@
+import { useGameSceneDetails } from '../../GameSceneDetailContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import {
@@ -7,9 +8,10 @@ import {
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import { RaisedBedPlantField } from './RaisedBedPlantField';
 
-export function RiasedBedFields({ blockId }: { blockId: string }) {
+export function RaisedBedFields({ blockId }: { blockId: string }) {
+    const { renderDetails } = useGameSceneDetails();
     const { data: currentGarden } = useCurrentGarden();
-    const { data: cart } = useShoppingCart();
+    const { data: cart } = useShoppingCart(renderDetails);
     const raisedBed = findRaisedBedByBlockId(currentGarden, blockId);
     const orientation = raisedBed?.orientation ?? 'vertical';
 
@@ -50,6 +52,10 @@ export function RiasedBedFields({ blockId }: { blockId: string }) {
             return field;
         }) || []),
     ];
+
+    if (!renderDetails) {
+        return null;
+    }
 
     return (
         <>

@@ -165,10 +165,6 @@ export function LandingGameScene() {
         }
     }, [closeInteractiveGarden, interactiveMounted, isLoggedIn]);
 
-    if (isLoading) {
-        return null;
-    }
-
     const collapsedStyle: CSSProperties | undefined = sourceRect
         ? {
               top: sourceRect.top,
@@ -208,8 +204,10 @@ export function LandingGameScene() {
                 }
             >
                 <GameScene
+                    key={isLoggedIn ? 'user-garden' : 'landing-mock'}
                     appBaseUrl="https://vrt.gredice.com"
                     spriteBaseUrl=""
+                    deferDetails
                     zoom={
                         interactiveMounted
                             ? 'normal'
@@ -261,7 +259,7 @@ export function LandingGameScene() {
                     </div>
                 )}
             </div>
-            {isLoggedIn && (
+            {!isLoading && isLoggedIn && (
                 <div
                     className={cx(
                         'absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-2 transition-[opacity,transform] duration-500 ease-out md:flex-row',

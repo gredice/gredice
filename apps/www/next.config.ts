@@ -1,10 +1,47 @@
 import vercelToolbar from '@vercel/toolbar/plugins/next';
 import type { NextConfig } from 'next';
 
+// Use the Vercel deployment ID (or git commit SHA) as a cache-busting tag.
+// Assets are not truly immutable – they change when game models or sprites are updated.
+// CDN (s-maxage) is purged automatically by Vercel on each deployment.
+// Browsers cache for 1 day (max-age) so users pick up changes shortly after a new release.
+// The Surrogate-Key header enables targeted CDN cache purging by deployment ID if needed.
+const deploymentId =
+    process.env.VERCEL_DEPLOYMENT_ID ??
+    process.env.VERCEL_GIT_COMMIT_SHA ??
+    'local';
+
+const assetCacheHeaders = [
+    {
+        key: 'Cache-Control',
+        value: 'public, s-maxage=31536000, max-age=86400',
+    },
+    {
+        key: 'Surrogate-Key',
+        value: `game-assets game-assets-${deploymentId}`,
+    },
+];
+
 const nextConfig: NextConfig = {
     reactStrictMode: true,
     typedRoutes: true,
     reactCompiler: true,
+    async headers() {
+        return [
+            {
+                source: '/assets/models/:path*',
+                headers: assetCacheHeaders,
+            },
+            {
+                source: '/assets/sprites/:path*',
+                headers: assetCacheHeaders,
+            },
+            {
+                source: '/assets/textures/:path*',
+                headers: assetCacheHeaders,
+            },
+        ];
+    },
     async rewrites() {
         const isDev =
             process.env.NODE_ENV === 'development' ||

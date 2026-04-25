@@ -18,7 +18,9 @@ export function TimeDisplay({
     const isDaytime = timeOfDay > 0.2 && timeOfDay < 0.8;
 
     return (
-        <Stack className={variant === 'overlay' ? 'pt-16 pb-2 px-4' : 'px-4 py-3'}>
+        <Stack
+            className={variant === 'overlay' ? 'pt-16 pb-2 px-4' : 'px-4 py-3'}
+        >
             <Row justifyContent="space-between">
                 <Typography level="body3">
                     {(isDaytime ? sunrise : sunset)?.toLocaleTimeString(

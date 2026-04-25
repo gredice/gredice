@@ -4,7 +4,7 @@ import { Billboard } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import type { Mesh } from 'three';
-import { Color, DoubleSide, PlaneGeometry } from 'three';
+import { Color, PlaneGeometry } from 'three';
 import { SeededRNG } from '../generators/plant/lib/rng';
 import { useGameState } from '../useGameState';
 import { resolveSpriteAtlasAssetPaths } from './resolveSpriteAtlasAssetPaths';

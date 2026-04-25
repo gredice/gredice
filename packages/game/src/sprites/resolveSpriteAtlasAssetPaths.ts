@@ -1,7 +1,7 @@
 import type { SpriteAtlasAssetPaths } from './types';
 
 function stripKnownExtension(basePath: string) {
-    return basePath.replace(/\.(png|json)$/u, '');
+    return basePath.replace(/\.(png|webp|json)$/u, '');
 }
 
 export function resolveSpriteAtlasAssetPaths(
@@ -13,5 +13,6 @@ export function resolveSpriteAtlasAssetPaths(
         basePath: normalizedBasePath,
         manifestUrl: `${normalizedBasePath}.json`,
         pngUrl: `${normalizedBasePath}.png`,
+        webpUrl: `${normalizedBasePath}.webp`,
     };
 }
