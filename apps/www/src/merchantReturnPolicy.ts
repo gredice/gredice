@@ -5,5 +5,8 @@ export const merchantReturnPolicy = {
     merchantReturnDays: 30,
     returnMethod: 'https://schema.org/KeepProduct',
     returnFees: 'https://schema.org/FreeReturn',
-    refundType: 'https://schema.org/FullRefund',
+    refundType: [
+        'https://schema.org/FullRefund',
+        'https://schema.org/StoreCreditRefund',
+    ],
 } as const;
