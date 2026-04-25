@@ -51,7 +51,7 @@ export function PublicGardenViewer({
     className,
 }: PublicGardenViewerProps) {
     const resolvedAppBaseUrl = appBaseUrl || 'https://vrt.gredice.com';
-    const resolvedSpriteBaseUrl = spriteBaseUrl || resolvedAppBaseUrl;
+    const resolvedSpriteBaseUrl = spriteBaseUrl ?? resolvedAppBaseUrl;
     const storeRef = useRef<GameStateStore>(null);
     if (!storeRef.current) {
         storeRef.current = createGameState({

@@ -238,30 +238,21 @@ function StepsSection() {
 
 export default function Home() {
     return (
-        <>
-            <link rel="preconnect" href="https://vrt.gredice.com" />
-            <link
-                rel="preload"
-                href="https://vrt.gredice.com/assets/models/GameAssets.glb"
-                as="fetch"
-                type="model/gltf-binary"
-                crossOrigin="anonymous"
-            />
-            <Stack>
-                <div className="relative">
-                    <div className="relative h-[100dvh] lg:h-[700px] -mt-16 w-full overflow-hidden">
-                        <Image
-                            alt="Tvoj novi vrt u Gredice aplikaciji"
-                            className="absolute inset-0 h-full w-full object-contain opacity-0 pointer-events-none"
-                            height={1080}
-                            src="/seo-fallback.png"
-                            width={1920}
-                        />
-                        <LandingGameScene />
-                        <div
-                            className="pointer-events-none absolute inset-x-0 bottom-0 h-24"
-                            style={{
-                                background: `linear-gradient(
+        <Stack>
+            <div className="relative">
+                <div className="relative h-[100dvh] lg:h-[700px] -mt-16 w-full overflow-hidden">
+                    <Image
+                        alt="Tvoj novi vrt u Gredice aplikaciji"
+                        className="absolute inset-0 h-full w-full object-contain opacity-0 pointer-events-none"
+                        height={1080}
+                        src="/seo-fallback.png"
+                        width={1920}
+                    />
+                    <LandingGameScene />
+                    <div
+                        className="pointer-events-none absolute inset-x-0 bottom-0 h-24"
+                        style={{
+                            background: `linear-gradient(
                                 to bottom,
                                 hsl(var(--background) / 0) 0%,
                                 hsl(var(--background) / 0.013) 8.1%,
@@ -280,76 +271,72 @@ export default function Home() {
                                 hsl(var(--background) / 0.987) 91.9%,
                                 hsl(var(--background)) 100%
                             )`,
-                            }}
-                        />
-                    </div>
-                    <Container className="absolute top-0 left-0 right-0">
-                        <div className="flex flex-col items-end sm:flex-row sm:items-start sm:justify-between gap-4 mt-4">
-                            <Card className="w-fit border-tertiary border-b-4">
-                                <CardContent noHeader className="p-6 lg:pr-10">
-                                    <Stack spacing={2}>
-                                        <Typography level="h2">
-                                            Vrt po tvom 🌱
-                                        </Typography>
-                                        <Typography level="body1">
-                                            Dobiješ povrće iz svojih gredica -
-                                            nit oro, nit kopo!
-                                        </Typography>
-                                    </Stack>
-                                </CardContent>
-                            </Card>
-                            <WinterModeToggle />
-                        </div>
-                    </Container>
-                </div>
-                <Container>
-                    <SectionsView
-                        sectionsData={sectionsData}
-                        componentsRegistry={sectionsComponentRegistry}
+                        }}
                     />
-                    <StepsSection />
-                    <Stack spacing={4}>
-                        <Stack spacing={1}>
-                            <Typography level="body1" semiBold tertiary>
-                                Povrće iz tvog vrta
-                            </Typography>
-                            <Typography level="h2">
-                                Koje povrće možeš posaditi?
-                            </Typography>
-                        </Stack>
-                        <Typography
-                            level="body1"
-                            className="text-balance max-w-lg"
-                        >
-                            Naša ponuda povrća je raznolika i prilagođena tvojim
-                            potrebama. Odaberi svoje omiljeno povrće, začine i
-                            cvijeće te zasadi svoje gredice.
-                        </Typography>
-                        <Suspense fallback={<PlantsStatisticsLoading />}>
-                            <PlantsStatistics />
-                        </Suspense>
-                        <PlantsShowcase />
-                    </Stack>
-                    <Stack spacing={4} className="mt-20">
-                        <Stack spacing={1}>
-                            <Typography level="body1" semiBold tertiary>
-                                Zajednica za svakoga
-                            </Typography>
-                            <Typography level="h2">
-                                Pridruži se našim zajednicama
-                            </Typography>
-                        </Stack>
-                        <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-4 mb-10 grid-rows-3">
-                            <WhatsAppCard />
-                            <InstagramCard />
-                            <FacebookCard />
-                            <div className="bg-card border border-tertiary border-b-4 shadow p-6 rounded-xl lg:col-start-2 lg:row-start-1 lg:row-span-3">
-                                <NewsletterSignUp />
-                            </div>
-                        </div>
-                    </Stack>
+                </div>
+                <Container className="absolute top-0 left-0 right-0">
+                    <div className="flex flex-col items-end sm:flex-row sm:items-start sm:justify-between gap-4 mt-4">
+                        <Card className="w-fit border-tertiary border-b-4">
+                            <CardContent noHeader className="p-6 lg:pr-10">
+                                <Stack spacing={2}>
+                                    <Typography level="h2">
+                                        Vrt po tvom 🌱
+                                    </Typography>
+                                    <Typography level="body1">
+                                        Dobiješ povrće iz svojih gredica - nit
+                                        oro, nit kopo!
+                                    </Typography>
+                                </Stack>
+                            </CardContent>
+                        </Card>
+                        <WinterModeToggle />
+                    </div>
                 </Container>
-            </Stack>
-        </>
+            </div>
+            <Container>
+                <SectionsView
+                    sectionsData={sectionsData}
+                    componentsRegistry={sectionsComponentRegistry}
+                />
+                <StepsSection />
+                <Stack spacing={4}>
+                    <Stack spacing={1}>
+                        <Typography level="body1" semiBold tertiary>
+                            Povrće iz tvog vrta
+                        </Typography>
+                        <Typography level="h2">
+                            Koje povrće možeš posaditi?
+                        </Typography>
+                    </Stack>
+                    <Typography level="body1" className="text-balance max-w-lg">
+                        Naša ponuda povrća je raznolika i prilagođena tvojim
+                        potrebama. Odaberi svoje omiljeno povrće, začine i
+                        cvijeće te zasadi svoje gredice.
+                    </Typography>
+                    <Suspense fallback={<PlantsStatisticsLoading />}>
+                        <PlantsStatistics />
+                    </Suspense>
+                    <PlantsShowcase />
+                </Stack>
+                <Stack spacing={4} className="mt-20">
+                    <Stack spacing={1}>
+                        <Typography level="body1" semiBold tertiary>
+                            Zajednica za svakoga
+                        </Typography>
+                        <Typography level="h2">
+                            Pridruži se našim zajednicama
+                        </Typography>
+                    </Stack>
+                    <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-4 mb-10 grid-rows-3">
+                        <WhatsAppCard />
+                        <InstagramCard />
+                        <FacebookCard />
+                        <div className="bg-card border border-tertiary border-b-4 shadow p-6 rounded-xl lg:col-start-2 lg:row-start-1 lg:row-span-3">
+                            <NewsletterSignUp />
+                        </div>
+                    </div>
+                </Stack>
+            </Container>
+        </Stack>
     );
 }

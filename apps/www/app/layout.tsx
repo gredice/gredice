@@ -120,6 +120,14 @@ export default async function RootLayout({
                 <title>Gredice</title>
                 <meta name="apple-mobile-web-app-title" content="Gredice" />
                 <meta name="theme-color" content="#2e6f40" />
+                <link rel="preconnect" href="https://vrt.gredice.com" />
+                <link
+                    rel="preload"
+                    href="https://vrt.gredice.com/assets/models/GameAssets.glb"
+                    as="fetch"
+                    type="model/gltf-binary"
+                    crossOrigin="anonymous"
+                />
             </Head>
             <body className="antialiased">
                 {postHogApiKey ? (

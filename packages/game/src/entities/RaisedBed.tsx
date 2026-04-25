@@ -7,7 +7,7 @@ import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { HoverOutline } from './helpers/HoverOutline';
 import { useEntityNeighbors } from './helpers/useEntityNeighbors';
-import { RiasedBedFields } from './raisedBed/RaisedBedFields';
+import { RaisedBedFields } from './raisedBed/RaisedBedFields';
 
 const combinedOverlap = 0.1;
 const halfOverlap = combinedOverlap / 2;
@@ -144,7 +144,7 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                 />
             </animated.group>
             <group position={raisedBedPosition}>
-                <RiasedBedFields blockId={block.id} />
+                <RaisedBedFields blockId={block.id} />
             </group>
         </>
     );

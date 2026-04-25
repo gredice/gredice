@@ -30,7 +30,7 @@ export function useDeferredSceneDetails(deferDetails = false) {
         return () => {
             window.cancelAnimationFrame(firstFrame);
             window.cancelAnimationFrame(secondFrame);
-            if (timeout) {
+            if (timeout !== undefined) {
                 window.clearTimeout(timeout);
             }
         };

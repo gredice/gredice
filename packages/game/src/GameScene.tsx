@@ -11,12 +11,8 @@ import {
 import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
 import type { GameFeatureFlags } from './GameFlagsContext';
 import { GameHud } from './GameHud';
-<<<<<<< ours
 import { useGameLoading } from './GameLoadingContext';
-||||||| ancestor
-=======
 import { GameSceneDetailContext } from './GameSceneDetailContext';
->>>>>>> theirs
 import {
     defaultGameCameraPosition,
     defaultGameCameraZoom,
@@ -82,9 +78,8 @@ export function GameScene({
     // Start non-critical metadata early, but don't block the first scene frame.
     useBlockData();
     const { data: garden, isLoading: gardenLoading } = useCurrentGarden();
-<<<<<<< ours
-    const { isLoading: weatherLoading } = useWeatherNow(!weatherDisabled);
-    const isLoading = gardenLoading || blockDataLoading || weatherLoading;
+    useWeatherNow(!weatherDisabled && !weather);
+    const isLoading = gardenLoading;
 
     const loadingContext = useGameLoading();
     useEffect(() => {
@@ -94,13 +89,6 @@ export function GameScene({
         };
     }, [isLoading, loadingContext]);
 
-||||||| ancestor
-    const { isLoading: weatherLoading } = useWeatherNow(!weatherDisabled);
-    const isLoading = gardenLoading || blockDataLoading || weatherLoading;
-=======
-    useWeatherNow(!weatherDisabled && !weather);
-    const isLoading = gardenLoading;
->>>>>>> theirs
     if (isLoading) {
         return loadingContext ? null : <GardenLoadingIndicator />;
     }

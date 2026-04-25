@@ -8,7 +8,7 @@ import {
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import { RaisedBedPlantField } from './RaisedBedPlantField';
 
-export function RiasedBedFields({ blockId }: { blockId: string }) {
+export function RaisedBedFields({ blockId }: { blockId: string }) {
     const { renderDetails } = useGameSceneDetails();
     const { data: currentGarden } = useCurrentGarden();
     const { data: cart } = useShoppingCart(renderDetails);
