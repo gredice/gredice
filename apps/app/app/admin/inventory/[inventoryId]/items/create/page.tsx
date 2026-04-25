@@ -47,6 +47,24 @@ export default async function CreateInventoryItemPage({
     ];
 
     const createItemBound = createInventoryItemAction.bind(null, id);
+    const trackingTypeItems =
+        config.defaultTrackingType === 'serialNumber'
+            ? [
+                  {
+                      value: 'pieces',
+                      label: 'Komadi',
+                  },
+                  {
+                      value: 'serialNumber',
+                      label: 'Serijski broj',
+                  },
+              ]
+            : [
+                  {
+                      value: 'pieces',
+                      label: 'Komadi',
+                  },
+              ];
 
     return (
         <Stack spacing={4}>
@@ -85,24 +103,18 @@ export default async function CreateInventoryItemPage({
                                 <SelectItems
                                     name="trackingType"
                                     label="Način praćenja"
-                                    items={[
-                                        {
-                                            value: 'pieces',
-                                            label: 'Komadi',
-                                        },
-                                        {
-                                            value: 'serialNumber',
-                                            label: 'Serijski broj',
-                                        },
-                                    ]}
+                                    items={trackingTypeItems}
                                     defaultValue={config.defaultTrackingType}
                                 />
-                                <Input
-                                    name="serialNumber"
-                                    label="Serijski broj (opcionalno)"
-                                    placeholder="npr. SN-12345"
-                                    helperText="Popunite ako pratite po serijskom broju"
-                                />
+                                {config.defaultTrackingType ===
+                                    'serialNumber' && (
+                                    <Input
+                                        name="serialNumber"
+                                        label="Serijski broj (opcionalno)"
+                                        placeholder="npr. SN-12345"
+                                        helperText="Popunite ako pratite po serijskom broju"
+                                    />
+                                )}
                                 <Input
                                     name="quantity"
                                     label="Količina"

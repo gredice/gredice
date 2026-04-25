@@ -209,7 +209,10 @@ export async function createInventoryItemAction(
         inventoryConfigId,
         entityId,
         trackingType,
-        serialNumber: serialNumber || undefined,
+        serialNumber:
+            trackingType === 'serialNumber'
+                ? (serialNumber ?? undefined)
+                : undefined,
         quantity,
         notes: notes || undefined,
         additionalFields,
@@ -255,7 +258,10 @@ export async function updateInventoryItemAction(
         id: itemId,
         entityId,
         trackingType,
-        serialNumber: serialNumber || undefined,
+        serialNumber:
+            trackingType === 'serialNumber'
+                ? (serialNumber ?? undefined)
+                : undefined,
         quantity,
         notes: notes || undefined,
         additionalFields,
