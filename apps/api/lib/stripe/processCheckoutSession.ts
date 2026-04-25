@@ -642,14 +642,21 @@ export async function processItem(itemData: {
 
         // Make operation scheduled event if there is schedule date in the request
         if (scheduledDate) {
-            await createEvent(
-                knownEvents.operations.scheduledV1(operationId.toString(), {
-                    scheduledDate,
-                }),
-            );
-            console.debug(
-                `Scheduled operation ${operationId} for date ${scheduledDate}.`,
-            );
+            try {
+                await createEvent(
+                    knownEvents.operations.scheduledV1(operationId.toString(), {
+                        scheduledDate,
+                    }),
+                );
+                console.debug(
+                    `Scheduled operation ${operationId} for date ${scheduledDate}.`,
+                );
+            } catch (error) {
+                console.error(
+                    `Failed to create scheduled event for operation ${operationId}:`,
+                    error,
+                );
+            }
             const scheduledDateValue = new Date(scheduledDate);
             if (!Number.isNaN(scheduledDateValue.getTime())) {
                 await notifyOperationUpdate(operationId, 'scheduled', {
