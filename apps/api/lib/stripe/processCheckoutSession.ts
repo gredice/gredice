@@ -680,13 +680,13 @@ export async function processItem(itemData: {
                 );
 
                 // Check if delivery information was stored in additionalData
-                let deliveryInfo = null;
+                let deliveryInfo: { slotId?: number; mode?: 'delivery' | 'pickup'; addressId?: number; locationId?: number; notes?: string } | null = null;
                 if (
                     typeof additionalData === 'object' &&
                     additionalData !== null &&
                     'delivery' in additionalData
                 ) {
-                    deliveryInfo = additionalData.delivery;
+                    deliveryInfo = (additionalData as Record<string, unknown>).delivery as { slotId?: number; mode?: 'delivery' | 'pickup'; addressId?: number; locationId?: number; notes?: string };
                 }
 
                 if (deliveryInfo?.slotId && deliveryInfo.mode) {
