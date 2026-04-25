@@ -10,7 +10,6 @@ import {
     deleteInventoryItemEvent,
     deleteInventoryItemFieldDefinition,
     getInventoryItem,
-    getInventoryItemEvents,
     getInventoryItemFieldDefinitions,
     updateInventoryConfig,
     updateInventoryItem,
@@ -32,10 +31,11 @@ function parseQuantity(raw: string | null): number {
 }
 
 function parseQuickActionQuantity(raw: string | null): number | null {
-    if (!raw || raw.trim().length === 0) return null;
-    const parsed = Number.parseInt(raw, 10);
-    if (!Number.isFinite(parsed) || parsed < 0) {
-        return null;
+    const normalized = raw?.trim();
+    if (!normalized) return null;
+    const parsed = Number(normalized);
+    if (!Number.isInteger(parsed) || parsed < 0) {
+        throw new Error('Quantity must be a non-negative integer.');
     }
     return parsed;
 }
@@ -215,13 +215,21 @@ export async function createInventoryItemAction(
         notes: notes || undefined,
         additionalFields,
     });
+    const createdItem = await getInventoryItem(createdItemId);
+    if (!createdItem) {
+        throw new Error('Created item not found.');
+    }
+    const newState = getItemStateFromAdditionalFields(
+        createdItem.additionalFields,
+        createdItem.inventoryConfig.statusAttributeName,
+    );
     await createInventoryItemEvent({
         inventoryItemId: createdItemId,
         action: 'created',
         previousQuantity: null,
         newQuantity: quantity,
         previousState: null,
-        newState: null,
+        newState,
         notes: notes || null,
     });
 
@@ -260,6 +268,12 @@ export async function updateInventoryItemAction(
         inventoryConfigId,
         formData,
     );
+    const nextAdditionalFields = additionalFields
+        ? {
+              ...(existingItem.additionalFields ?? {}),
+              ...additionalFields,
+          }
+        : existingItem.additionalFields;
 
     await updateInventoryItem({
         id: itemId,
@@ -268,7 +282,7 @@ export async function updateInventoryItemAction(
         serialNumber: serialNumber || undefined,
         quantity,
         notes: notes || undefined,
-        additionalFields,
+        additionalFields: nextAdditionalFields,
     });
 
     const oldState = getItemStateFromAdditionalFields(
@@ -276,7 +290,7 @@ export async function updateInventoryItemAction(
         existingItem.inventoryConfig.statusAttributeName,
     );
     const nextState = getItemStateFromAdditionalFields(
-        additionalFields,
+        nextAdditionalFields,
         existingItem.inventoryConfig.statusAttributeName,
     );
     await createInventoryItemEvent({
@@ -357,13 +371,21 @@ export async function quickAdjustInventoryItemAction(
         id: number;
         quantity?: number;
         additionalFields?: Record<string, unknown> | null;
-        notes?: string;
     } = { id: itemId };
 
-    if (nextQuantity !== null) {
+    const quantityChanged =
+        nextQuantity !== null && nextQuantity !== existingItem.quantity;
+    const stateChanged = statusFieldName ? nextState !== previousState : false;
+    const hasEventNotes = notes !== null;
+
+    if (!quantityChanged && !stateChanged && !hasEventNotes) {
+        throw new Error('No inventory item changes were provided.');
+    }
+
+    if (quantityChanged) {
         updates.quantity = nextQuantity;
     }
-    if (statusFieldName) {
+    if (statusFieldName && stateChanged) {
         const previousAdditionalFields =
             (existingItem.additionalFields as Record<string, unknown> | null) ??
             {};
@@ -372,11 +394,11 @@ export async function quickAdjustInventoryItemAction(
             [statusFieldName]: nextState,
         };
     }
-    if (notes) {
-        updates.notes = notes;
+
+    if (quantityChanged || stateChanged) {
+        await updateInventoryItem(updates);
     }
 
-    await updateInventoryItem(updates);
     await createInventoryItemEvent({
         inventoryItemId: itemId,
         action: 'quick-adjustment',
@@ -405,13 +427,12 @@ export async function deleteInventoryItemEventAction(
         );
     }
 
-    const events = await getInventoryItemEvents(itemId);
-    if (!events.some((event) => event.id === eventId)) {
+    const eventDeleted = await deleteInventoryItemEvent(eventId, itemId);
+    if (!eventDeleted) {
         throw new Error(
             'Event does not belong to the specified inventory item.',
         );
     }
 
-    await deleteInventoryItemEvent(eventId, itemId);
     revalidatePath(KnownPages.InventoryItem(inventoryConfigId, itemId));
 }

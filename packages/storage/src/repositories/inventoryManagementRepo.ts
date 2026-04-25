@@ -235,15 +235,18 @@ export async function deleteInventoryItemEvent(
     id: number,
     inventoryItemId: number,
 ) {
-    await storage()
+    const [deleted] = await storage()
         .update(inventoryItemEvents)
         .set({ isDeleted: true })
         .where(
             and(
                 eq(inventoryItemEvents.id, id),
                 eq(inventoryItemEvents.inventoryItemId, inventoryItemId),
+                eq(inventoryItemEvents.isDeleted, false),
             ),
-        );
+        )
+        .returning({ id: inventoryItemEvents.id });
+    return Boolean(deleted);
 }
 
 // ==================== Summary ====================
