@@ -33,6 +33,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { importEntityData } from '../../../../../app/admin/directories/(actions)/importEntityData';
 import { EntityAttributeProgress } from '../../../../../components/admin/directories/EntityAttributeProgress';
+import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { Field } from '../../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../../components/shared/fields/FieldSet';
 import { ServerActionIconButton } from '../../../../../components/shared/ServerActionIconButton';
@@ -175,6 +176,10 @@ export default async function EntityDetailsPage(props: {
                         breadcrumbs={
                             <Breadcrumbs
                                 items={[
+                                    {
+                                        label: <AdminBreadcrumbLevelSelector />,
+                                        href: KnownPages.Directories,
+                                    },
                                     {
                                         label: entity.entityType.label,
                                         href: KnownPages.DirectoryEntityType(

@@ -21,6 +21,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
@@ -81,7 +82,10 @@ export default async function OperationDetailsPage({
             <Stack spacing={2}>
                 <Breadcrumbs
                     items={[
-                        { label: 'Radnje', href: KnownPages.Operations },
+                        {
+                            label: <AdminBreadcrumbLevelSelector />,
+                            href: KnownPages.Operations,
+                        },
                         { label: operationId },
                     ]}
                 />

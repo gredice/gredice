@@ -3,6 +3,7 @@ import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { notFound } from 'next/navigation';
 import { AttributeDefinitionsList } from '../../../../../components/admin/directories';
+import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { KnownPages } from '../../../../../src/KnownPages';
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +23,10 @@ export default async function AttributesPage({
         <Stack spacing={2}>
             <Breadcrumbs
                 items={[
+                    {
+                        label: <AdminBreadcrumbLevelSelector />,
+                        href: KnownPages.Directories,
+                    },
                     {
                         label: entityType.label,
                         href: KnownPages.DirectoryEntityType(entityTypeName),

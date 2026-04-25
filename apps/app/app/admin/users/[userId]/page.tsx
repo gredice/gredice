@@ -15,6 +15,7 @@ import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
@@ -57,7 +58,10 @@ export default async function UserPage({
                 <Row spacing={2} justifyContent="space-between">
                     <Breadcrumbs
                         items={[
-                            { label: 'Korisnici', href: KnownPages.Users },
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.Users,
+                            },
                             { label: user.userName },
                         ]}
                     />

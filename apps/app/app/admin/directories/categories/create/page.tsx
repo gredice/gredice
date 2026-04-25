@@ -4,6 +4,7 @@ import { Card } from '@signalco/ui-primitives/Card';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../lib/auth/auth';
 import { KnownPages } from '../../../../../src/KnownPages';
 import { createEntityTypeCategoryFromForm } from '../../../../(actions)/entityTypeCategoryActions';
@@ -17,7 +18,10 @@ export default async function CreateEntityTypeCategoryPage() {
         <Stack spacing={4}>
             <Breadcrumbs
                 items={[
-                    { label: 'Direktoriji', href: KnownPages.Directories },
+                    {
+                        label: <AdminBreadcrumbLevelSelector />,
+                        href: KnownPages.Directories,
+                    },
                     { label: 'Nova kategorija' },
                 ]}
             />

@@ -5,6 +5,7 @@ import { Button } from '@signalco/ui-primitives/Button';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { NotificationsTableCard } from '../../../../components/notifications/NotificationsTableCard';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
@@ -42,7 +43,10 @@ export default async function AccountPage({
                 <Stack spacing={2}>
                     <Breadcrumbs
                         items={[
-                            { label: 'Računi', href: KnownPages.Accounts },
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.Accounts,
+                            },
                             { label: accountId },
                         ]}
                     />

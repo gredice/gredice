@@ -14,6 +14,7 @@ import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
@@ -80,7 +81,10 @@ export default async function InvoicePage({
         <Stack spacing={4}>
             <Breadcrumbs
                 items={[
-                    { label: 'Ponude', href: KnownPages.Invoices },
+                    {
+                        label: <AdminBreadcrumbLevelSelector />,
+                        href: KnownPages.Invoices,
+                    },
                     { label: `${invoice.invoiceNumber}` },
                 ]}
             />

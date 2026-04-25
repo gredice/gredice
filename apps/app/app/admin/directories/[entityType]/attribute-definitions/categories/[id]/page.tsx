@@ -6,6 +6,7 @@ import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { notFound } from 'next/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { KnownPages } from '../../../../../../../src/KnownPages';
 import { FormInput } from './Form';
 
@@ -33,6 +34,10 @@ export default async function AttributeDefinitionCategoryDetailsPage({
         <Stack spacing={2}>
             <Breadcrumbs
                 items={[
+                    {
+                        label: <AdminBreadcrumbLevelSelector />,
+                        href: KnownPages.Directories,
+                    },
                     {
                         label: entityType.label,
                         href: KnownPages.DirectoryEntityType(entityTypeName),

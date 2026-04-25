@@ -13,6 +13,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { NoDataPlaceholder } from '../../../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../../../lib/auth/auth';
 import { KnownPages } from '../../../../../src/KnownPages';
@@ -96,7 +97,7 @@ export default async function EmailDetailPage({
             <Breadcrumbs
                 items={[
                     {
-                        label: 'Poslani emailovi',
+                        label: <AdminBreadcrumbLevelSelector />,
                         href: KnownPages.CommunicationEmails,
                     },
                     { label: `Email #${email.id}` },

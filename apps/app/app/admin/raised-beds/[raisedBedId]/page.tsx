@@ -10,6 +10,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
+import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { NotificationsTableCard } from '../../../../components/notifications/NotificationsTableCard';
 import { RaisedBedEventsTable } from '../../../../components/raised-beds/RaisedBedEventsTable';
 import { RaisedBedFieldsTable } from '../../../../components/raised-beds/RaisedBedFieldsTable';
@@ -42,6 +43,10 @@ export default async function RaisedBedPage({
                 <Stack spacing={2}>
                     <Breadcrumbs
                         items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.RaisedBeds,
+                            },
                             { label: 'Računi', href: KnownPages.Accounts },
                             {
                                 label: raisedBed.accountId ?? 'Nepoznato',

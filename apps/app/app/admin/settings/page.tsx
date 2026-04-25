@@ -23,6 +23,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
+import { AdminBreadcrumbLevelSelector } from '../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../lib/auth/auth';
 import {
     buildDashboardQuickActionOptions,
@@ -101,10 +102,9 @@ export default async function SettingsPage() {
             <Breadcrumbs
                 items={[
                     {
-                        label: 'Početna',
-                        href: KnownPages.Dashboard,
+                        label: <AdminBreadcrumbLevelSelector />,
+                        href: KnownPages.Settings,
                     },
-                    { label: 'Postavke' },
                 ]}
             />
 
