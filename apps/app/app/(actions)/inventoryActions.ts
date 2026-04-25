@@ -35,7 +35,7 @@ function parseQuickActionQuantity(raw: string | null): number | null {
     if (!normalized) return null;
     const parsed = Number(normalized);
     if (!Number.isInteger(parsed) || parsed < 0) {
-        throw new Error('Quantity must be a non-negative integer.');
+        throw new Error('Please enter a valid quantity (0 or greater).');
     }
     return parsed;
 }
@@ -379,7 +379,9 @@ export async function quickAdjustInventoryItemAction(
     const hasEventNotes = notes !== null;
 
     if (!quantityChanged && !stateChanged && !hasEventNotes) {
-        throw new Error('No inventory item changes were provided.');
+        throw new Error(
+            'Please provide at least one change: update quantity, change status, or add notes.',
+        );
     }
 
     if (quantityChanged) {
