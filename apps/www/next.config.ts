@@ -1,10 +1,33 @@
 import vercelToolbar from '@vercel/toolbar/plugins/next';
 import type { NextConfig } from 'next';
 
+const immutableAssetHeaders = [
+    {
+        key: 'Cache-Control',
+        value: 'public, max-age=31536000, immutable',
+    },
+];
+
 const nextConfig: NextConfig = {
     reactStrictMode: true,
     typedRoutes: true,
     reactCompiler: true,
+    async headers() {
+        return [
+            {
+                source: '/assets/models/:path*',
+                headers: immutableAssetHeaders,
+            },
+            {
+                source: '/assets/sprites/:path*',
+                headers: immutableAssetHeaders,
+            },
+            {
+                source: '/assets/textures/:path*',
+                headers: immutableAssetHeaders,
+            },
+        ];
+    },
     async rewrites() {
         const isDev =
             process.env.NODE_ENV === 'development' ||

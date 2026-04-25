@@ -12,6 +12,13 @@ export type CacheControlOptions = {
 };
 
 export const cacheControlPresets = {
+    directories: {
+        visibility: 'public',
+        maxAgeSeconds: 60 * 60,
+        sharedMaxAgeSeconds: 60 * 60,
+        staleWhileRevalidateSeconds: 24 * 60 * 60,
+        staleIfErrorSeconds: 24 * 60 * 60,
+    } satisfies CacheControlOptions,
     weatherShortTerm: {
         visibility: 'public',
         maxAgeSeconds: 5 * 60,

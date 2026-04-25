@@ -194,7 +194,7 @@ The garden client supports texture atlases for billboard-style sprites such as g
 The current ground-cover source sheets live in `apps/garden/data/sriptes/` and are processed in two stages:
 
 1. `extract-decoration-sprites.ts` cuts individual transparent sprite images out of the source sheets.
-2. `create-decoration-atlas.ts` packs those images into one or more atlas pages and writes a manifest.
+2. `create-decoration-atlas.ts` packs those images into one or more atlas pages and writes PNG/WebP textures plus a manifest.
 
 Use this command from the repository root:
 
@@ -205,8 +205,9 @@ pnpm --filter @gredice/cdn run regenerate-cdn:decoration-atlas
 The atlas generator writes:
 
 - `apps/garden/public/assets/sprites/decorations/<name>.atlas.png`
+- `apps/garden/public/assets/sprites/decorations/<name>.atlas.webp`
 - `apps/garden/public/assets/sprites/decorations/<name>.atlas.json`
-- Additional pages as `.../<name>.atlas.1.png`, `.../<name>.atlas.2.png`, etc. when the category grows beyond a single page
+- Additional pages as `.../<name>.atlas.1.png`, `.../<name>.atlas.1.webp`, etc. when the category grows beyond a single page
 
 The atlas manifest is the source of truth for runtime loading. It contains:
 

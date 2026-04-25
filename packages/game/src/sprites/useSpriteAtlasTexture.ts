@@ -31,9 +31,18 @@ function resolveAppAssetUrl(appBaseUrl: string, assetPath: string) {
     return `${normalizedBase}${normalizedPath}`;
 }
 
-async function loadTexture(url: string) {
+async function loadTexture(url: string, fallbackUrl?: string) {
     const loader = new TextureLoader();
-    const texture = await loader.loadAsync(url);
+    let texture: Texture;
+    try {
+        texture = await loader.loadAsync(url);
+    } catch (error) {
+        if (!fallbackUrl || fallbackUrl === url) {
+            throw error;
+        }
+
+        texture = await loader.loadAsync(fallbackUrl);
+    }
 
     texture.wrapS = ClampToEdgeWrapping;
     texture.wrapT = ClampToEdgeWrapping;
@@ -49,10 +58,19 @@ export function useSpriteAtlasTexture(
     assetPaths: SpriteAtlasAssetPaths | null,
 ) {
     const spriteBaseUrl = useGameState((state) => state.spriteBaseUrl);
-    const resolvedUrl = useMemo(
+    const resolvedUrls = useMemo(
         () =>
             assetPaths
-                ? resolveAppAssetUrl(spriteBaseUrl, assetPaths.pngUrl)
+                ? {
+                      primary: resolveAppAssetUrl(
+                          spriteBaseUrl,
+                          assetPaths.webpUrl,
+                      ),
+                      fallback: resolveAppAssetUrl(
+                          spriteBaseUrl,
+                          assetPaths.pngUrl,
+                      ),
+                  }
                 : null,
         [spriteBaseUrl, assetPaths],
     );
@@ -60,18 +78,19 @@ export function useSpriteAtlasTexture(
     const [error, setError] = useState<Error | null>(null);
 
     useEffect(() => {
-        if (!resolvedUrl) {
+        if (!resolvedUrls) {
             setTexture(null);
             setError(null);
             return;
         }
 
         let cancelled = false;
-        let request = textureCache.get(resolvedUrl);
+        const cacheKey = `${resolvedUrls.primary}|${resolvedUrls.fallback}`;
+        let request = textureCache.get(cacheKey);
 
         if (!request) {
-            request = loadTexture(resolvedUrl);
-            textureCache.set(resolvedUrl, request);
+            request = loadTexture(resolvedUrls.primary, resolvedUrls.fallback);
+            textureCache.set(cacheKey, request);
         }
 
         request
@@ -95,7 +114,7 @@ export function useSpriteAtlasTexture(
         return () => {
             cancelled = true;
         };
-    }, [resolvedUrl]);
+    }, [resolvedUrls]);
 
     return { error, texture };
 }

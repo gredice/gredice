@@ -213,8 +213,9 @@ export function RaisedBedFieldSuggestions({
 
     // Check if there are already 18 plants in the cart or planted for this raised bed (2 blocks × 9 fields)
     const cartItems =
-        shoppingCart?.items.filter((item) => item.raisedBedId === raisedBedId) ??
-        [];
+        shoppingCart?.items.filter(
+            (item) => item.raisedBedId === raisedBedId,
+        ) ?? [];
     const cartPlantItems = cartItems.filter(
         (item) => item.entityTypeName === 'plantSort' && item.status === 'new',
     );

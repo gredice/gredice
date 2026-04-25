@@ -11,6 +11,7 @@ import {
 import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
 import type { GameFeatureFlags } from './GameFlagsContext';
 import { GameHud } from './GameHud';
+import { GameSceneDetailContext } from './GameSceneDetailContext';
 import {
     defaultGameCameraPosition,
     defaultGameCameraZoom,
@@ -18,6 +19,7 @@ import {
 } from './gameCamera';
 import { useBlockData } from './hooks/useBlockData';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
+import { useDeferredSceneDetails } from './hooks/useDeferredSceneDetails';
 import { useFocusPlacedBlock } from './hooks/useFocusPlacedBlock';
 import { useGameTimeManager } from './hooks/useGameTimeManager';
 import { useWeatherNow } from './hooks/useWeatherNow';
@@ -44,6 +46,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     mockGarden?: boolean;
     winterMode?: WinterMode;
     weather?: Partial<GameState['weather']>;
+    deferDetails?: boolean;
 
     // Development purposes
     flags?: GameFeatureFlags;
@@ -59,6 +62,7 @@ export function GameScene({
     className,
     flags,
     weather,
+    deferDetails,
     ...rest
 }: GameSceneProps) {
     useGameTimeManager();
@@ -68,12 +72,13 @@ export function GameScene({
         (state) => state.weatherVisualizationDisabled,
     );
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
+    const renderDetails = useDeferredSceneDetails(deferDetails);
 
-    // Prelaod all required data
-    const { isLoading: blockDataLoading } = useBlockData();
+    // Start non-critical metadata early, but don't block the first scene frame.
+    useBlockData();
     const { data: garden, isLoading: gardenLoading } = useCurrentGarden();
-    const { isLoading: weatherLoading } = useWeatherNow(!weatherDisabled);
-    const isLoading = gardenLoading || blockDataLoading || weatherLoading;
+    useWeatherNow(!weatherDisabled && !weather);
+    const isLoading = gardenLoading;
     if (isLoading) {
         return <GardenLoadingIndicator />;
     }
@@ -83,43 +88,50 @@ export function GameScene({
             className={cx('animate-in duration-1000 fade-in', className)}
             {...rest}
         >
-            <Scene
-                position={defaultGameCameraPosition}
-                zoom={
-                    zoom === 'far' ? farGameCameraZoom : defaultGameCameraZoom
-                }
-                className="!absolute"
-            >
-                <ParticleSystemProvider>
-                    <EditModeGrid />
-                    <Environment
-                        noBackground={noBackground}
-                        noWeather={weatherDisabled}
-                        noSound={noSound}
-                        weather={weather}
-                    />
-                    <group>
-                        {garden?.stacks.map((stack) =>
-                            stack.blocks?.map((block, i) => (
-                                <EntityFactory
-                                    // biome-ignore lint/suspicious/noArrayIndexKey: Using array index as key is acceptable here because block IDs are unique within a stack, and the order of blocks within a stack is unlikely to change. Using block.id alone is not sufficient as it may not be unique across different stacks.
-                                    key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`}
-                                    name={block.name}
-                                    stack={stack}
-                                    block={block}
-                                    rotation={block.rotation}
-                                    variant={block.variant}
-                                    noRenderInView={instancedBlockNames}
-                                    noControl={noControls}
-                                />
-                            )),
-                        )}
-                        <RaisedBedMulchOverlays />
-                        <EntityInstances stacks={garden?.stacks} />
-                    </group>
-                    {!noControls && <Controls />}
-                </ParticleSystemProvider>
-            </Scene>
+            <GameSceneDetailContext.Provider value={{ renderDetails }}>
+                <Scene
+                    position={defaultGameCameraPosition}
+                    zoom={
+                        zoom === 'far'
+                            ? farGameCameraZoom
+                            : defaultGameCameraZoom
+                    }
+                    className="!absolute"
+                >
+                    <ParticleSystemProvider>
+                        <EditModeGrid />
+                        <Environment
+                            noBackground={noBackground}
+                            noWeather={weatherDisabled}
+                            noSound={noSound}
+                            weather={weather}
+                        />
+                        <group>
+                            {garden?.stacks.map((stack) =>
+                                stack.blocks?.map((block, i) => (
+                                    <EntityFactory
+                                        // biome-ignore lint/suspicious/noArrayIndexKey: Using array index as key is acceptable here because block IDs are unique within a stack, and the order of blocks within a stack is unlikely to change. Using block.id alone is not sufficient as it may not be unique across different stacks.
+                                        key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`}
+                                        name={block.name}
+                                        stack={stack}
+                                        block={block}
+                                        rotation={block.rotation}
+                                        variant={block.variant}
+                                        noRenderInView={instancedBlockNames}
+                                        noControl={noControls}
+                                    />
+                                )),
+                            )}
+                            {renderDetails && <RaisedBedMulchOverlays />}
+                            <EntityInstances
+                                stacks={garden?.stacks}
+                                renderDetails={renderDetails}
+                            />
+                        </group>
+                        {!noControls && <Controls />}
+                    </ParticleSystemProvider>
+                </Scene>
+            </GameSceneDetailContext.Provider>
             {!hideHud && <GameHud flags={flags} noWeather={noWeather} />}
         </div>
     );

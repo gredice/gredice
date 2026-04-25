@@ -6,6 +6,10 @@ import {
 import { Hono } from 'hono';
 import { validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import {
+    cacheControlPresets,
+    setCacheControl,
+} from '../../../lib/http/cacheControl';
 
 const app = new Hono()
     .get(
@@ -19,6 +23,7 @@ const app = new Hono()
         async (context) => {
             const { entityType } = context.req.valid('param');
             const entities = await getEntitiesFormatted(entityType);
+            setCacheControl(context, cacheControlPresets.directories);
             return context.json(entities);
         },
     )
@@ -48,6 +53,7 @@ const app = new Hono()
                     { status: 404 },
                 );
             }
+            setCacheControl(context, cacheControlPresets.directories);
             return context.json(entity);
         },
     );
