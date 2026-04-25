@@ -1,16 +1,26 @@
-import { getEntitiesRaw, getInventoryItem } from '@gredice/storage';
+import {
+    getEntitiesRaw,
+    getInventoryItem,
+    getInventoryItemEvents,
+} from '@gredice/storage';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Input } from '@signalco/ui-primitives/Input';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
+import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../../lib/auth/auth';
 import { KnownPages } from '../../../../../../src/KnownPages';
-import { updateInventoryItemAction } from '../../../../../(actions)/inventoryActions';
+import {
+    quickAdjustInventoryItemAction,
+    updateInventoryItemAction,
+} from '../../../../../(actions)/inventoryActions';
+import { DeleteInventoryItemEventButton } from './DeleteInventoryItemEventButton';
 
 export const dynamic = 'force-dynamic';
 const noEntityValue = 'none';
@@ -30,6 +40,7 @@ export default async function InventoryItemPage({
     if (!item || item.inventoryConfigId !== inventoryConfigId) {
         notFound();
     }
+    const events = await getInventoryItemEvents(id);
 
     const config = item.inventoryConfig;
     const entities = await getEntitiesRaw(config.entityTypeName, 'published');
@@ -78,6 +89,15 @@ export default async function InventoryItemPage({
         inventoryConfigId,
         id,
     );
+    const quickAdjustItemBound = quickAdjustInventoryItemAction.bind(
+        null,
+        inventoryConfigId,
+        id,
+    );
+    const statusAttributeName = config.statusAttributeName;
+    const currentState = statusAttributeName
+        ? ((additionalFields[statusAttributeName] as string) ?? '')
+        : '';
 
     return (
         <Stack spacing={4}>
@@ -223,6 +243,98 @@ export default async function InventoryItemPage({
                         </Stack>
                     </form>
                 </Stack>
+            </Card>
+
+            <Card className="max-w-2xl">
+                <Stack spacing={4} className="p-6">
+                    <Typography level="h3" semiBold>
+                        Brza promjena stanja/količine
+                    </Typography>
+                    <form action={quickAdjustItemBound}>
+                        <Stack spacing={3}>
+                            <Input
+                                name="quantity"
+                                label="Nova količina (opcionalno)"
+                                type="number"
+                                min={0}
+                                defaultValue={item.quantity.toString()}
+                            />
+                            {statusAttributeName && (
+                                <Input
+                                    name="state"
+                                    label="Novo stanje (opcionalno)"
+                                    defaultValue={currentState}
+                                />
+                            )}
+                            <Input
+                                name="notes"
+                                label="Napomena događaja (opcionalno)"
+                            />
+                            <Button
+                                variant="solid"
+                                type="submit"
+                                className="w-fit"
+                            >
+                                Dodaj događaj
+                            </Button>
+                        </Stack>
+                    </form>
+                </Stack>
+            </Card>
+
+            <Card>
+                <Stack spacing={2} className="p-6 pb-0">
+                    <Typography level="h3" semiBold>
+                        Povijest promjena
+                    </Typography>
+                </Stack>
+                <Table>
+                    <Table.Header>
+                        <Table.Row>
+                            <Table.Head>Vrijeme</Table.Head>
+                            <Table.Head>Akcija</Table.Head>
+                            <Table.Head>Količina</Table.Head>
+                            <Table.Head>Stanje</Table.Head>
+                            <Table.Head>Napomena</Table.Head>
+                            <Table.Head />
+                        </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
+                        {events.length === 0 && (
+                            <Table.Row>
+                                <Table.Cell colSpan={6}>
+                                    Nema događaja za ovu stavku.
+                                </Table.Cell>
+                            </Table.Row>
+                        )}
+                        {events.map((event) => (
+                            <Table.Row key={event.id}>
+                                <Table.Cell>
+                                    <LocalDateTime time>
+                                        {event.createdAt}
+                                    </LocalDateTime>
+                                </Table.Cell>
+                                <Table.Cell>{event.action}</Table.Cell>
+                                <Table.Cell>
+                                    {event.previousQuantity ?? '-'} →{' '}
+                                    {event.newQuantity ?? '-'}
+                                </Table.Cell>
+                                <Table.Cell>
+                                    {event.previousState ?? '-'} →{' '}
+                                    {event.newState ?? '-'}
+                                </Table.Cell>
+                                <Table.Cell>{event.notes ?? '-'}</Table.Cell>
+                                <Table.Cell>
+                                    <DeleteInventoryItemEventButton
+                                        inventoryConfigId={inventoryConfigId}
+                                        itemId={id}
+                                        eventId={event.id}
+                                    />
+                                </Table.Cell>
+                            </Table.Row>
+                        ))}
+                    </Table.Body>
+                </Table>
             </Card>
         </Stack>
     );

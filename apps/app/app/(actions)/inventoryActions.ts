@@ -3,9 +3,11 @@
 import {
     createInventoryConfig,
     createInventoryItem,
+    createInventoryItemEvent,
     createInventoryItemFieldDefinition,
     deleteInventoryConfig,
     deleteInventoryItem,
+    deleteInventoryItemEvent,
     deleteInventoryItemFieldDefinition,
     getInventoryItem,
     getInventoryItemFieldDefinitions,
@@ -27,6 +29,25 @@ function parseQuantity(raw: string | null): number {
         return 1;
     }
     return parsed;
+}
+
+function parseQuickActionQuantity(raw: string | null): number | null {
+    const normalized = raw?.trim();
+    if (!normalized) return null;
+    if (!/^\d+$/.test(normalized)) {
+        throw new Error('Please enter a valid quantity (0 or greater).');
+    }
+    return Number.parseInt(normalized, 10);
+}
+
+function getItemStateFromAdditionalFields(
+    additionalFields: Record<string, unknown> | null | undefined,
+    statusAttributeName: string | null | undefined,
+): string | null {
+    if (!statusAttributeName) return null;
+    const state = additionalFields?.[statusAttributeName];
+    if (typeof state !== 'string' || state.length === 0) return null;
+    return state;
 }
 
 async function collectAdditionalFields(
@@ -186,7 +207,7 @@ export async function createInventoryItemAction(
         formData,
     );
 
-    await createInventoryItem({
+    const createdItemId = await createInventoryItem({
         inventoryConfigId,
         entityId,
         trackingType,
@@ -197,6 +218,23 @@ export async function createInventoryItemAction(
         quantity,
         notes: notes || undefined,
         additionalFields,
+    });
+    const createdItem = await getInventoryItem(createdItemId);
+    if (!createdItem) {
+        throw new Error('Created item not found.');
+    }
+    const newState = getItemStateFromAdditionalFields(
+        createdItem.additionalFields,
+        createdItem.inventoryConfig.statusAttributeName,
+    );
+    await createInventoryItemEvent({
+        inventoryItemId: createdItemId,
+        action: 'created',
+        previousQuantity: null,
+        newQuantity: quantity,
+        previousState: null,
+        newState,
+        notes: notes || null,
     });
 
     revalidatePath(KnownPages.InventoryConfig(inventoryConfigId));
@@ -234,6 +272,12 @@ export async function updateInventoryItemAction(
         inventoryConfigId,
         formData,
     );
+    const nextAdditionalFields = additionalFields
+        ? {
+              ...(existingItem.additionalFields ?? {}),
+              ...additionalFields,
+          }
+        : existingItem.additionalFields;
 
     await updateInventoryItem({
         id: itemId,
@@ -245,7 +289,25 @@ export async function updateInventoryItemAction(
                 : undefined,
         quantity,
         notes: notes || undefined,
-        additionalFields,
+        additionalFields: nextAdditionalFields,
+    });
+
+    const oldState = getItemStateFromAdditionalFields(
+        existingItem.additionalFields,
+        existingItem.inventoryConfig.statusAttributeName,
+    );
+    const nextState = getItemStateFromAdditionalFields(
+        nextAdditionalFields,
+        existingItem.inventoryConfig.statusAttributeName,
+    );
+    await createInventoryItemEvent({
+        inventoryItemId: itemId,
+        action: 'updated',
+        previousQuantity: existingItem.quantity,
+        newQuantity: quantity,
+        previousState: oldState,
+        newState: nextState,
+        notes: notes || null,
     });
 
     revalidatePath(KnownPages.InventoryConfig(inventoryConfigId));
@@ -258,6 +320,128 @@ export async function deleteInventoryItemAction(
 ) {
     await auth(['admin']);
 
+    const item = await getInventoryItem(itemId);
+    if (!item || item.inventoryConfigId !== inventoryConfigId) {
+        throw new Error(
+            'Item does not belong to the specified inventory configuration.',
+        );
+    }
+
+    const previousState = getItemStateFromAdditionalFields(
+        item.additionalFields,
+        item.inventoryConfig.statusAttributeName,
+    );
+
     await deleteInventoryItem(itemId, inventoryConfigId);
+    await createInventoryItemEvent({
+        inventoryItemId: itemId,
+        action: 'deleted',
+        previousQuantity: item.quantity,
+        newQuantity: null,
+        previousState,
+        newState: null,
+        notes: item.notes ?? null,
+    });
     revalidatePath(KnownPages.InventoryConfig(inventoryConfigId));
+}
+
+export async function quickAdjustInventoryItemAction(
+    inventoryConfigId: number,
+    itemId: number,
+    formData: FormData,
+) {
+    await auth(['admin']);
+
+    const existingItem = await getInventoryItem(itemId);
+    if (!existingItem) {
+        throw new Error('Item not found.');
+    }
+    if (existingItem.inventoryConfigId !== inventoryConfigId) {
+        throw new Error(
+            'Item does not belong to the specified inventory configuration.',
+        );
+    }
+
+    const nextQuantity = parseQuickActionQuantity(
+        formData.get('quantity') as string,
+    );
+    const eventNotes = (formData.get('notes') as string) || null;
+    const statusFieldName = existingItem.inventoryConfig.statusAttributeName;
+    const nextStateRaw = (formData.get('state') as string) || '';
+    const nextState = nextStateRaw.length > 0 ? nextStateRaw : null;
+    const previousState = getItemStateFromAdditionalFields(
+        existingItem.additionalFields,
+        statusFieldName,
+    );
+
+    const updates: {
+        id: number;
+        quantity?: number;
+        additionalFields?: Record<string, unknown> | null;
+    } = { id: itemId };
+
+    const quantityChanged =
+        nextQuantity !== null && nextQuantity !== existingItem.quantity;
+    const stateChanged = statusFieldName ? nextState !== previousState : false;
+    const hasEventNotes = eventNotes !== null;
+
+    if (!quantityChanged && !stateChanged && !hasEventNotes) {
+        throw new Error(
+            'Please provide at least one change: update quantity, change status, or add notes.',
+        );
+    }
+
+    if (quantityChanged) {
+        updates.quantity = nextQuantity;
+    }
+    if (statusFieldName && stateChanged) {
+        const previousAdditionalFields =
+            (existingItem.additionalFields as Record<string, unknown> | null) ??
+            {};
+        updates.additionalFields = {
+            ...previousAdditionalFields,
+            [statusFieldName]: nextState,
+        };
+    }
+
+    if (quantityChanged || stateChanged) {
+        await updateInventoryItem(updates);
+    }
+
+    await createInventoryItemEvent({
+        inventoryItemId: itemId,
+        action: 'quick-adjustment',
+        previousQuantity: existingItem.quantity,
+        newQuantity: nextQuantity ?? existingItem.quantity,
+        previousState,
+        newState: statusFieldName ? nextState : previousState,
+        notes: eventNotes,
+    });
+
+    revalidatePath(KnownPages.InventoryConfig(inventoryConfigId));
+    revalidatePath(KnownPages.InventoryItem(inventoryConfigId, itemId));
+}
+
+export async function deleteInventoryItemEventAction(
+    inventoryConfigId: number,
+    itemId: number,
+    eventId: number,
+) {
+    await auth(['admin']);
+
+    const existingItem = await getInventoryItem(itemId);
+    if (!existingItem || existingItem.inventoryConfigId !== inventoryConfigId) {
+        throw new Error(
+            'Item does not belong to the specified inventory configuration.',
+        );
+    }
+
+    const eventDeleted = await deleteInventoryItemEvent(eventId, itemId);
+    if (!eventDeleted) {
+        throw new Error(
+            'Event does not belong to the specified inventory item.',
+        );
+    }
+
+    revalidatePath(KnownPages.InventoryItem(inventoryConfigId, itemId));
 }

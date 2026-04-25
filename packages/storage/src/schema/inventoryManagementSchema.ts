@@ -139,18 +139,24 @@ export const inventoryItems = pgTable(
     ],
 );
 
-export const inventoryItemRelations = relations(inventoryItems, ({ one }) => ({
-    inventoryConfig: one(inventoryConfigs, {
-        fields: [inventoryItems.inventoryConfigId],
-        references: [inventoryConfigs.id],
-        relationName: 'inventoryConfigItems',
+export const inventoryItemRelations = relations(
+    inventoryItems,
+    ({ one, many }) => ({
+        inventoryConfig: one(inventoryConfigs, {
+            fields: [inventoryItems.inventoryConfigId],
+            references: [inventoryConfigs.id],
+            relationName: 'inventoryConfigItems',
+        }),
+        entity: one(entities, {
+            fields: [inventoryItems.entityId],
+            references: [entities.id],
+            relationName: 'entity',
+        }),
+        events: many(inventoryItemEvents, {
+            relationName: 'inventoryItemEvents',
+        }),
     }),
-    entity: one(entities, {
-        fields: [inventoryItems.entityId],
-        references: [entities.id],
-        relationName: 'entity',
-    }),
-}));
+);
 
 export type InsertInventoryItem = typeof inventoryItems.$inferInsert;
 export type UpdateInventoryItem = Partial<
@@ -161,3 +167,41 @@ export type UpdateInventoryItem = Partial<
 > &
     Pick<typeof inventoryItems.$inferSelect, 'id'>;
 export type SelectInventoryItem = typeof inventoryItems.$inferSelect;
+
+export const inventoryItemEvents = pgTable(
+    'inventory_item_events',
+    {
+        id: serial('id').primaryKey(),
+        inventoryItemId: integer('inventory_item_id')
+            .notNull()
+            .references(() => inventoryItems.id),
+        action: text('action').notNull(),
+        previousQuantity: integer('previous_quantity'),
+        newQuantity: integer('new_quantity'),
+        previousState: text('previous_state'),
+        newState: text('new_state'),
+        notes: text('notes'),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        isDeleted: boolean('is_deleted').notNull().default(false),
+    },
+    (table) => [
+        index('inv_item_events_inventory_item_id_idx').on(
+            table.inventoryItemId,
+        ),
+        index('inv_item_events_is_deleted_idx').on(table.isDeleted),
+    ],
+);
+
+export const inventoryItemEventRelations = relations(
+    inventoryItemEvents,
+    ({ one }) => ({
+        inventoryItem: one(inventoryItems, {
+            fields: [inventoryItemEvents.inventoryItemId],
+            references: [inventoryItems.id],
+            relationName: 'inventoryItemEvents',
+        }),
+    }),
+);
+
+export type InsertInventoryItemEvent = typeof inventoryItemEvents.$inferInsert;
+export type SelectInventoryItemEvent = typeof inventoryItemEvents.$inferSelect;
