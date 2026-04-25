@@ -3,17 +3,19 @@ import {
     getEntitiesRaw,
     getEntityTypeByName,
 } from '@gredice/storage';
+import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Add } from '@signalco/ui-icons';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { EntityTypeMenu } from '../../../../components/admin/directories';
+import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { FilterProvider } from '../../../../components/admin/providers';
 import { SearchInput } from '../../../../components/admin/SearchInput';
 import { EntitiesTable } from '../../../../components/admin/tables';
 import { ServerActionIconButton } from '../../../../components/shared/ServerActionIconButton';
 import { auth } from '../../../../lib/auth/auth';
+import { KnownPages } from '../../../../src/KnownPages';
 import {
     createEntity,
     duplicateEntity,
@@ -39,10 +41,23 @@ export default async function EntitiesPage({
     return (
         <FilterProvider>
             <Stack spacing={2}>
-                <Row spacing={1} justifyContent="space-between">
-                    <Typography level="h1" className="text-2xl" semiBold>
-                        {entityType?.label}
-                    </Typography>
+                <h1 className="sr-only">
+                    {entityType?.label ?? entityTypeName}
+                </h1>
+                <Row
+                    spacing={1}
+                    justifyContent="space-between"
+                    className="flex-wrap gap-2"
+                >
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.Directories,
+                            },
+                            { label: entityType?.label ?? entityTypeName },
+                        ]}
+                    />
                     <Row spacing={1}>
                         <SearchInput />
                         <ServerActionIconButton
