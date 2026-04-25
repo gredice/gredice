@@ -11,6 +11,7 @@ import { Chip } from '@signalco/ui-primitives/Chip';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { KnownPages } from '../../../../src/KnownPages';
@@ -38,7 +39,10 @@ export default async function TransactionDetailsPage({
             <Stack spacing={2}>
                 <Breadcrumbs
                     items={[
-                        { label: 'Transakcije', href: KnownPages.Transactions },
+                        {
+                            label: <AdminBreadcrumbLevelSelector />,
+                            href: KnownPages.Transactions,
+                        },
                         { label: transactionId },
                     ]}
                 />

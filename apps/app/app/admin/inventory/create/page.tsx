@@ -6,8 +6,8 @@ import { Input } from '@signalco/ui-primitives/Input';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../lib/auth/auth';
-import { KnownPages } from '../../../../src/KnownPages';
 import { createInventoryConfigAction } from '../../../(actions)/inventoryActions';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +25,9 @@ export default async function CreateInventoryPage() {
         <Stack spacing={4}>
             <Breadcrumbs
                 items={[
-                    { label: 'Zalihe', href: KnownPages.Inventory },
+                    {
+                        label: <AdminBreadcrumbLevelSelector />,
+                    },
                     { label: 'Nova zaliha' },
                 ]}
             />

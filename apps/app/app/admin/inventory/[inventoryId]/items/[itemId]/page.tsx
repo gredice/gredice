@@ -7,6 +7,7 @@ import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../../lib/auth/auth';
 import { KnownPages } from '../../../../../../src/KnownPages';
 import { updateInventoryItemAction } from '../../../../../(actions)/inventoryActions';
@@ -82,7 +83,9 @@ export default async function InventoryItemPage({
         <Stack spacing={4}>
             <Breadcrumbs
                 items={[
-                    { label: 'Zalihe', href: KnownPages.Inventory },
+                    {
+                        label: <AdminBreadcrumbLevelSelector />,
+                    },
                     {
                         label: config.label,
                         href: KnownPages.InventoryConfig(inventoryConfigId),

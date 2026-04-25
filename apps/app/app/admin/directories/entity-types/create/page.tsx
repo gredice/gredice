@@ -7,6 +7,7 @@ import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { availableIcons } from '../../../../../components/admin/directories/EntityTypeIcon';
+import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../lib/auth/auth';
 import { KnownPages } from '../../../../../src/KnownPages';
 import { submitCreateForm } from '../../../../(actions)/entityFormActions';
@@ -37,7 +38,10 @@ export default async function CreateEntityTypePage() {
         <Stack spacing={4}>
             <Breadcrumbs
                 items={[
-                    { label: 'Direktoriji', href: KnownPages.Directories },
+                    {
+                        label: <AdminBreadcrumbLevelSelector />,
+                        href: KnownPages.Directories,
+                    },
                     { label: 'Novi tip zapisa' },
                 ]}
             />

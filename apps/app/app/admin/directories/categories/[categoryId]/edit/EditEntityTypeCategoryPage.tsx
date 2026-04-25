@@ -11,6 +11,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
+import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { KnownPages } from '../../../../../../src/KnownPages';
 import {
     removeEntityTypeCategoryById,
@@ -38,7 +39,10 @@ export function EditEntityTypeCategoryPage({
         <Stack spacing={4}>
             <Breadcrumbs
                 items={[
-                    { label: 'Direktoriji', href: KnownPages.Directories },
+                    {
+                        label: <AdminBreadcrumbLevelSelector />,
+                        href: KnownPages.Directories,
+                    },
                     { label: 'Kategorije', href: KnownPages.Directories },
                     { label: category.label },
                 ]}

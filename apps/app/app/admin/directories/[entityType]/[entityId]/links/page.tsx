@@ -10,6 +10,7 @@ import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { entityDisplayName } from '../../../../../../src/entities/entityAttributes';
 import { KnownPages } from '../../../../../../src/KnownPages';
 
@@ -31,6 +32,10 @@ export default async function EntityLinksPage(props: {
         <Stack spacing={2}>
             <Breadcrumbs
                 items={[
+                    {
+                        label: <AdminBreadcrumbLevelSelector />,
+                        href: KnownPages.Directories,
+                    },
                     {
                         label: entity.entityType.label,
                         href: KnownPages.DirectoryEntityType(params.entityType),
