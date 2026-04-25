@@ -1,4 +1,4 @@
-import { getAttributeDefinitions, getInventoryConfig } from '@gredice/storage';
+import { getInventoryConfig } from '@gredice/storage';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
@@ -36,16 +36,41 @@ export default async function EditInventoryConfigPage({
         notFound();
     }
 
-    const attributeDefinitions = await getAttributeDefinitions(
-        config.entityTypeName,
-    );
     const attributeItems = [
         { value: noAttributeValue, label: '- Nije odabrano -' },
-        ...attributeDefinitions.map((attr) => ({
-            value: attr.name,
-            label: attr.label,
+        ...config.fieldDefinitions.map((field) => ({
+            value: field.name,
+            label: field.label,
         })),
     ];
+    if (
+        config.statusAttributeName &&
+        !attributeItems.some(
+            (item) => item.value === config.statusAttributeName,
+        )
+    ) {
+        attributeItems.push({
+            value: config.statusAttributeName,
+            label: `${config.statusAttributeName} (postojeće)`,
+        });
+    }
+    if (
+        config.amountAttributeName &&
+        !attributeItems.some(
+            (item) => item.value === config.amountAttributeName,
+        )
+    ) {
+        attributeItems.push({
+            value: config.amountAttributeName,
+            label: `${config.amountAttributeName} (postojeće)`,
+        });
+    }
+    const hasStatusField = config.fieldDefinitions.some(
+        (field) => field.name === 'status',
+    );
+    const hasAmountField = config.fieldDefinitions.some(
+        (field) => field.name === 'amount',
+    );
 
     const updateConfigBound = updateInventoryConfigAction.bind(null, id);
     const deleteConfigBound = deleteInventoryConfigAction.bind(null, id);
@@ -105,7 +130,7 @@ export default async function EditInventoryConfigPage({
                                         config.statusAttributeName ??
                                         noAttributeValue
                                     }
-                                    helperText="Atribut entiteta koji definira status stavke"
+                                    helperText="Polje stavke zalihe koje definira status stavke"
                                 />
                                 <Input
                                     name="emptyStatusValue"
@@ -121,7 +146,7 @@ export default async function EditInventoryConfigPage({
                                         config.amountAttributeName ??
                                         noAttributeValue
                                     }
-                                    helperText="Atribut entiteta koji doprinosi izračunu ukupne količine"
+                                    helperText="Polje stavke zalihe koje doprinosi izračunu ukupne količine"
                                 />
                             </Stack>
                             <Button
@@ -177,7 +202,11 @@ export default async function EditInventoryConfigPage({
                     </Card>
                 )}
 
-                <AddFieldDefinitionForm onSubmit={createFieldBound} />
+                <AddFieldDefinitionForm
+                    onSubmit={createFieldBound}
+                    hasStatusField={hasStatusField}
+                    hasAmountField={hasAmountField}
+                />
             </Stack>
 
             <Stack spacing={2}>

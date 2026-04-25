@@ -65,30 +65,11 @@ export async function createInventoryConfigAction(formData: FormData) {
     const label = formData.get('label') as string;
     const defaultTrackingType =
         (formData.get('defaultTrackingType') as string) || 'pieces';
-    const statusAttributeNameRaw = formData.get('statusAttributeName') as
-        | string
-        | null;
-    const statusAttributeName =
-        statusAttributeNameRaw && statusAttributeNameRaw !== noAttributeValue
-            ? statusAttributeNameRaw
-            : null;
-    const emptyStatusValue =
-        (formData.get('emptyStatusValue') as string) || null;
-    const amountAttributeNameRaw = formData.get('amountAttributeName') as
-        | string
-        | null;
-    const amountAttributeName =
-        amountAttributeNameRaw && amountAttributeNameRaw !== noAttributeValue
-            ? amountAttributeNameRaw
-            : null;
 
     const id = await createInventoryConfig({
         entityTypeName,
         label,
         defaultTrackingType,
-        statusAttributeName: statusAttributeName || undefined,
-        emptyStatusValue: emptyStatusValue || undefined,
-        amountAttributeName: amountAttributeName || undefined,
     });
 
     revalidatePath(KnownPages.Inventory);
