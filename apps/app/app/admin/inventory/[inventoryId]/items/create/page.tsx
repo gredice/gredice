@@ -9,6 +9,10 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../../lib/auth/auth';
+import {
+    getInventoryFieldType,
+    getInventorySelectOptions,
+} from '../../../../../../lib/inventoryFieldTypes';
 import { KnownPages } from '../../../../../../src/KnownPages';
 import { createInventoryItemAction } from '../../../../../(actions)/inventoryActions';
 
@@ -136,42 +140,83 @@ export default async function CreateInventoryItemPage({
                                         <Typography level="body1" semiBold>
                                             Dodatna polja
                                         </Typography>
-                                        {config.fieldDefinitions.map((field) =>
-                                            field.dataType === 'boolean' ? (
-                                                <SelectItems
-                                                    key={field.id}
-                                                    name={`field_${field.name}`}
-                                                    label={field.label}
-                                                    items={[
-                                                        {
-                                                            value: 'true',
-                                                            label: 'Da',
-                                                        },
-                                                        {
-                                                            value: 'false',
-                                                            label: 'Ne',
-                                                        },
-                                                    ]}
-                                                    defaultValue="false"
-                                                    required={field.required}
-                                                />
-                                            ) : (
-                                                <Input
-                                                    key={field.id}
-                                                    name={`field_${field.name}`}
-                                                    label={field.label}
-                                                    type={
-                                                        field.dataType ===
-                                                        'number'
-                                                            ? 'number'
-                                                            : field.dataType ===
-                                                                'date'
-                                                              ? 'date'
-                                                              : 'text'
+                                        {config.fieldDefinitions.map(
+                                            (field) => {
+                                                const fieldType =
+                                                    getInventoryFieldType(
+                                                        field.dataType,
+                                                    );
+                                                if (fieldType === 'boolean') {
+                                                    return (
+                                                        <SelectItems
+                                                            key={field.id}
+                                                            name={`field_${field.name}`}
+                                                            label={field.label}
+                                                            items={[
+                                                                {
+                                                                    value: 'true',
+                                                                    label: 'Da',
+                                                                },
+                                                                {
+                                                                    value: 'false',
+                                                                    label: 'Ne',
+                                                                },
+                                                            ]}
+                                                            defaultValue="false"
+                                                            required={
+                                                                field.required
+                                                            }
+                                                        />
+                                                    );
+                                                }
+
+                                                if (fieldType === 'select') {
+                                                    const options =
+                                                        getInventorySelectOptions(
+                                                            field.dataType,
+                                                        );
+                                                    const defaultValue =
+                                                        options[0]?.value;
+                                                    if (!defaultValue) {
+                                                        return null;
                                                     }
-                                                    required={field.required}
-                                                />
-                                            ),
+
+                                                    return (
+                                                        <SelectItems
+                                                            key={field.id}
+                                                            name={`field_${field.name}`}
+                                                            label={field.label}
+                                                            items={options}
+                                                            defaultValue={
+                                                                defaultValue
+                                                            }
+                                                            required={
+                                                                field.required
+                                                            }
+                                                        />
+                                                    );
+                                                }
+
+                                                return (
+                                                    <Input
+                                                        key={field.id}
+                                                        name={`field_${field.name}`}
+                                                        label={field.label}
+                                                        type={
+                                                            fieldType ===
+                                                            'number'
+                                                                ? 'number'
+                                                                : fieldType ===
+                                                                    'date'
+                                                                  ? 'date'
+                                                                  : 'text'
+                                                        }
+                                                        required={
+                                                            field.required
+                                                        }
+                                                    />
+                                                );
+                                            },
                                         )}
                                     </Stack>
                                 )}

@@ -15,6 +15,10 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../../lib/auth/auth';
+import {
+    getInventoryFieldType,
+    getInventorySelectOptions,
+} from '../../../../../../lib/inventoryFieldTypes';
 import { KnownPages } from '../../../../../../src/KnownPages';
 import {
     quickAdjustInventoryItemAction,
@@ -95,6 +99,14 @@ export default async function InventoryItemPage({
         id,
     );
     const statusAttributeName = config.statusAttributeName;
+    const statusFieldDefinition = statusAttributeName
+        ? config.fieldDefinitions.find(
+              (field) => field.name === statusAttributeName,
+          )
+        : undefined;
+    const statusOptions = statusFieldDefinition
+        ? getInventorySelectOptions(statusFieldDefinition.dataType)
+        : [];
     const currentState = statusAttributeName
         ? ((additionalFields[statusAttributeName] as string) ?? '')
         : '';
@@ -170,10 +182,12 @@ export default async function InventoryItemPage({
                                                     additionalFields[
                                                         field.name
                                                     ];
+                                                const fieldType =
+                                                    getInventoryFieldType(
+                                                        field.dataType,
+                                                    );
 
-                                                if (
-                                                    field.dataType === 'boolean'
-                                                ) {
+                                                if (fieldType === 'boolean') {
                                                     return (
                                                         <SelectItems
                                                             key={field.id}
@@ -205,16 +219,46 @@ export default async function InventoryItemPage({
                                                     );
                                                 }
 
+                                                if (fieldType === 'select') {
+                                                    const options =
+                                                        getInventorySelectOptions(
+                                                            field.dataType,
+                                                        );
+                                                    const selectedValue =
+                                                        typeof fieldValue ===
+                                                        'string'
+                                                            ? fieldValue
+                                                            : options[0]?.value;
+                                                    if (!selectedValue) {
+                                                        return null;
+                                                    }
+
+                                                    return (
+                                                        <SelectItems
+                                                            key={field.id}
+                                                            name={`field_${field.name}`}
+                                                            label={field.label}
+                                                            items={options}
+                                                            defaultValue={
+                                                                selectedValue
+                                                            }
+                                                            required={
+                                                                field.required
+                                                            }
+                                                        />
+                                                    );
+                                                }
+
                                                 return (
                                                     <Input
                                                         key={field.id}
                                                         name={`field_${field.name}`}
                                                         label={field.label}
                                                         type={
-                                                            field.dataType ===
+                                                            fieldType ===
                                                             'number'
                                                                 ? 'number'
-                                                                : field.dataType ===
+                                                                : fieldType ===
                                                                     'date'
                                                                   ? 'date'
                                                                   : 'text'
@@ -259,13 +303,24 @@ export default async function InventoryItemPage({
                                 min={0}
                                 defaultValue={item.quantity.toString()}
                             />
-                            {statusAttributeName && (
-                                <Input
-                                    name="state"
-                                    label="Novo stanje (opcionalno)"
-                                    defaultValue={currentState}
-                                />
-                            )}
+                            {statusAttributeName &&
+                                (statusOptions.length > 0 ? (
+                                    <SelectItems
+                                        name="state"
+                                        label="Novo stanje (opcionalno)"
+                                        items={statusOptions}
+                                        defaultValue={
+                                            currentState ||
+                                            statusOptions[0].value
+                                        }
+                                    />
+                                ) : (
+                                    <Input
+                                        name="state"
+                                        label="Novo stanje (opcionalno)"
+                                        defaultValue={currentState}
+                                    />
+                                ))}
                             <Input
                                 name="notes"
                                 label="Napomena događaja (opcionalno)"

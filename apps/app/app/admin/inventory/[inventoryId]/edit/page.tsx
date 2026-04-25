@@ -9,6 +9,10 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../lib/auth/auth';
+import {
+    getInventoryFieldType,
+    getInventorySelectOptions,
+} from '../../../../../lib/inventoryFieldTypes';
 import { KnownPages } from '../../../../../src/KnownPages';
 import {
     createInventoryItemFieldDefinitionAction,
@@ -176,31 +180,51 @@ export default async function EditInventoryConfigPage({
                 {config.fieldDefinitions.length > 0 && (
                     <Card className="max-w-2xl">
                         <Stack spacing={0}>
-                            {config.fieldDefinitions.map((field, index) => (
-                                <div
-                                    key={field.id}
-                                    className={`flex items-center justify-between p-4 ${index < config.fieldDefinitions.length - 1 ? 'border-b' : ''}`}
-                                >
-                                    <Stack spacing={0}>
-                                        <Typography level="body1" semiBold>
-                                            {field.label}
-                                        </Typography>
-                                        <Typography level="body2" secondary>
-                                            {field.name} · {field.dataType}
-                                            {field.required
-                                                ? ' · Obavezno'
-                                                : ''}
-                                        </Typography>
-                                    </Stack>
-                                    <DeleteFieldDefinitionButton
-                                        inventoryConfigId={id}
-                                        fieldId={field.id}
-                                        onDelete={
-                                            deleteInventoryItemFieldDefinitionAction
-                                        }
-                                    />
-                                </div>
-                            ))}
+                            {config.fieldDefinitions.map((field, index) => {
+                                const fieldType = getInventoryFieldType(
+                                    field.dataType,
+                                );
+                                const selectOptions =
+                                    fieldType === 'select'
+                                        ? getInventorySelectOptions(
+                                              field.dataType,
+                                          )
+                                        : [];
+
+                                return (
+                                    <div
+                                        key={field.id}
+                                        className={`flex items-center justify-between p-4 ${index < config.fieldDefinitions.length - 1 ? 'border-b' : ''}`}
+                                    >
+                                        <Stack spacing={0}>
+                                            <Typography level="body1" semiBold>
+                                                {field.label}
+                                            </Typography>
+                                            <Typography level="body2" secondary>
+                                                {field.name} · {fieldType}
+                                                {field.required
+                                                    ? ' · Obavezno'
+                                                    : ''}
+                                                {selectOptions.length > 0
+                                                    ? ` · ${selectOptions
+                                                          .map(
+                                                              (option) =>
+                                                                  `${option.value}:${option.label}`,
+                                                          )
+                                                          .join(', ')}`
+                                                    : ''}
+                                            </Typography>
+                                        </Stack>
+                                        <DeleteFieldDefinitionButton
+                                            inventoryConfigId={id}
+                                            fieldId={field.id}
+                                            onDelete={
+                                                deleteInventoryItemFieldDefinitionAction
+                                            }
+                                        />
+                                    </div>
+                                );
+                            })}
                         </Stack>
                     </Card>
                 )}
