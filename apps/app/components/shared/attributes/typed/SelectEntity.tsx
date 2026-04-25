@@ -1,10 +1,11 @@
 import { ExternalLink } from '@signalco/ui-icons';
+import { Chip } from '@signalco/ui-primitives/Chip';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { KnownPages } from '../../../../src/KnownPages';
 import type { AttributeInputProps } from '../AttributeInputProps';
-import { getEntities } from '../actions/entitiesActions';
+import { getRefEntities } from '../actions/entitiesActions';
 
 export function SelectEntity({
     value,
@@ -13,14 +14,14 @@ export function SelectEntity({
 }: AttributeInputProps) {
     const entityTypeName = attributeDefinition?.dataType.split(':')[1];
     const [entities, setEntities] =
-        useState<Awaited<ReturnType<typeof getEntities>>>();
+        useState<Awaited<ReturnType<typeof getRefEntities>>>();
 
     useEffect(() => {
         if (!entityTypeName) {
             return;
         }
 
-        getEntities(entityTypeName)
+        getRefEntities(entityTypeName)
             .then((response) => {
                 setEntities(response);
             })
@@ -29,21 +30,15 @@ export function SelectEntity({
             });
     }, [entityTypeName]);
 
-    const selectableEntities = useMemo(
-        () =>
-            entities?.flatMap((entity) => {
-                const name = entity.information?.name;
-                return name ? [{ entity, name }] : [];
-            }) ?? [],
-        [entities],
-    );
-
     const items = [
         { value: '-', label: '-' },
-        ...selectableEntities.map(({ entity, name }) => ({
-            value: name,
-            label: entity.information?.label ?? name,
-        })),
+        ...(entities?.map((entity) => ({
+            value: entity.name,
+            label:
+                entity.state === 'draft'
+                    ? `${entity.label} (Draft)`
+                    : entity.label,
+        })) ?? []),
     ];
 
     const selectedEntity = useMemo(() => {
@@ -51,11 +46,8 @@ export function SelectEntity({
             return null;
         }
 
-        return (
-            selectableEntities.find(({ name }) => name === value)?.entity ??
-            null
-        );
-    }, [selectableEntities, value]);
+        return entities?.find((entity) => entity.name === value) ?? null;
+    }, [entities, value]);
 
     const handleOnChange = (newValue: string) => {
         onChange(newValue !== '-' ? newValue : null);
@@ -66,10 +58,15 @@ export function SelectEntity({
             <div className="flex-1">
                 <SelectItems
                     items={items}
-                    value={selectedEntity?.information?.name ?? '-'}
+                    value={selectedEntity?.name ?? '-'}
                     onValueChange={handleOnChange}
                 />
             </div>
+            {selectedEntity?.state === 'draft' ? (
+                <Chip color="neutral" className="w-fit">
+                    Draft
+                </Chip>
+            ) : null}
             {entityTypeName && selectedEntity && (
                 <Link
                     href={KnownPages.DirectoryEntity(
