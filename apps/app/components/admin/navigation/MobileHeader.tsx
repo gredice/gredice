@@ -4,7 +4,7 @@ import { MobileNav } from './MobileNav';
 
 export function MobileHeader() {
     return (
-        <div className="md:hidden sticky top-0 z-50 w-full">
+        <div className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur md:hidden">
             <div className="flex h-14 items-center px-4">
                 <Row spacing={3} className="w-full items-center">
                     <MobileNav />

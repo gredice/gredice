@@ -85,20 +85,22 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                 pendingAchievementsCount={pendingAchievementsCount}
                 quickActions={quickActions}
             >
-                <div className="grow bg-secondary">
+                <div className="grow bg-secondary/40">
                     <MobileHeader />
                     <main className="relative h-full md:h-full min-h-[calc(100vh-3.5rem)] md:min-h-screen">
-                        <div className="flex flex-row min-h-full">
+                        <div className="flex min-h-full flex-row gap-3 p-2 md:gap-4 md:p-4">
                             {/* Desktop Navigation */}
-                            <div className="hidden md:block p-4 min-w-64">
-                                <Nav />
-                            </div>
+                            <aside className="hidden md:block md:w-72 md:shrink-0">
+                                <div className="sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border bg-background/95 p-3 shadow-sm">
+                                    <Nav />
+                                </div>
+                            </aside>
                             {/* Main Content */}
-                            <div className="min-h-full grow md:pt-2">
-                                <div className="p-2 md:p-4 bg-background rounded-t-xl md:border-l md:border-t md:rounded-tr-none min-h-full">
+                            <div className="min-h-full grow">
+                                <div className="min-h-full rounded-2xl border bg-background p-2 md:p-4">
                                     <AuthProtectedSection auth={authAdmin}>
                                         <Suspense>
-                                            <div className="mb-3 hidden md:block">
+                                            <div className="mb-4 hidden md:block">
                                                 <AdminPageBreadcrumbs />
                                             </div>
                                             {children}
