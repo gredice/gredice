@@ -8,7 +8,6 @@ import {
     createDeliveryRequest,
     createEvent,
     createOperation,
-    createRaisedBedSensor,
     createTransaction,
     earnSunflowersForPayment,
     getAllTransactions,
@@ -556,168 +555,145 @@ export async function processItem(itemData: {
         // TODO: Handle operation processing
         // TODO: Handle raisedBed operation placement (not currently necessary since we can't buy raised bed operation without planting plants)
 
-        // Special cases: Handle sensor installation
-        // TODO: Mitigate hardcoded '180' as place sensor ID
-        if (itemData.raisedBedId && itemData.entityId === '180') {
-            try {
-                await Promise.all([
-                    createRaisedBedSensor({
-                        raisedBedId: itemData.raisedBedId,
-                    }),
-                    earnSunflowersFunc(),
-                ]);
-                console.debug(
-                    `Installed sensor in raised bed ${itemData.raisedBedId}.`,
-                );
-            } catch (error) {
-                console.error(
-                    `Failed to install sensor for raised bed ${itemData.raisedBedId}.`,
-                    error,
-                );
-            }
-        } else {
-            // Validate item data
-            if (
-                !itemData.accountId ||
-                !itemData.entityId ||
-                !itemData.entityTypeName
-            ) {
-                console.error(
-                    `Missing required metadata for operation item in order.`,
-                    itemData,
-                );
-                return;
-            }
-            const entityIdNumber = parseInt(itemData.entityId, 10);
-            if (Number.isNaN(entityIdNumber)) {
-                console.error(
-                    `Invalid entityId ${itemData.entityId} for operation item in order.`,
-                    itemData,
-                );
-                return;
-            }
-
-            // Try to resolve field ID from position index (only active fields)
-            let fieldId: number | undefined;
-            if (
-                typeof itemData.positionIndex === 'number' &&
-                itemData.raisedBedId
-            ) {
-                const raisedBedFields = await getRaisedBedFieldsWithEvents(
-                    itemData.raisedBedId,
-                );
-                fieldId = raisedBedFields.find(
-                    (field) =>
-                        field.positionIndex === itemData.positionIndex &&
-                        field.active,
-                )?.id;
-            }
-
-            // Try to extract scheduled date from additional data
-            let scheduledDate: string | null = null;
-            const additionalData =
-                typeof itemData.additionalData === 'string'
-                    ? JSON.parse(itemData.additionalData)
-                    : itemData.additionalData;
-            if (
-                typeof additionalData === 'object' &&
-                additionalData != null &&
-                'scheduledDate' in additionalData &&
-                typeof additionalData.scheduledDate === 'string'
-            ) {
-                scheduledDate = additionalData.scheduledDate;
-            }
-
-            const [operationId] = await Promise.all([
-                createOperation({
-                    accountId: itemData.accountId,
-                    entityId: entityIdNumber,
-                    entityTypeName: itemData.entityTypeName,
-                    gardenId: itemData.gardenId,
-                    raisedBedId: itemData.raisedBedId,
-                    raisedBedFieldId: fieldId,
-                }),
-                earnSunflowersFunc(),
-            ]);
-            console.debug(
-                `Created operation ${itemData.entityId} of type ${itemData.entityTypeName} for account ${itemData.accountId} in garden ${itemData.gardenId ?? 'N/A'} with raised bed ${itemData.raisedBedId ?? 'N/A'} and field ${fieldId ?? 'N/A'}.`,
+        // Validate item data
+        if (
+            !itemData.accountId ||
+            !itemData.entityId ||
+            !itemData.entityTypeName
+        ) {
+            console.error(
+                `Missing required metadata for operation item in order.`,
+                itemData,
             );
+            return;
+        }
+        const entityIdNumber = parseInt(itemData.entityId, 10);
+        if (Number.isNaN(entityIdNumber)) {
+            console.error(
+                `Invalid entityId ${itemData.entityId} for operation item in order.`,
+                itemData,
+            );
+            return;
+        }
 
-            // Make operation scheduled event if there is schedule date in the request
-            if (scheduledDate) {
-                await createEvent(
-                    knownEvents.operations.scheduledV1(operationId.toString(), {
-                        scheduledDate,
-                    }),
-                );
+        // Try to resolve field ID from position index (only active fields)
+        let fieldId: number | undefined;
+        if (
+            typeof itemData.positionIndex === 'number' &&
+            itemData.raisedBedId
+        ) {
+            const raisedBedFields = await getRaisedBedFieldsWithEvents(
+                itemData.raisedBedId,
+            );
+            fieldId = raisedBedFields.find(
+                (field) =>
+                    field.positionIndex === itemData.positionIndex &&
+                    field.active,
+            )?.id;
+        }
+
+        // Try to extract scheduled date from additional data
+        let scheduledDate: string | null = null;
+        const additionalData =
+            typeof itemData.additionalData === 'string'
+                ? JSON.parse(itemData.additionalData)
+                : itemData.additionalData;
+        if (
+            typeof additionalData === 'object' &&
+            additionalData != null &&
+            'scheduledDate' in additionalData &&
+            typeof additionalData.scheduledDate === 'string'
+        ) {
+            scheduledDate = additionalData.scheduledDate;
+        }
+
+        const [operationId] = await Promise.all([
+            createOperation({
+                accountId: itemData.accountId,
+                entityId: entityIdNumber,
+                entityTypeName: itemData.entityTypeName,
+                gardenId: itemData.gardenId,
+                raisedBedId: itemData.raisedBedId,
+                raisedBedFieldId: fieldId,
+            }),
+            earnSunflowersFunc(),
+        ]);
+        console.debug(
+            `Created operation ${itemData.entityId} of type ${itemData.entityTypeName} for account ${itemData.accountId} in garden ${itemData.gardenId ?? 'N/A'} with raised bed ${itemData.raisedBedId ?? 'N/A'} and field ${fieldId ?? 'N/A'}.`,
+        );
+
+        // Make operation scheduled event if there is schedule date in the request
+        if (scheduledDate) {
+            await createEvent(
+                knownEvents.operations.scheduledV1(operationId.toString(), {
+                    scheduledDate,
+                }),
+            );
+            console.debug(
+                `Scheduled operation ${operationId} for date ${scheduledDate}.`,
+            );
+            const scheduledDateValue = new Date(scheduledDate);
+            await notifyOperationUpdate(operationId, 'scheduled', {
+                scheduledDate: scheduledDateValue.toISOString(),
+            });
+        }
+
+        // Check if this operation/entity is deliverable and create delivery request if needed
+        if (itemData.cartId) {
+            const isDeliverable = await isCartItemDeliverable({
+                entityId: parseInt(itemData.entityId, 10),
+            });
+            if (isDeliverable) {
                 console.debug(
-                    `Scheduled operation ${operationId} for date ${scheduledDate}.`,
+                    `Operation ${operationId} is deliverable - checking for delivery configuration in metadata`,
                 );
-                const scheduledDateValue = new Date(scheduledDate);
-                await notifyOperationUpdate(operationId, 'scheduled', {
-                    scheduledDate: scheduledDateValue.toISOString(),
-                });
-            }
 
-            // Check if this operation/entity is deliverable and create delivery request if needed
-            if (itemData.cartId) {
-                const isDeliverable = await isCartItemDeliverable({
-                    entityId: parseInt(itemData.entityId, 10),
-                });
-                if (isDeliverable) {
-                    console.debug(
-                        `Operation ${operationId} is deliverable - checking for delivery configuration in metadata`,
-                    );
+                // Check if delivery information was stored in additionalData
+                let deliveryInfo = null;
+                if (
+                    typeof additionalData === 'object' &&
+                    additionalData !== null &&
+                    'delivery' in additionalData
+                ) {
+                    deliveryInfo = additionalData.delivery;
+                }
 
-                    // Check if delivery information was stored in additionalData
-                    let deliveryInfo = null;
-                    if (
-                        typeof additionalData === 'object' &&
-                        additionalData !== null &&
-                        'delivery' in additionalData
-                    ) {
-                        deliveryInfo = additionalData.delivery;
-                    }
-
-                    if (deliveryInfo?.slotId && deliveryInfo.mode) {
-                        try {
-                            const deliveryRequestId =
-                                await createDeliveryRequest({
-                                    operationId,
-                                    slotId: deliveryInfo.slotId,
-                                    mode: deliveryInfo.mode,
-                                    addressId: deliveryInfo.addressId,
-                                    locationId: deliveryInfo.locationId,
-                                    notes: deliveryInfo.notes,
-                                    accountId: itemData.accountId,
-                                });
-                            console.debug(
-                                `Created delivery request ${deliveryRequestId} for operation ${operationId}`,
-                            );
-                            await notifyDeliveryRequestEvent(
-                                deliveryRequestId,
-                                'created',
-                            );
-                            await notifyScheduledDeliveryEmailOnce({
-                                requestId: deliveryRequestId,
-                                accountId: itemData.accountId,
-                                deliveryInfo,
-                                notifiedKeys:
-                                    itemData.scheduledDeliveryEmailKeys,
-                                notify: notifyDeliveryScheduled,
-                            });
-                        } catch (error) {
-                            console.error(
-                                `Failed to create delivery request for operation ${operationId}:`,
-                                error,
-                            );
-                            // Don't fail the whole payment, just log the error
-                        }
-                    } else {
-                        console.warn(
-                            `Operation ${operationId} is deliverable but no delivery information found in metadata`,
+                if (deliveryInfo?.slotId && deliveryInfo.mode) {
+                    try {
+                        const deliveryRequestId = await createDeliveryRequest({
+                            operationId,
+                            slotId: deliveryInfo.slotId,
+                            mode: deliveryInfo.mode,
+                            addressId: deliveryInfo.addressId,
+                            locationId: deliveryInfo.locationId,
+                            notes: deliveryInfo.notes,
+                            accountId: itemData.accountId,
+                        });
+                        console.debug(
+                            `Created delivery request ${deliveryRequestId} for operation ${operationId}`,
                         );
+                        await notifyDeliveryRequestEvent(
+                            deliveryRequestId,
+                            'created',
+                        );
+                        await notifyScheduledDeliveryEmailOnce({
+                            requestId: deliveryRequestId,
+                            accountId: itemData.accountId,
+                            deliveryInfo,
+                            notifiedKeys: itemData.scheduledDeliveryEmailKeys,
+                            notify: notifyDeliveryScheduled,
+                        });
+                    } catch (error) {
+                        console.error(
+                            `Failed to create delivery request for operation ${operationId}:`,
+                            error,
+                        );
+                        // Don't fail the whole payment, just log the error
                     }
+                } else {
+                    console.warn(
+                        `Operation ${operationId} is deliverable but no delivery information found in metadata`,
+                    );
                 }
             }
         }
