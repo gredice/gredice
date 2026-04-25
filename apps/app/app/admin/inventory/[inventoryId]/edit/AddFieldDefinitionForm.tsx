@@ -9,8 +9,12 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 
 export function AddFieldDefinitionForm({
     onSubmit,
+    hasStatusField,
+    hasAmountField,
 }: {
     onSubmit: (formData: FormData) => Promise<void>;
+    hasStatusField: boolean;
+    hasAmountField: boolean;
 }) {
     return (
         <Card className="max-w-2xl">
@@ -18,6 +22,57 @@ export function AddFieldDefinitionForm({
                 <Typography level="body1" semiBold>
                     Dodaj novo polje
                 </Typography>
+                <Stack spacing={1}>
+                    <Typography level="body2" secondary>
+                        Brze akcije za najčešća polja:
+                    </Typography>
+                    <Stack direction="row" spacing={1}>
+                        <form action={onSubmit}>
+                            <input type="hidden" name="name" value="status" />
+                            <input type="hidden" name="label" value="Status" />
+                            <input type="hidden" name="dataType" value="text" />
+                            <input
+                                type="hidden"
+                                name="required"
+                                value="false"
+                            />
+                            <Button
+                                type="submit"
+                                variant="outlined"
+                                disabled={hasStatusField}
+                                className="w-fit"
+                            >
+                                Dodaj status atribut
+                            </Button>
+                        </form>
+                        <form action={onSubmit}>
+                            <input type="hidden" name="name" value="amount" />
+                            <input
+                                type="hidden"
+                                name="label"
+                                value="Količina"
+                            />
+                            <input
+                                type="hidden"
+                                name="dataType"
+                                value="number"
+                            />
+                            <input
+                                type="hidden"
+                                name="required"
+                                value="false"
+                            />
+                            <Button
+                                type="submit"
+                                variant="outlined"
+                                disabled={hasAmountField}
+                                className="w-fit"
+                            >
+                                Dodaj amount atribut
+                            </Button>
+                        </form>
+                    </Stack>
+                </Stack>
                 <form action={onSubmit}>
                     <Stack spacing={3}>
                         <Input

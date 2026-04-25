@@ -69,24 +69,6 @@ export default async function CreateInventoryPage() {
                                     ]}
                                     defaultValue="pieces"
                                 />
-                                <Input
-                                    name="statusAttributeName"
-                                    label="Atribut statusa (opcionalno)"
-                                    placeholder="npr. openState"
-                                    helperText="Naziv atributa entiteta koji definira status stavke"
-                                />
-                                <Input
-                                    name="emptyStatusValue"
-                                    label="Vrijednost praznog statusa (opcionalno)"
-                                    placeholder="npr. empty"
-                                    helperText="Vrijednost atributa koja označava praznu stavku i automatski smanjuje zalihu"
-                                />
-                                <Input
-                                    name="amountAttributeName"
-                                    label="Atribut količine (opcionalno)"
-                                    placeholder="npr. packSize"
-                                    helperText="Naziv atributa entiteta koji definira količinu stavke"
-                                />
                             </Stack>
                             <Button
                                 variant="solid"
