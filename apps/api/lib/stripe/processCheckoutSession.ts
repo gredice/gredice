@@ -594,10 +594,22 @@ export async function processItem(itemData: {
 
         // Try to extract scheduled date from additional data
         let scheduledDate: string | null = null;
-        const additionalData =
-            typeof itemData.additionalData === 'string'
-                ? JSON.parse(itemData.additionalData)
-                : itemData.additionalData;
+        let additionalData = itemData.additionalData;
+        if (typeof additionalData === 'string') {
+            try {
+                additionalData = JSON.parse(additionalData);
+            } catch (error) {
+                console.error(
+                    `Invalid additionalData for operation item in order.`,
+                    {
+                        additionalData,
+                        itemData,
+                        error,
+                    },
+                );
+                additionalData = null;
+            }
+        }
         if (
             typeof additionalData === 'object' &&
             additionalData != null &&
@@ -607,17 +619,23 @@ export async function processItem(itemData: {
             scheduledDate = additionalData.scheduledDate;
         }
 
-        const [operationId] = await Promise.all([
-            createOperation({
-                accountId: itemData.accountId,
-                entityId: entityIdNumber,
-                entityTypeName: itemData.entityTypeName,
-                gardenId: itemData.gardenId,
-                raisedBedId: itemData.raisedBedId,
-                raisedBedFieldId: fieldId,
-            }),
-            earnSunflowersFunc(),
-        ]);
+        const operationId = await createOperation({
+            accountId: itemData.accountId,
+            entityId: entityIdNumber,
+            entityTypeName: itemData.entityTypeName,
+            gardenId: itemData.gardenId,
+            raisedBedId: itemData.raisedBedId,
+            raisedBedFieldId: fieldId,
+        });
+
+        try {
+            await earnSunflowersFunc();
+        } catch (error) {
+            console.error(
+                `Failed to award sunflowers for operation item in order.`,
+                error,
+            );
+        }
         console.debug(
             `Created operation ${itemData.entityId} of type ${itemData.entityTypeName} for account ${itemData.accountId} in garden ${itemData.gardenId ?? 'N/A'} with raised bed ${itemData.raisedBedId ?? 'N/A'} and field ${fieldId ?? 'N/A'}.`,
         );
@@ -633,15 +651,21 @@ export async function processItem(itemData: {
                 `Scheduled operation ${operationId} for date ${scheduledDate}.`,
             );
             const scheduledDateValue = new Date(scheduledDate);
-            await notifyOperationUpdate(operationId, 'scheduled', {
-                scheduledDate: scheduledDateValue.toISOString(),
-            });
+            if (!Number.isNaN(scheduledDateValue.getTime())) {
+                await notifyOperationUpdate(operationId, 'scheduled', {
+                    scheduledDate: scheduledDateValue.toISOString(),
+                });
+            } else {
+                console.warn(
+                    `Skipping scheduled notification update for operation ${operationId} due to invalid scheduledDate metadata: ${scheduledDate}`,
+                );
+            }
         }
 
         // Check if this operation/entity is deliverable and create delivery request if needed
         if (itemData.cartId) {
             const isDeliverable = await isCartItemDeliverable({
-                entityId: parseInt(itemData.entityId, 10),
+                entityId: entityIdNumber,
             });
             if (isDeliverable) {
                 console.debug(
