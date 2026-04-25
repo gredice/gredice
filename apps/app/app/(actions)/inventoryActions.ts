@@ -18,6 +18,7 @@ import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
 
 const noEntityValue = 'none';
+const noAttributeValue = 'none';
 
 function parseQuantity(raw: string | null): number {
     if (!raw) return 1;
@@ -64,12 +65,22 @@ export async function createInventoryConfigAction(formData: FormData) {
     const label = formData.get('label') as string;
     const defaultTrackingType =
         (formData.get('defaultTrackingType') as string) || 'pieces';
+    const statusAttributeNameRaw = formData.get('statusAttributeName') as
+        | string
+        | null;
     const statusAttributeName =
-        (formData.get('statusAttributeName') as string) || null;
+        statusAttributeNameRaw && statusAttributeNameRaw !== noAttributeValue
+            ? statusAttributeNameRaw
+            : null;
     const emptyStatusValue =
         (formData.get('emptyStatusValue') as string) || null;
+    const amountAttributeNameRaw = formData.get('amountAttributeName') as
+        | string
+        | null;
     const amountAttributeName =
-        (formData.get('amountAttributeName') as string) || null;
+        amountAttributeNameRaw && amountAttributeNameRaw !== noAttributeValue
+            ? amountAttributeNameRaw
+            : null;
 
     const id = await createInventoryConfig({
         entityTypeName,
@@ -93,12 +104,22 @@ export async function updateInventoryConfigAction(
     const label = formData.get('label') as string;
     const defaultTrackingType =
         (formData.get('defaultTrackingType') as string) || 'pieces';
+    const statusAttributeNameRaw = formData.get('statusAttributeName') as
+        | string
+        | null;
     const statusAttributeName =
-        (formData.get('statusAttributeName') as string) || null;
+        statusAttributeNameRaw && statusAttributeNameRaw !== noAttributeValue
+            ? statusAttributeNameRaw
+            : null;
     const emptyStatusValue =
         (formData.get('emptyStatusValue') as string) || null;
+    const amountAttributeNameRaw = formData.get('amountAttributeName') as
+        | string
+        | null;
     const amountAttributeName =
-        (formData.get('amountAttributeName') as string) || null;
+        amountAttributeNameRaw && amountAttributeNameRaw !== noAttributeValue
+            ? amountAttributeNameRaw
+            : null;
 
     await updateInventoryConfig({
         id,

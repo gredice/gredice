@@ -19,6 +19,7 @@ import { AddFieldDefinitionForm } from './AddFieldDefinitionForm';
 import { DeleteFieldDefinitionButton } from './DeleteFieldDefinitionButton';
 
 export const dynamic = 'force-dynamic';
+const noAttributeValue = 'none';
 
 export default async function EditInventoryConfigPage({
     params,
@@ -39,7 +40,7 @@ export default async function EditInventoryConfigPage({
         config.entityTypeName,
     );
     const attributeItems = [
-        { value: '', label: '- Nije odabrano -' },
+        { value: noAttributeValue, label: '- Nije odabrano -' },
         ...attributeDefinitions.map((attr) => ({
             value: attr.name,
             label: attr.label,
@@ -101,7 +102,8 @@ export default async function EditInventoryConfigPage({
                                     label="Atribut statusa (opcionalno)"
                                     items={attributeItems}
                                     defaultValue={
-                                        config.statusAttributeName ?? ''
+                                        config.statusAttributeName ??
+                                        noAttributeValue
                                     }
                                     helperText="Atribut entiteta koji definira status stavke"
                                 />
@@ -116,7 +118,8 @@ export default async function EditInventoryConfigPage({
                                     label="Atribut količine (opcionalno)"
                                     items={attributeItems}
                                     defaultValue={
-                                        config.amountAttributeName ?? ''
+                                        config.amountAttributeName ??
+                                        noAttributeValue
                                     }
                                     helperText="Atribut entiteta koji doprinosi izračunu ukupne količine"
                                 />
