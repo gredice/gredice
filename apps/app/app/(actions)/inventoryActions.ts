@@ -17,6 +17,12 @@ import {
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth } from '../../lib/auth/auth';
+import {
+    encodeSelectFieldDataType,
+    getInventoryFieldType,
+    getInventorySelectOptions,
+    parseSelectOptionsInput,
+} from '../../lib/inventoryFieldTypes';
 import { KnownPages } from '../../src/KnownPages';
 
 const noEntityValue = 'none';
@@ -67,11 +73,23 @@ async function collectAdditionalFields(
 
         // Skip fields that don't match any configured field definition
         if (!def) continue;
-        if (def.dataType === 'number') {
+        const fieldType = getInventoryFieldType(def.dataType);
+        if (fieldType === 'number') {
             const num = Number(rawValue);
             entries[fieldName] = Number.isFinite(num) ? num : rawValue;
-        } else if (def.dataType === 'boolean') {
+        } else if (fieldType === 'boolean') {
             entries[fieldName] = rawValue === 'true';
+        } else if (fieldType === 'select') {
+            const options = getInventorySelectOptions(def.dataType);
+            const isKnownOption = options.some(
+                (option) => option.value === rawValue,
+            );
+            if (!isKnownOption) {
+                throw new Error(
+                    `Unknown value for select field "${fieldName}".`,
+                );
+            }
+            entries[fieldName] = rawValue;
         } else {
             entries[fieldName] = rawValue;
         }
@@ -153,8 +171,22 @@ export async function createInventoryItemFieldDefinitionAction(
 
     const name = formData.get('name') as string;
     const label = formData.get('label') as string;
-    const dataType = (formData.get('dataType') as string) || 'text';
+    const rawDataType = (formData.get('dataType') as string) || 'text';
     const required = formData.get('required') === 'true';
+    const parsedSelectOptions = parseSelectOptionsInput(
+        formData.get('selectOptions'),
+    );
+
+    const dataType =
+        rawDataType === 'select'
+            ? encodeSelectFieldDataType(parsedSelectOptions)
+            : rawDataType;
+
+    if (rawDataType === 'select' && parsedSelectOptions.length === 0) {
+        throw new Error(
+            'Select polje mora sadržavati barem jednu opciju (value|label).',
+        );
+    }
 
     await createInventoryItemFieldDefinition({
         inventoryConfigId,
@@ -368,6 +400,21 @@ export async function quickAdjustInventoryItemAction(
     const eventNotes = (formData.get('notes') as string) || null;
     const statusFieldName = existingItem.inventoryConfig.statusAttributeName;
     const nextStateRaw = (formData.get('state') as string) || '';
+    const statusFieldDefinition = statusFieldName
+        ? existingItem.inventoryConfig.fieldDefinitions.find(
+              (field) => field.name === statusFieldName,
+          )
+        : undefined;
+    const statusFieldOptions = statusFieldDefinition
+        ? getInventorySelectOptions(statusFieldDefinition.dataType)
+        : [];
+    if (
+        nextStateRaw.length > 0 &&
+        statusFieldOptions.length > 0 &&
+        !statusFieldOptions.some((option) => option.value === nextStateRaw)
+    ) {
+        throw new Error('Unknown status value.');
+    }
     const nextState = nextStateRaw.length > 0 ? nextStateRaw : null;
     const previousState = getItemStateFromAdditionalFields(
         existingItem.additionalFields,

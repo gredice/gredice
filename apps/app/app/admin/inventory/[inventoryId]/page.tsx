@@ -24,6 +24,7 @@ import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navig
 import { Field } from '../../../../components/shared/fields/Field';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../../lib/auth/auth';
+import { getInventoryFieldType } from '../../../../lib/inventoryFieldTypes';
 import { KnownPages } from '../../../../src/KnownPages';
 import { DeleteInventoryItemButton } from './DeleteInventoryItemButton';
 
@@ -177,7 +178,9 @@ export default async function InventoryConfigPage({
                                         <Table.Cell>{field.name}</Table.Cell>
                                         <Table.Cell>{field.label}</Table.Cell>
                                         <Table.Cell>
-                                            {field.dataType}
+                                            {getInventoryFieldType(
+                                                field.dataType,
+                                            )}
                                         </Table.Cell>
                                         <Table.Cell>
                                             {field.required ? 'Da' : 'Ne'}
