@@ -77,9 +77,11 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
 function SortableNavItem({
     entityType,
     onClick,
+    compact,
 }: {
     entityType: SelectEntityType;
     onClick?: () => void;
+    compact?: boolean;
 }) {
     const {
         attributes,
@@ -103,6 +105,7 @@ function SortableNavItem({
                 }
                 onClick={onClick}
                 isDragging={isDragging}
+                compact={compact}
             />
         </div>
     );
@@ -111,9 +114,11 @@ function SortableNavItem({
 function EntityTypeList({
     items: initialItems,
     onItemClick,
+    compact,
 }: {
     items: SelectEntityType[];
     onItemClick?: () => void;
+    compact?: boolean;
 }) {
     const [items, setItems] = useState(initialItems);
     const sensors = useSensors(useSensor(PointerSensor));
@@ -146,6 +151,7 @@ function EntityTypeList({
                             key={entityType.id}
                             entityType={entityType}
                             onClick={onItemClick}
+                            compact={compact}
                         />
                     ))}
                 </List>
@@ -154,7 +160,13 @@ function EntityTypeList({
     );
 }
 
-export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
+export function Nav({
+    onItemClick,
+    compact = false,
+}: {
+    onItemClick?: () => void;
+    compact?: boolean;
+} = {}) {
     const navContext = useContext(NavContext);
     const categorizedTypes = navContext?.categorizedTypes || [];
     const uncategorizedTypes = navContext?.uncategorizedTypes || [];
@@ -165,13 +177,14 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
     return (
         <Stack spacing={2}>
             <List>
-                <ProfileNavItem onItemClick={onItemClick} />
+                <ProfileNavItem onItemClick={onItemClick} compact={compact} />
                 <NavItem
                     href={adminPages.Dashboard.href}
                     label={adminPages.Dashboard.label}
                     icon={<Home className="size-5" />}
                     strictMatch
                     onClick={onItemClick}
+                    compact={compact}
                 />
                 {quickActions.map((quickAction) => (
                     <NavItem
@@ -180,6 +193,7 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         label={quickAction.label}
                         icon={quickActionIcon(quickAction)}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                 ))}
             </List>
@@ -187,19 +201,20 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                 {/* Categories with their entity types */}
                 {categorizedTypes.map((category) => (
                     <Stack key={category.id} spacing={1}>
-                        <ListHeader header={category.label} />
+                        {!compact && <ListHeader header={category.label} />}
                         <EntityTypeList
                             items={category.entityTypes}
                             onItemClick={onItemClick}
+                            compact={compact}
                         />
                     </Stack>
                 ))}
 
-                <ListHeader header="Zapisi" />
+                {!compact && <ListHeader header="Zapisi" />}
                 {/* Shadow entity types */}
-                {shadowTypes.length > 0 && (
-                    <ListTreeItem label="Ostalo">
-                        {shadowTypes.map((entityType) => (
+                {shadowTypes.length > 0 &&
+                    (compact ? (
+                        shadowTypes.map((entityType) => (
                             <NavItem
                                 key={entityType.id}
                                 href={KnownPages.DirectoryEntityType(
@@ -213,27 +228,48 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                                     />
                                 }
                                 onClick={onItemClick}
+                                compact={compact}
                             />
-                        ))}
-                    </ListTreeItem>
-                )}
+                        ))
+                    ) : (
+                        <ListTreeItem label="Ostalo">
+                            {shadowTypes.map((entityType) => (
+                                <NavItem
+                                    key={entityType.id}
+                                    href={KnownPages.DirectoryEntityType(
+                                        entityType.name,
+                                    )}
+                                    label={entityType.label}
+                                    icon={
+                                        <EntityTypeIcon
+                                            icon={entityType.icon}
+                                            className="size-5"
+                                        />
+                                    }
+                                    onClick={onItemClick}
+                                />
+                            ))}
+                        </ListTreeItem>
+                    ))}
 
                 {/* Entity types without category come first */}
                 {uncategorizedTypes.length > 0 && (
                     <EntityTypeList
                         items={uncategorizedTypes}
                         onItemClick={onItemClick}
+                        compact={compact}
                     />
                 )}
             </Stack>
             <Stack spacing={1}>
-                <ListHeader header="Administracija" />
+                {!compact && <ListHeader header="Administracija" />}
                 <List>
                     <NavItem
                         href={adminPages.Accounts.href}
                         label={adminPages.Accounts.label}
                         icon={<Bank className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.Achievements.href}
@@ -241,54 +277,63 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                         icon={<Success className="size-5" />}
                         onClick={onItemClick}
                         badge={pendingAchievementsCount}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.ShoppingCarts.href}
                         label={adminPages.ShoppingCarts.label}
                         icon={<ShoppingCart className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.Invoices.href}
                         label={adminPages.Invoices.label}
                         icon={<File className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.Transactions.href}
                         label={adminPages.Transactions.label}
                         icon={<Euro className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.Sunflowers.href}
                         label={adminPages.Sunflowers.label}
                         icon={<Success className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.Receipts.href}
                         label={adminPages.Receipts.label}
                         icon={<File className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.Users.href}
                         label={adminPages.Users.label}
                         icon={<User className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.Farms.href}
                         label={adminPages.Farms.label}
                         icon={<MapIcon className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.Gardens.href}
                         label={adminPages.Gardens.label}
                         icon={<Fence className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.RaisedBeds.href}
@@ -300,116 +345,132 @@ export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
                             />
                         }
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.Operations.href}
                         label={adminPages.Operations.label}
                         icon={<Hammer className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                 </List>
             </Stack>
             <Stack spacing={1}>
-                <ListHeader header="Upravljanje" />
+                {!compact && <ListHeader header="Upravljanje" />}
                 <List>
                     <NavItem
                         href={adminPages.Inventory.href}
                         label={adminPages.Inventory.label}
                         icon={<Tally3 className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.Occasions.href}
                         label={adminPages.Occasions.label}
                         icon={<Calendar className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.Schedule.href}
                         label={adminPages.Schedule.label}
                         icon={<Calendar className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.SowingStatistics.href}
                         label={adminPages.SowingStatistics.label}
                         icon={<Tally3 className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.DeliverySlots.href}
                         label={adminPages.DeliverySlots.label}
                         icon={<Truck className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.DeliveryRequests.href}
                         label={adminPages.DeliveryRequests.label}
                         icon={<Truck className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                 </List>
             </Stack>
             <Stack spacing={1}>
-                <ListHeader header="Komunikacija" />
+                {!compact && <ListHeader header="Komunikacija" />}
                 <List>
                     <NavItem
                         href={adminPages.CommunicationInbox.href}
                         label={adminPages.CommunicationInbox.label}
                         icon={<Inbox className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.CommunicationEmails.href}
                         label={adminPages.CommunicationEmails.label}
                         icon={<Mail className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.Notifications.href}
                         label={adminPages.Notifications.label}
                         icon={<Megaphone className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.Feedback.href}
                         label={adminPages.Feedback.label}
                         icon={<SmileHappy className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                 </List>
             </Stack>
             <Stack spacing={1}>
-                <ListHeader header="Postavke" />
+                {!compact && <ListHeader header="Postavke" />}
                 <List>
                     <NavItem
                         href={adminPages.Settings.href}
                         label={adminPages.Settings.label}
                         icon={<Settings className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                 </List>
             </Stack>
             <Stack spacing={1}>
-                <ListHeader header="Sustavi" />
+                {!compact && <ListHeader header="Sustavi" />}
                 <List>
                     <NavItem
                         href={adminPages.Sensors.href}
                         label={adminPages.Sensors.label}
                         icon={<File className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.Cache.href}
                         label={adminPages.Cache.label}
                         icon={<File className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                     <NavItem
                         href={adminPages.AiAnalytics.href}
                         label={adminPages.AiAnalytics.label}
                         icon={<AI className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
                     />
                 </List>
             </Stack>

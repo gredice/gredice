@@ -30,8 +30,10 @@ function resolveAccountId(currentUser: CurrentUser | null): string | null {
 
 export function ProfileNavItem({
     onItemClick,
+    compact = false,
 }: {
     onItemClick?: () => void;
+    compact?: boolean;
 } = {}) {
     const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
@@ -83,7 +85,7 @@ export function ProfileNavItem({
                             size="sm"
                         />
                     }
-                    label={userName}
+                    label={compact ? '' : userName}
                 />
             </DropdownMenuTrigger>
             <DropdownMenuContent>
