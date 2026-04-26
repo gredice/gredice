@@ -14,6 +14,7 @@ export function NavItem({
     onClick,
     isDragging = false,
     badge,
+    compact = false,
 }: {
     href: Route;
     label: string;
@@ -22,6 +23,7 @@ export function NavItem({
     onClick?: () => void;
     isDragging?: boolean;
     badge?: number;
+    compact?: boolean;
 }) {
     const pathname = usePathname();
 
@@ -37,7 +39,7 @@ export function NavItem({
     };
 
     return (
-        <Link href={href} onClick={handleClick}>
+        <Link href={href} onClick={handleClick} title={label}>
             <ListItem
                 nodeId={href}
                 selected={
@@ -46,10 +48,10 @@ export function NavItem({
                         : pathname === href || pathname.startsWith(`${href}/`)
                 }
                 onSelected={() => {}}
-                label={label}
+                label={compact ? '' : label}
                 startDecorator={icon}
                 endDecorator={
-                    badge != null && badge > 0 ? (
+                    !compact && badge != null && badge > 0 ? (
                         <span className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium min-w-5 h-5 px-1.5">
                             {badge}
                         </span>
