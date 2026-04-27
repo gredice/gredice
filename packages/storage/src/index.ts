@@ -33,6 +33,7 @@ export * from './repositories/occasionsRepo';
 export * from './repositories/operationsRepo';
 export * from './repositories/pickupLocationsRepo';
 export * from './repositories/refreshTokensRepo';
+export * from './repositories/seasonalOffersRepo';
 export * from './repositories/settingsRepo';
 export * from './repositories/shoppingCartRepo';
 export * from './repositories/timeSlotsRepo';

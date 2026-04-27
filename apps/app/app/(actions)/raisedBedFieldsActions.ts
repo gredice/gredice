@@ -15,6 +15,7 @@ import {
     getRaisedBedFieldsWithEvents,
     knownEvents,
     moveRaisedBedFieldPlantHistory,
+    queueSeasonalSowingOfferOperations,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
@@ -65,6 +66,13 @@ async function applyRaisedBedFieldPlantUpdate({
                 ),
             ),
         );
+
+        if (status === 'sowed' && raisedBed.accountId) {
+            await queueSeasonalSowingOfferOperations({
+                accountId: raisedBed.accountId,
+                raisedBedId: raisedBed.id,
+            });
+        }
     }
 
     const sortIdToUse = plantSortId ?? existingField?.plantSortId;
