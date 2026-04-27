@@ -72,7 +72,7 @@ export async function queueSeasonalSowingOfferOperations({
     referenceDate = new Date(),
 }: {
     accountId: string;
-    gardenId?: number | null;
+    gardenId?: number;
     raisedBedId: number;
     referenceDate?: Date;
 }) {
@@ -83,7 +83,7 @@ export async function queueSeasonalSowingOfferOperations({
 
     const existingOperations = await getOperations(
         accountId,
-        gardenId ?? undefined,
+        gardenId,
         raisedBedId,
     );
 

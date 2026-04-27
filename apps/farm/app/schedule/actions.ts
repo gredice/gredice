@@ -171,7 +171,7 @@ export async function completeFarmPlanting(
     if (nextStatus === 'sowed' && raisedBed.accountId) {
         await queueSeasonalSowingOfferOperations({
             accountId: raisedBed.accountId,
-            gardenId: raisedBed.gardenId,
+            gardenId: raisedBed.gardenId ?? undefined,
             raisedBedId,
         });
     }
