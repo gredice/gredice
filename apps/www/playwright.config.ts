@@ -26,7 +26,18 @@ export const config: PlaywrightTestConfig = {
     projects: [
         {
             name: 'chromium',
+            testIgnore: /visual\.spec\.ts$/,
             use: { ...devices['Desktop Chrome'] },
+        },
+        {
+            name: 'visual',
+            testMatch: /visual\.spec\.ts$/,
+            workers: 4,
+            retries: 3,
+            use: {
+                ...devices['Desktop Chrome'],
+                viewport: { width: 1280, height: 720 },
+            },
         },
     ],
     webServer: {

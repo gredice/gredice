@@ -10,6 +10,7 @@
                 "FACEBOOK_CAPI_PIXEL_ID",
                 "FACEBOOK_CAPI_TOKEN",
                 "FLAGS_SECRET",
+                "GREDICE_API_HOST",
                 "GREDICE_JWT_SIGN_SECRET",
                 "HYPERTUNE_FRAMEWORK",
                 "HYPERTUNE_INCLUDE_INIT_DATA",
