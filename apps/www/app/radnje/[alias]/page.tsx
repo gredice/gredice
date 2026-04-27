@@ -1,3 +1,4 @@
+import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
 import { decodeRouteParam } from '@gredice/js/uri';
 import { Markdown } from '@gredice/ui/Markdown';
 import { OperationImage } from '@gredice/ui/OperationImage';
@@ -64,6 +65,11 @@ export default async function OperationPage(
     if (!operation) {
         notFound();
     }
+    const isHarvestOperation =
+        operation.attributes.stage.information?.name === 'harvest';
+    const harvestPlantRemovalDescription = isHarvestOperation
+        ? getHarvestOperationRemovalDisclaimer(operation.actions?.removePlant)
+        : null;
 
     return (
         <div className="operation-page py-8">
@@ -134,6 +140,11 @@ export default async function OperationPage(
                                 </Link>
                                 .
                             </Typography>
+                            {harvestPlantRemovalDescription && (
+                                <Typography level="body2" secondary>
+                                    {harvestPlantRemovalDescription}
+                                </Typography>
+                            )}
                         </Stack>
                         <Typography level="h5" component="h2" gutterBottom>
                             Svojstva
