@@ -31,7 +31,7 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
 
     return (
         <HudCard open position="floating" className="static md:px-1">
-            <Row spacing={1}>
+            <Row>
                 {weatherData && (
                     <Popper
                         side="bottom"
@@ -108,7 +108,7 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
                             <Button
                                 title="Doba dana"
                                 variant="plain"
-                                className="rounded-full px-2"
+                                className="rounded-full px-2 md:pr-2 pr-3"
                             >
                                 <Typography level="body2" className="text-base">
                                     {formattedTime}
