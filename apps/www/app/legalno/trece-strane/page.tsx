@@ -12,8 +12,9 @@ export const metadata: Metadata = {
 
 const thirdPartyPlatforms = [
     {
-        name: 'Axiom',
-        description: 'platforma za upravljanje sistemskim zapisima.',
+        name: 'PostHog',
+        description:
+            'platforma za analitiku proizvoda i upravljanje sistemskim zapisima.',
     },
     {
         name: 'Azure',
@@ -49,10 +50,6 @@ const thirdPartyPlatforms = [
     {
         name: 'Hypertune',
         description: 'platforma za upravljanje značajkama sustava.',
-    },
-    {
-        name: 'MailerLite',
-        description: 'alat za slanje e-pošte i upravljanje pretplatnicima.',
     },
     { name: 'Stripe', description: 'platforma za online plaćanja i naplatu.' },
     {
@@ -106,7 +103,7 @@ export default function UvjetiKoristenjaPage() {
                     </p>
                 </StyledHtml>
                 <Typography level="body2" secondary className="mt-8">
-                    Zadnja izmjena: 28. Veljača 2025.
+                    Zadnja izmjena: 27. travnja 2026.
                 </Typography>
             </Stack>
         </Container>
