@@ -59,7 +59,6 @@ function createCloudTexture() {
     }
 
     context.clearRect(0, 0, canvas.width, canvas.height);
-    context.filter = 'blur(8px)';
 
     for (let index = 0; index < 8; index += 1) {
         const seed = 11.7 + index * 23.1;
@@ -74,9 +73,10 @@ function createCloudTexture() {
             y,
             radius,
         );
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.96)');
-        gradient.addColorStop(0.45, 'rgba(255, 255, 255, 0.72)');
-        gradient.addColorStop(0.8, 'rgba(255, 255, 255, 0.18)');
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.94)');
+        gradient.addColorStop(0.35, 'rgba(255, 255, 255, 0.74)');
+        gradient.addColorStop(0.68, 'rgba(255, 255, 255, 0.3)');
+        gradient.addColorStop(0.88, 'rgba(255, 255, 255, 0.08)');
         gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
 
         context.fillStyle = gradient;
