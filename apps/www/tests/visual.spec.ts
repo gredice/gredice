@@ -43,22 +43,23 @@ test.describe('visual snapshots', () => {
 
             await page.evaluate(() => document.fonts?.ready);
 
-            await page.evaluate(async () => {
-                const step = Math.max(window.innerHeight * 0.8, 400);
-                let prev = -1;
-                while (
-                    document.documentElement.scrollHeight !== prev &&
-                    window.scrollY + window.innerHeight <
-                        document.documentElement.scrollHeight
-                ) {
-                    prev = document.documentElement.scrollHeight;
-                    window.scrollBy(0, step);
-                    await new Promise((r) => requestAnimationFrame(() => r(null)));
-                    await new Promise((r) => setTimeout(r, 100));
-                }
-                window.scrollTo(0, 0);
-                await new Promise((r) => setTimeout(r, 100));
-            });
+            // TODO: Evaluate and execute this only on needed pages that have lazy loaded images
+            // await page.evaluate(async () => {
+            //     const step = Math.max(window.innerHeight * 0.8, 400);
+            //     let prev = -1;
+            //     while (
+            //         document.documentElement.scrollHeight !== prev &&
+            //         window.scrollY + window.innerHeight <
+            //             document.documentElement.scrollHeight
+            //     ) {
+            //         prev = document.documentElement.scrollHeight;
+            //         window.scrollBy(0, step);
+            //         await new Promise((r) => requestAnimationFrame(() => r(null)));
+            //         await new Promise((r) => setTimeout(r, 100));
+            //     }
+            //     window.scrollTo(0, 0);
+            //     await new Promise((r) => setTimeout(r, 100));
+            // });
 
             await page.waitForLoadState('networkidle').catch(() => {});
 
@@ -68,15 +69,9 @@ test.describe('visual snapshots', () => {
                 caret: 'hide',
             });
 
-            const viewport = testInfo.project.use.viewport;
-            const viewportLabel = viewport
-                ? `${viewport.width}x${viewport.height}`
-                : 'unknown';
-
             await vizzlyScreenshot(nameForUrl(url), screenshot, {
-                browser: 'chromium',
-                viewport: viewportLabel,
                 properties: { url },
+                fullPage: true,
             });
         });
     }
