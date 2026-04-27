@@ -209,38 +209,65 @@ function buildSegments(operation: GardenOperationItem) {
         const title = tooltipParts.join(' — ');
 
         if (reached) {
+            const StatusIcon = config.icon;
             return {
                 value: 100,
                 label: config.label,
+                icon: (
+                    <StatusIcon
+                        className={cx('size-3.5 shrink-0', config.colorClass)}
+                    />
+                ),
                 title,
             };
         }
 
         if (isTerminalFailure) {
+            const StatusIcon = config.icon;
             return {
                 value: 0,
                 failed: true,
                 label: config.label,
+                icon: (
+                    <StatusIcon
+                        className={cx('size-3.5 shrink-0', config.colorClass)}
+                    />
+                ),
                 title: `${config.label} — preskočeno`,
             };
         }
 
         const isNextPending = idx === firstPendingIdx;
+        const StatusIcon = config.icon;
         return {
             value: isNextPending ? 50 : 0,
             indeterminate: isNextPending,
             highlighted: isNextPending,
             label: config.label,
+            icon: (
+                <StatusIcon
+                    className={cx('size-3.5 shrink-0', config.colorClass)}
+                />
+            ),
             title,
         };
     });
 
     if (isTerminalFailure) {
         const terminalConfig = statusConfig[operation.status];
+        const StatusIcon = terminalConfig.icon;
         segments.push({
             value: 0,
             failed: true,
             label: terminalConfig.label,
+            icon: (
+                <StatusIcon
+                    className={cx(
+                        'size-3.5 shrink-0',
+                        terminalConfig.colorClass,
+                    )}
+                />
+            ),
             title: `${terminalConfig.label} — ${
                 formatDateTime(
                     operation.canceledAt ?? operation.completedAt ?? null,
