@@ -8,6 +8,7 @@ import {
     resolveInGamePlantPreset,
 } from '../../generators/plant/lib/inGamePlantPresets';
 import { usePlantSort } from '../../hooks/usePlantSorts';
+import { useSnapshotTime } from '../../hooks/useSnapshotTime';
 import { useGameState } from '../../useGameState';
 import {
     getGridPositionFromIndex,
@@ -34,7 +35,7 @@ export function RaisedBedPlantField({
     const { data: sortData } = usePlantSort(plantSortId);
     const flags = useGameFlags();
     const isMock = useGameState((state) => state.isMock);
-    const currentTime = useGameState((state) => state.currentTime);
+    const currentTime = useSnapshotTime();
     const offsetX =
         orientation === 'vertical' ? 0.31 - blockIndex * 0.05 : 0.27;
     const offsetY =

@@ -3,6 +3,7 @@
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useLiveTime } from '../../hooks/useLiveTime';
 import { useGameState } from '../../useGameState';
 import { DayNightVisualization } from './DayNightVisualization';
 
@@ -11,7 +12,7 @@ export function TimeDisplay({
 }: {
     variant?: 'card' | 'overlay';
 }) {
-    const currentTime = useGameState((state) => state.currentTime);
+    const currentTime = useLiveTime();
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const sunrise = useGameState((state) => state.sunriseTime);
     const sunset = useGameState((state) => state.sunsetTime);

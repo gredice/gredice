@@ -6,6 +6,7 @@ import { Slider } from '@signalco/ui-primitives/Slider';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLiveTime } from '../hooks/useLiveTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import { useGameState } from '../useGameState';
 
@@ -67,7 +68,7 @@ interface PanelPosition {
 
 export function DebugHud() {
     const setWeather = useGameState((s) => s.setWeather);
-    const currentTime = useGameState((s) => s.currentTime);
+    const currentTime = useLiveTime();
     const setFreezeTime = useGameState((s) => s.setFreezeTime);
 
     const { data: weather } = useWeatherNow();
