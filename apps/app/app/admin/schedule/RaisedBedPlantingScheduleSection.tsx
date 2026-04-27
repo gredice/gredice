@@ -6,6 +6,7 @@ import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Calendar, Close } from '@signalco/ui-icons';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { Chip } from '@signalco/ui-primitives/Chip';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -302,7 +303,13 @@ export function RaisedBedPlantingScheduleSection({
                                                 {field.plantScheduledDate}
                                             </LocalDateTime>
                                         ) : (
-                                            <span>Danas</span>
+                                            <Chip
+                                                size="sm"
+                                                color="warning"
+                                                className="w-fit"
+                                            >
+                                                Nije planirano
+                                            </Chip>
                                         )}
                                     </Typography>
                                 </Row>
