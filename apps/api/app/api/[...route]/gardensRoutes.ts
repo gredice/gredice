@@ -129,6 +129,15 @@ function serializeGardenOperation(
     targetsByRaisedBedFieldId: Map<number, string>,
     targetsByRaisedBedId: Map<number, string>,
 ) {
+    const hasAssignedUser = (operation.assignedUserIds?.length ?? 0) > 0;
+    const isAssigned = operation.status === 'planned' && hasAssignedUser;
+    const isConfirmed = isAssigned && operation.isAccepted;
+    const timelineStatus = isConfirmed
+        ? 'confirmed'
+        : isAssigned
+          ? 'assigned'
+          : operation.status;
+
     const statusHistory = [
         {
             status: 'new',
@@ -140,6 +149,24 @@ function serializeGardenOperation(
                   changedAt:
                       operation.scheduledAt?.toISOString() ??
                       operation.scheduledDate.toISOString(),
+              }
+            : null,
+        isAssigned
+            ? {
+                  status: 'assigned',
+                  changedAt:
+                      operation.assignedAt?.toISOString() ??
+                      operation.scheduledAt?.toISOString() ??
+                      operation.createdAt.toISOString(),
+              }
+            : null,
+        isConfirmed
+            ? {
+                  status: 'confirmed',
+                  changedAt:
+                      operation.assignedAt?.toISOString() ??
+                      operation.scheduledAt?.toISOString() ??
+                      operation.createdAt.toISOString(),
               }
             : null,
         operation.completedAt
@@ -167,7 +194,7 @@ function serializeGardenOperation(
         entityId: operation.entityId,
         raisedBedId: operation.raisedBedId,
         raisedBedFieldId: operation.raisedBedFieldId,
-        status: operation.status,
+        status: timelineStatus,
         createdAt: operation.createdAt.toISOString(),
         scheduledDate: operation.scheduledDate?.toISOString() ?? null,
         scheduledAt: operation.scheduledAt?.toISOString() ?? null,
