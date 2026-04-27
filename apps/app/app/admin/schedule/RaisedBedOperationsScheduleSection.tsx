@@ -4,6 +4,7 @@ import type { OperationAssignableFarmUser } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Calendar, Close } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
@@ -307,10 +308,28 @@ export function RaisedBedOperationsScheduleSection({
                                             disabled
                                         />
                                     ) : operationPendingVerification ? (
-                                        <VerifyOperationModal
-                                            operationId={operation.id}
-                                            label={operationLabel}
-                                        />
+                                        <Row
+                                            spacing={0.5}
+                                            className="items-center"
+                                        >
+                                            <VerifyOperationModal
+                                                operationId={operation.id}
+                                                label={operationLabel}
+                                            />
+                                            <VerifyOperationModal
+                                                operationId={operation.id}
+                                                label={operationLabel}
+                                                trigger={
+                                                    <Button
+                                                        variant="solid"
+                                                        size="sm"
+                                                        className="bg-green-600 hover:bg-green-700 text-white"
+                                                    >
+                                                        Potvrdi
+                                                    </Button>
+                                                }
+                                            />
+                                        </Row>
                                     ) : operationLocked ? (
                                         <Checkbox
                                             className="size-5 mx-2"
