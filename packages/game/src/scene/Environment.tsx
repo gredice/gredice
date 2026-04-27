@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { getPosition } from 'suncalc';
 import { Color, Quaternion, Vector3 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import { type GameState, useGameState } from '../useGameState';
 import { CloudLayer } from './CloudLayer';
@@ -265,7 +266,7 @@ export function Environment({
     const baseCameraShadowSize = 20;
     const shadowMapSize = 8;
 
-    const currentTime = useGameState((state) => state.currentTime);
+    const currentTime = useSnapshotTime();
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const ambientAudioMixer = useGameState((state) => state.audio.ambient);
     const setSnowCoverage = useGameState((state) => state.setSnowCoverage);

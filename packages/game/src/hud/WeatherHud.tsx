@@ -4,9 +4,9 @@ import { Button } from '@signalco/ui-primitives/Button';
 import { Popper } from '@signalco/ui-primitives/Popper';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useLiveTime } from '../hooks/useLiveTime';
 import { useWeatherForecast } from '../hooks/useWeatherForecast';
 import { useWeatherNow } from '../hooks/useWeatherNow';
-import { useGameState } from '../useGameState';
 import { HudCard } from './components/HudCard';
 import { TimeDisplay } from './components/TimeDisplay';
 import { WeatherForecastDetails } from './components/weather/WeatherForecastDetails';
@@ -14,7 +14,7 @@ import { weatherIcons } from './components/weather/WeatherIcons';
 import { WeatherNowDetails } from './components/weather/WeatherNowDetails';
 
 export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
-    const currentTime = useGameState((state) => state.currentTime);
+    const currentTime = useLiveTime();
     const weatherEnabled = !noWeather;
     const { data: weatherData } = useWeatherNow(weatherEnabled);
     const { data: forecastData } = useWeatherForecast(weatherEnabled);

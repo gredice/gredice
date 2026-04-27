@@ -111,11 +111,9 @@ export type GameState = {
     setDayNightCycleDisabled: (disabled: boolean) => void;
     weatherVisualizationDisabled: boolean;
     setWeatherVisualizationDisabled: (disabled: boolean) => void;
-    currentTime: Date;
     timeOfDay: number;
     sunsetTime: Date | null;
     sunriseTime: Date | null;
-    setCurrentTime: (currentTime: Date) => void;
 
     // Game
     mode: GameMode;
@@ -210,16 +208,15 @@ export function createGameState({
         },
         freezeTime,
         setFreezeTime: (freezeTime) => {
-            const currentTime = freezeTime ?? new Date();
+            const referenceTime = freezeTime ?? new Date();
             const { sunrise, sunset } = getSunriseSunset(
                 defaultLocation,
-                currentTime,
+                referenceTime,
             );
             set({
                 freezeTime,
-                currentTime,
                 timeOfDay: resolveTimeOfDay(
-                    currentTime,
+                    referenceTime,
                     get().dayNightCycleDisabled,
                 ),
                 sunriseTime: sunrise,
@@ -231,7 +228,10 @@ export function createGameState({
             persistDayNightCycleDisabled(disabled);
             set({
                 dayNightCycleDisabled: disabled,
-                timeOfDay: resolveTimeOfDay(get().currentTime, disabled),
+                timeOfDay: resolveTimeOfDay(
+                    get().freezeTime ?? new Date(),
+                    disabled,
+                ),
             });
         },
         weatherVisualizationDisabled,
@@ -241,7 +241,6 @@ export function createGameState({
                 weatherVisualizationDisabled: disabled,
             });
         },
-        currentTime: now,
         timeOfDay,
         sunriseTime: sunrise,
         sunsetTime: sunset,
@@ -292,14 +291,6 @@ export function createGameState({
             })),
         setWorldRotation: (worldRotation) => set({ worldRotation }),
         setIsDragging: (isDragging) => set({ isDragging }),
-        setCurrentTime: (currentTime) => {
-            const freezeTime = get().freezeTime;
-            if (freezeTime) {
-                currentTime = freezeTime;
-            }
-
-            return set({ currentTime });
-        },
         setWeather: (weather) => set({ weather }),
         snowCoverage: 0,
         setSnowCoverage: (snowCoverage) => set({ snowCoverage }),

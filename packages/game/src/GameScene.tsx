@@ -22,7 +22,6 @@ import { useBlockData } from './hooks/useBlockData';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useDeferredSceneDetails } from './hooks/useDeferredSceneDetails';
 import { useFocusPlacedBlock } from './hooks/useFocusPlacedBlock';
-import { useGameTimeManager } from './hooks/useGameTimeManager';
 import { useWeatherNow } from './hooks/useWeatherNow';
 import { EditModeGrid } from './indicators/EditModeGrid';
 import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
@@ -66,7 +65,6 @@ export function GameScene({
     deferDetails,
     ...rest
 }: GameSceneProps) {
-    useGameTimeManager();
     useFocusPlacedBlock();
     useRaisedBedCloseup();
     const weatherVisualizationDisabled = useGameState(

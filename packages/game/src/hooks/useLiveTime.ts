@@ -1,10 +1,15 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameState } from '../useGameState';
 
-export function useGameTimeManager() {
-    const setCurrentTime = useGameState((state) => state.setCurrentTime);
+export function useLiveTime() {
+    const freezeTime = useGameState((state) => state.freezeTime);
+    const [now, setNow] = useState(() => freezeTime ?? new Date());
     useEffect(() => {
-        const tick = () => setCurrentTime(new Date());
+        if (freezeTime) {
+            setNow(freezeTime);
+            return;
+        }
+        const tick = () => setNow(new Date());
         let intervalId: ReturnType<typeof setInterval> | undefined;
         const timeoutId = setTimeout(() => {
             tick();
@@ -14,5 +19,6 @@ export function useGameTimeManager() {
             clearTimeout(timeoutId);
             if (intervalId) clearInterval(intervalId);
         };
-    }, [setCurrentTime]);
+    }, [freezeTime]);
+    return now;
 }

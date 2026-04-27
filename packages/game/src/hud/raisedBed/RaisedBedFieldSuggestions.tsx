@@ -5,8 +5,8 @@ import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
+import { useSnapshotTime } from '../../hooks/useSnapshotTime';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
-import { useGameState } from '../../useGameState';
 import {
     countRaisedBedOccupiedFields,
     findRaisedBedOccupiedField,
@@ -207,7 +207,7 @@ export function RaisedBedFieldSuggestions({
         useShoppingCart();
     const { data: allSorts, isLoading: isLoadingSorts } = useAllSorts();
     const setCartItem = useSetShoppingCartItem();
-    const season = useGameState((state) => getSeasonForDate(state.currentTime));
+    const season = getSeasonForDate(useSnapshotTime());
     const hasRequiredData = Boolean(currentGarden && raisedBed && shoppingCart);
     const isRaisedBedValid = raisedBed?.isValid ?? false;
 

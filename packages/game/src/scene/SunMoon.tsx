@@ -14,6 +14,7 @@ import {
     Vector3,
 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useGameState } from '../useGameState';
 import { altAzToScenePosition, timeOfDayToDate } from './Environment';
 
@@ -182,7 +183,7 @@ type SunMoonProps = {
 };
 
 export function SunMoon({ visibility = 1 }: SunMoonProps) {
-    const currentTime = useGameState((state) => state.currentTime);
+    const currentTime = useSnapshotTime();
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const dayNightCycleDisabled = useGameState(
         (state) => state.dayNightCycleDisabled,
