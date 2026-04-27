@@ -38,9 +38,17 @@ export function NavItem({
         }
     };
 
+    const listItemAccessibilityProps = compact ? { 'aria-label': label } : {};
+
     return (
-        <Link href={href} onClick={handleClick} title={label}>
+        <Link
+            href={href}
+            onClick={handleClick}
+            title={label}
+            aria-label={compact ? label : undefined}
+        >
             <ListItem
+                {...listItemAccessibilityProps}
                 nodeId={href}
                 selected={
                     strictMatch

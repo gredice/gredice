@@ -2,11 +2,24 @@
 
 import { ArrowLeft, ArrowRight } from '@signalco/ui-icons';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Nav } from './Nav';
 
 export function DesktopNav() {
     const [isExpanded, setIsExpanded] = useState(false);
+    const [isLargeScreen, setIsLargeScreen] = useState(false);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(min-width: 1024px)');
+        const handleChange = () => setIsLargeScreen(mediaQuery.matches);
+
+        handleChange();
+        mediaQuery.addEventListener('change', handleChange);
+
+        return () => mediaQuery.removeEventListener('change', handleChange);
+    }, []);
+
+    const compact = !isExpanded && !isLargeScreen;
 
     return (
         <aside
@@ -34,15 +47,7 @@ export function DesktopNav() {
                     </IconButton>
                 </div>
 
-                <div className={isExpanded ? 'md:block lg:hidden' : 'hidden'}>
-                    <Nav />
-                </div>
-                <div className={isExpanded ? 'hidden' : 'md:block lg:hidden'}>
-                    <Nav compact />
-                </div>
-                <div className="hidden lg:block">
-                    <Nav />
-                </div>
+                <Nav compact={compact} />
             </div>
         </aside>
     );

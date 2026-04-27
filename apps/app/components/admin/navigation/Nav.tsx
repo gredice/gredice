@@ -214,23 +214,25 @@ export function Nav({
                 {/* Shadow entity types */}
                 {shadowTypes.length > 0 &&
                     (compact ? (
-                        shadowTypes.map((entityType) => (
-                            <NavItem
-                                key={entityType.id}
-                                href={KnownPages.DirectoryEntityType(
-                                    entityType.name,
-                                )}
-                                label={entityType.label}
-                                icon={
-                                    <EntityTypeIcon
-                                        icon={entityType.icon}
-                                        className="size-5"
-                                    />
-                                }
-                                onClick={onItemClick}
-                                compact={compact}
-                            />
-                        ))
+                        <List>
+                            {shadowTypes.map((entityType) => (
+                                <NavItem
+                                    key={entityType.id}
+                                    href={KnownPages.DirectoryEntityType(
+                                        entityType.name,
+                                    )}
+                                    label={entityType.label}
+                                    icon={
+                                        <EntityTypeIcon
+                                            icon={entityType.icon}
+                                            className="size-5"
+                                        />
+                                    }
+                                    onClick={onItemClick}
+                                    compact={compact}
+                                />
+                            ))}
+                        </List>
                     ) : (
                         <ListTreeItem label="Ostalo">
                             {shadowTypes.map((entityType) => (

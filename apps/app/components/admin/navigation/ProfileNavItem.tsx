@@ -73,11 +73,16 @@ export function ProfileNavItem({
         const accountId = resolveAccountId(currentUser);
         return accountId ? KnownPages.Account(accountId) : KnownPages.Accounts;
     }, [currentUser]);
+    const listItemAccessibilityProps = compact
+        ? { 'aria-label': userName }
+        : {};
 
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <ListItem
+                    {...listItemAccessibilityProps}
+                    title={compact ? userName : undefined}
                     startDecorator={
                         <UserAvatar
                             displayName={userName}
