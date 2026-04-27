@@ -4,6 +4,7 @@ import {
     createAccount,
     createEvent,
     createOperation,
+    FREE_WATERING_OPERATION_ID,
     getOperations,
     knownEvents,
     queueSeasonalSowingOfferOperations,
@@ -15,8 +16,6 @@ import {
     ensureFarmId,
 } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
-
-const FREE_WATERING_OPERATION_ID = 274;
 
 async function createSeasonalOfferTestContext() {
     const accountId = await createAccount();

@@ -73,9 +73,10 @@ async function applyRaisedBedFieldPlantUpdate({
             existingField.plantStatus !== 'sowed' &&
             raisedBed.accountId
         ) {
+            const gardenId = raisedBed.gardenId;
             await queueSeasonalSowingOfferOperations({
                 accountId: raisedBed.accountId,
-                gardenId: raisedBed.gardenId ?? undefined,
+                ...(gardenId ? { gardenId } : {}),
                 raisedBedId: raisedBed.id,
             });
         }

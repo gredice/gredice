@@ -169,9 +169,10 @@ export async function completeFarmPlanting(
     );
 
     if (nextStatus === 'sowed' && raisedBed.accountId) {
+        const gardenId = raisedBed.gardenId;
         await queueSeasonalSowingOfferOperations({
             accountId: raisedBed.accountId,
-            gardenId: raisedBed.gardenId ?? undefined,
+            ...(gardenId ? { gardenId } : {}),
             raisedBedId,
         });
     }

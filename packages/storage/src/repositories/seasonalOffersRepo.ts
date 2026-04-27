@@ -2,7 +2,7 @@ import { knownEvents } from './events/knownEvents';
 import { createEvent } from './eventsRepo';
 import { createOperation, getOperations } from './operationsRepo';
 
-const FREE_WATERING_OPERATION_ID = 274;
+export const FREE_WATERING_OPERATION_ID = 274;
 
 type SeasonalSowingOffer = {
     freeWaterings: number;
