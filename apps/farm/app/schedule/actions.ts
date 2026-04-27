@@ -8,6 +8,7 @@ import {
     getOperationById,
     getRaisedBed,
     knownEvents,
+    queueSeasonalSowingOfferOperations,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
@@ -155,15 +156,26 @@ export async function completeFarmPlanting(
         throw new Error('Sijanje mora biti potvrđeno prije završetka.');
     }
 
+    const nextStatus = role === 'admin' ? 'sowed' : 'pendingVerification';
+
     await createEvent(
         knownEvents.raisedBedFields.plantUpdateV1(
             `${raisedBedId}|${positionIndex}`,
             buildRaisedBedFieldPlantUpdatePayload(
-                role === 'admin' ? 'sowed' : 'pendingVerification',
+                nextStatus,
                 field.assignedUserIds,
             ),
         ),
     );
+
+    if (nextStatus === 'sowed' && raisedBed.accountId) {
+        const gardenId = raisedBed.gardenId;
+        await queueSeasonalSowingOfferOperations({
+            accountId: raisedBed.accountId,
+            ...(gardenId ? { gardenId } : {}),
+            raisedBedId,
+        });
+    }
 
     revalidateSchedule();
 
