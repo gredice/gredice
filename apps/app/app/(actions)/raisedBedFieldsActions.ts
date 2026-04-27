@@ -67,9 +67,14 @@ async function applyRaisedBedFieldPlantUpdate({
             ),
         );
 
-        if (status === 'sowed' && raisedBed.accountId) {
+        if (
+            status === 'sowed' &&
+            existingField?.plantStatus !== 'sowed' &&
+            raisedBed.accountId
+        ) {
             await queueSeasonalSowingOfferOperations({
                 accountId: raisedBed.accountId,
+                gardenId: raisedBed.gardenId,
                 raisedBedId: raisedBed.id,
             });
         }

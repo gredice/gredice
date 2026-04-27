@@ -67,10 +67,12 @@ function getLatestScheduledFreeWateringDate(
 
 export async function queueSeasonalSowingOfferOperations({
     accountId,
+    gardenId,
     raisedBedId,
     referenceDate = new Date(),
 }: {
     accountId: string;
+    gardenId?: number | null;
     raisedBedId: number;
     referenceDate?: Date;
 }) {
@@ -79,10 +81,11 @@ export async function queueSeasonalSowingOfferOperations({
         return [];
     }
 
-    const existingOperations = await getOperations({
+    const existingOperations = await getOperations(
         accountId,
+        gardenId ?? undefined,
         raisedBedId,
-    });
+    );
 
     const latestScheduledDate = getLatestScheduledFreeWateringDate(
         existingOperations,
@@ -104,6 +107,7 @@ export async function queueSeasonalSowingOfferOperations({
             accountId,
             entityId: FREE_WATERING_OPERATION_ID,
             entityTypeName: 'operation',
+            gardenId,
             raisedBedId,
         });
 
