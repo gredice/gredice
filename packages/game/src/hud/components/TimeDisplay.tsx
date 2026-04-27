@@ -4,6 +4,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useGameState } from '../../useGameState';
+import { DayNightVisualization } from './DayNightVisualization';
 
 export function TimeDisplay({
     variant = 'overlay',
@@ -21,6 +22,9 @@ export function TimeDisplay({
         <Stack
             className={variant === 'overlay' ? 'pt-16 pb-2 px-4' : 'px-4 py-3'}
         >
+            {variant === 'card' && (
+                <DayNightVisualization className="w-full h-12 overflow-visible mb-2" />
+            )}
             <Row justifyContent="space-between">
                 <Typography level="body3">
                     {(isDaytime ? sunrise : sunset)?.toLocaleTimeString(
