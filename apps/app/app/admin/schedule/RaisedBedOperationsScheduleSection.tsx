@@ -3,7 +3,7 @@
 import type { OperationAssignableFarmUser } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
-import { Calendar, Check, Close } from '@signalco/ui-icons';
+import { Calendar, Close } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Chip } from '@signalco/ui-primitives/Chip';
@@ -314,19 +314,13 @@ export function RaisedBedOperationsScheduleSection({
                                             renderTrigger={({
                                                 isSubmitting,
                                                 openModal,
+                                                defaultTrigger,
                                             }) => (
                                                 <Row
                                                     spacing={0.5}
                                                     className="items-center"
                                                 >
-                                                    <IconButton
-                                                        variant="plain"
-                                                        title="Verificiraj radnju"
-                                                        loading={isSubmitting}
-                                                        onClick={openModal}
-                                                    >
-                                                        <Check className="size-4 shrink-0" />
-                                                    </IconButton>
+                                                    {defaultTrigger}
                                                     <Button
                                                         variant="solid"
                                                         size="sm"
