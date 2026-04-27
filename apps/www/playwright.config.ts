@@ -16,7 +16,7 @@ export const config: PlaywrightTestConfig = {
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
-    workers: process.env.CI ? 1 : undefined,
+    workers: process.env.CI ? 4 : undefined,
     reporter,
     use: {
         baseURL: 'http://127.0.0.1:3000',
