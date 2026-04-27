@@ -298,17 +298,7 @@ export function createGameState({
                 currentTime = freezeTime;
             }
 
-            return set({
-                currentTime,
-                timeOfDay: resolveTimeOfDay(
-                    currentTime,
-                    get().dayNightCycleDisabled,
-                ),
-                sunriseTime: getSunriseSunset(defaultLocation, currentTime)
-                    .sunrise,
-                sunsetTime: getSunriseSunset(defaultLocation, currentTime)
-                    .sunset,
-            });
+            return set({ currentTime });
         },
         setWeather: (weather) => set({ weather }),
         snowCoverage: 0,
