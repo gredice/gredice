@@ -82,7 +82,7 @@ export function ProfileNavItem({
             <DropdownMenuTrigger asChild>
                 <ListItem
                     {...listItemAccessibilityProps}
-                    title={compact ? userName : undefined}
+                    title={userName}
                     startDecorator={
                         <UserAvatar
                             displayName={userName}

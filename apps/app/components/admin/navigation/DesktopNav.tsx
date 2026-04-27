@@ -10,6 +10,10 @@ export function DesktopNav() {
     const [isLargeScreen, setIsLargeScreen] = useState(false);
 
     useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
         const mediaQuery = window.matchMedia('(min-width: 1024px)');
         const handleChange = () => setIsLargeScreen(mediaQuery.matches);
 
