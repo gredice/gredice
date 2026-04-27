@@ -6,11 +6,11 @@ import {
     CanvasTexture,
     ClampToEdgeWrapping,
     DoubleSide,
+    LinearFilter,
     MathUtils,
     type Mesh,
     type MeshBasicMaterial,
     type OrthographicCamera,
-    SRGBColorSpace,
 } from 'three';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
@@ -48,7 +48,7 @@ function wrapValue(value: number, min: number, max: number) {
     return MathUtils.euclideanModulo(value - min, range) + min;
 }
 
-function createCloudTexture() {
+function createCloudAlphaTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 256;
@@ -58,7 +58,8 @@ function createCloudTexture() {
         return null;
     }
 
-    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = 'rgb(0, 0, 0)';
+    context.fillRect(0, 0, canvas.width, canvas.height);
 
     for (let index = 0; index < 8; index += 1) {
         const seed = 11.7 + index * 23.1;
@@ -86,7 +87,9 @@ function createCloudTexture() {
     }
 
     const texture = new CanvasTexture(canvas);
-    texture.colorSpace = SRGBColorSpace;
+    texture.generateMipmaps = false;
+    texture.magFilter = LinearFilter;
+    texture.minFilter = LinearFilter;
     texture.wrapS = ClampToEdgeWrapping;
     texture.wrapT = ClampToEdgeWrapping;
     texture.needsUpdate = true;
@@ -217,16 +220,17 @@ export function CloudLayer({
     const materialRefs = useRef<Array<MeshBasicMaterial | null>>([]);
     const cloudSlotsRef = useRef<Array<CloudSlot>>([]);
     const orbitControls = useGameState((state) => state.orbitControls);
-    const cloudTexture = useMemo(
-        () => (typeof document === 'undefined' ? null : createCloudTexture()),
+    const cloudAlphaTexture = useMemo(
+        () =>
+            typeof document === 'undefined' ? null : createCloudAlphaTexture(),
         [],
     );
 
     useEffect(() => {
         return () => {
-            cloudTexture?.dispose();
+            cloudAlphaTexture?.dispose();
         };
-    }, [cloudTexture]);
+    }, [cloudAlphaTexture]);
 
     const bounds = useMemo(() => getCloudBounds(stacks), [stacks]);
     const effectiveCloudiness = Math.min(1, cloudy + foggy * 0.35);
@@ -458,7 +462,7 @@ export function CloudLayer({
         }
     });
 
-    if (!cloudTexture || visibleOpacity <= 0.005) {
+    if (!cloudAlphaTexture || visibleOpacity <= 0.005) {
         return null;
     }
 
@@ -475,11 +479,11 @@ export function CloudLayer({
                 >
                     <planeGeometry args={[cloud.width, cloud.height]} />
                     <meshBasicMaterial
+                        alphaMap={cloudAlphaTexture}
                         alphaTest={CLOUD_ALPHA_TEST}
                         color={cloud.tint}
                         depthWrite={false}
                         fog={false}
-                        map={cloudTexture}
                         opacity={0}
                         ref={(material) => {
                             materialRefs.current[index] = material;
