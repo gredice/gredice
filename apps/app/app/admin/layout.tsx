@@ -11,9 +11,9 @@ import { redirect } from 'next/navigation';
 import { type PropsWithChildren, Suspense } from 'react';
 import {
     AdminPageBreadcrumbs,
+    DesktopNav,
     LoginDialog,
     MobileHeader,
-    Nav,
 } from '../../components/admin/navigation';
 import { AdminClientProvider } from '../../components/admin/providers';
 import { AuthAppProvider } from '../../components/providers/AuthAppProvider';
@@ -90,16 +90,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                     <main className="relative h-full md:h-full min-h-[calc(100vh-3.5rem)] md:min-h-screen">
                         <div className="flex min-h-full flex-row gap-3 p-2 md:gap-4 md:p-4">
                             {/* Desktop Navigation */}
-                            <aside className="hidden md:block md:w-20 md:shrink-0 lg:w-72">
-                                <div className="sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border bg-background/95 p-2 shadow-sm lg:p-3">
-                                    <div className="lg:hidden">
-                                        <Nav compact />
-                                    </div>
-                                    <div className="hidden lg:block">
-                                        <Nav />
-                                    </div>
-                                </div>
-                            </aside>
+                            <DesktopNav />
                             {/* Main Content */}
                             <div className="min-h-full grow">
                                 <div className="min-h-full rounded-2xl border bg-background p-2 md:p-4">
