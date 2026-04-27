@@ -58,9 +58,14 @@ export function RescheduleModal({
         today.getDate(),
     );
 
-    const currentScheduledDate = scheduledDate
-        ? formatLocalDate(scheduledDate)
-        : formatLocalDate(today);
+    const todayMidnight = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+    );
+    const effectiveDate =
+        scheduledDate && scheduledDate >= todayMidnight ? scheduledDate : today;
+    const currentScheduledDate = formatLocalDate(effectiveDate);
     const min = formatLocalDate(today);
     const max = formatLocalDate(threeMonthsFromToday);
 

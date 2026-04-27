@@ -12,7 +12,9 @@ import { ScheduleDayPlantingsSkeleton } from './ScheduleDayPlantingsSkeleton';
 export const dynamic = 'force-dynamic';
 
 function parseDateParam(dateParam?: string | string[]): Date | undefined {
-    const normalizedDateParam = Array.isArray(dateParam) ? dateParam[0] : dateParam;
+    const normalizedDateParam = Array.isArray(dateParam)
+        ? dateParam[0]
+        : dateParam;
     if (!normalizedDateParam) {
         return undefined;
     }
