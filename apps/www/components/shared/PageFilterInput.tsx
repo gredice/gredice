@@ -63,6 +63,7 @@ export function PageFilterInput({
                             localSearch ? 'visible' : 'invisible',
                         )}
                         title="Očisti pretragu"
+                        type="button"
                         onClick={() => updateSearch('')}
                         size="sm"
                         variant="plain"
