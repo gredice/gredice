@@ -1,5 +1,8 @@
 import type { PlantData } from '@gredice/client';
-import { calculatePlantsPerField } from '@gredice/js/plants';
+import {
+    calculatePlantsPerField,
+    getHarvestPlantRemovalDisclaimer,
+} from '@gredice/js/plants';
 import { ShoppingCart, Store } from '@signalco/ui-icons';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
@@ -10,6 +13,10 @@ export function HarvestAttributeCards({
 }: {
     attributes: PlantData['attributes'] | undefined;
 }) {
+    const harvestPlantRemovalDescription = getHarvestPlantRemovalDisclaimer(
+        attributes?.cleanHarvest,
+    );
+
     const formatDayRange = (
         min?: number | null,
         max?: number | null,
@@ -93,35 +100,40 @@ export function HarvestAttributeCards({
     const yieldDetails = getYieldDetails();
 
     return (
-        <div className="grid grid-cols-2 gap-2">
-            <AttributeCard
-                icon={<Store />}
-                header="Vrijeme berbe"
-                value={formatDayRange(
-                    attributes?.harvestWindowMin,
-                    attributes?.harvestWindowMax,
-                )}
-            />
-            <AttributeCard
-                icon={<ShoppingCart />}
-                header="Očekivani prinos"
-                value={
-                    yieldDetails ? (
-                        <Stack spacing={0.5}>
-                            <Typography semiBold>
-                                {yieldDetails.expectedPerFieldKg
-                                    ? `~${yieldDetails.expectedPerFieldKg} kg po polju`
-                                    : '-'}
-                            </Typography>
-                            {yieldDetails.perFieldRange && (
-                                <Typography level="body3">
-                                    {yieldDetails.perFieldRange}
+        <Stack spacing={1}>
+            <div className="grid grid-cols-2 gap-2">
+                <AttributeCard
+                    icon={<Store />}
+                    header="Vrijeme berbe"
+                    value={formatDayRange(
+                        attributes?.harvestWindowMin,
+                        attributes?.harvestWindowMax,
+                    )}
+                />
+                <AttributeCard
+                    icon={<ShoppingCart />}
+                    header="Očekivani prinos"
+                    value={
+                        yieldDetails ? (
+                            <Stack spacing={0.5}>
+                                <Typography semiBold>
+                                    {yieldDetails.expectedPerFieldKg
+                                        ? `~${yieldDetails.expectedPerFieldKg} kg po polju`
+                                        : '-'}
                                 </Typography>
-                            )}
-                        </Stack>
-                    ) : undefined
-                }
-            />
-        </div>
+                                {yieldDetails.perFieldRange && (
+                                    <Typography level="body3">
+                                        {yieldDetails.perFieldRange}
+                                    </Typography>
+                                )}
+                            </Stack>
+                        ) : undefined
+                    }
+                />
+            </div>
+            <Typography level="body2">
+                {harvestPlantRemovalDescription}
+            </Typography>
+        </Stack>
     );
 }
