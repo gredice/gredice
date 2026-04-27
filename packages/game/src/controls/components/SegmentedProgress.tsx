@@ -1,6 +1,6 @@
 import { Check, Close } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
-import { Fragment, type HTMLAttributes } from 'react';
+import { Fragment, type HTMLAttributes, type ReactNode } from 'react';
 import { Progress } from './Progress';
 
 export type SegmentedProgressProps = {
@@ -10,6 +10,7 @@ export type SegmentedProgressProps = {
         highlighted?: boolean;
         failed?: boolean;
         label?: string;
+        icon?: ReactNode;
         title?: string;
         onClick?: () => void;
     }[];
@@ -77,9 +78,9 @@ export function SegmentedProgress({
                                     />
                                 )}
                             </div>
-                            {segment.label && (
+                            {(segment.label || segment.icon) && (
                                 <div className="select-none text-xs text-center absolute left-1/2 top-full transform -translate-x-1/2 pt-1">
-                                    {segment.label}
+                                    {segment.icon ?? segment.label}
                                 </div>
                             )}
                         </CircleComponent>
