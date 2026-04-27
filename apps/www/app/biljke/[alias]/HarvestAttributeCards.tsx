@@ -131,9 +131,11 @@ export function HarvestAttributeCards({
                     }
                 />
             </div>
-            <Typography level="body2">
-                {harvestPlantRemovalDescription}
-            </Typography>
+            {harvestPlantRemovalDescription && (
+                <Typography level="body2">
+                    {harvestPlantRemovalDescription}
+                </Typography>
+            )}
         </Stack>
     );
 }
