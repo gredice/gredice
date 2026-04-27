@@ -3,7 +3,7 @@
 import type { OperationAssignableFarmUser } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
-import { Calendar, Close } from '@signalco/ui-icons';
+import { Calendar, Check, Close } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Chip } from '@signalco/ui-primitives/Chip';
@@ -308,28 +308,37 @@ export function RaisedBedOperationsScheduleSection({
                                             disabled
                                         />
                                     ) : operationPendingVerification ? (
-                                        <Row
-                                            spacing={0.5}
-                                            className="items-center"
-                                        >
-                                            <VerifyOperationModal
-                                                operationId={operation.id}
-                                                label={operationLabel}
-                                            />
-                                            <VerifyOperationModal
-                                                operationId={operation.id}
-                                                label={operationLabel}
-                                                trigger={
+                                        <VerifyOperationModal
+                                            operationId={operation.id}
+                                            label={operationLabel}
+                                            renderTrigger={({
+                                                isSubmitting,
+                                                openModal,
+                                            }) => (
+                                                <Row
+                                                    spacing={0.5}
+                                                    className="items-center"
+                                                >
+                                                    <IconButton
+                                                        variant="plain"
+                                                        title="Verificiraj radnju"
+                                                        loading={isSubmitting}
+                                                        onClick={openModal}
+                                                    >
+                                                        <Check className="size-4 shrink-0" />
+                                                    </IconButton>
                                                     <Button
                                                         variant="solid"
                                                         size="sm"
                                                         className="bg-green-600 hover:bg-green-700 text-white"
+                                                        onClick={openModal}
+                                                        disabled={isSubmitting}
                                                     >
                                                         Potvrdi
                                                     </Button>
-                                                }
-                                            />
-                                        </Row>
+                                                </Row>
+                                            )}
+                                        />
                                     ) : operationLocked ? (
                                         <Checkbox
                                             className="size-5 mx-2"

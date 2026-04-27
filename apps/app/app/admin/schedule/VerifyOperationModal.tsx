@@ -14,15 +14,21 @@ interface VerifyOperationModalProps {
     operationId: number;
     label: string;
     trigger?: React.ReactElement;
+    renderTrigger?: (props: {
+        isSubmitting: boolean;
+        openModal: () => void;
+    }) => React.ReactElement;
 }
 
 export function VerifyOperationModal({
     operationId,
     label,
     trigger,
+    renderTrigger,
 }: VerifyOperationModalProps) {
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const openModal = () => setOpen(true);
 
     const handleConfirm = async () => {
         try {
@@ -42,15 +48,20 @@ export function VerifyOperationModal({
             open={open}
             onOpenChange={setOpen}
             trigger={
-                trigger ?? (
-                    <IconButton
-                        variant="plain"
-                        title="Verificiraj radnju"
-                        loading={isSubmitting}
-                    >
-                        <Check className="size-4 shrink-0" />
-                    </IconButton>
-                )
+                renderTrigger
+                    ? renderTrigger({
+                          isSubmitting,
+                          openModal,
+                      })
+                    : (trigger ?? (
+                          <IconButton
+                              variant="plain"
+                              title="Verificiraj radnju"
+                              loading={isSubmitting}
+                          >
+                              <Check className="size-4 shrink-0" />
+                          </IconButton>
+                      ))
             }
         >
             <Stack spacing={2}>
