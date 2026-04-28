@@ -10,16 +10,15 @@ import { KnownPages } from '../../../src/KnownPages';
 
 async function PlantSortsListContent({
     basePlantName,
+    basePlantId,
 }: {
     basePlantName: string;
+    basePlantId: number;
 }) {
     const allSorts = await getPlantSortsData();
     const sorts = (
-        allSorts?.filter(
-            (sort) =>
-                sort.information.plant.information?.name?.toLowerCase() ===
-                basePlantName.toLowerCase(),
-        ) ?? []
+        allSorts?.filter((sort) => sort.information.plant.id === basePlantId) ??
+        []
     ).sort((a, b) => a.information.name.localeCompare(b.information.name));
     if (!sorts.length) {
         return (
@@ -87,14 +86,23 @@ async function PlantSortsListContent({
     );
 }
 
-export function PlantSortsList({ basePlantName }: { basePlantName: string }) {
+export function PlantSortsList({
+    basePlantName,
+    basePlantId,
+}: {
+    basePlantName: string;
+    basePlantId: number;
+}) {
     return (
         <Suspense
             fallback={
                 <Typography level="body2">Učitavanje sorti...</Typography>
             }
         >
-            <PlantSortsListContent basePlantName={basePlantName} />
+            <PlantSortsListContent
+                basePlantName={basePlantName}
+                basePlantId={basePlantId}
+            />
         </Suspense>
     );
 }
