@@ -62,12 +62,7 @@ export function EntitiesTable({
                     {displayDefinitions.map((d) => (
                         <Table.Head key={d.id}>{d.label}</Table.Head>
                     ))}
-                    {hasInventory && (
-                        <>
-                            <Table.Head>Stanje zalihe</Table.Head>
-                            <Table.Head>Količina</Table.Head>
-                        </>
-                    )}
+                    {hasInventory && <Table.Head>Stanje zalihe</Table.Head>}
                     <Table.Head>Ispunjenost</Table.Head>
                     <Table.Head>Zadnja izmjena</Table.Head>
                     <Table.Head></Table.Head>
@@ -80,7 +75,7 @@ export function EntitiesTable({
                             colSpan={
                                 4 +
                                 displayDefinitions.length +
-                                (hasInventory ? 2 : 0)
+                                (hasInventory ? 1 : 0)
                             }
                         >
                             <NoDataPlaceholder />
@@ -123,24 +118,11 @@ export function EntitiesTable({
                                 </Table.Cell>
                             ))}
                             {hasInventory && (
-                                <>
-                                    <Table.Cell>
-                                        <Typography secondary>
-                                            {inventoryItem?.trackingType ===
-                                            'serialNumber'
-                                                ? 'Serijski broj'
-                                                : inventoryItem?.trackingType ===
-                                                    'pieces'
-                                                  ? 'Komadi'
-                                                  : '-'}
-                                        </Typography>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <Typography secondary>
-                                            {inventoryItem?.quantity ?? 0}
-                                        </Typography>
-                                    </Table.Cell>
-                                </>
+                                <Table.Cell>
+                                    <Typography secondary>
+                                        {inventoryItem?.quantity ?? 0}
+                                    </Typography>
+                                </Table.Cell>
                             )}
                             <Table.Cell>
                                 <div className="w-24">
