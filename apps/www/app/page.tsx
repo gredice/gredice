@@ -18,6 +18,7 @@ import { InstagramCard } from '../components/social/InstagramCard';
 import { WhatsAppCard } from '../components/social/WhatsAppCard';
 import { WinterModeToggle } from '../components/WinterModeToggle';
 import { KnownPages } from '../src/KnownPages';
+import { BentoSection } from './BentoSection';
 import { LandingGameScene } from './LandingGameScene';
 import { NewsletterSignUp } from './NewsletterSignUp';
 import { PlantsShowcase } from './PlantsShowcase';
@@ -298,6 +299,7 @@ export default function Home() {
                     sectionsData={sectionsData}
                     componentsRegistry={sectionsComponentRegistry}
                 />
+                <BentoSection />
                 <StepsSection />
                 <Stack spacing={4}>
                     <Stack spacing={1}>
