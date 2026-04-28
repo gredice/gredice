@@ -6,6 +6,7 @@
         "clean": "turbo clean",
         "dev": "node ./scripts/dev-with-proxy.mjs",
         "env:pull": "node ./scripts/pull-envs.mjs",
+        "vercel:link": "node ./scripts/link-vercel.mjs",
         "lint": "turbo lint",
         "lint:migrate": "turbo lint:migrate",
         "lint:ci-filters": "node ./scripts/check-ci-filters.mjs",
