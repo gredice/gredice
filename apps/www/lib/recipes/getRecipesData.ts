@@ -1,4 +1,4 @@
-import { unstable_cache } from 'next/cache';
+import { cache } from 'react';
 
 export interface RecipeStep {
     shortDescription: string;
@@ -167,8 +167,4 @@ const recipes: Recipe[] = [
     },
 ];
 
-export const getRecipesData = unstable_cache(
-    async () => recipes,
-    ['recipesData'],
-    { revalidate: 60 * 60, tags: ['recipesData'] },
-);
+export const getRecipesData = cache(async () => recipes);
