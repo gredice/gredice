@@ -7,6 +7,7 @@ import {
     getInventoryItemsByConfig,
     updateInventoryItem,
 } from '@gredice/storage';
+import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Delete, ExternalLink } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
@@ -28,7 +29,6 @@ import {
     TabsTrigger,
 } from '@signalco/ui-primitives/Tabs';
 import { revalidatePath } from 'next/cache';
-import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { importEntityData } from '../../../../../app/admin/directories/(actions)/importEntityData';
@@ -387,12 +387,11 @@ export default async function EntityDetailsPage(props: {
                                                 imageAttributeValue(value);
                                             if (imageUrl) {
                                                 return (
-                                                    <Image
+                                                    <ImageViewer
                                                         src={imageUrl}
                                                         alt={d.label}
-                                                        width={40}
-                                                        height={40}
-                                                        className="size-10 rounded-md object-cover"
+                                                        previewWidth={40}
+                                                        previewHeight={40}
                                                     />
                                                 );
                                             }
