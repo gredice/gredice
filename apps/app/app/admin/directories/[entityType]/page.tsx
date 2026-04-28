@@ -2,12 +2,15 @@ import {
     getAttributeDefinitions,
     getEntitiesRaw,
     getEntityTypeByName,
+    getInventoryConfigByEntityTypeName,
+    getInventoryItemsByConfig,
 } from '@gredice/storage';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Add } from '@signalco/ui-icons';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
+import Link from 'next/link';
 import { EntityTypeMenu } from '../../../../components/admin/directories';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { FilterProvider } from '../../../../components/admin/providers';
@@ -33,10 +36,16 @@ export default async function EntitiesPage({
     const entityType = await getEntityTypeByName(entityTypeName);
     const createEntityBound = createEntity.bind(null, entityTypeName);
     const duplicateEntityBound = duplicateEntity.bind(null, entityTypeName);
-    const [entities, attributeDefinitions] = await Promise.all([
-        getEntitiesRaw(entityTypeName),
-        getAttributeDefinitions(entityTypeName),
-    ]);
+    const [entities, attributeDefinitions, inventoryConfig] = await Promise.all(
+        [
+            getEntitiesRaw(entityTypeName),
+            getAttributeDefinitions(entityTypeName),
+            getInventoryConfigByEntityTypeName(entityTypeName),
+        ],
+    );
+    const inventoryItems = inventoryConfig
+        ? await getInventoryItemsByConfig(inventoryConfig.id)
+        : [];
 
     return (
         <FilterProvider>
@@ -59,6 +68,20 @@ export default async function EntitiesPage({
                         ]}
                     />
                     <Row spacing={1}>
+                        {inventoryConfig && (
+                            <Link
+                                href={KnownPages.InventoryConfig(
+                                    inventoryConfig.id,
+                                )}
+                            >
+                                <Row
+                                    spacing={1}
+                                    className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
+                                >
+                                    <span>Zaliha</span>
+                                </Row>
+                            </Link>
+                        )}
                         <SearchInput />
                         <ServerActionIconButton
                             variant="plain"
@@ -78,6 +101,7 @@ export default async function EntitiesPage({
                             entityTypeName={entityTypeName}
                             entities={entities}
                             attributeDefinitions={attributeDefinitions}
+                            inventoryItems={inventoryItems}
                             onDuplicate={duplicateEntityBound}
                         />
                     </CardOverflow>
