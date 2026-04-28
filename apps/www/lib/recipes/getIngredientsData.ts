@@ -1,5 +1,3 @@
-import { unstable_cache } from 'next/cache';
-
 export interface NutrientInfo {
     /** Calories per 100g */
     calories: number;
@@ -152,11 +150,11 @@ const ingredientsDataSource: IngredientDataSource[] = [
     },
 ];
 
-export const getIngredientsData = unstable_cache(
-    async () => ingredientsDataSource,
-    ['ingredientsData'],
-    { revalidate: 60 * 60, tags: ['ingredientsData'] },
-);
+export async function getIngredientsData() {
+    'use cache';
+
+    return ingredientsDataSource;
+}
 
 export function getIngredientById(
     id: string,
