@@ -17,8 +17,9 @@ async function PlantSortsListContent({
 }) {
     const allSorts = await getPlantSortsData();
     const sorts = (
-        allSorts?.filter((sort) => sort.information.plant.id === basePlantId) ??
-        []
+        allSorts?.filter(
+            (sort) => sort.information.plant?.id === basePlantId,
+        ) ?? []
     ).sort((a, b) => a.information.name.localeCompare(b.information.name));
     if (!sorts.length) {
         return (
