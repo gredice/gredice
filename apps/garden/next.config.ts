@@ -26,6 +26,9 @@ const nextConfig: NextConfig = {
     reactStrictMode: true,
     typedRoutes: true,
     reactCompiler: true,
+    logging: {
+        browserToTerminal: true,
+    },
     async headers() {
         return [
             {

@@ -2,6 +2,9 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
     reactStrictMode: true,
+    logging: {
+        browserToTerminal: true,
+    },
     experimental: {
         typedEnv: true,
         turbopackFileSystemCacheForDev: true,
