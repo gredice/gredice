@@ -14,7 +14,7 @@
         "test:integration": "node --import tsx --test ./tests/echoRequest.node.spec.ts"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.12",
+        "@biomejs/biome": "2.4.13",
         "@microsoft/api-extractor": "7.58.7",
         "@types/node": "24.12.2",
         "@types/node-forge": "1.3.14",
