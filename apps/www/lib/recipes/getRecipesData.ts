@@ -1,3 +1,5 @@
+import { cache } from 'react';
+
 export interface RecipeStep {
     shortDescription: string;
     description?: string;
@@ -165,8 +167,4 @@ const recipes: Recipe[] = [
     },
 ];
 
-export async function getRecipesData() {
-    'use cache';
-
-    return recipes;
-}
+export const getRecipesData = cache(async () => recipes);

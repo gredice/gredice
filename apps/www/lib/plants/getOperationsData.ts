@@ -1,8 +1,7 @@
 import { directoriesClient } from '@gredice/client';
+import { cache } from 'react';
 
-export async function getOperationsData() {
-    'use cache';
-
+export const getOperationsData = cache(async () => {
     try {
         const { data, error } = await directoriesClient().GET(
             '/entities/operation',
@@ -18,4 +17,4 @@ export async function getOperationsData() {
         console.error('Failed to fetch operations data', error);
         return [];
     }
-}
+});

@@ -1,3 +1,5 @@
+import { cache } from 'react';
+
 export interface NutrientInfo {
     /** Calories per 100g */
     calories: number;
@@ -150,11 +152,7 @@ const ingredientsDataSource: IngredientDataSource[] = [
     },
 ];
 
-export async function getIngredientsData() {
-    'use cache';
-
-    return ingredientsDataSource;
-}
+export const getIngredientsData = cache(async () => ingredientsDataSource);
 
 export function getIngredientById(
     id: string,

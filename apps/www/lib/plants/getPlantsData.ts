@@ -1,9 +1,8 @@
 import { directoriesClient } from '@gredice/client';
+import { cache } from 'react';
 import { isPlantRecommended } from '../../../../packages/js/src/plants/isPlantRecommended';
 
-export async function getPlantsData() {
-    'use cache';
-
+export const getPlantsData = cache(async () => {
     try {
         const { data, error } =
             await directoriesClient().GET('/entities/plant');
@@ -23,4 +22,4 @@ export async function getPlantsData() {
         console.error('Failed to fetch plants data', error);
         return [];
     }
-}
+});

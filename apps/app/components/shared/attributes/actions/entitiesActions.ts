@@ -1,6 +1,7 @@
 'use server';
 
 import { getEntitiesFormatted, getEntitiesRaw } from '@gredice/storage';
+import { cache } from 'react';
 import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
 import {
     entityAttributeValue,
@@ -11,9 +12,7 @@ export async function getEntities(entityTypeName: string) {
     return getEntitiesFormatted<EntityStandardized>(entityTypeName);
 }
 
-export async function getRefEntities(entityTypeName: string) {
-    'use cache';
-
+export const getRefEntities = cache(async (entityTypeName: string) => {
     const entities = await getEntitiesRaw(entityTypeName);
     return entities.flatMap((entity) => {
         const name = entityAttributeValue(entity, 'information', 'name');
@@ -30,4 +29,4 @@ export async function getRefEntities(entityTypeName: string) {
             },
         ];
     });
-}
+});

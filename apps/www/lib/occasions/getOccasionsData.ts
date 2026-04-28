@@ -1,8 +1,7 @@
 import { directoriesClient } from '@gredice/client';
+import { cache } from 'react';
 
-export async function getOccasionsData() {
-    'use cache';
-
+export const getOccasionsData = cache(async () => {
     try {
         const { data, error } = await directoriesClient().GET(
             '/entities/occasions',
@@ -18,4 +17,4 @@ export async function getOccasionsData() {
         console.error('Failed to fetch occasions data', error);
         return [];
     }
-}
+});

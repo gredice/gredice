@@ -1,8 +1,7 @@
 import { directoriesClient } from '@gredice/client';
+import { cache } from 'react';
 
-export async function getHqLocationsData() {
-    'use cache';
-
+export const getHqLocationsData = cache(async () => {
     try {
         const { data, error } = await directoriesClient().GET(
             '/entities/hqLocations',
@@ -18,4 +17,4 @@ export async function getHqLocationsData() {
         console.error('Failed to fetch HQ locations data', error);
         return [];
     }
-}
+});
