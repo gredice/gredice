@@ -23,6 +23,11 @@ type EntitiesTableProps = {
     entityTypeName: string;
     entities: Entities;
     attributeDefinitions: SelectAttributeDefinition[];
+    inventoryItems: Array<{
+        entityId: number | null;
+        trackingType: 'pieces' | 'serialNumber';
+        quantity: number;
+    }>;
     onDuplicate: (entityId: number) => Promise<void>;
 };
 
@@ -30,6 +35,7 @@ export function EntitiesTable({
     entityTypeName,
     entities,
     attributeDefinitions,
+    inventoryItems,
     onDuplicate,
 }: EntitiesTableProps) {
     const { filter } = useFilter();
@@ -38,6 +44,15 @@ export function EntitiesTable({
         entityDisplayName(entity).toLowerCase().includes(normalized),
     );
     const displayDefinitions = attributeDefinitions.filter((d) => d.display);
+    const inventoryByEntityId = new Map(
+        inventoryItems
+            .filter(
+                (item): item is typeof item & { entityId: number } =>
+                    item.entityId !== null,
+            )
+            .map((item) => [item.entityId, item]),
+    );
+    const hasInventory = inventoryByEntityId.size > 0;
 
     return (
         <Table>
@@ -47,6 +62,12 @@ export function EntitiesTable({
                     {displayDefinitions.map((d) => (
                         <Table.Head key={d.id}>{d.label}</Table.Head>
                     ))}
+                    {hasInventory && (
+                        <>
+                            <Table.Head>Stanje zalihe</Table.Head>
+                            <Table.Head>Količina</Table.Head>
+                        </>
+                    )}
                     <Table.Head>Ispunjenost</Table.Head>
                     <Table.Head>Zadnja izmjena</Table.Head>
                     <Table.Head></Table.Head>
@@ -55,67 +76,100 @@ export function EntitiesTable({
             <Table.Body>
                 {!filteredEntities.length && (
                     <Table.Row>
-                        <Table.Cell colSpan={4 + displayDefinitions.length}>
+                        <Table.Cell
+                            colSpan={
+                                4 +
+                                displayDefinitions.length +
+                                (hasInventory ? 2 : 0)
+                            }
+                        >
                             <NoDataPlaceholder />
                         </Table.Cell>
                     </Table.Row>
                 )}
-                {filteredEntities.map((entity) => (
-                    <Table.Row key={entity.id} className="group">
-                        <Table.Cell>
-                            <Link
-                                href={KnownPages.DirectoryEntity(
-                                    entityTypeName,
-                                    entity.id,
-                                )}
-                            >
-                                <div className="flex items-center gap-2">
-                                    {entity.state === 'draft' ? (
-                                        <Chip color="neutral" className="w-fit">
-                                            Draft
-                                        </Chip>
-                                    ) : null}
-                                    <Typography>
-                                        {entityDisplayName(entity)}
-                                    </Typography>
-                                </div>
-                            </Link>
-                        </Table.Cell>
-                        {displayDefinitions.map((d) => (
-                            <Table.Cell key={d.id}>
-                                <EntityAttributeValueCell
-                                    entity={entity}
-                                    definition={d}
-                                />
+                {filteredEntities.map((entity) => {
+                    const inventoryItem = inventoryByEntityId.get(entity.id);
+
+                    return (
+                        <Table.Row key={entity.id} className="group">
+                            <Table.Cell>
+                                <Link
+                                    href={KnownPages.DirectoryEntity(
+                                        entityTypeName,
+                                        entity.id,
+                                    )}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        {entity.state === 'draft' ? (
+                                            <Chip
+                                                color="neutral"
+                                                className="w-fit"
+                                            >
+                                                Draft
+                                            </Chip>
+                                        ) : null}
+                                        <Typography>
+                                            {entityDisplayName(entity)}
+                                        </Typography>
+                                    </div>
+                                </Link>
                             </Table.Cell>
-                        ))}
-                        <Table.Cell>
-                            <div className="w-24">
-                                <EntityAttributeProgress
-                                    entity={entity}
-                                    definitions={attributeDefinitions}
-                                />
-                            </div>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <Typography secondary>
-                                <LocalDateTime time={false}>
-                                    {entity.updatedAt}
-                                </LocalDateTime>
-                            </Typography>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <ServerActionIconButton
-                                variant="plain"
-                                title="Dupliciraj zapis"
-                                className="group-hover:opacity-100 opacity-0 transition-opacity"
-                                onClick={onDuplicate.bind(null, entity.id)}
-                            >
-                                <Duplicate className="size-5" />
-                            </ServerActionIconButton>
-                        </Table.Cell>
-                    </Table.Row>
-                ))}
+                            {displayDefinitions.map((d) => (
+                                <Table.Cell key={d.id}>
+                                    <EntityAttributeValueCell
+                                        entity={entity}
+                                        definition={d}
+                                    />
+                                </Table.Cell>
+                            ))}
+                            {hasInventory && (
+                                <>
+                                    <Table.Cell>
+                                        <Typography secondary>
+                                            {inventoryItem?.trackingType ===
+                                            'serialNumber'
+                                                ? 'Serijski broj'
+                                                : inventoryItem?.trackingType ===
+                                                    'pieces'
+                                                  ? 'Komadi'
+                                                  : '-'}
+                                        </Typography>
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        <Typography secondary>
+                                            {inventoryItem?.quantity ?? 0}
+                                        </Typography>
+                                    </Table.Cell>
+                                </>
+                            )}
+                            <Table.Cell>
+                                <div className="w-24">
+                                    <EntityAttributeProgress
+                                        entity={entity}
+                                        definitions={attributeDefinitions}
+                                    />
+                                </div>
+                            </Table.Cell>
+                            <Table.Cell>
+                                <Typography secondary>
+                                    <LocalDateTime time={false}>
+                                        {entity.updatedAt}
+                                    </LocalDateTime>
+                                </Typography>
+                            </Table.Cell>
+                            <Table.Cell>
+                                <ServerActionIconButton
+                                    variant="plain"
+                                    title="Dupliciraj zapis"
+                                    className="group-hover:opacity-100 opacity-0 transition-opacity"
+                                    onClick={onDuplicate.bind(null, entity.id)}
+                                >
+                                    <Duplicate className="size-5" />
+                                </ServerActionIconButton>
+                            </Table.Cell>
+                        </Table.Row>
+                    );
+                })}
             </Table.Body>
         </Table>
     );
