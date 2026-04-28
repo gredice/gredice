@@ -48,6 +48,49 @@ function isRangeValue(value: unknown): value is { min: number; max: number } {
     );
 }
 
+function parseEntityRefId(value: unknown) {
+    if (typeof value === 'number' && Number.isInteger(value)) {
+        return value;
+    }
+
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const trimmedValue = value.trim();
+    if (!/^\d+$/.test(trimmedValue)) {
+        return null;
+    }
+
+    return Number.parseInt(trimmedValue, 10);
+}
+
+function parseEntityRefIds(
+    value: string | null | undefined,
+    multiple: boolean,
+) {
+    if (!value) {
+        return [];
+    }
+
+    if (multiple) {
+        try {
+            const parsedValue: unknown = JSON.parse(value);
+            if (Array.isArray(parsedValue)) {
+                return parsedValue.flatMap((item) => {
+                    const parsedId = parseEntityRefId(item);
+                    return typeof parsedId === 'number' ? [parsedId] : [];
+                });
+            }
+        } catch {
+            // Values created by the CMS are stored as plain strings.
+        }
+    }
+
+    const parsedId = parseEntityRefId(value);
+    return typeof parsedId === 'number' ? [parsedId] : [];
+}
+
 function populateMissingAttributes(
     entity: SelectEntity & {
         attributes: (SelectAttributeValue & {
@@ -98,14 +141,14 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
     const rawEntities = await storage().query.entities.findMany({
         where: state
             ? and(
-                  eq(entities.entityTypeName, entityTypeName),
-                  eq(entities.state, state),
-                  eq(entities.isDeleted, false),
-              )
+                eq(entities.entityTypeName, entityTypeName),
+                eq(entities.state, state),
+                eq(entities.isDeleted, false),
+            )
             : and(
-                  eq(entities.entityTypeName, entityTypeName),
-                  eq(entities.isDeleted, false),
-              ),
+                eq(entities.entityTypeName, entityTypeName),
+                eq(entities.isDeleted, false),
+            ),
         orderBy: desc(entities.updatedAt),
         with: {
             attributes: {
@@ -134,14 +177,14 @@ export async function getEntitiesCount(entityTypeName: string, state?: string) {
         .where(
             state
                 ? and(
-                      eq(entities.entityTypeName, entityTypeName),
-                      eq(entities.state, state),
-                      eq(entities.isDeleted, false),
-                  )
+                    eq(entities.entityTypeName, entityTypeName),
+                    eq(entities.state, state),
+                    eq(entities.isDeleted, false),
+                )
                 : and(
-                      eq(entities.entityTypeName, entityTypeName),
-                      eq(entities.isDeleted, false),
-                  ),
+                    eq(entities.entityTypeName, entityTypeName),
+                    eq(entities.isDeleted, false),
+                ),
         );
     return result[0]?.count ?? 0;
 }
@@ -317,29 +360,9 @@ async function resolveRef(
     cache: EntityTypeCache = {},
 ) {
     const refEntityTypeName = attributeDefinition.dataType.split(':')[1];
-    if (!value) {
+    const refIds = parseEntityRefIds(value, attributeDefinition.multiple);
+    if (!refIds.length) {
         return;
-    }
-    const refNames: string[] = [];
-    if (attributeDefinition.multiple) {
-        try {
-            const parsedValue = JSON.parse(value);
-            if (!Array.isArray(parsedValue)) {
-                refNames.push(value);
-            } else {
-                for (const item of parsedValue) {
-                    if (typeof item === 'string') {
-                        refNames.push(item);
-                    } else {
-                        refNames.push(JSON.stringify(item));
-                    }
-                }
-            }
-        } catch {
-            refNames.push(value);
-        }
-    } else {
-        refNames.push(value);
     }
 
     // Use cache key based on entity type and state
@@ -351,20 +374,9 @@ async function resolveRef(
         ) as Promise<EntityWithAttributesAndType[]>;
     }
     const refEntitiesByType = await cache[cacheKey];
-    const refNameSet = new Set(refNames);
+    const refIdSet = new Set(refIds);
     const refEntities = refEntitiesByType.filter(
-        (e: EntityWithAttributesAndType) =>
-            e.attributes.some(
-                (
-                    a: SelectAttributeValue & {
-                        attributeDefinition: SelectAttributeDefinition;
-                    },
-                ) =>
-                    a.value != null &&
-                    a.attributeDefinition.category === 'information' &&
-                    a.attributeDefinition.name === 'name' &&
-                    refNameSet.has(a.value),
-            ),
+        (e: EntityWithAttributesAndType) => refIdSet.has(e.id),
     );
 
     if (attributeDefinition.multiple) {
@@ -382,12 +394,12 @@ async function resolveRef(
     } else {
         return refEntities[0]
             ? await expandEntityAttributes(
-                  {
-                      id: refEntities[0].id,
-                  },
-                  refEntities[0].attributes,
-                  cache,
-              )
+                {
+                    id: refEntities[0].id,
+                },
+                refEntities[0].attributes,
+                cache,
+            )
             : null;
     }
 }
@@ -485,32 +497,12 @@ function entityDisplayNameFromAttributes(
     return label ?? name ?? `${entity.entityType.label} ${entity.id}`;
 }
 
-function attributeValueContainsEntityName(
+function attributeValueContainsEntityId(
     value: string | null,
-    entityName: string,
+    entityId: number,
     multiple: boolean,
 ) {
-    if (!value) {
-        return false;
-    }
-    if (!multiple) {
-        return value === entityName;
-    }
-
-    try {
-        const parsed = JSON.parse(value);
-        if (!Array.isArray(parsed)) {
-            return value === entityName;
-        }
-
-        return parsed.some((item) =>
-            typeof item === 'string'
-                ? item === entityName
-                : JSON.stringify(item) === entityName,
-        );
-    } catch {
-        return value === entityName;
-    }
+    return parseEntityRefIds(value, multiple).includes(entityId);
 }
 
 export async function getEntityIncomingLinks(
@@ -519,11 +511,6 @@ export async function getEntityIncomingLinks(
 ): Promise<IncomingEntityLinkGroup[]> {
     const entity = sourceEntity ?? (await getEntityRaw(entityId));
     if (!entity) {
-        return [];
-    }
-
-    const entityName = entityNameFromAttributes(entity);
-    if (!entityName) {
         return [];
     }
 
@@ -543,7 +530,7 @@ export async function getEntityIncomingLinks(
         where: and(
             inArray(attributeValues.attributeDefinitionId, definitionIds),
             eq(attributeValues.isDeleted, false),
-            eq(attributeValues.value, entityName),
+            eq(attributeValues.value, String(entityId)),
         ),
     });
 
@@ -552,7 +539,7 @@ export async function getEntityIncomingLinks(
         .map((definition) => definition.id);
     const linkAttributeValues = [...exactValueMatches];
     if (multipleDefinitionIds.length > 0) {
-        const escapedJsonEntityName = escapeForLike(JSON.stringify(entityName));
+        const escapedEntityId = escapeForLike(String(entityId));
         const legacyJsonArrayMatches =
             await storage().query.attributeValues.findMany({
                 where: and(
@@ -561,7 +548,7 @@ export async function getEntityIncomingLinks(
                         multipleDefinitionIds,
                     ),
                     eq(attributeValues.isDeleted, false),
-                    like(attributeValues.value, `%${escapedJsonEntityName}%`),
+                    like(attributeValues.value, `%${escapedEntityId}%`),
                 ),
             });
 
@@ -589,9 +576,9 @@ export async function getEntityIncomingLinks(
             continue;
         }
         if (
-            !attributeValueContainsEntityName(
+            !attributeValueContainsEntityId(
                 attributeValue.value,
-                entityName,
+                entityId,
                 definition.multiple,
             )
         ) {
@@ -721,25 +708,25 @@ export async function updateEntity(entity: UpdateEntity) {
         bustCached(cacheKeys.entity(entity.id)),
         entity.id
             ? storage()
-                  .select()
-                  .from(entities)
-                  .where(eq(entities.id, entity.id))
-                  .then((entityToUpdate) => {
-                      return Promise.all([
-                          entityToUpdate?.[0].id
-                              ? bustCached(
-                                    cacheKeys.entity(entityToUpdate?.[0]?.id),
-                                )
-                              : undefined,
-                          entityToUpdate?.[0].entityTypeName
-                              ? bustCached(
-                                    cacheKeys.entityTypeName(
-                                        entityToUpdate?.[0].entityTypeName,
-                                    ),
-                                )
-                              : undefined,
-                      ]);
-                  })
+                .select()
+                .from(entities)
+                .where(eq(entities.id, entity.id))
+                .then((entityToUpdate) => {
+                    return Promise.all([
+                        entityToUpdate?.[0].id
+                            ? bustCached(
+                                cacheKeys.entity(entityToUpdate?.[0]?.id),
+                            )
+                            : undefined,
+                        entityToUpdate?.[0].entityTypeName
+                            ? bustCached(
+                                cacheKeys.entityTypeName(
+                                    entityToUpdate?.[0].entityTypeName,
+                                ),
+                            )
+                            : undefined,
+                    ]);
+                })
             : undefined,
         entity.entityTypeName
             ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))

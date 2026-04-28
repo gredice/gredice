@@ -32,14 +32,19 @@ export async function generateMetadata(
     const sortAlias = sortAliasUnescaped
         ? decodeRouteParam(sortAliasUnescaped)
         : null;
-    const sort = (await getPlantSortsData())?.find(
-        (sort) =>
-            matchesPageAlias(
-                sort.information.plant.information?.name ?? '',
-                alias,
-            ) && matchesPageAlias(sort.information.name, sortAlias),
+    const [plants, sorts] = await Promise.all([
+        getPlantsData(),
+        getPlantSortsData(),
+    ]);
+    const plant = plants?.find((plant) =>
+        matchesPageAlias(plant.information.name, alias),
     );
-    if (!sort) {
+    const sort = sorts?.find(
+        (sort) =>
+            sort.information.plant?.id === plant?.id &&
+            matchesPageAlias(sort.information.name, sortAlias),
+    );
+    if (!plant || !sort) {
         return {
             title: 'Sorta nije pronađena',
             description: 'Sorta nije pronađena',
@@ -50,18 +55,24 @@ export async function generateMetadata(
         description:
             sort.information.shortDescription ??
             sort.information.description ??
-            sort.information.plant.information?.description,
+            plant.information.description,
     };
 }
 
 export async function generateStaticParams() {
-    const sorts = await getPlantSortsData();
+    const [plants, sorts] = await Promise.all([
+        getPlantsData(),
+        getPlantSortsData(),
+    ]);
+    const plantsById = new Map(plants?.map((plant) => [plant.id, plant]));
     return (
         sorts?.map((entity, index) => {
             const sortName = entity?.information?.name;
-            const plantName = entity?.information?.plant?.information?.name;
+            const plantId = entity?.information?.plant?.id;
+            const plant = plantId ? plantsById.get(plantId) : null;
+            const plantName = plant?.information.name;
 
-            if (!sortName || !plantName) {
+            if (!sortName || !plantId || !plantName) {
                 console.error(
                     'Invalid plant sort while generating static params for plant sort page',
                     {
@@ -112,11 +123,8 @@ export default async function PlantSortPage(
     );
     const sortData = sorts?.find(
         (s) =>
-            matchesPageAlias(s.information.name, sort) &&
-            matchesPageAlias(
-                s.information.plant.information?.name ?? '',
-                alias,
-            ),
+            s.information.plant?.id === basePlantData?.id &&
+            matchesPageAlias(s.information.name, sort),
     );
     if (!basePlantData || !sortData) {
         console.error('Base plant or sort not found:', {
@@ -188,18 +196,18 @@ export default async function PlantSortPage(
                     offers:
                         typeof basePlantData.prices?.perPlant === 'number'
                             ? {
-                                  '@type': 'Offer',
-                                  price: basePlantData.prices.perPlant.toFixed(
-                                      2,
-                                  ),
-                                  priceCurrency: 'EUR',
-                                  availability:
-                                      sortData.store?.availableInStore === false
-                                          ? 'https://schema.org/OutOfStock'
-                                          : 'https://schema.org/InStock',
-                                  url: `https://www.gredice.com${KnownPages.PlantSort(alias, sortData.information.name)}`,
-                                  hasMerchantReturnPolicy: merchantReturnPolicy,
-                              }
+                                '@type': 'Offer',
+                                price: basePlantData.prices.perPlant.toFixed(
+                                    2,
+                                ),
+                                priceCurrency: 'EUR',
+                                availability:
+                                    sortData.store?.availableInStore === false
+                                        ? 'https://schema.org/OutOfStock'
+                                        : 'https://schema.org/InStock',
+                                url: `https://www.gredice.com${KnownPages.PlantSort(alias, sortData.information.name)}`,
+                                hasMerchantReturnPolicy: merchantReturnPolicy,
+                            }
                             : undefined,
                 }}
             />

@@ -14,6 +14,7 @@
         "lint:migrate": "biome migrate --write",
         "db-generate": "drizzle-kit generate",
         "db-push": "tsx --env-file=.env ./src/migrate.ts",
+        "migrate:entity-refs-to-ids": "tsx --env-file=.env ./scripts/migrateEntityRefsToIds.ts",
         "dev": "drizzle-kit studio",
         "test": "pnpm run test:node",
         "test:db:start": "bash ./tests/startTestDb.sh",
