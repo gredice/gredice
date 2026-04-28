@@ -4,12 +4,12 @@ import type {
     getEntitiesRaw,
     SelectAttributeDefinition,
 } from '@gredice/storage';
+import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Duplicate } from '@signalco/ui-icons';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import Image from 'next/image';
 import Link from 'next/link';
 import { KnownPages } from '../../../src/KnownPages';
 import { NoDataPlaceholder } from '../../shared/placeholders/NoDataPlaceholder';
@@ -152,12 +152,11 @@ function EntityAttributeValueCell({
         const imageUrl = imageAttributeValue(value);
         if (imageUrl) {
             return (
-                <Image
+                <ImageViewer
                     src={imageUrl}
                     alt={definition.label}
-                    width={40}
-                    height={40}
-                    className="size-10 rounded-md object-cover"
+                    previewWidth={40}
+                    previewHeight={40}
                 />
             );
         }
