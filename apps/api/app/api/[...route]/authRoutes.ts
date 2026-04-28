@@ -703,6 +703,41 @@ const app = new Hono()
         },
     )
     .get(
+        '/current-claims',
+        describeRoute({
+            description:
+                'Get basic current user claims from a verified session token.',
+        }),
+        async (context) => {
+            const sessionCookie = getCookie(context, 'gredice_session');
+            if (!sessionCookie) {
+                return context.json({ error: 'Unauthorized' }, { status: 401 });
+            }
+
+            const { result, error } = await verifyJwt(sessionCookie);
+            const payload = result?.payload;
+            const claims = payload?.gredice;
+            const accountIds = claims?.accountIds;
+            if (
+                error ||
+                typeof payload?.sub !== 'string' ||
+                typeof claims?.userName !== 'string' ||
+                typeof claims?.role !== 'string' ||
+                !Array.isArray(accountIds) ||
+                accountIds.some((accountId) => typeof accountId !== 'string')
+            ) {
+                return context.json({ error: 'Unauthorized' }, { status: 401 });
+            }
+
+            return context.json({
+                id: payload.sub,
+                userName: claims.userName,
+                role: claims.role,
+                accountIds,
+            });
+        },
+    )
+    .get(
         '/last-login',
         describeRoute({
             description: 'Get last login for the current user',

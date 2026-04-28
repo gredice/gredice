@@ -41,7 +41,7 @@ export function ProfileNavItem({
         let cancelled = false;
 
         const loadCurrentUser = async () => {
-            const response = await fetch('/api/users/current', {
+            const response = await fetch('/api/users/current-claims', {
                 cache: 'no-store',
             });
             if (!response.ok || cancelled) {
