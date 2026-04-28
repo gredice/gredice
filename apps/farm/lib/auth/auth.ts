@@ -22,6 +22,15 @@ type AuthUser = {
     role: string;
 };
 
+type TokenClaims = {
+    sub?: unknown;
+    gredice?: {
+        userName?: unknown;
+        accountIds?: unknown;
+        role?: unknown;
+    };
+};
+
 function resolveAccountId(
     accountIds: string[],
     selectedAccountId: string | undefined,
@@ -34,38 +43,53 @@ function resolveAccountId(
 
 async function authFromToken(token: string, roles: string[]) {
     const { result, error } = await verifyJwt(token);
-    const userId = result?.payload?.sub;
+    const payload = result?.payload as TokenClaims | undefined;
+    const userId = payload?.sub;
     if (error || typeof userId !== 'string' || userId.length === 0) {
         throw new Error('Unauthorized: Invalid user ID');
     }
 
-    const user = await storageGetUser(userId);
-    if (!user) {
-        throw new Error('User not found');
-    }
+    const claims = payload?.gredice;
+    const claimsAccountIds = claims?.accountIds;
+    const canUseClaims =
+        typeof claims?.userName === 'string' &&
+        typeof claims?.role === 'string' &&
+        Array.isArray(claimsAccountIds) &&
+        claimsAccountIds.every((accountId) => typeof accountId === 'string');
 
-    if (!roles.includes(user.role)) {
+    const authUser: AuthUser = canUseClaims
+        ? {
+              id: userId,
+              userName: claims.userName,
+              accountIds: claimsAccountIds,
+              role: claims.role,
+          }
+        : await storageGetUser(userId).then((user) => {
+              if (!user) {
+                  throw new Error('User not found');
+              }
+
+              return {
+                  id: user.id,
+                  userName: user.userName,
+                  accountIds: user.accounts.map(
+                      (accountUsers) => accountUsers.accountId,
+                  ),
+                  role: user.role,
+              };
+          });
+
+    if (!roles.includes(authUser.role)) {
         throw new Error('Unauthorized');
     }
-
-    const accountIds = user.accounts.map(
-        (accountUsers) => accountUsers.accountId,
-    );
     const selectedAccountId = (await cookies()).get(accountCookieName)?.value;
-    const accountId = resolveAccountId(accountIds, selectedAccountId);
+    const accountId = resolveAccountId(authUser.accountIds, selectedAccountId);
     if (!accountId) {
         throw new Error('Account not found');
     }
 
-    const authUser: AuthUser = {
-        id: user.id,
-        userName: user.userName,
-        accountIds,
-        role: user.role,
-    };
-
     return {
-        userId: user.id,
+        userId,
         user: authUser,
         accountId,
     };
