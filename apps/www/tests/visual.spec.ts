@@ -99,7 +99,9 @@ test.describe('visual snapshots', () => {
                 //     await new Promise((r) => setTimeout(r, 100));
                 // });
 
-                await page.waitForLoadState('networkidle').catch(() => {});
+                await page
+                    .waitForLoadState('networkidle', { timeout: 2_000 })
+                    .catch(() => {});
 
                 const screenshot = await page.screenshot({
                     fullPage: true,
