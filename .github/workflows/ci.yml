@@ -222,13 +222,173 @@ jobs:
       - name: 🔎 Verify CI app filters
         run: node ./scripts/check-ci-filters.mjs
 
-  ci_visual_www:
-    name: "CI - visual www"
+  ci_visual_www_prepare:
+    name: "CI - visual www prepare"
     timeout-minutes: 30
     runs-on: ubuntu-latest
     needs: changes
     if: success() && needs.changes.outputs.app_www == 'true' &&
       (github.event_name == 'pull_request' || github.ref == 'refs/heads/main')
+    env:
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WWW }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 2
+
+      - uses: pnpm/action-setup@v6.0.3
+        name: ✨ Install pnpm
+
+      - name: ✨ Setup Node
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: "24.15.0"
+
+      - name: ✨ Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v5.0.5
+        name: ✨ Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: 📦️ Install dependencies
+        run: pnpm install --frozen-lockfile --filter www... --filter .
+
+      - name: ✨ Setup Vercel CLI
+        run: npm i -g vercel@latest
+
+      - name: ⚙️ Pull Vercel Environment Information
+        run: vercel env pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: apps/www/
+
+      - name: 🖼️ Prepare visual tests
+        run: pnpm --filter=www run test:visual:prepare
+
+      - name: ⬆️ Upload visual build
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: www-visual-build
+          compression-level: 1
+          include-hidden-files: true
+          retention-days: 1
+          path: |
+            apps/www/.next
+            !apps/www/.next/cache/**
+            apps/www/public/sitemap*.xml
+            apps/www/tests/sitemap-pages.json
+
+  ci_visual_www:
+    name: "CI - visual www (${{ matrix.shard }}/4)"
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    needs: [changes, ci_visual_www_prepare]
+    if: always() && needs.changes.outputs.app_www == 'true' &&
+      (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') &&
+      needs.ci_visual_www_prepare.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WWW }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 2
+
+      - uses: pnpm/action-setup@v6.0.3
+        name: ✨ Install pnpm
+
+      - name: ✨ Setup Node
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: "24.15.0"
+
+      - name: ✨ Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v5.0.5
+        name: ✨ Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: 📦️ Install dependencies
+        run: pnpm install --frozen-lockfile --filter www... --filter .
+
+      - name: ⬇️ Download visual build
+        uses: actions/download-artifact@v8.0.1
+        with:
+          name: www-visual-build
+          path: apps/www
+
+      - name: ✨ Setup Vercel CLI
+        run: npm i -g vercel@latest
+
+      - name: ⚙️ Pull Vercel Environment Information
+        run: vercel env pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: apps/www/
+
+      - name: 🔑 Load VIZZLY_TOKEN from Vercel env
+        id: vizzly_token
+        shell: bash
+        working-directory: apps/www
+        run: |
+          if [ ! -f .env.local ] || ! grep -q '^VIZZLY_TOKEN=' .env.local; then
+            echo "::warning::VIZZLY_TOKEN not present in Vercel preview env for www — skipping visual tests."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          token=$(grep '^VIZZLY_TOKEN=' .env.local | head -n1 | cut -d= -f2-)
+          token="${token%\"}"
+          token="${token#\"}"
+          echo "::add-mask::$token"
+          echo "VIZZLY_TOKEN=$token" >> "$GITHUB_ENV"
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      - name: ✨ Cache Playwright browsers
+        if: steps.vizzly_token.outputs.configured == 'true'
+        uses: actions/cache@v5.0.5
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: 📦️ Install playwright browsers
+        if: steps.vizzly_token.outputs.configured == 'true' &&
+          steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install --with-deps chromium
+        working-directory: apps/www/
+
+      - name: 🖼️ Run visual tests
+        if: steps.vizzly_token.outputs.configured == 'true'
+        run: pnpm exec vizzly run "pnpm exec playwright test --project=visual --shard=${{ matrix.shard }}/4" --parallel-id "${{ github.run_id }}-${{ github.run_attempt }}"
+        working-directory: apps/www/
+        env:
+          GREDICE_API_HOST: https://api.gredice.com
+
+  ci_visual_www_finalize:
+    name: "CI - visual www finalize"
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    needs: [changes, ci_visual_www]
+    if: always() && needs.changes.outputs.app_www == 'true' &&
+      (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') &&
+      needs.ci_visual_www.result == 'success'
     env:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WWW }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -285,25 +445,17 @@ jobs:
           echo "VIZZLY_TOKEN=$token" >> "$GITHUB_ENV"
           echo "configured=true" >> "$GITHUB_OUTPUT"
 
-      - name: ✨ Cache Playwright browsers
-        if: steps.vizzly_token.outputs.configured == 'true'
-        uses: actions/cache@v5.0.5
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-
-      - name: 📦️ Install playwright browsers
+      - name: 🖼️ Finalize visual tests
         if: steps.vizzly_token.outputs.configured == 'true' &&
-          steps.playwright-cache.outputs.cache-hit != 'true'
-        run: pnpm exec playwright install --with-deps chromium
+          github.event_name == 'pull_request'
+        run: pnpm exec vizzly finalize "${{ github.run_id }}-${{ github.run_attempt }}"
         working-directory: apps/www/
 
-      - name: 🖼️ Run visual tests
-        if: steps.vizzly_token.outputs.configured == 'true'
-        run: pnpm --filter=www run test:visual
+      - name: 🖼️ Publish visual tests
+        if: steps.vizzly_token.outputs.configured == 'true' &&
+          github.ref == 'refs/heads/main'
+        run: pnpm exec vizzly finalize "${{ github.run_id }}-${{ github.run_attempt }}"
+        working-directory: apps/www/
 
   ci_ok:
     name: "[CI] OK"
@@ -317,7 +469,9 @@ jobs:
         ci_api,
         test_packages,
         ci_filter_check,
+        ci_visual_www_prepare,
         ci_visual_www,
+        ci_visual_www_finalize,
       ]
     if: ${{ always() }}
     runs-on: ubuntu-latest
