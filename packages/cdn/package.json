@@ -15,7 +15,7 @@
     },
     "devDependencies": {
         "@aws-sdk/client-s3": "3.1036.0",
-        "@biomejs/biome": "2.4.12",
+        "@biomejs/biome": "2.4.13",
         "@ffmpeg-installer/ffmpeg": "1.1.0",
         "@types/node": "24.12.2",
         "sharp": "0.34.5"

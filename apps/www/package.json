@@ -42,7 +42,7 @@
     },
     "devDependencies": {
         "@axe-core/playwright": "4.11.2",
-        "@biomejs/biome": "2.4.12",
+        "@biomejs/biome": "2.4.13",
         "@gredice/client": "workspace:*",
         "@gredice/game": "workspace:*",
         "@gredice/js": "workspace:*",
