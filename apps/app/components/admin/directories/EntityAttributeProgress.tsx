@@ -4,7 +4,7 @@ import type {
     getEntitiesRaw,
     SelectAttributeDefinition,
 } from '@gredice/storage';
-import { cx } from '@signalco/ui-primitives/cx';
+import { Check } from '@signalco/ui-icons';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import {
@@ -41,34 +41,41 @@ export function EntityAttributeProgress({
                   numberOfRequiredAttributes) *
               100
             : 100;
+    const isComplete = progress >= 99.99;
 
     return (
         <Tooltip delayDuration={250}>
             <TooltipTrigger asChild>
-                <Row spacing={1}>
-                    <div className="h-1 bg-primary/10 rounded-full overflow-hidden grow">
-                        <div
-                            className={cx(
-                                'h-full',
-                                progress <= 99.99
-                                    ? 'bg-red-400'
-                                    : 'bg-green-500',
-                            )}
-                            style={{ width: `${progress}%` }}
-                        />
-                    </div>
-                    <Typography level="body2">
-                        {progress.toFixed(0)}%
-                    </Typography>
-                </Row>
+                {isComplete ? (
+                    <span className="flex size-5 items-center justify-center">
+                        <Check className="size-5 text-green-500" aria-hidden />
+                        <span className="sr-only">
+                            Svi obavezni atributi su ispunjeni
+                        </span>
+                    </span>
+                ) : (
+                    <Row spacing={1} className="group items-center">
+                        <div className="h-1 bg-primary/10 rounded-full overflow-hidden grow">
+                            <div
+                                className="h-full bg-red-400"
+                                style={{ width: `${progress}%` }}
+                            />
+                        </div>
+                        <Typography
+                            level="body2"
+                            className="hidden group-hover:inline"
+                        >
+                            {progress.toFixed(0)}%
+                        </Typography>
+                    </Row>
+                )}
             </TooltipTrigger>
             <TooltipContent className="min-w-60">
-                {notPopulatedRequiredAttributes.length === 0 &&
-                    'Svi obavezni atributi su ispunjeni'}
-                {notPopulatedRequiredAttributes.length > 0 && (
+                {isComplete && 'Svi obavezni atributi su ispunjeni'}
+                {!isComplete && (
                     <Stack spacing={1}>
                         <Typography semiBold>
-                            Manjak obaveznih atributa:
+                            Manjak obaveznih atributa ({progress.toFixed(0)}%):
                         </Typography>
                         <Stack>
                             {notPopulatedRequiredAttributes

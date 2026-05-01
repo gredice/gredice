@@ -112,10 +112,12 @@ function SortableNavItem({
 }
 
 function EntityTypeList({
+    id,
     items: initialItems,
     onItemClick,
     compact,
 }: {
+    id: string;
     items: SelectEntityType[];
     onItemClick?: () => void;
     compact?: boolean;
@@ -137,6 +139,7 @@ function EntityTypeList({
 
     return (
         <DndContext
+            id={id}
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
@@ -161,9 +164,11 @@ function EntityTypeList({
 }
 
 export function Nav({
+    idPrefix = 'admin-nav',
     onItemClick,
     compact = false,
 }: {
+    idPrefix?: string;
     onItemClick?: () => void;
     compact?: boolean;
 } = {}) {
@@ -203,6 +208,7 @@ export function Nav({
                     <Stack key={category.id} spacing={1}>
                         {!compact && <ListHeader header={category.label} />}
                         <EntityTypeList
+                            id={`${idPrefix}-category-${category.id}`}
                             items={category.entityTypes}
                             onItemClick={onItemClick}
                             compact={compact}
@@ -257,6 +263,7 @@ export function Nav({
                 {/* Entity types without category come first */}
                 {uncategorizedTypes.length > 0 && (
                     <EntityTypeList
+                        id={`${idPrefix}-uncategorized`}
                         items={uncategorizedTypes}
                         onItemClick={onItemClick}
                         compact={compact}

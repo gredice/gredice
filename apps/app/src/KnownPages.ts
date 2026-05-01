@@ -24,8 +24,6 @@ export const KnownPages = {
         `/admin/directories/${entityTypeName}/attribute-definitions/${id}` as Route,
     DirectoryEntity: (entityTypeName: string, entityId: number) =>
         `/admin/directories/${entityTypeName}/${entityId}` as Route,
-    DirectoryEntityLinks: (entityTypeName: string, entityId: number) =>
-        `/admin/directories/${entityTypeName}/${entityId}/links` as Route,
     DirectoryEntityPath: '/admin/directories/[entityType]/[entityId]',
     DirectoryCategoryCreate: '/admin/directories/categories/create',
     DirectoryCategoryEdit: (categoryId: number) =>
