@@ -90,7 +90,7 @@ export function EntitiesTable({
             direction:
                 current.key === key && current.direction === 'asc'
                     ? 'desc'
-                    : 'asc',
+                    : defaultSortDirection(key),
         }));
     }
 
@@ -111,9 +111,9 @@ export function EntitiesTable({
             >
                 <button
                     type="button"
-                    className="flex items-center gap-1 text-left font-medium"
+                    className="flex items-center gap-1 text-left font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm"
                     onClick={() => handleSort(key)}
-                    title={`Sortiraj ${label.toLowerCase()}`}
+                    aria-label={`Sortiraj ${label.toLowerCase()}`}
                 >
                     <span>{label}</span>
                     {isSorted && (
@@ -363,6 +363,12 @@ function compareSortValues(
         numeric: true,
         sensitivity: 'base',
     });
+}
+
+function defaultSortDirection(key: SortKey): SortDirection {
+    return key === 'updatedAt' || key === 'inventory' || key === 'progress'
+        ? 'desc'
+        : 'asc';
 }
 
 function attributeSortValue(
