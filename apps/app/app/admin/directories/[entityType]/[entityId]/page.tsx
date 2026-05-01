@@ -2,7 +2,6 @@ import {
     createInventoryItem,
     getAttributeDefinitionCategories,
     getAttributeDefinitions,
-    getEntityIncomingLinks,
     getEntityRaw,
     getInventoryConfigByEntityTypeName,
     getInventoryItemsByConfig,
@@ -79,12 +78,9 @@ export default async function EntityDetailsPage(props: {
         notFound();
     }
 
-    const [inventoryItems, incomingLinks] = await Promise.all([
-        inventoryConfig
-            ? getInventoryItemsByConfig(inventoryConfig.id)
-            : Promise.resolve([]),
-        getEntityIncomingLinks(entityId, entity),
-    ]);
+    const inventoryItems = inventoryConfig
+        ? await getInventoryItemsByConfig(inventoryConfig.id)
+        : [];
     const entityInventoryItem = inventoryItems.find(
         (item) => item.entityId === entityId,
     );
@@ -236,7 +232,7 @@ export default async function EntityDetailsPage(props: {
                     actions={
                         <Row className="items-center" spacing={1}>
                             <EntityDetailsSaveIndicator />
-                            <EntityLinksPanel incomingLinks={incomingLinks} />
+                            <EntityLinksPanel entityId={entityId} />
                             <EntityActions
                                 entity={entity}
                                 importAction={importAction}

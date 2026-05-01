@@ -44,7 +44,14 @@ export function EntityActions({
     function handleDelete(event: Event) {
         event.preventDefault();
         setIsDeleting(true);
-        startTransition(deleteAction);
+        startTransition(async () => {
+            try {
+                await deleteAction();
+            } catch (error) {
+                console.error('Failed to delete entity', error);
+                setIsDeleting(false);
+            }
+        });
     }
 
     const isPublished = state === 'published';

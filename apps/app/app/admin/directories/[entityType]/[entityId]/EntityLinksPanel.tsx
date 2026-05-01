@@ -1,8 +1,13 @@
 'use client';
 
 import type { IncomingEntityLinkGroup } from '@gredice/storage';
-import { Close, Link as LinkIcon } from '@signalco/ui-icons';
-import { Card } from '@signalco/ui-primitives/Card';
+import { Close, Link as LinkIcon, LoaderSpinner } from '@signalco/ui-icons';
+import {
+    Card,
+    CardHeader,
+    CardOverflow,
+    CardTitle,
+} from '@signalco/ui-primitives/Card';
 import { cx } from '@signalco/ui-primitives/cx';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -10,15 +15,20 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { KnownPages } from '../../../../../src/KnownPages';
+import { getEntityIncomingLinksAction } from '../../../../(actions)/entityActions';
 
-export function EntityLinksPanel({
-    incomingLinks,
-}: {
-    incomingLinks: IncomingEntityLinkGroup[];
-}) {
+type LoadState =
+    | { status: 'idle' }
+    | { status: 'loading' }
+    | { status: 'loaded'; links: IncomingEntityLinkGroup[] }
+    | { status: 'error'; message: string };
+
+export function EntityLinksPanel({ entityId }: { entityId: number }) {
     const [open, setOpen] = useState(false);
+    const [loadState, setLoadState] = useState<LoadState>({ status: 'idle' });
+    const hasFetchedRef = useRef(false);
 
     useEffect(() => {
         if (!open) {
@@ -33,12 +43,39 @@ export function EntityLinksPanel({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [open]);
 
+    async function fetchLinks() {
+        setLoadState({ status: 'loading' });
+        try {
+            const links = await getEntityIncomingLinksAction(entityId);
+            setLoadState({ status: 'loaded', links });
+        } catch (error) {
+            console.error('Failed to load incoming links', error);
+            setLoadState({
+                status: 'error',
+                message:
+                    'Greška pri učitavanju povezanih zapisa. Pokušajte ponovno.',
+            });
+        }
+    }
+
+    function handleOpen() {
+        setOpen(true);
+        if (!hasFetchedRef.current) {
+            hasFetchedRef.current = true;
+            void fetchLinks();
+        }
+    }
+
+    function handleRetry() {
+        void fetchLinks();
+    }
+
     return (
         <>
             <IconButton
                 variant="plain"
                 title="Povezani zapisi"
-                onClick={() => setOpen(true)}
+                onClick={handleOpen}
             >
                 <LinkIcon className="size-5" />
             </IconButton>
@@ -81,28 +118,70 @@ export function EntityLinksPanel({
                             </IconButton>
                         </Row>
                         <div className="grow overflow-y-auto p-4">
-                            {incomingLinks.length === 0 ? (
-                                <Card className="p-4">
-                                    <Typography secondary>
-                                        Nema zapisa koji trenutno referenciraju
-                                        ovaj zapis.
-                                    </Typography>
-                                </Card>
-                            ) : (
-                                <Stack spacing={2}>
-                                    {incomingLinks.map((group) => (
-                                        <IncomingLinksGroupTable
-                                            key={group.entityTypeName}
-                                            group={group}
-                                        />
-                                    ))}
-                                </Stack>
-                            )}
+                            <EntityLinksContent
+                                state={loadState}
+                                onRetry={handleRetry}
+                            />
                         </div>
                     </Stack>
                 </aside>
             </div>
         </>
+    );
+}
+
+function EntityLinksContent({
+    state,
+    onRetry,
+}: {
+    state: LoadState;
+    onRetry: () => void;
+}) {
+    if (state.status === 'idle' || state.status === 'loading') {
+        return (
+            <Row spacing={2} className="items-center">
+                <LoaderSpinner className="size-4 animate-spin" />
+                <Typography secondary>Učitavanje...</Typography>
+            </Row>
+        );
+    }
+
+    if (state.status === 'error') {
+        return (
+            <Card className="p-4">
+                <Stack spacing={2}>
+                    <Typography>{state.message}</Typography>
+                    <button
+                        type="button"
+                        onClick={onRetry}
+                        className="self-start text-sm text-primary underline"
+                    >
+                        Pokušaj ponovno
+                    </button>
+                </Stack>
+            </Card>
+        );
+    }
+
+    if (state.links.length === 0) {
+        return (
+            <Card className="p-4">
+                <Typography secondary>
+                    Nema zapisa koji trenutno referenciraju ovaj zapis.
+                </Typography>
+            </Card>
+        );
+    }
+
+    return (
+        <Stack spacing={2}>
+            {state.links.map((group) => (
+                <IncomingLinksGroupTable
+                    key={group.entityTypeName}
+                    group={group}
+                />
+            ))}
+        </Stack>
     );
 }
 
@@ -113,10 +192,10 @@ function IncomingLinksGroupTable({
 }) {
     return (
         <Card className="p-4">
-            <Stack spacing={2}>
-                <Typography level="h5" semiBold>
-                    {group.entityTypeLabel}
-                </Typography>
+            <CardHeader>
+                <CardTitle>{group.entityTypeLabel}</CardTitle>
+            </CardHeader>
+            <CardOverflow>
                 <Table>
                     <Table.Header>
                         <Table.Row>
@@ -150,7 +229,7 @@ function IncomingLinksGroupTable({
                         ))}
                     </Table.Body>
                 </Table>
-            </Stack>
+            </CardOverflow>
         </Card>
     );
 }

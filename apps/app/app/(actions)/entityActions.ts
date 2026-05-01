@@ -6,6 +6,8 @@ import { lexinsert } from '@gredice/js/lexorder';
 import {
     deleteAttributeValue,
     deleteEntity,
+    getEntityIncomingLinks,
+    type IncomingEntityLinkGroup,
     type SelectAttributeDefinition,
     type SelectAttributeValue,
     createEntity as storageCreateEntity,
@@ -229,6 +231,13 @@ export async function handleEntityDelete(
     await deleteEntity(entityId);
     revalidatePath(KnownPages.Directories);
     redirect(KnownPages.DirectoryEntityType(entityTypeName));
+}
+
+export async function getEntityIncomingLinksAction(
+    entityId: number,
+): Promise<IncomingEntityLinkGroup[]> {
+    await auth(['admin']);
+    return getEntityIncomingLinks(entityId);
 }
 
 export async function reorderEntityType(
