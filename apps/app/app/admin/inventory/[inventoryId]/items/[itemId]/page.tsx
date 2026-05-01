@@ -170,6 +170,16 @@ export default async function InventoryItemPage({
                                     label="Bilješke (opcionalno)"
                                     defaultValue={item.notes ?? ''}
                                 />
+                                <Input
+                                    name="lowCountThreshold"
+                                    label="Niska količina (opcionalno)"
+                                    type="number"
+                                    min={0}
+                                    defaultValue={
+                                        item.lowCountThreshold?.toString() ?? ''
+                                    }
+                                    helperText="Ako nije definirano, koristi se postavka tipa entiteta."
+                                />
 
                                 {config.fieldDefinitions.length > 0 && (
                                     <Stack spacing={3}>

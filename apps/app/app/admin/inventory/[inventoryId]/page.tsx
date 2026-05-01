@@ -125,6 +125,12 @@ export default async function InventoryConfigPage({
                                     value={config.amountAttributeName}
                                 />
                             )}
+                            {config.lowCountThreshold !== null && (
+                                <Field
+                                    name="Niska količina"
+                                    value={config.lowCountThreshold}
+                                />
+                            )}
                         </div>
                     </CardContent>
                 </Card>

@@ -91,6 +91,13 @@ export default async function EntityDetailsPage(props: {
         params.entityType,
         entityId,
     );
+    const effectiveLowCountThreshold =
+        entityInventoryItem?.lowCountThreshold ??
+        inventoryConfig?.lowCountThreshold;
+    const isLowInventory =
+        effectiveLowCountThreshold !== null &&
+        effectiveLowCountThreshold !== undefined &&
+        (entityInventoryItem?.quantity ?? 0) <= effectiveLowCountThreshold;
 
     async function upsertInventoryAction(formData: FormData) {
         'use server';
@@ -112,6 +119,16 @@ export default async function EntityDetailsPage(props: {
             ? Math.max(0, quantityParsed)
             : 0;
         const notes = (formData.get('notes') as string) || undefined;
+        const lowCountThresholdRaw = formData.get('lowCountThreshold');
+        const lowCountThresholdParsed = Number.parseInt(
+            typeof lowCountThresholdRaw === 'string'
+                ? lowCountThresholdRaw
+                : '',
+            10,
+        );
+        const lowCountThreshold = Number.isFinite(lowCountThresholdParsed)
+            ? Math.max(0, lowCountThresholdParsed)
+            : undefined;
 
         if (entityInventoryItem) {
             await updateInventoryItem({
@@ -120,6 +137,7 @@ export default async function EntityDetailsPage(props: {
                 trackingType,
                 quantity,
                 notes,
+                lowCountThreshold,
             });
         } else {
             await createInventoryItem({
@@ -128,6 +146,7 @@ export default async function EntityDetailsPage(props: {
                 trackingType,
                 quantity,
                 notes,
+                lowCountThreshold,
             });
         }
 
@@ -297,6 +316,21 @@ export default async function EntityDetailsPage(props: {
                                                     0
                                                 }
                                             />
+                                            <Field
+                                                name="Niska količina"
+                                                value={
+                                                    effectiveLowCountThreshold ??
+                                                    '-'
+                                                }
+                                            />
+                                            <Field
+                                                name="Indikator"
+                                                value={
+                                                    isLowInventory
+                                                        ? 'Niska zaliha'
+                                                        : 'U redu'
+                                                }
+                                            />
                                         </Row>
 
                                         <form action={upsertInventoryAction}>
@@ -339,6 +373,17 @@ export default async function EntityDetailsPage(props: {
                                                         entityInventoryItem?.notes ??
                                                         ''
                                                     }
+                                                />
+                                                <Input
+                                                    name="lowCountThreshold"
+                                                    label="Niska količina (opcionalno)"
+                                                    type="number"
+                                                    min={0}
+                                                    defaultValue={
+                                                        entityInventoryItem?.lowCountThreshold?.toString() ??
+                                                        ''
+                                                    }
+                                                    helperText="Ako nije definirano, koristi se postavka tipa entiteta."
                                                 />
                                                 <Button
                                                     type="submit"
