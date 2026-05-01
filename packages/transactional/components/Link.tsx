@@ -1,5 +1,5 @@
-import { Link as RELink } from '@react-email/components';
 import type { PropsWithChildren } from 'react';
+import { Link as RELink } from 'react-email';
 
 export function Link({ children, href }: PropsWithChildren<{ href: string }>) {
     return (

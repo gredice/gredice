@@ -1,10 +1,4 @@
-import {
-    Head,
-    Html,
-    Preview,
-    Section,
-    Tailwind,
-} from '@react-email/components';
+import { Head, Html, Preview, Section, Tailwind } from 'react-email';
 import { ContentCard } from '../../components/ContentCard';
 import { Divider } from '../../components/Divider';
 import { GrediceLogotype } from '../../components/GrediceLogotype';

@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const vercelCommand = 'vercel';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
-const appNames = ['www', 'garden', 'farm', 'app', 'api'];
+const appNames = ['www', 'garden', 'farm', 'app', 'storybook', 'api'];
 
 function getSpawnOptions(command, args) {
     if (process.platform !== 'win32') {

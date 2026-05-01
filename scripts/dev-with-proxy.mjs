@@ -40,8 +40,10 @@ const caddyDomains = [
     'vrt.gredice.test',
     'farma.gredice.test',
     'app.gredice.test',
+    'storybook.gredice.test',
     'api.gredice.test',
 ];
+const requiredHostsLine = `127.0.0.1 ${caddyDomains.join(' ')}`;
 const caddyCertificateLabel = 'Caddy Local Authority';
 
 let proxyStarted = false;

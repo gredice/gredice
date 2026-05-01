@@ -1,4 +1,4 @@
-import { Link } from '@react-email/components';
+import { Link } from 'react-email';
 import { Disclaimer } from '../Disclaimer';
 
 export function GrediceDisclaimer({

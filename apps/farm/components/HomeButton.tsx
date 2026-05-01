@@ -2,7 +2,7 @@
 
 import { ArrowLeft } from '@signalco/ui-icons';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { useRouter } from 'next/dist/client/components/navigation';
+import { useRouter } from 'next/navigation';
 
 export function HomeButton() {
     const router = useRouter();

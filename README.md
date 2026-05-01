@@ -10,7 +10,7 @@
 
 ## Overview
 
-Gredice is a Turborepo monorepo that powers the entire Gredice platform. It includes multiple Next.js applications (`www`, `garden`, `farm`, `app`, and `api`) plus shared packages and assets that bring the experience together. Clone the repo to explore the user-facing products, APIs, and infrastructure that help modular gardens thrive.
+Gredice is a Turborepo monorepo that powers the entire Gredice platform. It includes multiple applications (`www`, `garden`, `farm`, `app`, `storybook`, and `api`) plus shared packages and assets that bring the experience together. Clone the repo to explore the user-facing products, APIs, and infrastructure that help modular gardens thrive.
 
 ## Table of Contents
 
@@ -71,12 +71,13 @@ Running `pnpm dev` automatically starts a Dockerized Caddy reverse proxy so that
 - <https://vrt.gredice.test> → customer garden (`apps/garden`)
 - <https://farma.gredice.test> → farm back office (`apps/farm`)
 - <https://app.gredice.test> → internal operations (`apps/app`)
+- <https://storybook.gredice.test> → public component documentation (`apps/storybook`)
 - <https://api.gredice.test> → API routes (`apps/api`)
 
 Add the following entry to your hosts file (e.g. `/etc/hosts` on macOS/Linux or `C:\Windows\System32\drivers\etc\hosts` on Windows) so the domains resolve to your machine:
 
 ```text
-127.0.0.1 www.gredice.test vrt.gredice.test farma.gredice.test app.gredice.test api.gredice.test
+127.0.0.1 www.gredice.test vrt.gredice.test farma.gredice.test app.gredice.test storybook.gredice.test api.gredice.test
 ```
 
 Make sure Docker Desktop (or the Docker daemon) is running before you start the dev server. To bypass the proxy—for example, if Docker is unavailable—run `SKIP_DEV_PROXY=1 pnpm dev`. If the proxy ever lingers after an interrupted session, you can stop it manually with `docker stop gredice-dev-caddy`.
@@ -101,7 +102,7 @@ Use the Vercel CLI to pull environment variables for every app at once:
 pnpm env:pull
 ```
 
-This runs `vercel env pull .env` in `apps/www`, `apps/garden`, `apps/farm`, `apps/app`, and `apps/api`.
+This runs `vercel env pull .env` in `apps/www`, `apps/garden`, `apps/farm`, `apps/app`, `apps/storybook`, and `apps/api`.
 
 If you are running the command for the first time on the development machine, make sure you are logged in to the Vercel CLI and that the project is linked:
 

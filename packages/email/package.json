@@ -11,7 +11,7 @@
         "lint:migrate": "biome migrate --write"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.13",
+        "@biomejs/biome": "2.4.14",
         "@types/node": "24.12.2",
         "@types/react": "19.2.14",
         "typescript": "6.0.3"
@@ -20,8 +20,7 @@
         "@azure/communication-email": "1.1.0",
         "@azure/core-lro": "3.3.1",
         "@gredice/storage": "workspace:*",
-        "@react-email/components": "1.0.12",
         "react": "19.2.5",
-        "react-email": "6.0.0"
+        "react-email": "6.0.5"
     }
 }
