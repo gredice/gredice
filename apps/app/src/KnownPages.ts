@@ -5,6 +5,7 @@ export const KnownPages = {
     Dashboard: '/admin',
     Settings: '/admin/settings',
     Directories: '/admin/directories',
+    DirectoryEntityTypePath: '/admin/directories/[entityType]',
     DirectoryEntityType: (entityTypeName: string) =>
         `/admin/directories/${entityTypeName}` as Route,
     DirectoryEntityTypeEdit: (entityTypeName: string) =>
