@@ -11,6 +11,7 @@ export {
     PLANT_STAGE_LABELS,
     PLANT_STAGES,
 } from './hud/raisedBed/featuredOperations';
+export type { GameQualityTier } from './scene/gameQuality';
 export { resolveSpriteAtlasAssetPaths } from './sprites/resolveSpriteAtlasAssetPaths';
 export { SpriteAtlasBillboard } from './sprites/SpriteAtlasBillboard';
 export type {
