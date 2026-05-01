@@ -236,8 +236,8 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-latest
     needs: changes
-    if: success() && needs.changes.outputs.app_www == 'true' &&
-      (github.event_name == 'pull_request' || github.ref == 'refs/heads/main')
+    if: success() && needs.changes.outputs.app_www == 'true' && (github.event_name
+      == 'pull_request' || github.ref == 'refs/heads/main')
     env:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WWW }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -274,7 +274,8 @@ jobs:
         run: npm i -g vercel@latest
 
       - name: ⚙️ Pull Vercel Environment Information
-        run: vercel env pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel env pull --yes --environment=preview --token=${{
+          secrets.VERCEL_TOKEN }}
         working-directory: apps/www/
 
       - name: 🖼️ Prepare visual tests
@@ -297,14 +298,14 @@ jobs:
     name: "CI - visual www (${{ matrix.shard }}/4)"
     timeout-minutes: 30
     runs-on: ubuntu-latest
-    needs: [changes, ci_visual_www_prepare]
-    if: always() && needs.changes.outputs.app_www == 'true' &&
-      (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') &&
+    needs: [ changes, ci_visual_www_prepare ]
+    if: always() && needs.changes.outputs.app_www == 'true' && (github.event_name ==
+      'pull_request' || github.ref == 'refs/heads/main') &&
       needs.ci_visual_www_prepare.result == 'success'
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [ 1, 2, 3, 4 ]
     env:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WWW }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -347,7 +348,8 @@ jobs:
         run: npm i -g vercel@latest
 
       - name: ⚙️ Pull Vercel Environment Information
-        run: vercel env pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel env pull --yes --environment=preview --token=${{
+          secrets.VERCEL_TOKEN }}
         working-directory: apps/www/
 
       - name: 🔑 Load VIZZLY_TOKEN from Vercel env
@@ -385,7 +387,9 @@ jobs:
 
       - name: 🖼️ Run visual tests
         if: steps.vizzly_token.outputs.configured == 'true'
-        run: pnpm exec vizzly run "pnpm exec playwright test --project=visual --shard=${{ matrix.shard }}/4" --parallel-id "${{ github.run_id }}-${{ github.run_attempt }}"
+        run: pnpm exec vizzly run "pnpm exec playwright test --project=visual
+          --shard=${{ matrix.shard }}/4" --parallel-id "${{ github.run_id }}-${{
+          github.run_attempt }}"
         working-directory: apps/www/
         env:
           GREDICE_API_HOST: https://api.gredice.com
@@ -394,9 +398,9 @@ jobs:
     name: "CI - visual www finalize"
     timeout-minutes: 10
     runs-on: ubuntu-latest
-    needs: [changes, ci_visual_www]
-    if: always() && needs.changes.outputs.app_www == 'true' &&
-      (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') &&
+    needs: [ changes, ci_visual_www ]
+    if: always() && needs.changes.outputs.app_www == 'true' && (github.event_name ==
+      'pull_request' || github.ref == 'refs/heads/main') &&
       needs.ci_visual_www.result == 'success'
     env:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WWW }}
@@ -434,7 +438,8 @@ jobs:
         run: npm i -g vercel@latest
 
       - name: ⚙️ Pull Vercel Environment Information
-        run: vercel env pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel env pull --yes --environment=preview --token=${{
+          secrets.VERCEL_TOKEN }}
         working-directory: apps/www/
 
       - name: 🔑 Load VIZZLY_TOKEN from Vercel env
@@ -455,14 +460,14 @@ jobs:
           echo "configured=true" >> "$GITHUB_OUTPUT"
 
       - name: 🖼️ Finalize visual tests
-        if: steps.vizzly_token.outputs.configured == 'true' &&
-          github.event_name == 'pull_request'
+        if: steps.vizzly_token.outputs.configured == 'true' && github.event_name ==
+          'pull_request'
         run: pnpm exec vizzly finalize "${{ github.run_id }}-${{ github.run_attempt }}"
         working-directory: apps/www/
 
       - name: 🖼️ Publish visual tests
-        if: steps.vizzly_token.outputs.configured == 'true' &&
-          github.ref == 'refs/heads/main'
+        if: steps.vizzly_token.outputs.configured == 'true' && github.ref ==
+          'refs/heads/main'
         run: pnpm exec vizzly finalize "${{ github.run_id }}-${{ github.run_attempt }}"
         working-directory: apps/www/
 
