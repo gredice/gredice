@@ -5,6 +5,7 @@ import type { StorybookConfig } from '@storybook/nextjs-vite';
 const storybookConfigDir = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(storybookConfigDir, '..');
 const repoRoot = resolve(appRoot, '../..');
+const nextImageMockPath = resolve(storybookConfigDir, 'next-image.mock.tsx');
 
 const config: StorybookConfig = {
     stories: ['../stories/**/*.mdx', '../stories/**/*.stories.@(ts|tsx)'],
@@ -22,6 +23,21 @@ const config: StorybookConfig = {
         allowedHosts: ['storybook.gredice.test'],
     },
     viteFinal: async (viteConfig) => {
+        viteConfig.plugins = [
+            {
+                name: 'gredice-storybook-next-image-mock',
+                enforce: 'pre',
+                resolveId(source) {
+                    if (source === 'next/image') {
+                        return nextImageMockPath;
+                    }
+
+                    return null;
+                },
+            },
+            ...(viteConfig.plugins ?? []),
+        ];
+
         viteConfig.server = viteConfig.server ?? {};
         if (viteConfig.server.allowedHosts !== true) {
             viteConfig.server.allowedHosts = [
