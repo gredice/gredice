@@ -11,11 +11,13 @@ import { Chip } from '@signalco/ui-primitives/Chip';
 import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
+import { updateEntity } from '../../../app/(actions)/entityActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { NoDataPlaceholder } from '../../shared/placeholders/NoDataPlaceholder';
 import { ServerActionIconButton } from '../../shared/ServerActionIconButton';
 import { EntityAttributeProgress } from '../directories/EntityAttributeProgress';
 import { useFilter } from '../providers';
+import { EntityTableStateChip } from './EntityTableStateChip';
 
 type Entities = Awaited<ReturnType<typeof getEntitiesRaw>>;
 
@@ -88,26 +90,27 @@ export function EntitiesTable({
                     return (
                         <Table.Row key={entity.id} className="group">
                             <Table.Cell>
-                                <Link
-                                    href={KnownPages.DirectoryEntity(
-                                        entityTypeName,
-                                        entity.id,
-                                    )}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        {entity.state === 'draft' ? (
-                                            <Chip
-                                                color="neutral"
-                                                className="w-fit"
-                                            >
-                                                Draft
-                                            </Chip>
-                                        ) : null}
+                                <div className="flex items-center gap-2">
+                                    <EntityTableStateChip
+                                        initialState={entity.state}
+                                        onPublish={() =>
+                                            updateEntity({
+                                                id: entity.id,
+                                                state: 'published',
+                                            })
+                                        }
+                                    />
+                                    <Link
+                                        href={KnownPages.DirectoryEntity(
+                                            entityTypeName,
+                                            entity.id,
+                                        )}
+                                    >
                                         <Typography>
                                             {entityDisplayName(entity)}
                                         </Typography>
-                                    </div>
-                                </Link>
+                                    </Link>
+                                </div>
                             </Table.Cell>
                             {displayDefinitions.map((d) => (
                                 <Table.Cell key={d.id}>
