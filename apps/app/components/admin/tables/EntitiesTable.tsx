@@ -21,6 +21,11 @@ import { useFilter } from '../providers';
 import { EntityTableStateChip } from './EntityTableStateChip';
 
 type Entities = Awaited<ReturnType<typeof getEntitiesRaw>>;
+type InventoryItem = {
+    entityId: number | null;
+    quantity: number;
+};
+type InventoryItemWithEntityId = InventoryItem & { entityId: number };
 type SortDirection = 'asc' | 'desc';
 type SortKey =
     | 'name'
@@ -42,11 +47,7 @@ type EntitiesTableProps = {
     entityTypeName: string;
     entities: Entities;
     attributeDefinitions: SelectAttributeDefinition[];
-    inventoryItems: Array<{
-        entityId: number | null;
-        trackingType: 'pieces' | 'serialNumber';
-        quantity: number;
-    }>;
+    inventoryItems: InventoryItem[];
     onDuplicate: (entityId: number) => Promise<void>;
 };
 
@@ -283,14 +284,7 @@ function compareEntities(
     right: Entities[number],
     sort: SortState,
     definitions: SelectAttributeDefinition[],
-    inventoryByEntityId: Map<
-        number,
-        {
-            entityId: number;
-            trackingType: 'pieces' | 'serialNumber';
-            quantity: number;
-        }
-    >,
+    inventoryByEntityId: Map<number, InventoryItemWithEntityId>,
 ) {
     const leftValue = entitySortValue(
         left,
@@ -329,14 +323,7 @@ function entitySortValue(
     entity: Entities[number],
     key: SortKey,
     definitions: SelectAttributeDefinition[],
-    inventoryByEntityId: Map<
-        number,
-        {
-            entityId: number;
-            trackingType: 'pieces' | 'serialNumber';
-            quantity: number;
-        }
-    >,
+    inventoryByEntityId: Map<number, InventoryItemWithEntityId>,
 ) {
     if (key === 'name') {
         return entityDisplayName(entity);
