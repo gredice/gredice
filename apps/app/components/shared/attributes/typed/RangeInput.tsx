@@ -82,6 +82,7 @@ export function RangeInput({
                 value={rangeMinValue}
                 onChange={(event) => setRangeMinValue(event.target.value)}
                 onBlur={handleBlur}
+                endDecorator={attributeDefinition?.unit}
             />
             <Input
                 className="w-24"
@@ -93,6 +94,7 @@ export function RangeInput({
                 value={rangeMaxValue}
                 onChange={(event) => setRangeMaxValue(event.target.value)}
                 onBlur={handleBlur}
+                endDecorator={attributeDefinition?.unit}
             />
         </Row>
     );

@@ -64,6 +64,7 @@ export const attributeDefinitions = pgTable(
         entityTypeName: text('entity_type').notNull(),
         dataType: text('data_type').notNull(),
         defaultValue: text('default_value'),
+        unit: text('unit'),
         order: text('order'),
         multiple: boolean('multiple').notNull().default(false),
         required: boolean('required').notNull().default(false),

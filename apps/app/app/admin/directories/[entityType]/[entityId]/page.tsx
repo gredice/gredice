@@ -34,6 +34,7 @@ import { notFound } from 'next/navigation';
 import { importEntityData } from '../../../../../app/admin/directories/(actions)/importEntityData';
 import { EntityAttributeProgress } from '../../../../../components/admin/directories/EntityAttributeProgress';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { formatAttributeValueWithUnit } from '../../../../../components/shared/attributes/formatAttributeValueWithUnit';
 import { Field } from '../../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../../components/shared/fields/FieldSet';
 import { auth } from '../../../../../lib/auth/auth';
@@ -433,7 +434,10 @@ export default async function EntityDetailsPage(props: {
                                             }
                                         }
 
-                                        return value;
+                                        return formatAttributeValueWithUnit(
+                                            value,
+                                            d.unit,
+                                        );
                                     })()}
                                 />
                             ))}
