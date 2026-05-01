@@ -127,6 +127,8 @@ export async function updateEntity(entity: UpdateEntity) {
 
     await storageUpdateEntity(entity);
     revalidatePath(KnownPages.Directories);
+    revalidatePath('/admin/directories/[entityType]', 'page');
+    revalidatePath('/admin/directories/[entityType]', 'layout');
     revalidatePath(KnownPages.DirectoryEntityPath, 'page');
     revalidatePath(KnownPages.DirectoryEntityPath, 'layout');
 }
