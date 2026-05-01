@@ -2,8 +2,8 @@
 
 import {
     Add,
-    ChevronLeft,
-    ChevronRight,
+    ArrowLeft,
+    ArrowRight,
     Close,
     Remove,
     Save,
@@ -399,7 +399,7 @@ export function ImageGallery({
                             className="rounded-xl bg-background/80 backdrop-blur"
                             onClick={goToPrevious}
                         >
-                            <ChevronLeft className="size-4 shrink-0" />
+                            <ArrowLeft className="size-4 shrink-0" />
                         </IconButton>
                         <IconButton
                             title="Sljedeća"
@@ -407,7 +407,7 @@ export function ImageGallery({
                             className="rounded-xl bg-background/80 backdrop-blur"
                             onClick={goToNext}
                         >
-                            <ChevronRight className="size-4 shrink-0" />
+                            <ArrowRight className="size-4 shrink-0" />
                         </IconButton>
                         <IconButton
                             title="Smanji"
