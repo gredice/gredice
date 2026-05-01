@@ -2,7 +2,11 @@ import { Input } from '@signalco/ui-primitives/Input';
 import { useState } from 'react';
 import type { AttributeInputProps } from '../AttributeInputProps';
 
-export function TextInput({ value, onChange }: AttributeInputProps) {
+export function TextInput({
+    value,
+    onChange,
+    attributeDefinition,
+}: AttributeInputProps) {
     const [inputValue, setInputValue] = useState<string>(value || '');
     const handleOnChange = (newValue: string) => {
         setInputValue(newValue);
@@ -17,6 +21,7 @@ export function TextInput({ value, onChange }: AttributeInputProps) {
             onChange={(e) => handleOnChange(e.target.value)}
             onBlur={handleOnBlur}
             fullWidth
+            endDecorator={attributeDefinition?.unit}
         />
     );
 }

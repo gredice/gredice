@@ -34,6 +34,7 @@ export default async function AttributeDefinitionPage({
         category,
         dataType,
         defaultValue,
+        unit,
         label,
         multiple,
         required,
@@ -119,6 +120,13 @@ export default async function AttributeDefinitionPage({
                                 label="Zadana vrijednost"
                                 value={defaultValue || ''}
                                 placeholder="-"
+                            />
+                            <FormInput
+                                definition={definition}
+                                name="unit"
+                                label="Jedinica"
+                                value={unit || ''}
+                                placeholder="°C, €, cm"
                             />
                         </Row>
                         <FormCheckbox

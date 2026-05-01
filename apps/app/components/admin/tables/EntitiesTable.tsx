@@ -13,6 +13,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { updateEntity } from '../../../app/(actions)/entityActions';
 import { KnownPages } from '../../../src/KnownPages';
+import { formatAttributeValueWithUnit } from '../../shared/attributes/formatAttributeValueWithUnit';
 import { NoDataPlaceholder } from '../../shared/placeholders/NoDataPlaceholder';
 import { ServerActionIconButton } from '../../shared/ServerActionIconButton';
 import { EntityAttributeProgress } from '../directories/EntityAttributeProgress';
@@ -201,7 +202,11 @@ function EntityAttributeValueCell({
         }
     }
 
-    return <Typography secondary>{value}</Typography>;
+    return (
+        <Typography secondary>
+            {formatAttributeValueWithUnit(value, definition.unit)}
+        </Typography>
+    );
 }
 
 function entityDisplayName(entity: Entities[number]) {
