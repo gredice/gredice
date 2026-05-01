@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "gredice-storybook-mcp": {
+      "type": "http",
+      "url": "https://storybook.gredice.test/mcp"
+    }
+  }
+}

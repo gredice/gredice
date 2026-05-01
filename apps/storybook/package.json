@@ -30,6 +30,7 @@
         "@biomejs/biome": "2.4.14",
         "@storybook/addon-a11y": "10.3.6",
         "@storybook/addon-docs": "10.3.6",
+        "@storybook/addon-mcp": "^0.6.0",
         "@storybook/nextjs-vite": "10.3.6",
         "@types/node": "24.12.2",
         "@types/react": "19.2.14",
