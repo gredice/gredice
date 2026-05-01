@@ -5,7 +5,7 @@ import {
     getOperationById,
     getRaisedBed,
 } from '@gredice/storage';
-import { ImageViewer } from '@gredice/ui/ImageViewer';
+import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
@@ -288,16 +288,16 @@ export default async function OperationDetailsPage({
                         <CardTitle>Slike</CardTitle>
                     </CardHeader>
                     <CardOverflow>
-                        <Row className="flex-wrap" spacing={2}>
-                            {operation.imageUrls.map((url) => (
-                                <ImageViewer
-                                    key={url}
-                                    src={url}
-                                    alt={`Slika radnje ${operation.id}`}
-                                    previewWidth={200}
-                                    previewHeight={150}
-                                />
-                            ))}
+                        <Row className="w-full" spacing={2}>
+                            <ImageGallery
+                                images={operation.imageUrls.map((url) => ({
+                                    src: url,
+                                    alt: `Slika radnje ${operation.id}`,
+                                }))}
+                                previewWidth={200}
+                                previewHeight={150}
+                                previewVariant="carousel"
+                            />
                         </Row>
                     </CardOverflow>
                 </Card>
