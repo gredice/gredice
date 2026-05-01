@@ -155,6 +155,17 @@ export default async function EditInventoryConfigPage({
                                     }
                                     helperText="Polje stavke zalihe koje doprinosi izračunu ukupne količine"
                                 />
+                                <Input
+                                    name="lowCountThreshold"
+                                    label="Niska količina (opcionalno)"
+                                    type="number"
+                                    min={0}
+                                    defaultValue={
+                                        config.lowCountThreshold?.toString() ??
+                                        ''
+                                    }
+                                    helperText="Prikaži indikator niske zalihe kada je količina manja ili jednaka ovoj vrijednosti"
+                                />
                             </Stack>
                             <Button
                                 variant="solid"
