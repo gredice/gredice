@@ -11,6 +11,7 @@ import { Chip } from '@signalco/ui-primitives/Chip';
 import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
+import { useState } from 'react';
 import { updateEntity } from '../../../app/(actions)/entityActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { formatAttributeValueWithUnit } from '../../shared/attributes/formatAttributeValueWithUnit';
@@ -21,16 +22,33 @@ import { useFilter } from '../providers';
 import { EntityTableStateChip } from './EntityTableStateChip';
 
 type Entities = Awaited<ReturnType<typeof getEntitiesRaw>>;
+type InventoryItem = {
+    entityId: number | null;
+    quantity: number;
+};
+type InventoryItemWithEntityId = InventoryItem & { entityId: number };
+type SortDirection = 'asc' | 'desc';
+type SortKey =
+    | 'name'
+    | 'inventory'
+    | 'progress'
+    | 'updatedAt'
+    | `attribute:${number}`;
+type SortState = {
+    key: SortKey;
+    direction: SortDirection;
+};
+
+const defaultSort: SortState = {
+    key: 'updatedAt',
+    direction: 'desc',
+};
 
 type EntitiesTableProps = {
     entityTypeName: string;
     entities: Entities;
     attributeDefinitions: SelectAttributeDefinition[];
-    inventoryItems: Array<{
-        entityId: number | null;
-        trackingType: 'pieces' | 'serialNumber';
-        quantity: number;
-    }>;
+    inventoryItems: InventoryItem[];
     onDuplicate: (entityId: number) => Promise<void>;
 };
 
@@ -42,6 +60,7 @@ export function EntitiesTable({
     onDuplicate,
 }: EntitiesTableProps) {
     const { filter } = useFilter();
+    const [sort, setSort] = useState<SortState>(defaultSort);
     const normalized = filter.toLowerCase();
     const filteredEntities = entities.filter((entity) =>
         entityDisplayName(entity).toLowerCase().includes(normalized),
@@ -56,23 +75,77 @@ export function EntitiesTable({
             .map((item) => [item.entityId, item]),
     );
     const hasInventory = inventoryByEntityId.size > 0;
+    const sortedEntities = [...filteredEntities].sort((left, right) =>
+        compareEntities(
+            left,
+            right,
+            sort,
+            attributeDefinitions,
+            inventoryByEntityId,
+        ),
+    );
+
+    function handleSort(key: SortKey) {
+        setSort((current) =>
+            current.key === key
+                ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+                : { key, direction: defaultSortDirection(key) },
+        );
+    }
+
+    function sortableHead(key: SortKey, label: string, headKey?: number) {
+        const isSorted = sort.key === key;
+        const directionLabel = sort.direction === 'asc' ? 'uzlazno' : 'silazno';
+
+        return (
+            <Table.Head
+                key={headKey}
+                aria-sort={
+                    isSorted
+                        ? sort.direction === 'asc'
+                            ? 'ascending'
+                            : 'descending'
+                        : 'none'
+                }
+            >
+                <button
+                    type="button"
+                    className="flex items-center gap-1 text-left font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm"
+                    onClick={() => handleSort(key)}
+                    aria-label={`Sortiraj ${label.toLowerCase()}`}
+                >
+                    <span>{label}</span>
+                    {isSorted && (
+                        <>
+                            <span aria-hidden>
+                                {sort.direction === 'asc' ? '↑' : '↓'}
+                            </span>
+                            <span className="sr-only">
+                                Sortirano {directionLabel}
+                            </span>
+                        </>
+                    )}
+                </button>
+            </Table.Head>
+        );
+    }
 
     return (
         <Table>
             <Table.Header>
                 <Table.Row>
-                    <Table.Head>Naziv</Table.Head>
-                    {displayDefinitions.map((d) => (
-                        <Table.Head key={d.id}>{d.label}</Table.Head>
-                    ))}
-                    {hasInventory && <Table.Head>Zalihe</Table.Head>}
-                    <Table.Head>Ispunjeno</Table.Head>
-                    <Table.Head>Izmjene</Table.Head>
+                    {sortableHead('name', 'Naziv')}
+                    {displayDefinitions.map((d) =>
+                        sortableHead(`attribute:${d.id}`, d.label, d.id),
+                    )}
+                    {hasInventory && sortableHead('inventory', 'Zalihe')}
+                    {sortableHead('progress', 'Ispunjeno')}
+                    {sortableHead('updatedAt', 'Izmjene')}
                     <Table.Head></Table.Head>
                 </Table.Row>
             </Table.Header>
             <Table.Body>
-                {!filteredEntities.length && (
+                {!sortedEntities.length && (
                     <Table.Row>
                         <Table.Cell
                             colSpan={
@@ -85,7 +158,7 @@ export function EntitiesTable({
                         </Table.Cell>
                     </Table.Row>
                 )}
-                {filteredEntities.map((entity) => {
+                {sortedEntities.map((entity) => {
                     const inventoryItem = inventoryByEntityId.get(entity.id);
 
                     return (
@@ -206,6 +279,144 @@ function EntityAttributeValueCell({
         <Typography secondary>
             {formatAttributeValueWithUnit(value, definition.unit)}
         </Typography>
+    );
+}
+
+function compareEntities(
+    left: Entities[number],
+    right: Entities[number],
+    sort: SortState,
+    definitions: SelectAttributeDefinition[],
+    inventoryByEntityId: Map<number, InventoryItemWithEntityId>,
+) {
+    const leftValue = entitySortValue(
+        left,
+        sort.key,
+        definitions,
+        inventoryByEntityId,
+    );
+    const rightValue = entitySortValue(
+        right,
+        sort.key,
+        definitions,
+        inventoryByEntityId,
+    );
+
+    if (leftValue === null && rightValue === null) {
+        return left.id - right.id;
+    }
+
+    if (leftValue === null) {
+        return 1;
+    }
+
+    if (rightValue === null) {
+        return -1;
+    }
+
+    const compared = compareSortValues(leftValue, rightValue);
+    if (compared === 0) {
+        return left.id - right.id;
+    }
+
+    return sort.direction === 'asc' ? compared : -compared;
+}
+
+function entitySortValue(
+    entity: Entities[number],
+    key: SortKey,
+    definitions: SelectAttributeDefinition[],
+    inventoryByEntityId: Map<number, InventoryItemWithEntityId>,
+) {
+    if (key === 'name') {
+        return entityDisplayName(entity);
+    }
+
+    if (key === 'inventory') {
+        return inventoryByEntityId.get(entity.id)?.quantity ?? null;
+    }
+
+    if (key === 'progress') {
+        return entityAttributeProgress(entity, definitions);
+    }
+
+    if (key === 'updatedAt') {
+        return entity.updatedAt.getTime();
+    }
+
+    const definitionId = Number(key.slice('attribute:'.length));
+    const definition = definitions.find((item) => item.id === definitionId);
+    const value = entityAttributeValueByDefinitionId(entity, definitionId);
+    return attributeSortValue(value, definition);
+}
+
+function compareSortValues(
+    left: string | number | boolean,
+    right: string | number | boolean,
+) {
+    if (typeof left === 'number' && typeof right === 'number') {
+        return left - right;
+    }
+
+    if (typeof left === 'boolean' && typeof right === 'boolean') {
+        return Number(left) - Number(right);
+    }
+
+    return String(left).localeCompare(String(right), 'hr', {
+        numeric: true,
+        sensitivity: 'base',
+    });
+}
+
+function defaultSortDirection(key: SortKey): SortDirection {
+    return key === 'updatedAt' || key === 'inventory' || key === 'progress'
+        ? 'desc'
+        : 'asc';
+}
+
+function attributeSortValue(
+    value: string | null | undefined,
+    definition: SelectAttributeDefinition | undefined,
+) {
+    if (!value) {
+        return null;
+    }
+
+    if (definition?.dataType === 'number') {
+        const numberValue = Number(value);
+        return Number.isNaN(numberValue) ? null : numberValue;
+    }
+
+    if (definition?.dataType === 'boolean') {
+        return booleanAttributeValue(value);
+    }
+
+    return value;
+}
+
+function entityAttributeProgress(
+    entity: Entities[number],
+    definitions: SelectAttributeDefinition[],
+) {
+    const requiredDefinitions = definitions.filter((d) => d.required);
+    if (!requiredDefinitions.length) {
+        return 100;
+    }
+
+    const missingRequiredDefinitions = requiredDefinitions.filter(
+        (d) =>
+            !d.defaultValue &&
+            !entity.attributes.some(
+                (a) =>
+                    a.attributeDefinitionId === d.id &&
+                    (a.value?.length ?? 0) > 0,
+            ),
+    );
+
+    return (
+        ((requiredDefinitions.length - missingRequiredDefinitions.length) /
+            requiredDefinitions.length) *
+        100
     );
 }
 
