@@ -4,7 +4,11 @@ import { useState } from 'react';
 import type { AttributeInputProps } from '../AttributeInputProps';
 import { BarcodeScanButton } from './BarcodeScanButton';
 
-export function BarcodeInput({ value, onChange }: AttributeInputProps) {
+export function BarcodeInput({
+    value,
+    onChange,
+    attributeDefinition,
+}: AttributeInputProps) {
     const [inputValue, setInputValue] = useState<string>(value || '');
     function handleOnChange(newValue: string) {
         setInputValue(newValue);
@@ -24,6 +28,7 @@ export function BarcodeInput({ value, onChange }: AttributeInputProps) {
                 onChange={(e) => handleOnChange(e.target.value)}
                 onBlur={handleOnBlur}
                 fullWidth
+                endDecorator={attributeDefinition?.unit}
             />
             <BarcodeScanButton onScan={handleScan} />
         </Row>
