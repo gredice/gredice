@@ -51,7 +51,7 @@ export function DesktopNav() {
                     </IconButton>
                 </div>
 
-                <Nav compact={compact} />
+                <Nav idPrefix="desktop-admin-nav" compact={compact} />
             </div>
         </aside>
     );

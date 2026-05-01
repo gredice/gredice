@@ -64,9 +64,9 @@ export function EntitiesTable({
                     {displayDefinitions.map((d) => (
                         <Table.Head key={d.id}>{d.label}</Table.Head>
                     ))}
-                    {hasInventory && <Table.Head>Stanje zalihe</Table.Head>}
-                    <Table.Head>Ispunjenost</Table.Head>
-                    <Table.Head>Zadnja izmjena</Table.Head>
+                    {hasInventory && <Table.Head>Zalihe</Table.Head>}
+                    <Table.Head>Ispunjeno</Table.Head>
+                    <Table.Head>Izmjene</Table.Head>
                     <Table.Head></Table.Head>
                 </Table.Row>
             </Table.Header>
@@ -128,7 +128,7 @@ export function EntitiesTable({
                                 </Table.Cell>
                             )}
                             <Table.Cell>
-                                <div className="w-24">
+                                <div className="w-20">
                                     <EntityAttributeProgress
                                         entity={entity}
                                         definitions={attributeDefinitions}

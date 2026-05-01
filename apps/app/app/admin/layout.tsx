@@ -96,7 +96,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                                 <div className="min-h-full rounded-2xl border bg-background p-2 md:p-4">
                                     <AuthProtectedSection auth={authAdmin}>
                                         <Suspense>
-                                            <div className="mb-4 hidden md:block">
+                                            <div className="mb-4 hidden md:block md:empty:mb-0 md:empty:hidden">
                                                 <AdminPageBreadcrumbs />
                                             </div>
                                             {children}

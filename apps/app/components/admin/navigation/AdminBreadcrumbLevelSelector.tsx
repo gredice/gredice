@@ -77,7 +77,6 @@ const inlineBreadcrumbPathPatterns = [
     /^\/admin\/directories\/[^/]+\/attribute-definitions\/\d+$/,
     /^\/admin\/directories\/[^/]+\/attribute-definitions\/categories\/\d+$/,
     /^\/admin\/directories\/[^/]+\/\d+$/,
-    /^\/admin\/directories\/[^/]+\/\d+\/links$/,
     /^\/admin\/farms\/\d+$/,
     /^\/admin\/gardens\/\d+$/,
     /^\/admin\/inventory\/create$/,

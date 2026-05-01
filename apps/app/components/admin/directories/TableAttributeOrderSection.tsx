@@ -155,6 +155,7 @@ export function TableAttributeOrderSection({
                 </Typography>
             </Row>
             <DndContext
+                id={`table-attribute-order-${entityTypeName}`}
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragStart={() => setPreventClick(true)}
