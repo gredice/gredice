@@ -11,8 +11,10 @@ import { getStackHeight } from '../utils/getStackHeight';
 type EntityInstancesBlockBaseProps = {
     stacks: Stack[] | undefined;
     name: string;
+    renderSnow?: boolean;
     yOffset?: number;
     snowLift?: number;
+    snowOverlayMinCoverage?: number;
     scale?: [number, number, number];
     geometry: BufferGeometry;
     snow?: SnowMaterialOptions;
@@ -34,8 +36,10 @@ export function EntityInstancesBlock(
     const {
         stacks,
         name,
+        renderSnow = true,
         yOffset,
         snowLift = 0,
+        snowOverlayMinCoverage,
         scale,
         geometry,
         snow,
@@ -79,7 +83,7 @@ export function EntityInstancesBlock(
         ));
 
     const renderSnowOverlays = () =>
-        !snow
+        !snow || !renderSnow
             ? null
             : (blockInstances ?? []).map((data) => (
                   <group
@@ -92,7 +96,11 @@ export function EntityInstancesBlock(
                       rotation={[0, data.rotation * (Math.PI / 2), 0]}
                       scale={scale}
                   >
-                      <SnowOverlay geometry={geometry} {...snow} />
+                      <SnowOverlay
+                          geometry={geometry}
+                          minCoverage={snowOverlayMinCoverage}
+                          {...snow}
+                      />
                   </group>
               ));
 

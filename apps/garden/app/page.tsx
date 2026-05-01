@@ -18,10 +18,15 @@ export default async function Home() {
     return (
         <div className="grid grid-cols-1 h-[100dvh] relative overflow-hidden">
             <SignedIn>
-                <GameSceneWithAnalytics flags={flags} />
+                <GameSceneWithAnalytics flags={flags} deferDetails />
             </SignedIn>
             <SignedOut>
-                <GameSceneWithAnalytics flags={flags} mockGarden hideHud />
+                <GameSceneWithAnalytics
+                    flags={flags}
+                    mockGarden
+                    hideHud
+                    deferDetails
+                />
             </SignedOut>
             <SignedOut>
                 <div className="relative h-full">
