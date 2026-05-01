@@ -23,14 +23,12 @@ export function EntityTableStateChip({
 
     const handlePublish = async () => {
         setLoading(true);
-        setState('published');
 
         try {
             await onPublish();
-        } catch (error) {
-            setState('draft');
+            setState('published');
+        } finally {
             setLoading(false);
-            throw error;
         }
     };
 
