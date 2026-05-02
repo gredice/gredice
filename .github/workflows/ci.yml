@@ -88,6 +88,14 @@ jobs:
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
               - turbo.json
+            app_storybook:
+              - apps/storybook/**
+              - packages/ui/**
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - turbo.json
             packages_storage:
               - packages/storage/**
               - .github/workflows/**
@@ -101,6 +109,7 @@ jobs:
       app_farm: ${{ steps.filter.outputs.app_farm }}
       app_app: ${{ steps.filter.outputs.app_app }}
       app_api: ${{ steps.filter.outputs.app_api }}
+      app_storybook: ${{ steps.filter.outputs.app_storybook }}
       packages_storage: ${{ steps.filter.outputs.packages_storage }}
 
   ci_www:

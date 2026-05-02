@@ -88,7 +88,10 @@ export function EntitiesTable({
     function handleSort(key: SortKey) {
         setSort((current) =>
             current.key === key
-                ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+                ? {
+                      key,
+                      direction: current.direction === 'asc' ? 'desc' : 'asc',
+                  }
                 : { key, direction: defaultSortDirection(key) },
         );
     }

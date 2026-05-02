@@ -1,11 +1,4 @@
-import {
-    Head,
-    Html,
-    Markdown,
-    Preview,
-    Section,
-    Tailwind,
-} from '@react-email/components';
+import { Head, Html, Markdown, Preview, Section, Tailwind } from 'react-email';
 import { ContentCard } from '../../components/ContentCard';
 import { Disclaimer } from '../../components/Disclaimer';
 import { Divider } from '../../components/Divider';
