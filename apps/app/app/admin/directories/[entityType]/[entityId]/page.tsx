@@ -22,6 +22,7 @@ import { notFound } from 'next/navigation';
 import { importEntityData } from '../../../../../app/admin/directories/(actions)/importEntityData';
 import { EntityAttributeProgress } from '../../../../../components/admin/directories/EntityAttributeProgress';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { BarcodeValue } from '../../../../../components/shared/attributes/BarcodeValue';
 import { formatAttributeValueWithUnit } from '../../../../../components/shared/attributes/formatAttributeValueWithUnit';
 import { Field } from '../../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../../components/shared/fields/FieldSet';
@@ -232,6 +233,9 @@ export default async function EntityDetailsPage(props: {
                         {inventoryConfig && (
                             <EntityInventoryCard
                                 inventoryConfigId={inventoryConfig.id}
+                                inventoryLowCountThreshold={
+                                    inventoryConfig.lowCountThreshold
+                                }
                                 entityInventoryItem={entityInventoryItem}
                                 upsertInventoryAction={upsertInventoryAction}
                             />
@@ -276,6 +280,12 @@ export default async function EntityDetailsPage(props: {
                                                     />
                                                 );
                                             }
+                                        }
+
+                                        if (d.dataType === 'barcode') {
+                                            return (
+                                                <BarcodeValue value={value} />
+                                            );
                                         }
 
                                         return formatAttributeValueWithUnit(

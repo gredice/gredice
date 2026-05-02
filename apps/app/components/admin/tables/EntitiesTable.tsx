@@ -14,7 +14,9 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { updateEntity } from '../../../app/(actions)/entityActions';
 import { KnownPages } from '../../../src/KnownPages';
+import { BarcodeValue } from '../../shared/attributes/BarcodeValue';
 import { formatAttributeValueWithUnit } from '../../shared/attributes/formatAttributeValueWithUnit';
+import { InventoryQuantityValue } from '../../shared/inventory/InventoryQuantityValue';
 import { NoDataPlaceholder } from '../../shared/placeholders/NoDataPlaceholder';
 import { ServerActionIconButton } from '../../shared/ServerActionIconButton';
 import { EntityAttributeProgress } from '../directories/EntityAttributeProgress';
@@ -25,6 +27,7 @@ type Entities = Awaited<ReturnType<typeof getEntitiesRaw>>;
 type InventoryItem = {
     entityId: number | null;
     quantity: number;
+    lowCountThreshold: number | null;
 };
 type InventoryItemWithEntityId = InventoryItem & { entityId: number };
 type SortDirection = 'asc' | 'desc';
@@ -49,6 +52,7 @@ type EntitiesTableProps = {
     entities: Entities;
     attributeDefinitions: SelectAttributeDefinition[];
     inventoryItems: InventoryItem[];
+    inventoryLowCountThreshold?: number | null;
     onDuplicate: (entityId: number) => Promise<void>;
 };
 
@@ -57,6 +61,7 @@ export function EntitiesTable({
     entities,
     attributeDefinitions,
     inventoryItems,
+    inventoryLowCountThreshold = null,
     onDuplicate,
 }: EntitiesTableProps) {
     const { filter } = useFilter();
@@ -199,9 +204,13 @@ export function EntitiesTable({
                             ))}
                             {hasInventory && (
                                 <Table.Cell>
-                                    <Typography secondary>
-                                        {inventoryItem?.quantity ?? 0}
-                                    </Typography>
+                                    <InventoryQuantityValue
+                                        quantity={inventoryItem?.quantity ?? 0}
+                                        lowCountThreshold={
+                                            inventoryItem?.lowCountThreshold ??
+                                            inventoryLowCountThreshold
+                                        }
+                                    />
                                 </Table.Cell>
                             )}
                             <Table.Cell>
@@ -276,6 +285,10 @@ function EntityAttributeValueCell({
                 />
             );
         }
+    }
+
+    if (definition.dataType === 'barcode') {
+        return <BarcodeValue value={value} />;
     }
 
     return (
