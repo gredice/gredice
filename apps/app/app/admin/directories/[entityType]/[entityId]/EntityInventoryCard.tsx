@@ -10,16 +10,23 @@ import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
 import Link from 'next/link';
+import { InventoryQuantityValue } from '../../../../../components/shared/inventory/InventoryQuantityValue';
 import { KnownPages } from '../../../../../src/KnownPages';
 
 type EntityInventoryCardProps = {
     inventoryConfigId: number;
-    entityInventoryItem?: { quantity: number; notes?: string | null } | null;
+    inventoryLowCountThreshold: number | null;
+    entityInventoryItem?: {
+        quantity: number;
+        lowCountThreshold: number | null;
+        notes?: string | null;
+    } | null;
     upsertInventoryAction: (formData: FormData) => Promise<void>;
 };
 
 export function EntityInventoryCard({
     inventoryConfigId,
+    inventoryLowCountThreshold,
     entityInventoryItem,
     upsertInventoryAction,
 }: EntityInventoryCardProps) {
@@ -50,6 +57,15 @@ export function EntityInventoryCard({
                                 entityInventoryItem?.quantity ?? 0,
                             )}
                         />
+                        <div className="pb-2">
+                            <InventoryQuantityValue
+                                quantity={entityInventoryItem?.quantity ?? 0}
+                                lowCountThreshold={
+                                    entityInventoryItem?.lowCountThreshold ??
+                                    inventoryLowCountThreshold
+                                }
+                            />
+                        </div>
                         <Input
                             name="notes"
                             label="Bilješka"
