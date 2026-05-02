@@ -147,19 +147,19 @@ importers:
         version: 0.5.3(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 0.2.1(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
+        version: 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
       '@signalco/ui-themes-minimal-app':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
@@ -183,7 +183,7 @@ importers:
         version: 0.4.14
       '@vercel/analytics':
         specifier: 2.0.1
-        version: 2.0.1(9d32f6c366ff4e6bd391a2d84253b81b)
+        version: 2.0.1(7bff47a5cd2ead600055079f2fcad0f0)
       jsonwebtoken:
         specifier: 9.0.3
         version: 9.0.3
@@ -325,19 +325,19 @@ importers:
         version: 0.5.3(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 0.2.1(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
+        version: 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
       '@signalco/ui-themes-minimal-app':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
@@ -455,19 +455,19 @@ importers:
         version: 0.5.3(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 0.2.1(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
+        version: 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
       '@signalco/ui-themes-minimal-app':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
@@ -573,13 +573,13 @@ importers:
         version: 0.5.3(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 0.2.1(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -588,7 +588,7 @@ importers:
         version: 0.2.0(@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
+        version: 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
       '@signalco/ui-themes-minimal':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
@@ -676,13 +676,13 @@ importers:
         version: 10.3.6(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))
       '@storybook/addon-docs':
         specifier: 10.3.6
-        version: 10.3.6(@types/react@19.2.14)(esbuild@0.28.0)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
+        version: 10.3.6(@types/react@19.2.14)(esbuild@0.28.0)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       '@storybook/addon-mcp':
-        specifier: ^0.6.0
+        specifier: 0.6.0
         version: 0.6.0(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(typescript@6.0.3)
       '@storybook/nextjs-vite':
         specifier: 10.3.6
-        version: 10.3.6(esbuild@0.28.0)(next@16.2.4(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
+        version: 10.3.6(esbuild@0.28.0)(next@16.2.4(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       '@types/node':
         specifier: 24.12.2
         version: 24.12.2
@@ -703,7 +703,7 @@ importers:
         version: 6.0.3
       vite:
         specifier: 8.0.10
-        version: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
+        version: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
 
   apps/www:
     dependencies:
@@ -785,19 +785,19 @@ importers:
         version: 0.1.1(@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/hooks':
         specifier: 0.2.1
-        version: 0.2.1(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 0.2.1(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/js':
         specifier: 0.1.0
         version: 0.1.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
+        version: 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
       '@signalco/ui-themes-minimal':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
@@ -13245,11 +13245,11 @@ snapshots:
       minipass: 7.1.3
     optional: true
 
-  '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))':
+  '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
       glob: 13.0.6
       react-docgen-typescript: 2.4.0(typescript@6.0.3)
-      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
+      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
     optionalDependencies:
       typescript: 6.0.3
 
@@ -13811,6 +13811,15 @@ snapshots:
   '@nuxt/devalue@2.0.2':
     optional: true
 
+  '@nuxt/devtools-kit@3.2.4(magicast@0.5.2)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))':
+    dependencies:
+      '@nuxt/kit': 4.4.4(magicast@0.5.2)
+      execa: 8.0.1
+      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
+    transitivePeerDependencies:
+      - magicast
+    optional: true
+
   '@nuxt/devtools-kit@3.2.4(magicast@0.5.2)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
       '@nuxt/kit': 4.4.4(magicast@0.5.2)
@@ -13830,6 +13839,48 @@ snapshots:
       pathe: 2.0.3
       pkg-types: 2.3.1
       semver: 7.7.4
+    optional: true
+
+  '@nuxt/devtools@3.2.4(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(vue@3.5.33(typescript@6.0.3))':
+    dependencies:
+      '@nuxt/devtools-kit': 3.2.4(magicast@0.5.2)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
+      '@nuxt/devtools-wizard': 3.2.4
+      '@nuxt/kit': 4.4.4(magicast@0.5.2)
+      '@vue/devtools-core': 8.1.1(vue@3.5.33(typescript@6.0.3))
+      '@vue/devtools-kit': 8.1.1
+      birpc: 4.0.0
+      consola: 3.4.2
+      destr: 2.0.5
+      error-stack-parser-es: 1.0.5
+      execa: 8.0.1
+      fast-npm-meta: 1.5.1
+      get-port-please: 3.2.0
+      hookable: 6.1.1
+      image-meta: 0.2.2
+      is-installed-globally: 1.0.0
+      launch-editor: 2.13.2
+      local-pkg: 1.1.2
+      magicast: 0.5.2
+      nypm: 0.6.6
+      ohash: 2.0.11
+      pathe: 2.0.3
+      perfect-debounce: 2.1.0
+      pkg-types: 2.3.1
+      semver: 7.7.4
+      simple-git: 3.36.0
+      sirv: 3.0.2
+      structured-clone-es: 2.0.0
+      tinyglobby: 0.2.16
+      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
+      vite-plugin-inspect: 11.3.3(@nuxt/kit@4.4.4(magicast@0.5.2))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
+      vite-plugin-vue-tracer: 1.3.0(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(vue@3.5.33(typescript@6.0.3))
+      which: 6.0.1
+      ws: 8.20.0
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+      - vue
     optional: true
 
   '@nuxt/devtools@3.2.4(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(vue@3.5.33(typescript@6.0.3))':
@@ -13926,7 +13977,7 @@ snapshots:
       - magicast
     optional: true
 
-  '@nuxt/nitro-server@4.3.1(6847d3c7f3b8c8570240a6cf4b8f5c12)':
+  '@nuxt/nitro-server@4.3.1(8286ed7355e0f1ad1a785eecc244f64c)':
     dependencies:
       '@nuxt/devalue': 2.0.2
       '@nuxt/kit': 4.3.1(magicast@0.5.2)
@@ -13944,7 +13995,7 @@ snapshots:
       klona: 2.0.6
       mocked-exports: 0.1.1
       nitropack: 2.13.4(@upstash/redis@1.37.0)(@vercel/blob@2.3.3)(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0))(oxc-parser@0.112.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0))(rolldown@1.0.0-rc.17)(srvx@0.11.15)(xml2js@0.6.2)
-      nuxt: 4.3.1(@biomejs/biome@2.4.14)(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@parcel/watcher@2.5.6)(@types/node@24.12.2)(@upstash/redis@1.37.0)(@vercel/blob@2.3.3)(@vue/compiler-sfc@3.5.33)(cac@6.7.14)(commander@13.1.0)(db0@0.3.4(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0)))(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0))(ioredis@5.10.1)(lightningcss@1.32.0)(magicast@0.5.2)(rolldown@1.0.0-rc.17)(rollup@4.60.2)(sass@1.99.0)(srvx@0.11.15)(terser@5.46.2)(tsx@4.21.0)(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(xml2js@0.6.2)(yaml@2.8.3)
+      nuxt: 4.3.1(@biomejs/biome@2.4.14)(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@parcel/watcher@2.5.6)(@types/node@24.12.2)(@upstash/redis@1.37.0)(@vercel/blob@2.3.3)(@vue/compiler-sfc@3.5.33)(cac@6.7.14)(commander@13.1.0)(db0@0.3.4(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0)))(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0))(ioredis@5.10.1)(lightningcss@1.32.0)(magicast@0.5.2)(rolldown@1.0.0-rc.17)(rollup@4.60.2)(sass@1.99.0)(srvx@0.11.15)(terser@5.46.2)(tsx@4.21.0)(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(xml2js@0.6.2)(yaml@2.8.3)
       ohash: 2.0.11
       pathe: 2.0.3
       pkg-types: 2.3.1
@@ -14152,67 +14203,6 @@ snapshots:
       std-env: 4.1.0
     optional: true
 
-  '@nuxt/vite-builder@4.3.1(65110253d6ce41e97057c97f969ba223)':
-    dependencies:
-      '@nuxt/kit': 4.3.1(magicast@0.5.2)
-      '@rollup/plugin-replace': 6.0.3(rollup@4.60.2)
-      '@vitejs/plugin-vue': 6.0.6(vite@7.3.2(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(vue@3.5.33(typescript@6.0.3))
-      '@vitejs/plugin-vue-jsx': 5.1.5(vite@7.3.2(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(vue@3.5.33(typescript@6.0.3))
-      autoprefixer: 10.5.0(postcss@8.5.13)
-      consola: 3.4.2
-      cssnano: 7.1.7(postcss@8.5.13)
-      defu: 6.1.7
-      esbuild: 0.27.7
-      escape-string-regexp: 5.0.0
-      exsolve: 1.0.8
-      get-port-please: 3.2.0
-      jiti: 2.6.1
-      knitwork: 1.3.0
-      magic-string: 0.30.21
-      mlly: 1.8.2
-      mocked-exports: 0.1.1
-      nuxt: 4.3.1(@biomejs/biome@2.4.14)(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@parcel/watcher@2.5.6)(@types/node@24.12.2)(@upstash/redis@1.37.0)(@vercel/blob@2.3.3)(@vue/compiler-sfc@3.5.33)(cac@6.7.14)(commander@13.1.0)(db0@0.3.4(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0)))(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0))(ioredis@5.10.1)(lightningcss@1.32.0)(magicast@0.5.2)(rolldown@1.0.0-rc.17)(rollup@4.60.2)(sass@1.99.0)(srvx@0.11.15)(terser@5.46.2)(tsx@4.21.0)(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(xml2js@0.6.2)(yaml@2.8.3)
-      pathe: 2.0.3
-      pkg-types: 2.3.1
-      postcss: 8.5.13
-      rollup-plugin-visualizer: 6.0.11(rolldown@1.0.0-rc.17)(rollup@4.60.2)
-      seroval: 1.5.2
-      std-env: 3.10.0
-      ufo: 1.6.4
-      unenv: 2.0.0-rc.24
-      vite: 7.3.2(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
-      vite-node: 5.3.0(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
-      vite-plugin-checker: 0.12.0(@biomejs/biome@2.4.14)(typescript@6.0.3)(vite@7.3.2(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
-      vue: 3.5.33(typescript@6.0.3)
-      vue-bundle-renderer: 2.2.0
-    optionalDependencies:
-      rolldown: 1.0.0-rc.17
-    transitivePeerDependencies:
-      - '@biomejs/biome'
-      - '@types/node'
-      - eslint
-      - less
-      - lightningcss
-      - magicast
-      - meow
-      - optionator
-      - oxlint
-      - rollup
-      - sass
-      - sass-embedded
-      - stylelint
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
-      - tsx
-      - typescript
-      - vls
-      - vti
-      - vue-tsc
-      - yaml
-    optional: true
-
   ? '@nuxt/vite-builder@4.3.1(@biomejs/biome@2.4.14)(@types/node@24.12.2)(lightningcss@1.32.0)(magicast@0.5.2)(nuxt@4.3.1(@biomejs/biome@2.4.14)(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@parcel/watcher@2.5.6)(@types/node@24.12.2)(@upstash/redis@1.37.0)(@vercel/blob@2.3.3)(@vue/compiler-sfc@3.5.33)(cac@6.7.14)(commander@13.1.0)(db0@0.3.4(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0)))(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0))(ioredis@5.10.1)(lightningcss@1.32.0)(magicast@0.5.2)(rolldown@1.0.0-rc.17)(rollup@4.60.2)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(xml2js@0.6.2)(yaml@2.8.3))(rolldown@1.0.0-rc.17)(rollup@4.60.2)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(typescript@6.0.3)(vue@3.5.33(typescript@6.0.3))(yaml@2.8.3)'
   : dependencies:
       '@nuxt/kit': 4.3.1(magicast@0.5.2)
@@ -14294,6 +14284,67 @@ snapshots:
       mlly: 1.8.2
       mocked-exports: 0.1.1
       nuxt: 4.3.1(@biomejs/biome@2.4.14)(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@parcel/watcher@2.5.6)(@types/node@24.12.2)(@upstash/redis@1.37.0)(@vercel/blob@2.3.3)(@vue/compiler-sfc@3.5.33)(cac@6.7.14)(commander@13.1.0)(db0@0.3.4(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0)))(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0))(ioredis@5.10.1)(lightningcss@1.32.0)(magicast@0.5.2)(rolldown@1.0.0-rc.17)(rollup@4.60.2)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(yaml@2.8.3)
+      pathe: 2.0.3
+      pkg-types: 2.3.1
+      postcss: 8.5.13
+      rollup-plugin-visualizer: 6.0.11(rolldown@1.0.0-rc.17)(rollup@4.60.2)
+      seroval: 1.5.2
+      std-env: 3.10.0
+      ufo: 1.6.4
+      unenv: 2.0.0-rc.24
+      vite: 7.3.2(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
+      vite-node: 5.3.0(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
+      vite-plugin-checker: 0.12.0(@biomejs/biome@2.4.14)(typescript@6.0.3)(vite@7.3.2(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
+      vue: 3.5.33(typescript@6.0.3)
+      vue-bundle-renderer: 2.2.0
+    optionalDependencies:
+      rolldown: 1.0.0-rc.17
+    transitivePeerDependencies:
+      - '@biomejs/biome'
+      - '@types/node'
+      - eslint
+      - less
+      - lightningcss
+      - magicast
+      - meow
+      - optionator
+      - oxlint
+      - rollup
+      - sass
+      - sass-embedded
+      - stylelint
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - tsx
+      - typescript
+      - vls
+      - vti
+      - vue-tsc
+      - yaml
+    optional: true
+
+  '@nuxt/vite-builder@4.3.1(a90f6b5d8cb474ebea5a965f52f95b88)':
+    dependencies:
+      '@nuxt/kit': 4.3.1(magicast@0.5.2)
+      '@rollup/plugin-replace': 6.0.3(rollup@4.60.2)
+      '@vitejs/plugin-vue': 6.0.6(vite@7.3.2(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(vue@3.5.33(typescript@6.0.3))
+      '@vitejs/plugin-vue-jsx': 5.1.5(vite@7.3.2(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(vue@3.5.33(typescript@6.0.3))
+      autoprefixer: 10.5.0(postcss@8.5.13)
+      consola: 3.4.2
+      cssnano: 7.1.7(postcss@8.5.13)
+      defu: 6.1.7
+      esbuild: 0.27.7
+      escape-string-regexp: 5.0.0
+      exsolve: 1.0.8
+      get-port-please: 3.2.0
+      jiti: 2.6.1
+      knitwork: 1.3.0
+      magic-string: 0.30.21
+      mlly: 1.8.2
+      mocked-exports: 0.1.1
+      nuxt: 4.3.1(@biomejs/biome@2.4.14)(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@parcel/watcher@2.5.6)(@types/node@24.12.2)(@upstash/redis@1.37.0)(@vercel/blob@2.3.3)(@vue/compiler-sfc@3.5.33)(cac@6.7.14)(commander@13.1.0)(db0@0.3.4(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0)))(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0))(ioredis@5.10.1)(lightningcss@1.32.0)(magicast@0.5.2)(rolldown@1.0.0-rc.17)(rollup@4.60.2)(sass@1.99.0)(srvx@0.11.15)(terser@5.46.2)(tsx@4.21.0)(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(xml2js@0.6.2)(yaml@2.8.3)
       pathe: 2.0.3
       pkg-types: 2.3.1
       postcss: 8.5.13
@@ -16011,7 +16062,7 @@ snapshots:
 
   '@signalco/auth-client@0.3.0(@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(@tanstack/react-query@5.100.7(react@19.2.5))(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
+      '@signalco/ui-primitives': 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
       '@tanstack/react-query': 5.100.7(react@19.2.5)
       next: 16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0)
       react: 19.2.5
@@ -16032,11 +16083,11 @@ snapshots:
 
   '@signalco/cms-core@0.1.1(@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
+      '@signalco/ui-primitives': 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
 
-  '@signalco/hooks@0.2.1(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
+  '@signalco/hooks@0.2.1(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
       next: 16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0)
       react: 19.2.5
@@ -16060,11 +16111,11 @@ snapshots:
 
   '@signalco/ui-notifications@0.2.0(@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
+      '@signalco/ui-primitives': 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
 
-  '@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))':
+  '@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
       next: 16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0)
       react: 19.2.5
@@ -16092,7 +16143,15 @@ snapshots:
 
   '@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
+      '@signalco/ui-primitives': 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
+      react: 19.2.5
+      react-dom: 19.2.5(react@19.2.5)
+      tailwindcss: 3.4.19(tsx@4.21.0)(yaml@2.8.3)
+      tailwindcss-animate: 1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
+
+  '@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))':
+    dependencies:
+      '@signalco/ui-primitives': 0.6.5(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3)))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.3))
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
       tailwindcss: 3.4.19(tsx@4.21.0)(yaml@2.8.3)
@@ -16493,10 +16552,10 @@ snapshots:
       axe-core: 4.11.4
       storybook: 10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
 
-  '@storybook/addon-docs@10.3.6(@types/react@19.2.14)(esbuild@0.28.0)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))':
+  '@storybook/addon-docs@10.3.6(@types/react@19.2.14)(esbuild@0.28.0)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
       '@mdx-js/react': 3.1.1(@types/react@19.2.14)(react@19.2.5)
-      '@storybook/csf-plugin': 10.3.6(esbuild@0.28.0)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
+      '@storybook/csf-plugin': 10.3.6(esbuild@0.28.0)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       '@storybook/icons': 2.0.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@storybook/react-dom-shim': 10.3.6(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))
       react: 19.2.5
@@ -16523,25 +16582,25 @@ snapshots:
       - '@tmcp/auth'
       - typescript
 
-  '@storybook/builder-vite@10.3.6(esbuild@0.28.0)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))':
+  '@storybook/builder-vite@10.3.6(esbuild@0.28.0)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
-      '@storybook/csf-plugin': 10.3.6(esbuild@0.28.0)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
+      '@storybook/csf-plugin': 10.3.6(esbuild@0.28.0)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       storybook: 10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       ts-dedent: 2.2.0
-      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
+      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
     transitivePeerDependencies:
       - esbuild
       - rollup
       - webpack
 
-  '@storybook/csf-plugin@10.3.6(esbuild@0.28.0)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))':
+  '@storybook/csf-plugin@10.3.6(esbuild@0.28.0)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
       storybook: 10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       unplugin: 2.3.11
     optionalDependencies:
       esbuild: 0.28.0
       rollup: 4.60.2
-      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
+      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
 
   '@storybook/global@5.0.0': {}
 
@@ -16560,18 +16619,18 @@ snapshots:
       - '@tmcp/auth'
       - typescript
 
-  '@storybook/nextjs-vite@10.3.6(esbuild@0.28.0)(next@16.2.4(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))':
+  '@storybook/nextjs-vite@10.3.6(esbuild@0.28.0)(next@16.2.4(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
-      '@storybook/builder-vite': 10.3.6(esbuild@0.28.0)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
+      '@storybook/builder-vite': 10.3.6(esbuild@0.28.0)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       '@storybook/react': 10.3.6(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(typescript@6.0.3)
-      '@storybook/react-vite': 10.3.6(esbuild@0.28.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
+      '@storybook/react-vite': 10.3.6(esbuild@0.28.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       next: 16.2.4(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0)
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
       storybook: 10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       styled-jsx: 5.1.6(@babel/core@7.29.0)(react@19.2.5)
-      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
-      vite-plugin-storybook-nextjs: 3.2.4(next@16.2.4(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
+      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
+      vite-plugin-storybook-nextjs: 3.2.4(next@16.2.4(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
     optionalDependencies:
       typescript: 6.0.3
     transitivePeerDependencies:
@@ -16588,11 +16647,11 @@ snapshots:
       react-dom: 19.2.5(react@19.2.5)
       storybook: 10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
 
-  '@storybook/react-vite@10.3.6(esbuild@0.28.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))':
+  '@storybook/react-vite@10.3.6(esbuild@0.28.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
-      '@joshwooding/vite-plugin-react-docgen-typescript': 0.7.0(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
+      '@joshwooding/vite-plugin-react-docgen-typescript': 0.7.0(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       '@rollup/pluginutils': 5.3.0(rollup@4.60.2)
-      '@storybook/builder-vite': 10.3.6(esbuild@0.28.0)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
+      '@storybook/builder-vite': 10.3.6(esbuild@0.28.0)(rollup@4.60.2)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       '@storybook/react': 10.3.6(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(typescript@6.0.3)
       empathic: 2.0.0
       magic-string: 0.30.21
@@ -16602,7 +16661,7 @@ snapshots:
       resolve: 1.22.12
       storybook: 10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       tsconfig-paths: 4.2.0
-      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
+      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
     transitivePeerDependencies:
       - esbuild
       - rollup
@@ -17006,10 +17065,10 @@ snapshots:
       vue: 3.5.33(typescript@6.0.3)
       vue-router: 4.6.4(vue@3.5.33(typescript@6.0.3))
 
-  '@vercel/analytics@2.0.1(9d32f6c366ff4e6bd391a2d84253b81b)':
+  '@vercel/analytics@2.0.1(7bff47a5cd2ead600055079f2fcad0f0)':
     optionalDependencies:
       next: 16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0)
-      nuxt: 4.3.1(@biomejs/biome@2.4.14)(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@parcel/watcher@2.5.6)(@types/node@24.12.2)(@upstash/redis@1.37.0)(@vercel/blob@2.3.3)(@vue/compiler-sfc@3.5.33)(cac@6.7.14)(commander@13.1.0)(db0@0.3.4(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0)))(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0))(ioredis@5.10.1)(lightningcss@1.32.0)(magicast@0.5.2)(rolldown@1.0.0-rc.17)(rollup@4.60.2)(sass@1.99.0)(srvx@0.11.15)(terser@5.46.2)(tsx@4.21.0)(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(xml2js@0.6.2)(yaml@2.8.3)
+      nuxt: 4.3.1(@biomejs/biome@2.4.14)(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@parcel/watcher@2.5.6)(@types/node@24.12.2)(@upstash/redis@1.37.0)(@vercel/blob@2.3.3)(@vue/compiler-sfc@3.5.33)(cac@6.7.14)(commander@13.1.0)(db0@0.3.4(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0)))(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0))(ioredis@5.10.1)(lightningcss@1.32.0)(magicast@0.5.2)(rolldown@1.0.0-rc.17)(rollup@4.60.2)(sass@1.99.0)(srvx@0.11.15)(terser@5.46.2)(tsx@4.21.0)(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(xml2js@0.6.2)(yaml@2.8.3)
       react: 19.2.5
       vue: 3.5.33(typescript@6.0.3)
       vue-router: 4.6.4(vue@3.5.33(typescript@6.0.3))
@@ -20915,16 +20974,16 @@ snapshots:
     optionalDependencies:
       next: 16.2.4(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0)
 
-  nuxt@4.3.1(@biomejs/biome@2.4.14)(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@parcel/watcher@2.5.6)(@types/node@24.12.2)(@upstash/redis@1.37.0)(@vercel/blob@2.3.3)(@vue/compiler-sfc@3.5.33)(cac@6.7.14)(commander@13.1.0)(db0@0.3.4(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0)))(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0))(ioredis@5.10.1)(lightningcss@1.32.0)(magicast@0.5.2)(rolldown@1.0.0-rc.17)(rollup@4.60.2)(sass@1.99.0)(srvx@0.11.15)(terser@5.46.2)(tsx@4.21.0)(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(xml2js@0.6.2)(yaml@2.8.3):
+  nuxt@4.3.1(@biomejs/biome@2.4.14)(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@parcel/watcher@2.5.6)(@types/node@24.12.2)(@upstash/redis@1.37.0)(@vercel/blob@2.3.3)(@vue/compiler-sfc@3.5.33)(cac@6.7.14)(commander@13.1.0)(db0@0.3.4(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0)))(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(pg@8.20.0))(ioredis@5.10.1)(lightningcss@1.32.0)(magicast@0.5.2)(rolldown@1.0.0-rc.17)(rollup@4.60.2)(sass@1.99.0)(srvx@0.11.15)(terser@5.46.2)(tsx@4.21.0)(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(xml2js@0.6.2)(yaml@2.8.3):
     dependencies:
       '@dxup/nuxt': 0.3.2(magicast@0.5.2)
       '@nuxt/cli': 3.35.1(@nuxt/schema@4.3.1)(cac@6.7.14)(commander@13.1.0)(magicast@0.5.2)
-      '@nuxt/devtools': 3.2.4(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(vue@3.5.33(typescript@6.0.3))
+      '@nuxt/devtools': 3.2.4(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(vue@3.5.33(typescript@6.0.3))
       '@nuxt/kit': 4.3.1(magicast@0.5.2)
-      '@nuxt/nitro-server': 4.3.1(6847d3c7f3b8c8570240a6cf4b8f5c12)
+      '@nuxt/nitro-server': 4.3.1(8286ed7355e0f1ad1a785eecc244f64c)
       '@nuxt/schema': 4.3.1
       '@nuxt/telemetry': 2.8.0(@nuxt/kit@4.3.1(magicast@0.5.2))
-      '@nuxt/vite-builder': 4.3.1(65110253d6ce41e97057c97f969ba223)
+      '@nuxt/vite-builder': 4.3.1(a90f6b5d8cb474ebea5a965f52f95b88)
       '@unhead/vue': 2.1.13(vue@3.5.33(typescript@6.0.3))
       '@vue/shared': 3.5.33
       c12: 3.3.4(magicast@0.5.2)
@@ -23539,11 +23598,23 @@ snapshots:
       d3-time: 3.1.0
       d3-timer: 3.0.1
 
+  vite-dev-rpc@1.1.0(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)):
+    dependencies:
+      birpc: 2.9.0
+      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
+      vite-hot-client: 2.2.0(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
+    optional: true
+
   vite-dev-rpc@1.1.0(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)):
     dependencies:
       birpc: 2.9.0
       vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
       vite-hot-client: 2.2.0(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
+    optional: true
+
+  vite-hot-client@2.2.0(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)):
+    dependencies:
+      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
     optional: true
 
   vite-hot-client@2.2.0(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)):
@@ -23588,6 +23659,24 @@ snapshots:
       typescript: 6.0.3
     optional: true
 
+  vite-plugin-inspect@11.3.3(@nuxt/kit@4.4.4(magicast@0.5.2))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)):
+    dependencies:
+      ansis: 4.2.0
+      debug: 4.4.3(supports-color@8.1.1)
+      error-stack-parser-es: 1.0.5
+      ohash: 2.0.11
+      open: 10.2.0
+      perfect-debounce: 2.1.0
+      sirv: 3.0.2
+      unplugin-utils: 0.3.1
+      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
+      vite-dev-rpc: 1.1.0(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
+    optionalDependencies:
+      '@nuxt/kit': 4.4.4(magicast@0.5.2)
+    transitivePeerDependencies:
+      - supports-color
+    optional: true
+
   vite-plugin-inspect@11.3.3(@nuxt/kit@4.4.4(magicast@0.5.2))(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)):
     dependencies:
       ansis: 4.2.0
@@ -23610,7 +23699,7 @@ snapshots:
     dependencies:
       monaco-editor: 0.55.1
 
-  vite-plugin-storybook-nextjs@3.2.4(next@16.2.4(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)):
+  vite-plugin-storybook-nextjs@3.2.4(next@16.2.4(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0))(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)):
     dependencies:
       '@next/env': 16.0.0
       image-size: 2.0.2
@@ -23619,11 +23708,22 @@ snapshots:
       next: 16.2.4(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(sass@1.99.0)
       storybook: 10.3.6(@testing-library/dom@10.4.1)(prettier@3.8.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       ts-dedent: 2.2.0
-      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
-      vite-tsconfig-paths: 5.1.4(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
+      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
+      vite-tsconfig-paths: 5.1.4(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
     transitivePeerDependencies:
       - supports-color
       - typescript
+
+  vite-plugin-vue-tracer@1.3.0(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(vue@3.5.33(typescript@6.0.3)):
+    dependencies:
+      estree-walker: 3.0.3
+      exsolve: 1.0.8
+      magic-string: 0.30.21
+      pathe: 2.0.3
+      source-map-js: 1.2.1
+      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
+      vue: 3.5.33(typescript@6.0.3)
+    optional: true
 
   vite-plugin-vue-tracer@1.3.0(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(vue@3.5.33(typescript@6.0.3)):
     dependencies:
@@ -23636,13 +23736,13 @@ snapshots:
       vue: 3.5.33(typescript@6.0.3)
     optional: true
 
-  vite-tsconfig-paths@5.1.4(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)):
+  vite-tsconfig-paths@5.1.4(typescript@6.0.3)(vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)):
     dependencies:
       debug: 4.4.3(supports-color@8.1.1)
       globrex: 0.1.2
       tsconfck: 3.1.6(typescript@6.0.3)
     optionalDependencies:
-      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@1.21.7)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
+      vite: 8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -23700,6 +23800,7 @@ snapshots:
       terser: 5.46.2
       tsx: 4.21.0
       yaml: 2.8.3
+    optional: true
 
   vite@8.0.10(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.6.1)(sass@1.99.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3):
     dependencies:
