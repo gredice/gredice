@@ -149,6 +149,23 @@ export function RaisedBedFieldItemPlanted({
             plantSort.information.name,
         plantSort.information.name,
     );
+    const title = `${isHistorical ? 'Prethodna biljka' : 'Biljka'} "${plantSort.information.name}"`;
+    const fieldBadge = isHistorical
+        ? {
+              className: 'bg-muted',
+              icon: <History className="size-4 text-muted-foreground" />,
+          }
+        : harvestValue && !isHarvested
+          ? {
+                className: 'bg-blue-600',
+                icon: <Sprout className="size-4 text-white" />,
+            }
+          : isHarvested
+            ? {
+                  className: 'bg-green-600',
+                  icon: <Check className="size-4 text-white" />,
+              }
+            : null;
 
     return (
         <Modal
@@ -165,7 +182,7 @@ export function RaisedBedFieldItemPlanted({
                 }
                 setOpen(nextOpen);
             }}
-            title={`${isHistorical ? 'Prethodna biljka' : 'Biljka'} "${plantSort.information.name}"`}
+            title={title}
             modal={false}
             className="md:border-tertiary md:border-b-4 max-w-xl"
             trigger={
@@ -181,24 +198,12 @@ export function RaisedBedFieldItemPlanted({
                             width={52}
                             height={52}
                         />
-                        {isHistorical && (
+                        {fieldBadge && (
                             <div className="absolute -top-1 -end-1">
-                                <span className="inline-flex items-center justify-center p-1 bg-muted rounded-full border-2 border-white shadow-lg">
-                                    <History className="size-4 text-muted-foreground" />
-                                </span>
-                            </div>
-                        )}
-                        {!isHistorical && harvestValue && !isHarvested && (
-                            <div className="absolute -top-1 -end-1">
-                                <span className="inline-flex items-center justify-center p-1 bg-blue-600 rounded-full border-2 border-white shadow-lg">
-                                    <Sprout className="size-4 text-white" />
-                                </span>
-                            </div>
-                        )}
-                        {!isHistorical && isHarvested && (
-                            <div className="absolute -top-1 -end-1">
-                                <span className="inline-flex items-center justify-center p-1 bg-green-600 rounded-full border-2 border-white shadow-lg">
-                                    <Check className="size-4 text-white" />
+                                <span
+                                    className={`inline-flex items-center justify-center p-1 ${fieldBadge.className} rounded-full border-2 border-white shadow-lg`}
+                                >
+                                    {fieldBadge.icon}
                                 </span>
                             </div>
                         )}
