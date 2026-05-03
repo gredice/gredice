@@ -46,7 +46,7 @@ export function RaisedBedFieldItem({
                 <RaisedBedFieldItemPlanted
                     raisedBedId={raisedBedId}
                     positionIndex={positionIndex}
-                    isHistorical={true}
+                    isHistorical
                 />
             );
         }
