@@ -70,3 +70,14 @@ https://api.gredice.test {
         header_up X-Forwarded-Proto {http.request.scheme}
     }
 }
+
+http://status.gredice.test {
+    redir https://status.gredice.test{uri}
+}
+
+https://status.gredice.test {
+    tls internal
+    reverse_proxy http://host.docker.internal:3006 {
+        header_up X-Forwarded-Proto {http.request.scheme}
+    }
+}
