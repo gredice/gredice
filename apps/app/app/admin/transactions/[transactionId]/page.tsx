@@ -11,7 +11,9 @@ import { Chip } from '@signalco/ui-primitives/Chip';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { KnownPages } from '../../../../src/KnownPages';
@@ -36,16 +38,22 @@ export default async function TransactionDetailsPage({
 
     return (
         <Stack spacing={4}>
+            <AdminPageTitle title={`Transakcija ${transaction.id}`} />
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.Transactions,
+                            },
+                            { label: transactionId },
+                        ]}
+                    />
+                }
+                heading="Detalji transakcije"
+            />
             <Stack spacing={2}>
-                <Breadcrumbs
-                    items={[
-                        {
-                            label: <AdminBreadcrumbLevelSelector />,
-                            href: KnownPages.Transactions,
-                        },
-                        { label: transactionId },
-                    ]}
-                />
                 <Typography level="h1" className="text-2xl" semiBold>
                     Detalji transakcije
                 </Typography>

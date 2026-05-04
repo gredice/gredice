@@ -1,28 +1,39 @@
 import type { Preview } from '@storybook/nextjs-vite';
 import { Analytics } from '@vercel/analytics/next';
+import { docsTheme } from './themes';
 import '../styles.css';
 
 const preview: Preview = {
     decorators: [
-        (Story) => (
-            <div className="min-h-screen bg-background p-6 text-foreground">
-                <Story />
-                <Analytics />
-            </div>
-        ),
+        (Story, context) => {
+            const isFullscreen = context.parameters.layout === 'fullscreen';
+
+            return (
+                <div
+                    className={
+                        isFullscreen
+                            ? 'bg-background text-foreground'
+                            : 'bg-background p-6 text-foreground'
+                    }
+                >
+                    <Story />
+                    <Analytics />
+                </div>
+            );
+        },
     ],
     parameters: {
         a11y: {
             test: 'todo',
         },
         backgrounds: {
-            default: 'Gredice Storybook',
+            default: 'Gredice base',
             options: {
-                'Gredice Storybook': {
+                'Gredice base': {
                     value: 'hsl(var(--background))',
                 },
-                'Storybook dark': {
-                    value: '#2e1065',
+                'Storybook purple': {
+                    value: '#7c3aed',
                 },
             },
         },
@@ -33,6 +44,7 @@ const preview: Preview = {
             },
         },
         docs: {
+            theme: docsTheme,
             toc: true,
         },
         layout: 'centered',

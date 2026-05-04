@@ -21,7 +21,9 @@ import { revalidatePath } from 'next/cache';
 import { notFound } from 'next/navigation';
 import { importEntityData } from '../../../../../app/admin/directories/(actions)/importEntityData';
 import { EntityAttributeProgress } from '../../../../../components/admin/directories/EntityAttributeProgress';
+import { AdminPageHeader } from '../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../../components/admin/navigation/AdminPageTitle';
 import { BarcodeValue } from '../../../../../components/shared/attributes/BarcodeValue';
 import { formatAttributeValueWithUnit } from '../../../../../components/shared/attributes/formatAttributeValueWithUnit';
 import { Field } from '../../../../../components/shared/fields/Field';
@@ -75,6 +77,7 @@ export default async function EntityDetailsPage(props: {
     const entityInventoryItem = inventoryItems.find(
         (item) => item.entityId === entityId,
     );
+    const entityTitle = entityDisplayName(entity);
 
     const entityDeleteBound = handleEntityDelete.bind(
         null,
@@ -156,39 +159,52 @@ export default async function EntityDetailsPage(props: {
 
     return (
         <EntityDetailsSaveProvider>
+            <AdminPageTitle title={entityTitle} />
+            <AdminPageHeader
+                breadcrumbs={
+                    <Row spacing={2} className="min-w-0">
+                        <div className="min-w-0">
+                            <Breadcrumbs
+                                items={[
+                                    {
+                                        label: <AdminBreadcrumbLevelSelector />,
+                                        href: KnownPages.Directories,
+                                    },
+                                    {
+                                        label: entity.entityType.label,
+                                        href: KnownPages.DirectoryEntityType(
+                                            params.entityType,
+                                        ),
+                                    },
+                                    {
+                                        label: entityDisplayName(entity),
+                                    },
+                                ]}
+                            />
+                        </div>
+                        <div className="w-20 shrink-0">
+                            <EntityAttributeProgress
+                                entity={entity}
+                                definitions={attributeDefinitions}
+                            />
+                        </div>
+                    </Row>
+                }
+                actions={
+                    <Row className="items-center" spacing={1}>
+                        <EntityDetailsSaveIndicator />
+                        <EntityLinksPanel entityId={entityId} />
+                        <EntityActions
+                            entity={entity}
+                            importAction={importAction}
+                            deleteAction={entityDeleteBound}
+                        />
+                    </Row>
+                }
+                heading={entityDisplayName(entity)}
+            />
             <Tabs defaultValue={attributeCategories.at(0)?.name}>
                 <EntityDetailsStickyHeader
-                    breadcrumbs={
-                        <Row spacing={2} className="min-w-0">
-                            <div className="min-w-0">
-                                <Breadcrumbs
-                                    items={[
-                                        {
-                                            label: (
-                                                <AdminBreadcrumbLevelSelector />
-                                            ),
-                                            href: KnownPages.Directories,
-                                        },
-                                        {
-                                            label: entity.entityType.label,
-                                            href: KnownPages.DirectoryEntityType(
-                                                params.entityType,
-                                            ),
-                                        },
-                                        {
-                                            label: entityDisplayName(entity),
-                                        },
-                                    ]}
-                                />
-                            </div>
-                            <div className="w-20 shrink-0">
-                                <EntityAttributeProgress
-                                    entity={entity}
-                                    definitions={attributeDefinitions}
-                                />
-                            </div>
-                        </Row>
-                    }
                     tabs={
                         <TabsList>
                             {attributeCategories.map((category) => (
@@ -215,17 +231,6 @@ export default async function EntityDetailsPage(props: {
                                 </TabsTrigger>
                             ))}
                         </TabsList>
-                    }
-                    actions={
-                        <Row className="items-center" spacing={1}>
-                            <EntityDetailsSaveIndicator />
-                            <EntityLinksPanel entityId={entityId} />
-                            <EntityActions
-                                entity={entity}
-                                importAction={importAction}
-                                deleteAction={entityDeleteBound}
-                            />
-                        </Row>
                     }
                 />
                 <Stack spacing={2}>

@@ -6,17 +6,18 @@ import { ModalConfirm } from '@signalco/ui/ModalConfirm';
 import { Delete } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
+import { AdminPageHeader } from '../../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { KnownPages } from '../../../../../../src/KnownPages';
 import {
     removeEntityTypeCategoryById,
     updateEntityTypeCategoryFromForm,
 } from '../../../../../(actions)/entityTypeCategoryActions';
+import { EntityTypeCategoryFormFields } from '../../EntityTypeCategoryFormFields';
 
 export function EditEntityTypeCategoryPage({
     category,
@@ -37,18 +38,36 @@ export function EditEntityTypeCategoryPage({
 
     return (
         <Stack spacing={4}>
-            <Breadcrumbs
-                items={[
-                    {
-                        label: <AdminBreadcrumbLevelSelector />,
-                        href: KnownPages.Directories,
-                    },
-                    { label: 'Kategorije', href: KnownPages.Directories },
-                    { label: category.label },
-                ]}
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.Directories,
+                            },
+                            {
+                                label: 'Kategorije',
+                                href: KnownPages.Directories,
+                            },
+                            { label: category.label },
+                        ]}
+                    />
+                }
+                actions={
+                    <Button
+                        variant="plain"
+                        color="danger"
+                        onClick={() => setShowDeleteConfirm(true)}
+                    >
+                        <Delete className="size-4" />
+                        Obriši kategoriju
+                    </Button>
+                }
+                heading={`Uredi kategoriju: ${category.label}`}
             />
 
-            <Row spacing={4} justifyContent="space-between" alignItems="start">
+            <Row spacing={4} alignItems="start">
                 <Stack spacing={2}>
                     <Typography level="h2" className="text-2xl" semiBold>
                         Uredi kategoriju: {category.label}
@@ -70,35 +89,19 @@ export function EditEntityTypeCategoryPage({
                         <strong>{category.label}</strong>?
                     </Typography>
                 </ModalConfirm>
-
-                <Button
-                    variant="plain"
-                    color="danger"
-                    onClick={() => setShowDeleteConfirm(true)}
-                >
-                    <Delete className="size-4" />
-                    Obriši kategoriju
-                </Button>
             </Row>
 
             <Card className="max-w-2xl">
                 <Stack spacing={4} className="p-6">
                     <form action={handleUpdate}>
                         <Stack spacing={4}>
-                            <Stack spacing={3}>
-                                <Input
-                                    name="name"
-                                    label="Naziv"
-                                    defaultValue={category.name}
-                                    required
-                                />
-                                <Input
-                                    name="label"
-                                    label="Labela"
-                                    defaultValue={category.label}
-                                    required
-                                />
-                            </Stack>
+                            <EntityTypeCategoryFormFields
+                                defaults={{
+                                    name: category.name,
+                                    label: category.label,
+                                    icon: category.icon,
+                                }}
+                            />
                             <Button
                                 variant="solid"
                                 type="submit"

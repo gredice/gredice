@@ -8,10 +8,11 @@ import {
     CardHeader,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { FormFields } from '../../../../components/shared/fields/FormFields';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
@@ -37,8 +38,9 @@ export default async function FarmPage({
 
     return (
         <Stack spacing={4}>
-            <Stack spacing={2}>
-                <Row spacing={2} justifyContent="space-between">
+            <AdminPageTitle title={farm.name} />
+            <AdminPageHeader
+                breadcrumbs={
                     <Breadcrumbs
                         items={[
                             {
@@ -48,6 +50,8 @@ export default async function FarmPage({
                             { label: farm.name },
                         ]}
                     />
+                }
+                actions={
                     <Button
                         href={`https://vrt.gredice.com/farme/${farm.id}`}
                         target="_blank"
@@ -58,7 +62,10 @@ export default async function FarmPage({
                     >
                         Stranica farme
                     </Button>
-                </Row>
+                }
+                heading={farm.name}
+            />
+            <Stack spacing={2}>
                 <FormFields
                     fields={[
                         { name: 'ID farme', value: farm.id, mono: true },

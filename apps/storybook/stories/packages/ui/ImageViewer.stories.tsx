@@ -5,6 +5,14 @@ const meta = {
     title: 'packages/ui/Media/ImageViewer',
     component: ImageViewer,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'ImageViewer renders an image preview that can open a larger viewer while preserving alt text and preview dimensions.',
+            },
+        },
+    },
     args: {
         src: 'https://cdn.gredice.com/sunflower-sad-500x500.png',
         alt: 'Sunflower',

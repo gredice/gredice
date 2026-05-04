@@ -12,6 +12,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import Link from 'next/link';
 import { EntityTypeMenu } from '../../../../components/admin/directories';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { FilterProvider } from '../../../../components/admin/providers';
 import { SearchInput } from '../../../../components/admin/SearchInput';
@@ -50,51 +51,54 @@ export default async function EntitiesPage({
     return (
         <FilterProvider>
             <Stack spacing={2}>
+                <AdminPageHeader
+                    breadcrumbs={
+                        <Breadcrumbs
+                            items={[
+                                {
+                                    label: <AdminBreadcrumbLevelSelector />,
+                                    href: KnownPages.Directories,
+                                },
+                                {
+                                    label: entityType?.label ?? entityTypeName,
+                                },
+                            ]}
+                        />
+                    }
+                    actions={
+                        <Row spacing={1}>
+                            {inventoryConfig && (
+                                <Link
+                                    href={KnownPages.InventoryConfig(
+                                        inventoryConfig.id,
+                                    )}
+                                >
+                                    <Row
+                                        spacing={1}
+                                        className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
+                                    >
+                                        <span>Zaliha</span>
+                                    </Row>
+                                </Link>
+                            )}
+                            <SearchInput />
+                            <ServerActionIconButton
+                                variant="plain"
+                                title="Dodaj zapis"
+                                onClick={createEntityBound}
+                            >
+                                <Add className="size-5" />
+                            </ServerActionIconButton>
+                            {entityType && (
+                                <EntityTypeMenu entityType={entityType} />
+                            )}
+                        </Row>
+                    }
+                    heading={entityType?.label ?? entityTypeName}
+                />
                 <h1 className="sr-only">
                     {entityType?.label ?? entityTypeName}
                 </h1>
-                <Row
-                    spacing={1}
-                    justifyContent="space-between"
-                    className="flex-wrap gap-2"
-                >
-                    <Breadcrumbs
-                        items={[
-                            {
-                                label: <AdminBreadcrumbLevelSelector />,
-                                href: KnownPages.Directories,
-                            },
-                            { label: entityType?.label ?? entityTypeName },
-                        ]}
-                    />
-                    <Row spacing={1}>
-                        {inventoryConfig && (
-                            <Link
-                                href={KnownPages.InventoryConfig(
-                                    inventoryConfig.id,
-                                )}
-                            >
-                                <Row
-                                    spacing={1}
-                                    className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
-                                >
-                                    <span>Zaliha</span>
-                                </Row>
-                            </Link>
-                        )}
-                        <SearchInput />
-                        <ServerActionIconButton
-                            variant="plain"
-                            title="Dodaj zapis"
-                            onClick={createEntityBound}
-                        >
-                            <Add className="size-5" />
-                        </ServerActionIconButton>
-                        {entityType && (
-                            <EntityTypeMenu entityType={entityType} />
-                        )}
-                    </Row>
-                </Row>
                 <Card>
                     <CardOverflow>
                         <EntitiesTable

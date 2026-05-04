@@ -1,9 +1,18 @@
 export { AdminPageBreadcrumbs } from './AdminPageBreadcrumbs';
+export { AdminPageCardHeader } from './AdminPageCardHeader';
+export { AdminPageHeader } from './AdminPageHeader';
+export { AdminPageHeaderProvider } from './AdminPageHeaderProvider';
+export { AdminPageTitle } from './AdminPageTitle';
+export { AdminTitleProvider } from './AdminTitleProvider';
 export { DesktopNav } from './DesktopNav';
+export { DesktopNavProvider } from './DesktopNavProvider';
+export { DesktopNavToggle } from './DesktopNavToggle';
 export { LoginDialog } from './LoginDialog';
 export { MobileHeader } from './MobileHeader';
 export { MobileNav } from './MobileNav';
 export { Nav } from './Nav';
 export { NavContext, type NavContextType } from './NavContext';
+export { NavGroup } from './NavGroup';
 export { NavItem } from './NavItem';
+export { NavSection } from './NavSection';
 export { ProfileNavItem } from './ProfileNavItem';
