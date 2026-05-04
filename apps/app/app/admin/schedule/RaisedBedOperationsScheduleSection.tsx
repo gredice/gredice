@@ -29,6 +29,7 @@ import {
     isOperationCancelled,
     isOperationCompleted,
     isOperationPendingVerification,
+    isTaskDateBeforeToday,
 } from './scheduleShared';
 import type { Operation, RaisedBed } from './types';
 import { VerifyOperationModal } from './VerifyOperationModal';
@@ -263,6 +264,9 @@ export function RaisedBedOperationsScheduleSection({
                     const operationTextInactive =
                         isOperationCancelled(operation.status) ||
                         isOperationCompleted(operation.status);
+                    const operationDateOverdue =
+                        isTaskDateBeforeToday(operation.scheduledDate) &&
+                        !operationLocked;
 
                     const operationStatusText = isOperationCancelled(
                         operation.status,
@@ -299,7 +303,14 @@ export function RaisedBedOperationsScheduleSection({
 
                     return (
                         <div key={operation.id}>
-                            <Row spacing={1} className="hover:bg-muted rounded">
+                            <Row
+                                spacing={1}
+                                className={
+                                    operationDateOverdue
+                                        ? 'bg-red-50 hover:bg-red-100 rounded ring-1 ring-red-200'
+                                        : 'hover:bg-muted rounded'
+                                }
+                            >
                                 <Row spacing={1} className="grow">
                                     {isOperationCompleted(operation.status) ? (
                                         <Checkbox
@@ -395,7 +406,11 @@ export function RaisedBedOperationsScheduleSection({
                                         )}
                                     <Typography
                                         level="body2"
-                                        className="select-none"
+                                        className={
+                                            operationDateOverdue
+                                                ? 'select-none text-red-600 font-medium'
+                                                : 'select-none'
+                                        }
                                     >
                                         {operation.scheduledDate ? (
                                             <LocalDateTime time={false}>
