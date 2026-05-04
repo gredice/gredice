@@ -122,6 +122,20 @@ export function formatMinutes(minutes: number, hideUnit = false) {
     return hideUnit ? `${rounded}` : `${rounded} min`;
 }
 
+export function isTaskDateBeforeToday(date: Date | undefined) {
+    if (!date) {
+        return false;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const taskDate = new Date(date);
+    taskDate.setHours(0, 0, 0, 0);
+
+    return Number.isFinite(taskDate.getTime()) && taskDate < today;
+}
+
 export function getOperationDurationMinutes(
     operationData: EntityStandardized | undefined,
 ) {
