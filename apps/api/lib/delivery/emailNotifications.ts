@@ -1,4 +1,7 @@
-import { buildDeliveryEmailDetails } from '@gredice/storage';
+import {
+    buildDeliveryEmailDetails,
+    type PendingDeliveryReadyEmailRequest,
+} from '@gredice/storage';
 import {
     sendDeliveryCancelled,
     sendDeliveryReady,
@@ -59,7 +62,10 @@ async function sendDeliveryEmails(
 
 interface DeliveryReadyEmailBatchGroup {
     key: string;
-    requestIds: string[];
+    readyEvents: {
+        requestId: string;
+        readyEventId: number;
+    }[];
     recipients: string[];
     readyItems: string[];
     deliveryWindow: string;
@@ -73,7 +79,15 @@ export interface DeliveryReadyEmailBatchResult {
         requestIds: string[];
         recipients: string[];
     }[];
-    skippedRequestIds: string[];
+    processedGroups: {
+        readyEvents: {
+            requestId: string;
+            readyEventId: number;
+        }[];
+        recipients: string[];
+        completed?: boolean;
+        skipped?: boolean;
+    }[];
 }
 
 function addUnique(values: string[], value: string) {
@@ -99,19 +113,48 @@ function getDeliveryReadyBatchKey(details: {
 }
 
 export async function sendBatchedDeliveryReadyEmails(
-    requestIds: string[],
+    requests: PendingDeliveryReadyEmailRequest[],
 ): Promise<DeliveryReadyEmailBatchResult> {
     const groups = new Map<string, DeliveryReadyEmailBatchGroup>();
-    const skippedRequestIds: string[] = [];
+    const processedGroups: DeliveryReadyEmailBatchResult['processedGroups'] =
+        [];
 
-    for (const requestId of requestIds) {
-        const details = await buildDeliveryEmailDetails(requestId);
+    for (const request of requests) {
+        const details = await buildDeliveryEmailDetails(request.requestId);
         if (!details || details.state !== 'ready') {
-            skippedRequestIds.push(requestId);
+            processedGroups.push({
+                readyEvents: [
+                    {
+                        requestId: request.requestId,
+                        readyEventId: request.readyEventId,
+                    },
+                ],
+                recipients: [],
+                completed: true,
+                skipped: true,
+            });
             continue;
         }
 
-        const recipients = details.recipients.toSorted();
+        const recipients = details.recipients
+            .filter(
+                (recipient) => !request.processedRecipients.includes(recipient),
+            )
+            .toSorted();
+        if (recipients.length === 0) {
+            processedGroups.push({
+                readyEvents: [
+                    {
+                        requestId: request.requestId,
+                        readyEventId: request.readyEventId,
+                    },
+                ],
+                recipients: [],
+                completed: true,
+            });
+            continue;
+        }
+
         const key = getDeliveryReadyBatchKey({
             accountId: details.accountId,
             deliveryWindow: details.deliveryWindow,
@@ -121,7 +164,7 @@ export async function sendBatchedDeliveryReadyEmails(
         });
         const group = groups.get(key) ?? {
             key,
-            requestIds: [],
+            readyEvents: [],
             recipients,
             readyItems: [],
             deliveryWindow: details.deliveryWindow,
@@ -129,7 +172,10 @@ export async function sendBatchedDeliveryReadyEmails(
             contactName: details.contactName,
         };
 
-        addUnique(group.requestIds, details.requestId);
+        group.readyEvents.push({
+            requestId: details.requestId,
+            readyEventId: request.readyEventId,
+        });
         if (details.readyItem) {
             addUnique(group.readyItems, details.readyItem);
         }
@@ -141,29 +187,43 @@ export async function sendBatchedDeliveryReadyEmails(
     const groupsSent: DeliveryReadyEmailBatchResult['groupsSent'] = [];
 
     for (const group of groups.values()) {
-        try {
-            await Promise.all(
-                group.recipients.map((recipient) =>
-                    sendDeliveryReady(recipient, {
-                        email: recipient,
-                        deliveryWindow: group.deliveryWindow,
-                        addressLine: group.addressLine,
-                        contactName: group.contactName,
-                        manageUrl: CUSTOMER_APP_URL,
-                        readyItems: group.readyItems,
-                    }),
-                ),
-            );
-            emailsSent += group.recipients.length;
+        const sendResults = await Promise.allSettled(
+            group.recipients.map((recipient) =>
+                sendDeliveryReady(recipient, {
+                    email: recipient,
+                    deliveryWindow: group.deliveryWindow,
+                    addressLine: group.addressLine,
+                    contactName: group.contactName,
+                    manageUrl: CUSTOMER_APP_URL,
+                    readyItems: group.readyItems,
+                }),
+            ),
+        );
+        const sentRecipients = group.recipients.filter(
+            (_recipient, index) => sendResults[index]?.status === 'fulfilled',
+        );
+        const failedRecipients = group.recipients.filter(
+            (_recipient, index) => sendResults[index]?.status === 'rejected',
+        );
+
+        if (sentRecipients.length > 0) {
+            emailsSent += sentRecipients.length;
             groupsSent.push({
-                requestIds: group.requestIds,
-                recipients: group.recipients,
+                requestIds: group.readyEvents.map((event) => event.requestId),
+                recipients: sentRecipients,
             });
-        } catch (error) {
+            processedGroups.push({
+                readyEvents: group.readyEvents,
+                recipients: sentRecipients,
+                completed: sentRecipients.length === group.recipients.length,
+            });
+        }
+
+        if (failedRecipients.length > 0) {
             console.error('Failed to send batched delivery ready email', {
-                requestIds: group.requestIds,
+                requestIds: group.readyEvents.map((event) => event.requestId),
                 key: group.key,
-                error,
+                failedRecipients,
             });
         }
     }
@@ -171,7 +231,7 @@ export async function sendBatchedDeliveryReadyEmails(
     return {
         emailsSent,
         groupsSent,
-        skippedRequestIds,
+        processedGroups,
     };
 }
 

@@ -19,41 +19,39 @@ export async function GET(request: NextRequest) {
     }
 
     const readyBefore = new Date(Date.now() - BATCH_DELAY_MINUTES * 60 * 1000);
-    const requestIds = await getPendingDeliveryReadyEmailRequestIds({
+    const pendingRequests = await getPendingDeliveryReadyEmailRequestIds({
         readyBefore,
         limit: MAX_REQUESTS_PER_RUN,
     });
-    const result = await sendBatchedDeliveryReadyEmails(requestIds);
+    const result = await sendBatchedDeliveryReadyEmails(pendingRequests);
 
-    for (const group of result.groupsSent) {
+    for (const group of result.processedGroups) {
         await markDeliveryReadyEmailsProcessed({
-            requestIds: group.requestIds,
+            readyEvents: group.readyEvents,
             recipients: group.recipients,
-            batchRequestIds: group.requestIds,
+            batchRequestIds: group.readyEvents.map((event) => event.requestId),
+            completed: group.completed,
+            skipped: group.skipped,
         });
     }
 
-    await markDeliveryReadyEmailsProcessed({
-        requestIds: result.skippedRequestIds,
-        recipients: [],
-        skipped: true,
-    });
-
     return Response.json({
         success: true,
-        candidates: requestIds.length,
+        candidates: pendingRequests.length,
         emailsSent: result.emailsSent,
         groupsSent: result.groupsSent.length,
-        requestsMarkedProcessed:
-            result.skippedRequestIds.length +
-            result.groupsSent.reduce(
-                (total, group) => total + group.requestIds.length,
-                0,
-            ),
+        requestsMarkedProcessed: result.processedGroups.reduce(
+            (total, group) => total + group.readyEvents.length,
+            0,
+        ),
         requestsMarkedSent: result.groupsSent.reduce(
             (total, group) => total + group.requestIds.length,
             0,
         ),
-        skipped: result.skippedRequestIds.length,
+        skipped: result.processedGroups.reduce(
+            (total, group) =>
+                group.skipped ? total + group.readyEvents.length : total,
+            0,
+        ),
     });
 }

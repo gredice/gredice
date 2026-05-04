@@ -10,6 +10,7 @@ import {
     isNull,
     lte,
     notExists,
+    sql,
 } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import 'server-only';
@@ -120,6 +121,12 @@ interface DeliveryRequestStateProjection {
     deliveryNotes?: string;
     accountId?: string;
     surveySent: boolean;
+}
+
+export interface PendingDeliveryReadyEmailRequest {
+    requestId: string;
+    readyEventId: number;
+    processedRecipients: string[];
 }
 
 function reconstructDeliveryRequestState(
@@ -1069,14 +1076,15 @@ export async function getPendingDeliveryReadyEmailRequestIds({
 }: {
     readyBefore: Date;
     limit?: number;
-}): Promise<string[]> {
+}): Promise<PendingDeliveryReadyEmailRequest[]> {
     const processedEvents = alias(
         events,
         'delivery_ready_email_processed_events',
     );
     const pendingReadyEvents = await storage()
-        .selectDistinct({
+        .select({
             requestId: events.aggregateId,
+            readyEventId: events.id,
         })
         .from(events)
         .where(
@@ -1098,38 +1106,106 @@ export async function getPendingDeliveryReadyEmailRequestIds({
                                     processedEvents.aggregateId,
                                     events.aggregateId,
                                 ),
+                                sql`${processedEvents.data}->>'readyEventId' = ${events.id}::text`,
+                                sql`(${processedEvents.data}->>'completed' = 'true' OR ${processedEvents.data}->>'skipped' = 'true')`,
                             ),
                         ),
                 ),
             ),
         )
+        .orderBy(asc(events.createdAt))
         .limit(limit);
 
-    return pendingReadyEvents.map((event) => event.requestId);
+    if (pendingReadyEvents.length === 0) {
+        return [];
+    }
+
+    const requestIds = Array.from(
+        new Set(pendingReadyEvents.map((event) => event.requestId)),
+    );
+    const readyEventIds = new Set(
+        pendingReadyEvents.map((event) => event.readyEventId),
+    );
+    const processedReadyEvents = await storage()
+        .select({
+            data: events.data,
+        })
+        .from(events)
+        .where(
+            and(
+                eq(
+                    events.type,
+                    knownEventTypes.delivery.requestReadyEmailProcessed,
+                ),
+                inArray(events.aggregateId, requestIds),
+            ),
+        );
+    const processedRecipients = new Map<number, Set<string>>();
+
+    for (const event of processedReadyEvents) {
+        if (!event.data || typeof event.data !== 'object') {
+            continue;
+        }
+
+        const data = event.data as {
+            readyEventId?: unknown;
+            sentTo?: unknown;
+        };
+        if (
+            typeof data.readyEventId !== 'number' ||
+            !readyEventIds.has(data.readyEventId) ||
+            !Array.isArray(data.sentTo)
+        ) {
+            continue;
+        }
+
+        const recipients =
+            processedRecipients.get(data.readyEventId) ?? new Set<string>();
+        for (const recipient of data.sentTo) {
+            if (typeof recipient === 'string') {
+                recipients.add(recipient);
+            }
+        }
+        processedRecipients.set(data.readyEventId, recipients);
+    }
+
+    return pendingReadyEvents.map((event) => ({
+        requestId: event.requestId,
+        readyEventId: event.readyEventId,
+        processedRecipients: Array.from(
+            processedRecipients.get(event.readyEventId) ?? [],
+        ),
+    }));
 }
 
 export async function markDeliveryReadyEmailsProcessed({
-    requestIds,
+    readyEvents,
     recipients,
-    batchRequestIds = requestIds,
+    batchRequestIds = readyEvents.map((event) => event.requestId),
+    completed,
     skipped,
 }: {
-    requestIds: string[];
+    readyEvents: {
+        requestId: string;
+        readyEventId: number;
+    }[];
     recipients: string[];
     batchRequestIds?: string[];
+    completed?: boolean;
     skipped?: boolean;
 }): Promise<void> {
-    const uniqueRequestIds = Array.from(new Set(requestIds));
-    if (uniqueRequestIds.length === 0) {
+    if (readyEvents.length === 0) {
         return;
     }
 
     await Promise.all(
-        uniqueRequestIds.map((requestId) =>
+        readyEvents.map(({ requestId, readyEventId }) =>
             createEvent(
                 knownEvents.delivery.requestReadyEmailProcessedV1(requestId, {
+                    readyEventId,
                     sentTo: recipients,
                     batchRequestIds,
+                    completed,
                     skipped,
                 }),
             ),

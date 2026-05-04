@@ -316,8 +316,10 @@ export type DeliveryRequestSurveySentPayload = {
 };
 
 export type DeliveryRequestReadyEmailProcessedPayload = {
+    readyEventId: number;
     sentTo: string[];
     batchRequestIds: string[];
+    completed?: boolean;
     skipped?: boolean;
 };
 
