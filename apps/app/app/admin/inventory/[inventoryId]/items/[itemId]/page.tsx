@@ -65,13 +65,13 @@ export default async function InventoryItemPage({
             };
         }),
     ];
-    const itemEntityLabel = item.entityId
+    const entityLabel = item.entityId
         ? entityItems.find(
               (entityItem) => entityItem.value === item.entityId.toString(),
           )?.label
         : null;
-    const itemTitle = itemEntityLabel
-        ? `${itemEntityLabel} - stavka #${id}`
+    const itemTitle = entityLabel
+        ? `${entityLabel} - stavka #${id}`
         : `Stavka #${id}`;
 
     const additionalFields = item.additionalFields ?? {};

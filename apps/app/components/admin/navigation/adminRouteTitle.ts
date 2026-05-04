@@ -20,6 +20,7 @@ function decodePathSegment(segment: string) {
     try {
         return decodeURIComponent(segment);
     } catch {
+        // Keep malformed path segments readable instead of failing title updates.
         return segment;
     }
 }
@@ -102,6 +103,7 @@ function resolveDirectoryTitle(
     }
 
     if (/^[^/]+$/.test(suffix)) {
+        // Directory entity detail routes use a single entity id after the entity type.
         return `${entityTypeLabel} ${decodePathSegment(suffix)}`;
     }
 
