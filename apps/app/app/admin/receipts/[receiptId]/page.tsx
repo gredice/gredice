@@ -13,6 +13,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { Field } from '../../../../components/shared/fields/Field';
@@ -79,27 +80,26 @@ export default async function ReceiptPage({
                 title={`Fiskalni račun ${receipt.receiptNumber || `#${receipt.id}`}`}
             />
             <h1 className="sr-only">Fiskalni račun #{receipt.id}</h1>
-            <Row
-                spacing={2}
-                justifyContent="space-between"
-                className="flex-wrap gap-2"
-            >
-                <Row spacing={2} className="flex-wrap">
-                    <Breadcrumbs
-                        items={[
-                            {
-                                label: <AdminBreadcrumbLevelSelector />,
-                                href: KnownPages.Receipts,
-                            },
-                            { label: `Fiskalni račun #${receipt.id}` },
-                        ]}
-                    />
-                    <Chip color={getCisStatusColor(receipt.cisStatus)}>
-                        {getCisStatusLabel(receipt.cisStatus)}
-                    </Chip>
-                </Row>
-                <ReceiptActions receipt={receipt} />
-            </Row>
+            <AdminPageHeader
+                breadcrumbs={
+                    <Row spacing={2} className="flex-wrap">
+                        <Breadcrumbs
+                            items={[
+                                {
+                                    label: <AdminBreadcrumbLevelSelector />,
+                                    href: KnownPages.Receipts,
+                                },
+                                { label: `Fiskalni račun #${receipt.id}` },
+                            ]}
+                        />
+                        <Chip color={getCisStatusColor(receipt.cisStatus)}>
+                            {getCisStatusLabel(receipt.cisStatus)}
+                        </Chip>
+                    </Row>
+                }
+                actions={<ReceiptActions receipt={receipt} />}
+                heading={`Fiskalni račun #${receipt.id}`}
+            />
 
             <Stack spacing={2}>
                 <FieldSet>

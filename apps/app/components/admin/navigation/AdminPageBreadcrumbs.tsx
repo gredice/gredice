@@ -6,17 +6,13 @@ import { KnownPages } from '../../../src/KnownPages';
 import {
     AdminBreadcrumbLevelSelector,
     resolveCurrentTopLevel,
-    shouldUseInlineBreadcrumbs,
 } from './AdminBreadcrumbLevelSelector';
 import { adminBreadcrumbPages } from './adminPages';
 
 export function AdminPageBreadcrumbs() {
     const pathname = usePathname();
 
-    if (
-        !pathname.startsWith('/admin') ||
-        shouldUseInlineBreadcrumbs(pathname)
-    ) {
+    if (!pathname.startsWith('/admin')) {
         return null;
     }
 

@@ -7,6 +7,7 @@ import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../../lib/auth/auth';
 import {
@@ -73,17 +74,22 @@ export default async function CreateInventoryItemPage({
 
     return (
         <Stack spacing={4}>
-            <Breadcrumbs
-                items={[
-                    {
-                        label: <AdminBreadcrumbLevelSelector />,
-                    },
-                    {
-                        label: config.label,
-                        href: KnownPages.InventoryConfig(id),
-                    },
-                    { label: 'Dodaj stavku' },
-                ]}
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                            },
+                            {
+                                label: config.label,
+                                href: KnownPages.InventoryConfig(id),
+                            },
+                            { label: 'Dodaj stavku' },
+                        ]}
+                    />
+                }
+                heading="Dodaj stavku zalihe"
             />
 
             <Stack spacing={2}>

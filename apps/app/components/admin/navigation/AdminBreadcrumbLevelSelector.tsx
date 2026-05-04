@@ -57,43 +57,6 @@ export function resolveCurrentTopLevel(pathname: string) {
     }, undefined);
 }
 
-export function shouldUseInlineBreadcrumbs(pathname: string) {
-    return inlineBreadcrumbPathPatterns.some((pattern) =>
-        pattern.test(pathname),
-    );
-}
-
-const inlineBreadcrumbPathPatterns = [
-    /^\/admin\/settings$/,
-    /^\/admin\/accounts\/[^/]+$/,
-    /^\/admin\/communication\/emails\/\d+$/,
-    /^\/admin\/directories\/entity-types\/create$/,
-    /^\/admin\/directories\/categories\/create$/,
-    /^\/admin\/directories\/categories\/\d+\/edit$/,
-    /^\/admin\/directories\/[^/]+\/edit$/,
-    /^\/admin\/directories\/[^/]+\/attribute-definitions$/,
-    /^\/admin\/directories\/[^/]+\/attribute-definitions\/categories$/,
-    /^\/admin\/directories\/[^/]+\/attribute-definitions\/\d+$/,
-    /^\/admin\/directories\/[^/]+\/attribute-definitions\/categories\/\d+$/,
-    /^\/admin\/directories\/[^/]+\/\d+$/,
-    /^\/admin\/farms\/\d+$/,
-    /^\/admin\/gardens\/\d+$/,
-    /^\/admin\/inventory\/create$/,
-    /^\/admin\/inventory\/\d+$/,
-    /^\/admin\/inventory\/\d+\/edit$/,
-    /^\/admin\/inventory\/\d+\/items\/create$/,
-    /^\/admin\/inventory\/\d+\/items\/\d+$/,
-    /^\/admin\/invoices\/create$/,
-    /^\/admin\/invoices\/\d+$/,
-    /^\/admin\/invoices\/\d+\/edit$/,
-    /^\/admin\/operations\/\d+$/,
-    /^\/admin\/raised-beds\/\d+$/,
-    /^\/admin\/receipts\/\d+$/,
-    /^\/admin\/shopping-carts\/\d+$/,
-    /^\/admin\/transactions\/\d+$/,
-    /^\/admin\/users\/[^/]+$/,
-];
-
 const breadcrumbSections: {
     title: string;
     pages: {
