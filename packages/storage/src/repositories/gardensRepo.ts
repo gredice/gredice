@@ -772,6 +772,10 @@ function summarizePlantCycle(
             } else if (plantStatus === 'died') {
                 plantDeadDate = plantCycleEvent.createdAt;
                 stoppedDate = plantCycleEvent.createdAt;
+            } else if (plantStatus === 'firstFlowers') {
+                plantGrowthDate = plantGrowthDate ?? plantCycleEvent.createdAt;
+            } else if (plantStatus === 'firstFruitSet') {
+                plantGrowthDate = plantGrowthDate ?? plantCycleEvent.createdAt;
             } else if (plantStatus === 'ready') {
                 plantReadyDate = plantCycleEvent.createdAt;
             } else if (plantStatus === 'harvested') {
@@ -1547,6 +1551,12 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 } else if (plantStatus === 'died') {
                     plantDeadDate = event.createdAt;
                     stoppedDate = event.createdAt;
+                } else if (plantStatus === 'firstFlowers') {
+                    plantGrowthDate =
+                        plantGrowthDate ?? plantCycleEvent.createdAt;
+                } else if (plantStatus === 'firstFruitSet') {
+                    plantGrowthDate =
+                        plantGrowthDate ?? plantCycleEvent.createdAt;
                 } else if (plantStatus === 'ready') {
                     plantReadyDate = event.createdAt;
                 } else if (plantStatus === 'harvested') {

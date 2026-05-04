@@ -34,6 +34,19 @@ export function plantFieldStatusLabel(status: string | undefined) {
                 description:
                     'Sjeme je uspješno proklijalo i biljka je krenula rasti.',
             };
+        case 'firstFlowers':
+            return {
+                shortLabel: 'Prvi cvjetovi',
+                label: 'Biljka je razvila prve cvjetove',
+                description:
+                    'Biljka je ušla u fazu cvjetanja i pojavili su se prvi cvjetovi.',
+            };
+        case 'firstFruitSet':
+            return {
+                shortLabel: 'Prvi plodovi',
+                label: 'Biljka je razvila prve plodove',
+                description: 'Nakon cvjetanja formirani su prvi plodovi.',
+            };
         case 'ready':
             return {
                 shortLabel: 'Spremna za berbu',
