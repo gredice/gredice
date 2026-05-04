@@ -10,10 +10,10 @@ import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { type PropsWithChildren, Suspense } from 'react';
 import {
-    AdminPageBreadcrumbs,
+    AdminPageCardHeader,
     DesktopNav,
+    DesktopNavProvider,
     LoginDialog,
-    MobileHeader,
 } from '../../components/admin/navigation';
 import { AdminClientProvider } from '../../components/admin/providers';
 import { AuthAppProvider } from '../../components/providers/AuthAppProvider';
@@ -86,25 +86,24 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                 quickActions={quickActions}
             >
                 <div className="grow bg-secondary/40">
-                    <MobileHeader />
-                    <main className="relative h-full md:h-full min-h-[calc(100vh-3.5rem)] md:min-h-screen">
-                        <div className="flex min-h-full flex-row gap-3 p-2 md:gap-4 md:p-4">
-                            {/* Desktop Navigation */}
-                            <DesktopNav />
-                            {/* Main Content */}
-                            <div className="min-h-full grow">
-                                <div className="min-h-full rounded-2xl border bg-background p-2 md:p-4">
-                                    <AuthProtectedSection auth={authAdmin}>
-                                        <Suspense>
-                                            <div className="mb-4 hidden md:block md:empty:mb-0 md:empty:hidden">
-                                                <AdminPageBreadcrumbs />
-                                            </div>
-                                            {children}
-                                        </Suspense>
-                                    </AuthProtectedSection>
+                    <main className="relative h-full min-h-screen">
+                        <DesktopNavProvider>
+                            <div className="flex min-h-full flex-row gap-3 md:gap-4 md:p-4">
+                                {/* Desktop Navigation */}
+                                <DesktopNav />
+                                {/* Main Content */}
+                                <div className="min-h-full grow">
+                                    <div className="min-h-full border bg-background p-3 md:rounded-2xl md:p-4">
+                                        <AuthProtectedSection auth={authAdmin}>
+                                            <Suspense>
+                                                <AdminPageCardHeader />
+                                                {children}
+                                            </Suspense>
+                                        </AuthProtectedSection>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </DesktopNavProvider>
                         <SignedOut>
                             <LoginDialog />
                         </SignedOut>
