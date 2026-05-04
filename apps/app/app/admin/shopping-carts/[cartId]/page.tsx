@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
@@ -171,6 +172,7 @@ export default async function ShoppingCartDetailsPage({
 
     return (
         <Stack spacing={4}>
+            <AdminPageTitle title={`Košarica ${cartIdNumber}`} />
             <AdminPageHeader
                 breadcrumbs={
                     <Breadcrumbs

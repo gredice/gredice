@@ -12,6 +12,7 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { NotificationsTableCard } from '../../../../components/notifications/NotificationsTableCard';
 import { RaisedBedEventsTable } from '../../../../components/raised-beds/RaisedBedEventsTable';
 import { RaisedBedFieldsTable } from '../../../../components/raised-beds/RaisedBedFieldsTable';
@@ -37,9 +38,12 @@ export default async function RaisedBedPage({
     if (!raisedBed) {
         notFound();
     }
+    const raisedBedTitle =
+        raisedBed.name || `Gredica ${raisedBed.physicalId ?? raisedBed.id}`;
 
     return (
         <Stack spacing={4}>
+            <AdminPageTitle title={raisedBedTitle} />
             <AdminPageHeader
                 breadcrumbs={
                     <Breadcrumbs

@@ -17,6 +17,7 @@ type EntityInventoryCardProps = {
     inventoryConfigId: number;
     inventoryLowCountThreshold: number | null;
     entityInventoryItem?: {
+        id: number;
         quantity: number;
         lowCountThreshold: number | null;
         notes?: string | null;
@@ -30,15 +31,23 @@ export function EntityInventoryCard({
     entityInventoryItem,
     upsertInventoryAction,
 }: EntityInventoryCardProps) {
+    const inventoryHref = entityInventoryItem
+        ? KnownPages.InventoryItem(inventoryConfigId, entityInventoryItem.id)
+        : KnownPages.InventoryConfig(inventoryConfigId);
+
     return (
         <Card>
             <CardHeader>
                 <Row justifyContent="space-between" className="items-center">
                     <CardTitle>Zaliha</CardTitle>
-                    <Link href={KnownPages.InventoryConfig(inventoryConfigId)}>
+                    <Link href={inventoryHref}>
                         <IconButton
                             variant="plain"
-                            title="Otvori stranicu zalihe"
+                            title={
+                                entityInventoryItem
+                                    ? 'Otvori stavku zalihe'
+                                    : 'Otvori stranicu zalihe'
+                            }
                         >
                             <ExternalLink className="size-4" />
                         </IconButton>

@@ -2,20 +2,27 @@ import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import Head from 'next/head';
 import type { ReactNode } from 'react';
 import { ImpersonationBanner } from '../components/ImpersonationBanner';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
+import { adminAppTitle } from '../src/adminDocumentTitle';
 
 export function generateMetadata(): Metadata {
     return {
-        title: 'Gredice Admin',
+        title: {
+            default: adminAppTitle,
+            template: `%s | ${adminAppTitle}`,
+        },
         description: 'Gredice admin - upravljanje gredicama',
+        appleWebApp: {
+            title: adminAppTitle,
+        },
     };
 }
 
 export const viewport: Viewport = {
     initialScale: 1,
+    themeColor: '#111111',
     width: 'device-width',
 };
 
@@ -43,14 +50,6 @@ export default function RootLayout({
 
     return (
         <html lang="hr" translate="no" suppressHydrationWarning={true}>
-            <Head>
-                <meta
-                    name="apple-mobile-web-app-title"
-                    content="Gredice Admin"
-                />
-                <meta name="theme-color" content="#111111" />
-                <title>Gredice Admin</title>
-            </Head>
             <body className="antialiased min-h-screen flex bg-background text-foreground">
                 {postHogApiKey ? (
                     <PostHogProvider

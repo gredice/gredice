@@ -15,6 +15,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
 import { AdminPageHeader } from '../../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../../../components/admin/navigation/AdminPageTitle';
 import { auth } from '../../../../../../lib/auth/auth';
 import {
     getInventoryFieldType,
@@ -64,6 +65,14 @@ export default async function InventoryItemPage({
             };
         }),
     ];
+    const itemEntityLabel = item.entityId
+        ? entityItems.find(
+              (entityItem) => entityItem.value === item.entityId?.toString(),
+          )?.label
+        : null;
+    const itemTitle = itemEntityLabel
+        ? `${itemEntityLabel} - stavka #${id}`
+        : `Stavka #${id}`;
 
     const additionalFields = item.additionalFields ?? {};
     const trackingTypeItems =
@@ -114,6 +123,7 @@ export default async function InventoryItemPage({
 
     return (
         <Stack spacing={4}>
+            <AdminPageTitle title={itemTitle} />
             <AdminPageHeader
                 breadcrumbs={
                     <Breadcrumbs

@@ -23,6 +23,7 @@ import { importEntityData } from '../../../../../app/admin/directories/(actions)
 import { EntityAttributeProgress } from '../../../../../components/admin/directories/EntityAttributeProgress';
 import { AdminPageHeader } from '../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../../components/admin/navigation/AdminPageTitle';
 import { BarcodeValue } from '../../../../../components/shared/attributes/BarcodeValue';
 import { formatAttributeValueWithUnit } from '../../../../../components/shared/attributes/formatAttributeValueWithUnit';
 import { Field } from '../../../../../components/shared/fields/Field';
@@ -76,6 +77,7 @@ export default async function EntityDetailsPage(props: {
     const entityInventoryItem = inventoryItems.find(
         (item) => item.entityId === entityId,
     );
+    const entityTitle = entityDisplayName(entity);
 
     const entityDeleteBound = handleEntityDelete.bind(
         null,
@@ -157,6 +159,7 @@ export default async function EntityDetailsPage(props: {
 
     return (
         <EntityDetailsSaveProvider>
+            <AdminPageTitle title={entityTitle} />
             <AdminPageHeader
                 breadcrumbs={
                     <Row spacing={2} className="min-w-0">

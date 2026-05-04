@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
@@ -80,6 +81,7 @@ export default async function InvoicePage({
 
     return (
         <Stack spacing={4}>
+            <AdminPageTitle title={`Ponuda ${invoice.invoiceNumber}`} />
             <AdminPageHeader
                 breadcrumbs={
                     <Breadcrumbs

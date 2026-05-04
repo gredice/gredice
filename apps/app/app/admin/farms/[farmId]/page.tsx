@@ -12,6 +12,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { notFound } from 'next/navigation';
 import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { FormFields } from '../../../../components/shared/fields/FormFields';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
@@ -37,6 +38,7 @@ export default async function FarmPage({
 
     return (
         <Stack spacing={4}>
+            <AdminPageTitle title={farm.name} />
             <AdminPageHeader
                 breadcrumbs={
                     <Breadcrumbs

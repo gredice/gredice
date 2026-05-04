@@ -12,6 +12,7 @@ type NavGroupProps = PropsWithChildren<{
     label: string;
     icon?: ReactElement;
     defaultOpen?: boolean;
+    forceOpen?: boolean;
     compact?: boolean;
     className?: string;
     depth?: 0 | 1 | 2;
@@ -21,12 +22,14 @@ export function NavGroup({
     label,
     icon,
     defaultOpen = false,
+    forceOpen = false,
     compact = false,
     className,
     depth = 0,
     children,
 }: NavGroupProps) {
     const [open, setOpen] = useState(defaultOpen);
+    const visible = open || forceOpen;
     const contentId = useId();
     const rootClassName = className ? `space-y-1 ${className}` : 'space-y-1';
     const isNested = depth > 0;
@@ -55,7 +58,7 @@ export function NavGroup({
         <section className={rootClassName}>
             <button
                 type="button"
-                aria-expanded={open}
+                aria-expanded={visible}
                 aria-controls={contentId}
                 onClick={() => setOpen((value) => !value)}
                 className={buttonClassName}
@@ -66,11 +69,11 @@ export function NavGroup({
                 <span className="min-w-0 flex-1 truncate">{label}</span>
                 <Down
                     className={`size-3.5 shrink-0 transition-transform ${
-                        open ? '' : '-rotate-90'
+                        visible ? '' : '-rotate-90'
                     }`}
                 />
             </button>
-            {open && (
+            {visible && (
                 <div id={contentId} className={contentClassName}>
                     {children}
                 </div>

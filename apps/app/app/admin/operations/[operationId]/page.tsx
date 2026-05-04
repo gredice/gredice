@@ -23,6 +23,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
@@ -77,9 +78,14 @@ export default async function OperationDetailsPage({
         raisedBed && operation.raisedBedFieldId
             ? raisedBed.fields.find((f) => f.id === operation.raisedBedFieldId)
             : undefined;
+    const operationTitle =
+        operationDetails?.information?.label ||
+        operationDetails?.information?.name ||
+        `Radnja ${operation.id}`;
 
     return (
         <Stack spacing={4}>
+            <AdminPageTitle title={operationTitle} />
             <AdminPageHeader
                 breadcrumbs={
                     <Breadcrumbs
