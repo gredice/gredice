@@ -10,7 +10,7 @@ import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 
 export function generateMetadata(): Metadata {
     return {
-        title: 'Farma | Gredice',
+        title: 'Gredice Farm',
         description: 'Gredice farma - upravljanje farmom.',
     };
 }
@@ -46,9 +46,12 @@ export default function RootLayout({
     return (
         <html lang="hr" translate="no">
             <Head>
-                <meta name="apple-mobile-web-app-title" content="Gredice" />
-                <meta name="theme-color" content="#2e6f40" />
-                <title>Farma | Gredice</title>
+                <meta
+                    name="apple-mobile-web-app-title"
+                    content="Gredice Farm"
+                />
+                <meta name="theme-color" content="#8b5e34" />
+                <title>Gredice Farm</title>
             </Head>
             <body className="antialiased min-h-screen flex bg-muted">
                 {postHogApiKey ? (

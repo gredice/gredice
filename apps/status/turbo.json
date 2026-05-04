@@ -1,0 +1,13 @@
+{
+    "$schema": "https://turbo.build/schema.json",
+    "extends": ["//"],
+    "tasks": {
+        "build": {
+            "env": [
+                "CHECKLY_ACCOUNT_ID",
+                "CHECKLY_API_KEY",
+                "CHECKLY_STATUS_TAG"
+            ]
+        }
+    }
+}
