@@ -1,28 +1,26 @@
 import { adminBreadcrumbPages } from './adminPages';
 import type { NavContextType } from './NavContext';
 
-const idRouteTitles = [
-    { pattern: /^\/admin\/accounts\/([^/]+)$/, prefix: 'Račun' },
-    {
-        pattern: /^\/admin\/communication\/emails\/([^/]+)$/,
-        prefix: 'Email',
-    },
-    { pattern: /^\/admin\/farms\/([^/]+)$/, prefix: 'Farma' },
-    { pattern: /^\/admin\/gardens\/([^/]+)$/, prefix: 'Vrt' },
-    { pattern: /^\/admin\/inventory\/([^/]+)$/, prefix: 'Zaliha' },
-    { pattern: /^\/admin\/invoices\/([^/]+)$/, prefix: 'Ponuda' },
-    { pattern: /^\/admin\/operations\/([^/]+)$/, prefix: 'Radnja' },
-    { pattern: /^\/admin\/raised-beds\/([^/]+)$/, prefix: 'Gredica' },
-    { pattern: /^\/admin\/receipts\/([^/]+)$/, prefix: 'Fiskalni račun' },
-    { pattern: /^\/admin\/shopping-carts\/([^/]+)$/, prefix: 'Košarica' },
-    { pattern: /^\/admin\/transactions\/([^/]+)$/, prefix: 'Transakcija' },
-    { pattern: /^\/admin\/users\/([^/]+)$/, prefix: 'Korisnik' },
-];
+const idRouteTitlePrefixes = new Map([
+    ['/admin/accounts', 'Račun'],
+    ['/admin/communication/emails', 'Email'],
+    ['/admin/farms', 'Farma'],
+    ['/admin/gardens', 'Vrt'],
+    ['/admin/inventory', 'Zaliha'],
+    ['/admin/invoices', 'Ponuda'],
+    ['/admin/operations', 'Radnja'],
+    ['/admin/raised-beds', 'Gredica'],
+    ['/admin/receipts', 'Fiskalni račun'],
+    ['/admin/shopping-carts', 'Košarica'],
+    ['/admin/transactions', 'Transakcija'],
+    ['/admin/users', 'Korisnik'],
+]);
 
 function decodePathSegment(segment: string) {
     try {
         return decodeURIComponent(segment);
     } catch {
+        // Keep malformed path segments readable instead of failing title updates.
         return segment;
     }
 }
@@ -105,6 +103,7 @@ function resolveDirectoryTitle(
     }
 
     if (/^[^/]+$/.test(suffix)) {
+        // Directory entity detail routes use a single entity id after the entity type.
         return `${entityTypeLabel} ${decodePathSegment(suffix)}`;
     }
 
@@ -187,10 +186,13 @@ export function resolveAdminRouteTitle(
         return invoiceTitle;
     }
 
-    for (const routeTitle of idRouteTitles) {
-        const match = pathname.match(routeTitle.pattern);
-        if (match?.[1]) {
-            return `${routeTitle.prefix} ${decodePathSegment(match[1])}`;
+    const idSeparatorIndex = pathname.lastIndexOf('/');
+    if (idSeparatorIndex > 0) {
+        const routePrefix = pathname.slice(0, idSeparatorIndex);
+        const routeId = pathname.slice(idSeparatorIndex + 1);
+        const titlePrefix = idRouteTitlePrefixes.get(routePrefix);
+        if (titlePrefix && routeId) {
+            return `${titlePrefix} ${decodePathSegment(routeId)}`;
         }
     }
 

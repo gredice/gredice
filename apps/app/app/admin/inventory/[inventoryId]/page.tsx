@@ -12,6 +12,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { Field } from '../../../../components/shared/fields/Field';
@@ -67,40 +68,45 @@ export default async function InventoryConfigPage({
     return (
         <Stack spacing={2}>
             <AdminPageTitle title={config.label} />
-            <Breadcrumbs
-                items={[
-                    {
-                        label: <AdminBreadcrumbLevelSelector />,
-                    },
-                    { label: config.label },
-                ]}
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                            },
+                            { label: config.label },
+                        ]}
+                    />
+                }
+                actions={
+                    <Row spacing={1}>
+                        <Link href={KnownPages.InventoryItemCreate(id)}>
+                            <Row
+                                spacing={1}
+                                className="text-sm font-medium px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                            >
+                                <Add className="size-4" />
+                                <span>Dodaj stavku</span>
+                            </Row>
+                        </Link>
+                        <Link href={KnownPages.InventoryConfigEdit(id)}>
+                            <Row
+                                spacing={1}
+                                className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
+                            >
+                                <Edit className="size-4" />
+                                <span>Uredi</span>
+                            </Row>
+                        </Link>
+                    </Row>
+                }
+                heading={config.label}
             />
 
-            <Row spacing={1} justifyContent="space-between">
-                <Typography level="h1" className="text-2xl" semiBold>
-                    {config.label}
-                </Typography>
-                <Row spacing={1}>
-                    <Link href={KnownPages.InventoryItemCreate(id)}>
-                        <Row
-                            spacing={1}
-                            className="text-sm font-medium px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                        >
-                            <Add className="size-4" />
-                            <span>Dodaj stavku</span>
-                        </Row>
-                    </Link>
-                    <Link href={KnownPages.InventoryConfigEdit(id)}>
-                        <Row
-                            spacing={1}
-                            className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
-                        >
-                            <Edit className="size-4" />
-                            <span>Uredi</span>
-                        </Row>
-                    </Link>
-                </Row>
-            </Row>
+            <Typography level="h1" className="text-2xl" semiBold>
+                {config.label}
+            </Typography>
 
             <Card>
                 <CardContent noHeader>

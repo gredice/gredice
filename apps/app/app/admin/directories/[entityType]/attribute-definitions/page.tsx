@@ -3,6 +3,7 @@ import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { notFound } from 'next/navigation';
 import { AttributeDefinitionsList } from '../../../../../components/admin/directories';
+import { AdminPageHeader } from '../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { KnownPages } from '../../../../../src/KnownPages';
 
@@ -21,18 +22,25 @@ export default async function AttributesPage({
 
     return (
         <Stack spacing={2}>
-            <Breadcrumbs
-                items={[
-                    {
-                        label: <AdminBreadcrumbLevelSelector />,
-                        href: KnownPages.Directories,
-                    },
-                    {
-                        label: entityType.label,
-                        href: KnownPages.DirectoryEntityType(entityTypeName),
-                    },
-                    { label: 'Atributi' },
-                ]}
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.Directories,
+                            },
+                            {
+                                label: entityType.label,
+                                href: KnownPages.DirectoryEntityType(
+                                    entityTypeName,
+                                ),
+                            },
+                            { label: 'Atributi' },
+                        ]}
+                    />
+                }
+                heading="Atributi"
             />
             <AttributeDefinitionsList entityTypeName={entityTypeName} />
         </Stack>

@@ -14,6 +14,7 @@ import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
@@ -81,22 +82,25 @@ export default async function InvoicePage({
     return (
         <Stack spacing={4}>
             <AdminPageTitle title={`Ponuda ${invoice.invoiceNumber}`} />
-            <Breadcrumbs
-                items={[
-                    {
-                        label: <AdminBreadcrumbLevelSelector />,
-                        href: KnownPages.Invoices,
-                    },
-                    { label: `${invoice.invoiceNumber}` },
-                ]}
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.Invoices,
+                            },
+                            { label: `${invoice.invoiceNumber}` },
+                        ]}
+                    />
+                }
+                actions={<InvoiceActions invoice={invoice} />}
+                heading={`Ponuda ${invoice.invoiceNumber}`}
             />
             <Stack spacing={2}>
-                <Row spacing={2} justifyContent="space-between">
-                    <Typography level="h1">
-                        Ponuda {invoice.invoiceNumber}
-                    </Typography>
-                    <InvoiceActions invoice={invoice} />
-                </Row>
+                <Typography level="h1">
+                    Ponuda {invoice.invoiceNumber}
+                </Typography>
 
                 <Row spacing={2} alignItems="stretch">
                     <Stack spacing={2} className="flex-1">
