@@ -153,8 +153,8 @@ export function PlantsHandbook({ plantSortsData }: PlantsHandbookProps) {
             `${left.id}`
         ).localeCompare(
             right.information?.label ??
-                right.information?.name ??
-                `${right.id}`,
+            right.information?.name ??
+            `${right.id}`,
             undefined,
             { numeric: true },
         ),
