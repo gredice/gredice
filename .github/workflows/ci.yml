@@ -96,6 +96,13 @@ jobs:
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
               - turbo.json
+            app_status:
+              - apps/status/**
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - turbo.json
             packages_storage:
               - packages/storage/**
               - .github/workflows/**
@@ -110,6 +117,7 @@ jobs:
       app_app: ${{ steps.filter.outputs.app_app }}
       app_api: ${{ steps.filter.outputs.app_api }}
       app_storybook: ${{ steps.filter.outputs.app_storybook }}
+      app_status: ${{ steps.filter.outputs.app_status }}
       packages_storage: ${{ steps.filter.outputs.packages_storage }}
 
   ci_www:
@@ -165,6 +173,17 @@ jobs:
       name: "api"
       path: "apps/api"
       vercelProjectIdSecretName: "VERCEL_PROJECT_ID_API"
+    secrets: inherit
+
+  ci_status:
+    name: "CI - status"
+    needs: changes
+    if: success() && needs.changes.outputs.app_status == 'true'
+    uses: ./.github/workflows/nextjs_ci_reusable.yml
+    with:
+      name: "status"
+      path: "apps/status"
+      vercelProjectIdSecretName: "VERCEL_PROJECT_ID_STATUS"
     secrets: inherit
 
   test_packages:
@@ -481,6 +500,7 @@ jobs:
         ci_farm,
         ci_app,
         ci_api,
+        ci_status,
         test_packages,
         ci_filter_check,
         ci_visual_www_prepare,

@@ -13,6 +13,16 @@ const containerName = 'gredice-dev-caddy';
 const dockerImage = process.env.GREDICE_DEV_CADDY_IMAGE ?? 'gredice-caddy-dev';
 const shouldSkipProxy = parseEnvFlag(process.env.SKIP_DEV_PROXY ?? '');
 const extraTurboArgs = process.argv.slice(2);
+const hasExplicitStatusFilter = extraTurboArgs.some((arg, index) => {
+    if (arg === '--filter') {
+        return extraTurboArgs[index + 1]?.startsWith('status') === true;
+    }
+
+    return arg.startsWith('--filter=status');
+});
+const turboDevArgs = hasExplicitStatusFilter
+    ? extraTurboArgs
+    : ['--filter=!status', ...extraTurboArgs];
 const signalNumbers = os.constants?.signals ?? {};
 const defaultDataDir = (() => {
     const homeDir = os.homedir?.();
@@ -42,6 +52,7 @@ const caddyDomains = [
     'app.gredice.test',
     'storybook.gredice.test',
     'api.gredice.test',
+    'status.gredice.test',
 ];
 const requiredHostsLine = `127.0.0.1 ${caddyDomains.join(' ')}`;
 const caddyCertificateLabel = 'Caddy Local Authority';
@@ -644,7 +655,7 @@ function getTurboCommand() {
 async function runTurboDev() {
     return await new Promise((resolve, reject) => {
         const turboCommand = getTurboCommand();
-        const turboProcess = spawn(turboCommand, ['dev', ...extraTurboArgs], {
+        const turboProcess = spawn(turboCommand, ['dev', ...turboDevArgs], {
             stdio: 'inherit',
             env: process.env,
             shell: process.platform === 'win32',

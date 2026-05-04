@@ -98,3 +98,4 @@ pnpm build --filter garden
   - `app`: <https://app.gredice.test>
   - `storybook`: <https://storybook.gredice.test>
   - `api`: <https://api.gredice.test>
+  - `status`: <https://status.gredice.test> (start explicitly with `pnpm --filter=status dev`)
