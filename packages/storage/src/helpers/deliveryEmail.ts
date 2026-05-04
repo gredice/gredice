@@ -29,7 +29,7 @@ export async function buildDeliveryEmailDetails(
     const recipients = new Set<string>();
     const accountUsers = await getAccountUsers(request.accountId);
     for (const accountUser of accountUsers) {
-        const email = accountUser.user?.userName?.trim();
+        const email = accountUser.user?.userName?.trim().toLowerCase();
         if (email) {
             recipients.add(email);
         }
