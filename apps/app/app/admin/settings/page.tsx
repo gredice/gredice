@@ -172,7 +172,11 @@ export default async function SettingsPage() {
                                                         >
                                                             <EntityTypeIcon
                                                                 icon={
-                                                                    category.icon
+                                                                    category.icon ??
+                                                                    (category.label ===
+                                                                    'Ostali'
+                                                                        ? 'MoreHorizontal'
+                                                                        : undefined)
                                                                 }
                                                                 className="size-4"
                                                             />
