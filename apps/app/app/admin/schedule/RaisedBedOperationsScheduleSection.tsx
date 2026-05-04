@@ -263,6 +263,10 @@ export function RaisedBedOperationsScheduleSection({
                     const operationTextInactive =
                         isOperationCancelled(operation.status) ||
                         isOperationCompleted(operation.status);
+                    const operationApproved =
+                        operation.isAccepted &&
+                        !operationLocked &&
+                        !operationTextInactive;
 
                     const operationStatusText = isOperationCancelled(
                         operation.status,
@@ -299,7 +303,14 @@ export function RaisedBedOperationsScheduleSection({
 
                     return (
                         <div key={operation.id}>
-                            <Row spacing={1} className="hover:bg-muted rounded">
+                            <Row
+                                spacing={1}
+                                className={
+                                    operationApproved
+                                        ? 'rounded bg-muted/60 text-foreground hover:bg-muted/80'
+                                        : 'rounded hover:bg-muted'
+                                }
+                            >
                                 <Row spacing={1} className="grow">
                                     {isOperationCompleted(operation.status) ? (
                                         <Checkbox
