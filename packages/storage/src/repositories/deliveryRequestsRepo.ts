@@ -10,6 +10,7 @@ import {
     isNull,
     lte,
     notExists,
+    or,
     sql,
 } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
@@ -1082,7 +1083,7 @@ export async function getPendingDeliveryReadyEmailRequestIds({
         'delivery_ready_email_processed_events',
     );
     const pendingReadyEvents = await storage()
-        .select({
+        .selectDistinct({
             requestId: events.aggregateId,
             readyEventId: events.id,
         })
@@ -1107,10 +1108,19 @@ export async function getPendingDeliveryReadyEmailRequestIds({
                                     events.aggregateId,
                                 ),
                                 eq(
-                                    sql<number>`(${processedEvents.data}->>'readyEventId')::int`,
-                                    events.id,
+                                    sql<string>`${processedEvents.data}->>'readyEventId'`,
+                                    sql<string>`${events.id}::text`,
                                 ),
-                                sql`(${processedEvents.data}->>'completed' = 'true' OR ${processedEvents.data}->>'skipped' = 'true')`,
+                                or(
+                                    eq(
+                                        sql<string>`${processedEvents.data}->>'completed'`,
+                                        'true',
+                                    ),
+                                    eq(
+                                        sql<string>`${processedEvents.data}->>'skipped'`,
+                                        'true',
+                                    ),
+                                ),
                             ),
                         ),
                 ),

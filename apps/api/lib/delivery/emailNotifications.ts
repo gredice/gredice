@@ -198,12 +198,15 @@ export async function sendBatchedDeliveryReadyEmails(
                 }),
             ),
         );
-        const sentRecipients = group.recipients.filter(
-            (_, index) => sendResults[index]?.status === 'fulfilled',
-        );
-        const failedRecipients = group.recipients.filter(
-            (_, index) => sendResults[index]?.status === 'rejected',
-        );
+        const sentRecipients: string[] = [];
+        const failedRecipients: string[] = [];
+        for (const [index, recipient] of group.recipients.entries()) {
+            if (sendResults[index]?.status === 'fulfilled') {
+                sentRecipients.push(recipient);
+            } else {
+                failedRecipients.push(recipient);
+            }
+        }
 
         if (sentRecipients.length > 0) {
             emailsSent += sentRecipients.length;
