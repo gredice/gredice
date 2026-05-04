@@ -7,6 +7,7 @@ import {
 } from '@signalco/ui-primitives/Card';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import type { ReactNode } from 'react';
 
 interface PlantsHandbookProps {
     plantSortsData: EntityStandardized[];
@@ -35,6 +36,50 @@ function renderValue(value: unknown): string | null {
     return null;
 }
 
+function renderPeriod(record: Record<string, unknown>) {
+    const start = renderValue(record.start);
+    const end = renderValue(record.end);
+
+    if (!start && !end) return null;
+    if (start && end) return start === end ? start : `${start} - ${end}`;
+
+    return start ?? end;
+}
+
+function renderArray(values: unknown[], keyPrefix: string): ReactNode | null {
+    const renderedItems = values.map((item, index) => {
+        const itemKey = `${keyPrefix}-${index}`;
+        const formattedValue = renderValue(item);
+
+        if (formattedValue) {
+            return <li key={itemKey}>{formattedValue}</li>;
+        }
+
+        if (Array.isArray(item)) {
+            const nestedArray = renderArray(item, itemKey);
+            if (!nestedArray) return null;
+
+            return <li key={itemKey}>{nestedArray}</li>;
+        }
+
+        if (isRecord(item)) {
+            const period = renderPeriod(item);
+            if (period) return <li key={itemKey}>{period}</li>;
+
+            const nestedRecord = renderRecord(item, itemKey);
+            if (!nestedRecord) return null;
+
+            return <li key={itemKey}>{nestedRecord}</li>;
+        }
+
+        return null;
+    });
+
+    if (renderedItems.every((item) => item === null)) return null;
+
+    return <ul className="list-disc space-y-1 pl-4">{renderedItems}</ul>;
+}
+
 function renderRecord(record: Record<string, unknown>, keyPrefix: string) {
     const entries = Object.entries(record).filter(
         ([, recordValue]) => recordValue !== null && recordValue !== undefined,
@@ -60,6 +105,26 @@ function renderRecord(record: Record<string, unknown>, keyPrefix: string) {
                                 {formatLabel(entryKey)}
                             </Typography>
                             {nestedRecord}
+                        </div>
+                    );
+                }
+
+                if (Array.isArray(entryValue)) {
+                    const nestedArray = renderArray(
+                        entryValue,
+                        `${keyPrefix}-${entryKey}`,
+                    );
+                    if (!nestedArray) return null;
+
+                    return (
+                        <div
+                            key={`${keyPrefix}-${entryKey}`}
+                            className="contents"
+                        >
+                            <dt className="text-muted-foreground">
+                                {formatLabel(entryKey)}
+                            </dt>
+                            <dd>{nestedArray}</dd>
                         </div>
                     );
                 }
@@ -98,8 +163,9 @@ export function PlantsHandbook({ plantSortsData }: PlantsHandbookProps) {
     return (
         <Stack spacing={2}>
             {sortedPlantSorts.map((plantSort) => {
-                const plantInformation = isRecord(plantSort.information?.plant)
-                    ? plantSort.information.plant
+                const plantValue: unknown = plantSort.information?.plant;
+                const plantInformation = isRecord(plantValue)
+                    ? plantValue
                     : null;
                 const attributes =
                     plantInformation && isRecord(plantInformation.attributes)
