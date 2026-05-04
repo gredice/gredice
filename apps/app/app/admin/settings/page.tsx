@@ -23,6 +23,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
+import { EntityTypeIcon } from '../../../components/admin/directories/EntityTypeIcon';
 import { AdminBreadcrumbLevelSelector } from '../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../lib/auth/auth';
 import {
@@ -176,7 +177,20 @@ export default async function SettingsPage() {
                                                     alignItems="center"
                                                 >
                                                     <CardTitle>
-                                                        {category.label}
+                                                        <Row
+                                                            spacing={1}
+                                                            alignItems="center"
+                                                        >
+                                                            <EntityTypeIcon
+                                                                icon={
+                                                                    category.icon
+                                                                }
+                                                                className="size-4"
+                                                            />
+                                                            <span>
+                                                                {category.label}
+                                                            </span>
+                                                        </Row>
                                                     </CardTitle>
                                                     <Link
                                                         href={KnownPages.DirectoryCategoryEdit(
