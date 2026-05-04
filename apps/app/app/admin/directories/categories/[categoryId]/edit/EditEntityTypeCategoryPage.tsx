@@ -10,6 +10,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
+import { AdminPageHeader } from '../../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { KnownPages } from '../../../../../../src/KnownPages';
 import {
@@ -37,18 +38,36 @@ export function EditEntityTypeCategoryPage({
 
     return (
         <Stack spacing={4}>
-            <Breadcrumbs
-                items={[
-                    {
-                        label: <AdminBreadcrumbLevelSelector />,
-                        href: KnownPages.Directories,
-                    },
-                    { label: 'Kategorije', href: KnownPages.Directories },
-                    { label: category.label },
-                ]}
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.Directories,
+                            },
+                            {
+                                label: 'Kategorije',
+                                href: KnownPages.Directories,
+                            },
+                            { label: category.label },
+                        ]}
+                    />
+                }
+                actions={
+                    <Button
+                        variant="plain"
+                        color="danger"
+                        onClick={() => setShowDeleteConfirm(true)}
+                    >
+                        <Delete className="size-4" />
+                        Obriši kategoriju
+                    </Button>
+                }
+                heading={`Uredi kategoriju: ${category.label}`}
             />
 
-            <Row spacing={4} justifyContent="space-between" alignItems="start">
+            <Row spacing={4} alignItems="start">
                 <Stack spacing={2}>
                     <Typography level="h2" className="text-2xl" semiBold>
                         Uredi kategoriju: {category.label}
@@ -70,15 +89,6 @@ export function EditEntityTypeCategoryPage({
                         <strong>{category.label}</strong>?
                     </Typography>
                 </ModalConfirm>
-
-                <Button
-                    variant="plain"
-                    color="danger"
-                    onClick={() => setShowDeleteConfirm(true)}
-                >
-                    <Delete className="size-4" />
-                    Obriši kategoriju
-                </Button>
             </Row>
 
             <Card className="max-w-2xl">

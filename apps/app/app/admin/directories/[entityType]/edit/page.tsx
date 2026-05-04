@@ -5,6 +5,7 @@ import {
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../lib/auth/auth';
 import { KnownPages } from '../../../../../src/KnownPages';
@@ -27,18 +28,25 @@ export default async function EditEntityTypePage({
 
     return (
         <Stack spacing={4}>
-            <Breadcrumbs
-                items={[
-                    {
-                        label: <AdminBreadcrumbLevelSelector />,
-                        href: KnownPages.Directories,
-                    },
-                    {
-                        label: entityType.label,
-                        href: KnownPages.DirectoryEntityType(entityTypeName),
-                    },
-                    { label: 'Uredi' },
-                ]}
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.Directories,
+                            },
+                            {
+                                label: entityType.label,
+                                href: KnownPages.DirectoryEntityType(
+                                    entityTypeName,
+                                ),
+                            },
+                            { label: 'Uredi' },
+                        ]}
+                    />
+                }
+                heading={`Uredi ${entityType.label}`}
             />
             <EntityTypeEditForm
                 entityType={entityType}

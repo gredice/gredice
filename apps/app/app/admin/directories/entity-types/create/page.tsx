@@ -7,6 +7,7 @@ import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { availableIcons } from '../../../../../components/admin/directories/EntityTypeIcon';
+import { AdminPageHeader } from '../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../lib/auth/auth';
 import { KnownPages } from '../../../../../src/KnownPages';
@@ -36,14 +37,19 @@ export default async function CreateEntityTypePage() {
 
     return (
         <Stack spacing={4}>
-            <Breadcrumbs
-                items={[
-                    {
-                        label: <AdminBreadcrumbLevelSelector />,
-                        href: KnownPages.Directories,
-                    },
-                    { label: 'Novi tip zapisa' },
-                ]}
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.Directories,
+                            },
+                            { label: 'Novi tip zapisa' },
+                        ]}
+                    />
+                }
+                heading="Novi tip zapisa"
             />
 
             <Stack spacing={2}>

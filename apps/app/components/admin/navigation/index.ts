@@ -1,5 +1,7 @@
 export { AdminPageBreadcrumbs } from './AdminPageBreadcrumbs';
 export { AdminPageCardHeader } from './AdminPageCardHeader';
+export { AdminPageHeader } from './AdminPageHeader';
+export { AdminPageHeaderProvider } from './AdminPageHeaderProvider';
 export { DesktopNav } from './DesktopNav';
 export { DesktopNavProvider } from './DesktopNavProvider';
 export { DesktopNavToggle } from './DesktopNavToggle';

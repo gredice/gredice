@@ -13,6 +13,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { AdminPageHeader } from '../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { NoDataPlaceholder } from '../../../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../../../lib/auth/auth';
@@ -94,22 +95,24 @@ export default async function EmailDetailPage({
 
     return (
         <Stack spacing={3}>
-            <Breadcrumbs
-                items={[
-                    {
-                        label: <AdminBreadcrumbLevelSelector />,
-                        href: KnownPages.CommunicationEmails,
-                    },
-                    { label: `Email #${email.id}` },
-                ]}
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.CommunicationEmails,
+                            },
+                            { label: `Email #${email.id}` },
+                        ]}
+                    />
+                }
+                actions={<EmailStatusBadge status={email.status} />}
+                heading={email.subject}
             />
 
             <Stack spacing={2}>
-                <Row
-                    spacing={2}
-                    alignItems="center"
-                    justifyContent="space-between"
-                >
+                <Row spacing={2} alignItems="center">
                     <Stack spacing={0.5} className="min-w-0">
                         <Typography level="h1" className="text-2xl" semiBold>
                             {email.subject}
@@ -123,7 +126,6 @@ export default async function EmailDetailPage({
                             </Typography>
                         )}
                     </Stack>
-                    <EmailStatusBadge status={email.status} />
                 </Row>
 
                 <Row spacing={2} className="flex-wrap" alignItems="stretch">

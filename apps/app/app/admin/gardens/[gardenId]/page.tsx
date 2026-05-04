@@ -5,6 +5,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
@@ -51,16 +52,21 @@ export default async function GardenPage({
 
     return (
         <Stack spacing={4}>
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.Gardens,
+                            },
+                            { label: garden?.name },
+                        ]}
+                    />
+                }
+                heading={garden.name}
+            />
             <Stack spacing={2}>
-                <Breadcrumbs
-                    items={[
-                        {
-                            label: <AdminBreadcrumbLevelSelector />,
-                            href: KnownPages.Gardens,
-                        },
-                        { label: garden?.name },
-                    ]}
-                />
                 <Stack spacing={2}>
                     <FieldSet>
                         <Field name="ID vrta" value={garden?.id} mono />

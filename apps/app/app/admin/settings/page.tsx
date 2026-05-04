@@ -9,7 +9,6 @@ import {
     SettingsKeys,
     type SlackConfig,
 } from '@gredice/storage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Add, Edit } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import {
@@ -24,7 +23,6 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { EntityTypeIcon } from '../../../components/admin/directories/EntityTypeIcon';
-import { AdminBreadcrumbLevelSelector } from '../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../lib/auth/auth';
 import {
     buildDashboardQuickActionOptions,
@@ -100,15 +98,6 @@ export default async function SettingsPage() {
 
     return (
         <Stack spacing={4}>
-            <Breadcrumbs
-                items={[
-                    {
-                        label: <AdminBreadcrumbLevelSelector />,
-                        href: KnownPages.Settings,
-                    },
-                ]}
-            />
-
             <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
                 <nav className="lg:sticky self-start">
                     <Card>

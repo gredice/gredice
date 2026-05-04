@@ -15,6 +15,7 @@ import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
@@ -54,8 +55,8 @@ export default async function UserPage({
 
     return (
         <Stack spacing={4}>
-            <Stack spacing={2}>
-                <Row spacing={2} justifyContent="space-between">
+            <AdminPageHeader
+                breadcrumbs={
                     <Breadcrumbs
                         items={[
                             {
@@ -65,8 +66,11 @@ export default async function UserPage({
                             { label: user.userName },
                         ]}
                     />
-                    <ButtonImpersonateUser userId={user.id} />
-                </Row>
+                }
+                actions={<ButtonImpersonateUser userId={user.id} />}
+                heading={user.userName}
+            />
+            <Stack spacing={2}>
                 <Stack spacing={2}>
                     <FieldSet>
                         <Field name="ID korisnika" value={id} mono />
