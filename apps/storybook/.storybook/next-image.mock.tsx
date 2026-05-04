@@ -1,5 +1,5 @@
-import { forwardRef } from 'react';
 import type { CSSProperties, ImgHTMLAttributes } from 'react';
+import { forwardRef } from 'react';
 
 type StaticImageData = {
     src: string;
@@ -77,25 +77,26 @@ function resolveStaticWidth(src: StorybookNextImageProps['src']) {
     return typeof src === 'string' ? undefined : src.width;
 }
 
-const StorybookNextImage = forwardRef<HTMLImageElement, StorybookNextImageProps>(
-    function StorybookNextImage(props, ref) {
-        const { onLoadingComplete } = props;
-        const { alt, onLoad, ...imageProps } = getImgProps(props);
+const StorybookNextImage = forwardRef<
+    HTMLImageElement,
+    StorybookNextImageProps
+>(function StorybookNextImage(props, ref) {
+    const { onLoadingComplete } = props;
+    const { alt, onLoad, ...imageProps } = getImgProps(props);
 
-        return (
-            // biome-ignore lint/performance/noImgElement: Storybook mock must not depend on Next's image runtime.
-            <img
-                {...imageProps}
-                alt={alt}
-                ref={ref}
-                onLoad={(event) => {
-                    onLoad?.(event);
-                    onLoadingComplete?.(event.currentTarget);
-                }}
-            />
-        );
-    },
-);
+    return (
+        // biome-ignore lint/performance/noImgElement: Storybook mock must not depend on Next's image runtime.
+        <img
+            {...imageProps}
+            alt={alt}
+            ref={ref}
+            onLoad={(event) => {
+                onLoad?.(event);
+                onLoadingComplete?.(event.currentTarget);
+            }}
+        />
+    );
+});
 
 export function getImageProps(props: StorybookNextImageProps) {
     return {
