@@ -1,32 +1,16 @@
 @import "@signalco/ui-themes-minimal-app/styles";
 
 :root {
-    color-scheme: dark;
-    --background: 0 0% 5%;
-    --foreground: 0 0% 100%;
-    --muted: 0 0% 14%;
-    --muted-foreground: 0 0% 72%;
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 100%;
-    --card: 0 0% 13%;
-    --card-transparent: 0 0% 5%;
-    --card-foreground: 0 0% 100%;
-    --border: 0 0% 22%;
-    --input: 0 0% 22%;
-    --primary: 0 0% 100%;
-    --primary-foreground: 0 0% 5%;
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 92%;
-    --tertiary: 0 0% 18%;
-    --tertiary-foreground: 0 0% 66%;
-    --accent: 0 0% 20%;
-    --accent-foreground: 0 0% 100%;
-    --ring: 0 0% 72%;
-    --bg-selection: #fff;
-    --text-selection: #000;
+    color-scheme: light;
     scrollbar-width: thin;
     scrollbar-color: color-mix(in srgb, currentColor 20%, transparent)
         transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        color-scheme: dark;
+    }
 }
 
 *::-webkit-scrollbar {

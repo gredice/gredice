@@ -9,7 +9,9 @@ export const queryClient = new QueryClient();
 export function ClientAppProvider({ children }: PropsWithChildren) {
     return (
         <QueryClientProvider client={queryClient}>
-            <ThemeProvider attribute="class">{children}</ThemeProvider>
+            <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+                {children}
+            </ThemeProvider>
         </QueryClientProvider>
     );
 }
