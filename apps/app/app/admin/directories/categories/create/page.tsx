@@ -1,13 +1,13 @@
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../lib/auth/auth';
 import { KnownPages } from '../../../../../src/KnownPages';
 import { createEntityTypeCategoryFromForm } from '../../../../(actions)/entityTypeCategoryActions';
+import { EntityTypeCategoryFormFields } from '../EntityTypeCategoryFormFields';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,20 +40,7 @@ export default async function CreateEntityTypeCategoryPage() {
                 <Stack spacing={4} className="p-6">
                     <form action={createEntityTypeCategoryFromForm}>
                         <Stack spacing={4}>
-                            <Stack spacing={3}>
-                                <Input
-                                    name="name"
-                                    label="Naziv"
-                                    placeholder="npr. proizvodi, usluge, materijali"
-                                    required
-                                />
-                                <Input
-                                    name="label"
-                                    label="Labela"
-                                    placeholder="npr. Proizvodi, Usluge, Materijali"
-                                    required
-                                />
-                            </Stack>
+                            <EntityTypeCategoryFormFields />
                             <Button
                                 variant="solid"
                                 type="submit"
