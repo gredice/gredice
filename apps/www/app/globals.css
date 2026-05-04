@@ -7,38 +7,38 @@
         /* Summer hue: 28, Winter hue: 202 */
         --baseHue: 28;
 
-        --background: var(--baseHue) 76.5% 98%;
-        --foreground: var(--baseHue) 47.4% 11.2%;
+        --background: 30 80% 98%;
+        --foreground: 129 16% 11%;
 
-        --muted: var(--baseHue) 40% 96.1%;
-        --muted-foreground: var(--baseHue) 16.3% 34%;
+        --muted: 131 31% 93%;
+        --muted-foreground: 129 16% 34%;
 
         --popover: 0 0% 100%;
-        --popover-foreground: var(--baseHue) 47.4% 11.2%;
+        --popover-foreground: 129 16% 11%;
 
         --card: 0 0% 100%;
         --card-transparent: 0 0% 100%;
-        --card-foreground: var(--baseHue) 47.4% 11.2%;
+        --card-foreground: 129 16% 11%;
 
-        --border: var(--baseHue) 31.8% 91.4%;
-        --input: var(--baseHue) 31.8% 91.4%;
+        --border: 131 31% 86%;
+        --input: 131 31% 86%;
 
-        --primary: var(--baseHue) 47.4% 11.2%;
-        --primary-foreground: var(--baseHue) 40% 98%;
+        --primary: 136 41% 31%;
+        --primary-foreground: 30 80% 98%;
 
-        --secondary: var(--baseHue) 40% 96.1%;
-        --secondary-foreground: var(--baseHue) 35.4% 30%;
+        --secondary: 131 31% 93%;
+        --secondary-foreground: 136 41% 24%;
 
-        --tertiary: var(--baseHue) 40% 80.1%;
-        --tertiary-foreground: var(--baseHue) 20% 34%;
+        --tertiary: 131 31% 86%;
+        --tertiary-foreground: 136 41% 24%;
 
-        --accent: var(--baseHue) 40% 90.1%;
-        --accent-foreground: var(--baseHue) 47.4% 11.2%;
+        --accent: 131 31% 93%;
+        --accent-foreground: 129 16% 11%;
 
         --destructive: 0 100% 50%;
         --destructive-foreground: 210 40% 98%;
 
-        --ring: var(--baseHue) 20.2% 65.1%;
+        --ring: 136 41% 31%;
 
         --radius: 0.5rem;
 

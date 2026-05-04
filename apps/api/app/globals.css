@@ -1,1 +1,26 @@
 @import "@signalco/ui-themes-minimal-app/styles";
+
+:root {
+    --background: 214 100% 97%;
+    --foreground: 222 47% 11%;
+    --muted: 214 100% 97%;
+    --muted-foreground: 215 20% 42%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-transparent: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 100% 92%;
+    --secondary-foreground: 222 47% 11%;
+    --tertiary: 214 95% 93%;
+    --tertiary-foreground: 215 25% 27%;
+    --accent: 214 100% 92%;
+    --accent-foreground: 222 47% 11%;
+    --ring: 221 83% 53%;
+    --bg-selection: #2563eb;
+    --text-selection: #fff;
+}

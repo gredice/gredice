@@ -16,7 +16,7 @@ export function ApiReference({ specUrl }: { specUrl: string }) {
         <ApiReferenceReact
             configuration={{
                 url: specUrl,
-                darkMode: true,
+                darkMode: false,
             }}
         />
     );
