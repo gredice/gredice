@@ -9,7 +9,7 @@ import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 
 export function generateMetadata(): Metadata {
     return {
-        title: 'Admin | Gredice',
+        title: 'Gredice Admin',
         description: 'Gredice admin - upravljanje gredicama',
     };
 }
@@ -44,11 +44,14 @@ export default function RootLayout({
     return (
         <html lang="hr" translate="no" suppressHydrationWarning={true}>
             <Head>
-                <meta name="apple-mobile-web-app-title" content="Gredice" />
-                <meta name="theme-color" content="#2e6f40" />
-                <title>Admin | Gredice</title>
+                <meta
+                    name="apple-mobile-web-app-title"
+                    content="Gredice Admin"
+                />
+                <meta name="theme-color" content="#111111" />
+                <title>Gredice Admin</title>
             </Head>
-            <body className="antialiased min-h-screen flex bg-muted">
+            <body className="antialiased min-h-screen flex bg-background text-foreground">
                 {postHogApiKey ? (
                     <PostHogProvider
                         apiKey={postHogApiKey}

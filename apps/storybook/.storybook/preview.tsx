@@ -16,13 +16,13 @@ const preview: Preview = {
             test: 'todo',
         },
         backgrounds: {
-            default: 'Gredice light',
+            default: 'Gredice Storybook',
             options: {
-                'Gredice light': {
+                'Gredice Storybook': {
                     value: 'hsl(var(--background))',
                 },
-                'Gredice dark': {
-                    value: 'hsl(0 0% 0%)',
+                'Storybook dark': {
+                    value: '#2e1065',
                 },
             },
         },
