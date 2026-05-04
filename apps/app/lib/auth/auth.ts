@@ -30,6 +30,23 @@ type TokenClaims = {
     };
 };
 
+type GrediceClaims = {
+    userName: string;
+    accountIds: string[];
+    role: string;
+};
+
+function hasGrediceClaims(
+    claims: TokenClaims['gredice'],
+): claims is GrediceClaims {
+    return (
+        typeof claims?.userName === 'string' &&
+        typeof claims.role === 'string' &&
+        Array.isArray(claims.accountIds) &&
+        claims.accountIds.every((accountId) => typeof accountId === 'string')
+    );
+}
+
 function resolveAccountId(
     accountIds: string[],
     selectedAccountId: string | undefined,
@@ -49,18 +66,11 @@ async function authFromToken(token: string, roles: string[]) {
     }
 
     const claims = payload?.gredice;
-    const claimsAccountIds = claims?.accountIds;
-    const canUseClaims =
-        typeof claims?.userName === 'string' &&
-        typeof claims?.role === 'string' &&
-        Array.isArray(claimsAccountIds) &&
-        claimsAccountIds.every((accountId) => typeof accountId === 'string');
-
-    const authUser: AuthUser = canUseClaims
+    const authUser: AuthUser = hasGrediceClaims(claims)
         ? {
               id: userId,
               userName: claims.userName,
-              accountIds: claimsAccountIds,
+              accountIds: claims.accountIds,
               role: claims.role,
           }
         : await storageGetUser(userId).then((user) => {

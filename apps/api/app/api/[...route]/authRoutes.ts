@@ -42,7 +42,11 @@ import {
     clearRefreshCookie,
     setRefreshCookie,
 } from '../../../lib/auth/refreshCookies';
-import { refreshTokenCookieName } from '../../../lib/auth/sessionConfig';
+import {
+    accessTokenExpiry,
+    refreshTokenCookieName,
+    sessionCookieName,
+} from '../../../lib/auth/sessionConfig';
 import {
     issueSessionTokens,
     revokeSessionToken,
@@ -54,13 +58,121 @@ const failedAttemptClearTime = 1000 * 60; // 1 minute
 const failedAttemptsBlock = 5;
 const failedAttemptsBlockTime = 1000 * 60 * 60; // 1 hour
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function isStringArray(value: unknown): value is string[] {
+    return (
+        Array.isArray(value) &&
+        value.every((item) => typeof item === 'string')
+    );
+}
+
+type CurrentClaims = {
+    id: string;
+    userName: string;
+    role: string;
+    accountIds: string[];
+};
+
+function currentClaimsFromPayload(payload: unknown): CurrentClaims | null {
+    if (!isRecord(payload) || typeof payload.sub !== 'string') {
+        return null;
+    }
+
+    const claims = payload.gredice;
+    if (!isRecord(claims)) {
+        return null;
+    }
+
+    const accountIds = claims.accountIds;
+    if (
+        typeof claims.userName !== 'string' ||
+        typeof claims.role !== 'string' ||
+        !isStringArray(accountIds)
+    ) {
+        return null;
+    }
+
+    return {
+        id: payload.sub,
+        userName: claims.userName,
+        role: claims.role,
+        accountIds,
+    };
+}
+
+function currentClaimsFromUser(
+    user: NonNullable<Awaited<ReturnType<typeof getUser>>>,
+): CurrentClaims {
+    return {
+        id: user.id,
+        userName: user.userName,
+        role: user.role,
+        accountIds: user.accounts.map((account) => account.accountId),
+    };
+}
+
+async function currentClaimsFromSessionCookie(context: Context) {
+    const sessionCookie = getCookie(context, sessionCookieName);
+    if (!sessionCookie) {
+        return null;
+    }
+
+    try {
+        const { result, error } = await verifyJwt(sessionCookie);
+        if (error) {
+            return null;
+        }
+
+        return currentClaimsFromPayload(result?.payload);
+    } catch {
+        return null;
+    }
+}
+
+async function currentClaimsFromRefreshToken(context: Context) {
+    const refreshToken = getCookie(context, refreshTokenCookieName);
+    if (!refreshToken) {
+        return null;
+    }
+
+    const refreshed = await doUseRefreshToken(refreshToken);
+    if (!refreshed) {
+        clearRefreshCookie(context);
+        return null;
+    }
+
+    const user = await getUser(refreshed.userId);
+    if (!user) {
+        clearRefreshCookie(context);
+        return null;
+    }
+
+    const accessToken = await createJwt(user.id, accessTokenExpiry);
+    await Promise.all([
+        setCookie(context, accessToken),
+        setRefreshCookie(context, refreshToken),
+    ]);
+
+    return currentClaimsFromUser(user);
+}
+
+async function getCurrentClaims(context: Context) {
+    return (
+        (await currentClaimsFromSessionCookie(context)) ??
+        (await currentClaimsFromRefreshToken(context))
+    );
+}
+
 /**
  * Reads the session cookie and, if valid, creates a short-lived JWT
  * to use as the OAuth state so the callback can link the provider
  * to the current user.
  */
 async function createOAuthStateFromSession(context: Context): Promise<string> {
-    const sessionCookie = getCookie(context, 'gredice_session');
+    const sessionCookie = getCookie(context, sessionCookieName);
     if (sessionCookie) {
         try {
             const { result, error } = await verifyJwt(sessionCookie);
@@ -706,35 +818,15 @@ const app = new Hono()
         '/current-claims',
         describeRoute({
             description:
-                'Get basic current user claims from a verified session token.',
+                'Get basic current user claims from a verified or refreshed session token.',
         }),
         async (context) => {
-            const sessionCookie = getCookie(context, 'gredice_session');
-            if (!sessionCookie) {
+            const claims = await getCurrentClaims(context);
+            if (!claims) {
                 return context.json({ error: 'Unauthorized' }, { status: 401 });
             }
 
-            const { result, error } = await verifyJwt(sessionCookie);
-            const payload = result?.payload;
-            const claims = payload?.gredice;
-            const accountIds = claims?.accountIds;
-            if (
-                error ||
-                typeof payload?.sub !== 'string' ||
-                typeof claims?.userName !== 'string' ||
-                typeof claims?.role !== 'string' ||
-                !Array.isArray(accountIds) ||
-                accountIds.some((accountId) => typeof accountId !== 'string')
-            ) {
-                return context.json({ error: 'Unauthorized' }, { status: 401 });
-            }
-
-            return context.json({
-                id: payload.sub,
-                userName: claims.userName,
-                role: claims.role,
-                accountIds,
-            });
+            return context.json(claims);
         },
     )
     .get(
@@ -866,7 +958,7 @@ const app = new Hono()
             description: 'Logout user by clearing the session cookie',
         }),
         async (context) => {
-            const sessionCookie = getCookie(context, 'gredice_session');
+            const sessionCookie = getCookie(context, sessionCookieName);
             let userId: string | undefined;
             if (sessionCookie) {
                 try {
