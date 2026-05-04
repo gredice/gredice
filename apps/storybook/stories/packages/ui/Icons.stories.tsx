@@ -104,7 +104,14 @@ function IconsShowcasePage() {
 const meta = {
     title: 'packages/ui/Icons/Showcase',
     component: IconsShowcasePage,
+    tags: ['autodocs'],
     parameters: {
+        docs: {
+            description: {
+                component:
+                    'The icon showcase indexes exported UI package icons and provides a searchable preview for choosing the right glyph.',
+            },
+        },
         layout: 'padded',
     },
     render: () => <IconsShowcase />,

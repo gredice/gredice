@@ -5,6 +5,14 @@ const meta = {
     title: 'packages/ui/Icons/ArchiveIcon',
     component: ArchiveIcon,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'ArchiveIcon renders the archive glyph used for actions and empty states that refer to stored, hidden, or archived records.',
+            },
+        },
+    },
     args: {
         className: 'size-8 text-primary',
     },

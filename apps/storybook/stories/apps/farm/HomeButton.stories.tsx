@@ -15,6 +15,12 @@ const meta = {
         useRouter.mockImplementation(getRouter);
     },
     parameters: {
+        docs: {
+            description: {
+                component:
+                    'HomeButton links farm users back to the primary farm home route using the app router navigation primitives.',
+            },
+        },
         nextjs: {
             appDirectory: true,
         },
