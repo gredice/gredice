@@ -17,6 +17,7 @@ const vercelProjects = [
 	{ appName: "app", projectName: "app" },
 	{ appName: "storybook", projectName: "storybook" },
 	{ appName: "api", projectName: "api" },
+	{ appName: "status", projectName: "status" },
 ];
 
 function getSpawnOptions(command, args) {
