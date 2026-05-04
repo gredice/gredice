@@ -1,5 +1,5 @@
 import { AttributeCard } from '@apps/www/components/attributes/DetailCard';
-import { Leaf, Sprout, Droplet } from '@signalco/ui-icons';
+import { Droplet, Leaf, Sprout } from '@signalco/ui-icons';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 const meta = {

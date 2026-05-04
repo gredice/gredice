@@ -1,5 +1,5 @@
 import { ListCollapsable } from '@apps/www/components/shared/ListCollapsable';
-import { Leaf, Sprout, Droplet } from '@signalco/ui-icons';
+import { Droplet, Leaf, Sprout } from '@signalco/ui-icons';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import {
     createNavigation,
@@ -8,9 +8,24 @@ import {
 } from '@storybook/nextjs-vite/navigation.mock';
 
 const items = [
-    { value: 'povrce', label: 'Povrće', icon: <Leaf className="size-4" />, href: '/biljke/povrce' as const },
-    { value: 'voca', label: 'Voće', icon: <Sprout className="size-4" />, href: '/biljke/voca' as const },
-    { value: 'zacini', label: 'Začini', icon: <Droplet className="size-4" />, href: '/biljke/zacini' as const },
+    {
+        value: 'povrce',
+        label: 'Povrće',
+        icon: <Leaf className="size-4" />,
+        href: '/biljke/povrce' as const,
+    },
+    {
+        value: 'voca',
+        label: 'Voće',
+        icon: <Sprout className="size-4" />,
+        href: '/biljke/voca' as const,
+    },
+    {
+        value: 'zacini',
+        label: 'Začini',
+        icon: <Droplet className="size-4" />,
+        href: '/biljke/zacini' as const,
+    },
 ];
 
 const meta = {

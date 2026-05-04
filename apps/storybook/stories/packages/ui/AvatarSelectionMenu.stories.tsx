@@ -12,7 +12,10 @@ const meta = {
         emptyLabel: 'Prazno',
         onChange: () => {},
         children: (
-            <button type="button" className="rounded-full ring-2 ring-primary ring-offset-2 cursor-pointer">
+            <button
+                type="button"
+                className="rounded-full ring-2 ring-primary ring-offset-2 cursor-pointer"
+            >
                 <Avatar size="lg">AK</Avatar>
             </button>
         ),

@@ -22,7 +22,9 @@ const meta = {
                         {date.getDate()}
                     </Typography>
                 </div>
-                <Typography level="body2">Zadatak {index + 1}: Zalijevanje</Typography>
+                <Typography level="body2">
+                    Zadatak {index + 1}: Zalijevanje
+                </Typography>
             </div>
         ),
     },
