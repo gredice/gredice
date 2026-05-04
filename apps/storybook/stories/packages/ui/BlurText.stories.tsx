@@ -5,6 +5,14 @@ const meta = {
     title: 'packages/ui/Animation/BlurText',
     component: BlurText,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'BlurText reveals text with a staggered blur animation, either by words or by individual letters.',
+            },
+        },
+    },
     args: {
         text: 'Uzgajajte zdravo povrće',
         className: 'text-3xl font-semibold text-primary',

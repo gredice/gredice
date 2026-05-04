@@ -5,6 +5,14 @@ const meta = {
     title: 'apps/www/Shared/ExpandableText',
     component: ExpandableText,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'ExpandableText clamps longer editorial content to a fixed height and lets readers expand or collapse it in place.',
+            },
+        },
+    },
     args: {
         children: null,
         collapseButtonText: 'Show less',

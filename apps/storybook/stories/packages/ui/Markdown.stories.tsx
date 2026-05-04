@@ -5,6 +5,14 @@ const meta = {
     title: 'packages/ui/Typography/Markdown',
     component: Markdown,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'Markdown renders trusted Markdown content with the Gredice typography styles used for editorial and help content.',
+            },
+        },
+    },
     args: {
         children: [
             '## Harvest Notes',
