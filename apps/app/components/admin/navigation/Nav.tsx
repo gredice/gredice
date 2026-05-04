@@ -38,6 +38,7 @@ import {
     Truck,
     User,
 } from '@signalco/ui-icons';
+import { usePathname } from 'next/navigation';
 import type { CSSProperties } from 'react';
 import { useContext, useState } from 'react';
 import { reorderEntityType } from '../../../app/(actions)/entityActions';
@@ -49,6 +50,18 @@ import { NavGroup } from './NavGroup';
 import { NavItem } from './NavItem';
 import { NavSection } from './NavSection';
 import { ProfileNavItem } from './ProfileNavItem';
+
+function isSelectedPath(pathname: string, href: string, strictMatch = false) {
+    if (strictMatch) {
+        return pathname === href;
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function includesSelectedPath(pathname: string, hrefs: string[]) {
+    return hrefs.some((href) => isSelectedPath(pathname, href));
+}
 
 function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
     if (quickAction.icon) {
@@ -177,6 +190,7 @@ export function Nav({
     onItemClick?: () => void;
     compact?: boolean;
 } = {}) {
+    const pathname = usePathname();
     const navContext = useContext(NavContext);
     const categorizedTypes = navContext?.categorizedTypes || [];
     const uncategorizedTypes = navContext?.uncategorizedTypes || [];
@@ -188,6 +202,10 @@ export function Nav({
         shadowTypes.length > 0 ||
         uncategorizedTypes.length > 0;
     const navClassName = compact ? 'space-y-1' : 'space-y-3';
+    const sowingStatisticsActive = isSelectedPath(
+        pathname,
+        adminPages.SowingStatistics.href,
+    );
 
     return (
         <div className={navClassName}>
@@ -220,6 +238,14 @@ export function Nav({
                             key={category.id}
                             label={category.label}
                             icon={<File className="size-5" />}
+                            forceOpen={category.entityTypes.some((entityType) =>
+                                isSelectedPath(
+                                    pathname,
+                                    KnownPages.DirectoryEntityType(
+                                        entityType.name,
+                                    ),
+                                ),
+                            )}
                             compact={compact}
                         >
                             <EntityTypeList
@@ -235,6 +261,14 @@ export function Nav({
                         <NavGroup
                             label="Nekategorizirano"
                             icon={<File className="size-5" />}
+                            forceOpen={uncategorizedTypes.some((entityType) =>
+                                isSelectedPath(
+                                    pathname,
+                                    KnownPages.DirectoryEntityType(
+                                        entityType.name,
+                                    ),
+                                ),
+                            )}
                             compact={compact}
                         >
                             <EntityTypeList
@@ -250,6 +284,14 @@ export function Nav({
                         <NavGroup
                             label="Ostalo"
                             icon={<File className="size-5" />}
+                            forceOpen={shadowTypes.some((entityType) =>
+                                isSelectedPath(
+                                    pathname,
+                                    KnownPages.DirectoryEntityType(
+                                        entityType.name,
+                                    ),
+                                ),
+                            )}
                             compact={compact}
                         >
                             {shadowTypes.map((entityType) => (
@@ -278,6 +320,11 @@ export function Nav({
                 <NavGroup
                     label="Korisnici"
                     icon={<User className="size-5" />}
+                    forceOpen={includesSelectedPath(pathname, [
+                        adminPages.Accounts.href,
+                        adminPages.Users.href,
+                        adminPages.Achievements.href,
+                    ])}
                     compact={compact}
                 >
                     <NavItem
@@ -309,6 +356,13 @@ export function Nav({
                 <NavGroup
                     label="Financije"
                     icon={<Euro className="size-5" />}
+                    forceOpen={includesSelectedPath(pathname, [
+                        adminPages.ShoppingCarts.href,
+                        adminPages.Invoices.href,
+                        adminPages.Transactions.href,
+                        adminPages.Sunflowers.href,
+                        adminPages.Receipts.href,
+                    ])}
                     compact={compact}
                 >
                     <NavItem
@@ -355,6 +409,12 @@ export function Nav({
                 <NavGroup
                     label="Vrtovi"
                     icon={<MapIcon className="size-5" />}
+                    forceOpen={includesSelectedPath(pathname, [
+                        adminPages.Farms.href,
+                        adminPages.Gardens.href,
+                        adminPages.RaisedBeds.href,
+                        adminPages.Operations.href,
+                    ])}
                     compact={compact}
                 >
                     <NavItem
@@ -400,6 +460,10 @@ export function Nav({
                 <NavGroup
                     label="Inventar"
                     icon={<Tally3 className="size-5" />}
+                    forceOpen={includesSelectedPath(pathname, [
+                        adminPages.Inventory.href,
+                        adminPages.Occasions.href,
+                    ])}
                     compact={compact}
                 >
                     <NavItem
@@ -422,6 +486,11 @@ export function Nav({
                 <NavGroup
                     label="Logistika"
                     icon={<Truck className="size-5" />}
+                    forceOpen={includesSelectedPath(pathname, [
+                        adminPages.Schedule.href,
+                        adminPages.DeliverySlots.href,
+                        adminPages.DeliveryRequests.href,
+                    ])}
                     compact={compact}
                 >
                     <NavItem
@@ -452,11 +521,13 @@ export function Nav({
                 <NavGroup
                     label="Izvještaji"
                     icon={<Tally3 className="size-5" />}
+                    forceOpen={sowingStatisticsActive}
                     compact={compact}
                 >
                     <NavGroup
                         label="Statistika"
                         icon={<Tally3 className="size-5" />}
+                        forceOpen={sowingStatisticsActive}
                         compact={compact}
                         depth={1}
                     >
@@ -475,6 +546,12 @@ export function Nav({
                 <NavGroup
                     label="Poruke"
                     icon={<Inbox className="size-5" />}
+                    forceOpen={includesSelectedPath(pathname, [
+                        adminPages.CommunicationInbox.href,
+                        adminPages.CommunicationEmails.href,
+                        adminPages.Notifications.href,
+                        adminPages.Feedback.href,
+                    ])}
                     compact={compact}
                 >
                     <NavItem
@@ -515,6 +592,11 @@ export function Nav({
                 <NavGroup
                     label="Održavanje"
                     icon={<File className="size-5" />}
+                    forceOpen={includesSelectedPath(pathname, [
+                        adminPages.Sensors.href,
+                        adminPages.Cache.href,
+                        adminPages.AiAnalytics.href,
+                    ])}
                     compact={compact}
                 >
                     <NavItem
@@ -547,6 +629,10 @@ export function Nav({
                 <NavGroup
                     label="Aplikacija"
                     icon={<Settings className="size-5" />}
+                    forceOpen={isSelectedPath(
+                        pathname,
+                        adminPages.Settings.href,
+                    )}
                     compact={compact}
                 >
                     <NavItem
