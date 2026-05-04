@@ -31,6 +31,14 @@ const meta = {
     title: 'apps/www/Social/SocialCard',
     component: SocialCard,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'SocialCard promotes an external social channel with brand-specific icon styling, call-to-action copy, and link affordance.',
+            },
+        },
+    },
     args: {
         href: 'https://www.instagram.com/gredice',
         ctaText: 'Pratite nas na Instagramu',

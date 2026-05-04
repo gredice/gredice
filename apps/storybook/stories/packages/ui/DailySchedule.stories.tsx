@@ -6,6 +6,14 @@ const meta = {
     title: 'packages/ui/Data Display/DailySchedule',
     component: DailySchedule,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'DailySchedule lays out a sequence of calendar days and delegates each day row to a render function for domain-specific content.',
+            },
+        },
+    },
     args: {
         days: 5,
         startDate: new Date('2025-06-09'),
@@ -22,7 +30,9 @@ const meta = {
                         {date.getDate()}
                     </Typography>
                 </div>
-                <Typography level="body2">Zadatak {index + 1}: Zalijevanje</Typography>
+                <Typography level="body2">
+                    Zadatak {index + 1}: Zalijevanje
+                </Typography>
             </div>
         ),
     },

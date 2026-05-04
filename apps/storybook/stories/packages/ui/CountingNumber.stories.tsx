@@ -5,6 +5,14 @@ const meta = {
     title: 'packages/ui/Data Display/CountingNumber',
     component: CountingNumber,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'CountingNumber animates numeric values between a starting point and a target value, including optional decimal formatting.',
+            },
+        },
+    },
     args: {
         className: 'font-mono text-4xl font-semibold text-primary',
         fromNumber: 1200,
