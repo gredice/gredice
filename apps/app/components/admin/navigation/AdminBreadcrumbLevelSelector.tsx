@@ -70,7 +70,6 @@ const inlineBreadcrumbPathPatterns = [
     /^\/admin\/directories\/entity-types\/create$/,
     /^\/admin\/directories\/categories\/create$/,
     /^\/admin\/directories\/categories\/\d+\/edit$/,
-    /^\/admin\/directories\/[^/]+$/,
     /^\/admin\/directories\/[^/]+\/edit$/,
     /^\/admin\/directories\/[^/]+\/attribute-definitions$/,
     /^\/admin\/directories\/[^/]+\/attribute-definitions\/categories$/,
