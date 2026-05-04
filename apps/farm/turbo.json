@@ -5,7 +5,11 @@
         "build": {
             "env": [
                 "BLOB_READ_WRITE_TOKEN",
+                "CHECKLY_ACCOUNT_ID",
+                "CHECKLY_API_KEY",
                 "ENABLE_EXPERIMENTAL_COREPACK",
+                "GREDICE_GOOGLE_MAPS_API_KEY",
+                "GREDICE_GOOGLE_MAPS_URL_SIGNING_SECRET",
                 "GREDICE_JWT_SIGN_SECRET",
                 "HYPERTUNE_FRAMEWORK",
                 "HYPERTUNE_INCLUDE_INIT_DATA",
@@ -25,6 +29,7 @@
                 "POSTGRES_URL_NO_SSL",
                 "POSTGRES_USER",
                 "POSTHOG_SERVER_HOST",
+                "SLACK_BOT_TOKEN",
                 "VERCEL_OIDC_TOKEN"
             ]
         }
