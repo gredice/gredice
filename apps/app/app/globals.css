@@ -1,6 +1,28 @@
 @import "@signalco/ui-themes-minimal-app/styles";
 
 :root {
+    --background: 0 0% 7%;
+    --foreground: 0 0% 100%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 72%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 100%;
+    --card: 0 0% 10%;
+    --card-transparent: 0 0% 7%;
+    --card-foreground: 0 0% 100%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 7%;
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 0 0% 92%;
+    --tertiary: 45 65% 52%;
+    --tertiary-foreground: 0 0% 7%;
+    --accent: 45 65% 52%;
+    --accent-foreground: 0 0% 7%;
+    --ring: 45 65% 52%;
+    --bg-selection: #d4af37;
+    --text-selection: #111;
     scrollbar-width: thin;
     scrollbar-color: color-mix(in srgb, currentColor 20%, transparent)
         transparent;

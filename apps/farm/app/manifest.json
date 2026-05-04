@@ -1,13 +1,13 @@
 {
-    "name": "Gredice - Farma",
-    "short_name": "Farma",
+    "name": "Gredice Farm",
+    "short_name": "Farm",
     "description": "Tvoja farma u jednom kliku",
     "lang": "hr",
     "dir": "ltr",
     "start_url": "/",
     "display": "standalone",
-    "theme_color": "#2e6f40",
-    "background_color": "#2e6f40",
+    "theme_color": "#8B5E34",
+    "background_color": "#F5EFE6",
     "orientation": "any",
     "icons": [
         {
