@@ -22,6 +22,7 @@ import { notFound } from 'next/navigation';
 import { importEntityData } from '../../../../../app/admin/directories/(actions)/importEntityData';
 import { EntityAttributeProgress } from '../../../../../components/admin/directories/EntityAttributeProgress';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../../components/admin/navigation/AdminPageTitle';
 import { BarcodeValue } from '../../../../../components/shared/attributes/BarcodeValue';
 import { formatAttributeValueWithUnit } from '../../../../../components/shared/attributes/formatAttributeValueWithUnit';
 import { Field } from '../../../../../components/shared/fields/Field';
@@ -75,6 +76,7 @@ export default async function EntityDetailsPage(props: {
     const entityInventoryItem = inventoryItems.find(
         (item) => item.entityId === entityId,
     );
+    const entityTitle = entityDisplayName(entity);
 
     const entityDeleteBound = handleEntityDelete.bind(
         null,
@@ -156,6 +158,7 @@ export default async function EntityDetailsPage(props: {
 
     return (
         <EntityDetailsSaveProvider>
+            <AdminPageTitle title={entityTitle} />
             <Tabs defaultValue={attributeCategories.at(0)?.name}>
                 <EntityDetailsStickyHeader
                     breadcrumbs={
@@ -176,7 +179,7 @@ export default async function EntityDetailsPage(props: {
                                             ),
                                         },
                                         {
-                                            label: entityDisplayName(entity),
+                                            label: entityTitle,
                                         },
                                     ]}
                                 />

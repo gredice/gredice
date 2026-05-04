@@ -4,12 +4,22 @@ import '../styles.css';
 
 const preview: Preview = {
     decorators: [
-        (Story) => (
-            <div className="min-h-screen bg-background p-6 text-foreground">
-                <Story />
-                <Analytics />
-            </div>
-        ),
+        (Story, context) => {
+            const isFullscreen = context.parameters.layout === 'fullscreen';
+
+            return (
+                <div
+                    className={
+                        isFullscreen
+                            ? 'bg-background text-foreground'
+                            : 'bg-background p-6 text-foreground'
+                    }
+                >
+                    <Story />
+                    <Analytics />
+                </div>
+            );
+        },
     ],
     parameters: {
         a11y: {

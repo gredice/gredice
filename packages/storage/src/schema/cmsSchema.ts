@@ -175,6 +175,7 @@ export const entityTypeCategories = pgTable(
         id: serial('id').primaryKey(),
         name: text('name').notNull(),
         label: text('label').notNull(),
+        icon: text('icon'),
         order: text('order'),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
