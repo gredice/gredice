@@ -6,6 +6,7 @@ import { Input } from '@signalco/ui-primitives/Input';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../lib/auth/auth';
 import { createInventoryConfigAction } from '../../../(actions)/inventoryActions';
@@ -23,13 +24,18 @@ export default async function CreateInventoryPage() {
 
     return (
         <Stack spacing={4}>
-            <Breadcrumbs
-                items={[
-                    {
-                        label: <AdminBreadcrumbLevelSelector />,
-                    },
-                    { label: 'Nova zaliha' },
-                ]}
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                            },
+                            { label: 'Nova zaliha' },
+                        ]}
+                    />
+                }
+                heading="Nova zaliha"
             />
 
             <Stack spacing={2}>

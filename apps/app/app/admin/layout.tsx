@@ -11,6 +11,7 @@ import { redirect } from 'next/navigation';
 import { type PropsWithChildren, Suspense } from 'react';
 import {
     AdminPageCardHeader,
+    AdminPageHeaderProvider,
     DesktopNav,
     DesktopNavProvider,
     LoginDialog,
@@ -96,8 +97,10 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                                     <div className="min-h-full border bg-background p-3 md:rounded-2xl md:p-4">
                                         <AuthProtectedSection auth={authAdmin}>
                                             <Suspense>
-                                                <AdminPageCardHeader />
-                                                {children}
+                                                <AdminPageHeaderProvider>
+                                                    <AdminPageCardHeader />
+                                                    {children}
+                                                </AdminPageHeaderProvider>
                                             </Suspense>
                                         </AuthProtectedSection>
                                     </div>

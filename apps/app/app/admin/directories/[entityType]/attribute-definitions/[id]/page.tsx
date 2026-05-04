@@ -4,6 +4,7 @@ import { Delete } from '@signalco/ui-icons';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { ServerActionIconButton } from '../../../../../../components/shared/ServerActionIconButton';
 import { KnownPages } from '../../../../../../src/KnownPages';
@@ -49,36 +50,41 @@ export default async function AttributeDefinitionPage({
 
     return (
         <Stack spacing={2}>
-            <Row spacing={1} justifyContent="space-between">
-                <Breadcrumbs
-                    items={[
-                        {
-                            label: <AdminBreadcrumbLevelSelector />,
-                            href: KnownPages.Directories,
-                        },
-                        {
-                            label: entityType.label,
-                            href: KnownPages.DirectoryEntityType(
-                                entityTypeName,
-                            ),
-                        },
-                        {
-                            label: 'Atributi',
-                            href: KnownPages.DirectoryEntityTypeAttributeDefinitions(
-                                entityTypeName,
-                            ),
-                        },
-                        { label: label },
-                    ]}
-                />
-                <ServerActionIconButton
-                    title="Obriši"
-                    onClick={deleteAttributeDefinitionBound}
-                    variant="plain"
-                >
-                    <Delete className="size-5" />
-                </ServerActionIconButton>
-            </Row>
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.Directories,
+                            },
+                            {
+                                label: entityType.label,
+                                href: KnownPages.DirectoryEntityType(
+                                    entityTypeName,
+                                ),
+                            },
+                            {
+                                label: 'Atributi',
+                                href: KnownPages.DirectoryEntityTypeAttributeDefinitions(
+                                    entityTypeName,
+                                ),
+                            },
+                            { label: label },
+                        ]}
+                    />
+                }
+                actions={
+                    <ServerActionIconButton
+                        title="Obriši"
+                        onClick={deleteAttributeDefinitionBound}
+                        variant="plain"
+                    >
+                        <Delete className="size-5" />
+                    </ServerActionIconButton>
+                }
+                heading={label}
+            />
             <form>
                 <Stack spacing={3}>
                     <FormInput

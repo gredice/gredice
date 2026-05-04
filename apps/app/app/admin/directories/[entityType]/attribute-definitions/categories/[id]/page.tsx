@@ -6,6 +6,7 @@ import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { KnownPages } from '../../../../../../../src/KnownPages';
 import { FormInput } from './Form';
@@ -32,25 +33,32 @@ export default async function AttributeDefinitionCategoryDetailsPage({
 
     return (
         <Stack spacing={2}>
-            <Breadcrumbs
-                items={[
-                    {
-                        label: <AdminBreadcrumbLevelSelector />,
-                        href: KnownPages.Directories,
-                    },
-                    {
-                        label: entityType.label,
-                        href: KnownPages.DirectoryEntityType(entityTypeName),
-                    },
-                    {
-                        label: 'Atributi',
-                        href: KnownPages.DirectoryEntityTypeAttributeDefinitions(
-                            entityTypeName,
-                        ),
-                    },
-                    { label: 'Kategorije' },
-                    { label: label },
-                ]}
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.Directories,
+                            },
+                            {
+                                label: entityType.label,
+                                href: KnownPages.DirectoryEntityType(
+                                    entityTypeName,
+                                ),
+                            },
+                            {
+                                label: 'Atributi',
+                                href: KnownPages.DirectoryEntityTypeAttributeDefinitions(
+                                    entityTypeName,
+                                ),
+                            },
+                            { label: 'Kategorije' },
+                            { label: label },
+                        ]}
+                    />
+                }
+                heading={label}
             />
             <form>
                 <Row spacing={2}>
