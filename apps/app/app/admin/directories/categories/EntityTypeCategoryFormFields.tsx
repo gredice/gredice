@@ -3,7 +3,7 @@
 import { Input } from '@signalco/ui-primitives/Input';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { useState } from 'react';
-import { IconPicker } from '../../../../../components/admin/directories/IconPicker';
+import { IconPicker } from '../../../../components/admin/directories/IconPicker';
 
 export function EntityTypeCategoryFormFields({
     defaults,
