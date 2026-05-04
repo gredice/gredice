@@ -145,6 +145,7 @@ export function RaisedBedField({
         <>
             <div></div>
             <DndContext
+                id={`raised-bed-field-${gardenId}-${raisedBedId}`}
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}

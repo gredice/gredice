@@ -49,6 +49,17 @@ https://app.gredice.test {
     }
 }
 
+http://storybook.gredice.test {
+    redir https://storybook.gredice.test{uri}
+}
+
+https://storybook.gredice.test {
+    tls internal
+    reverse_proxy http://host.docker.internal:3004 {
+        header_up X-Forwarded-Proto {http.request.scheme}
+    }
+}
+
 http://api.gredice.test {
     redir https://api.gredice.test{uri}
 }
@@ -56,6 +67,17 @@ http://api.gredice.test {
 https://api.gredice.test {
     tls internal
     reverse_proxy http://host.docker.internal:3005 {
+        header_up X-Forwarded-Proto {http.request.scheme}
+    }
+}
+
+http://status.gredice.test {
+    redir https://status.gredice.test{uri}
+}
+
+https://status.gredice.test {
+    tls internal
+    reverse_proxy http://host.docker.internal:3006 {
         header_up X-Forwarded-Proto {http.request.scheme}
     }
 }

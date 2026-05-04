@@ -1,4 +1,4 @@
-import { Hr } from '@react-email/components';
+import { Hr } from 'react-email';
 
 export function Divider({ className }: { className?: string }) {
     return (

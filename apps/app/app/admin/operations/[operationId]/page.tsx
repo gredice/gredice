@@ -5,7 +5,7 @@ import {
     getOperationById,
     getRaisedBed,
 } from '@gredice/storage';
-import { ImageViewer } from '@gredice/ui/ImageViewer';
+import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
@@ -22,6 +22,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
@@ -76,9 +77,14 @@ export default async function OperationDetailsPage({
         raisedBed && operation.raisedBedFieldId
             ? raisedBed.fields.find((f) => f.id === operation.raisedBedFieldId)
             : undefined;
+    const operationTitle =
+        operationDetails?.information?.label ||
+        operationDetails?.information?.name ||
+        `Radnja ${operation.id}`;
 
     return (
         <Stack spacing={4}>
+            <AdminPageTitle title={operationTitle} />
             <Stack spacing={2}>
                 <Breadcrumbs
                     items={[
@@ -288,16 +294,16 @@ export default async function OperationDetailsPage({
                         <CardTitle>Slike</CardTitle>
                     </CardHeader>
                     <CardOverflow>
-                        <Row className="flex-wrap" spacing={2}>
-                            {operation.imageUrls.map((url) => (
-                                <ImageViewer
-                                    key={url}
-                                    src={url}
-                                    alt={`Slika radnje ${operation.id}`}
-                                    previewWidth={200}
-                                    previewHeight={150}
-                                />
-                            ))}
+                        <Row className="w-full" spacing={2}>
+                            <ImageGallery
+                                images={operation.imageUrls.map((url) => ({
+                                    src: url,
+                                    alt: `Slika radnje ${operation.id}`,
+                                }))}
+                                previewWidth={200}
+                                previewHeight={150}
+                                previewVariant="carousel"
+                            />
                         </Row>
                     </CardOverflow>
                 </Card>

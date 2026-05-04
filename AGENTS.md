@@ -15,6 +15,7 @@ This repository is the **Gredice** monorepo. It hosts several Next.js applicatio
 - `apps/`
   - `api/`: Next.js app exposing API routes and OpenAPI generation.
   - `app/`, `garden/`, `farm/`, `www/`: Product-facing Next.js front-ends (each with its own scripts, linting, and Playwright setup).
+  - `storybook/`: Public Storybook app for package-grouped component documentation.
 - `packages/`: Shared libraries (client SDK, storage, UI kit, transactional email helpers, payment integration, etc.). Use pnpm workspaces to depend on these via `workspace:*` versions.
 - `assets/`: Source files for 3D game assets.
 - `turbo.json`, `pnpm-workspace.yaml`, and app-level `package.json` files coordinate Turborepo tasks, workspace scopes, and scripts.
@@ -95,4 +96,6 @@ pnpm build --filter garden
   - `garden`: <https://vrt.gredice.test>
   - `farm`: <https://farma.gredice.test>
   - `app`: <https://app.gredice.test>
+  - `storybook`: <https://storybook.gredice.test>
   - `api`: <https://api.gredice.test>
+  - `status`: <https://status.gredice.test> (start explicitly with `pnpm --filter=status dev`)

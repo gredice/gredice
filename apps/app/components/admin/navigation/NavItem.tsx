@@ -1,6 +1,5 @@
 'use client';
 
-import { ListItem } from '@signalco/ui-primitives/ListItem';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -15,6 +14,7 @@ export function NavItem({
     isDragging = false,
     badge,
     compact = false,
+    nested = false,
 }: {
     href: Route;
     label: string;
@@ -24,8 +24,12 @@ export function NavItem({
     isDragging?: boolean;
     badge?: number;
     compact?: boolean;
+    nested?: boolean;
 }) {
     const pathname = usePathname();
+    const selected = strictMatch
+        ? pathname === href
+        : pathname === href || pathname.startsWith(`${href}/`);
 
     const handleClick = (e: MouseEvent) => {
         if (isDragging) {
@@ -38,29 +42,41 @@ export function NavItem({
         }
     };
 
-    const listItemAccessibilityProps = compact ? { 'aria-label': label } : {};
+    const guideLineClassName =
+        compact || !nested
+            ? ''
+            : "before:absolute before:-left-3 before:top-1/2 before:h-px before:w-3 before:bg-border/55 before:content-['']";
+    const itemClassName = [
+        'group/nav-item relative flex w-full items-center gap-2 rounded-md text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        compact ? 'h-9 justify-center px-0' : 'h-8 px-2',
+        guideLineClassName,
+        selected
+            ? 'bg-muted text-foreground shadow-sm ring-1 ring-border/40'
+            : 'text-foreground hover:bg-muted/70',
+    ].join(' ');
+    const iconClassName = 'flex size-6 shrink-0 items-center justify-center';
 
     return (
-        <Link href={href} onClick={handleClick} title={label}>
-            <ListItem
-                {...listItemAccessibilityProps}
-                nodeId={href}
-                selected={
-                    strictMatch
-                        ? pathname === href
-                        : pathname === href || pathname.startsWith(`${href}/`)
-                }
-                onSelected={() => {}}
-                label={compact ? '' : label}
-                startDecorator={icon}
-                endDecorator={
-                    !compact && badge != null && badge > 0 ? (
-                        <span className="inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium min-w-5 h-5 px-1.5">
-                            {badge}
-                        </span>
-                    ) : undefined
-                }
-            />
+        <Link
+            href={href}
+            onClick={handleClick}
+            title={label}
+            aria-label={compact ? label : undefined}
+            aria-current={selected ? 'page' : undefined}
+            className={itemClassName}
+        >
+            <span className={iconClassName}>{icon}</span>
+            {!compact && (
+                <span className="min-w-0 flex-1 truncate">{label}</span>
+            )}
+            {!compact && badge != null && badge > 0 ? (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-primary-foreground text-xs font-medium">
+                    {badge}
+                </span>
+            ) : null}
+            {compact && badge != null && badge > 0 ? (
+                <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary ring-2 ring-background" />
+            ) : null}
         </Link>
     );
 }

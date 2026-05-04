@@ -46,6 +46,16 @@ function parseQuickActionQuantity(raw: string | null): number | null {
     return Number.parseInt(normalized, 10);
 }
 
+function parseLowCountThreshold(raw: string | null): number | null {
+    const normalized = raw?.trim();
+    if (!normalized) return null;
+    const parsed = Number.parseInt(normalized, 10);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+        return null;
+    }
+    return parsed;
+}
+
 function getItemStateFromAdditionalFields(
     additionalFields: Record<string, unknown> | null | undefined,
     statusAttributeName: string | null | undefined,
@@ -140,6 +150,9 @@ export async function updateInventoryConfigAction(
         amountAttributeNameRaw && amountAttributeNameRaw !== noAttributeValue
             ? amountAttributeNameRaw
             : null;
+    const lowCountThreshold = parseLowCountThreshold(
+        formData.get('lowCountThreshold') as string | null,
+    );
 
     await updateInventoryConfig({
         id,
@@ -148,6 +161,7 @@ export async function updateInventoryConfigAction(
         statusAttributeName: statusAttributeName || undefined,
         emptyStatusValue: emptyStatusValue || undefined,
         amountAttributeName: amountAttributeName || undefined,
+        lowCountThreshold: lowCountThreshold ?? undefined,
     });
 
     revalidatePath(KnownPages.InventoryConfig(id));
@@ -233,6 +247,9 @@ export async function createInventoryItemAction(
     const serialNumber = (formData.get('serialNumber') as string) || null;
     const quantity = parseQuantity(formData.get('quantity') as string);
     const notes = (formData.get('notes') as string) || null;
+    const lowCountThreshold = parseLowCountThreshold(
+        formData.get('lowCountThreshold') as string | null,
+    );
 
     const additionalFields = await collectAdditionalFields(
         inventoryConfigId,
@@ -249,6 +266,7 @@ export async function createInventoryItemAction(
                 : undefined,
         quantity,
         notes: notes || undefined,
+        lowCountThreshold: lowCountThreshold ?? undefined,
         additionalFields,
     });
     const createdItem = await getInventoryItem(createdItemId);
@@ -299,6 +317,9 @@ export async function updateInventoryItemAction(
     const serialNumber = (formData.get('serialNumber') as string) || null;
     const quantity = parseQuantity(formData.get('quantity') as string);
     const notes = (formData.get('notes') as string) || null;
+    const lowCountThreshold = parseLowCountThreshold(
+        formData.get('lowCountThreshold') as string | null,
+    );
 
     const additionalFields = await collectAdditionalFields(
         inventoryConfigId,
@@ -321,6 +342,7 @@ export async function updateInventoryItemAction(
                 : undefined,
         quantity,
         notes: notes || undefined,
+        lowCountThreshold: lowCountThreshold ?? undefined,
         additionalFields: nextAdditionalFields,
     });
 

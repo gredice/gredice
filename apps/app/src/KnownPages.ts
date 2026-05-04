@@ -5,6 +5,7 @@ export const KnownPages = {
     Dashboard: '/admin',
     Settings: '/admin/settings',
     Directories: '/admin/directories',
+    DirectoryEntityTypePath: '/admin/directories/[entityType]',
     DirectoryEntityType: (entityTypeName: string) =>
         `/admin/directories/${entityTypeName}` as Route,
     DirectoryEntityTypeEdit: (entityTypeName: string) =>
@@ -24,8 +25,6 @@ export const KnownPages = {
         `/admin/directories/${entityTypeName}/attribute-definitions/${id}` as Route,
     DirectoryEntity: (entityTypeName: string, entityId: number) =>
         `/admin/directories/${entityTypeName}/${entityId}` as Route,
-    DirectoryEntityLinks: (entityTypeName: string, entityId: number) =>
-        `/admin/directories/${entityTypeName}/${entityId}/links` as Route,
     DirectoryEntityPath: '/admin/directories/[entityType]/[entityId]',
     DirectoryCategoryCreate: '/admin/directories/categories/create',
     DirectoryCategoryEdit: (categoryId: number) =>

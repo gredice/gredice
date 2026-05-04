@@ -102,6 +102,9 @@ export default async function EntitiesPage({
                             entities={entities}
                             attributeDefinitions={attributeDefinitions}
                             inventoryItems={inventoryItems}
+                            inventoryLowCountThreshold={
+                                inventoryConfig?.lowCountThreshold
+                            }
                             onDuplicate={duplicateEntityBound}
                         />
                     </CardOverflow>

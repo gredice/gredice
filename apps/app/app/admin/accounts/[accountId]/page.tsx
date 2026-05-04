@@ -6,6 +6,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { NotificationsTableCard } from '../../../../components/notifications/NotificationsTableCard';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
@@ -39,6 +40,7 @@ export default async function AccountPage({
 
     return (
         <Stack spacing={4}>
+            <AdminPageTitle title={`Račun ${accountId}`} />
             <Stack spacing={2}>
                 <Stack spacing={2}>
                     <Breadcrumbs

@@ -1,4 +1,4 @@
-import { Head, Html, Markdown, Preview } from '@react-email/components';
+import { Head, Html, Markdown, Preview } from 'react-email';
 
 export interface MarkdownEmailTemplateProps {
     content: string;
