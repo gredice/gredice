@@ -136,10 +136,9 @@ export async function sendBatchedDeliveryReadyEmails(
             continue;
         }
 
+        const processedRecipients = new Set(request.processedRecipients);
         const recipients = details.recipients
-            .filter(
-                (recipient) => !request.processedRecipients.includes(recipient),
-            )
+            .filter((recipient) => !processedRecipients.has(recipient))
             .toSorted();
         if (recipients.length === 0) {
             processedGroups.push({
@@ -200,10 +199,10 @@ export async function sendBatchedDeliveryReadyEmails(
             ),
         );
         const sentRecipients = group.recipients.filter(
-            (_recipient, index) => sendResults[index]?.status === 'fulfilled',
+            (_, index) => sendResults[index]?.status === 'fulfilled',
         );
         const failedRecipients = group.recipients.filter(
-            (_recipient, index) => sendResults[index]?.status === 'rejected',
+            (_, index) => sendResults[index]?.status === 'rejected',
         );
 
         if (sentRecipients.length > 0) {

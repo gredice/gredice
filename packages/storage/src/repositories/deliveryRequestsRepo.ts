@@ -1106,7 +1106,10 @@ export async function getPendingDeliveryReadyEmailRequestIds({
                                     processedEvents.aggregateId,
                                     events.aggregateId,
                                 ),
-                                sql`${processedEvents.data}->>'readyEventId' = ${events.id}::text`,
+                                eq(
+                                    sql<number>`(${processedEvents.data}->>'readyEventId')::int`,
+                                    events.id,
+                                ),
                                 sql`(${processedEvents.data}->>'completed' = 'true' OR ${processedEvents.data}->>'skipped' = 'true')`,
                             ),
                         ),
