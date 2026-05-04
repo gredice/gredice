@@ -29,7 +29,6 @@ import {
     isFieldApproved,
     isFieldCompleted,
     isFieldPendingVerification,
-    isTaskDateBeforeToday,
     PLANTING_TASK_DURATION_MINUTES,
 } from './scheduleShared';
 import type { RaisedBed, RaisedBedField } from './types';
@@ -250,18 +249,16 @@ export function RaisedBedPlantingScheduleSection({
                             : 'text-muted-foreground';
                     const fieldLocked =
                         fieldCompleted || fieldPendingVerification;
-                    const fieldDateOverdue =
-                        isTaskDateBeforeToday(field.plantScheduledDate) &&
-                        !fieldLocked;
+                    const fieldApprovedActive = fieldApproved && !fieldLocked;
 
                     return (
                         <div key={field.id}>
                             <Row
                                 spacing={1}
                                 className={
-                                    fieldDateOverdue
-                                        ? 'bg-red-50 hover:bg-red-100 rounded ring-1 ring-red-200'
-                                        : 'hover:bg-muted rounded'
+                                    fieldApprovedActive
+                                        ? 'rounded bg-muted/60 text-foreground hover:bg-muted/80'
+                                        : 'rounded hover:bg-muted'
                                 }
                             >
                                 <Row spacing={1} className="grow">
@@ -307,11 +304,7 @@ export function RaisedBedPlantingScheduleSection({
                                     </Typography>
                                     <Typography
                                         level="body2"
-                                        className={
-                                            fieldDateOverdue
-                                                ? 'select-none text-red-600 font-medium'
-                                                : 'select-none'
-                                        }
+                                        className="select-none"
                                     >
                                         {field.plantScheduledDate ? (
                                             <LocalDateTime time={false}>
