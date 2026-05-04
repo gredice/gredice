@@ -29,6 +29,10 @@
 			"path": "apps/storybook"
 		},
 		{
+			"name": "🛜 status",
+			"path": "apps/status"
+		},
+		{
 			"name": "📦 @gredice/client",
 			"path": "packages/client"
 		},
