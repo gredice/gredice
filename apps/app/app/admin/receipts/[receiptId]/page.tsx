@@ -14,6 +14,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { ServerActionButton } from '../../../../components/shared/ServerActionButton';
@@ -74,6 +75,9 @@ export default async function ReceiptPage({
 
     return (
         <Stack spacing={2}>
+            <AdminPageTitle
+                title={`Fiskalni račun ${receipt.receiptNumber || `#${receipt.id}`}`}
+            />
             <h1 className="sr-only">Fiskalni račun #{receipt.id}</h1>
             <Row
                 spacing={2}

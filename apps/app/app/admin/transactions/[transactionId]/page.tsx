@@ -12,6 +12,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { KnownPages } from '../../../../src/KnownPages';
@@ -36,6 +37,7 @@ export default async function TransactionDetailsPage({
 
     return (
         <Stack spacing={4}>
+            <AdminPageTitle title={`Transakcija ${transaction.id}`} />
             <Stack spacing={2}>
                 <Breadcrumbs
                     items={[
