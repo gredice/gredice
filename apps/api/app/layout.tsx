@@ -35,6 +35,7 @@ export default function RootLayout({
                     <Link href="/">
                         <Image
                             alt="Gredice Logotype"
+                            className="brightness-0 invert"
                             src="https://cdn.gredice.com/Logotype-gredice_2x.png"
                             width={163}
                             height={44}
@@ -51,10 +52,19 @@ export default function RootLayout({
         <html lang="en">
             <Head>
                 <meta name="apple-mobile-web-app-title" content="Gredice API" />
-                <meta name="theme-color" content="#2563eb" />
+                <meta
+                    name="theme-color"
+                    media="(prefers-color-scheme: light)"
+                    content="#2563eb"
+                />
+                <meta
+                    name="theme-color"
+                    media="(prefers-color-scheme: dark)"
+                    content="#0f172a"
+                />
                 <title>Gredice API</title>
             </Head>
-            <body className="antialiased min-h-screen flex bg-[#eff6ff]">
+            <body className="antialiased min-h-screen flex bg-background text-foreground">
                 {postHogApiKey ? (
                     <PostHogProvider
                         apiKey={postHogApiKey}
