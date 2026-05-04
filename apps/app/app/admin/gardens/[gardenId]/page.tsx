@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { auth } from '../../../../lib/auth/auth';
@@ -51,6 +52,7 @@ export default async function GardenPage({
 
     return (
         <Stack spacing={4}>
+            <AdminPageTitle title={garden.name} />
             <Stack spacing={2}>
                 <Breadcrumbs
                     items={[

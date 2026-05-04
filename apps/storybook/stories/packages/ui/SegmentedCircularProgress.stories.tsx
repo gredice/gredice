@@ -5,6 +5,14 @@ const meta = {
     title: 'packages/ui/Data Display/SegmentedCircularProgress',
     component: SegmentedCircularProgress,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'SegmentedCircularProgress shows multiple progress segments around a shared circular track with optional centered content.',
+            },
+        },
+    },
     args: {
         segments: [
             {

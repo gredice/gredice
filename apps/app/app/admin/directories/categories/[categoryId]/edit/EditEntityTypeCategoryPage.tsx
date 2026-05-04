@@ -6,7 +6,6 @@ import { ModalConfirm } from '@signalco/ui/ModalConfirm';
 import { Delete } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
@@ -17,6 +16,7 @@ import {
     removeEntityTypeCategoryById,
     updateEntityTypeCategoryFromForm,
 } from '../../../../../(actions)/entityTypeCategoryActions';
+import { EntityTypeCategoryFormFields } from '../../EntityTypeCategoryFormFields';
 
 export function EditEntityTypeCategoryPage({
     category,
@@ -85,20 +85,13 @@ export function EditEntityTypeCategoryPage({
                 <Stack spacing={4} className="p-6">
                     <form action={handleUpdate}>
                         <Stack spacing={4}>
-                            <Stack spacing={3}>
-                                <Input
-                                    name="name"
-                                    label="Naziv"
-                                    defaultValue={category.name}
-                                    required
-                                />
-                                <Input
-                                    name="label"
-                                    label="Labela"
-                                    defaultValue={category.label}
-                                    required
-                                />
-                            </Stack>
+                            <EntityTypeCategoryFormFields
+                                defaults={{
+                                    name: category.name,
+                                    label: category.label,
+                                    icon: category.icon,
+                                }}
+                            />
                             <Button
                                 variant="solid"
                                 type="submit"

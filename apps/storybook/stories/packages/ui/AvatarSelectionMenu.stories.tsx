@@ -6,6 +6,14 @@ const meta = {
     title: 'packages/ui/Inputs/AvatarSelectionMenu',
     component: AvatarSelectionMenu,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'AvatarSelectionMenu opens an avatar picker from a custom trigger and reports the selected avatar through its change handler.',
+            },
+        },
+    },
     args: {
         displayName: 'Ana Kovač',
         title: 'Odaberi avatar',

@@ -5,6 +5,14 @@ const meta = {
     title: 'apps/garden/Brand/Logotype',
     component: Logotype,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'The garden Logotype renders the Vrt Gredice brand mark with configurable sizing and color for garden-facing surfaces.',
+            },
+        },
+    },
     args: {
         className: 'h-12 w-auto',
         color: '#2E6F40',

@@ -16,6 +16,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
@@ -51,9 +52,11 @@ export default async function UserPage({
         displayName,
     } = user;
     const publicProfileUrl = KnownPages.GrediceUser(userIdToPublicId(id));
+    const userTitle = displayName ?? userName;
 
     return (
         <Stack spacing={4}>
+            <AdminPageTitle title={userTitle} />
             <Stack spacing={2}>
                 <Row spacing={2} justifyContent="space-between">
                     <Breadcrumbs

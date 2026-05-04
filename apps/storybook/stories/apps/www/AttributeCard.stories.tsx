@@ -6,6 +6,14 @@ const meta = {
     title: 'apps/www/Attributes/AttributeCard',
     component: AttributeCard,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'AttributeCard displays a labeled plant or product attribute with an icon, value, optional description, and optional navigation.',
+            },
+        },
+    },
     args: {
         icon: <Leaf className="size-5 text-primary" />,
         header: 'Tip biljke',

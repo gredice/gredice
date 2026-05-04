@@ -34,6 +34,14 @@ const meta = {
     title: 'packages/ui/Icons/GridIcons',
     component: Grid16Icon,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'GridIcons provide reusable glyphs for raised-bed grids, plant grid density, and garden layout selection controls.',
+            },
+        },
+    },
     render: () => <GridIconsShowcase />,
 } satisfies Meta<typeof Grid16Icon>;
 

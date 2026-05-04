@@ -32,6 +32,14 @@ const meta = {
     title: 'apps/www/Shared/ListCollapsable',
     component: ListCollapsable,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'ListCollapsable renders a compact selectable link list for public taxonomy navigation and category filters.',
+            },
+        },
+    },
     beforeEach: () => {
         createNavigation({});
         useRouter.mockImplementation(getRouter);

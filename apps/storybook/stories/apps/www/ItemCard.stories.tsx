@@ -5,6 +5,14 @@ const meta = {
     title: 'apps/www/Shared/ItemCard',
     component: ItemCard,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'ItemCard is a linked visual tile for public listing grids, pairing media content with a short item label.',
+            },
+        },
+    },
     args: {
         label: 'Rajčica',
         href: '/biljke/rajcica',

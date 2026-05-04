@@ -14,6 +14,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../../components/admin/navigation/AdminPageTitle';
 import { NoDataPlaceholder } from '../../../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../../../lib/auth/auth';
 import { KnownPages } from '../../../../../src/KnownPages';
@@ -94,6 +95,7 @@ export default async function EmailDetailPage({
 
     return (
         <Stack spacing={3}>
+            <AdminPageTitle title={email.subject || `Email #${email.id}`} />
             <Breadcrumbs
                 items={[
                     {
