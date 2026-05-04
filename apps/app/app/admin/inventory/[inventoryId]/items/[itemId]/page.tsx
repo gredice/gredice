@@ -67,7 +67,7 @@ export default async function InventoryItemPage({
     ];
     const itemEntityLabel = item.entityId
         ? entityItems.find(
-              (entityItem) => entityItem.value === item.entityId?.toString(),
+              (entityItem) => entityItem.value === item.entityId.toString(),
           )?.label
         : null;
     const itemTitle = itemEntityLabel
