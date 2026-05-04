@@ -7,6 +7,7 @@ import type {
     DeliveryRequestCancelledPayload,
     DeliveryRequestCreatePayload,
     DeliveryRequestFulfilledPayload,
+    DeliveryRequestReadyEmailProcessedPayload,
     DeliveryRequestSlotChangedPayload,
     DeliveryRequestStatusPayload,
     DeliveryRequestSurveySentPayload,
@@ -377,6 +378,15 @@ export const knownEvents = {
             data: DeliveryRequestStatusPayload,
         ) => ({
             type: knownEventTypes.delivery.requestReady,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        requestReadyEmailProcessedV1: (
+            aggregateId: string,
+            data: DeliveryRequestReadyEmailProcessedPayload,
+        ) => ({
+            type: knownEventTypes.delivery.requestReadyEmailProcessed,
             version: 1,
             aggregateId,
             data,

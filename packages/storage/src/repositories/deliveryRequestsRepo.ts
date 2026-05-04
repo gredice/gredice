@@ -1,6 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import type { OperationData, PlantSortData } from '@gredice/directory-types';
-import { and, asc, desc, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
+import {
+    and,
+    asc,
+    desc,
+    eq,
+    gte,
+    inArray,
+    isNull,
+    lte,
+    notExists,
+} from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import 'server-only';
 import { AUTO_CLOSE_WINDOW_MS } from '../helpers/timeSlotAutomation';
 import {
@@ -1049,6 +1060,80 @@ export async function readyDeliveryRequest(requestId: string): Promise<void> {
         knownEvents.delivery.requestReadyV1(requestId, {
             status: DeliveryRequestStates.READY,
         }),
+    );
+}
+
+export async function getPendingDeliveryReadyEmailRequestIds({
+    readyBefore,
+    limit = 200,
+}: {
+    readyBefore: Date;
+    limit?: number;
+}): Promise<string[]> {
+    const processedEvents = alias(
+        events,
+        'delivery_ready_email_processed_events',
+    );
+    const pendingReadyEvents = await storage()
+        .selectDistinct({
+            requestId: events.aggregateId,
+        })
+        .from(events)
+        .where(
+            and(
+                eq(events.type, knownEventTypes.delivery.requestReady),
+                lte(events.createdAt, readyBefore),
+                notExists(
+                    storage()
+                        .select({ id: processedEvents.id })
+                        .from(processedEvents)
+                        .where(
+                            and(
+                                eq(
+                                    processedEvents.type,
+                                    knownEventTypes.delivery
+                                        .requestReadyEmailProcessed,
+                                ),
+                                eq(
+                                    processedEvents.aggregateId,
+                                    events.aggregateId,
+                                ),
+                            ),
+                        ),
+                ),
+            ),
+        )
+        .limit(limit);
+
+    return pendingReadyEvents.map((event) => event.requestId);
+}
+
+export async function markDeliveryReadyEmailsProcessed({
+    requestIds,
+    recipients,
+    batchRequestIds = requestIds,
+    skipped,
+}: {
+    requestIds: string[];
+    recipients: string[];
+    batchRequestIds?: string[];
+    skipped?: boolean;
+}): Promise<void> {
+    const uniqueRequestIds = Array.from(new Set(requestIds));
+    if (uniqueRequestIds.length === 0) {
+        return;
+    }
+
+    await Promise.all(
+        uniqueRequestIds.map((requestId) =>
+            createEvent(
+                knownEvents.delivery.requestReadyEmailProcessedV1(requestId, {
+                    sentTo: recipients,
+                    batchRequestIds,
+                    skipped,
+                }),
+            ),
+        ),
     );
 }
 

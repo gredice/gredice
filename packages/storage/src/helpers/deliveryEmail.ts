@@ -6,10 +6,12 @@ import { getDeliveryRequest } from '../repositories/deliveryRequestsRepo';
 export interface DeliveryEmailDetails {
     requestId: string;
     accountId: string;
+    state: string;
     deliveryWindow: string;
     recipients: string[];
     addressLine?: string;
     contactName?: string;
+    readyItem?: string;
 }
 
 export async function buildDeliveryEmailDetails(
@@ -55,13 +57,30 @@ export async function buildDeliveryEmailDetails(
               .filter(Boolean)
               .join(', ')
         : undefined;
+    const plantName = request.plantSort?.information?.name?.trim();
+    const operationName =
+        request.operationData?.information?.label?.trim() ||
+        request.operationData?.information?.name?.trim();
+    const fieldPosition =
+        request.raisedBedField?.positionIndex != null
+            ? `polje ${request.raisedBedField.positionIndex + 1}`
+            : undefined;
+    const locationParts = [request.raisedBed?.name?.trim(), fieldPosition]
+        .filter(Boolean)
+        .join(', ');
+    const readyItemBase = plantName || operationName || 'Dostavna stavka';
+    const readyItem = locationParts
+        ? `${readyItemBase} (${locationParts})`
+        : readyItemBase;
 
     return {
         requestId: request.id,
         accountId: request.accountId,
+        state: request.state,
         deliveryWindow,
         recipients: Array.from(recipients),
         addressLine,
         contactName: request.address?.contactName ?? undefined,
+        readyItem,
     };
 }
