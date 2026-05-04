@@ -1,4 +1,5 @@
 import type { Preview } from '@storybook/nextjs-vite';
+import { Analytics } from '@vercel/analytics/next';
 import '../styles.css';
 
 const preview: Preview = {
@@ -6,6 +7,7 @@ const preview: Preview = {
         (Story) => (
             <div className="min-h-screen bg-background p-6 text-foreground">
                 <Story />
+                <Analytics />
             </div>
         ),
     ],
