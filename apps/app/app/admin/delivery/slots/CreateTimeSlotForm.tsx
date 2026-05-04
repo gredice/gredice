@@ -4,7 +4,7 @@ import { Button } from '@signalco/ui-primitives/Button';
 import { Input } from '@signalco/ui-primitives/Input';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { createTimeSlotAction } from './actions';
 
@@ -27,19 +27,34 @@ function SubmitButton() {
     );
 }
 
+function formatDateInputValue(date: Date) {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
 export function CreateTimeSlotForm({ locations }: CreateTimeSlotFormProps) {
     const [state, formAction] = useActionState(createTimeSlotAction, null);
     const [selectedLocation, setSelectedLocation] = useState('');
     const [selectedType, setSelectedType] = useState('');
+    const [timeZone, setTimeZone] = useState('Europe/Zagreb');
 
     // Default to tomorrow 8 AM
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const defaultDate = tomorrow.toISOString().split('T')[0];
+    const defaultDate = formatDateInputValue(tomorrow);
+
+    useEffect(() => {
+        setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    }, []);
 
     return (
         <form action={formAction}>
             <Stack spacing={3}>
+                <input type="hidden" name="timeZone" value={timeZone} />
+
                 <SelectItems
                     variant="outlined"
                     placeholder="Odaberi lokaciju"
