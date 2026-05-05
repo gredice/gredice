@@ -212,6 +212,12 @@ export function RaisedBedFieldLifecycleTab({
         case 'sprouted':
             icon = <span className="mr-0.5">{'🌱'}</span>;
             break;
+        case 'firstFlowers':
+            icon = <span className="mr-0.5">{'🌸'}</span>;
+            break;
+        case 'firstFruitSet':
+            icon = <span className="mr-0.5">{'🍅'}</span>;
+            break;
         case 'ready':
             icon = <span className="mr-0.5">{'🌿'}</span>;
             break;

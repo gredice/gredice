@@ -31,6 +31,8 @@ const fieldStatusMetadata: Record<string, { label: string; icon: string }> = {
     pendingVerification: { label: 'Čeka verifikaciju', icon: '🔍' },
     sowed: { label: 'Sijano', icon: '🫘' },
     sprouted: { label: 'Proklijalo', icon: '🌱' },
+    firstFlowers: { label: 'Prvi cvjetovi', icon: '🌸' },
+    firstFruitSet: { label: 'Prvi plodovi', icon: '🍅' },
     notSprouted: { label: 'Nije proklijalo', icon: '❌' },
     died: { label: 'Uginulo', icon: '💀' },
     ready: { label: 'Spremno', icon: '🥕' },

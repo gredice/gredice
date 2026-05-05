@@ -15,6 +15,8 @@ export type PlantFieldStatus =
     | 'pendingVerification'
     | 'sowed'
     | 'sprouted'
+    | 'firstFlowers'
+    | 'firstFruitSet'
     | 'notSprouted'
     | 'ready'
     | 'harvested'
@@ -129,6 +131,8 @@ export const PLANT_STATUS_STAGE_SEQUENCE: Record<
     pendingVerification: ['sowing', 'watering'],
     sowed: ['sowing', 'watering'],
     sprouted: ['maintenance', 'growth', 'watering'],
+    firstFlowers: ['flowering', 'maintenance', 'watering'],
+    firstFruitSet: ['growth', 'watering', 'harvest'],
     notSprouted: ['sowing', 'maintenance'],
     ready: ['harvest', 'storage'],
     harvested: ['storage'],
