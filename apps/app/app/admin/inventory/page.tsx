@@ -1,4 +1,7 @@
-import { getInventoryConfigs } from '@gredice/storage';
+import {
+    getInventoryConfigs,
+    getInventoryStatusItemsByConfigIds,
+} from '@gredice/storage';
 import { Add, File } from '@signalco/ui-icons';
 import {
     Card,
@@ -13,6 +16,7 @@ import Link from 'next/link';
 import { AdminPageHeader } from '../../../components/admin/navigation';
 import { auth } from '../../../lib/auth/auth';
 import { KnownPages } from '../../../src/KnownPages';
+import { InventoryStatusProgress } from './[inventoryId]/InventoryStatusProgress';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +24,19 @@ export default async function InventoryPage() {
     await auth(['admin']);
 
     const configs = await getInventoryConfigs();
+    const configIds = configs.map((config) => config.id);
+    const statusItems = await getInventoryStatusItemsByConfigIds(configIds);
+    const itemsByConfigId = new Map<number, typeof statusItems>(
+        configIds.map((configId) => [configId, []]),
+    );
+
+    for (const statusItem of statusItems) {
+        const configItems = itemsByConfigId.get(statusItem.inventoryConfigId);
+
+        if (configItems) {
+            configItems.push(statusItem);
+        }
+    }
 
     return (
         <Stack spacing={2}>
@@ -61,24 +78,21 @@ export default async function InventoryPage() {
                                     <CardTitle>{config.label}</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <Stack spacing={1}>
+                                    <Stack spacing={1.5}>
                                         <Typography level="body2" secondary>
-                                            Tip entiteta:{' '}
-                                            {config.entityTypeName}
+                                            Stanje zalihe
                                         </Typography>
-                                        <Typography level="body2" secondary>
-                                            Praćenje:{' '}
-                                            {config.defaultTrackingType ===
-                                            'pieces'
-                                                ? 'Komadi'
-                                                : 'Serijski broj'}
-                                        </Typography>
-                                        {config.fieldDefinitions.length > 0 && (
-                                            <Typography level="body2" secondary>
-                                                Dodatna polja:{' '}
-                                                {config.fieldDefinitions.length}
-                                            </Typography>
-                                        )}
+                                        <InventoryStatusProgress
+                                            items={
+                                                itemsByConfigId.get(
+                                                    config.id,
+                                                ) ?? []
+                                            }
+                                            defaultLowCountThreshold={
+                                                config.lowCountThreshold
+                                            }
+                                            compact
+                                        />
                                     </Stack>
                                 </CardContent>
                             </Card>

@@ -237,7 +237,12 @@ export function Nav({
                         <NavGroup
                             key={category.id}
                             label={category.label}
-                            icon={<File className="size-5" />}
+                            icon={
+                                <EntityTypeIcon
+                                    icon={category.icon}
+                                    className="size-5"
+                                />
+                            }
                             forceOpen={category.entityTypes.some((entityType) =>
                                 isSelectedPath(
                                     pathname,

@@ -6,6 +6,7 @@ type InventoryStatusProgressProps = {
         lowCountThreshold: number | null;
     }[];
     defaultLowCountThreshold: number | null;
+    compact?: boolean;
 };
 
 function formatItemsCount(count: number) {
@@ -45,6 +46,7 @@ function getInventoryStatusCounts({
 export function InventoryStatusProgress({
     items,
     defaultLowCountThreshold,
+    compact = false,
 }: InventoryStatusProgressProps) {
     const counts = getInventoryStatusCounts({
         items,
@@ -76,9 +78,9 @@ export function InventoryStatusProgress({
     ];
 
     return (
-        <div className="space-y-3">
+        <div className={compact ? undefined : 'space-y-3'}>
             <div
-                className="flex h-3 overflow-hidden rounded-full bg-muted"
+                className={`flex overflow-hidden rounded-full bg-muted ${compact ? 'h-2' : 'h-3'}`}
                 aria-label={`Status zalihe: ${statuses
                     .map((status) => `${status.label} ${status.count}`)
                     .join(', ')}`}
@@ -101,39 +103,41 @@ export function InventoryStatusProgress({
                 })}
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {statuses.map((status) => {
-                    const percentage =
-                        totalItems > 0
-                            ? Math.round((status.count / totalItems) * 100)
-                            : 0;
+            {!compact && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {statuses.map((status) => {
+                        const percentage =
+                            totalItems > 0
+                                ? Math.round((status.count / totalItems) * 100)
+                                : 0;
 
-                    return (
-                        <div key={status.label} className="space-y-1">
-                            <div className="flex items-center gap-2">
-                                <span
-                                    className={`size-2 rounded-full ${status.dotClassName}`}
-                                    aria-hidden
-                                />
-                                <Typography level="body2" semiBold>
-                                    {status.label}
-                                </Typography>
-                            </div>
-                            <div className="flex items-baseline gap-2">
-                                <Typography level="body1" semiBold>
-                                    {status.count}
-                                </Typography>
+                        return (
+                            <div key={status.label} className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <span
+                                        className={`size-2 rounded-full ${status.dotClassName}`}
+                                        aria-hidden
+                                    />
+                                    <Typography level="body2" semiBold>
+                                        {status.label}
+                                    </Typography>
+                                </div>
+                                <div className="flex items-baseline gap-2">
+                                    <Typography level="body1" semiBold>
+                                        {status.count}
+                                    </Typography>
+                                    <Typography level="body2" secondary>
+                                        {percentage}%
+                                    </Typography>
+                                </div>
                                 <Typography level="body2" secondary>
-                                    {percentage}%
+                                    {status.description}
                                 </Typography>
                             </div>
-                            <Typography level="body2" secondary>
-                                {status.description}
-                            </Typography>
-                        </div>
-                    );
-                })}
-            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }

@@ -25,6 +25,7 @@ This repository is the **Gredice** monorepo. It hosts several Next.js applicatio
 - Don't create new components or utilities without checking for existing ones in `@gredice/ui` or other shared packages.
 - If a UI component is not present in `@gredice/ui`, consider contributing it there if it has potential for reuse across applications.
 - Do not create multiple components in same file, split them into separate files.
+- When adding a new reusable UI component (especially in `@gredice/ui`), add/update its Storybook story under `apps/storybook/stories` in the same change.
 
 ## TypeScript types
 

@@ -207,8 +207,10 @@ export async function getCartInfo(
                   : 'biljke';
         const raisedBedsPlural =
             newRaisedBeds.length === 1 ? 'nove gredice' : 'novih gredica';
+        const raisedBedsLocation =
+            newRaisedBeds.length === 1 ? 'u ovoj gredici' : 'u novim gredicama';
         notes.push(
-            `${neededPlural} još ${missingItemsCount} ${plantPlural} u ovoj ili susjednoj gredici za postavljanje ${raisedBedsPlural}.`,
+            `${neededPlural} još ${missingItemsCount} ${plantPlural} ${raisedBedsLocation} za postavljanje ${raisedBedsPlural}.`,
         );
         allowPurchase = false;
     }
