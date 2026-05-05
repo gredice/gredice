@@ -14,7 +14,6 @@
         "test:prepare": "pnpm --dir ../.. exec turbo build --filter=garden",
         "test:run": "pnpm run test:prepare && playwright test",
         "test-ui": "pnpm run test:prepare && playwright test --ui",
-        "regenerate": "pnpm run /^regenerate:.*/",
         "generate:models-types": "pnpm dlx gltfjsx ./public/assets/models/GameAssets.glb --types --typeonly --output ../../packages/game/src/models/GameAssets.tsx && node ../../scripts/fix-gltfjsx-output.mjs"
     },
     "dependencies": {

@@ -19,7 +19,6 @@
         "test:visual": "pnpm run test:visual:prepare && cross-env GREDICE_API_HOST=https://api.gredice.com vizzly run \"playwright test --project=visual\" --wait",
         "test:visual:publish": "pnpm run test:visual:prepare && cross-env GREDICE_API_HOST=https://api.gredice.com vizzly run \"playwright test --project=visual\"",
         "test:visual:tdd": "pnpm run test:visual:prepare && cross-env GREDICE_API_HOST=https://api.gredice.com vizzly tdd run \"playwright test --project=visual\"",
-        "regenerate": "pnpm run /^regenerate:.*/",
         "generate-playwright": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts",
         "generate-playwright:ui": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts --ui"
     },
