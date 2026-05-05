@@ -208,7 +208,7 @@ export async function getCartInfo(
         const raisedBedsPlural =
             newRaisedBeds.length === 1 ? 'nove gredice' : 'novih gredica';
         notes.push(
-            `${neededPlural} još ${missingItemsCount} ${plantPlural} u ovoj ili susjednoj gredici za postavljanje ${raisedBedsPlural}.`,
+            `${neededPlural} još ${missingItemsCount} ${plantPlural} u ovoj gredici za postavljanje ${raisedBedsPlural}.`,
         );
         allowPurchase = false;
     }
