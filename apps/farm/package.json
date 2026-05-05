@@ -13,8 +13,7 @@
         "test": "pnpm run /^test:.*/",
         "test:prepare": "pnpm --dir ../.. exec turbo build --filter=farm",
         "test:run": "pnpm run test:prepare && playwright test",
-        "test-ui": "pnpm run test:prepare && playwright test --ui",
-        "regenerate": "pnpm run /^regenerate:.*/"
+        "test-ui": "pnpm run test:prepare && playwright test --ui"
     },
     "dependencies": {
         "@opentelemetry/api-logs": "0.216.0",
