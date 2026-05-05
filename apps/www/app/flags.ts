@@ -1,22 +1,25 @@
-import { createHypertuneAdapter } from '@flags-sdk/hypertune';
 import { flag } from 'flags/next';
-import {
-    type Context,
-    createSource,
-    type FlagValues,
-    vercelFlagDefinitions as flagDefinitions,
-    flagFallbacks,
-} from '../lib/flags/generated/hypertune';
-import { identify } from '../lib/flags/identify';
 
-const hypertuneAdapter = createHypertuneAdapter<FlagValues, Context>({
-    createSource,
-    flagDefinitions,
-    flagFallbacks,
-    identify,
+function isDevelopmentEnvironment() {
+    return process.env.NODE_ENV === 'development';
+}
+
+export const lSystemPlantsFlag = flag<boolean>({
+    key: 'lSystemPlants',
+    description: 'Enable L-System plants content rendering.',
+    decide: () => false,
+    options: [
+        { label: 'Off', value: false },
+        { label: 'On', value: true },
+    ],
 });
 
-export const lSystemPlantsFlag = flag(
-    hypertuneAdapter.declarations.lSystemPlants,
-);
-export const recipesFlag = flag(hypertuneAdapter.declarations.recipes);
+export const recipesFlag = flag<boolean>({
+    key: 'recipes',
+    description: 'Enable recipes pages and recipe detail routes.',
+    decide: () => isDevelopmentEnvironment(),
+    options: [
+        { label: 'Off', value: false },
+        { label: 'On', value: true },
+    ],
+});

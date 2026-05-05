@@ -57,13 +57,6 @@ const thirdPartyPlatforms = [
                 website: 'https://www.cloudflare.com',
             },
             {
-                name: 'Hypertune',
-                category: 'Značajke sustava',
-                description: 'Platforma za upravljanje značajkama sustava.',
-                iconUrl: 'https://www.hypertune.com/favicon.ico',
-                website: 'https://www.hypertune.com',
-            },
-            {
                 name: 'PostHog',
                 category: 'Analitika proizvoda',
                 description:
@@ -230,7 +223,7 @@ export default function UvjetiKoristenjaPage() {
                     </p>
                 </StyledHtml>
                 <Typography level="body2" secondary className="mt-8">
-                    Zadnja izmjena: 4. svibnja 2026.
+                    Zadnja izmjena: 5. svibnja 2026.
                 </Typography>
             </Stack>
         </Container>
