@@ -22,6 +22,7 @@ export function ExpandableSearchInput({
     inputClassName,
 }: ExpandableSearchInputProps) {
     const [isExpanded, setIsExpanded] = useState(false);
+    const rootRef = useRef<HTMLDivElement>(null);
     const desktopInputRef = useRef<HTMLInputElement>(null);
     const mobileInputRef = useRef<HTMLInputElement>(null);
 
@@ -31,8 +32,21 @@ export function ExpandableSearchInput({
         }
     }, [isExpanded]);
 
+    useEffect(() => {
+        const handlePointerDown = (event: PointerEvent) => {
+            if (!rootRef.current?.contains(event.target as Node)) {
+                setIsExpanded(false);
+            }
+        };
+
+        document.addEventListener('pointerdown', handlePointerDown);
+        return () => {
+            document.removeEventListener('pointerdown', handlePointerDown);
+        };
+    }, []);
+
     return (
-        <div className={cx('relative', className)}>
+        <div ref={rootRef} className={cx('relative', className)}>
             <div className="hidden md:block">
                 <Input
                     ref={desktopInputRef}
@@ -57,7 +71,6 @@ export function ExpandableSearchInput({
                             ref={mobileInputRef}
                             value={value}
                             onChange={onChange}
-                            onBlur={() => setIsExpanded(false)}
                             placeholder={placeholder}
                             startDecorator={
                                 <Search className="size-5 shrink-0 ml-3" />
