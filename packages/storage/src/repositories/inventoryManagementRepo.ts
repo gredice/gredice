@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import {
     type InsertInventoryConfig,
     type InsertInventoryItem,
@@ -149,6 +149,26 @@ export async function getInventoryItemsByConfig(inventoryConfigId: number) {
         with: {
             entity: true,
         },
+    });
+}
+
+export async function getInventoryStatusItemsByConfigIds(
+    inventoryConfigIds: number[],
+) {
+    if (inventoryConfigIds.length === 0) {
+        return [];
+    }
+
+    return storage().query.inventoryItems.findMany({
+        columns: {
+            inventoryConfigId: true,
+            quantity: true,
+            lowCountThreshold: true,
+        },
+        where: and(
+            inArray(inventoryItems.inventoryConfigId, inventoryConfigIds),
+            eq(inventoryItems.isDeleted, false),
+        ),
     });
 }
 

@@ -1,6 +1,6 @@
 import {
     getInventoryConfigs,
-    getInventoryItemsByConfig,
+    getInventoryStatusItemsByConfigIds,
 } from '@gredice/storage';
 import { Add, File } from '@signalco/ui-icons';
 import {
@@ -24,18 +24,19 @@ export default async function InventoryPage() {
     await auth(['admin']);
 
     const configs = await getInventoryConfigs();
-    const configItems = await Promise.all(
-        configs.map(async (config) => ({
-            configId: config.id,
-            items: await getInventoryItemsByConfig(config.id),
-        })),
+    const configIds = configs.map((config) => config.id);
+    const statusItems = await getInventoryStatusItemsByConfigIds(configIds);
+    const itemsByConfigId = new Map<number, typeof statusItems>(
+        configIds.map((configId) => [configId, []]),
     );
-    const itemsByConfigId = new Map(
-        configItems.map((configItem) => [
-            configItem.configId,
-            configItem.items,
-        ]),
-    );
+
+    for (const statusItem of statusItems) {
+        const configItems = itemsByConfigId.get(statusItem.inventoryConfigId);
+
+        if (configItems) {
+            configItems.push(statusItem);
+        }
+    }
 
     return (
         <Stack spacing={2}>
