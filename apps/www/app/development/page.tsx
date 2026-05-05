@@ -3,7 +3,14 @@ import { Card, CardContent } from '@signalco/ui-primitives/Card';
 import { Container } from '@signalco/ui-primitives/Container';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+
+export const metadata: Metadata = {
+    title: 'Development Hub',
+    description:
+        'Centralized development, debugging, profiling, API, and collaboration resources for Gredice teams.',
+};
 
 type DevelopmentResource = {
     title: string;
