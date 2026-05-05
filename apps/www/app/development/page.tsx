@@ -3,6 +3,7 @@ import { Card, CardContent } from '@signalco/ui-primitives/Card';
 import { Container } from '@signalco/ui-primitives/Container';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { notFound } from 'next/navigation';
 
 type DevelopmentResource = {
     title: string;
@@ -17,115 +18,153 @@ type DevelopmentSection = {
     resources: DevelopmentResource[];
 };
 
-const developmentSections: DevelopmentSection[] = [
-    {
-        title: 'Debug & Profiling',
-        description:
-            'Quick access to garden tools used for diagnosing performance and behavior.',
-        resources: [
-            {
-                title: 'Garden Debug',
-                description:
-                    'Main debug surface for inspecting client behavior and runtime diagnostics.',
-                href: 'https://vrt.gredice.test/debug',
-                icon: '🐞',
-            },
-            {
-                title: 'Garden Profiling',
-                description:
-                    'Profiling page for spotting render bottlenecks and performance regressions.',
-                href: 'https://vrt.gredice.test/profiling',
-                icon: '📈',
-            },
-        ],
-    },
-    {
-        title: 'Product Surfaces',
-        description:
-            'Open the main product environments used during development and QA.',
-        resources: [
-            {
-                title: 'WWW',
-                description:
-                    'Marketing website used for landing, SEO, and public pages.',
-                href: 'https://www.gredice.test',
-                icon: '🌐',
-            },
-            {
-                title: 'Garden',
-                description:
-                    'Core app for end-user garden management flows and actions.',
-                href: 'https://vrt.gredice.test',
-                icon: '🌱',
-            },
-            {
-                title: 'Farm',
-                description:
-                    'Operations panel used by partners and farm-side workflows.',
-                href: 'https://farma.gredice.test',
-                icon: '🚜',
-            },
-            {
-                title: 'App',
-                description:
-                    'Internal app surface for authenticated and shared product features.',
-                href: 'https://app.gredice.test',
-                icon: '🧩',
-            },
-        ],
-    },
-    {
-        title: 'Platform & API',
-        description:
-            'Backend and platform endpoints for troubleshooting integrations and incidents.',
-        resources: [
-            {
-                title: 'API',
-                description:
-                    'Primary API entrypoint for requests, integrations, and health checks.',
-                href: 'https://api.gredice.test',
-                icon: '🔌',
-            },
-            {
-                title: 'Status',
-                description:
-                    'Operational status page for incidents, uptime, and maintenance notices.',
-                href: 'https://status.gredice.test',
-                icon: '🟢',
-            },
-        ],
-    },
-    {
-        title: 'Design, Analytics & Collaboration',
-        description:
-            'Shared tools for component development, product analytics, and team collaboration.',
-        resources: [
-            {
-                title: 'Storybook',
-                description:
-                    'Component explorer for UI development and visual documentation.',
-                href: 'https://storybook.gredice.test',
-                icon: '📚',
-            },
-            {
-                title: 'PostHog',
-                description:
-                    'Product analytics and feature flag insights across the platform.',
-                href: 'https://eu.posthog.com',
-                icon: '📊',
-            },
-            {
-                title: 'GitHub',
-                description:
-                    'Source control, pull requests, issue tracking, and CI visibility.',
-                href: 'https://github.com/gredice',
-                icon: '🐙',
-            },
-        ],
-    },
-];
+type EnvironmentHosts = {
+    app: string;
+    api: string;
+    farm: string;
+    garden: string;
+    status: string;
+    storybook: string;
+    www: string;
+};
+
+function getEnvironmentHosts(): EnvironmentHosts | null {
+    if (process.env.NEXT_PUBLIC_VERCEL_ENV === 'production') {
+        return null;
+    }
+
+    const domain = 'gredice.test';
+
+    return {
+        app: `https://app.${domain}`,
+        api: `https://api.${domain}`,
+        farm: `https://farma.${domain}`,
+        garden: `https://vrt.${domain}`,
+        status: `https://status.${domain}`,
+        storybook: `https://storybook.${domain}`,
+        www: `https://www.${domain}`,
+    };
+}
+
+function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
+    return [
+        {
+            title: 'Debug & Profiling',
+            description:
+                'Quick access to garden tools used for diagnosing performance and behavior.',
+            resources: [
+                {
+                    title: 'Garden Debug',
+                    description:
+                        'Main debug surface for inspecting client behavior and runtime diagnostics.',
+                    href: `${hosts.garden}/debug`,
+                    icon: '🐞',
+                },
+                {
+                    title: 'Garden Profiling',
+                    description:
+                        'Profiling page for spotting render bottlenecks and performance regressions.',
+                    href: `${hosts.garden}/profiling`,
+                    icon: '📈',
+                },
+            ],
+        },
+        {
+            title: 'Product Surfaces',
+            description:
+                'Open the main product environments used during development and QA.',
+            resources: [
+                {
+                    title: 'WWW',
+                    description:
+                        'Marketing website used for landing, SEO, and public pages.',
+                    href: hosts.www,
+                    icon: '🌐',
+                },
+                {
+                    title: 'Garden',
+                    description:
+                        'Core app for end-user garden management flows and actions.',
+                    href: hosts.garden,
+                    icon: '🌱',
+                },
+                {
+                    title: 'Farm',
+                    description:
+                        'Operations panel used by partners and farm-side workflows.',
+                    href: hosts.farm,
+                    icon: '🚜',
+                },
+                {
+                    title: 'App',
+                    description:
+                        'Internal app surface for authenticated and shared product features.',
+                    href: hosts.app,
+                    icon: '🧩',
+                },
+            ],
+        },
+        {
+            title: 'Platform & API',
+            description:
+                'Backend and platform endpoints for troubleshooting integrations and incidents.',
+            resources: [
+                {
+                    title: 'API',
+                    description:
+                        'Primary API entrypoint for requests, integrations, and health checks.',
+                    href: hosts.api,
+                    icon: '🔌',
+                },
+                {
+                    title: 'Status',
+                    description:
+                        'Operational status page for incidents, uptime, and maintenance notices.',
+                    href: hosts.status,
+                    icon: '🟢',
+                },
+            ],
+        },
+        {
+            title: 'Design, Analytics & Collaboration',
+            description:
+                'Shared tools for component development, product analytics, and team collaboration.',
+            resources: [
+                {
+                    title: 'Storybook',
+                    description:
+                        'Component explorer for UI development and visual documentation.',
+                    href: hosts.storybook,
+                    icon: '📚',
+                },
+                {
+                    title: 'PostHog',
+                    description:
+                        'Product analytics and feature flag insights across the platform.',
+                    href: 'https://eu.posthog.com',
+                    icon: '📊',
+                },
+                {
+                    title: 'GitHub',
+                    description:
+                        'Source control, pull requests, issue tracking, and CI visibility.',
+                    href: 'https://github.com/gredice',
+                    icon: '🐙',
+                },
+            ],
+        },
+    ];
+}
 
 export default function DevelopmentPage() {
+    const hosts = getEnvironmentHosts();
+
+    if (!hosts) {
+        notFound();
+    }
+
+    const developmentSections = getDevelopmentSections(hosts);
+
     return (
         <Container className="py-10">
             <Stack spacing={3} className="mb-8">
