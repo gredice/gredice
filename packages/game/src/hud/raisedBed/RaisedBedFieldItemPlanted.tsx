@@ -5,6 +5,7 @@ import {
     Check,
     ExternalLink,
     Hammer,
+    History,
     Sprout,
     Warning,
 } from '@signalco/ui-icons';
@@ -25,7 +26,10 @@ import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { KnownPages } from '../../knownPages';
-import { findRaisedBedOccupiedField } from '../../utils/raisedBedFields';
+import {
+    findRaisedBedFieldWithPlant,
+    findRaisedBedOccupiedField,
+} from '../../utils/raisedBedFields';
 import { RaisedBedFieldDiary } from './RaisedBedDiary';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import {
@@ -39,14 +43,18 @@ type RaisedBedFieldTabValue = 'lifecycle' | 'diary' | 'operations';
 export function RaisedBedFieldItemPlanted({
     raisedBedId,
     positionIndex,
+    isHistorical = false,
 }: {
     raisedBedId: number;
     positionIndex: number;
+    isHistorical?: boolean;
 }) {
     const { data: garden, isLoading: isGardenLoading } = useCurrentGarden();
     const { track } = useGameAnalytics();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
-    const field = findRaisedBedOccupiedField(raisedBed?.fields, positionIndex);
+    const field = isHistorical
+        ? findRaisedBedFieldWithPlant(raisedBed?.fields, positionIndex)
+        : findRaisedBedOccupiedField(raisedBed?.fields, positionIndex);
     const plantSortId = field?.plantSortId;
     const { data: plantSort, isLoading: isPlantSortLoading } =
         usePlantSort(plantSortId);
@@ -57,7 +65,11 @@ export function RaisedBedFieldItemPlanted({
         growthPercentage,
         harvestValue,
         harvestPercentage,
-    } = useRaisedBedFieldLifecycleData(raisedBedId, positionIndex);
+    } = useRaisedBedFieldLifecycleData(
+        raisedBedId,
+        positionIndex,
+        isHistorical,
+    );
     const isHarvested = field?.plantHarvestedDate;
     const [open, setOpen] = useState(false);
     const [activeTab, setActiveTab] =
@@ -137,6 +149,23 @@ export function RaisedBedFieldItemPlanted({
             plantSort.information.name,
         plantSort.information.name,
     );
+    const title = `${isHistorical ? 'Prethodna biljka' : 'Biljka'} "${plantSort.information.name}"`;
+    const fieldBadge = isHistorical
+        ? {
+              className: 'bg-muted',
+              icon: <History className="size-4 text-muted-foreground" />,
+          }
+        : harvestValue && !isHarvested
+          ? {
+                className: 'bg-blue-600',
+                icon: <Sprout className="size-4 text-white" />,
+            }
+          : isHarvested
+            ? {
+                  className: 'bg-green-600',
+                  icon: <Check className="size-4 text-white" />,
+              }
+            : null;
 
     return (
         <Modal
@@ -145,6 +174,7 @@ export function RaisedBedFieldItemPlanted({
                 if (nextOpen) {
                     track('game_planted_item_opened', {
                         active_tab: activeTab,
+                        is_historical: isHistorical,
                         plant_sort_id: plantSort.id,
                         position_index: positionIndex,
                         raised_bed_id: raisedBedId,
@@ -152,7 +182,7 @@ export function RaisedBedFieldItemPlanted({
                 }
                 setOpen(nextOpen);
             }}
-            title={`Biljka "${plantSort.information.name}"`}
+            title={title}
             modal={false}
             className="md:border-tertiary md:border-b-4 max-w-xl"
             trigger={
@@ -168,17 +198,12 @@ export function RaisedBedFieldItemPlanted({
                             width={52}
                             height={52}
                         />
-                        {harvestValue && !isHarvested && (
+                        {fieldBadge && (
                             <div className="absolute -top-1 -end-1">
-                                <span className="inline-flex items-center justify-center p-1 bg-blue-600 rounded-full border-2 border-white shadow-lg">
-                                    <Sprout className="size-4 text-white" />
-                                </span>
-                            </div>
-                        )}
-                        {isHarvested && (
-                            <div className="absolute -top-1 -end-1">
-                                <span className="inline-flex items-center justify-center p-1 bg-green-600 rounded-full border-2 border-white shadow-lg">
-                                    <Check className="size-4 text-white" />
+                                <span
+                                    className={`inline-flex items-center justify-center p-1 ${fieldBadge.className} rounded-full border-2 border-white shadow-lg`}
+                                >
+                                    {fieldBadge.icon}
                                 </span>
                             </div>
                         )}
@@ -250,23 +275,27 @@ export function RaisedBedFieldItemPlanted({
                                 <Typography>Dnevnik</Typography>
                             </Row>
                         </TabsTrigger>
-                        <TabsTrigger value="operations">
-                            <Row spacing={1}>
-                                <Hammer className="size-4 shrink-0" />
-                                <Typography>Radnje</Typography>
-                            </Row>
-                        </TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="operations">
-                        {garden && (
-                            <RaisedBedFieldOperationsTab
-                                gardenId={garden.id}
-                                raisedBedId={raisedBedId}
-                                positionIndex={positionIndex}
-                                plantSortId={field.plantSortId}
-                            />
+                        {!isHistorical && (
+                            <TabsTrigger value="operations">
+                                <Row spacing={1}>
+                                    <Hammer className="size-4 shrink-0" />
+                                    <Typography>Radnje</Typography>
+                                </Row>
+                            </TabsTrigger>
                         )}
-                    </TabsContent>
+                    </TabsList>
+                    {!isHistorical && (
+                        <TabsContent value="operations">
+                            {garden && (
+                                <RaisedBedFieldOperationsTab
+                                    gardenId={garden.id}
+                                    raisedBedId={raisedBedId}
+                                    positionIndex={positionIndex}
+                                    plantSortId={field.plantSortId}
+                                />
+                            )}
+                        </TabsContent>
+                    )}
                     <TabsContent value="diary">
                         {garden && (
                             <Card>
@@ -275,6 +304,7 @@ export function RaisedBedFieldItemPlanted({
                                         gardenId={garden.id}
                                         raisedBedId={raisedBed.id}
                                         positionIndex={positionIndex}
+                                        disableActions={isHistorical}
                                     />
                                 </CardOverflow>
                             </Card>
@@ -284,6 +314,7 @@ export function RaisedBedFieldItemPlanted({
                         <RaisedBedFieldLifecycleTab
                             raisedBedId={raisedBedId}
                             positionIndex={positionIndex}
+                            includeInactive={isHistorical}
                             onShowOperations={() => setActiveTab('operations')}
                         />
                     </TabsContent>

@@ -21,6 +21,17 @@ export function findRaisedBedOccupiedField<T extends RaisedBedFieldLike>(
     );
 }
 
+export function findRaisedBedFieldWithPlant<T extends RaisedBedFieldLike>(
+    fields: T[] | null | undefined,
+    positionIndex: number,
+) {
+    return fields?.find(
+        (field) =>
+            field.positionIndex === positionIndex &&
+            typeof field.plantSortId === 'number',
+    );
+}
+
 export function countRaisedBedOccupiedFields<T extends RaisedBedFieldLike>(
     fields: T[] | null | undefined,
 ) {

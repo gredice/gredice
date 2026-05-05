@@ -1,5 +1,8 @@
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
-import { findRaisedBedOccupiedField } from '../../utils/raisedBedFields';
+import {
+    findRaisedBedFieldWithPlant,
+    findRaisedBedOccupiedField,
+} from '../../utils/raisedBedFields';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import { RaisedBedFieldItemEmpty } from './RaisedBedFieldItemEmpty';
 import { RaisedBedFieldItemPlanted } from './RaisedBedFieldItemPlanted';
@@ -22,6 +25,10 @@ export function RaisedBedFieldItem({
     }
 
     const field = findRaisedBedOccupiedField(raisedBed.fields, positionIndex);
+    const historicalField = findRaisedBedFieldWithPlant(
+        raisedBed.fields,
+        positionIndex,
+    );
     const hasField = Boolean(field);
 
     if (isGardenLoading) {
@@ -34,6 +41,16 @@ export function RaisedBedFieldItem({
     }
 
     if (!hasField) {
+        if (historicalField) {
+            return (
+                <RaisedBedFieldItemPlanted
+                    raisedBedId={raisedBedId}
+                    positionIndex={positionIndex}
+                    isHistorical
+                />
+            );
+        }
+
         return (
             <RaisedBedFieldItemEmpty
                 gardenId={gardenId}

@@ -315,10 +315,12 @@ export function RaisedBedFieldDiary({
     gardenId,
     raisedBedId,
     positionIndex,
+    disableActions = false,
 }: {
     gardenId: number;
     raisedBedId: number;
     positionIndex: number;
+    disableActions?: boolean;
 }) {
     const {
         data: entries,
@@ -326,24 +328,25 @@ export function RaisedBedFieldDiary({
         error,
     } = useRaisedBedFieldDiaryEntries(gardenId, raisedBedId, positionIndex);
     const flags = useGameFlags();
-    const renderEntryAction = flags.raisedBedImageAI
-        ? (entry: DiaryEntry, aiHistory?: DiaryEntryAiHistory) => {
-              if (!entry.imageUrls?.length || entry.isMarkdown) {
-                  return null;
-              }
+    const renderEntryAction =
+        flags.raisedBedImageAI && !disableActions
+            ? (entry: DiaryEntry, aiHistory?: DiaryEntryAiHistory) => {
+                  if (!entry.imageUrls?.length || entry.isMarkdown) {
+                      return null;
+                  }
 
-              return (
-                  <RaisedBedDiaryAiAction
-                      gardenId={gardenId}
-                      raisedBedId={raisedBedId}
-                      positionIndex={positionIndex}
-                      entryName={entry.name}
-                      imageUrls={entry.imageUrls}
-                      historyEntries={aiHistory?.entries}
-                  />
-              );
-          }
-        : undefined;
+                  return (
+                      <RaisedBedDiaryAiAction
+                          gardenId={gardenId}
+                          raisedBedId={raisedBedId}
+                          positionIndex={positionIndex}
+                          entryName={entry.name}
+                          imageUrls={entry.imageUrls}
+                          historyEntries={aiHistory?.entries}
+                      />
+                  );
+              }
+            : undefined;
 
     return (
         <DiaryList
