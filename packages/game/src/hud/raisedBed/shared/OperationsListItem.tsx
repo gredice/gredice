@@ -22,11 +22,13 @@ export function OperationsListItem({
     gardenId,
     raisedBedId,
     positionIndex,
+    inShoppingCart,
 }: {
     gardenId: number;
     raisedBedId?: number;
     positionIndex?: number;
     operation: OperationData;
+    inShoppingCart?: boolean;
 }) {
     const setShoppingCartItem = useSetShoppingCartItem();
     const animateFlyToShoppingCart = useAnimateFlyToShoppingCart();
@@ -84,6 +86,11 @@ export function OperationsListItem({
                     <Typography level="body1" semiBold noWrap>
                         {operation.information.label}
                     </Typography>
+                    {inShoppingCart && (
+                        <Typography level="body3" className="text-amber-600">
+                            U košarici (nije kupljeno)
+                        </Typography>
+                    )}
                     <Typography level="body1" semiBold>
                         {price}
                     </Typography>

@@ -2,13 +2,16 @@ import type { OperationData } from '@gredice/client';
 import { Alert } from '@signalco/ui/Alert';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
 import { Close, Search } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { List } from '@signalco/ui-primitives/List';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { memo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { useOperations } from '../../../hooks/useOperations';
 import { usePlantSort } from '../../../hooks/usePlantSorts';
+import { useShoppingCart } from '../../../hooks/useShoppingCart';
+import { useShoppingCartOpenParam } from '../../../useUrlState';
 import { OperationListItemSkeleton } from '../OperationListItemSkeleton';
 import { OperationsListItem } from './OperationsListItem';
 
@@ -21,6 +24,7 @@ const OperationsListContent = memo(function OperationsListContent({
     gardenId,
     raisedBedId,
     positionIndex,
+    shoppingCartOperationIds,
 }: {
     operations: OperationData[] | undefined;
     isLoading: boolean;
@@ -28,6 +32,7 @@ const OperationsListContent = memo(function OperationsListContent({
     gardenId: number;
     raisedBedId?: number;
     positionIndex?: number;
+    shoppingCartOperationIds: Set<number>;
 }) {
     return (
         <List variant="outlined" className="bg-card max-h-96 overflow-y-auto">
@@ -45,6 +50,7 @@ const OperationsListContent = memo(function OperationsListContent({
                 ))}
             {operations?.map((operation) => (
                 <MemoizedOperationsListItem
+                    inShoppingCart={shoppingCartOperationIds.has(operation.id)}
                     key={operation.id}
                     operation={operation}
                     gardenId={gardenId}
@@ -76,9 +82,21 @@ export function OperationsList({
     } = useOperations();
     const { data: plantSort, isLoading: isPlantSortLoading } =
         usePlantSort(plantSortId);
+    const { data: cart } = useShoppingCart();
+    const [, setShoppingCartOpen] = useShoppingCartOpenParam();
     const isLoading =
         isLoadingOperations || (Boolean(plantSortId) && isPlantSortLoading);
     const [search, setSearch] = useState('');
+
+    const shoppingCartOperationIds = useMemo(
+        () =>
+            new Set(
+                (cart?.items ?? [])
+                    .filter((item) => item.entityTypeName === 'operation')
+                    .map((item) => Number(item.entityId)),
+            ),
+        [cart?.items],
+    );
 
     const filteredOperations = operations
         ?.filter(filterFunc)
@@ -99,6 +117,16 @@ export function OperationsList({
                       .includes(search.toLowerCase())
                 : true,
         );
+
+    const cartOperations =
+        filteredOperations?.filter((op) =>
+            shoppingCartOperationIds.has(op.id),
+        ) ?? [];
+    const remainingOperations =
+        filteredOperations?.filter(
+            (op) => !shoppingCartOperationIds.has(op.id),
+        ) ?? [];
+    const sortedOperations = [...cartOperations, ...remainingOperations];
 
     return (
         <Stack spacing={1}>
@@ -126,13 +154,32 @@ export function OperationsList({
             {isError && (
                 <Alert color="danger">Greška prilikom učitavanja radnji</Alert>
             )}
+            {cartOperations.length > 0 && (
+                <Row
+                    justifyContent="space-between"
+                    alignItems="center"
+                    className="px-1"
+                >
+                    <Alert color="warning" className="py-1">
+                        Radnje u košarici (nisu kupljene) su na vrhu popisa.
+                    </Alert>
+                    <Button
+                        size="sm"
+                        variant="link"
+                        onClick={() => setShoppingCartOpen(true)}
+                    >
+                        Otvori košaricu
+                    </Button>
+                </Row>
+            )}
             <OperationsListContent
-                operations={filteredOperations}
+                operations={sortedOperations}
                 isLoading={isLoading}
                 search={search}
                 gardenId={gardenId}
                 raisedBedId={raisedBedId}
                 positionIndex={positionIndex}
+                shoppingCartOperationIds={shoppingCartOperationIds}
             />
         </Stack>
     );
