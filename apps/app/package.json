@@ -13,9 +13,7 @@
         "test": "pnpm run /^test:.*/",
         "test:prepare": "pnpm --dir ../.. exec turbo build --filter=app",
         "test:run": "pnpm run test:prepare && playwright test",
-        "test-ui": "pnpm run test:prepare && playwright test --ui",
-        "regenerate": "pnpm run /^regenerate:.*/",
-        "regenerate:feature-flags": "hypertune"
+        "test-ui": "pnpm run test:prepare && playwright test --ui"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "3.1041.0",
@@ -32,7 +30,6 @@
         "@vercel/blob": "2.3.3",
         "@vvo/tzdb": "6.198.0",
         "drizzle-orm": "0.45.2",
-        "hypertune": "2.10.1",
         "next": "16.2.4",
         "next-themes": "0.4.6",
         "pg": "8.20.0",

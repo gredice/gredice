@@ -13,12 +13,9 @@
         "test": "pnpm run /^test:.*/",
         "test:prepare": "pnpm --dir ../.. exec turbo build --filter=farm",
         "test:run": "pnpm run test:prepare && playwright test",
-        "test-ui": "pnpm run test:prepare && playwright test --ui",
-        "regenerate": "pnpm run /^regenerate:.*/",
-        "regenerate:feature-flags": "hypertune && node ../../scripts/sync-flags.mjs apps/farm"
+        "test-ui": "pnpm run test:prepare && playwright test --ui"
     },
     "dependencies": {
-        "@flags-sdk/hypertune": "0.3.2",
         "@opentelemetry/api-logs": "0.216.0",
         "@opentelemetry/exporter-logs-otlp-http": "0.216.0",
         "@opentelemetry/resources": "2.7.1",
@@ -27,7 +24,6 @@
         "@vercel/blob": "2.3.3",
         "@vercel/toolbar": "0.2.2",
         "flags": "4.0.6",
-        "hypertune": "2.10.1",
         "next": "16.2.4",
         "pg": "8.20.0",
         "react": "19.2.5",
