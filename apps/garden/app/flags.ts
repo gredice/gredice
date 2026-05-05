@@ -3,7 +3,7 @@ import { flag } from 'flags/next';
 const booleanOptions = [
     { label: 'Off', value: false },
     { label: 'On', value: true },
-] as const;
+];
 
 export const deliveryChargeAtCheckoutFlag = flag<boolean>({
     key: 'deliveryChargeAtCheckout',
