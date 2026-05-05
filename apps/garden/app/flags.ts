@@ -1,36 +1,48 @@
-import { createHypertuneAdapter } from '@flags-sdk/hypertune';
 import { flag } from 'flags/next';
-import {
-    type Context,
-    createSource,
-    type FlagValues,
-    vercelFlagDefinitions as flagDefinitions,
-    flagFallbacks,
-} from '../lib/flags/generated/hypertune';
-import { identify } from '../lib/flags/identify';
 
-const hypertuneAdapter = createHypertuneAdapter<FlagValues, Context>({
-    createSource,
-    flagDefinitions,
-    flagFallbacks,
-    identify,
+const booleanOptions = [
+    { label: 'Off', value: false },
+    { label: 'On', value: true },
+] as const;
+
+export const deliveryChargeAtCheckoutFlag = flag<boolean>({
+    key: 'deliveryChargeAtCheckout',
+    description:
+        'Whether to enable charging the delivery while doing checkout.',
+    decide: () => false,
+    options: booleanOptions,
 });
 
-export const deliveryChargeAtCheckoutFlag = flag(
-    hypertuneAdapter.declarations.deliveryChargeAtCheckout,
-);
-export const addressDistanceVerificationFlag = flag(
-    hypertuneAdapter.declarations.addressDistanceVerification,
-);
-export const raisedBedImageAIFlag = flag(
-    hypertuneAdapter.declarations.raisedBedImageAI,
-);
-export const lsystemPlantsFlag = flag(
-    hypertuneAdapter.declarations.lsystemPlants,
-);
-export const enableDebugCloseupFlag = flag(
-    hypertuneAdapter.declarations.enableDebugCloseup,
-);
-export const enableDebugHudFlag = flag(
-    hypertuneAdapter.declarations.enableDebugHud,
-);
+export const addressDistanceVerificationFlag = flag<boolean>({
+    key: 'addressDistanceVerification',
+    description:
+        'Enable address verification and indicator that the address is outside of delivery location.',
+    decide: () => false,
+    options: booleanOptions,
+});
+
+export const raisedBedImageAIFlag = flag<boolean>({
+    key: 'raisedBedImageAI',
+    description: 'Enable AI analysis of raised-bed images.',
+    decide: () => false,
+    options: booleanOptions,
+});
+
+export const lsystemPlantsFlag = flag<boolean>({
+    key: 'lsystemPlants',
+    description: 'Display L-System plants instead of only seeds.',
+    decide: () => true,
+    options: booleanOptions,
+});
+
+export const enableDebugCloseupFlag = flag<boolean>({
+    key: 'enableDebugCloseup',
+    decide: () => false,
+    options: booleanOptions,
+});
+
+export const enableDebugHudFlag = flag<boolean>({
+    key: 'enableDebugHud',
+    decide: () => false,
+    options: booleanOptions,
+});
