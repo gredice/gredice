@@ -46,7 +46,7 @@ const footerSections: SectionData[] = [
 
 export function StatusFooter() {
     return (
-        <footer className="site-footer status-footer mt-16 border-t border-border py-10">
+        <footer className="site-footer status-footer">
             <SectionsView
                 componentsRegistry={sectionsComponentRegistry}
                 sectionsData={footerSections}
