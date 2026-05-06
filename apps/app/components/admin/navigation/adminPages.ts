@@ -2,7 +2,7 @@ import { KnownPages } from '../../../src/KnownPages';
 
 export const adminPages = {
     Dashboard: { href: KnownPages.Dashboard, label: 'Početna' },
-    Directories: { href: KnownPages.Directories, label: 'Direktoriji' },
+    Directories: { href: KnownPages.Directories, label: 'Zapisi' },
     Accounts: { href: KnownPages.Accounts, label: 'Korisnički računi' },
     Achievements: { href: KnownPages.Achievements, label: 'Postignuća' },
     ShoppingCarts: { href: KnownPages.ShoppingCarts, label: 'Košarice' },

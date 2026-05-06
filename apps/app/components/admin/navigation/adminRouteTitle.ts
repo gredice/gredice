@@ -52,7 +52,7 @@ function resolveDirectoryTitle(
     navContext: NavContextType | undefined,
 ) {
     if (pathname === '/admin/directories/entity-types/create') {
-        return 'Novi direktorij';
+        return 'Novi tip zapisa';
     }
 
     if (pathname === '/admin/directories/categories/create') {

@@ -1,7 +1,6 @@
 'use client';
 
 import type { SelectEntityTypeCategory } from '@gredice/storage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
 import { Delete } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
@@ -10,9 +9,10 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
-import { AdminPageHeader } from '../../../../../../components/admin/navigation';
-import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
-import { KnownPages } from '../../../../../../src/KnownPages';
+import {
+    AdminDirectoryBreadcrumbs,
+    AdminPageHeader,
+} from '../../../../../../components/admin/navigation';
 import {
     removeEntityTypeCategoryById,
     updateEntityTypeCategoryFromForm,
@@ -40,16 +40,9 @@ export function EditEntityTypeCategoryPage({
         <Stack spacing={4}>
             <AdminPageHeader
                 breadcrumbs={
-                    <Breadcrumbs
+                    <AdminDirectoryBreadcrumbs
                         items={[
-                            {
-                                label: <AdminBreadcrumbLevelSelector />,
-                                href: KnownPages.Directories,
-                            },
-                            {
-                                label: 'Kategorije',
-                                href: KnownPages.Directories,
-                            },
+                            { label: 'Kategorije' },
                             { label: category.label },
                         ]}
                     />

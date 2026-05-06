@@ -1,12 +1,12 @@
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { AdminPageHeader } from '../../../../../components/admin/navigation';
-import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import {
+    AdminDirectoryBreadcrumbs,
+    AdminPageHeader,
+} from '../../../../../components/admin/navigation';
 import { auth } from '../../../../../lib/auth/auth';
-import { KnownPages } from '../../../../../src/KnownPages';
 import { createEntityTypeCategoryFromForm } from '../../../../(actions)/entityTypeCategoryActions';
 import { EntityTypeCategoryFormFields } from '../EntityTypeCategoryFormFields';
 
@@ -19,14 +19,8 @@ export default async function CreateEntityTypeCategoryPage() {
         <Stack spacing={4}>
             <AdminPageHeader
                 breadcrumbs={
-                    <Breadcrumbs
-                        items={[
-                            {
-                                label: <AdminBreadcrumbLevelSelector />,
-                                href: KnownPages.Directories,
-                            },
-                            { label: 'Nova kategorija' },
-                        ]}
+                    <AdminDirectoryBreadcrumbs
+                        items={[{ label: 'Nova kategorija' }]}
                     />
                 }
                 heading="Nova kategorija tipova zapisa"

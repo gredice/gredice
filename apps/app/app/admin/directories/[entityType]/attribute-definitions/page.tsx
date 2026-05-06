@@ -1,11 +1,11 @@
 import { getEntityTypeByName } from '@gredice/storage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { notFound } from 'next/navigation';
 import { AttributeDefinitionsList } from '../../../../../components/admin/directories';
-import { AdminPageHeader } from '../../../../../components/admin/navigation';
-import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
-import { KnownPages } from '../../../../../src/KnownPages';
+import {
+    AdminDirectoryBreadcrumbs,
+    AdminPageHeader,
+} from '../../../../../components/admin/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,20 +24,10 @@ export default async function AttributesPage({
         <Stack spacing={2}>
             <AdminPageHeader
                 breadcrumbs={
-                    <Breadcrumbs
-                        items={[
-                            {
-                                label: <AdminBreadcrumbLevelSelector />,
-                                href: KnownPages.Directories,
-                            },
-                            {
-                                label: entityType.label,
-                                href: KnownPages.DirectoryEntityType(
-                                    entityTypeName,
-                                ),
-                            },
-                            { label: 'Atributi' },
-                        ]}
+                    <AdminDirectoryBreadcrumbs
+                        entityTypeName={entityTypeName}
+                        entityTypeLabel={entityType.label}
+                        items={[{ label: 'Atributi' }]}
                     />
                 }
                 heading="Atributi"
