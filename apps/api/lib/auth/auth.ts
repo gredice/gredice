@@ -19,6 +19,7 @@ export function jwtSecretFactory() {
 
 type User = {
     id: string;
+    userName: string;
     accountIds: string[];
     role: string;
 };
@@ -31,6 +32,7 @@ async function getUser(id: string): Promise<User | null> {
 
     return {
         id: user.id,
+        userName: user.userName,
         accountIds: user.accounts.map((accountUsers) => accountUsers.accountId),
         role: user.role,
     };
