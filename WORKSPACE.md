@@ -87,14 +87,14 @@ Type checking is integrated into Next.js builds and package scripts. To validate
 - `garden`: <https://vrt.gredice.test>
 - `farm`: <https://farma.gredice.test>
 - `app`: <https://app.gredice.test>
-- `storybook`: <https://storybook.gredice.test>
+- `storybook`: <https://storybook.dev.gredice.test>
 - `api`: <https://api.gredice.test>
 - `status`: <https://status.gredice.test> with `pnpm --filter=status dev`
 
-The dev script verifies the hosts entries for the `*.gredice.test` domains and attempts to add missing entries automatically. If it cannot modify the hosts file, add this entry manually and rerun the command:
+The dev script verifies the hosts entries for the local `gredice.test` domains and attempts to add missing entries automatically. If it cannot modify the hosts file, add this entry manually and rerun the command:
 
 ```text
-127.0.0.1 www.gredice.test vrt.gredice.test farma.gredice.test app.gredice.test storybook.gredice.test api.gredice.test status.gredice.test
+127.0.0.1 www.gredice.test vrt.gredice.test farma.gredice.test app.gredice.test storybook.dev.gredice.test api.gredice.test status.gredice.test
 ```
 
 Docker must be running for the proxy. Use `SKIP_DEV_PROXY=1 pnpm dev` only when the local proxy is not needed.
@@ -109,7 +109,7 @@ If automatic trust fails, import `root.crt` manually from the Caddy data directo
 - Windows: open `certmgr.msc`, then import `root.crt` into Trusted Root Certification Authorities.
 - Linux: run `trust anchor ~/.gredice/dev-caddy/caddy/pki/authorities/local/root.crt`, or use the distribution's certificate tooling.
 
-After the certificate is trusted, browsers should accept the local `*.gredice.test` HTTPS domains.
+After the certificate is trusted, browsers should accept the local `gredice.test` HTTPS domains.
 
 ## Environment setup
 

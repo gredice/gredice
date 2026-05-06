@@ -39,6 +39,10 @@ function getEnvironmentHosts(): EnvironmentHosts {
         process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'
             ? 'gredice.com'
             : 'gredice.test';
+    const storybookDomain =
+        process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'
+            ? 'dev.gredice.com'
+            : 'dev.gredice.test';
 
     return {
         app: `https://app.${domain}`,
@@ -46,7 +50,7 @@ function getEnvironmentHosts(): EnvironmentHosts {
         farm: `https://farma.${domain}`,
         garden: `https://vrt.${domain}`,
         status: `https://status.${domain}`,
-        storybook: `https://storybook.${domain}`,
+        storybook: `https://storybook.${storybookDomain}`,
         www: `https://www.${domain}`,
     };
 }
