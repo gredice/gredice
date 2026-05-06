@@ -4,7 +4,6 @@ import { Container } from '@signalco/ui-primitives/Container';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 
 export const metadata: Metadata = {
     title: 'Development Hub',
@@ -35,12 +34,11 @@ type EnvironmentHosts = {
     www: string;
 };
 
-function getEnvironmentHosts(): EnvironmentHosts | null {
-    if (process.env.NEXT_PUBLIC_VERCEL_ENV === 'production') {
-        return null;
-    }
-
-    const domain = 'gredice.test';
+function getEnvironmentHosts(): EnvironmentHosts {
+    const domain =
+        process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'
+            ? 'gredice.com'
+            : 'gredice.test';
 
     return {
         app: `https://app.${domain}`,
@@ -165,11 +163,6 @@ function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
 
 export default function DevelopmentPage() {
     const hosts = getEnvironmentHosts();
-
-    if (!hosts) {
-        notFound();
-    }
-
     const developmentSections = getDevelopmentSections(hosts);
 
     return (
