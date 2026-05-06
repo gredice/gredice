@@ -11,6 +11,7 @@ export * from './repositories/achievementsRepo';
 export * from './repositories/analyticsRepo';
 export * from './repositories/attributeDefinitionsRepo';
 export * from './repositories/attributeValuesRepo';
+export * from './repositories/cmsPagesRepo';
 export * from './repositories/deliveryAddressesRepo';
 export * from './repositories/deliveryRequestsRepo';
 export * from './repositories/deliveryUtilsRepo';
