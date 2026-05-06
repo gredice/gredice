@@ -25,16 +25,24 @@ import {
     createEntity,
     duplicateEntity,
 } from '../../../(actions)/entityActions';
+import { EntitiesFilters } from './EntitiesFilters';
 
 export const dynamic = 'force-dynamic';
 
 export default async function EntitiesPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ entityType: string }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
     await auth(['admin']);
     const { entityType: entityTypeName } = await params;
+    const urlParams = await searchParams;
+    const completionFilter =
+        typeof urlParams.completion === 'string' ? urlParams.completion : '';
+    const stateFilter =
+        typeof urlParams.state === 'string' ? urlParams.state : '';
     const entityType = await getEntityTypeByName(entityTypeName);
     const createEntityBound = createEntity.bind(null, entityTypeName);
     const duplicateEntityBound = duplicateEntity.bind(null, entityTypeName);
@@ -93,6 +101,7 @@ export default async function EntitiesPage({
                 <h1 className="sr-only">
                     {entityType?.label ?? entityTypeName}
                 </h1>
+                <EntitiesFilters />
                 <Card>
                     <CardOverflow>
                         <EntitiesTable
@@ -103,6 +112,8 @@ export default async function EntitiesPage({
                             inventoryLowCountThreshold={
                                 inventoryConfig?.lowCountThreshold
                             }
+                            completionFilter={completionFilter}
+                            stateFilter={stateFilter}
                             onDuplicate={duplicateEntityBound}
                         />
                     </CardOverflow>
