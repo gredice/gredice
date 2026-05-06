@@ -372,7 +372,7 @@ export function PlantPicker({
                                         <ShoppingCart className="shrink-0 size-5" />
                                     }
                                 >
-                                    Potvrdi sijanje
+                                    Dodaj u košaricu
                                 </Button>
                             </Row>
                         </Row>
