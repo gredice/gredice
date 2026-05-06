@@ -31,6 +31,15 @@ This repository is the **Gredice** monorepo. It hosts multiple Next.js applicati
 - For shared PRs, leave new migration files out of version control unless explicitly requested.
 - Follow existing Biome, TypeScript, React, Next.js, Tailwind, and package conventions.
 
+## GitHub issues
+
+- Use GitHub Issue Type as the primary kind: `Feature` for larger product capabilities or umbrella work, `Task` for concrete implementation slices, and `Bug` for broken or incorrect behavior.
+- Use labels for routing and context, not as a replacement for issue type. Apply the existing area, package, feature, asset, documentation, test, enhancement, epic, and AI-origin labels that match the issue. Use multiple labels when work spans multiple apps or packages, and do not create near-duplicate labels.
+- Title issues with the existing square-bracket scope convention when a clear product, domain, or workstream exists, for example `[CMS] Pages - define Page structure` or `[Field] Ability to see diary and history if field had plants before`. Use a short imperative or outcome-focused title for devex/tooling tasks when labels already carry the scope.
+- For product and feature work, prefer issue bodies with `User story`, `Current-system notes`, `Scope`, and `Acceptance criteria` sections. For internal tooling or reliability work, use `Goal`, `Context`, `Scope`, and `Acceptance criteria`, adding `Blocked by` when sequencing matters.
+- For umbrella issues, link implementation issues with a checklist, include a suggested implementation order, and call out dependency relationships with issue references such as `#2501`. Mark these with the epic label when they group related work.
+- Milestones are not used by default in this repo; only add one when explicitly requested.
+
 ## Quick commands
 
 ```bash
