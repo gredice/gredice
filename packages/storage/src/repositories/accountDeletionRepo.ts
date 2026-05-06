@@ -28,13 +28,31 @@ export async function deleteAccountWithDependencies(
     accountId: string,
     userId: string,
 ): Promise<void> {
-    let needsScheduleCacheBust = false;
+    let hasScheduleAffectingChanges = false;
+
+    async function bustScheduleCacheIfNeeded(context: string) {
+        if (!hasScheduleAffectingChanges) {
+            return;
+        }
+
+        try {
+            await bustScheduleCache();
+        } catch (cacheError) {
+            console.error(
+                `[AccountDelete] Error busting schedule cache ${context}:`,
+                cacheError,
+            );
+        }
+    }
 
     try {
         console.info(
             `[AccountDelete] Starting deletion for accountId=${accountId}, userId=${userId}`,
         );
         const gardens = await getAccountGardens(accountId);
+        if (gardens.length > 0) {
+            hasScheduleAffectingChanges = true;
+        }
 
         // 5-8. Deactivate raised beds
         for (const garden of gardens) {
@@ -52,7 +70,6 @@ export async function deleteAccountWithDependencies(
                         blockId: null,
                     })
                     .where(eq(dbRaisedBeds.id, raisedBed.id));
-                needsScheduleCacheBust = true;
 
                 console.info(
                     `[AccountDelete] Deactivating raised bed sensors for raisedBedId=${raisedBed.id}`,
@@ -75,7 +92,6 @@ export async function deleteAccountWithDependencies(
             await storage()
                 .delete(gardenStacks)
                 .where(eq(gardenStacks.gardenId, garden.id));
-            needsScheduleCacheBust = true;
 
             console.info(
                 `[AccountDelete] Deleting garden blocks for gardenId=${garden.id}`,
@@ -83,7 +99,6 @@ export async function deleteAccountWithDependencies(
             await storage()
                 .delete(gardenBlocks)
                 .where(eq(gardenBlocks.gardenId, garden.id));
-            needsScheduleCacheBust = true;
 
             console.info(
                 `[AccountDelete] Deleting garden record for gardenId=${garden.id}`,
@@ -91,7 +106,6 @@ export async function deleteAccountWithDependencies(
             await storage()
                 .delete(dbGardens)
                 .where(eq(dbGardens.id, garden.id));
-            needsScheduleCacheBust = true;
         }
 
         // 10. Delete notifications for account
@@ -158,12 +172,14 @@ export async function deleteAccountWithDependencies(
         const ops = await storage().query.operations.findMany({
             where: eq(operations.accountId, accountId),
         });
+        if (ops.length > 0) {
+            hasScheduleAffectingChanges = true;
+        }
         for (const op of ops) {
             await storage()
                 .update(operations)
                 .set({ accountId: null })
                 .where(eq(operations.id, op.id));
-            needsScheduleCacheBust = true;
         }
 
         // 14. Delete account events
@@ -213,9 +229,7 @@ export async function deleteAccountWithDependencies(
             `[AccountDelete] Deleting account record for accountId=${accountId}`,
         );
         await storage().delete(accounts).where(eq(accounts.id, accountId));
-        if (needsScheduleCacheBust) {
-            await bustScheduleCache();
-        }
+        await bustScheduleCacheIfNeeded('after account deletion');
         console.info(
             `[AccountDelete] Deletion complete for accountId=${accountId}, userId=${userId}`,
         );
@@ -224,16 +238,7 @@ export async function deleteAccountWithDependencies(
             '[AccountDelete] Error deleting account with dependencies:',
             error,
         );
-        if (needsScheduleCacheBust) {
-            try {
-                await bustScheduleCache();
-            } catch (cacheError) {
-                console.error(
-                    '[AccountDelete] Error busting schedule cache after partial deletion:',
-                    cacheError,
-                );
-            }
-        }
+        await bustScheduleCacheIfNeeded('after partial deletion');
         throw error; // Re-throw to allow retry logic if needed
     }
 }
