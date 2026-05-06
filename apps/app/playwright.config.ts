@@ -3,7 +3,13 @@ import {
     devices,
     type PlaywrightTestConfig,
 } from '@playwright/experimental-ct-react';
+import {
+    getAppByName,
+    getComponentTestPort,
+    localAppUrl,
+} from '../../scripts/app-registry.ts';
 
+const app = getAppByName('app');
 const reporter: PlaywrightTestConfig['reporter'] = [
     ['list'],
     ['html', { open: 'never' }],
@@ -19,9 +25,9 @@ export const config: PlaywrightTestConfig = {
     workers: process.env.CI ? 1 : undefined,
     reporter,
     use: {
-        baseURL: 'http://127.0.0.1:3003',
+        baseURL: localAppUrl(app),
         trace: 'on-first-retry',
-        ctPort: 3100,
+        ctPort: getComponentTestPort(app),
     },
     projects: [
         {
@@ -31,7 +37,7 @@ export const config: PlaywrightTestConfig = {
     ],
     webServer: {
         command: 'pnpm start',
-        url: 'http://127.0.0.1:3003',
+        url: localAppUrl(app),
         reuseExistingServer: !process.env.CI,
     },
 };

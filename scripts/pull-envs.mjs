@@ -5,11 +5,12 @@
 import { spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { appRegistry } from './app-registry.ts';
 
 const vercelCommand = 'vercel';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
-const appNames = ['www', 'garden', 'farm', 'app', 'storybook', 'api', 'status'];
+const vercelApps = appRegistry.filter((app) => app.vercelProjectName);
 
 function getSpawnOptions(command, args) {
     if (process.platform !== 'win32') {
@@ -58,9 +59,9 @@ async function main() {
         process.exit(1);
     }
 
-    for (const appName of appNames) {
-        const cwd = resolve(repoRoot, 'apps', appName);
-        console.log(`\nPulling environment variables for ${appName}...`);
+    for (const app of vercelApps) {
+        const cwd = resolve(repoRoot, app.packagePath);
+        console.log(`\nPulling environment variables for ${app.name}...`);
 
         const code = await run(vercelCommand, ['env', 'pull', '.env'], {
             cwd,
@@ -68,7 +69,7 @@ async function main() {
         });
 
         if (code !== 0) {
-            console.error(`Vercel env pull failed for ${appName}.`);
+            console.error(`Vercel env pull failed for ${app.name}.`);
             process.exit(code ?? 1);
         }
     }
