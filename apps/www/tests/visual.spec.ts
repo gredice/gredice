@@ -40,18 +40,45 @@ test.describe('visual snapshots', () => {
         for (const scenario of SNAPSHOT_SCENARIOS) {
             test(`page ${url} (${scenario.name})`, async ({ page }) => {
                 const fixedTime = new Date(scenario.fixedTimeIso).getTime();
-                await page.emulateMedia({ colorScheme: scenario.colorScheme });
+                await page.emulateMedia({
+                    colorScheme: scenario.colorScheme,
+                    reducedMotion: 'reduce',
+                });
                 await page.addInitScript((timeMs) => {
                     const NativeDate = Date;
+                    type MockDateConstructorArgs =
+                        | []
+                        | [value: string | number]
+                        | [
+                              year: number,
+                              monthIndex: number,
+                              date?: number,
+                              hours?: number,
+                              minutes?: number,
+                              seconds?: number,
+                              ms?: number,
+                          ];
                     class MockDate extends NativeDate {
-                        constructor(
-                            ...args: ConstructorParameters<typeof Date>
-                        ) {
+                        constructor(...args: MockDateConstructorArgs) {
                             if (args.length === 0) {
                                 super(timeMs);
                                 return;
                             }
-                            super(...args);
+
+                            if (args.length === 1) {
+                                super(args[0]);
+                                return;
+                            }
+
+                            super(
+                                args[0],
+                                args[1],
+                                args[2],
+                                args[3],
+                                args[4],
+                                args[5],
+                                args[6],
+                            );
                         }
 
                         static now() {
