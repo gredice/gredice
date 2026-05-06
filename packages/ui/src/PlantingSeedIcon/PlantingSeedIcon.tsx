@@ -1,13 +1,14 @@
 import type { SVGProps } from 'react';
 
 // Source: https://www.reshot.com/free-svg-icons/item/plant-seed-43PCBG82ZS/
-export function PlantingSeed(props: SVGProps<SVGSVGElement>) {
+export function PlantingSeedIcon(props: SVGProps<SVGSVGElement>) {
     return (
         <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 32 32"
             width={32}
             height={32}
+            fill="currentColor"
             {...props}
         >
             <title>Sjeme</title>
