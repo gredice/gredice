@@ -22,4 +22,4 @@ if ! grep -Eq '^POSTGRES_URL=postgres://postgres:postgres@(localhost|127\.0\.0\.
     exit 1
 fi
 
-pnpm exec tsx --env-file="$ENV_FILE" --conditions=react-server ./src/migrate.ts
+./node_modules/.bin/tsx --env-file="$ENV_FILE" --conditions=react-server ./src/migrate.ts
