@@ -19,11 +19,11 @@ export function ServiceHistory({ history }: ServiceHistoryProps) {
     }
 
     return (
-        <div className="flex items-center gap-1.5">
+        <div className="grid w-full grid-cols-12 gap-1.5 sm:grid-cols-[repeat(18,minmax(0,1fr))] xl:grid-cols-[repeat(24,minmax(0,1fr))]">
             {history.map((item) => (
                 <span
                     key={item.id}
-                    className={`h-7 w-3 rounded-full ${getHistoryDotClassName(item.status)}`}
+                    className={`h-7 w-full rounded-full ${getHistoryDotClassName(item.status)}`}
                     title={getStatusLabel(item.status)}
                 />
             ))}

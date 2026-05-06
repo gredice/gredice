@@ -14,6 +14,7 @@ import type {
 
 const CHECKLY_API_BASE_URL = 'https://api.checklyhq.com';
 const CHECKLY_CHECKS_PAGE_SIZE = 100;
+const CHECK_HISTORY_LIMIT = 24;
 const DEFAULT_STATUS_TAG = 'gredice-status';
 
 export async function getStatusPageData(): Promise<StatusPageData> {
@@ -225,7 +226,7 @@ async function listCheckHistory(
     const from = now - 30 * 24 * 60 * 60;
     const params = new URLSearchParams({
         from: from.toString(),
-        limit: '12',
+        limit: CHECK_HISTORY_LIMIT.toString(),
         resultType: 'FINAL',
         to: now.toString(),
     });
