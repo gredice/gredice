@@ -15,6 +15,7 @@ import { GameTab } from './components/GameTab';
 import { GardenTab } from './components/GardenTab';
 import { GeneralTab } from './components/GeneralTab';
 import { NotificationsTab } from './components/NotificationsTab';
+import { ReferralsTab } from './components/ReferralsTab';
 import { SecurityTab } from './components/SecurityTab';
 import { SoundTab } from './components/SoundTab';
 import { SunflowersTab } from './components/SunflowersTab';
@@ -52,6 +53,12 @@ const navGroups = [
                 icon: '🔔',
                 label: 'Obavijesti',
                 value: 'obavijesti',
+            },
+            {
+                nodeId: 'profile-referrals',
+                icon: '💮',
+                label: 'Preporuke',
+                value: 'preporuke',
             },
         ],
     },
@@ -179,6 +186,7 @@ export function OverviewModal() {
                     {settingsMode === 'suncokreti' && <SunflowersTab />}
                     {settingsMode === 'postignuca' && <AchievementsTab />}
                     {settingsMode === 'korisnici' && <AccountUsersTab />}
+                    {settingsMode === 'preporuke' && <ReferralsTab />}
                 </div>
             </div>
         </Modal>
