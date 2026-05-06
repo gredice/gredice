@@ -1,5 +1,6 @@
 import 'server-only';
 import { and, asc, eq, isNull } from 'drizzle-orm';
+import { bustCachedByPrefixes } from '../cache/directoriesCached';
 import {
     entityTypeCategories,
     entityTypes,
@@ -7,6 +8,11 @@ import {
     type UpdateEntityType,
 } from '../schema';
 import { storage } from '../storage';
+
+const entityReadModelCachePrefixes = [
+    'entities:formatted:',
+    'dashboard:admin:',
+];
 
 export function getEntityTypes() {
     return storage()
@@ -125,11 +131,13 @@ export async function upsertEntityType(
                 },
             });
     }
+    await bustCachedByPrefixes(entityReadModelCachePrefixes);
 }
 
-export function deleteEntityType(id: number) {
-    return storage()
+export async function deleteEntityType(id: number) {
+    await storage()
         .update(entityTypes)
         .set({ isDeleted: true })
         .where(eq(entityTypes.id, id));
+    await bustCachedByPrefixes(entityReadModelCachePrefixes);
 }

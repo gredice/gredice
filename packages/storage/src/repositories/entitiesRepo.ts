@@ -13,6 +13,7 @@ import {
 } from '..';
 import {
     bustCached,
+    bustCachedByPrefixes,
     cacheKeys,
     directoriesCached,
 } from '../cache/directoriesCached';
@@ -676,6 +677,7 @@ export async function createEntity(entityTypeName: string) {
             .values({ entityTypeName })
             .returning({ id: entities.id }),
         bustCached(cacheKeys.entityTypeName(entityTypeName)),
+        bustCachedByPrefixes(['dashboard:admin:']),
     ]);
     return result[0].id;
 }
@@ -699,6 +701,7 @@ export async function duplicateEntity(id: number) {
         storage().insert(attributeValues).values(newAttributes),
         bustCached(cacheKeys.entityTypeName(entity.entityTypeName)),
         bustCached(cacheKeys.entity(newEntityId)),
+        bustCachedByPrefixes(['dashboard:admin:']),
     ]);
 
     return newEntityId;
@@ -744,6 +747,7 @@ export async function updateEntity(entity: UpdateEntity) {
         entity.entityTypeName
             ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))
             : null,
+        bustCachedByPrefixes(['dashboard:admin:']),
     ]);
 }
 
@@ -762,5 +766,6 @@ export async function deleteEntity(id: number) {
         entity.entityTypeName
             ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))
             : null,
+        bustCachedByPrefixes(['dashboard:admin:']),
     ]);
 }
