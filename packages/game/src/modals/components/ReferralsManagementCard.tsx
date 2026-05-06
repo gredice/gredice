@@ -1,3 +1,4 @@
+import { clientAuthenticated } from '@gredice/client';
 import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
@@ -9,7 +10,6 @@ import { Input } from '@signalco/ui-primitives/Input';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
-import { clientAuthenticated } from '../../api/clientAuthenticated';
 import { useReferrals } from '../../hooks/useReferrals';
 
 export function ReferralsManagementCard() {

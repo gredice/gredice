@@ -1,8 +1,8 @@
+import { clientAuthenticated } from '@gredice/client';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { useState } from 'react';
-import { clientAuthenticated } from '../../api/clientAuthenticated';
 import { useReferrals } from '../../hooks/useReferrals';
 
 export function ReferralsTab() {
@@ -21,7 +21,7 @@ export function ReferralsTab() {
                 <div className="text-xs">
                     Referral link:{' '}
                     {typeof window !== 'undefined'
-                        ? `${window.location.origin}?ref=${data?.myCode ?? ''}`
+                        ? `${window.location.origin}/preporuke?ref=${data?.myCode ?? ''}`
                         : ''}
                 </div>
                 <Input

@@ -12,6 +12,7 @@ import {
     getAccountInvitationByToken,
     getAccountInvitations,
     getAccountInvitationsByEmail,
+    getAccounts,
     getAccountUsers,
     getEvents,
     getRaisedBeds,
@@ -194,6 +195,25 @@ async function hasActiveRaisedBed(accountId: string) {
         if (raisedBeds.length > 0) return true;
     }
     return false;
+}
+
+async function findAccountIdByReferralCode(code: string) {
+    const accounts = await getAccounts();
+    for (const account of accounts) {
+        const events = await getEvents(
+            REFERRAL_EVENT_TYPE,
+            [account.id],
+            0,
+            1000,
+        );
+        for (let i = events.length - 1; i >= 0; i--) {
+            const data = events[i]?.data as Record<string, unknown> | null;
+            if (data?.action === 'code_set' && data.code === code) {
+                return account.id;
+            }
+        }
+    }
+    return null;
 }
 
 const app = new Hono<{ Variables: AuthVariables }>()
@@ -390,13 +410,24 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            const referredAccountId = await findAccountIdByReferralCode(code);
+            if (!referredAccountId) {
+                return context.json({ error: 'Referral kod ne postoji' }, 404);
+            }
+            if (referredAccountId === accountId) {
+                return context.json(
+                    { error: 'Ne možete koristiti vlastiti referral kod' },
+                    400,
+                );
+            }
+
             await createEvent({
                 type: REFERRAL_EVENT_TYPE,
                 version: 1,
                 aggregateId: accountId,
-                data: { action: 'used_code', code },
+                data: { action: 'used_code', code, referredAccountId },
             });
-            return context.json({ ok: true });
+            return context.json({ ok: true, referredAccountId });
         },
     )
 

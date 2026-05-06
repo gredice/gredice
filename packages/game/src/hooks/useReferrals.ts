@@ -1,5 +1,5 @@
+import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
-import { clientAuthenticated } from '../api/clientAuthenticated';
 
 export function useReferrals() {
     return useQuery({
