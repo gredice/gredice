@@ -1,13 +1,18 @@
+'use client';
+
 import type { EntityStandardized } from '@gredice/storage';
+import { PlantOrSortImage } from '@gredice/ui/plants';
+import { Search, Sprout } from '@signalco/ui-icons';
 import {
     Card,
     CardContent,
     CardHeader,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
+import { cx } from '@signalco/ui-primitives/cx';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import type { ReactNode } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 
 interface PlantsHandbookProps {
     plantSortsData: EntityStandardized[];
@@ -145,85 +150,187 @@ function renderRecord(record: Record<string, unknown>, keyPrefix: string) {
     );
 }
 
-export function PlantsHandbook({ plantSortsData }: PlantsHandbookProps) {
-    const sortedPlantSorts = [...plantSortsData].sort((left, right) =>
-        (
-            left.information?.label ??
-            left.information?.name ??
-            `${left.id}`
-        ).localeCompare(
-            right.information?.label ??
-            right.information?.name ??
-            `${right.id}`,
-            undefined,
-            { numeric: true },
-        ),
+function getPlantSortLabel(plantSort: EntityStandardized) {
+    return (
+        plantSort.information?.label ??
+        plantSort.information?.name ??
+        `Sorta #${plantSort.id}`
     );
+}
+
+function getPlantSortSearchText(plantSort: EntityStandardized) {
+    return [
+        plantSort.information?.label,
+        plantSort.information?.name,
+        plantSort.information?.shortDescription,
+        plantSort.information?.description,
+        plantSort.information?.plant?.information?.label,
+        plantSort.information?.plant?.information?.name,
+        plantSort.information?.plant?.information?.shortDescription,
+        plantSort.information?.plant?.information?.description,
+    ]
+        .filter((value) => typeof value === 'string')
+        .join(' ')
+        .toLocaleLowerCase('hr-HR');
+}
+
+export function PlantsHandbook({ plantSortsData }: PlantsHandbookProps) {
+    const [query, setQuery] = useState('');
+    const [selectedPlantSortId, setSelectedPlantSortId] = useState<
+        number | null
+    >(null);
+    const normalizedQuery = query.trim().toLocaleLowerCase('hr-HR');
+    const sortedPlantSorts = useMemo(
+        () =>
+            [...plantSortsData].sort((left, right) =>
+                getPlantSortLabel(left).localeCompare(
+                    getPlantSortLabel(right),
+                    undefined,
+                    { numeric: true },
+                ),
+            ),
+        [plantSortsData],
+    );
+    const filteredPlantSorts = sortedPlantSorts.filter(
+        (plantSort) =>
+            !normalizedQuery ||
+            getPlantSortSearchText(plantSort).includes(normalizedQuery),
+    );
+    const selectedPlantSort =
+        filteredPlantSorts.find(
+            (plantSort) => plantSort.id === selectedPlantSortId,
+        ) ?? null;
 
     return (
         <Stack spacing={2}>
-            {sortedPlantSorts.map((plantSort) => {
-                const plantValue: unknown = plantSort.information?.plant;
-                const plantInformation = isRecord(plantValue)
-                    ? plantValue
-                    : null;
-                const attributes =
-                    plantInformation && isRecord(plantInformation.attributes)
-                        ? plantInformation.attributes
-                        : null;
-                const calendar =
-                    plantInformation && isRecord(plantInformation.calendar)
-                        ? plantInformation.calendar
-                        : null;
+            <label className="flex items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm text-foreground">
+                <Search className="size-4 shrink-0 text-muted-foreground" />
+                <input
+                    value={query}
+                    onChange={(event) => {
+                        setQuery(event.target.value);
+                        setSelectedPlantSortId(null);
+                    }}
+                    placeholder="Pretraži biljke"
+                    className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+                />
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredPlantSorts.map((plantSort) => {
+                    const selected = plantSort.id === selectedPlantSortId;
 
-                return (
-                    <Card key={plantSort.id}>
-                        <CardHeader>
-                            <CardTitle>
-                                {plantSort.information?.label ??
-                                    plantSort.information?.name ??
-                                    `Sorta #${plantSort.id}`}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent noHeader>
-                            <Stack spacing={1}>
-                                {plantSort.information?.shortDescription && (
-                                    <Typography className="text-muted-foreground">
-                                        {plantSort.information.shortDescription}
-                                    </Typography>
-                                )}
-                                {plantSort.information?.description && (
-                                    <Typography level="body2">
-                                        {plantSort.information.description}
-                                    </Typography>
-                                )}
-                                {attributes && (
-                                    <div className="rounded-md border bg-white p-3 space-y-2">
-                                        <Typography level="body2" semiBold>
-                                            Atributi biljke
-                                        </Typography>
-                                        {renderRecord(
-                                            attributes,
-                                            `attributes-${plantSort.id}`,
+                    return (
+                        <button
+                            key={plantSort.id}
+                            type="button"
+                            onClick={() => setSelectedPlantSortId(plantSort.id)}
+                            className={cx(
+                                'rounded-md border bg-white p-4 text-left text-foreground transition-colors hover:border-primary',
+                                selected && 'border-primary bg-tertiary',
+                            )}
+                        >
+                            <span className="flex items-center gap-3">
+                                <PlantOrSortImage
+                                    plantSort={plantSort}
+                                    width={36}
+                                    height={36}
+                                    className="size-9 rounded-md object-cover"
+                                />
+                                <span className="font-medium">
+                                    {getPlantSortLabel(plantSort)}
+                                </span>
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
+            {filteredPlantSorts.length === 0 && (
+                <div className="rounded-md border bg-white p-4">
+                    <Typography className="text-muted-foreground">
+                        Nema biljaka za prikaz.
+                    </Typography>
+                </div>
+            )}
+            {selectedPlantSort && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>
+                            <span className="flex items-center gap-2">
+                                <Sprout className="size-4 text-primary" />
+                                {getPlantSortLabel(selectedPlantSort)}
+                            </span>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent noHeader>
+                        <Stack spacing={1}>
+                            {selectedPlantSort.information
+                                ?.shortDescription && (
+                                <Typography className="text-muted-foreground">
+                                    {
+                                        selectedPlantSort.information
+                                            .shortDescription
+                                    }
+                                </Typography>
+                            )}
+                            {selectedPlantSort.information?.description && (
+                                <Typography level="body2">
+                                    {selectedPlantSort.information.description}
+                                </Typography>
+                            )}
+                            {(() => {
+                                const plantValue: unknown =
+                                    selectedPlantSort.information?.plant;
+                                const plantInformation = isRecord(plantValue)
+                                    ? plantValue
+                                    : null;
+                                const attributes =
+                                    plantInformation &&
+                                    isRecord(plantInformation.attributes)
+                                        ? plantInformation.attributes
+                                        : null;
+                                const calendar =
+                                    plantInformation &&
+                                    isRecord(plantInformation.calendar)
+                                        ? plantInformation.calendar
+                                        : null;
+
+                                return (
+                                    <>
+                                        {attributes && (
+                                            <div className="rounded-md border bg-white p-3 space-y-2">
+                                                <Typography
+                                                    level="body2"
+                                                    semiBold
+                                                >
+                                                    Atributi biljke
+                                                </Typography>
+                                                {renderRecord(
+                                                    attributes,
+                                                    `attributes-${selectedPlantSort.id}`,
+                                                )}
+                                            </div>
                                         )}
-                                    </div>
-                                )}
-                                {calendar && (
-                                    <div className="rounded-md border bg-white p-3 space-y-2">
-                                        <Typography level="body2" semiBold>
-                                            Kalendar uzgoja
-                                        </Typography>
-                                        {renderRecord(
-                                            calendar,
-                                            `calendar-${plantSort.id}`,
+                                        {calendar && (
+                                            <div className="rounded-md border bg-white p-3 space-y-2">
+                                                <Typography
+                                                    level="body2"
+                                                    semiBold
+                                                >
+                                                    Kalendar uzgoja
+                                                </Typography>
+                                                {renderRecord(
+                                                    calendar,
+                                                    `calendar-${selectedPlantSort.id}`,
+                                                )}
+                                            </div>
                                         )}
-                                    </div>
-                                )}
-                            </Stack>
-                        </CardContent>
-                    </Card>
-                );
-            })}
+                                    </>
+                                );
+                            })()}
+                        </Stack>
+                    </CardContent>
+                </Card>
+            )}
         </Stack>
     );
 }
