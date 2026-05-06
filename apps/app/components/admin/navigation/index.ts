@@ -1,3 +1,4 @@
+export { AdminDirectoryBreadcrumbs } from './AdminDirectoryBreadcrumbs';
 export { AdminPageBreadcrumbs } from './AdminPageBreadcrumbs';
 export { AdminPageCardHeader } from './AdminPageCardHeader';
 export { AdminPageHeader } from './AdminPageHeader';

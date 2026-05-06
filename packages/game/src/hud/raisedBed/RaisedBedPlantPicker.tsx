@@ -1,4 +1,5 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
+import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { FilterInput } from '@gredice/ui/FilterInput';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Left, ShoppingCart } from '@signalco/ui-icons';
@@ -17,7 +18,6 @@ import {
     type ShoppingCartItemData,
     useShoppingCart,
 } from '../../hooks/useShoppingCart';
-import { BackpackIcon } from '../../icons/Backpack';
 import { PlantsList } from './PlantsList';
 import { PlantsSortList } from './PlantsSortList';
 

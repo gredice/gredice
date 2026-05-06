@@ -5,15 +5,16 @@ import {
     getInventoryConfigByEntityTypeName,
     getInventoryItemsByConfig,
 } from '@gredice/storage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Add } from '@signalco/ui-icons';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import Link from 'next/link';
 import { EntityTypeMenu } from '../../../../components/admin/directories';
-import { AdminPageHeader } from '../../../../components/admin/navigation';
-import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import {
+    AdminDirectoryBreadcrumbs,
+    AdminPageHeader,
+} from '../../../../components/admin/navigation';
 import { FilterProvider } from '../../../../components/admin/providers';
 import { SearchInput } from '../../../../components/admin/SearchInput';
 import { EntitiesTable } from '../../../../components/admin/tables';
@@ -53,16 +54,9 @@ export default async function EntitiesPage({
             <Stack spacing={2}>
                 <AdminPageHeader
                     breadcrumbs={
-                        <Breadcrumbs
-                            items={[
-                                {
-                                    label: <AdminBreadcrumbLevelSelector />,
-                                    href: KnownPages.Directories,
-                                },
-                                {
-                                    label: entityType?.label ?? entityTypeName,
-                                },
-                            ]}
+                        <AdminDirectoryBreadcrumbs
+                            entityTypeName={entityTypeName}
+                            entityTypeLabel={entityType?.label}
                         />
                     }
                     actions={

@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { AdminPageBreadcrumbs } from './AdminPageBreadcrumbs';
 import { useAdminPageHeaderContext } from './AdminPageHeaderContext';
+import { adminBreadcrumbClassName } from './adminBreadcrumbStyles';
 
 export type AdminPageHeaderProps = {
     breadcrumbs?: ReactNode;
@@ -36,7 +37,9 @@ export function AdminPageHeader({
     return createPortal(
         <>
             {heading && <h1 className="sr-only">{heading}</h1>}
-            <div className="min-w-0 overflow-hidden">
+            <div
+                className={`min-w-0 overflow-hidden ${adminBreadcrumbClassName}`}
+            >
                 {breadcrumbs ?? <AdminPageBreadcrumbs />}
             </div>
             {actions && (
