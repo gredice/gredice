@@ -24,7 +24,7 @@ export const defaultServices: DefaultService[] = [
     {
         id: 'storybook',
         name: 'Storybook',
-        url: 'https://storybook.gredice.com/',
+        url: 'https://storybook.dev.gredice.com/',
     },
     {
         id: 'api',
