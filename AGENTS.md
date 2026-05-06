@@ -1,102 +1,44 @@
 # Welcome, AI collaborator
 
-This repository is the **Gredice** monorepo. It hosts several Next.js applications, supporting packages, and shared assets that power the Gredice platform.
+This repository is the **Gredice** monorepo. It hosts multiple Next.js applications, shared packages, and assets for the Gredice platform.
 
-## Quick start checklist
+## First steps
 
-- Use **Node.js** and **pnpm**.
+- Use Node.js `>=24` and pnpm `10.33.2`.
 - Install dependencies from the repo root with `pnpm install`.
-- Before editing code, look for additional `AGENTS.md` files inside the path you plan to touch—nested instructions override this file.
-- Keep the worktree clean: run the relevant lint/tests locally and commit only intentional changes (never commit `node_modules` or build artifacts).
-- Use linting commands to check and format edited files.
+- Before editing code, look for additional `AGENTS.md` files inside the path you plan to touch. Nested instructions override this file.
+- Keep the worktree clean. Commit only intentional source changes and never commit `node_modules`, build output, `.next`, coverage, or generated artifacts unless explicitly requested.
+- Use targeted Turbo commands from the repo root whenever possible.
 
-## Repository layout
+## Read the relevant guides
 
-- `apps/`
-  - `api/`: Next.js app exposing API routes and OpenAPI generation.
-  - `app/`, `garden/`, `farm/`, `www/`: Product-facing Next.js front-ends (each with its own scripts, linting, and Playwright setup).
-  - `storybook/`: Public Storybook app for package-grouped component documentation.
-- `packages/`: Shared libraries (client SDK, storage, UI kit, transactional email helpers, payment integration, etc.). Use pnpm workspaces to depend on these via `workspace:*` versions.
-- `assets/`: Source files for 3D game assets.
-- `turbo.json`, `pnpm-workspace.yaml`, and app-level `package.json` files coordinate Turborepo tasks, workspace scopes, and scripts.
+- [WORKSPACE.md](./WORKSPACE.md): repo layout, local setup, commands, package boundaries, and development servers.
+- [FRONTEND.md](./FRONTEND.md): Next.js, React, TypeScript, shared UI, Storybook, and app structure rules.
+- [DESIGN.md](./DESIGN.md): visual design standards for product, marketing, admin, farm, garden, and Storybook work.
+- [PRODUCT_SENSE.md](./PRODUCT_SENSE.md): Gredice product expectations, user roles, language, and domain behavior.
+- [QUALITY_SCORE.md](./QUALITY_SCORE.md): quality rubric, validation commands, type standards, and review expectations.
+- [RELIABILITY.md](./RELIABILITY.md): data integrity, migrations, background work, observability, and failure handling.
+- [SECURITY.md](./SECURITY.md): auth, secrets, data exposure, validation, payments, and unsafe rendering.
+- [SEO.md](./SEO.md): metadata, structured data, sitemap, canonical URL, and public page rules.
 
-## Conventions and standards
+## Non-negotiables
 
-- Don't create new components or utilities without checking for existing ones in `@gredice/ui` or other shared packages.
-- If a UI component is not present in `@gredice/ui`, consider contributing it there if it has potential for reuse across applications.
-- Do not create multiple components in same file, split them into separate files.
-- When adding a new reusable UI component (especially in `@gredice/ui`), add/update its Storybook story under `apps/storybook/stories` in the same change.
+- Reuse existing packages and UI before adding new utilities or components.
+- Use `workspace:*` for internal package dependencies.
+- Do not duplicate shared TypeScript types. Prefer inferred types, use `unknown` instead of `any`, and avoid `as` assertions.
+- Schema changes live in `packages/storage`; run `pnpm db-generate` after editing schema.
+- Do not run `pnpm db-push`. Database migrations are applied manually during deployment.
+- For shared PRs, leave new migration files out of version control unless explicitly requested.
+- Follow existing Biome, TypeScript, React, Next.js, Tailwind, and package conventions.
 
-## TypeScript types
-
-- Don't create types that duplicate existing ones. Reuse types from shared packages whenever possible.
-- Don't create types that can be inferred by TypeScript.
-- When types are unknown, use `unknown` instead of `any` to ensure type safety.
-- Avoid using `as` type assertions.
-
-## Database & storage tooling
-
-- Schema changes live under `packages/storage`. Use `pnpm db-generate` after modifying the schema to create migrations.
-- NEVER apply migrations with `pnpm db-push`, the DB migrations will be applied manually during deployment.
-- For shared PRs, leave new migration files out of version control unless explicitly requested. Coordinate with maintainers before merging so the migrations can be added manually without ordering conflicts.
-
-## Package dependencies
-
-- Use `workspace:*` versions for internal package dependencies in `package.json` files.
-- Common shared packages (not all listed):
-  - `@gredice/storage`: Database schema and migrations using Drizzle ORM
-  - `@gredice/email`: Email sending utilities
-  - `@gredice/ui`: Shared UI components with Tailwind CSS
-  - `@gredice/client`: API client SDK
-  - `@gredice/transactional`: Email templates and components
-  - `@gredice/stripe`: Payment integration utilities
-  - `@gredice/game`: Game-related components and models
-
-## Collaboration tips
-
-- When introducing new scripts or workspace packages, update the relevant `package.json` and workspace manifests.
-- Follow the repo's existing TypeScript, React, and Biome conventions.
-
-## Common commands reference
+## Quick commands
 
 ```bash
-# Install dependencies for entire monorepo
 pnpm install
-
-# Lint entire workspace
-pnpm lint
-
-# Lint specific package
-pnpm lint --filter @gredice/storage
-
-# Lint and apply fixes to specific app/package (from app/package directory)
-pnpm lint --filter @gredice/storage -- --write
-
-# Run tests for all packages
-pnpm test
-
-# Run tests for specific app
+pnpm dev
+pnpm lint --filter garden
 pnpm test --filter garden
-
-# Build all apps
-pnpm build
-
-# Build specific app
 pnpm build --filter garden
 ```
 
-## Using commands
-
-- To check types for packages, build the app that consumes them, as type checking is integrated into the Next.js build process.
-- Prefer targeted Turborepo commands (`pnpm <COMMAND> --filter ...`) to speed up workflows during development and CI validation.
-
-## Development servers
-
-- **Development servers**: Use `pnpm dev` to start all apps, then you can access them at:
-  - `www`: <https://www.gredice.test>
-  - `garden`: <https://vrt.gredice.test>
-  - `farm`: <https://farma.gredice.test>
-  - `app`: <https://app.gredice.test>
-  - `storybook`: <https://storybook.gredice.test>
-  - `api`: <https://api.gredice.test>
-  - `status`: <https://status.gredice.test> (start explicitly with `pnpm --filter=status dev`)
+For full command guidance, see [WORKSPACE.md](./WORKSPACE.md).
