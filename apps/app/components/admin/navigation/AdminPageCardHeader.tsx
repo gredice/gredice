@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { AdminPageBreadcrumbs } from './AdminPageBreadcrumbs';
 import { useAdminPageHeaderContext } from './AdminPageHeaderContext';
+import { adminBreadcrumbClassName } from './adminBreadcrumbStyles';
 import { DesktopNavToggle } from './DesktopNavToggle';
 import { MobileNav } from './MobileNav';
 
@@ -26,7 +27,9 @@ export function AdminPageCardHeader() {
                         ref={setSlotElement}
                     >
                         {!activeHeaderId && (
-                            <div className="min-w-0 overflow-hidden">
+                            <div
+                                className={`min-w-0 overflow-hidden ${adminBreadcrumbClassName}`}
+                            >
                                 <AdminPageBreadcrumbs />
                             </div>
                         )}

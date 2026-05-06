@@ -1,11 +1,12 @@
 import { getAttributeDefinition, getEntityTypeByName } from '@gredice/storage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Delete } from '@signalco/ui-icons';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { notFound } from 'next/navigation';
-import { AdminPageHeader } from '../../../../../../components/admin/navigation';
-import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import {
+    AdminDirectoryBreadcrumbs,
+    AdminPageHeader,
+} from '../../../../../../components/admin/navigation';
 import { ServerActionIconButton } from '../../../../../../components/shared/ServerActionIconButton';
 import { KnownPages } from '../../../../../../src/KnownPages';
 import { deleteAttributeDefinition } from '../../../../../(actions)/definitionActions';
@@ -52,18 +53,10 @@ export default async function AttributeDefinitionPage({
         <Stack spacing={2}>
             <AdminPageHeader
                 breadcrumbs={
-                    <Breadcrumbs
+                    <AdminDirectoryBreadcrumbs
+                        entityTypeName={entityTypeName}
+                        entityTypeLabel={entityType.label}
                         items={[
-                            {
-                                label: <AdminBreadcrumbLevelSelector />,
-                                href: KnownPages.Directories,
-                            },
-                            {
-                                label: entityType.label,
-                                href: KnownPages.DirectoryEntityType(
-                                    entityTypeName,
-                                ),
-                            },
                             {
                                 label: 'Atributi',
                                 href: KnownPages.DirectoryEntityTypeAttributeDefinitions(

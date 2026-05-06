@@ -3,7 +3,6 @@
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import {
     AI,
-    ArrowDown,
     Bank,
     Calendar,
     Euro,
@@ -23,7 +22,6 @@ import {
     Truck,
     User,
 } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -34,6 +32,7 @@ import {
 } from '@signalco/ui-primitives/Menu';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { AdminBreadcrumbSelectorTrigger } from './AdminBreadcrumbSelectorTrigger';
 import { adminBreadcrumbPages, adminPages } from './adminPages';
 
 export function resolveCurrentTopLevel(pathname: string) {
@@ -171,13 +170,9 @@ export function AdminBreadcrumbLevelSelector() {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button
-                    variant="plain"
-                    className="h-auto p-0 font-medium"
-                    endDecorator={<ArrowDown className="size-3" />}
-                >
+                <AdminBreadcrumbSelectorTrigger>
                     {currentTopLevel.label}
-                </Button>
+                </AdminBreadcrumbSelectorTrigger>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
                 {breadcrumbSections.map((section, index) => (

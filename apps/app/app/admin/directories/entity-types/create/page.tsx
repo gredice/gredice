@@ -1,5 +1,4 @@
 import { getEntityTypeCategories } from '@gredice/storage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Input } from '@signalco/ui-primitives/Input';
@@ -7,10 +6,11 @@ import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { availableIcons } from '../../../../../components/admin/directories/EntityTypeIcon';
-import { AdminPageHeader } from '../../../../../components/admin/navigation';
-import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import {
+    AdminDirectoryBreadcrumbs,
+    AdminPageHeader,
+} from '../../../../../components/admin/navigation';
 import { auth } from '../../../../../lib/auth/auth';
-import { KnownPages } from '../../../../../src/KnownPages';
 import { submitCreateForm } from '../../../../(actions)/entityFormActions';
 
 export const dynamic = 'force-dynamic';
@@ -39,14 +39,8 @@ export default async function CreateEntityTypePage() {
         <Stack spacing={4}>
             <AdminPageHeader
                 breadcrumbs={
-                    <Breadcrumbs
-                        items={[
-                            {
-                                label: <AdminBreadcrumbLevelSelector />,
-                                href: KnownPages.Directories,
-                            },
-                            { label: 'Novi tip zapisa' },
-                        ]}
+                    <AdminDirectoryBreadcrumbs
+                        items={[{ label: 'Novi tip zapisa' }]}
                     />
                 }
                 heading="Novi tip zapisa"

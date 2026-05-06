@@ -8,7 +8,6 @@ import {
     updateInventoryItem,
 } from '@gredice/storage';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import {
@@ -21,8 +20,10 @@ import { revalidatePath } from 'next/cache';
 import { notFound } from 'next/navigation';
 import { importEntityData } from '../../../../../app/admin/directories/(actions)/importEntityData';
 import { EntityAttributeProgress } from '../../../../../components/admin/directories/EntityAttributeProgress';
-import { AdminPageHeader } from '../../../../../components/admin/navigation';
-import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import {
+    AdminDirectoryBreadcrumbs,
+    AdminPageHeader,
+} from '../../../../../components/admin/navigation';
 import { AdminPageTitle } from '../../../../../components/admin/navigation/AdminPageTitle';
 import { BarcodeValue } from '../../../../../components/shared/attributes/BarcodeValue';
 import { formatAttributeValueWithUnit } from '../../../../../components/shared/attributes/formatAttributeValueWithUnit';
@@ -164,18 +165,10 @@ export default async function EntityDetailsPage(props: {
                 breadcrumbs={
                     <Row spacing={2} className="min-w-0">
                         <div className="min-w-0">
-                            <Breadcrumbs
+                            <AdminDirectoryBreadcrumbs
+                                entityTypeName={params.entityType}
+                                entityTypeLabel={entity.entityType.label}
                                 items={[
-                                    {
-                                        label: <AdminBreadcrumbLevelSelector />,
-                                        href: KnownPages.Directories,
-                                    },
-                                    {
-                                        label: entity.entityType.label,
-                                        href: KnownPages.DirectoryEntityType(
-                                            params.entityType,
-                                        ),
-                                    },
                                     {
                                         label: entityDisplayName(entity),
                                     },
