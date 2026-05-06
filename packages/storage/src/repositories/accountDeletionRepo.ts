@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm';
+import { bustScheduleCache } from '../cache/scheduleCache';
 import { events } from '../schema/eventsSchema';
 import {
     gardens as dbGardens,
@@ -27,6 +28,8 @@ export async function deleteAccountWithDependencies(
     accountId: string,
     userId: string,
 ): Promise<void> {
+    let shouldBustScheduleCache = false;
+
     try {
         console.info(
             `[AccountDelete] Starting deletion for accountId=${accountId}, userId=${userId}`,
@@ -49,6 +52,7 @@ export async function deleteAccountWithDependencies(
                         blockId: null,
                     })
                     .where(eq(dbRaisedBeds.id, raisedBed.id));
+                shouldBustScheduleCache = true;
 
                 console.info(
                     `[AccountDelete] Deactivating raised bed sensors for raisedBedId=${raisedBed.id}`,
@@ -71,6 +75,7 @@ export async function deleteAccountWithDependencies(
             await storage()
                 .delete(gardenStacks)
                 .where(eq(gardenStacks.gardenId, garden.id));
+            shouldBustScheduleCache = true;
 
             console.info(
                 `[AccountDelete] Deleting garden blocks for gardenId=${garden.id}`,
@@ -78,6 +83,7 @@ export async function deleteAccountWithDependencies(
             await storage()
                 .delete(gardenBlocks)
                 .where(eq(gardenBlocks.gardenId, garden.id));
+            shouldBustScheduleCache = true;
 
             console.info(
                 `[AccountDelete] Deleting garden record for gardenId=${garden.id}`,
@@ -85,6 +91,7 @@ export async function deleteAccountWithDependencies(
             await storage()
                 .delete(dbGardens)
                 .where(eq(dbGardens.id, garden.id));
+            shouldBustScheduleCache = true;
         }
 
         // 10. Delete notifications for account
@@ -156,6 +163,7 @@ export async function deleteAccountWithDependencies(
                 .update(operations)
                 .set({ accountId: null })
                 .where(eq(operations.id, op.id));
+            shouldBustScheduleCache = true;
         }
 
         // 14. Delete account events
@@ -205,6 +213,10 @@ export async function deleteAccountWithDependencies(
             `[AccountDelete] Deleting account record for accountId=${accountId}`,
         );
         await storage().delete(accounts).where(eq(accounts.id, accountId));
+        if (shouldBustScheduleCache) {
+            await bustScheduleCache();
+            shouldBustScheduleCache = false;
+        }
         console.info(
             `[AccountDelete] Deletion complete for accountId=${accountId}, userId=${userId}`,
         );
@@ -213,6 +225,16 @@ export async function deleteAccountWithDependencies(
             '[AccountDelete] Error deleting account with dependencies:',
             error,
         );
+        if (shouldBustScheduleCache) {
+            try {
+                await bustScheduleCache();
+            } catch (cacheError) {
+                console.error(
+                    '[AccountDelete] Error busting schedule cache after partial deletion:',
+                    cacheError,
+                );
+            }
+        }
         throw error; // Re-throw to allow retry logic if needed
     }
 }
