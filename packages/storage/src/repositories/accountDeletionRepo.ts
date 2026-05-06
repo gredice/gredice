@@ -28,7 +28,7 @@ export async function deleteAccountWithDependencies(
     accountId: string,
     userId: string,
 ): Promise<void> {
-    let shouldBustScheduleCache = false;
+    let needsScheduleCacheBust = false;
 
     try {
         console.info(
@@ -52,7 +52,7 @@ export async function deleteAccountWithDependencies(
                         blockId: null,
                     })
                     .where(eq(dbRaisedBeds.id, raisedBed.id));
-                shouldBustScheduleCache = true;
+                needsScheduleCacheBust = true;
 
                 console.info(
                     `[AccountDelete] Deactivating raised bed sensors for raisedBedId=${raisedBed.id}`,
@@ -75,7 +75,7 @@ export async function deleteAccountWithDependencies(
             await storage()
                 .delete(gardenStacks)
                 .where(eq(gardenStacks.gardenId, garden.id));
-            shouldBustScheduleCache = true;
+            needsScheduleCacheBust = true;
 
             console.info(
                 `[AccountDelete] Deleting garden blocks for gardenId=${garden.id}`,
@@ -83,7 +83,7 @@ export async function deleteAccountWithDependencies(
             await storage()
                 .delete(gardenBlocks)
                 .where(eq(gardenBlocks.gardenId, garden.id));
-            shouldBustScheduleCache = true;
+            needsScheduleCacheBust = true;
 
             console.info(
                 `[AccountDelete] Deleting garden record for gardenId=${garden.id}`,
@@ -91,7 +91,7 @@ export async function deleteAccountWithDependencies(
             await storage()
                 .delete(dbGardens)
                 .where(eq(dbGardens.id, garden.id));
-            shouldBustScheduleCache = true;
+            needsScheduleCacheBust = true;
         }
 
         // 10. Delete notifications for account
@@ -163,7 +163,7 @@ export async function deleteAccountWithDependencies(
                 .update(operations)
                 .set({ accountId: null })
                 .where(eq(operations.id, op.id));
-            shouldBustScheduleCache = true;
+            needsScheduleCacheBust = true;
         }
 
         // 14. Delete account events
@@ -213,9 +213,8 @@ export async function deleteAccountWithDependencies(
             `[AccountDelete] Deleting account record for accountId=${accountId}`,
         );
         await storage().delete(accounts).where(eq(accounts.id, accountId));
-        if (shouldBustScheduleCache) {
+        if (needsScheduleCacheBust) {
             await bustScheduleCache();
-            shouldBustScheduleCache = false;
         }
         console.info(
             `[AccountDelete] Deletion complete for accountId=${accountId}, userId=${userId}`,
@@ -225,7 +224,7 @@ export async function deleteAccountWithDependencies(
             '[AccountDelete] Error deleting account with dependencies:',
             error,
         );
-        if (shouldBustScheduleCache) {
+        if (needsScheduleCacheBust) {
             try {
                 await bustScheduleCache();
             } catch (cacheError) {
