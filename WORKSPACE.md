@@ -75,6 +75,17 @@ pnpm regenerate
 
 Many package lint scripts run `biome check --write`, so linting may modify files. Review the diff after linting.
 
+### Directory type generation
+
+`packages/directory-types` contains generated public directory API and CMS entity type helpers. Run this after CMS entity types or attribute definitions change:
+
+```bash
+pnpm --filter @gredice/directory-types regenerate
+```
+
+This refreshes the OpenAPI-derived `src/v1.d.ts` from the directory API docs, then regenerates deterministic CMS entity aliases in `src/cms.ts`.
+Use `pnpm --filter @gredice/directory-types regenerate:cms-types` only when `src/v1.d.ts` is already current and only the alias file needs to be refreshed.
+
 ## Type checking
 
 Type checking is integrated into Next.js builds and package scripts. To validate app or package types, build the consuming app or run the targeted package test/build command that exercises the change.
