@@ -426,6 +426,16 @@ function sortNewestFirst(operations: GardenOperationItem[]) {
     });
 }
 
+function sortScheduledSoonestFirst(operations: GardenOperationItem[]) {
+    return [...operations].sort((a, b) => {
+        const aDate = new Date(a.scheduledDate ?? a.createdAt).getTime();
+        const bDate = new Date(b.scheduledDate ?? b.createdAt).getTime();
+        const dateDiff = aDate - bDate;
+
+        return dateDiff !== 0 ? dateDiff : a.id - b.id;
+    });
+}
+
 export function GardenOperationsHud() {
     const { track } = useGameAnalytics();
     const { data: operationsData } = useOperations();
@@ -440,7 +450,7 @@ export function GardenOperationsHud() {
 
     const pendingOperations = useMemo(
         () =>
-            sortNewestFirst(
+            sortScheduledSoonestFirst(
                 (
                     pending.data?.pages.flatMap((page) => page.items) ?? []
                 ).filter(
