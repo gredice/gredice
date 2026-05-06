@@ -5,7 +5,7 @@ import {
     Grid9Icon,
     Grid16Icon,
 } from '@gredice/ui/GridIcons';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
+import { RaisedBedSimpleIcon } from '@gredice/ui/RaisedBedSimpleIcon';
 import {
     Add,
     AI,
@@ -163,10 +163,6 @@ import {
     Wind,
 } from '@signalco/ui-icons';
 import type { ComponentType, SVGProps } from 'react';
-
-function RaisedBedSimpleIcon(props: SVGProps<SVGSVGElement>) {
-    return <RaisedBedIcon physicalId={null} {...props} />;
-}
 
 const iconMap: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
     RaisedBed: RaisedBedSimpleIcon,
