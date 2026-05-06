@@ -3,7 +3,14 @@ import {
     AuthProtectedSection,
     SignedOut,
 } from '@signalco/auth-server/components';
-import { Calendar, Fence, Shield, User } from '@signalco/ui-icons';
+import {
+    BookA,
+    Calendar,
+    Fence,
+    Shield,
+    Sprout,
+    User,
+} from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
@@ -89,7 +96,10 @@ async function FarmerDashboard() {
                                 <Typography level="h4" component="h1" semiBold>
                                     {`Dobrodošli, ${displayName}!`}
                                 </Typography>
-                                <Typography level="body2">
+                                <Typography
+                                    level="body2"
+                                    className="text-muted-foreground"
+                                >
                                     Upravljaj farmom, planiraj nadolazeće
                                     aktivnosti i prati napredak u realnom
                                     vremenu.
@@ -147,6 +157,7 @@ async function FarmerDashboard() {
                                 variant="soft"
                                 size="lg"
                                 className="justify-start"
+                                startDecorator={<BookA className="size-4" />}
                                 href="/operations"
                             >
                                 Priručnik operacija
@@ -155,6 +166,7 @@ async function FarmerDashboard() {
                                 variant="soft"
                                 size="lg"
                                 className="justify-start"
+                                startDecorator={<Sprout className="size-4" />}
                                 href="/plants"
                             >
                                 Priručnik biljaka
