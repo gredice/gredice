@@ -42,6 +42,9 @@ Run commands from the repo root unless an app/package script explicitly requires
 # Install dependencies
 pnpm install
 
+# Link every app to its Vercel project
+pnpm vercel:link
+
 # Pull Vercel environment variables for all apps
 pnpm env:pull
 
@@ -88,13 +91,69 @@ Type checking is integrated into Next.js builds and package scripts. To validate
 - `api`: <https://api.gredice.test>
 - `status`: <https://status.gredice.test> with `pnpm --filter=status dev`
 
-Hosts file entry:
+The dev script verifies the hosts entries for the `*.gredice.test` domains and attempts to add missing entries automatically. If it cannot modify the hosts file, add this entry manually and rerun the command:
 
 ```text
 127.0.0.1 www.gredice.test vrt.gredice.test farma.gredice.test app.gredice.test storybook.gredice.test api.gredice.test status.gredice.test
 ```
 
 Docker must be running for the proxy. Use `SKIP_DEV_PROXY=1 pnpm dev` only when the local proxy is not needed.
+
+### Development HTTPS certificates
+
+The local Caddy proxy terminates HTTPS. Its internal certificate authority is stored in `~/.gredice/dev-caddy` unless `GREDICE_DEV_CADDY_DATA_DIR` points somewhere else. The dev script attempts to trust the certificate authority automatically for the current OS.
+
+If automatic trust fails, import `root.crt` manually from the Caddy data directory:
+
+- macOS: import `root.crt` into Keychain Access and mark it as trusted for SSL.
+- Windows: open `certmgr.msc`, then import `root.crt` into Trusted Root Certification Authorities.
+- Linux: run `trust anchor ~/.gredice/dev-caddy/caddy/pki/authorities/local/root.crt`, or use the distribution's certificate tooling.
+
+After the certificate is trusted, browsers should accept the local `*.gredice.test` HTTPS domains.
+
+## Environment setup
+
+Use the Vercel CLI for local environment files. If the apps are not linked on the current machine, log in and run the repo script before pulling env vars:
+
+```bash
+vercel login
+pnpm vercel:link
+pnpm env:pull
+```
+
+`pnpm env:pull` runs `vercel env pull .env` in `apps/www`, `apps/garden`, `apps/farm`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
+
+## Asset generation
+
+Coordinate with teammates before editing shared game asset files. Only one person should export shared asset changes at a time.
+
+### Game assets
+
+After changing `assets/GameAssets.blend`, regenerate the exported GLB and model types from the repo root:
+
+```bash
+pnpm generate:game-assets
+```
+
+This runs the platform export script from `assets`, writes `apps/garden/public/assets/models/GameAssets.glb`, then runs `pnpm generate:models-types` to update `packages/game/src/models/GameAssets.tsx` through `gltfjsx` and the local post-processing script.
+
+Blender must be installed where the export scripts expect it:
+
+- macOS: `/Applications/Blender.app`
+- Windows: `C:\Program Files\Blender Foundation\Blender 4.5\blender.exe`
+- Linux/other Unix-like systems: update `assets/export.sh` for the local Blender path before running the generator.
+
+If the steps need to run separately, run `./export.sh` from `assets` on Unix-like systems or `.\export.ps1` from `assets` on Windows, then run `pnpm generate:models-types` from the repo root.
+
+### Decoration sprite atlas
+
+The decoration atlas pipeline lives in `packages/cdn/scripts` and currently processes source sheets from `apps/garden/data/sriptes`. Regenerate the ground-cover atlas with:
+
+```bash
+pnpm --filter @gredice/cdn run regenerate-cdn:decoration-atlas
+```
+
+The script extracts source sprites, packs them into stable atlas pages, and writes PNG, WebP, and JSON manifest files under `apps/garden/public/assets/sprites/decorations`. The manifest is the runtime source of truth. Keep sprite names stable, because the manifest uses relative input paths as sprite IDs.
 
 ## Generated files
 
