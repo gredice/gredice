@@ -1,6 +1,7 @@
 'use server';
 
 import {
+    getAttributeDefinitions,
     getAiAnalysisEvents,
     getAiAnalysisTotals,
     getAllOperations,
@@ -8,6 +9,7 @@ import {
     getEntitiesFormatted,
     getEntitiesRaw,
     getEntityTypes,
+    getIncompleteEntityCountsByState,
     getPlantUpdateEvents,
     getSunflowersDailyTotals,
     getUserRegistrationsByWeekday,
@@ -355,10 +357,17 @@ async function getAnalyticsDataUncached(
     const entitiesCounts = await Promise.all(
         entityTypes.map(async (entityType) => {
             const entities = await getEntitiesRaw(entityType.name);
+            const definitions = await getAttributeDefinitions(entityType.name);
+            const incompleteCounts = getIncompleteEntityCountsByState(
+                entities,
+                definitions,
+            );
             return {
                 entityTypeName: entityType.name,
                 label: entityType.label,
                 count: entities.length,
+                incompleteDraftCount: incompleteCounts.draft,
+                incompletePublishedCount: incompleteCounts.published,
             };
         }),
     );
