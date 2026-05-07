@@ -6,10 +6,12 @@ import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { exit } from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { appRegistry } from './app-registry.ts';
+import { appRegistry, getAppDevPort, getWorktreeId } from './app-registry.ts';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
-const containerName = 'gredice-dev-caddy';
+const worktreeId = getWorktreeId();
+const worktreeSlug = worktreeId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'default';
+const containerName = `gredice-dev-caddy-${worktreeSlug}`;
 const dockerImage = process.env.GREDICE_DEV_CADDY_IMAGE ?? 'gredice-caddy-dev';
 const shouldSkipProxy = parseEnvFlag(process.env.SKIP_DEV_PROXY ?? '');
 const extraTurboArgs = process.argv.slice(2);
@@ -20,7 +22,7 @@ const signalNumbers = os.constants?.signals ?? {};
 const defaultDataDir = (() => {
     const homeDir = os.homedir?.();
     if (homeDir) {
-        return resolve(homeDir, '.gredice', 'dev-caddy');
+        return resolve(homeDir, '.gredice', 'dev-caddy', worktreeSlug);
     }
 
     return resolve(scriptDir, 'dev', '.caddy-data');
@@ -74,7 +76,7 @@ function renderCaddyfile() {
 
 https://${app.localDomain} {
     tls internal
-    reverse_proxy http://host.docker.internal:${app.devPort} {
+    reverse_proxy http://host.docker.internal:${getAppDevPort(app)} {
         header_up X-Forwarded-Proto {http.request.scheme}
     }
 }`,
@@ -825,9 +827,9 @@ async function startProxy() {
         '-d',
         '--add-host=host.docker.internal:host-gateway',
         '-p',
-        '80:80',
+        `${process.env.GREDICE_PROXY_HTTP_PORT ?? '80'}:80`,
         '-p',
-        '443:443',
+        `${process.env.GREDICE_PROXY_HTTPS_PORT ?? '443'}:443`,
     ];
 
     if (caddyDataDir) {
@@ -850,9 +852,15 @@ async function startProxy() {
     const { stdout } = await runCommand('docker', args, { capture: true });
     const containerId = stdout.trim();
 
+    const httpPort = process.env.GREDICE_PROXY_HTTP_PORT ?? '80';
+    const httpsPort = process.env.GREDICE_PROXY_HTTPS_PORT ?? '443';
     console.log(
-        `Caddy dev proxy started${containerId ? ` (${containerId.slice(0, 12)})` : ''}.`,
+        `Caddy dev proxy started${containerId ? ` (${containerId.slice(0, 12)})` : ''} for worktree ${worktreeSlug} on ports ${httpPort}/${httpsPort}.`,
     );
+    console.log('Local domain upstreams:');
+    for (const app of appRegistry) {
+        console.log(`- ${app.localDomain} -> localhost:${getAppDevPort(app)}`);
+    }
     proxyStarted = true;
     return containerId;
 }

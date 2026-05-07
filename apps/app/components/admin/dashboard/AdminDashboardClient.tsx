@@ -33,6 +33,8 @@ type EntityData = {
     entityTypeName: string;
     label: string;
     count: number;
+    incompleteDraftCount: number;
+    incompletePublishedCount: number;
 };
 
 function getTodayDateValue() {
@@ -367,11 +369,39 @@ export function AdminDashboardClient({
                 <DashboardDivider>Zapisi</DashboardDivider>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
                     {initialEntitiesData.map(
-                        ({ label, count, entityTypeName }) => (
+                        ({
+                            label,
+                            count,
+                            entityTypeName,
+                            incompleteDraftCount,
+                            incompletePublishedCount,
+                        }) => (
                             <FactCard
                                 key={entityTypeName}
                                 header={label}
-                                value={count}
+                                value={
+                                    <Stack spacing={0.5}>
+                                        <Typography>{count}</Typography>
+                                        <Button
+                                            variant="plain"
+                                            size="sm"
+                                            className="justify-start px-0 h-auto min-h-0"
+                                            href={`${KnownPages.DirectoryEntityType(entityTypeName)}?completion=incomplete&state=draft`}
+                                        >
+                                            Draft nepotpuni:{' '}
+                                            {incompleteDraftCount}
+                                        </Button>
+                                        <Button
+                                            variant="plain"
+                                            size="sm"
+                                            className="justify-start px-0 h-auto min-h-0"
+                                            href={`${KnownPages.DirectoryEntityType(entityTypeName)}?completion=incomplete&state=published`}
+                                        >
+                                            Objavljeno nepotpuni:{' '}
+                                            {incompletePublishedCount}
+                                        </Button>
+                                    </Stack>
+                                }
                                 href={KnownPages.DirectoryEntityType(
                                     entityTypeName,
                                 )}
