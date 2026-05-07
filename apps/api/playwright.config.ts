@@ -3,7 +3,11 @@ import {
     devices,
     type PlaywrightTestConfig,
 } from '@playwright/test';
-import { getAppByName, getPlaywrightBaseUrl, shouldReusePlaywrightServer } from '../../scripts/app-registry.ts';
+import {
+    getAppByName,
+    getPlaywrightBaseUrl,
+    shouldReusePlaywrightServer,
+} from '../../scripts/app-registry.ts';
 
 const app = getAppByName('api');
 const reporter: PlaywrightTestConfig['reporter'] = [
