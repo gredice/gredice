@@ -3,6 +3,7 @@ import {
     getAttributeDefinitionCategories,
     getAttributeDefinitions,
     getEntityRaw,
+    getEntityRevisions,
     getInventoryConfigByEntityTypeName,
     getInventoryItemsByConfig,
     updateInventoryItem,
@@ -62,13 +63,19 @@ export default async function EntityDetailsPage(props: {
 }) {
     const params = await props.params;
     const entityId = parseInt(params.entityId, 10);
-    const [attributeDefinitions, attributeCategories, entity, inventoryConfig] =
-        await Promise.all([
-            getAttributeDefinitions(params.entityType),
-            getAttributeDefinitionCategories(params.entityType),
-            getEntityRaw(entityId),
-            getInventoryConfigByEntityTypeName(params.entityType),
-        ]);
+    const [
+        attributeDefinitions,
+        attributeCategories,
+        entity,
+        inventoryConfig,
+        revisions,
+    ] = await Promise.all([
+        getAttributeDefinitions(params.entityType),
+        getAttributeDefinitionCategories(params.entityType),
+        getEntityRaw(entityId),
+        getInventoryConfigByEntityTypeName(params.entityType),
+        getEntityRevisions(entityId),
+    ]);
     if (!entity) {
         notFound();
     }
@@ -192,7 +199,10 @@ export default async function EntityDetailsPage(props: {
                 <EntityDetailsStickyHeader
                     tabs={
                         <TabsList>
-                            {attributeCategories.map((category) => (
+                            {[
+                                ...attributeCategories,
+                                { name: 'history', label: 'Historija' },
+                            ].map((category) => (
                                 <TabsTrigger
                                     key={category.name}
                                     value={category.name}
@@ -287,7 +297,10 @@ export default async function EntityDetailsPage(props: {
                             ))}
                         </FieldSet>
                     </Stack>
-                    {attributeCategories.map((category) => (
+                    {[
+                        ...attributeCategories,
+                        { name: 'history', label: 'Historija' },
+                    ].map((category) => (
                         <TabsContent value={category.name} key={category.name}>
                             <AttributeCategoryDetails
                                 entity={entity}
@@ -296,6 +309,22 @@ export default async function EntityDetailsPage(props: {
                             />
                         </TabsContent>
                     ))}
+
+                    <TabsContent value="history" key="history">
+                        <FieldSet>
+                            {revisions.length === 0 ? (
+                                <Field name="Historija" value="Nema promjena" />
+                            ) : (
+                                revisions.map((revision) => (
+                                    <Field
+                                        key={revision.id}
+                                        name={`${revision.action} • ${revision.actorName ?? 'Nepoznat korisnik'}`}
+                                        value={`${revision.createdAt.toISOString()} | ${revision.previousValue ?? revision.previousState ?? '-'} → ${revision.nextValue ?? revision.nextState ?? '-'}`}
+                                    />
+                                ))
+                            )}
+                        </FieldSet>
+                    </TabsContent>
                 </Stack>
             </Tabs>
         </EntityDetailsSaveProvider>

@@ -330,3 +330,32 @@ export type UpdateCmsPage = Partial<
 > &
     Pick<typeof cmsPages.$inferSelect, 'id'>;
 export type SelectCmsPage = typeof cmsPages.$inferSelect;
+
+export const entityRevisions = pgTable(
+    'entity_revisions',
+    {
+        id: serial('id').primaryKey(),
+        entityId: integer('entity_id')
+            .notNull()
+            .references(() => entities.id),
+        entityTypeName: text('entity_type').notNull(),
+        action: text('action').notNull(),
+        actorId: text('actor_id'),
+        actorName: text('actor_name'),
+        attributeValueId: integer('attribute_value_id'),
+        attributeDefinitionId: integer('attribute_definition_id'),
+        previousValue: text('previous_value'),
+        nextValue: text('next_value'),
+        previousState: text('previous_state'),
+        nextState: text('next_state'),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+    },
+    (table) => [
+        index('cms_er_entity_id_idx').on(table.entityId),
+        index('cms_er_entity_type_name_idx').on(table.entityTypeName),
+        index('cms_er_action_idx').on(table.action),
+    ],
+);
+
+export type InsertEntityRevision = typeof entityRevisions.$inferInsert;
+export type SelectEntityRevision = typeof entityRevisions.$inferSelect;
