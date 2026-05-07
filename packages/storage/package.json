@@ -7,7 +7,8 @@
     "license": "MIT",
     "exports": {
         ".": "./src/index.ts",
-        "./entityCompleteness": "./src/helpers/entityCompleteness.ts"
+        "./entityCompleteness": "./src/helpers/entityCompleteness.ts",
+        "./entityPageSections": "./src/helpers/entityPageSections.ts"
     },
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
@@ -18,9 +19,9 @@
         "dev": "drizzle-kit studio",
         "test": "pnpm run test:node",
         "test:db:start": "bash ./tests/startTestDb.sh",
-        "test:db:migrate": "tsx --env-file=.env.test --conditions=react-server ./src/migrate.ts",
+        "test:db:migrate": "bash ./tests/migrateTestDb.sh",
         "test:db:stop": "bash ./tests/stopTestDb.sh",
-        "test:node": "pnpm run test:db:start && pnpm run test:db:migrate && node --import tsx --test --env-file=.env.test --conditions=react-server ./tests/**/*.node.spec.ts && pnpm run test:db:stop"
+        "test:node": "bash ./tests/runNodeTests.sh"
     },
     "devDependencies": {
         "@biomejs/biome": "2.4.14",

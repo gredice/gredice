@@ -3,6 +3,7 @@ import type { NavContextType } from './NavContext';
 
 const idRouteTitlePrefixes = new Map([
     ['/admin/accounts', 'Račun'],
+    ['/admin/cms/pages', 'Stranica'],
     ['/admin/communication/emails', 'Email'],
     ['/admin/farms', 'Farma'],
     ['/admin/gardens', 'Vrt'],
@@ -156,6 +157,21 @@ function resolveInvoiceTitle(pathname: string) {
     return null;
 }
 
+function resolveCmsPageTitle(pathname: string) {
+    if (pathname === '/admin/cms/pages/create') {
+        return 'Nova stranica';
+    }
+
+    const cmsPageEditMatch = pathname.match(
+        /^\/admin\/cms\/pages\/([^/]+)\/edit$/,
+    );
+    if (cmsPageEditMatch?.[1]) {
+        return `Uredi stranicu ${decodePathSegment(cmsPageEditMatch[1])}`;
+    }
+
+    return null;
+}
+
 export function resolveAdminRouteTitle(
     pathname: string,
     navContext: NavContextType | undefined,
@@ -184,6 +200,11 @@ export function resolveAdminRouteTitle(
     const invoiceTitle = resolveInvoiceTitle(pathname);
     if (invoiceTitle) {
         return invoiceTitle;
+    }
+
+    const cmsPageTitle = resolveCmsPageTitle(pathname);
+    if (cmsPageTitle) {
+        return cmsPageTitle;
     }
 
     const idSeparatorIndex = pathname.lastIndexOf('/');

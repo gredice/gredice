@@ -93,6 +93,9 @@ Type checking is integrated into Next.js builds and package scripts. To validate
 ## Development servers
 
 `pnpm dev` starts the default app stack and a Dockerized Caddy HTTPS proxy.
+The app names, paths, local domains, ports, and Vercel project names live in
+`scripts/app-registry.ts`; update that registry when adding or renaming an app.
+The dev proxy writes its Caddyfile from the registry at startup.
 
 - `www`: <https://www.gredice.test>
 - `garden`: <https://vrt.gredice.test>

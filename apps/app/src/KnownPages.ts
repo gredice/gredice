@@ -5,6 +5,10 @@ export const KnownPages = {
     Dashboard: '/admin',
     Settings: '/admin/settings',
     Directories: '/admin/directories',
+    CmsPages: '/admin/cms/pages',
+    CmsPageCreate: '/admin/cms/pages/create',
+    CmsPage: (pageId: number) => `/admin/cms/pages/${pageId}` as Route,
+    CmsPageEdit: (pageId: number) => `/admin/cms/pages/${pageId}/edit` as Route,
     DirectoryEntityTypePath: '/admin/directories/[entityType]',
     DirectoryEntityType: (entityTypeName: string) =>
         `/admin/directories/${entityTypeName}` as Route,

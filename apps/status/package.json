@@ -7,9 +7,9 @@
         "clean": "rimraf .next .turbo dist build out coverage .vercel",
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
-        "dev": "next dev -p 3006",
+        "dev": "node ../../scripts/run-app-command.mjs dev",
         "build": "next build",
-        "start": "next start -p 3006",
+        "start": "node ../../scripts/run-app-command.mjs start",
         "test": "pnpm run build"
     },
     "dependencies": {

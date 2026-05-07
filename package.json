@@ -1,6 +1,7 @@
 {
     "name": "gredice-monorepo",
     "private": true,
+    "type": "module",
     "scripts": {
         "build": "turbo build",
         "clean": "turbo clean",
@@ -15,7 +16,9 @@
         "regenerate": "turbo regenerate",
         "test": "turbo test",
         "generate:models-types": "turbo generate:models-types",
-        "generate:game-assets": "node ./scripts/generate-game-assets.mjs"
+        "generate:game-assets": "node ./scripts/generate-game-assets.mjs",
+        "setup": "node ./scripts/worktree-health.mjs setup",
+        "doctor": "node ./scripts/worktree-health.mjs doctor"
     },
     "devDependencies": {
         "rimraf": "6.1.3",
