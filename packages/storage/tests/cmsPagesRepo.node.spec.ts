@@ -2,12 +2,14 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
+    cmsPages,
     createCmsPage,
     getCmsPage,
     getCmsPageBySlug,
     getCmsPages,
     normalizeCmsPageSlug,
     softDeleteCmsPage,
+    storage,
     updateCmsPage,
     updateCmsPageState,
 } from '@gredice/storage';
@@ -17,11 +19,17 @@ test('CMS pages normalize slugs and support CRUD lifecycle', async () => {
     createTestDb();
     const suffix = randomUUID();
     const rawSlug = ` /Vodiči/${suffix}/Česta pitanja/ `;
+    const originalContent = JSON.stringify([
+        { component: 'Feature1', header: 'Original section' },
+    ]);
+    const updatedContent = JSON.stringify([
+        { component: 'Heading1', header: 'Updated section' },
+    ]);
 
     const pageId = await createCmsPage({
         slug: rawSlug,
         title: 'Original title',
-        content: 'Original content',
+        content: originalContent,
         metaTitle: 'Original meta title',
         metaDescription: 'Original meta description',
     });
@@ -37,7 +45,7 @@ test('CMS pages normalize slugs and support CRUD lifecycle', async () => {
         id: pageId,
         slug: `Vodiči/${suffix}/Objavljena stranica`,
         title: 'Updated title',
-        content: 'Updated content',
+        content: updatedContent,
         state: 'published',
         metaImageUrl: 'https://www.gredice.com/assets/page.png',
     });
@@ -46,7 +54,7 @@ test('CMS pages normalize slugs and support CRUD lifecycle', async () => {
     const updated = await getCmsPageBySlug(updatedSlug);
     assert.equal(updated?.id, pageId);
     assert.equal(updated?.title, 'Updated title');
-    assert.equal(updated?.content, 'Updated content');
+    assert.equal(updated?.content, updatedContent);
     assert.equal(updated?.state, 'published');
     assert.ok(updated?.publishedAt instanceof Date);
 
@@ -116,4 +124,80 @@ test('CMS page slugs reject reserved static route conflicts', async () => {
             }),
         /reserved route/,
     );
+});
+
+test('CMS page content stores valid SectionData JSON payload', async () => {
+    createTestDb();
+    const sectionData = [
+        {
+            component: 'Feature1',
+            header: 'Naslov',
+            description: 'Opis',
+        },
+        {
+            component: 'Faq1',
+            items: [{ question: 'Pitanje', answer: 'Odgovor' }],
+        },
+    ];
+
+    const pageId = await createCmsPage({
+        slug: `section-data-${randomUUID()}`,
+        title: 'Section data page',
+        content: JSON.stringify(sectionData),
+    });
+
+    const page = await getCmsPage(pageId);
+    assert.equal(page?.content, JSON.stringify(sectionData));
+});
+
+test('CMS page content rejects invalid SectionData JSON payload', async () => {
+    createTestDb();
+    const slug = `invalid-section-data-${randomUUID()}`;
+
+    await assert.rejects(
+        () =>
+            createCmsPage({
+                slug,
+                title: 'Invalid section data page',
+                content: '{"component":"Feature1"}',
+            }),
+        /JSON array of SectionData blocks/,
+    );
+
+    await assert.rejects(
+        () =>
+            createCmsPage({
+                slug: `${slug}-component`,
+                title: 'Invalid component page',
+                content: JSON.stringify([{ component: 'Unknown1' }]),
+            }),
+        /unsupported component/,
+    );
+});
+
+test('CMS page update allows legacy plaintext content when unchanged', async () => {
+    createTestDb();
+    const slug = `legacy-plaintext-${randomUUID()}`;
+    const legacyContent = 'Legacy plain text content';
+
+    const [created] = await storage()
+        .insert(cmsPages)
+        .values({
+            slug,
+            title: 'Legacy page',
+            content: legacyContent,
+            state: 'draft',
+        })
+        .returning({ id: cmsPages.id });
+
+    assert.ok(created);
+    await updateCmsPage({
+        id: created.id,
+        title: 'Legacy page updated',
+        content: legacyContent,
+    });
+
+    const updated = await getCmsPage(created.id);
+    assert.equal(updated?.title, 'Legacy page updated');
+    assert.equal(updated?.content, legacyContent);
 });
