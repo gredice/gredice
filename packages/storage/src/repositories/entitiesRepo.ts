@@ -4,6 +4,7 @@ import {
     attributeDefinitions,
     attributeValues,
     entities,
+    entityRevisions,
     type SelectAttributeDefinition,
     type SelectAttributeValue,
     type SelectEntity,
@@ -709,33 +710,6 @@ export async function duplicateEntity(id: number) {
     }));
 
     await Promise.all([
-        storage().insert(entityRevisions).values({
-            entityId: id,
-            entityTypeName: entity.entityTypeName,
-            action: 'entity.deleted',
-            actorId: actor?.id,
-            actorName: actor?.name,
-            previousState: entity.state,
-            nextState: entity.state,
-        }),
-        previousEntity
-            ? storage()
-                  .insert(entityRevisions)
-                  .values({
-                      entityId: entity.id,
-                      entityTypeName:
-                          entity.entityTypeName ??
-                          previousEntity.entityTypeName,
-                      action:
-                          previousEntity.state !== updateData.state
-                              ? 'entity.state_changed'
-                              : 'entity.updated',
-                      actorId: actor?.id,
-                      actorName: actor?.name,
-                      previousState: previousEntity.state,
-                      nextState: updateData.state ?? previousEntity.state,
-                  })
-            : undefined,
         storage().insert(attributeValues).values(newAttributes),
         bustCached(cacheKeys.entityTypeName(entity.entityTypeName)),
         bustCached(cacheKeys.entity(newEntityId)),
@@ -762,15 +736,6 @@ export async function updateEntity(
     }
 
     await Promise.all([
-        storage().insert(entityRevisions).values({
-            entityId: id,
-            entityTypeName: entity.entityTypeName,
-            action: 'entity.deleted',
-            actorId: actor?.id,
-            actorName: actor?.name,
-            previousState: entity.state,
-            nextState: entity.state,
-        }),
         previousEntity
             ? storage()
                   .insert(entityRevisions)
@@ -842,24 +807,6 @@ export async function deleteEntity(
             previousState: entity.state,
             nextState: entity.state,
         }),
-        previousEntity
-            ? storage()
-                  .insert(entityRevisions)
-                  .values({
-                      entityId: entity.id,
-                      entityTypeName:
-                          entity.entityTypeName ??
-                          previousEntity.entityTypeName,
-                      action:
-                          previousEntity.state !== updateData.state
-                              ? 'entity.state_changed'
-                              : 'entity.updated',
-                      actorId: actor?.id,
-                      actorName: actor?.name,
-                      previousState: previousEntity.state,
-                      nextState: updateData.state ?? previousEntity.state,
-                  })
-            : undefined,
         storage()
             .update(entities)
             .set({ isDeleted: true })

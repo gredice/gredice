@@ -107,6 +107,10 @@ export async function deleteAttributeValue(
     id: number,
     actor?: { id?: string; name?: string },
 ) {
+    const existingValue = await storage().query.attributeValues.findFirst({
+        where: eq(attributeValues.id, id),
+    });
+
     await Promise.all([
         storage()
             .update(attributeValues)
