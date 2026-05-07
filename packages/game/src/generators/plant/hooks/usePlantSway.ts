@@ -7,6 +7,7 @@ import { SeededRNG } from '../lib/rng';
 
 interface PlantSwayOptions {
     amplitude: number;
+    enabled?: boolean;
     speed: number;
 }
 
@@ -110,22 +111,23 @@ export const plantSwayVertexShader = /* glsl */ `
 export function usePlantSway(seed: string, options: PlantSwayOptions) {
     const weather = useGameState((state) => state.weather);
     const prefersReducedMotion = usePrefersReducedMotion();
+    const swayDisabled = options.enabled === false || prefersReducedMotion;
     const uniforms = useMemo(() => {
         const rng = new SeededRNG(seed);
         return {
             uTime: { value: 0 },
             uSwayAmplitude: {
-                value: prefersReducedMotion ? 0 : options.amplitude,
+                value: swayDisabled ? 0 : options.amplitude,
             },
-            uSwaySpeed: { value: prefersReducedMotion ? 0 : options.speed },
+            uSwaySpeed: { value: swayDisabled ? 0 : options.speed },
             uSwayPhase: { value: rng.nextRange(0, Math.PI * 2) },
             uWindStrength: { value: 0 },
             uWindDirection: { value: defaultWindDirection() },
         };
-    }, [options.amplitude, options.speed, prefersReducedMotion, seed]);
+    }, [options.amplitude, options.speed, seed, swayDisabled]);
 
     useFrame(({ clock }) => {
-        if (prefersReducedMotion) {
+        if (swayDisabled) {
             uniforms.uTime.value = 0;
             uniforms.uSwayAmplitude.value = 0;
             uniforms.uSwaySpeed.value = 0;

@@ -16,6 +16,7 @@ export interface VegetableData {
 interface VegetablesProps {
     seed: string;
     vegetables: VegetableData[];
+    animate?: boolean;
 }
 
 interface VegetableInstanceGroup {
@@ -281,9 +282,14 @@ export const vegetableMaterialProps: Record<
     kohlrabi: { color: '#9fc46f', roughness: 0.74 },
 };
 
-export function Vegetables({ seed, vegetables }: VegetablesProps) {
+export function Vegetables({
+    seed,
+    vegetables,
+    animate = true,
+}: VegetablesProps) {
     const swayUniforms = usePlantSway(`${seed}-vegetables`, {
         amplitude: 0.08,
+        enabled: animate,
         speed: 1.15,
     });
     const instances = useMemo(() => {
