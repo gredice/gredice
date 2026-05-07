@@ -4,6 +4,10 @@ import type {
     getEntitiesRaw,
     SelectAttributeDefinition,
 } from '@gredice/storage';
+import {
+    filterEntitiesByCompletionAndState,
+    getEntityCompleteness,
+} from '@gredice/storage/entityCompleteness';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Duplicate } from '@signalco/ui-icons';
@@ -53,6 +57,8 @@ type EntitiesTableProps = {
     attributeDefinitions: SelectAttributeDefinition[];
     inventoryItems: InventoryItem[];
     inventoryLowCountThreshold?: number | null;
+    completionFilter?: string;
+    stateFilter?: string;
     onDuplicate: (entityId: number) => Promise<void>;
 };
 
@@ -62,12 +68,22 @@ export function EntitiesTable({
     attributeDefinitions,
     inventoryItems,
     inventoryLowCountThreshold = null,
+    completionFilter = '',
+    stateFilter = '',
     onDuplicate,
 }: EntitiesTableProps) {
     const { filter } = useFilter();
     const [sort, setSort] = useState<SortState>(defaultSort);
     const normalized = filter.toLowerCase();
-    const filteredEntities = entities.filter((entity) =>
+    const statusFilteredEntities = filterEntitiesByCompletionAndState(
+        entities,
+        attributeDefinitions,
+        {
+            completion: completionFilter,
+            state: stateFilter,
+        },
+    );
+    const filteredEntities = statusFilteredEntities.filter((entity) =>
         entityDisplayName(entity).toLowerCase().includes(normalized),
     );
     const displayDefinitions = attributeDefinitions.filter((d) => d.display);
@@ -355,7 +371,7 @@ function entitySortValue(
     }
 
     if (key === 'progress') {
-        return entityAttributeProgress(entity, definitions);
+        return getEntityCompleteness(entity, definitions).progress;
     }
 
     if (key === 'updatedAt') {
@@ -410,32 +426,6 @@ function attributeSortValue(
     }
 
     return value;
-}
-
-function entityAttributeProgress(
-    entity: Entities[number],
-    definitions: SelectAttributeDefinition[],
-) {
-    const requiredDefinitions = definitions.filter((d) => d.required);
-    if (!requiredDefinitions.length) {
-        return 100;
-    }
-
-    const missingRequiredDefinitions = requiredDefinitions.filter(
-        (d) =>
-            !d.defaultValue &&
-            !entity.attributes.some(
-                (a) =>
-                    a.attributeDefinitionId === d.id &&
-                    (a.value?.length ?? 0) > 0,
-            ),
-    );
-
-    return (
-        ((requiredDefinitions.length - missingRequiredDefinitions.length) /
-            requiredDefinitions.length) *
-        100
-    );
 }
 
 function entityDisplayName(entity: Entities[number]) {

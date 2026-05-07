@@ -1,5 +1,11 @@
 import { and, asc, count, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import {
+    bustScheduleCache,
+    cacheScheduleRead,
+    scheduleCacheKeys,
+    scheduleCacheTtls,
+} from '../cache/scheduleCache';
+import {
     events,
     farmUsers,
     gardens,
@@ -411,6 +417,20 @@ export async function getAllOperations(filter?: {
     completedTo?: Date;
     status?: OperationStatus | OperationStatus[];
 }) {
+    return cacheScheduleRead(
+        scheduleCacheKeys.adminOperations(filter),
+        () => getAllOperationsUncached(filter),
+        scheduleCacheTtls.operations,
+    );
+}
+
+async function getAllOperationsUncached(filter?: {
+    from?: Date;
+    to?: Date;
+    completedFrom?: Date;
+    completedTo?: Date;
+    status?: OperationStatus | OperationStatus[];
+}) {
     let operationsWithAggregates: Awaited<
         ReturnType<typeof fillOperationAggregates>
     >;
@@ -510,6 +530,17 @@ async function getCompletedFarmUserAcceptedOperationsByCompletionDate(
 }
 
 export async function getFarmUserAcceptedOperations(
+    userId: string,
+    filter?: OperationsFilter,
+) {
+    return cacheScheduleRead(
+        scheduleCacheKeys.farmUserOperations(userId, filter),
+        () => getFarmUserAcceptedOperationsUncached(userId, filter),
+        scheduleCacheTtls.operations,
+    );
+}
+
+async function getFarmUserAcceptedOperationsUncached(
     userId: string,
     filter?: OperationsFilter,
 ) {
@@ -691,6 +722,7 @@ export async function createOperation({
             timestamp: timestamp ?? new Date(),
         })
         .returning({ id: operations.id });
+    await bustScheduleCache();
     return result.id;
 }
 
@@ -699,6 +731,7 @@ export async function acceptOperation(id: number) {
         .update(operations)
         .set({ isAccepted: true })
         .where(eq(operations.id, id));
+    await bustScheduleCache();
 }
 
 export async function deleteOperation(id: number) {
@@ -706,6 +739,7 @@ export async function deleteOperation(id: number) {
         .update(operations)
         .set({ isDeleted: true })
         .where(eq(operations.id, id));
+    await bustScheduleCache();
 }
 
 async function getCompletedOperationsByCompletionDate(filter: {

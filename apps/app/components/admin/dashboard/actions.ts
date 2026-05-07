@@ -11,6 +11,7 @@ import {
     getPlantUpdateEvents,
     getSunflowersDailyTotals,
     getUserRegistrationsByWeekday,
+    redisCached,
 } from '@gredice/storage';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 
@@ -67,6 +68,22 @@ function toDateKey(date: Date) {
     const month = `${date.getMonth() + 1}`.padStart(2, '0');
     const day = `${date.getDate()}`.padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+function cacheKeyPart(value: string | number | undefined) {
+    if (typeof value === 'undefined' || value === '') {
+        return 'none';
+    }
+
+    return encodeURIComponent(String(value));
+}
+
+function analyticsCacheKey(
+    days: number | undefined,
+    from?: string,
+    to?: string,
+) {
+    return `dashboard:admin:analytics:days:${cacheKeyPart(days)}:from:${cacheKeyPart(from)}:to:${cacheKeyPart(to)}:v1`;
 }
 
 function parseDuration(value: unknown) {
@@ -290,6 +307,21 @@ function getRangeDays(startDate: Date, endDate: Date) {
 }
 
 export async function getAnalyticsData(
+    days: number | undefined,
+    from?: string,
+    to?: string,
+) {
+    return redisCached(
+        analyticsCacheKey(days, from, to),
+        () => getAnalyticsDataUncached(days, from, to),
+        {
+            ttl: 60,
+            maxPayloadBytes: 2 * 1024 * 1024,
+        },
+    );
+}
+
+async function getAnalyticsDataUncached(
     days: number | undefined,
     from?: string,
     to?: string,
