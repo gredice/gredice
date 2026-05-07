@@ -95,7 +95,7 @@ jobs:
           body_marker_count="$(jq --arg marker "$MARKER" -r 'if (.body // "") | contains($marker) then 1 else 0 end' <<< "$pr")"
           comment_marker_count="$(
             gh api --paginate "repos/$REPOSITORY/issues/$PR_NUMBER/comments?per_page=100" \
-              --jq "[.[] | select(.body | contains(\"$MARKER\"))] | length" \
+              --jq "[.[] | select(.user.login == \"github-actions[bot]\" and ((.body // \"\") | contains(\"$MARKER\")))] | length" \
               | awk '{ total += $1 } END { print total + 0 }'
           )"
 
