@@ -7,7 +7,8 @@
     "license": "MIT",
     "exports": {
         ".": "./src/index.ts",
-        "./entityCompleteness": "./src/helpers/entityCompleteness.ts"
+        "./entityCompleteness": "./src/helpers/entityCompleteness.ts",
+        "./entityPageSections": "./src/helpers/entityPageSections.ts"
     },
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
