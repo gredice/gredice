@@ -24,6 +24,13 @@ export type GetCmsPagesOptions = {
     includeDeleted?: boolean;
 };
 
+const supportedCmsPageSectionComponents = new Set([
+    'Heading1',
+    'Faq1',
+    'Feature1',
+    'Footer1',
+]);
+
 export function isCmsPageState(value: string): value is CmsPageState {
     return value === 'draft' || value === 'published';
 }
@@ -135,13 +142,57 @@ function pageInsertValues(input: CreateCmsPageInput): InsertCmsPage {
     return {
         slug: normalizeCmsPageSlug(input.slug),
         title,
-        content: optionalText(input.content),
+        content: normalizeCmsPageContent(input.content),
         state,
         publishedAt: state === 'published' ? new Date() : null,
         metaTitle: optionalText(input.metaTitle),
         metaDescription: optionalText(input.metaDescription),
         metaImageUrl: optionalText(input.metaImageUrl),
     };
+}
+
+function normalizeCmsPageContent(content: string | null | undefined) {
+    const normalized = optionalText(content);
+    if (!normalized) {
+        return null;
+    }
+
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(normalized);
+    } catch {
+        throw new Error(
+            'Page content must be a valid JSON array of SectionData blocks.',
+        );
+    }
+
+    if (!Array.isArray(parsed)) {
+        throw new Error(
+            'Page content must be a JSON array of SectionData blocks.',
+        );
+    }
+
+    parsed.forEach((section, index) => {
+        if (!section || typeof section !== 'object') {
+            throw new Error(
+                `Section at index ${index} must be an object with a component field.`,
+            );
+        }
+
+        if (!('component' in section) || typeof section.component !== 'string') {
+            throw new Error(
+                `Section at index ${index} must define a string component.`,
+            );
+        }
+
+        if (!supportedCmsPageSectionComponents.has(section.component)) {
+            throw new Error(
+                `Section at index ${index} has unsupported component: ${section.component}.`,
+            );
+        }
+    });
+
+    return JSON.stringify(parsed);
 }
 
 export async function getCmsPages(options: GetCmsPagesOptions = {}) {
@@ -214,7 +265,7 @@ export async function updateCmsPage(input: UpdateCmsPageInput) {
     }
 
     if (input.content !== undefined) {
-        updateData.content = optionalText(input.content);
+        updateData.content = normalizeCmsPageContent(input.content);
     }
 
     if (input.state !== undefined) {
