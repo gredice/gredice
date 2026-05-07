@@ -15,6 +15,11 @@ import {
 } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import 'server-only';
+import {
+    cacheScheduleRead,
+    scheduleCacheKeys,
+    scheduleCacheTtls,
+} from '../cache/scheduleCache';
 import { AUTO_CLOSE_WINDOW_MS } from '../helpers/timeSlotAutomation';
 import {
     accounts,
@@ -522,6 +527,33 @@ async function reconstructDeliveryRequestFromEvents(
 }
 
 export async function getDeliveryRequestsSummary(
+    accountId?: string,
+    state?: string,
+    slotId?: number,
+    fromDate?: Date,
+    toDate?: Date,
+) {
+    return cacheScheduleRead(
+        scheduleCacheKeys.deliveryRequestsSummary({
+            accountId,
+            state,
+            slotId,
+            fromDate,
+            toDate,
+        }),
+        () =>
+            getDeliveryRequestsSummaryUncached(
+                accountId,
+                state,
+                slotId,
+                fromDate,
+                toDate,
+            ),
+        scheduleCacheTtls.deliveryRequestsSummary,
+    );
+}
+
+async function getDeliveryRequestsSummaryUncached(
     accountId?: string,
     state?: string,
     slotId?: number,

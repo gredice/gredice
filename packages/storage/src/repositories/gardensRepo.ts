@@ -4,6 +4,12 @@ import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { getEntitiesFormatted, getOperations, storage } from '..';
 import type { EntityStandardized } from '../@types/EntityStandardized';
+import {
+    bustScheduleCache,
+    cacheScheduleRead,
+    scheduleCacheKeys,
+    scheduleCacheTtls,
+} from '../cache/scheduleCache';
 import { generateRaisedBedName } from '../helpers/generateRaisedBedName';
 import {
     events,
@@ -915,6 +921,7 @@ export async function createGarden(garden: InsertGarden) {
             accountId: createdGarden.accountId,
         }),
     );
+    await bustScheduleCache();
 
     return createdGarden.id;
 }
@@ -1038,6 +1045,7 @@ export async function updateGarden(garden: UpdateGarden) {
             }),
         );
     }
+    await bustScheduleCache();
 }
 
 export async function deleteGarden(gardenId: number) {
@@ -1046,6 +1054,7 @@ export async function deleteGarden(gardenId: number) {
         .set({ isDeleted: true })
         .where(eq(gardens.id, gardenId));
     await createEvent(knownEvents.gardens.deletedV1(gardenId.toString()));
+    await bustScheduleCache();
 }
 
 export async function getGardenBlocks(gardenId: number) {
@@ -1234,7 +1243,7 @@ export async function createRaisedBed(
         orientation?: RaisedBedOrientation;
     },
 ) {
-    return (
+    const result = (
         await storage()
             .insert(raisedBeds)
             .values({
@@ -1244,6 +1253,8 @@ export async function createRaisedBed(
             })
             .returning({ id: raisedBeds.id })
     )[0].id;
+    await bustScheduleCache();
+    return result;
 }
 
 export async function getRaisedBedIdsByAccount(accountId: string) {
@@ -1708,6 +1719,7 @@ export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {
         .update(raisedBeds)
         .set(raisedBed)
         .where(eq(raisedBeds.id, raisedBed.id));
+    await bustScheduleCache();
 }
 
 export async function mergeRaisedBeds(
@@ -1868,6 +1880,7 @@ export async function mergeRaisedBeds(
                 .where(eq(raisedBeds.id, targetRaisedBedId));
         }
     });
+    await bustScheduleCache();
 }
 
 export async function deleteRaisedBed(raisedBedId: number) {
@@ -1875,9 +1888,18 @@ export async function deleteRaisedBed(raisedBedId: number) {
         .update(raisedBeds)
         .set({ isDeleted: true })
         .where(eq(raisedBeds.id, raisedBedId));
+    await bustScheduleCache();
 }
 
 export async function getFarmUserRaisedBeds(userId: string) {
+    return cacheScheduleRead(
+        scheduleCacheKeys.farmUserRaisedBeds(userId),
+        () => getFarmUserRaisedBedsUncached(userId),
+        scheduleCacheTtls.raisedBeds,
+    );
+}
+
+async function getFarmUserRaisedBedsUncached(userId: string) {
     const farmRaisedBeds = await storage()
         .select({ raisedBed: raisedBeds })
         .from(raisedBeds)
@@ -1907,6 +1929,14 @@ export async function getFarmUserRaisedBeds(userId: string) {
 }
 
 export async function getAllRaisedBeds() {
+    return cacheScheduleRead(
+        scheduleCacheKeys.adminRaisedBeds(),
+        getAllRaisedBedsUncached,
+        scheduleCacheTtls.raisedBeds,
+    );
+}
+
+async function getAllRaisedBedsUncached() {
     const allRaisedBeds = await storage().query.raisedBeds.findMany({
         where: and(eq(raisedBeds.isDeleted, false)),
     });
@@ -2116,6 +2146,7 @@ export async function upsertRaisedBedField(
     await storage().transaction(async (tx) => {
         await syncRaisedBedFieldRow(tx, field);
     });
+    await bustScheduleCache();
 }
 
 export async function moveRaisedBedFieldPlantHistory({
@@ -2140,7 +2171,7 @@ export async function moveRaisedBedFieldPlantHistory({
     const sourceAggregateId = `${raisedBedId.toString()}|${sourcePositionIndex.toString()}`;
     const targetAggregateId = `${raisedBedId.toString()}|${targetPositionIndex.toString()}`;
 
-    return storage().transaction(async (tx) => {
+    const result = await storage().transaction(async (tx) => {
         const sourceFieldRows = await getRaisedBedFieldRowsAtPosition(
             tx,
             raisedBedId,
@@ -2205,6 +2236,8 @@ export async function moveRaisedBedFieldPlantHistory({
             swapped: shouldSwap,
         };
     });
+    await bustScheduleCache();
+    return result;
 }
 
 export async function deleteRaisedBedField(
@@ -2221,6 +2254,7 @@ export async function deleteRaisedBedField(
                 eq(raisedBedFields.isDeleted, false),
             ),
         );
+    await bustScheduleCache();
 }
 
 export async function getRaisedBedSensors(raisedBedId: number) {

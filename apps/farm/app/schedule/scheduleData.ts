@@ -1,10 +1,13 @@
 import 'server-only';
 
 import {
+    cacheScheduleRead,
     type EntityStandardized,
     getEntitiesFormatted,
     getFarmUserAcceptedOperations,
     getFarmUserRaisedBeds,
+    scheduleCacheKeys,
+    scheduleCacheTtls,
 } from '@gredice/storage';
 import { cache } from 'react';
 
@@ -20,6 +23,18 @@ const SCHEDULE_OPERATION_STATUSES = new Set([
     'pendingVerification',
     'completed',
 ]);
+
+function startOfToday() {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date;
+}
+
+function startOfDaysAgo(days: number) {
+    const date = startOfToday();
+    date.setDate(date.getDate() - days);
+    return date;
+}
 
 function dedupeById<T extends { id: number }>(items: T[]) {
     return Array.from(new Map(items.map((item) => [item.id, item])).values());
@@ -138,34 +153,35 @@ export const getFarmScheduleOperationsData = cache(async () => {
 });
 
 export const getFarmScheduleOperations = cache(async (userId: string) => {
-    const [newOrScheduledOperations, completedOperationsTodayOrLater] =
-        await Promise.all([
-            getFarmUserAcceptedOperations(userId, {
-                from: new Date(
-                    new Date().setDate(
-                        new Date().getDate() - operationsBackDays,
-                    ),
-                ),
-                status: ['new', 'planned'],
-            }),
-            getFarmUserAcceptedOperations(userId, {
-                completedFrom: new Date(
-                    new Date().setDate(
-                        new Date().getDate() - operationsBackDays,
-                    ),
-                ),
-                status: ['pendingVerification', 'completed'],
-            }),
-        ]);
+    const from = startOfDaysAgo(operationsBackDays);
 
-    const operations = [
-        ...newOrScheduledOperations,
-        ...completedOperationsTodayOrLater,
-    ].sort(
-        (left, right) => right.timestamp.getTime() - left.timestamp.getTime(),
+    return cacheScheduleRead(
+        scheduleCacheKeys.farmUserActiveOperations(userId, from),
+        async () => {
+            const [newOrScheduledOperations, completedOperationsTodayOrLater] =
+                await Promise.all([
+                    getFarmUserAcceptedOperations(userId, {
+                        from,
+                        status: ['new', 'planned'],
+                    }),
+                    getFarmUserAcceptedOperations(userId, {
+                        completedFrom: from,
+                        status: ['pendingVerification', 'completed'],
+                    }),
+                ]);
+
+            const operations = [
+                ...newOrScheduledOperations,
+                ...completedOperationsTodayOrLater,
+            ].sort(
+                (left, right) =>
+                    right.timestamp.getTime() - left.timestamp.getTime(),
+            );
+
+            return dedupeById(operations);
+        },
+        scheduleCacheTtls.operations,
     );
-
-    return dedupeById(operations);
 });
 
 export const getFarmScheduleDayData = cache(
@@ -174,24 +190,30 @@ export const getFarmScheduleDayData = cache(
         dateKey: string,
         isToday: boolean,
     ): Promise<FarmScheduleDayData> => {
-        const date = new Date(dateKey);
-        const [raisedBeds, operations] = await Promise.all([
-            getFarmScheduleRaisedBeds(userId),
-            getFarmScheduleOperations(userId),
-        ]);
+        return cacheScheduleRead(
+            scheduleCacheKeys.farmUserDay(userId, dateKey, isToday),
+            async () => {
+                const date = new Date(dateKey);
+                const [raisedBeds, operations] = await Promise.all([
+                    getFarmScheduleRaisedBeds(userId),
+                    getFarmScheduleOperations(userId),
+                ]);
 
-        return {
-            raisedBeds,
-            scheduledFields: getScheduledFieldsForDay(
-                isToday,
-                date,
-                raisedBeds,
-            ),
-            scheduledOperations: getScheduledOperationsForDay(
-                isToday,
-                date,
-                operations,
-            ),
-        };
+                return {
+                    raisedBeds,
+                    scheduledFields: getScheduledFieldsForDay(
+                        isToday,
+                        date,
+                        raisedBeds,
+                    ),
+                    scheduledOperations: getScheduledOperationsForDay(
+                        isToday,
+                        date,
+                        operations,
+                    ),
+                };
+            },
+            scheduleCacheTtls.day,
+        );
     },
 );

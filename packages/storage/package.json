@@ -6,7 +6,8 @@
     "type": "module",
     "license": "MIT",
     "exports": {
-        ".": "./src/index.ts"
+        ".": "./src/index.ts",
+        "./entityCompleteness": "./src/helpers/entityCompleteness.ts"
     },
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",

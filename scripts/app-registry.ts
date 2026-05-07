@@ -67,7 +67,7 @@ export const appRegistry: AppRegistryEntry[] = [
     {
         name: 'storybook',
         packagePath: 'apps/storybook',
-        localDomain: 'storybook.gredice.test',
+        localDomain: 'storybook.dev.gredice.test',
         devPort: 3004,
         startPort: 3004,
         testPort: 3004,

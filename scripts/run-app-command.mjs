@@ -9,6 +9,7 @@ import { getAppByPackagePath } from './app-registry.ts';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
 const commandName = process.argv[2];
+const forwardedArgs = process.argv.slice(3);
 const currentPackagePath = relative(repoRoot, process.cwd()).replaceAll(
     '\\',
     '/',
@@ -33,7 +34,13 @@ function commandForApp() {
         if (commandName === 'dev' || commandName === 'storybook') {
             return {
                 command: 'storybook',
-                args: ['dev', '-p', String(app.devPort), '--no-open'],
+                args: [
+                    'dev',
+                    '-p',
+                    String(app.devPort),
+                    '--no-open',
+                    ...forwardedArgs,
+                ],
             };
         }
 
@@ -43,14 +50,14 @@ function commandForApp() {
     if (commandName === 'dev') {
         return {
             command: 'next',
-            args: ['dev', '-p', String(app.devPort)],
+            args: ['dev', '-p', String(app.devPort), ...forwardedArgs],
         };
     }
 
     if (commandName === 'start') {
         return {
             command: 'next',
-            args: ['start', '-p', String(app.startPort)],
+            args: ['start', '-p', String(app.startPort), ...forwardedArgs],
         };
     }
 
