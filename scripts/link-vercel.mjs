@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { appRegistry } from './app-registry.ts';
 
 const vercelCommand = 'vercel';
-const vercelTeam = 'gredice';
+const vercelScope = 'gredice';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
 const vercelApps = appRegistry.filter((app) => app.vercelProjectName);
@@ -29,7 +29,22 @@ function run(command, args, options) {
         const spawnOptions = getSpawnOptions(command, args);
         const child = spawn(spawnOptions.command, spawnOptions.args, {
             ...options,
-            stdio: options?.stdio ?? 'inherit',
+            stdio: ['ignore', 'pipe', 'pipe'],
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        child.stdout?.on('data', (chunk) => {
+            const text = chunk.toString();
+            stdout += text;
+            process.stdout.write(text);
+        });
+
+        child.stderr?.on('data', (chunk) => {
+            const text = chunk.toString();
+            stderr += text;
+            process.stderr.write(text);
         });
 
         child.on('error', (error) => {
@@ -37,19 +52,48 @@ function run(command, args, options) {
         });
 
         child.on('close', (code) => {
-            resolvePromise(code ?? 1);
+            resolvePromise({ code: code ?? 1, stdout, stderr });
         });
     });
 }
 
 async function hasVercelCli() {
     const command = process.platform === 'win32' ? 'where.exe' : 'which';
-    const code = await run(command, [vercelCommand], {
+    const result = await run(command, [vercelCommand], {
         env: process.env,
-        stdio: 'ignore',
     });
 
-    return code === 0;
+    return result.code === 0;
+}
+
+function explainFailure(output, appName, projectName) {
+    const combinedOutput = output.toLowerCase();
+
+    if (
+        combinedOutput.includes('not logged in') ||
+        combinedOutput.includes('authentication') ||
+        combinedOutput.includes('token')
+    ) {
+        return `${appName}: authentication failed. Run \`vercel login\` (or provide \`--token\`) and retry.`;
+    }
+
+    if (
+        combinedOutput.includes('scope') ||
+        combinedOutput.includes('team') ||
+        combinedOutput.includes('forbidden') ||
+        combinedOutput.includes('unauthorized')
+    ) {
+        return `${appName}: cannot access Vercel scope \`${vercelScope}\`. Verify your account has access to the team.`;
+    }
+
+    if (
+        combinedOutput.includes('project') &&
+        (combinedOutput.includes('not found') || combinedOutput.includes('could not'))
+    ) {
+        return `${appName}: could not resolve Vercel project \`${projectName}\`. Verify app registry project names.`;
+    }
+
+    return `${appName}: link command failed. See output above for details.`;
 }
 
 async function main() {
@@ -62,16 +106,16 @@ async function main() {
 
     for (const app of vercelApps) {
         const cwd = resolve(repoRoot, app.packagePath);
-        console.log(`\nLinking ${app.name} to Vercel...`);
+        console.log(`\nLinking ${app.name} to Vercel project ${app.vercelProjectName}...`);
 
-        const code = await run(
+        const result = await run(
             vercelCommand,
             [
                 'link',
                 '--yes',
                 '--non-interactive',
-                '--team',
-                vercelTeam,
+                '--scope',
+                vercelScope,
                 '--project',
                 app.vercelProjectName,
             ],
@@ -81,9 +125,10 @@ async function main() {
             },
         );
 
-        if (code !== 0) {
-            console.error(`Vercel link failed for ${app.name}.`);
-            process.exit(code ?? 1);
+        if (result.code !== 0) {
+            const output = `${result.stdout}\n${result.stderr}`;
+            console.error(explainFailure(output, app.name, app.vercelProjectName));
+            process.exit(result.code ?? 1);
         }
     }
 
