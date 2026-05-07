@@ -2,6 +2,7 @@ import vercelToolbar from '@vercel/toolbar/plugins/next';
 import type { NextConfig } from 'next';
 import {
     getAppByName,
+    getAppDevPort,
     localAppHostnameUrl,
 } from '../../scripts/app-registry.ts';
 
@@ -56,7 +57,7 @@ const nextConfig: NextConfig = {
             process.env.NODE_ENV === 'development' ||
             process.env.NEXT_PUBLIC_VERCEL_ENV === 'development';
         const apiHost = isDev
-            ? localAppHostnameUrl(apiApp, 'localhost', apiApp.devPort)
+            ? localAppHostnameUrl(apiApp, 'localhost', getAppDevPort(apiApp))
             : 'https://api.gredice.com';
 
         return [
