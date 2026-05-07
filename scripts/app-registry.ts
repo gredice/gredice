@@ -147,6 +147,17 @@ export function getAppTestPort(app: AppRegistryEntry) {
     );
 }
 
+export function getAppStartPort(app: AppRegistryEntry) {
+    const appKey = app.name.toUpperCase();
+    return parsePortOverride(
+        process.env[`GREDICE_${appKey}_START_PORT`] ??
+            process.env.GREDICE_START_PORT ??
+            process.env[`GREDICE_${appKey}_TEST_PORT`] ??
+            process.env.GREDICE_TEST_PORT,
+        app.startPort,
+    );
+}
+
 export function getPlaywrightBaseUrl(app: AppRegistryEntry) {
     const appKey = app.name.toUpperCase();
     const override = process.env[`GREDICE_${appKey}_BASE_URL`] ?? process.env.GREDICE_TEST_BASE_URL;
