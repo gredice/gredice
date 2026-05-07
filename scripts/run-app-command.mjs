@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process';
 import os from 'node:os';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getAppByPackagePath } from './app-registry.ts';
+import { getAppByPackagePath, getAppDevPort } from './app-registry.ts';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
@@ -37,7 +37,7 @@ function commandForApp() {
                 args: [
                     'dev',
                     '-p',
-                    String(app.devPort),
+                    String(getAppDevPort(app)),
                     '--no-open',
                     ...forwardedArgs,
                 ],
@@ -50,7 +50,7 @@ function commandForApp() {
     if (commandName === 'dev') {
         return {
             command: 'next',
-            args: ['dev', '-p', String(app.devPort), ...forwardedArgs],
+            args: ['dev', '-p', String(getAppDevPort(app)), ...forwardedArgs],
         };
     }
 
