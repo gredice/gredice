@@ -63,9 +63,15 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                                 <textarea
                                     name="content"
                                     defaultValue={page?.content ?? ''}
+                                    placeholder='[{"component":"Feature1","header":"Naslov"}]'
                                     rows={10}
                                     className="block min-h-48 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 />
+                                <Typography level="body3" secondary>
+                                    Unesi JSON niz SectionData blokova (npr.
+                                    komponenta Feature1, Heading1, Faq1 ili
+                                    Footer1).
+                                </Typography>
                             </label>
                         </Stack>
 
