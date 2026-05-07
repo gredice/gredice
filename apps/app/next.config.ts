@@ -1,5 +1,7 @@
 import type { NextConfig } from 'next';
+import { getAppByName } from '../../scripts/app-registry.ts';
 
+const app = getAppByName('app');
 const nextConfig: NextConfig = {
     reactStrictMode: true,
     typedRoutes: true,
@@ -53,7 +55,7 @@ const nextConfig: NextConfig = {
         ],
     },
     productionBrowserSourceMaps: !process.env.CI,
-    allowedDevOrigins: ['app.gredice.test'],
+    allowedDevOrigins: [app.localDomain],
 };
 
 export default nextConfig;

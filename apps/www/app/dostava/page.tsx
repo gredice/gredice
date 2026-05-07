@@ -38,6 +38,7 @@ export default function DeliveryPage() {
     return (
         <Container maxWidth="md">
             <Stack>
+                <h1 className="sr-only">Dostava</h1>
                 <PageHeader
                     padded
                     header="🚚 Dostava"
@@ -263,7 +264,8 @@ export default function DeliveryPage() {
                                     }}
                                 >
                                     <strong>
-                                        {formatPrice(distanceSurchargePerKm)}/km
+                                        {formatPrice(distanceSurchargePerKm)}
+                                        /km
                                     </strong>
                                 </td>
                                 <td
@@ -277,7 +279,8 @@ export default function DeliveryPage() {
                                     </strong>{' '}
                                     +{' '}
                                     <strong>
-                                        {formatPrice(distanceSurchargePerKm)}/km
+                                        {formatPrice(distanceSurchargePerKm)}
+                                        /km
                                     </strong>
                                 </td>
                             </tr>
