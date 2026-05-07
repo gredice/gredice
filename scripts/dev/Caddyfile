@@ -49,11 +49,11 @@ https://app.gredice.test {
     }
 }
 
-http://storybook.gredice.test {
-    redir https://storybook.gredice.test{uri}
+http://storybook.dev.gredice.test {
+    redir https://storybook.dev.gredice.test{uri}
 }
 
-https://storybook.gredice.test {
+https://storybook.dev.gredice.test {
     tls internal
     reverse_proxy http://host.docker.internal:3004 {
         header_up X-Forwarded-Proto {http.request.scheme}

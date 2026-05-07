@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm';
+import { bustScheduleCache } from '../cache/scheduleCache';
 import { events } from '../schema/eventsSchema';
 import {
     gardens as dbGardens,
@@ -27,11 +28,31 @@ export async function deleteAccountWithDependencies(
     accountId: string,
     userId: string,
 ): Promise<void> {
+    let hasScheduleAffectingChanges = false;
+
+    async function bustScheduleCacheIfNeeded(context: string) {
+        if (!hasScheduleAffectingChanges) {
+            return;
+        }
+
+        try {
+            await bustScheduleCache();
+        } catch (cacheError) {
+            console.error(
+                `[AccountDelete] Error busting schedule cache ${context}:`,
+                cacheError,
+            );
+        }
+    }
+
     try {
         console.info(
             `[AccountDelete] Starting deletion for accountId=${accountId}, userId=${userId}`,
         );
         const gardens = await getAccountGardens(accountId);
+        if (gardens.length > 0) {
+            hasScheduleAffectingChanges = true;
+        }
 
         // 5-8. Deactivate raised beds
         for (const garden of gardens) {
@@ -151,6 +172,9 @@ export async function deleteAccountWithDependencies(
         const ops = await storage().query.operations.findMany({
             where: eq(operations.accountId, accountId),
         });
+        if (ops.length > 0) {
+            hasScheduleAffectingChanges = true;
+        }
         for (const op of ops) {
             await storage()
                 .update(operations)
@@ -205,6 +229,7 @@ export async function deleteAccountWithDependencies(
             `[AccountDelete] Deleting account record for accountId=${accountId}`,
         );
         await storage().delete(accounts).where(eq(accounts.id, accountId));
+        await bustScheduleCacheIfNeeded('after account deletion');
         console.info(
             `[AccountDelete] Deletion complete for accountId=${accountId}, userId=${userId}`,
         );
@@ -213,6 +238,7 @@ export async function deleteAccountWithDependencies(
             '[AccountDelete] Error deleting account with dependencies:',
             error,
         );
+        await bustScheduleCacheIfNeeded('after partial deletion');
         throw error; // Re-throw to allow retry logic if needed
     }
 }

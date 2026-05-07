@@ -6,9 +6,9 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Development Hub',
+    title: 'Razvojni centar',
     description:
-        'Centralized development, debugging, profiling, API, and collaboration resources for Gredice teams.',
+        'Središnje mjesto za razvojne alate, dijagnostiku, profiliranje, API i timsku suradnju Gredice timova.',
 };
 
 type DevelopmentResource = {
@@ -39,6 +39,10 @@ function getEnvironmentHosts(): EnvironmentHosts {
         process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'
             ? 'gredice.com'
             : 'gredice.test';
+    const storybookDomain =
+        process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'
+            ? 'dev.gredice.com'
+            : 'dev.gredice.test';
 
     return {
         app: `https://app.${domain}`,
@@ -46,7 +50,7 @@ function getEnvironmentHosts(): EnvironmentHosts {
         farm: `https://farma.${domain}`,
         garden: `https://vrt.${domain}`,
         status: `https://status.${domain}`,
-        storybook: `https://storybook.${domain}`,
+        storybook: `https://storybook.${storybookDomain}`,
         www: `https://www.${domain}`,
     };
 }
@@ -54,105 +58,105 @@ function getEnvironmentHosts(): EnvironmentHosts {
 function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
     return [
         {
-            title: 'Debug & Profiling',
+            title: 'Dijagnostika i performanse',
             description:
-                'Quick access to garden tools used for diagnosing performance and behavior.',
+                'Brzi pristup vrtnim alatima za pregled entiteta i provjeru performansi renderiranja.',
             resources: [
                 {
-                    title: 'Garden Debug',
+                    title: 'Dijagnostika vrtnih entiteta',
                     description:
-                        'Main debug surface for inspecting client behavior and runtime diagnostics.',
-                    href: `${hosts.garden}/debug`,
+                        'Mrežni prikaz za pregled vrtnih entiteta, blokova i prikazanih stanja.',
+                    href: `${hosts.garden}/debug/entities`,
                     icon: '🐞',
                 },
                 {
-                    title: 'Garden Profiling',
+                    title: 'Performanse prikaza biljaka',
                     description:
-                        'Profiling page for spotting render bottlenecks and performance regressions.',
-                    href: `${hosts.garden}/profiling`,
+                        'Gusti prikaz biljnih predložaka za uočavanje uskih grla u renderiranju i regresija performansi.',
+                    href: `${hosts.garden}/debug/plants`,
                     icon: '📈',
                 },
             ],
         },
         {
-            title: 'Product Surfaces',
+            title: 'Produktna sučelja',
             description:
-                'Open the main product environments used during development and QA.',
+                'Otvori glavna produktna okruženja koja se koriste tijekom razvoja i provjere kvalitete.',
             resources: [
                 {
                     title: 'WWW',
                     description:
-                        'Marketing website used for landing, SEO, and public pages.',
+                        'Marketinška web-stranica za odredišne, SEO i javne stranice.',
                     href: hosts.www,
                     icon: '🌐',
                 },
                 {
-                    title: 'Garden',
+                    title: 'Vrt',
                     description:
-                        'Core app for end-user garden management flows and actions.',
+                        'Glavna aplikacija za korisničke tokove i radnje upravljanja vrtom.',
                     href: hosts.garden,
                     icon: '🌱',
                 },
                 {
-                    title: 'Farm',
+                    title: 'Farma',
                     description:
-                        'Operations panel used by partners and farm-side workflows.',
+                        'Operativno sučelje za partnere i radne tokove na strani farme.',
                     href: hosts.farm,
                     icon: '🚜',
                 },
                 {
-                    title: 'App',
+                    title: 'Aplikacija',
                     description:
-                        'Internal app surface for authenticated and shared product features.',
+                        'Interno aplikacijsko sučelje za autentificirane i dijeljene produktne značajke.',
                     href: hosts.app,
                     icon: '🧩',
                 },
             ],
         },
         {
-            title: 'Platform & API',
+            title: 'Platforma i API',
             description:
-                'Backend and platform endpoints for troubleshooting integrations and incidents.',
+                'Pozadinski sustav i platformske krajnje točke za rješavanje integracija i incidenata.',
             resources: [
                 {
                     title: 'API',
                     description:
-                        'Primary API entrypoint for requests, integrations, and health checks.',
+                        'Primarna API ulazna točka za zahtjeve, integracije i provjere stanja sustava.',
                     href: hosts.api,
                     icon: '🔌',
                 },
                 {
                     title: 'Status',
                     description:
-                        'Operational status page for incidents, uptime, and maintenance notices.',
+                        'Stranica operativnog statusa za incidente, dostupnost i najave održavanja.',
                     href: hosts.status,
                     icon: '🟢',
                 },
             ],
         },
         {
-            title: 'Design, Analytics & Collaboration',
+            title: 'Dizajn, analitika i suradnja',
             description:
-                'Shared tools for component development, product analytics, and team collaboration.',
+                'Dijeljeni alati za razvoj komponenti, produktnu analitiku i timsku suradnju.',
             resources: [
                 {
                     title: 'Storybook',
                     description:
-                        'Component explorer for UI development and visual documentation.',
+                        'Preglednik komponenti za razvoj korisničkog sučelja i vizualnu dokumentaciju.',
                     href: hosts.storybook,
                     icon: '📚',
                 },
                 {
                     title: 'PostHog',
                     description:
-                        'Product analytics and feature flag insights across the platform.',
+                        'Produktna analitika i uvidi u zastavice značajki na cijeloj platformi.',
                     href: 'https://eu.posthog.com',
                     icon: '📊',
                 },
                 {
                     title: 'GitHub',
                     description:
-                        'Source control, pull requests, issue tracking, and CI visibility.',
+                        'Kontrola izvornog koda, pregledi promjena, praćenje zadataka i CI pregled.',
                     href: 'https://github.com/gredice',
                     icon: '🐙',
                 },
@@ -169,10 +173,11 @@ export default function DevelopmentPage() {
         <Container className="py-10">
             <Stack spacing={3} className="mb-8">
                 <Typography level="h2" component="h1">
-                    Development Hub
+                    Razvojni centar
                 </Typography>
                 <Typography level="body1" secondary>
-                    All debug, development, and platform resources in one place.
+                    Svi dijagnostički, razvojni i platformski resursi na jednom
+                    mjestu.
                 </Typography>
             </Stack>
 
@@ -203,7 +208,7 @@ export default function DevelopmentPage() {
                                                 <span
                                                     className="text-3xl"
                                                     role="img"
-                                                    aria-label={`${resource.title} icon`}
+                                                    aria-label={`${resource.title} ikona`}
                                                 >
                                                     {resource.icon}
                                                 </span>
@@ -224,7 +229,7 @@ export default function DevelopmentPage() {
                                                 href={resource.href}
                                                 className="w-fit"
                                             >
-                                                Open resource
+                                                Otvori resurs
                                             </NavigatingButton>
                                         </Stack>
                                     </CardContent>
