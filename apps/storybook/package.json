@@ -7,8 +7,8 @@
         "clean": "rimraf .turbo dist build out coverage .vercel storybook-static",
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
-        "dev": "storybook dev -p 3004 --no-open",
-        "storybook": "storybook dev -p 3004 --no-open",
+        "dev": "node ../../scripts/run-app-command.mjs dev",
+        "storybook": "node ../../scripts/run-app-command.mjs storybook",
         "build": "storybook build --output-dir storybook-static",
         "build-storybook": "storybook build --output-dir storybook-static"
     },
