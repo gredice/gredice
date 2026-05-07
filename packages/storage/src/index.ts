@@ -5,6 +5,7 @@ export * from './cache/redisCache';
 export * from './cache/scheduleCache';
 export * from './helpers/deliveryEmail';
 export * from './helpers/entityCompleteness';
+export * from './helpers/entityPageSections';
 export * from './helpers/timeSlotAutomation';
 export * from './helpers/timezoneUtils';
 export * from './repositories/accountDeletionRepo';

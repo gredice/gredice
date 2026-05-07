@@ -1,3 +1,6 @@
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 export type AppName =
     | 'www'
     | 'garden'
@@ -98,6 +101,48 @@ export const appRegistry: AppRegistryEntry[] = [
         startsInDefaultDev: false,
     },
 ];
+
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(scriptDir, '..');
+
+
+
+function hashString(value: string) {
+    let hash = 0;
+    for (let index = 0; index < value.length; index += 1) {
+        hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+    }
+
+    return hash;
+}
+
+export function getWorktreeId() {
+    const explicitWorktreeId = process.env.GREDICE_WORKTREE_ID?.trim();
+    if (explicitWorktreeId) {
+        return explicitWorktreeId;
+    }
+
+    return repoRoot.replaceAll('\\', '/');
+}
+
+export function getWorktreePortOffset() {
+    const explicitOffset = process.env.GREDICE_PORT_OFFSET?.trim();
+    if (!explicitOffset) {
+        const range = 200;
+        return hashString(getWorktreeId()) % range;
+    }
+
+    const parsedOffset = Number.parseInt(explicitOffset, 10);
+    if (Number.isNaN(parsedOffset) || parsedOffset < 0) {
+        throw new Error(`Invalid GREDICE_PORT_OFFSET value: ${explicitOffset}`);
+    }
+
+    return parsedOffset;
+}
+
+export function getAppDevPort(app: AppRegistryEntry) {
+    return app.devPort + getWorktreePortOffset() * 10;
+}
 
 export function getAppByName(appName: AppName) {
     const app = appRegistry.find((candidate) => candidate.name === appName);
