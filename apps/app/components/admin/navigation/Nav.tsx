@@ -206,6 +206,7 @@ export function Nav({
         pathname,
         adminPages.SowingStatistics.href,
     );
+    const cmsPagesActive = isSelectedPath(pathname, adminPages.CmsPages.href);
 
     return (
         <div className={navClassName}>
@@ -230,97 +231,116 @@ export function Nav({
                     />
                 ))}
             </div>
-            {hasDirectoryRecords && (
-                <NavSection label="Zapisi" compact={compact}>
-                    {/* Categories with their entity types */}
-                    {categorizedTypes.map((category) => (
-                        <NavGroup
-                            key={category.id}
-                            label={category.label}
-                            icon={
-                                <EntityTypeIcon
-                                    icon={category.icon}
-                                    className="size-5"
-                                />
-                            }
-                            forceOpen={category.entityTypes.some((entityType) =>
-                                isSelectedPath(
-                                    pathname,
-                                    KnownPages.DirectoryEntityType(
-                                        entityType.name,
-                                    ),
-                                ),
-                            )}
-                            compact={compact}
-                        >
-                            <EntityTypeList
-                                id={`${idPrefix}-category-${category.id}`}
-                                items={category.entityTypes}
-                                onItemClick={onItemClick}
+            <NavSection label="Zapisi" compact={compact}>
+                <NavGroup
+                    label="CMS"
+                    icon={<File className="size-5" />}
+                    forceOpen={cmsPagesActive}
+                    compact={compact}
+                >
+                    <NavItem
+                        href={adminPages.CmsPages.href}
+                        label={adminPages.CmsPages.label}
+                        icon={<File className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                </NavGroup>
+                {hasDirectoryRecords && (
+                    <>
+                        {/* Categories with their entity types */}
+                        {categorizedTypes.map((category) => (
+                            <NavGroup
+                                key={category.id}
+                                label={category.label}
+                                icon={
+                                    <EntityTypeIcon
+                                        icon={category.icon}
+                                        className="size-5"
+                                    />
+                                }
+                                forceOpen={category.entityTypes.some(
+                                    (entityType) =>
+                                        isSelectedPath(
+                                            pathname,
+                                            KnownPages.DirectoryEntityType(
+                                                entityType.name,
+                                            ),
+                                        ),
+                                )}
                                 compact={compact}
-                            />
-                        </NavGroup>
-                    ))}
-
-                    {uncategorizedTypes.length > 0 && (
-                        <NavGroup
-                            label="Nekategorizirano"
-                            icon={<File className="size-5" />}
-                            forceOpen={uncategorizedTypes.some((entityType) =>
-                                isSelectedPath(
-                                    pathname,
-                                    KnownPages.DirectoryEntityType(
-                                        entityType.name,
-                                    ),
-                                ),
-                            )}
-                            compact={compact}
-                        >
-                            <EntityTypeList
-                                id={`${idPrefix}-uncategorized`}
-                                items={uncategorizedTypes}
-                                onItemClick={onItemClick}
-                                compact={compact}
-                            />
-                        </NavGroup>
-                    )}
-
-                    {shadowTypes.length > 0 && (
-                        <NavGroup
-                            label="Ostalo"
-                            icon={<File className="size-5" />}
-                            forceOpen={shadowTypes.some((entityType) =>
-                                isSelectedPath(
-                                    pathname,
-                                    KnownPages.DirectoryEntityType(
-                                        entityType.name,
-                                    ),
-                                ),
-                            )}
-                            compact={compact}
-                        >
-                            {shadowTypes.map((entityType) => (
-                                <NavItem
-                                    key={entityType.id}
-                                    href={KnownPages.DirectoryEntityType(
-                                        entityType.name,
-                                    )}
-                                    label={entityType.label}
-                                    icon={
-                                        <EntityTypeIcon
-                                            icon={entityType.icon}
-                                            className="size-5"
-                                        />
-                                    }
-                                    onClick={onItemClick}
+                            >
+                                <EntityTypeList
+                                    id={`${idPrefix}-category-${category.id}`}
+                                    items={category.entityTypes}
+                                    onItemClick={onItemClick}
                                     compact={compact}
-                                    nested
                                 />
-                            ))}
-                        </NavGroup>
-                    )}
-                </NavSection>
-            )}
+                            </NavGroup>
+                        ))}
+
+                        {uncategorizedTypes.length > 0 && (
+                            <NavGroup
+                                label="Nekategorizirano"
+                                icon={<File className="size-5" />}
+                                forceOpen={uncategorizedTypes.some(
+                                    (entityType) =>
+                                        isSelectedPath(
+                                            pathname,
+                                            KnownPages.DirectoryEntityType(
+                                                entityType.name,
+                                            ),
+                                        ),
+                                )}
+                                compact={compact}
+                            >
+                                <EntityTypeList
+                                    id={`${idPrefix}-uncategorized`}
+                                    items={uncategorizedTypes}
+                                    onItemClick={onItemClick}
+                                    compact={compact}
+                                />
+                            </NavGroup>
+                        )}
+
+                        {shadowTypes.length > 0 && (
+                            <NavGroup
+                                label="Ostalo"
+                                icon={<File className="size-5" />}
+                                forceOpen={shadowTypes.some((entityType) =>
+                                    isSelectedPath(
+                                        pathname,
+                                        KnownPages.DirectoryEntityType(
+                                            entityType.name,
+                                        ),
+                                    ),
+                                )}
+                                compact={compact}
+                            >
+                                {shadowTypes.map((entityType) => (
+                                    <NavItem
+                                        key={entityType.id}
+                                        href={KnownPages.DirectoryEntityType(
+                                            entityType.name,
+                                        )}
+                                        label={entityType.label}
+                                        icon={
+                                            <EntityTypeIcon
+                                                icon={entityType.icon}
+                                                className="size-5"
+                                            />
+                                        }
+                                        onClick={onItemClick}
+                                        compact={compact}
+                                        nested
+                                    />
+                                ))}
+                            </NavGroup>
+                        )}
+                    </>
+                )}
+            </NavSection>
             <NavSection label="Administracija" compact={compact}>
                 <NavGroup
                     label="Korisnici"

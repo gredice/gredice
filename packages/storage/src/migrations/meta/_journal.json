@@ -169,6 +169,13 @@
       "when": 1777903297119,
       "tag": "0023_living_mephistopheles",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1778107460345,
+      "tag": "0024_salty_bullseye",
+      "breakpoints": true
     }
   ]
 }
