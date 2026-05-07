@@ -35,14 +35,14 @@ Gredice is a Turborepo monorepo for the Gredice platform. It includes the public
 Use [Node.js](https://nodejs.org/en/) `>=24`, [pnpm](https://pnpm.io/) `10.33.2`, [Docker](https://www.docker.com/), and the [Vercel CLI](https://vercel.com/download).
 
 ```bash
-pnpm setup
+pnpm bootstrap
 pnpm doctor
 pnpm dev
 ```
 
 The default dev command starts the main apps through local HTTPS domains such as `https://www.gredice.test`, `https://vrt.gredice.test`, and `https://api.gredice.test`. The `status` app is not part of the default dev stack; start it with `pnpm --filter=status dev` when working on the status page.
 
-`pnpm setup` prepares a fresh worktree as far as local permissions and credentials allow.
+`pnpm bootstrap` prepares a fresh worktree as far as local permissions and credentials allow.
 `pnpm doctor` runs the same checks in read-only mode and exits non-zero when required dependencies are missing.
 
 For local domains, certificates, environment files, generated assets, and detailed commands, see [WORKSPACE.md](./WORKSPACE.md).

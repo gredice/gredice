@@ -17,8 +17,8 @@
         "test": "turbo test",
         "generate:models-types": "turbo generate:models-types",
         "generate:game-assets": "node ./scripts/generate-game-assets.mjs",
-        "setup": "node ./scripts/worktree-health.mjs setup",
-        "doctor": "node ./scripts/worktree-health.mjs doctor"
+        "doctor": "node ./scripts/worktree-health.mjs doctor",
+        "bootstrap": "node ./scripts/worktree-health.mjs setup"
     },
     "devDependencies": {
         "rimraf": "6.1.3",
