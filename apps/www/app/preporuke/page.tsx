@@ -1,6 +1,11 @@
+import type { Metadata } from 'next';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 
+export const metadata: Metadata = {
+    title: 'Preporuke',
+    description: 'Program preporuka i pravila za dijeljenje referral koda.',
+};
 export default function ReferralsLandingPage() {
     return (
         <main className="container py-10">
