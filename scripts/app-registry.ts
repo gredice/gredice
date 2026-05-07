@@ -41,7 +41,7 @@ export const appRegistry: AppRegistryEntry[] = [
         devPort: 3001,
         startPort: 3001,
         testPort: 3001,
-        componentTestPort: 3100,
+        componentTestPort: 3101,
         vercelProjectName: 'garden',
         startsInDefaultDev: true,
     },
@@ -52,7 +52,7 @@ export const appRegistry: AppRegistryEntry[] = [
         devPort: 3002,
         startPort: 3002,
         testPort: 3002,
-        componentTestPort: 3100,
+        componentTestPort: 3102,
         vercelProjectName: 'farm',
         startsInDefaultDev: true,
     },
@@ -63,7 +63,7 @@ export const appRegistry: AppRegistryEntry[] = [
         devPort: 3003,
         startPort: 3003,
         testPort: 3003,
-        componentTestPort: 3100,
+        componentTestPort: 3103,
         vercelProjectName: 'app',
         startsInDefaultDev: true,
     },
@@ -171,10 +171,60 @@ export function localAppUrl(app: AppRegistryEntry, port = app.testPort) {
     return localAppHostnameUrl(app, '127.0.0.1', port);
 }
 
+function parsePortOverride(value: string | undefined, fallback: number) {
+    if (!value) {
+        return fallback;
+    }
+
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isNaN(parsed) || parsed < 1 || parsed > 65_535) {
+        throw new Error(`Invalid port override: ${value}`);
+    }
+
+    return parsed;
+}
+
+export function getAppTestPort(app: AppRegistryEntry) {
+    const appKey = app.name.toUpperCase();
+    return parsePortOverride(
+        process.env[`GREDICE_${appKey}_TEST_PORT`] ?? process.env.GREDICE_TEST_PORT,
+        app.testPort,
+    );
+}
+
+export function getAppStartPort(app: AppRegistryEntry) {
+    const appKey = app.name.toUpperCase();
+    return parsePortOverride(
+        process.env[`GREDICE_${appKey}_START_PORT`] ??
+            process.env.GREDICE_START_PORT ??
+            process.env[`GREDICE_${appKey}_TEST_PORT`] ??
+            process.env.GREDICE_TEST_PORT,
+        app.startPort,
+    );
+}
+
+export function getPlaywrightBaseUrl(app: AppRegistryEntry) {
+    const appKey = app.name.toUpperCase();
+    const override = process.env[`GREDICE_${appKey}_BASE_URL`] ?? process.env.GREDICE_TEST_BASE_URL;
+    if (override) {
+        return override;
+    }
+
+    return localAppUrl(app, getAppTestPort(app));
+}
+
 export function getComponentTestPort(app: AppRegistryEntry) {
     if (app.componentTestPort === null) {
         throw new Error(`${app.name} does not define a component test port.`);
     }
 
-    return app.componentTestPort;
+    const appKey = app.name.toUpperCase();
+    return parsePortOverride(
+        process.env[`GREDICE_${appKey}_CT_PORT`] ?? process.env.GREDICE_CT_PORT,
+        app.componentTestPort,
+    );
+}
+
+export function shouldReusePlaywrightServer() {
+    return process.env.CI ? false : process.env.GREDICE_PLAYWRIGHT_REUSE_SERVER === 'true';
 }
