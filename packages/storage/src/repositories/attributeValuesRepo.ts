@@ -1,7 +1,11 @@
 import 'server-only';
 import { eq } from 'drizzle-orm';
 import { getAttributeDefinition, storage } from '..';
-import { bustCached, cacheKeys } from '../cache/directoriesCached';
+import {
+    bustCached,
+    bustCachedByPrefixes,
+    cacheKeys,
+} from '../cache/directoriesCached';
 import { attributeValues, type InsertAttributeValue } from '../schema';
 
 export async function upsertAttributeValue(
@@ -33,6 +37,15 @@ export async function upsertAttributeValue(
                     value,
                 },
             }),
+        attributeValue.entityId
+            ? bustCached(cacheKeys.entity(attributeValue.entityId))
+            : undefined,
+        attributeValue.entityTypeName
+            ? bustCached(
+                  cacheKeys.entityTypeName(attributeValue.entityTypeName),
+              )
+            : undefined,
+        bustCachedByPrefixes(['dashboard:admin:']),
         // Bust cache if value exists
         attributeValue.id
             ? storage()
@@ -85,6 +98,7 @@ export async function deleteAttributeValue(id: number) {
                               ),
                           )
                         : undefined,
+                    bustCachedByPrefixes(['dashboard:admin:']),
                 ]);
             }),
     ]);

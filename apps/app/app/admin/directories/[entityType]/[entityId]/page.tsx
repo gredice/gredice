@@ -7,6 +7,7 @@ import {
     getInventoryItemsByConfig,
     updateInventoryItem,
 } from '@gredice/storage';
+import { getEntityCompleteness } from '@gredice/storage/entityCompleteness';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -142,20 +143,11 @@ export default async function EntityDetailsPage(props: {
     }
 
     const displayDefinitions = attributeDefinitions.filter((d) => d.display);
-    const populatedAttributeDefinitionIds = new Set(
-        entity.attributes
-            .filter((attribute) => (attribute.value?.length ?? 0) > 0)
-            .map((attribute) => attribute.attributeDefinitionId),
-    );
+    const completeness = getEntityCompleteness(entity, attributeDefinitions);
     const categoriesWithMissingRequiredAttributes = new Set(
-        attributeDefinitions
-            .filter(
-                (definition) =>
-                    definition.required &&
-                    !definition.defaultValue &&
-                    !populatedAttributeDefinitionIds.has(definition.id),
-            )
-            .map((definition) => definition.category),
+        completeness.missingRequiredDefinitions.map(
+            (definition) => definition.category,
+        ),
     );
 
     return (
