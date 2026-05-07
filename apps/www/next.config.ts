@@ -43,6 +43,10 @@ const nextConfig: NextConfig = {
                 headers: assetCacheHeaders,
             },
             {
+                source: '/assets/plants/:path*',
+                headers: assetCacheHeaders,
+            },
+            {
                 source: '/assets/sprites/:path*',
                 headers: assetCacheHeaders,
             },
