@@ -6,10 +6,15 @@ import {
     bustCachedByPrefixes,
     cacheKeys,
 } from '../cache/directoriesCached';
-import { attributeValues, type InsertAttributeValue } from '../schema';
+import {
+    attributeValues,
+    entityRevisions,
+    type InsertAttributeValue,
+} from '../schema';
 
 export async function upsertAttributeValue(
     attributeValue: InsertAttributeValue,
+    actor?: { id?: string; name?: string },
 ) {
     let value = attributeValue.value;
 
@@ -22,6 +27,12 @@ export async function upsertAttributeValue(
             value = definition.defaultValue;
         }
     }
+
+    const existingValue = attributeValue.id
+        ? await storage().query.attributeValues.findFirst({
+              where: eq(attributeValues.id, attributeValue.id),
+          })
+        : undefined;
 
     await Promise.all([
         storage()
@@ -37,6 +48,24 @@ export async function upsertAttributeValue(
                     value,
                 },
             }),
+        attributeValue.entityId
+            ? storage()
+                  .insert(entityRevisions)
+                  .values({
+                      entityId: attributeValue.entityId,
+                      entityTypeName: attributeValue.entityTypeName,
+                      action: existingValue
+                          ? 'attribute.updated'
+                          : 'attribute.created',
+                      actorId: actor?.id,
+                      actorName: actor?.name,
+                      attributeValueId: attributeValue.id,
+                      attributeDefinitionId:
+                          attributeValue.attributeDefinitionId,
+                      previousValue: existingValue?.value ?? null,
+                      nextValue: value ?? null,
+                  })
+            : undefined,
         attributeValue.entityId
             ? bustCached(cacheKeys.entity(attributeValue.entityId))
             : undefined,
@@ -74,12 +103,28 @@ export async function upsertAttributeValue(
     ]);
 }
 
-export async function deleteAttributeValue(id: number) {
+export async function deleteAttributeValue(
+    id: number,
+    actor?: { id?: string; name?: string },
+) {
     await Promise.all([
         storage()
             .update(attributeValues)
             .set({ isDeleted: true })
             .where(eq(attributeValues.id, id)),
+        existingValue
+            ? storage().insert(entityRevisions).values({
+                  entityId: existingValue.entityId,
+                  entityTypeName: existingValue.entityTypeName,
+                  action: 'attribute.deleted',
+                  actorId: actor?.id,
+                  actorName: actor?.name,
+                  attributeValueId: existingValue.id,
+                  attributeDefinitionId: existingValue.attributeDefinitionId,
+                  previousValue: existingValue.value,
+                  nextValue: null,
+              })
+            : undefined,
         storage()
             .select()
             .from(attributeValues)
