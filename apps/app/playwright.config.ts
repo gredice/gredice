@@ -6,7 +6,8 @@ import {
 import {
     getAppByName,
     getComponentTestPort,
-    localAppUrl,
+    getPlaywrightBaseUrl,
+    shouldReusePlaywrightServer,
 } from '../../scripts/app-registry.ts';
 
 const app = getAppByName('app');
@@ -25,7 +26,7 @@ export const config: PlaywrightTestConfig = {
     workers: process.env.CI ? 1 : undefined,
     reporter,
     use: {
-        baseURL: localAppUrl(app),
+        baseURL: getPlaywrightBaseUrl(app),
         trace: 'on-first-retry',
         ctPort: getComponentTestPort(app),
     },
@@ -37,8 +38,8 @@ export const config: PlaywrightTestConfig = {
     ],
     webServer: {
         command: 'pnpm start',
-        url: localAppUrl(app),
-        reuseExistingServer: !process.env.CI,
+        url: getPlaywrightBaseUrl(app),
+        reuseExistingServer: shouldReusePlaywrightServer(),
     },
 };
 
