@@ -117,3 +117,52 @@ test('CMS page slugs reject reserved static route conflicts', async () => {
         /reserved route/,
     );
 });
+
+test('CMS page content stores valid SectionData JSON payload', async () => {
+    createTestDb();
+    const sectionData = [
+        {
+            component: 'Feature1',
+            header: 'Naslov',
+            description: 'Opis',
+        },
+        {
+            component: 'Faq1',
+            items: [{ question: 'Pitanje', answer: 'Odgovor' }],
+        },
+    ];
+
+    const pageId = await createCmsPage({
+        slug: `section-data-${randomUUID()}`,
+        title: 'Section data page',
+        content: JSON.stringify(sectionData),
+    });
+
+    const page = await getCmsPage(pageId);
+    assert.equal(page?.content, JSON.stringify(sectionData));
+});
+
+test('CMS page content rejects invalid SectionData JSON payload', async () => {
+    createTestDb();
+    const slug = `invalid-section-data-${randomUUID()}`;
+
+    await assert.rejects(
+        () =>
+            createCmsPage({
+                slug,
+                title: 'Invalid section data page',
+                content: '{"component":"Feature1"}',
+            }),
+        /JSON array of SectionData blocks/,
+    );
+
+    await assert.rejects(
+        () =>
+            createCmsPage({
+                slug: `${slug}-component`,
+                title: 'Invalid component page',
+                content: JSON.stringify([{ component: 'Unknown1' }]),
+            }),
+        /unsupported component/,
+    );
+});
