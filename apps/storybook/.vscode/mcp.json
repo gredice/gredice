@@ -2,7 +2,7 @@
     "servers": {
         "gredice-storybook-mcp": {
             "type": "http",
-            "url": "https://storybook.gredice.test/mcp"
+            "url": "https://storybook.dev.gredice.test/mcp"
         }
     }
 }

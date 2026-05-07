@@ -3,7 +3,9 @@ import {
     devices,
     type PlaywrightTestConfig,
 } from '@playwright/test';
+import { getAppByName, localAppUrl } from '../../scripts/app-registry.ts';
 
+const app = getAppByName('api');
 const reporter: PlaywrightTestConfig['reporter'] = [
     ['list'],
     ['html', { open: 'never' }],
@@ -19,7 +21,7 @@ export const config: PlaywrightTestConfig = {
     workers: process.env.CI ? 1 : undefined,
     reporter,
     use: {
-        baseURL: 'http://127.0.0.1:3005',
+        baseURL: localAppUrl(app),
         trace: 'on-first-retry',
     },
     projects: [
@@ -30,7 +32,7 @@ export const config: PlaywrightTestConfig = {
     ],
     webServer: {
         command: 'pnpm start',
-        url: 'http://127.0.0.1:3005',
+        url: localAppUrl(app),
         reuseExistingServer: !process.env.CI,
     },
 };

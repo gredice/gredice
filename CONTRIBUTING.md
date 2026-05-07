@@ -30,7 +30,7 @@ The default dev command starts the main apps through local HTTPS domains:
 - `apps/garden`: <https://vrt.gredice.test>
 - `apps/farm`: <https://farma.gredice.test>
 - `apps/app`: <https://app.gredice.test>
-- `apps/storybook`: <https://storybook.gredice.test>
+- `apps/storybook`: <https://storybook.dev.gredice.test>
 - `apps/api`: <https://api.gredice.test>
 
 The `status` app is not part of the default dev stack. Start it separately when needed:

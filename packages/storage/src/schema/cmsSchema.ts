@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
     boolean,
     index,
@@ -7,6 +7,7 @@ import {
     serial,
     text,
     timestamp,
+    uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
 export const attributeDefinitionCategories = pgTable(
@@ -291,3 +292,41 @@ export type UpdateEntity = Partial<
 > &
     Pick<typeof entities.$inferSelect, 'id'>;
 export type SelectEntity = typeof entities.$inferSelect;
+
+export const cmsPages = pgTable(
+    'cms_pages',
+    {
+        id: serial('id').primaryKey(),
+        slug: text('slug').notNull(),
+        title: text('title').notNull(),
+        content: text('content'),
+        state: text('state').notNull().default('draft'),
+        publishedAt: timestamp('published_at'),
+        metaTitle: text('meta_title'),
+        metaDescription: text('meta_description'),
+        metaImageUrl: text('meta_image_url'),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .$onUpdate(() => new Date()),
+        isDeleted: boolean('is_deleted').notNull().default(false),
+    },
+    (table) => [
+        uniqueIndex('cms_pages_slug_active_uq')
+            .on(table.slug)
+            .where(sql`${table.isDeleted} = false`),
+        index('cms_pages_state_idx').on(table.state),
+        index('cms_pages_published_at_idx').on(table.publishedAt),
+        index('cms_pages_is_deleted_idx').on(table.isDeleted),
+    ],
+);
+
+export type InsertCmsPage = typeof cmsPages.$inferInsert;
+export type UpdateCmsPage = Partial<
+    Omit<
+        typeof cmsPages.$inferInsert,
+        'id' | 'createdAt' | 'updatedAt' | 'isDeleted'
+    >
+> &
+    Pick<typeof cmsPages.$inferSelect, 'id'>;
+export type SelectCmsPage = typeof cmsPages.$inferSelect;
