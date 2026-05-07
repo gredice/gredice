@@ -6,6 +6,12 @@
   Tools for growing thriving gardens through collaborative planning, simulation, and automation.
 </p>
 
+<p align="center">
+  <a href="https://linear.app/gredice">
+    <img src="https://img.shields.io/badge/Linear-Gredice-5E6AD2?logo=linear&logoColor=white" alt="Linear project">
+  </a>
+</p>
+
 ---
 
 ## Overview
