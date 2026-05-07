@@ -45,6 +45,10 @@ export default async function CmsPageDetailsPage({
 
     const { pageId } = await params;
     const id = Number.parseInt(pageId, 10);
+    if (Number.isNaN(id)) {
+        notFound();
+    }
+
     const page = await getCmsPage(id);
     if (!page) {
         notFound();

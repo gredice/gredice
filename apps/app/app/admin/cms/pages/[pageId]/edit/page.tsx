@@ -21,6 +21,10 @@ export default async function EditCmsPagePage({
 
     const { pageId } = await params;
     const id = Number.parseInt(pageId, 10);
+    if (Number.isNaN(id)) {
+        notFound();
+    }
+
     const page = await getCmsPage(id);
     if (!page) {
         notFound();
