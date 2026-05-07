@@ -1,3 +1,6 @@
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 export type AppName =
     | 'www'
     | 'garden'
@@ -99,6 +102,9 @@ export const appRegistry: AppRegistryEntry[] = [
     },
 ];
 
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(scriptDir, '..');
+
 
 
 function hashString(value: string) {
@@ -116,7 +122,7 @@ export function getWorktreeId() {
         return explicitWorktreeId;
     }
 
-    return process.cwd().replaceAll('\\', '/');
+    return repoRoot.replaceAll('\\', '/');
 }
 
 export function getWorktreePortOffset() {
