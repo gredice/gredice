@@ -4,6 +4,7 @@ import {
     type EntityCompletenessAttributeDefinition,
     type EntityCompletenessEntity,
     filterEntitiesByCompletionAndState,
+    getIncompleteEntityCountsByState,
     getEntityCompleteness,
 } from '@gredice/storage/entityCompleteness';
 
@@ -114,5 +115,35 @@ test('filterEntitiesByCompletionAndState combines completion and publish state f
             state: 'published',
         }),
         [incompletePublished],
+    );
+});
+
+test('getIncompleteEntityCountsByState returns draft and published incomplete counts', () => {
+    const entities: EntityCompletenessEntity[] = [
+        {
+            state: 'draft',
+            attributes: [],
+        },
+        {
+            state: 'published',
+            attributes: [],
+        },
+        {
+            state: 'published',
+            attributes: [
+                {
+                    attributeDefinitionId: requiredLabelDefinition.id,
+                    value: 'Tikvica',
+                },
+            ],
+        },
+    ];
+
+    assert.deepStrictEqual(
+        getIncompleteEntityCountsByState(entities, [requiredLabelDefinition]),
+        {
+            draft: 1,
+            published: 1,
+        },
     );
 });

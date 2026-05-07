@@ -98,3 +98,21 @@ export function filterEntitiesByCompletionAndState<
         return true;
     });
 }
+
+export function getIncompleteEntityCountsByState<
+    TEntity extends EntityCompletenessEntity,
+>(
+    entities: TEntity[],
+    definitions: EntityCompletenessAttributeDefinition[],
+) {
+    return {
+        draft: filterEntitiesByCompletionAndState(entities, definitions, {
+            completion: 'incomplete',
+            state: 'draft',
+        }).length,
+        published: filterEntitiesByCompletionAndState(entities, definitions, {
+            completion: 'incomplete',
+            state: 'published',
+        }).length,
+    };
+}
