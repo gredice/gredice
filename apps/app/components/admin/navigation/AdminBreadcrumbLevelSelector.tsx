@@ -80,6 +80,11 @@ const breadcrumbSections: {
                 ...adminPages.Directories,
                 icon: <File className="size-4" />,
             },
+        ],
+    },
+    {
+        title: 'Stranice',
+        pages: [
             {
                 ...adminPages.CmsPages,
                 icon: <File className="size-4" />,
