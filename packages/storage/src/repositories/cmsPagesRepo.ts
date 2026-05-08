@@ -185,7 +185,10 @@ function normalizeCmsPageContent(content: string | null | undefined) {
             );
         }
 
-        if (!('component' in section) || typeof section.component !== 'string') {
+        if (
+            !('component' in section) ||
+            typeof section.component !== 'string'
+        ) {
             throw new Error(
                 `Section at index ${index} must define a string component.`,
             );
@@ -217,9 +220,9 @@ function normalizeCmsPageContentForUpdate(
 
 function assertCmsPagePublishReadiness(input: {
     slug: string;
-    content: string | null;
-    metaTitle: string | null;
-    metaDescription: string | null;
+    content?: string | null;
+    metaTitle?: string | null;
+    metaDescription?: string | null;
 }) {
     const issues: string[] = [];
 
@@ -241,7 +244,9 @@ function assertCmsPagePublishReadiness(input: {
     }
 
     if (issues.length > 0) {
-        throw new Error(`Page is not ready for publishing. ${issues.join(' ')}`);
+        throw new Error(
+            `Page is not ready for publishing. ${issues.join(' ')}`,
+        );
     }
 }
 
@@ -321,6 +326,18 @@ export async function updateCmsPage(input: UpdateCmsPageInput) {
         );
     }
 
+    if (input.metaTitle !== undefined) {
+        updateData.metaTitle = optionalText(input.metaTitle);
+    }
+
+    if (input.metaDescription !== undefined) {
+        updateData.metaDescription = optionalText(input.metaDescription);
+    }
+
+    if (input.metaImageUrl !== undefined) {
+        updateData.metaImageUrl = optionalText(input.metaImageUrl);
+    }
+
     if (input.state !== undefined) {
         updateData.state = input.state;
         if (input.state === 'published' && existing.state !== 'published') {
@@ -333,18 +350,6 @@ export async function updateCmsPage(input: UpdateCmsPageInput) {
             });
             updateData.publishedAt = new Date();
         }
-    }
-
-    if (input.metaTitle !== undefined) {
-        updateData.metaTitle = optionalText(input.metaTitle);
-    }
-
-    if (input.metaDescription !== undefined) {
-        updateData.metaDescription = optionalText(input.metaDescription);
-    }
-
-    if (input.metaImageUrl !== undefined) {
-        updateData.metaImageUrl = optionalText(input.metaImageUrl);
     }
 
     if (Object.keys(updateData).length === 0) {
