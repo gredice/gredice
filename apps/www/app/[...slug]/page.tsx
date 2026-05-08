@@ -35,7 +35,7 @@ export default async function CmsPublishedPageRoute({
     return (
         <main>
             <SectionsView
-                data={parseCmsSectionData(response.data.content)}
+                sectionsData={parseCmsSectionData(response.data.content)}
                 componentsRegistry={sectionsComponentRegistry}
             />
         </main>
