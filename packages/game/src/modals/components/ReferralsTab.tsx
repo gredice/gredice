@@ -1,8 +1,8 @@
+import { clientAuthenticated } from '@gredice/client';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { useState } from 'react';
-import { clientAuthenticated } from '@gredice/client';
 import { useReferrals } from '../../hooks/useReferrals';
 
 export function ReferralsTab() {
@@ -13,13 +13,13 @@ export function ReferralsTab() {
     return (
         <Stack spacing={2}>
             <div className="text-sm">
-                💮 Referral reward: {data?.rewardAmount ?? 10000} sunflowers
+                💮 Nagrada preporuke: {data?.rewardAmount ?? 10000} suncokreta
             </div>
             <div>
-                <div className="text-xs">Account referral code</div>
+                <div className="text-xs">Kod za preporuku računa</div>
                 <div className="font-bold">{data?.myCode}</div>
                 <div className="text-xs">
-                    Referral link:{' '}
+                    Poveznica za preporuku:{' '}
                     {typeof window !== 'undefined'
                         ? `${window.location.origin}?ref=${data?.myCode ?? ''}`
                         : ''}
@@ -27,7 +27,7 @@ export function ReferralsTab() {
                 <Input
                     value={myCode}
                     onChange={(e) => setMyCode(e.target.value)}
-                    placeholder="Change my code"
+                    placeholder="Promijeni moj kod"
                 />
                 <Button
                     onClick={async () => {
@@ -37,15 +37,15 @@ export function ReferralsTab() {
                         await refetch();
                     }}
                 >
-                    Save code
+                    Spremi kod
                 </Button>
             </div>
             <div>
-                <div className="text-xs">Use account referral code</div>
+                <div className="text-xs">Iskoristi kod za preporuku</div>
                 <Input
                     value={useCode}
                     onChange={(e) => setUseCode(e.target.value)}
-                    placeholder="Enter code"
+                    placeholder="Unesi kod"
                 />
                 <Button
                     onClick={async () => {
@@ -55,11 +55,11 @@ export function ReferralsTab() {
                         await refetch();
                     }}
                 >
-                    Apply code
+                    Primijeni kod
                 </Button>
             </div>
             <div>
-                <div className="text-xs">Referred accounts</div>
+                <div className="text-xs">Preporučeni računi</div>
                 <ul>
                     {data?.referredAccounts?.map((u) => (
                         <li key={u.accountId}>
