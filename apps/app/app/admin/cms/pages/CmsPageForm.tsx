@@ -45,6 +45,8 @@ const cmsPageSectionItems = [
     { value: 'Footer1', label: 'Footer1' },
 ];
 
+let nextSectionId = 0;
+
 function parseSections(content?: string | null) {
     if (!content) {
         return { isStructured: true, sections: [] };
@@ -82,8 +84,9 @@ function editableSection(
 }
 
 function newSection(component: string): CmsPageEditableSection {
+    nextSectionId += 1;
     return {
-        id: `new-${crypto.randomUUID()}`,
+        id: `new-${component}-${nextSectionId}`,
         data: { component },
     };
 }
@@ -122,18 +125,19 @@ function moveSection(
 ) {
     const index = sections.findIndex((section) => section.id === sectionId);
     const targetIndex = index + offset;
-    if (
-        index < 0 ||
-        targetIndex < 0 ||
-        targetIndex >= sections.length ||
-        !sections[index] ||
-        !sections[targetIndex]
-    ) {
+    if (index < 0 || targetIndex < 0 || targetIndex >= sections.length) {
+        return sections;
+    }
+
+    const currentSection = sections[index];
+    const targetSection = sections[targetIndex];
+    if (!currentSection || !targetSection) {
         return sections;
     }
 
     const next = [...sections];
-    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+    next[index] = targetSection;
+    next[targetIndex] = currentSection;
     return next;
 }
 
