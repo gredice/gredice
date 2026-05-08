@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import { resolve } from 'node:path';
 import net from 'node:net';
@@ -80,8 +80,7 @@ function readRequiredBlenderVersion() {
     return { error: `Missing ${versionFile}.` };
   }
 
-  const result = run('cat', [versionFile]);
-  const raw = (result.stdout || '').trim();
+  const raw = readFileSync(versionFile, 'utf8').trim();
   const match = raw.match(/^(\d+)\.(\d+)$/);
   if (!match) {
     return { error: `Invalid Blender version format in assets/BLENDER_VERSION: "${raw}". Expected MAJOR.MINOR.` };
@@ -116,7 +115,7 @@ function checkBlenderVersion() {
     ]
     : [
       { cmd: 'blender', args: ['--version'] },
-      { cmd: 'C:/Program Files/Blender Foundation/Blender 4.5/blender.exe', args: ['--version'] },
+      { cmd: `C:/Program Files/Blender Foundation/Blender ${required.raw}/blender.exe`, args: ['--version'] },
     ];
 
   let installed;
