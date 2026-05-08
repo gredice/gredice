@@ -243,11 +243,15 @@ test('CMS page revisions are recorded and can be restored', async () => {
         slug,
         title: 'V1 title',
         content: firstContent,
+        canonicalPath: '/history-v1',
+        noIndex: true,
     });
     await updateCmsPage({
         id: pageId,
         title: 'V2 title',
         content: secondContent,
+        canonicalPath: '/history-v2',
+        noIndex: false,
     });
 
     const revisions = await getCmsPageRevisions(pageId);
@@ -262,4 +266,6 @@ test('CMS page revisions are recorded and can be restored', async () => {
     const restored = await getCmsPage(pageId);
     assert.equal(restored?.title, 'V1 title');
     assert.equal(restored?.content, firstContent);
+    assert.equal(restored?.canonicalPath, '/history-v1');
+    assert.equal(restored?.noIndex, true);
 });

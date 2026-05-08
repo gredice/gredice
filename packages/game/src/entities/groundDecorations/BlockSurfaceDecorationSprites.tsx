@@ -6,6 +6,7 @@ import { useWeatherNow } from '../../hooks/useWeatherNow';
 import { SpriteAtlasBillboard } from '../../sprites/SpriteAtlasBillboard';
 import type { Block } from '../../types/Block';
 import { useGameState } from '../../useGameState';
+import type { BlockSurfaceDecorationPlacement } from './getBlockSurfaceDecorations';
 import { getBlockSurfaceDecorations } from './getBlockSurfaceDecorations';
 import {
     type GroundDecorationSurface,
@@ -23,15 +24,29 @@ const compassToDirection: Record<string, number> = {
     W: 270,
 };
 
-type BlockSurfaceDecorationSpritesProps = {
+type DirectBlockSurfaceDecorationSpritesProps = {
     block: Block;
+    density?: number;
     surface: GroundDecorationSurface;
 };
 
-export function BlockSurfaceDecorationSprites({
+type PrecomputedBlockSurfaceDecorationSpritesProps = {
+    blockId: string;
+    placements: BlockSurfaceDecorationPlacement[];
+    surface: GroundDecorationSurface;
+    windDirection: number;
+    windSpeed: number;
+};
+
+type BlockSurfaceDecorationSpritesProps =
+    | DirectBlockSurfaceDecorationSpritesProps
+    | PrecomputedBlockSurfaceDecorationSpritesProps;
+
+function ResolvedBlockSurfaceDecorationSprites({
     block,
+    density = 1,
     surface,
-}: BlockSurfaceDecorationSpritesProps) {
+}: DirectBlockSurfaceDecorationSpritesProps) {
     const { data: garden } = useCurrentGarden();
     const gameWeather = useGameState((state) => state.weather);
     const { data: weatherNow } = useWeatherNow();
@@ -39,10 +54,11 @@ export function BlockSurfaceDecorationSprites({
         () =>
             getBlockSurfaceDecorations({
                 block,
+                density,
                 gardenId: garden?.id,
                 surface,
             }),
-        [block, garden?.id, surface],
+        [block, density, garden?.id, surface],
     );
     const windSpeed =
         typeof gameWeather?.windSpeed === 'number'
@@ -55,6 +71,24 @@ export function BlockSurfaceDecorationSprites({
               ? (compassToDirection[weatherNow.windDirection] ?? 0)
               : 0;
 
+    return (
+        <PrecomputedBlockSurfaceDecorationSprites
+            blockId={block.id}
+            placements={placements}
+            surface={surface}
+            windDirection={windDirection}
+            windSpeed={windSpeed}
+        />
+    );
+}
+
+export function PrecomputedBlockSurfaceDecorationSprites({
+    blockId,
+    placements,
+    surface,
+    windDirection,
+    windSpeed,
+}: PrecomputedBlockSurfaceDecorationSpritesProps) {
     return placements.map((placement) => {
         const positionKey = placement.position
             .map((value) => value.toFixed(3))
@@ -62,7 +96,7 @@ export function BlockSurfaceDecorationSprites({
 
         return (
             <SpriteAtlasBillboard
-                key={`${block.id}:${surface}:${placement.spriteName}:${positionKey}`}
+                key={`${blockId}:${surface}:${placement.spriteName}:${positionKey}`}
                 alphaTest={0.06}
                 atlasBasePath={groundDecorationAtlasBasePath}
                 height={placement.height}
@@ -75,4 +109,14 @@ export function BlockSurfaceDecorationSprites({
             />
         );
     });
+}
+
+export function BlockSurfaceDecorationSprites(
+    props: BlockSurfaceDecorationSpritesProps,
+) {
+    if ('placements' in props) {
+        return <PrecomputedBlockSurfaceDecorationSprites {...props} />;
+    }
+
+    return <ResolvedBlockSurfaceDecorationSprites {...props} />;
 }

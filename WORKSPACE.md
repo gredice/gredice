@@ -137,6 +137,15 @@ pnpm env:pull
 
 `pnpm env:pull` runs `vercel env pull .env` in `apps/www`, `apps/garden`, `apps/farm`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
 
+## Storage test database (Docker and Dockerless)
+
+`@gredice/storage` tests start a disposable Postgres database automatically through `pnpm --filter @gredice/storage test`.
+
+- **Default path (Docker available):** uses a disposable Docker Postgres container.
+- **Dockerless fallback:** set `GREDICE_STORAGE_TEST_DB_ADMIN_URL` to a local Postgres admin connection URL (for example `postgres://postgres:postgres@127.0.0.1:5432/postgres`). The test scripts will create a unique per-run database, run migrations/tests, and drop that database during cleanup.
+
+If Docker is unavailable and `GREDICE_STORAGE_TEST_DB_ADMIN_URL` is not set, storage tests fail with an actionable setup message.
+
 ### Local and test environment examples
 
 Each app now includes a checked-in `.env.example` (or `.env.test.example` where needed) with safe local defaults for smoke tests. Copy the file to `.env` in each app when starting from a fresh worktree.

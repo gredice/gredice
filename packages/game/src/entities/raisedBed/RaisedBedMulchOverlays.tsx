@@ -1,12 +1,19 @@
+import { useEffect } from 'react';
 import type { BufferGeometry } from 'three';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useOperations } from '../../hooks/useOperations';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
+import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
+import {
+    type GameQualityProfile,
+    resolveGameQualityProfile,
+} from '../../scene/gameQuality';
 import { SnowOverlay } from '../../snow/SnowOverlay';
 import { snowPresets } from '../../snow/snowPresets';
 import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
+import { useGameState } from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
@@ -467,11 +474,15 @@ function resolveMulchVisualByOperationId(
 
 function MulchMesh({
     geometry,
+    minSnowCoverage,
     position,
+    renderSnow,
     scale,
 }: {
     geometry: BufferGeometry;
+    minSnowCoverage: number;
     position: [number, number, number];
+    renderSnow: boolean;
     scale: [number, number, number];
 }) {
     const { materials } = useGameGLTF();
@@ -485,21 +496,44 @@ function MulchMesh({
                 geometry={geometry}
                 material={materials['Material.ColorPaletteMain']}
             >
-                <SnowOverlay geometry={geometry} {...snowPresets.mulch} />
+                {renderSnow && (
+                    <SnowOverlay
+                        geometry={geometry}
+                        minCoverage={minSnowCoverage}
+                        {...snowPresets.mulch}
+                    />
+                )}
             </mesh>
         </group>
     );
 }
 
-export function RaisedBedMulchOverlays() {
+function RaisedBedMulchProfileMetadata({ count }: { count: number }) {
+    useEffect(() => {
+        updateGameProfileMetadata({
+            raisedBedMulchOverlayCount: count,
+        });
+    }, [count]);
+
+    return null;
+}
+
+export function RaisedBedMulchOverlays({
+    quality,
+}: {
+    quality?: GameQualityProfile;
+}) {
     const { data: currentGarden } = useCurrentGarden();
     const { data: cart } = useShoppingCart();
     const { data: operations } = useOperations();
     const { data: blockData } = useBlockData();
     const { nodes } = useGameGLTF();
+    const qualityProfile = quality ?? resolveGameQualityProfile();
+    const snowCoverage = useGameState((state) => state.snowCoverage);
+    const renderSnow = snowCoverage >= qualityProfile.snowOverlayMinCoverage;
 
     if (!currentGarden || !blockData || !operations) {
-        return null;
+        return <RaisedBedMulchProfileMetadata count={0} />;
     }
 
     const mulchVisualByOperationId = resolveMulchVisualByOperationId(
@@ -507,7 +541,7 @@ export function RaisedBedMulchOverlays() {
         blockData,
     );
     if (mulchVisualByOperationId.size === 0) {
-        return null;
+        return <RaisedBedMulchProfileMetadata count={0} />;
     }
 
     const overlays = [];
@@ -592,10 +626,14 @@ export function RaisedBedMulchOverlays() {
                         <MulchMesh
                             key={`raised-bed-mulch-${raisedBed.id}-${visual.blockId}`}
                             geometry={mulchGeometry}
+                            minSnowCoverage={
+                                qualityProfile.snowOverlayMinCoverage
+                            }
                             position={getFullBedPosition(
                                 surfaceBounds,
                                 getRaisedBedSurfaceY(placements[0].origin),
                             )}
+                            renderSnow={renderSnow}
                             scale={getFullBedScale(
                                 surfaceBounds,
                                 visual.blockName,
@@ -679,17 +717,24 @@ export function RaisedBedMulchOverlays() {
                 <MulchMesh
                     key={`raised-bed-field-mulch-${raisedBed.id}-${positionIndex}-${blockName}`}
                     geometry={mulchGeometry}
+                    minSnowCoverage={qualityProfile.snowOverlayMinCoverage}
                     position={getFieldWorldPosition({
                         blockIndex: placement.blockIndex,
                         localPositionIndex: placement.localPositionIndex,
                         orientation,
                         origin: placement.origin,
                     })}
+                    renderSnow={renderSnow}
                     scale={fieldMulchScale}
                 />,
             );
         }
     }
 
-    return <>{overlays}</>;
+    return (
+        <>
+            <RaisedBedMulchProfileMetadata count={overlays.length} />
+            {overlays}
+        </>
+    );
 }

@@ -16,6 +16,7 @@ const caddyCert = resolve(caddyDataDir, 'caddy', 'pki', 'authorities', 'local', 
 const checks = [];
 function addCheck(name, required, ok, detail, next) { checks.push({ name, required, ok, detail, next }); }
 function run(cmd, args, options = {}) { return spawnSync(cmd, args, { encoding: 'utf8', ...options }); }
+function hasFailedRequiredChecks() { return checks.some((c) => c.required && !c.ok); }
 
 function checkNode() {
   const major = Number(process.versions.node.split('.')[0]);
@@ -35,7 +36,15 @@ function checkDependencies() {
 
 function checkDocker() {
   const r = run('docker', ['info']);
-  addCheck('Docker available and running', true, r.status === 0, r.status === 0 ? 'Docker daemon reachable.' : 'Docker daemon unavailable.', 'Start Docker Desktop/daemon.');
+  addCheck(
+    'Docker available and running',
+    true,
+    r.status === 0,
+    r.status === 0
+      ? 'Docker daemon reachable.'
+      : 'Docker daemon unavailable. `pnpm dev` and Docker-backed tests require Docker.',
+    'Start Docker Desktop/daemon. For Dockerless storage tests, set GREDICE_STORAGE_TEST_DB_ADMIN_URL to a local Postgres admin URL.'
+  );
 }
 
 function checkVercelAuth() {
@@ -54,9 +63,9 @@ function checkEnvFiles() {
 }
 
 function checkPlaywright() {
-  const r = run('pnpm', ['exec', 'playwright', '--version']);
+  const r = run('pnpm', ['--filter', 'www', 'exec', 'playwright', '--version']);
   const ok = r.status === 0;
-  addCheck('Playwright browsers', true, ok, ok ? `Playwright available: ${(r.stdout || '').trim()}.` : 'Playwright runtime missing.', 'Run `pnpm exec playwright install`.');
+  addCheck('Playwright browsers', true, ok, ok ? `Playwright available: ${(r.stdout || '').trim()}.` : 'Playwright runtime missing.', 'Run `pnpm --filter www exec playwright install`.');
 }
 
 function checkHosts() {
@@ -171,10 +180,21 @@ function checkPorts() {
 async function maybeRunSetupActions() {
   if (mode !== 'setup') return;
   console.log('\nRunning setup actions...');
-  run('pnpm', ['install'], { stdio: 'inherit' });
-  run('pnpm', ['vercel:link'], { stdio: 'inherit' });
-  run('pnpm', ['env:pull'], { stdio: 'inherit' });
-  run('pnpm', ['exec', 'playwright', 'install'], { stdio: 'inherit' });
+  const actions = [
+    { label: 'Installing dependencies', cmd: 'pnpm', args: ['install'] },
+    { label: 'Linking Vercel projects', cmd: 'pnpm', args: ['vercel:link'] },
+    { label: 'Pulling Vercel environment variables', cmd: 'pnpm', args: ['env:pull'] },
+    { label: 'Installing Playwright browsers', cmd: 'pnpm', args: ['--filter', 'www', 'exec', 'playwright', 'install'] },
+  ];
+
+  for (const action of actions) {
+    console.log(`\n${action.label}...`);
+    const result = run(action.cmd, action.args, { stdio: 'inherit' });
+    if (result.status !== 0) {
+      console.error(`\nSetup action failed: ${action.label}.`);
+      process.exit(result.status ?? 1);
+    }
+  }
 }
 
 function printResults() {
@@ -196,17 +216,31 @@ function printResults() {
   console.log(`\n${mode} completed.`);
 }
 
-checkNode();
-checkPnpm();
-checkDependencies();
-checkDocker();
-checkVercelAuth();
-checkVercelLinks();
-checkEnvFiles();
-checkPlaywright();
-checkHosts();
-checkCertificate();
-checkBlenderVersion();
-await checkPorts();
-await maybeRunSetupActions();
+async function runChecks() {
+  checks.length = 0;
+  checkNode();
+  checkPnpm();
+  checkDependencies();
+  checkDocker();
+  checkVercelAuth();
+  checkVercelLinks();
+  checkEnvFiles();
+  checkPlaywright();
+  checkHosts();
+  checkCertificate();
+  checkBlenderVersion();
+  await checkPorts();
+}
+
+if (mode === 'setup') {
+  checks.length = 0;
+  checkNode();
+  checkPnpm();
+  if (hasFailedRequiredChecks()) {
+    printResults();
+  }
+  await maybeRunSetupActions();
+}
+
+await runChecks();
 printResults();

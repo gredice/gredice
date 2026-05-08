@@ -3,7 +3,7 @@
 import { Billboard } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
-import type { Mesh } from 'three';
+import type { Mesh, Texture } from 'three';
 import { Color, PlaneGeometry } from 'three';
 import { SeededRNG } from '../generators/plant/lib/rng';
 import { useGameState } from '../useGameState';
@@ -24,6 +24,34 @@ type SpriteAtlasBillboardProps = {
     spriteName: string;
     windDirection?: number;
     windSpeed?: number;
+};
+
+type WobbleAnimation = {
+    crossPrimaryFrequency: number;
+    crossSecondaryFrequency: number;
+    directionX: number;
+    directionZ: number;
+    directionalPrimaryFrequency: number;
+    directionalSecondaryFrequency: number;
+    gustFrequency: number;
+    gustScale: number;
+    phase: number;
+    secondaryPhase: number;
+    wobbleAmplitude: number;
+};
+
+type BillboardMeshProps = {
+    alphaTest: number;
+    color: Color;
+    depthWrite: boolean;
+    geometry: PlaneGeometry;
+    opacity: number;
+    renderOrder?: number;
+    texture: Texture;
+};
+
+type AnimatedBillboardMeshProps = BillboardMeshProps & {
+    wobbleAnimation: WobbleAnimation;
 };
 
 function resolvePageBasePath(atlasBasePath: string, pageIndex: number) {
@@ -84,7 +112,6 @@ export function SpriteAtlasBillboard({
 }: SpriteAtlasBillboardProps) {
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const weather = useGameState((state) => state.weather);
-    const meshRef = useRef<Mesh | null>(null);
     const assetPaths = useMemo(
         () => resolveSpriteAtlasAssetPaths(atlasBasePath),
         [atlasBasePath],
@@ -130,7 +157,7 @@ export function SpriteAtlasBillboard({
             secondaryPhase: wobbleProfile.secondaryPhase,
             wobbleAmplitude:
                 (0.035 + windStrength * 0.2) * wobbleProfile.amplitude,
-        };
+        } satisfies WobbleAnimation;
     }, [windDirection, windSpeed, wobbleProfile]);
     const { error: manifestError, manifest } = useSpriteAtlasManifest(
         assetPaths.manifestUrl,
@@ -201,15 +228,109 @@ export function SpriteAtlasBillboard({
         };
     }, [geometry]);
 
+    if (manifestError) {
+        console.error(
+            `Failed to load sprite atlas manifest "${atlasBasePath}":`,
+            manifestError,
+        );
+
+        return null;
+    }
+
+    if (textureError) {
+        console.error(
+            `Failed to load sprite atlas texture "${atlasBasePath}":`,
+            textureError,
+        );
+        return null;
+    }
+
+    if (!manifest) {
+        return null;
+    }
+
+    if (!sprite) {
+        console.warn(
+            `Sprite "${spriteName}" was not found in atlas "${atlasBasePath}".`,
+        );
+        return null;
+    }
+
+    if (!texture || !geometry) {
+        return null;
+    }
+
+    return (
+        <Billboard follow={follow} position={position}>
+            <SpriteAtlasBillboardMesh
+                alphaTest={alphaTest}
+                color={color}
+                depthWrite={depthWrite}
+                geometry={geometry}
+                opacity={opacity}
+                renderOrder={renderOrder}
+                texture={texture}
+                wobbleAnimation={wobbleAnimation}
+            />
+        </Billboard>
+    );
+}
+
+function SpriteAtlasBillboardMesh({
+    wobbleAnimation,
+    ...props
+}: BillboardMeshProps & { wobbleAnimation: WobbleAnimation | null }) {
+    if (wobbleAnimation) {
+        return (
+            <AnimatedSpriteAtlasBillboardMesh
+                {...props}
+                wobbleAnimation={wobbleAnimation}
+            />
+        );
+    }
+
+    return <StaticSpriteAtlasBillboardMesh {...props} />;
+}
+
+function StaticSpriteAtlasBillboardMesh({
+    alphaTest,
+    color,
+    depthWrite,
+    geometry,
+    opacity,
+    renderOrder,
+    texture,
+}: BillboardMeshProps) {
+    return (
+        <mesh renderOrder={renderOrder} receiveShadow>
+            <primitive attach="geometry" object={geometry} />
+            <meshLambertMaterial
+                alphaTest={alphaTest}
+                color={color}
+                depthWrite={depthWrite}
+                map={texture}
+                opacity={opacity}
+                transparent
+            />
+        </mesh>
+    );
+}
+
+function AnimatedSpriteAtlasBillboardMesh({
+    alphaTest,
+    color,
+    depthWrite,
+    geometry,
+    opacity,
+    renderOrder,
+    texture,
+    wobbleAnimation,
+}: AnimatedBillboardMeshProps) {
+    const meshRef = useRef<Mesh | null>(null);
+
     useFrame(({ clock }) => {
         const mesh = meshRef.current;
         if (!mesh) {
-            return;
-        }
-
-        if (!wobbleAnimation) {
-            mesh.rotation.x = 0;
-            mesh.rotation.z = 0;
             return;
         }
 
@@ -260,51 +381,17 @@ export function SpriteAtlasBillboard({
                 0.55;
     });
 
-    if (manifestError) {
-        console.error(
-            `Failed to load sprite atlas manifest "${atlasBasePath}":`,
-            manifestError,
-        );
-
-        return null;
-    }
-
-    if (textureError) {
-        console.error(
-            `Failed to load sprite atlas texture "${atlasBasePath}":`,
-            textureError,
-        );
-        return null;
-    }
-
-    if (!manifest) {
-        return null;
-    }
-
-    if (!sprite) {
-        console.warn(
-            `Sprite "${spriteName}" was not found in atlas "${atlasBasePath}".`,
-        );
-        return null;
-    }
-
-    if (!texture || !geometry) {
-        return null;
-    }
-
     return (
-        <Billboard follow={follow} position={position}>
-            <mesh ref={meshRef} renderOrder={renderOrder} receiveShadow>
-                <primitive attach="geometry" object={geometry} />
-                <meshLambertMaterial
-                    alphaTest={alphaTest}
-                    color={color}
-                    depthWrite={depthWrite}
-                    map={texture}
-                    opacity={opacity}
-                    transparent
-                />
-            </mesh>
-        </Billboard>
+        <mesh ref={meshRef} renderOrder={renderOrder} receiveShadow>
+            <primitive attach="geometry" object={geometry} />
+            <meshLambertMaterial
+                alphaTest={alphaTest}
+                color={color}
+                depthWrite={depthWrite}
+                map={texture}
+                opacity={opacity}
+                transparent
+            />
+        </mesh>
     );
 }

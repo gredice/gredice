@@ -1,6 +1,6 @@
 {
-  "id": "bd036d79-fef3-41d1-96f1-0dd7e0046f24",
-  "prevId": "1b8dd3d8-b697-45f4-a8c9-434335be6d92",
+  "id": "ba48c775-1e71-4dfd-8778-341af7d76462",
+  "prevId": "bd036d79-fef3-41d1-96f1-0dd7e0046f24",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1075,6 +1075,19 @@
           "primaryKey": false,
           "notNull": true
         },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hierarchy_order": {
+          "name": "hierarchy_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "state": {
           "name": "state",
           "type": "text",
@@ -1125,6 +1138,36 @@
           "method": "btree",
           "with": {}
         },
+        "cms_e_parent_id_idx": {
+          "name": "cms_e_parent_id_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "cms_e_hierarchy_order_idx": {
+          "name": "cms_e_hierarchy_order_idx",
+          "columns": [
+            {
+              "expression": "hierarchy_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "cms_e_state_idx": {
           "name": "cms_e_state_idx",
           "columns": [
@@ -1156,7 +1199,21 @@
           "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "entities_parent_id_entities_id_fk": {
+          "name": "entities_parent_id_entities_id_fk",
+          "tableFrom": "entities",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -1449,6 +1506,19 @@
           "primaryKey": false,
           "notNull": false
         },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hierarchy_order": {
+          "name": "hierarchy_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "is_root": {
           "name": "is_root",
           "type": "boolean",
@@ -1508,6 +1578,36 @@
           "method": "btree",
           "with": {}
         },
+        "cms_et_parent_id_idx": {
+          "name": "cms_et_parent_id_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "cms_et_hierarchy_order_idx": {
+          "name": "cms_et_hierarchy_order_idx",
+          "columns": [
+            {
+              "expression": "hierarchy_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "cms_et_is_deleted_idx": {
           "name": "cms_et_is_deleted_idx",
           "columns": [
@@ -1546,6 +1646,19 @@
           "tableTo": "entity_type_categories",
           "columnsFrom": [
             "category_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "entity_types_parent_id_entity_types_id_fk": {
+          "name": "entity_types_parent_id_entity_types_id_fk",
+          "tableFrom": "entity_types",
+          "tableTo": "entity_types",
+          "columnsFrom": [
+            "parent_id"
           ],
           "columnsTo": [
             "id"
