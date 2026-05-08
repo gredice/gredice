@@ -5,7 +5,8 @@ import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import type { CSSProperties } from 'react';
+import { type CSSProperties, useState } from 'react';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import { useGameState } from '../useGameState';
@@ -44,6 +45,8 @@ export function RaisedBedFieldHud(_props: {
     };
 }) {
     const { data: currentGarden } = useCurrentGarden();
+    const { track } = useGameAnalytics();
+    const [isInfoOpen, setIsInfoOpen] = useState(false);
     const view = useGameState((state) => state.view);
     const { mutate: removeRaisedBedCloseupParam } =
         useRemoveRaisedBedCloseupParam();
@@ -86,6 +89,17 @@ export function RaisedBedFieldHud(_props: {
             {currentGarden && raisedBed && (
                 <div className="absolute max-w-64 md:max-w-[312px] top-[var(--raised-bed-ui-top)] left-[var(--raised-bed-title-left)]">
                     <Modal
+                        open={isInfoOpen}
+                        onOpenChange={(open) => {
+                            if (open) {
+                                track('game_raised_bed_info_opened', {
+                                    garden_id: currentGarden.id,
+                                    raised_bed_id: raisedBed.id,
+                                    raised_bed_name: raisedBed.name,
+                                });
+                            }
+                            setIsInfoOpen(open);
+                        }}
                         title="Informacije o gredici"
                         modal={false}
                         className="md:border-tertiary md:border-b-4"
@@ -126,7 +140,14 @@ export function RaisedBedFieldHud(_props: {
                 <ButtonGreen
                     variant="plain"
                     className="rounded-full size-10 md:size-auto"
-                    onClick={removeRaisedBedCloseupParam}
+                    onClick={() => {
+                        track('game_raised_bed_closed', {
+                            garden_id: currentGarden?.id,
+                            raised_bed_id: raisedBed?.id,
+                            raised_bed_name: raisedBed?.name,
+                        });
+                        removeRaisedBedCloseupParam();
+                    }}
                     startDecorator={<Check className="size-5 shrink-0" />}
                     fullWidth
                 >

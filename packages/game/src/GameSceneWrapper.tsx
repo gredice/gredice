@@ -13,6 +13,7 @@ import {
 
 export function GameSceneWrapper({
     appBaseUrl,
+    spriteBaseUrl,
     flags,
     freezeTime,
     mockGarden,
@@ -23,6 +24,7 @@ export function GameSceneWrapper({
     if (!storeRef.current) {
         storeRef.current = createGameState({
             appBaseUrl: appBaseUrl || '',
+            spriteBaseUrl,
             freezeTime: freezeTime || null,
             isMock: mockGarden || false,
             winterMode: winterMode ?? 'summer',

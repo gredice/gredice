@@ -11,6 +11,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useEffect } from 'react';
+import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { usePlantSorts } from '../../hooks/usePlantSorts';
 import {
     AnimateFlyToItem,
@@ -38,6 +39,7 @@ function PlantSortListItem({
     flyToShoppingCart?: boolean;
 }) {
     const animateFlyToShoppingCart = useAnimateFlyToShoppingCart();
+    const { track } = useGameAnalytics();
 
     useEffect(() => {
         if (flyToShoppingCart) {
@@ -59,7 +61,14 @@ function PlantSortListItem({
                 className={cx(
                     'justify-between text-start p-0 h-auto py-2 gap-3 px-4 rounded-none font-normal',
                 )}
-                onClick={() => onChange(sort)}
+                onClick={() => {
+                    track('game_plant_sort_selected', {
+                        plant_name: sort.information.plant.information?.name,
+                        sort_id: sort.id,
+                        sort_name: sort.information.name,
+                    });
+                    onChange(sort);
+                }}
             >
                 <Row spacing={1.5}>
                     <AnimateFlyToItem {...animateFlyToShoppingCart.props}>
@@ -96,6 +105,14 @@ function PlantSortListItem({
                     )}
                     variant="link"
                     size="sm"
+                    onClick={() =>
+                        track('game_plant_sort_details_opened', {
+                            plant_name:
+                                sort.information.plant.information?.name,
+                            sort_id: sort.id,
+                            sort_name: sort.information.name,
+                        })
+                    }
                 >
                     Više informacija...
                 </Button>

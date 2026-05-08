@@ -28,6 +28,7 @@ type RaisedBedFieldPlantCycle = Awaited<
 const fieldStatusMetadata: Record<string, { label: string; icon: string }> = {
     new: { label: 'Novo', icon: '🆕' },
     planned: { label: 'Planirano', icon: '🗓️' },
+    pendingVerification: { label: 'Čeka verifikaciju', icon: '🔍' },
     sowed: { label: 'Sijano', icon: '🫘' },
     sprouted: { label: 'Proklijalo', icon: '🌱' },
     notSprouted: { label: 'Nije proklijalo', icon: '❌' },

@@ -1,8 +1,20 @@
 import { stripeWebhookConstructEvent } from '@gredice/stripe/server';
-import type Stripe from 'stripe';
 import { processCheckoutSession } from '../../../../lib/stripe/processCheckoutSession';
 
 export const dynamic = 'force-dynamic';
+
+function isPaymentCheckoutSession(
+    value: unknown,
+): value is { id: string; mode: 'payment' } {
+    return (
+        !!value &&
+        typeof value === 'object' &&
+        'id' in value &&
+        typeof value.id === 'string' &&
+        'mode' in value &&
+        value.mode === 'payment'
+    );
+}
 
 const relevantEvents = new Set([
     // 'product.created',
@@ -30,9 +42,8 @@ export async function POST(req: Request) {
     try {
         switch (event.type) {
             case 'checkout.session.completed': {
-                const checkoutSession = event.data
-                    .object as Stripe.Checkout.Session;
-                if (checkoutSession.mode === 'payment') {
+                const checkoutSession = event.data.object;
+                if (isPaymentCheckoutSession(checkoutSession)) {
                     await processCheckoutSession(checkoutSession.id);
                 }
                 break;

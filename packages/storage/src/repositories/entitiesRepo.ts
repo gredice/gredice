@@ -1,9 +1,10 @@
 import 'server-only';
-import { and, count, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, like } from 'drizzle-orm';
 import {
     attributeDefinitions,
     attributeValues,
     entities,
+    entityRevisions,
     type SelectAttributeDefinition,
     type SelectAttributeValue,
     type SelectEntity,
@@ -13,11 +14,42 @@ import {
 } from '..';
 import {
     bustCached,
+    bustCachedByPrefixes,
     cacheKeys,
     directoriesCached,
 } from '../cache/directoriesCached';
+import { getEntityCompleteness } from '../helpers/entityCompleteness';
 
 const entityCacheTtl = 60 * 60; // 1 hour
+
+function tryParseAttributeJson(
+    value: string,
+    attributeDefinition: SelectAttributeDefinition,
+) {
+    try {
+        return JSON.parse(value) as unknown;
+    } catch (error) {
+        console.error('Failed to parse entity attribute JSON value', {
+            attributeDefinitionId: attributeDefinition.id,
+            category: attributeDefinition.category,
+            name: attributeDefinition.name,
+            dataType: attributeDefinition.dataType,
+            error,
+        });
+        return null;
+    }
+}
+
+function isRangeValue(value: unknown): value is { min: number; max: number } {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        'min' in value &&
+        'max' in value &&
+        typeof value.min === 'number' &&
+        typeof value.max === 'number'
+    );
+}
 
 function populateMissingAttributes(
     entity: SelectEntity & {
@@ -128,6 +160,19 @@ interface EntityTypeCache {
     [key: string]: Promise<EntityWithAttributesAndType[]>;
 }
 
+export type IncomingEntityLinkGroup = {
+    entityTypeName: string;
+    entityTypeLabel: string;
+    entities: {
+        id: number;
+        displayName: string;
+        linkedBy: {
+            name: string;
+            label: string;
+        }[];
+    }[];
+};
+
 // Update expandEntity to accept a cache
 async function expandEntity(
     entityRaw: EntityWithAttributesAndType | undefined,
@@ -231,21 +276,32 @@ async function expandValue(
     }
     if (attributeDefinition.dataType === 'number') {
         return parseFloat(value);
+    } else if (
+        attributeDefinition.dataType === 'range' ||
+        attributeDefinition.dataType.startsWith('range|')
+    ) {
+        const parsedRangeValue = tryParseAttributeJson(
+            value,
+            attributeDefinition,
+        );
+        if (isRangeValue(parsedRangeValue)) {
+            return parsedRangeValue;
+        }
+        return null;
     } else if (attributeDefinition.dataType === 'boolean') {
         return value === 'true';
     } else if (attributeDefinition.dataType.startsWith('json')) {
         if (!value) return null;
-        return JSON.parse(value);
+        return tryParseAttributeJson(value, attributeDefinition);
     } else if (attributeDefinition.dataType === 'image') {
-        // Assuming the value is a URL or path to the image
-        const data = JSON.parse(value) as unknown;
+        if (!value) return null;
+        const data = tryParseAttributeJson(value, attributeDefinition);
+        if (!data || typeof data !== 'object') {
+            return null;
+        }
+
         let url = '';
-        if (
-            typeof data === 'object' &&
-            data !== null &&
-            'url' in data &&
-            typeof data.url === 'string'
-        ) {
+        if ('url' in data && typeof data.url === 'string') {
             url = data.url;
         }
         return {
@@ -395,15 +451,248 @@ export async function getEntityRaw(id: number) {
     return populateMissingAttributes(entity);
 }
 
-export async function createEntity(entityTypeName: string) {
+function escapeForLike(value: string) {
+    return value.replace(/[\\%_]/g, '\\$&');
+}
+
+function entityNameFromAttributes(
+    entity: SelectEntity & {
+        attributes: (SelectAttributeValue & {
+            attributeDefinition: SelectAttributeDefinition;
+        })[];
+    },
+) {
+    return (
+        entity.attributes.find(
+            (a) =>
+                a.attributeDefinition.category === 'information' &&
+                a.attributeDefinition.name === 'name',
+        )?.value ?? null
+    );
+}
+
+function entityDisplayNameFromAttributes(
+    entity: SelectEntity & {
+        entityType: SelectEntityType;
+        attributes: (SelectAttributeValue & {
+            attributeDefinition: SelectAttributeDefinition;
+        })[];
+    },
+) {
+    const label = entity.attributes.find(
+        (a) =>
+            a.attributeDefinition.category === 'information' &&
+            a.attributeDefinition.name === 'label',
+    )?.value;
+    const name = entityNameFromAttributes(entity);
+    return label ?? name ?? `${entity.entityType.label} ${entity.id}`;
+}
+
+function attributeValueContainsEntityName(
+    value: string | null,
+    entityName: string,
+    multiple: boolean,
+) {
+    if (!value) {
+        return false;
+    }
+    if (!multiple) {
+        return value === entityName;
+    }
+
+    try {
+        const parsed = JSON.parse(value);
+        if (!Array.isArray(parsed)) {
+            return value === entityName;
+        }
+
+        return parsed.some((item) =>
+            typeof item === 'string'
+                ? item === entityName
+                : JSON.stringify(item) === entityName,
+        );
+    } catch {
+        return value === entityName;
+    }
+}
+
+export async function getEntityIncomingLinks(
+    entityId: number,
+    sourceEntity?: NonNullable<Awaited<ReturnType<typeof getEntityRaw>>>,
+): Promise<IncomingEntityLinkGroup[]> {
+    const entity = sourceEntity ?? (await getEntityRaw(entityId));
+    if (!entity) {
+        return [];
+    }
+
+    const entityName = entityNameFromAttributes(entity);
+    if (!entityName) {
+        return [];
+    }
+
+    const refDefinitions = await storage().query.attributeDefinitions.findMany({
+        where: and(
+            eq(attributeDefinitions.isDeleted, false),
+            eq(attributeDefinitions.dataType, `ref:${entity.entityTypeName}`),
+        ),
+    });
+    if (refDefinitions.length === 0) {
+        return [];
+    }
+
+    const definitionById = new Map(refDefinitions.map((d) => [d.id, d]));
+    const definitionIds = refDefinitions.map((d) => d.id);
+    const exactValueMatches = await storage().query.attributeValues.findMany({
+        where: and(
+            inArray(attributeValues.attributeDefinitionId, definitionIds),
+            eq(attributeValues.isDeleted, false),
+            eq(attributeValues.value, entityName),
+        ),
+    });
+
+    const multipleDefinitionIds = refDefinitions
+        .filter((definition) => definition.multiple)
+        .map((definition) => definition.id);
+    const linkAttributeValues = [...exactValueMatches];
+    if (multipleDefinitionIds.length > 0) {
+        const escapedJsonEntityName = escapeForLike(JSON.stringify(entityName));
+        const legacyJsonArrayMatches =
+            await storage().query.attributeValues.findMany({
+                where: and(
+                    inArray(
+                        attributeValues.attributeDefinitionId,
+                        multipleDefinitionIds,
+                    ),
+                    eq(attributeValues.isDeleted, false),
+                    like(attributeValues.value, `%${escapedJsonEntityName}%`),
+                ),
+            });
+
+        const seenAttributeValueIds = new Set(
+            linkAttributeValues.map((v) => v.id),
+        );
+        for (const legacyJsonArrayMatch of legacyJsonArrayMatches) {
+            if (seenAttributeValueIds.has(legacyJsonArrayMatch.id)) {
+                continue;
+            }
+
+            linkAttributeValues.push(legacyJsonArrayMatch);
+            seenAttributeValueIds.add(legacyJsonArrayMatch.id);
+        }
+    }
+    const entityToDefinitionIds = new Map<number, Set<number>>();
+    for (const attributeValue of linkAttributeValues) {
+        if (attributeValue.entityId === entityId) {
+            continue;
+        }
+        const definition = definitionById.get(
+            attributeValue.attributeDefinitionId,
+        );
+        if (!definition) {
+            continue;
+        }
+        if (
+            !attributeValueContainsEntityName(
+                attributeValue.value,
+                entityName,
+                definition.multiple,
+            )
+        ) {
+            continue;
+        }
+
+        const definitionIdsByEntity =
+            entityToDefinitionIds.get(attributeValue.entityId) ?? new Set();
+        definitionIdsByEntity.add(definition.id);
+        entityToDefinitionIds.set(
+            attributeValue.entityId,
+            definitionIdsByEntity,
+        );
+    }
+
+    const sourceEntityIds = Array.from(entityToDefinitionIds.keys());
+    if (sourceEntityIds.length === 0) {
+        return [];
+    }
+
+    const sourceEntities = await storage().query.entities.findMany({
+        where: and(
+            inArray(entities.id, sourceEntityIds),
+            eq(entities.isDeleted, false),
+        ),
+        with: {
+            attributes: {
+                where: eq(attributeValues.isDeleted, false),
+                with: {
+                    attributeDefinition: true,
+                },
+            },
+            entityType: true,
+        },
+    });
+
+    const grouped = new Map<string, IncomingEntityLinkGroup>();
+    for (const sourceEntity of sourceEntities) {
+        const linkedByIds = entityToDefinitionIds.get(sourceEntity.id);
+        if (!linkedByIds) {
+            continue;
+        }
+
+        const linkedBy = Array.from(linkedByIds)
+            .map((definitionId) => definitionById.get(definitionId))
+            .filter((definition): definition is SelectAttributeDefinition =>
+                Boolean(definition),
+            )
+            .map((definition) => ({
+                name: definition.name,
+                label: definition.label,
+            }))
+            .sort((a, b) => a.label.localeCompare(b.label));
+
+        const group = grouped.get(sourceEntity.entityTypeName) ?? {
+            entityTypeName: sourceEntity.entityTypeName,
+            entityTypeLabel: sourceEntity.entityType.label,
+            entities: [],
+        };
+        group.entities.push({
+            id: sourceEntity.id,
+            displayName: entityDisplayNameFromAttributes(sourceEntity),
+            linkedBy,
+        });
+        grouped.set(sourceEntity.entityTypeName, group);
+    }
+
+    return Array.from(grouped.values())
+        .map((group) => ({
+            ...group,
+            entities: group.entities.sort((a, b) =>
+                a.displayName.localeCompare(b.displayName),
+            ),
+        }))
+        .sort((a, b) => a.entityTypeLabel.localeCompare(b.entityTypeLabel));
+}
+
+export async function createEntity(
+    entityTypeName: string,
+    actor?: { id?: string; name?: string },
+) {
     const [result] = await Promise.all([
         storage()
             .insert(entities)
             .values({ entityTypeName })
             .returning({ id: entities.id }),
         bustCached(cacheKeys.entityTypeName(entityTypeName)),
+        bustCachedByPrefixes(['dashboard:admin:']),
     ]);
-    return result[0].id;
+    const entityId = result[0].id;
+    await storage().insert(entityRevisions).values({
+        entityId,
+        entityTypeName,
+        action: 'entity.created',
+        actorId: actor?.id,
+        actorName: actor?.name,
+    });
+    return entityId;
 }
 
 export async function duplicateEntity(id: number) {
@@ -425,21 +714,80 @@ export async function duplicateEntity(id: number) {
         storage().insert(attributeValues).values(newAttributes),
         bustCached(cacheKeys.entityTypeName(entity.entityTypeName)),
         bustCached(cacheKeys.entity(newEntityId)),
+        bustCachedByPrefixes(['dashboard:admin:']),
     ]);
 
     return newEntityId;
 }
 
-export async function updateEntity(entity: UpdateEntity) {
+export async function updateEntity(
+    entity: UpdateEntity,
+    actor?: { id?: string; name?: string },
+) {
+    const previousEntity = await storage().query.entities.findFirst({
+        where: eq(entities.id, entity.id),
+    });
+
     const updateData = {
         ...entity,
     };
 
     if (updateData.state === 'published') {
+        const entityForValidation = await storage().query.entities.findFirst({
+            where: and(eq(entities.id, entity.id), eq(entities.isDeleted, false)),
+            with: {
+                attributes: {
+                    where: eq(attributeValues.isDeleted, false),
+                },
+                entityType: {
+                    with: {
+                        attributeDefinitions: {
+                            where: eq(attributeDefinitions.isDeleted, false),
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!entityForValidation) {
+            throw new Error(`Entity with id ${entity.id} not found.`);
+        }
+
+        const completeness = getEntityCompleteness(
+            entityForValidation,
+            entityForValidation.entityType.attributeDefinitions,
+        );
+        if (!completeness.isComplete) {
+            const missingFields = completeness.missingRequiredDefinitions
+                .map((definition) => definition.label)
+                .join(', ');
+            throw new Error(
+                `Entity is not ready for publishing. Fill required fields: ${missingFields}.`,
+            );
+        }
+
         updateData.publishedAt = new Date();
     }
 
     await Promise.all([
+        previousEntity
+            ? storage()
+                  .insert(entityRevisions)
+                  .values({
+                      entityId: entity.id,
+                      entityTypeName:
+                          entity.entityTypeName ??
+                          previousEntity.entityTypeName,
+                      action:
+                          previousEntity.state !== updateData.state
+                              ? 'entity.state_changed'
+                              : 'entity.updated',
+                      actorId: actor?.id,
+                      actorName: actor?.name,
+                      previousState: previousEntity.state,
+                      nextState: updateData.state ?? previousEntity.state,
+                  })
+            : undefined,
         storage()
             .update(entities)
             .set(updateData)
@@ -470,16 +818,29 @@ export async function updateEntity(entity: UpdateEntity) {
         entity.entityTypeName
             ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))
             : null,
+        bustCachedByPrefixes(['dashboard:admin:']),
     ]);
 }
 
-export async function deleteEntity(id: number) {
+export async function deleteEntity(
+    id: number,
+    actor?: { id?: string; name?: string },
+) {
     const entity = await getEntityRaw(id);
     if (!entity) {
         throw new Error(`Entity with id ${id} not found`);
     }
 
     await Promise.all([
+        storage().insert(entityRevisions).values({
+            entityId: id,
+            entityTypeName: entity.entityTypeName,
+            action: 'entity.deleted',
+            actorId: actor?.id,
+            actorName: actor?.name,
+            previousState: entity.state,
+            nextState: entity.state,
+        }),
         storage()
             .update(entities)
             .set({ isDeleted: true })
@@ -488,5 +849,16 @@ export async function deleteEntity(id: number) {
         entity.entityTypeName
             ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))
             : null,
+        bustCachedByPrefixes(['dashboard:admin:']),
     ]);
+}
+
+export async function getEntityRevisions(entityId: number) {
+    return storage().query.entityRevisions.findMany({
+        where: eq(entityRevisions.entityId, entityId),
+        orderBy: (revisions, { desc }) => [
+            desc(revisions.createdAt),
+            desc(revisions.id),
+        ],
+    });
 }

@@ -6,6 +6,7 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../components/shared/PageHeader';
+import { getOperationsData } from '../../lib/plants/getOperationsData';
 import { KnownPages } from '../../src/KnownPages';
 
 export const metadata: Metadata = {
@@ -14,7 +15,16 @@ export const metadata: Metadata = {
         'Saznaj kako funkcionira sjetva biljaka u Gredicama, koliko košta i koje pogodnosti dobivaš tijekom ljeta.',
 };
 
-export default function SowingPage() {
+const DEFAULT_FREE_WATERING_OPERATION_LABEL = 'Površinsko zalijevanje (20 L)';
+const FREE_WATERING_OPERATION_ID = 274;
+
+export default async function SowingPage() {
+    const operationsData = await getOperationsData();
+    const freeWateringOperationLabel =
+        operationsData.find(
+            (operation) => operation.id === FREE_WATERING_OPERATION_ID,
+        )?.information.label ?? DEFAULT_FREE_WATERING_OPERATION_LABEL;
+
     return (
         <Container maxWidth="md">
             <Stack spacing={4}>
@@ -74,7 +84,7 @@ export default function SowingPage() {
                     <p>
                         Tijekom proljeća svaka naručena sjetva donosi besplatno
                         3 zalijevanja* &quot;
-                        <strong>Površinsko zalijevanje (10&nbsp;L)</strong>
+                        <strong>{freeWateringOperationLabel}</strong>
                         &quot; za podignutu gredicu, pri čemu se zalijevanje
                         obavlja svaki drugi dan.
                     </p>
@@ -92,7 +102,7 @@ export default function SowingPage() {
                     <p>
                         Tijekom ljeta svaka naručena sjetva donosi besplatno 5
                         zalijevanja* &quot;
-                        <strong>Površinsko zalijevanje (10&nbsp;L)</strong>
+                        <strong>{freeWateringOperationLabel}</strong>
                         &quot; za podignutu gredicu.
                     </p>
                     <small>
@@ -109,7 +119,7 @@ export default function SowingPage() {
                     <p>
                         Tijekom jeseni svaka naručena sjetva donosi besplatno 3
                         zalijevanja* &quot;
-                        <strong>Površinsko zalijevanje (10&nbsp;L)</strong>
+                        <strong>{freeWateringOperationLabel}</strong>
                         &quot; za podignutu gredicu, pri čemu se zalijevanje
                         obavlja svaki drugi dan.
                     </p>

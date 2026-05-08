@@ -4,9 +4,16 @@ import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { getEntitiesFormatted, getOperations, storage } from '..';
 import type { EntityStandardized } from '../@types/EntityStandardized';
+import {
+    bustScheduleCache,
+    cacheScheduleRead,
+    scheduleCacheKeys,
+    scheduleCacheTtls,
+} from '../cache/scheduleCache';
 import { generateRaisedBedName } from '../helpers/generateRaisedBedName';
 import {
     events,
+    farmUsers,
     gardenBlocks,
     gardenStacks,
     gardens,
@@ -21,6 +28,7 @@ import {
     type UpdateGardenBlock,
     type UpdateGardenStack,
     type UpdateRaisedBed,
+    users,
 } from '../schema';
 import {
     type InsertRaisedBedField,
@@ -30,6 +38,7 @@ import {
     type SelectRaisedBedField,
     type UpdateRaisedBedSensor,
 } from '../schema/gardenSchema';
+import { normalizeAssignedUserIds } from './events/normalizeAssignedUserIds';
 import {
     createEvent,
     getEvents,
@@ -73,7 +82,244 @@ export type RaisedBedFieldPlantCycle = {
     plantRemovedDate?: Date;
     stoppedDate?: Date;
     toBeRemoved: boolean;
+    assignedUserId?: string | null;
+    assignedUserIds?: string[];
+    assignedBy?: string | null;
+    assignedAt?: Date;
 };
+
+export type AssignableFarmUser = {
+    id: string;
+    userName: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+    farmId: number;
+};
+
+export type RaisedBedFieldAssignableFarmUser = AssignableFarmUser;
+
+export type GardenAssignableFarmUser = AssignableFarmUser;
+
+export type UniqueGardenAssignableFarmUser = Omit<AssignableFarmUser, 'farmId'>;
+
+type FarmAssignableUserRow = {
+    farmId: number;
+    userId: string;
+    userName: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+};
+
+// Parse assignment metadata carried on events without trusting arbitrary payload shapes.
+function extractAssignedUserId(value: unknown) {
+    return typeof value === 'string' || value === null ? value : undefined;
+}
+
+// Status updates can include assignee metadata for analytics, but only explicit
+// assignment events should mutate the projected assignment state.
+function isAssignmentEvent(data: { status?: unknown; assignedBy?: unknown }) {
+    const hasStatus = typeof data.status === 'string';
+    const hasAssignedBy =
+        typeof data.assignedBy === 'string' || data.assignedBy === null;
+
+    // Apply assignment mutations for pure assignment events, or for combined
+    // updates that explicitly carry assignment ownership via `assignedBy`.
+    return !hasStatus || hasAssignedBy;
+}
+
+async function getAssignableFarmUserRowsByFarmIds(farmIds: number[]) {
+    const uniqueFarmIds = Array.from(new Set(farmIds));
+    if (uniqueFarmIds.length === 0) {
+        return [] as FarmAssignableUserRow[];
+    }
+
+    return storage()
+        .selectDistinct({
+            farmId: farmUsers.farmId,
+            userId: users.id,
+            userName: users.userName,
+            displayName: users.displayName,
+            avatarUrl: users.avatarUrl,
+        })
+        .from(farmUsers)
+        .innerJoin(users, eq(farmUsers.userId, users.id))
+        .where(inArray(farmUsers.farmId, uniqueFarmIds))
+        .orderBy(asc(farmUsers.farmId), asc(users.userName));
+}
+
+export async function getAssignableFarmUsersByGardenIds(gardenIds: number[]) {
+    const uniqueGardenIds = Array.from(new Set(gardenIds));
+    if (uniqueGardenIds.length === 0) {
+        const emptyAssignableFarmUsersByGardenId: Record<
+            number,
+            GardenAssignableFarmUser[]
+        > = {};
+
+        return emptyAssignableFarmUsersByGardenId;
+    }
+
+    const gardenFarmRows = await storage()
+        .select({
+            gardenId: gardens.id,
+            farmId: gardens.farmId,
+        })
+        .from(gardens)
+        .where(
+            and(
+                inArray(gardens.id, uniqueGardenIds),
+                eq(gardens.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(gardens.id));
+
+    const farmUserRows = await getAssignableFarmUserRowsByFarmIds(
+        gardenFarmRows.map((row) => row.farmId),
+    );
+
+    const usersByFarmId: Record<number, GardenAssignableFarmUser[]> = {};
+    for (const row of farmUserRows) {
+        const existingUsers = usersByFarmId[row.farmId] ?? [];
+        existingUsers.push({
+            id: row.userId,
+            userName: row.userName,
+            displayName: row.displayName,
+            avatarUrl: row.avatarUrl,
+            farmId: row.farmId,
+        });
+        usersByFarmId[row.farmId] = existingUsers;
+    }
+
+    const assignableFarmUsersByGardenId: Record<
+        number,
+        GardenAssignableFarmUser[]
+    > = {};
+
+    for (const row of gardenFarmRows) {
+        assignableFarmUsersByGardenId[row.gardenId] =
+            usersByFarmId[row.farmId] ?? [];
+    }
+
+    return assignableFarmUsersByGardenId;
+}
+
+export async function getUniqueAssignableFarmUsersByGardenIds(
+    gardenIds: number[],
+) {
+    const uniqueGardenIds = Array.from(new Set(gardenIds));
+    if (uniqueGardenIds.length === 0) {
+        return [] as UniqueGardenAssignableFarmUser[];
+    }
+
+    const gardenFarmRows = await storage()
+        .select({
+            farmId: gardens.farmId,
+        })
+        .from(gardens)
+        .where(
+            and(
+                inArray(gardens.id, uniqueGardenIds),
+                eq(gardens.isDeleted, false),
+            ),
+        );
+    const farmUserRows = await getAssignableFarmUserRowsByFarmIds(
+        gardenFarmRows.map((row) => row.farmId),
+    );
+
+    return Array.from(
+        new Map(
+            farmUserRows.map((row) => [
+                row.userId,
+                {
+                    id: row.userId,
+                    userName: row.userName,
+                    displayName: row.displayName,
+                    avatarUrl: row.avatarUrl,
+                },
+            ]),
+        ).values(),
+    );
+}
+
+export async function getAssignableFarmUsersByRaisedBedFieldIds(
+    raisedBedFieldIds: number[],
+) {
+    const uniqueRaisedBedFieldIds = Array.from(new Set(raisedBedFieldIds));
+    if (uniqueRaisedBedFieldIds.length === 0) {
+        const emptyAssignableFarmUsersByRaisedBedFieldId: Record<
+            number,
+            RaisedBedFieldAssignableFarmUser[]
+        > = {};
+
+        return emptyAssignableFarmUsersByRaisedBedFieldId;
+    }
+
+    const rows = await storage()
+        .selectDistinct({
+            raisedBedFieldId: raisedBedFields.id,
+            farmId: farmUsers.farmId,
+            userId: users.id,
+            userName: users.userName,
+            displayName: users.displayName,
+            avatarUrl: users.avatarUrl,
+        })
+        .from(raisedBedFields)
+        .innerJoin(raisedBeds, eq(raisedBedFields.raisedBedId, raisedBeds.id))
+        .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
+        .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+        .innerJoin(users, eq(farmUsers.userId, users.id))
+        .where(
+            and(
+                inArray(raisedBedFields.id, uniqueRaisedBedFieldIds),
+                eq(raisedBedFields.isDeleted, false),
+                eq(raisedBeds.isDeleted, false),
+                eq(gardens.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(raisedBedFields.id), asc(users.userName));
+
+    const assignableFarmUsersByRaisedBedFieldId: Record<
+        number,
+        RaisedBedFieldAssignableFarmUser[]
+    > = {};
+
+    for (const row of rows) {
+        const existingUsers =
+            assignableFarmUsersByRaisedBedFieldId[row.raisedBedFieldId] ?? [];
+        existingUsers.push({
+            id: row.userId,
+            userName: row.userName,
+            displayName: row.displayName,
+            avatarUrl: row.avatarUrl,
+            farmId: row.farmId,
+        });
+        assignableFarmUsersByRaisedBedFieldId[row.raisedBedFieldId] =
+            existingUsers;
+    }
+
+    return assignableFarmUsersByRaisedBedFieldId;
+}
+
+export async function getRaisedBedFieldContext(raisedBedFieldId: number) {
+    const rows = await storage()
+        .select({
+            id: raisedBeds.id,
+            gardenId: raisedBeds.gardenId,
+            accountId: raisedBeds.accountId,
+            positionIndex: raisedBedFields.positionIndex,
+        })
+        .from(raisedBedFields)
+        .innerJoin(raisedBeds, eq(raisedBedFields.raisedBedId, raisedBeds.id))
+        .where(
+            and(
+                eq(raisedBedFields.id, raisedBedFieldId),
+                eq(raisedBedFields.isDeleted, false),
+                eq(raisedBeds.isDeleted, false),
+            ),
+        )
+        .limit(1);
+
+    return rows[0] ?? null;
+}
 
 function fieldRowPriority(
     field: SelectRaisedBedField,
@@ -395,6 +641,10 @@ function summarizePlantCycle(
     let active = false;
     let toBeRemoved = false;
     let stoppedDate: Date | undefined;
+    let assignedUserId: string | null | undefined;
+    let assignedUserIds: string[] | undefined;
+    let assignedBy: string | null | undefined;
+    let assignedAt: Date | undefined;
 
     for (const plantCycleEvent of plantCycleEvents) {
         const data = plantCycleEvent.data as
@@ -428,6 +678,10 @@ function summarizePlantCycle(
             plantDeadDate = undefined;
             plantHarvestedDate = undefined;
             plantRemovedDate = undefined;
+            assignedUserId = undefined;
+            assignedUserIds = undefined;
+            assignedBy = undefined;
+            assignedAt = undefined;
             continue;
         }
 
@@ -463,11 +717,58 @@ function summarizePlantCycle(
         if (
             plantCycleEvent.type === knownEventTypes.raisedBedFields.plantUpdate
         ) {
+            let shouldApplyAssignedBy = true;
+            const shouldApplyAssignedUsers = isAssignmentEvent(data ?? {});
+            const hasAssignedUserIdUpdate =
+                shouldApplyAssignedUsers &&
+                extractAssignedUserId(data?.assignedUserId) !== undefined;
             plantStatus =
                 typeof data?.status === 'string' ? data.status : plantStatus;
+            if (hasAssignedUserIdUpdate) {
+                const nextAssignedUserId = extractAssignedUserId(
+                    data?.assignedUserId,
+                );
+                assignedUserId = nextAssignedUserId;
+                assignedUserIds = undefined;
+                if (nextAssignedUserId === null) {
+                    assignedBy = null;
+                    assignedAt = undefined;
+                    shouldApplyAssignedBy = false;
+                } else {
+                    assignedAt = plantCycleEvent.createdAt;
+                }
+            }
+            if (
+                shouldApplyAssignedUsers &&
+                Array.isArray(data?.assignedUserIds)
+            ) {
+                const eventAssignedUserId = extractAssignedUserId(
+                    data?.assignedUserId,
+                );
+                assignedUserIds = normalizeAssignedUserIds(
+                    data.assignedUserIds.filter(
+                        (value): value is string => typeof value === 'string',
+                    ),
+                    eventAssignedUserId,
+                );
+                assignedUserId = assignedUserIds[0] ?? null;
+                if (assignedUserIds.length === 0) {
+                    assignedBy = null;
+                    assignedAt = undefined;
+                    shouldApplyAssignedBy = false;
+                } else {
+                    assignedAt = plantCycleEvent.createdAt;
+                }
+            }
+            if (shouldApplyAssignedBy && typeof data?.assignedBy === 'string') {
+                assignedBy = data.assignedBy;
+            }
 
-            if (plantStatus === 'sowed') {
-                plantSowDate = plantCycleEvent.createdAt;
+            if (
+                plantStatus === 'pendingVerification' ||
+                plantStatus === 'sowed'
+            ) {
+                plantSowDate = plantSowDate ?? plantCycleEvent.createdAt;
             } else if (plantStatus === 'sprouted') {
                 plantGrowthDate = plantCycleEvent.createdAt;
             } else if (plantStatus === 'notSprouted') {
@@ -514,6 +815,13 @@ function summarizePlantCycle(
         plantRemovedDate,
         stoppedDate,
         toBeRemoved,
+        assignedUserIds: normalizeAssignedUserIds(
+            assignedUserIds,
+            assignedUserId,
+        ),
+        assignedUserId,
+        assignedBy,
+        assignedAt,
     };
 }
 
@@ -613,6 +921,7 @@ export async function createGarden(garden: InsertGarden) {
             accountId: createdGarden.accountId,
         }),
     );
+    await bustScheduleCache();
 
     return createdGarden.id;
 }
@@ -736,6 +1045,7 @@ export async function updateGarden(garden: UpdateGarden) {
             }),
         );
     }
+    await bustScheduleCache();
 }
 
 export async function deleteGarden(gardenId: number) {
@@ -744,6 +1054,7 @@ export async function deleteGarden(gardenId: number) {
         .set({ isDeleted: true })
         .where(eq(gardens.id, gardenId));
     await createEvent(knownEvents.gardens.deletedV1(gardenId.toString()));
+    await bustScheduleCache();
 }
 
 export async function getGardenBlocks(gardenId: number) {
@@ -932,7 +1243,7 @@ export async function createRaisedBed(
         orientation?: RaisedBedOrientation;
     },
 ) {
-    return (
+    const result = (
         await storage()
             .insert(raisedBeds)
             .values({
@@ -942,6 +1253,19 @@ export async function createRaisedBed(
             })
             .returning({ id: raisedBeds.id })
     )[0].id;
+    await bustScheduleCache();
+    return result;
+}
+
+export async function getRaisedBedIdsByAccount(accountId: string) {
+    const beds = await storage().query.raisedBeds.findMany({
+        columns: { id: true },
+        where: and(
+            eq(raisedBeds.accountId, accountId),
+            eq(raisedBeds.isDeleted, false),
+        ),
+    });
+    return beds.map((b) => b.id);
 }
 
 export async function getRaisedBeds(
@@ -1092,6 +1416,10 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         let active = true;
         let toBeRemoved = false;
         let stoppedDate: Date | undefined;
+        let assignedUserId: string | null | undefined;
+        let assignedUserIds: string[] | undefined;
+        let assignedBy: string | null | undefined;
+        let assignedAt: Date | undefined;
 
         for (const event of events) {
             const data = event.data as Record<string, unknown> | undefined;
@@ -1111,6 +1439,10 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 plantDeadDate = undefined;
                 plantHarvestedDate = undefined;
                 plantRemovedDate = undefined;
+                assignedUserId = undefined;
+                assignedUserIds = undefined;
+                assignedBy = undefined;
+                assignedAt = undefined;
 
                 // Parse plant sort ID if provided
                 if (typeof data?.plantSortId === 'number') {
@@ -1160,12 +1492,63 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             else if (
                 event.type === knownEventTypes.raisedBedFields.plantUpdate
             ) {
+                let shouldApplyAssignedBy = true;
+                const shouldApplyAssignedUsers = isAssignmentEvent(data ?? {});
+                const hasAssignedUserIdUpdate =
+                    shouldApplyAssignedUsers &&
+                    extractAssignedUserId(data?.assignedUserId) !== undefined;
                 plantStatus =
                     typeof data?.status === 'string'
                         ? data?.status
                         : plantStatus;
-                if (plantStatus === 'sowed') {
-                    plantSowDate = event.createdAt;
+                if (hasAssignedUserIdUpdate) {
+                    const nextAssignedUserId = extractAssignedUserId(
+                        data?.assignedUserId,
+                    );
+                    assignedUserId = nextAssignedUserId;
+                    assignedUserIds = undefined;
+                    if (nextAssignedUserId === null) {
+                        assignedBy = null;
+                        assignedAt = undefined;
+                        shouldApplyAssignedBy = false;
+                    } else {
+                        assignedAt = event.createdAt;
+                    }
+                }
+                if (
+                    shouldApplyAssignedUsers &&
+                    Array.isArray(data?.assignedUserIds)
+                ) {
+                    const eventAssignedUserId = extractAssignedUserId(
+                        data?.assignedUserId,
+                    );
+                    assignedUserIds = normalizeAssignedUserIds(
+                        data.assignedUserIds.filter(
+                            (value): value is string =>
+                                typeof value === 'string',
+                        ),
+                        eventAssignedUserId,
+                    );
+                    assignedUserId = assignedUserIds[0] ?? null;
+                    if (assignedUserIds.length === 0) {
+                        assignedBy = null;
+                        assignedAt = undefined;
+                        shouldApplyAssignedBy = false;
+                    } else {
+                        assignedAt = event.createdAt;
+                    }
+                }
+                if (
+                    shouldApplyAssignedBy &&
+                    typeof data?.assignedBy === 'string'
+                ) {
+                    assignedBy = data.assignedBy;
+                }
+                if (
+                    plantStatus === 'pendingVerification' ||
+                    plantStatus === 'sowed'
+                ) {
+                    plantSowDate = plantSowDate ?? event.createdAt;
                 } else if (plantStatus === 'sprouted') {
                     plantGrowthDate = event.createdAt;
                 } else if (plantStatus === 'notSprouted') {
@@ -1221,6 +1604,13 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             active,
             toBeRemoved,
             stoppedDate,
+            assignedUserIds: normalizeAssignedUserIds(
+                assignedUserIds,
+                assignedUserId,
+            ),
+            assignedUserId,
+            assignedBy,
+            assignedAt,
         };
     });
 }
@@ -1235,6 +1625,7 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
         getEvents(
             [
                 knownEventTypes.raisedBeds.create,
+                knownEventTypes.raisedBeds.aiAnalysis,
                 knownEventTypes.raisedBeds.delete,
             ],
             [raisedBedId.toString()],
@@ -1255,13 +1646,32 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
     const raisedBedsEventDiaryEntries = events
         .map((event) => {
             const data = event.data as Record<string, unknown> | undefined;
+            let name = 'Nepoznato';
+            let description = '';
+
+            switch (event.type) {
+                case knownEventTypes.raisedBeds.create: {
+                    name = 'Gredica stvorena';
+                    break;
+                }
+                case knownEventTypes.raisedBeds.aiAnalysis: {
+                    name = 'AI analiza gredice';
+                    description =
+                        typeof data?.markdown === 'string'
+                            ? data.markdown
+                            : 'AI analiza je spremljena.';
+                    break;
+                }
+                case knownEventTypes.raisedBeds.delete: {
+                    name = 'Gredica obrisana';
+                    break;
+                }
+            }
+
             return {
                 id: event.id,
-                name:
-                    event.type === knownEventTypes.raisedBeds.create
-                        ? 'Gredica stvorena'
-                        : 'Gredica obrisana',
-                description: '',
+                name,
+                description,
                 status: null,
                 timestamp: event.createdAt,
                 imageUrls: Array.isArray(data?.imageUrls)
@@ -1271,6 +1681,8 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                     : typeof data?.imageUrl === 'string'
                       ? [data.imageUrl]
                       : undefined,
+                isMarkdown:
+                    event.type === knownEventTypes.raisedBeds.aiAnalysis,
             };
         })
         .filter((op) => op.name);
@@ -1291,7 +1703,15 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
         .filter((op) => op.name)
         .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
-    return [...raisedBedsEventDiaryEntries, ...operationsDiaryEntries];
+    return [...raisedBedsEventDiaryEntries, ...operationsDiaryEntries].sort(
+        (a, b) => {
+            const aTime =
+                a.timestamp instanceof Date ? a.timestamp.getTime() : 0;
+            const bTime =
+                b.timestamp instanceof Date ? b.timestamp.getTime() : 0;
+            return bTime - aTime;
+        },
+    );
 }
 
 export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {
@@ -1299,6 +1719,7 @@ export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {
         .update(raisedBeds)
         .set(raisedBed)
         .where(eq(raisedBeds.id, raisedBed.id));
+    await bustScheduleCache();
 }
 
 export async function mergeRaisedBeds(
@@ -1410,6 +1831,7 @@ export async function mergeRaisedBeds(
                         knownEventTypes.raisedBeds.place,
                         knownEventTypes.raisedBeds.delete,
                         knownEventTypes.raisedBeds.abandon,
+                        knownEventTypes.raisedBeds.aiAnalysis,
                     ]),
                 ),
             );
@@ -1458,6 +1880,7 @@ export async function mergeRaisedBeds(
                 .where(eq(raisedBeds.id, targetRaisedBedId));
         }
     });
+    await bustScheduleCache();
 }
 
 export async function deleteRaisedBed(raisedBedId: number) {
@@ -1465,9 +1888,55 @@ export async function deleteRaisedBed(raisedBedId: number) {
         .update(raisedBeds)
         .set({ isDeleted: true })
         .where(eq(raisedBeds.id, raisedBedId));
+    await bustScheduleCache();
+}
+
+export async function getFarmUserRaisedBeds(userId: string) {
+    return cacheScheduleRead(
+        scheduleCacheKeys.farmUserRaisedBeds(userId),
+        () => getFarmUserRaisedBedsUncached(userId),
+        scheduleCacheTtls.raisedBeds,
+    );
+}
+
+async function getFarmUserRaisedBedsUncached(userId: string) {
+    const farmRaisedBeds = await storage()
+        .select({ raisedBed: raisedBeds })
+        .from(raisedBeds)
+        .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
+        .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+        .where(
+            and(
+                eq(farmUsers.userId, userId),
+                eq(raisedBeds.isDeleted, false),
+                eq(gardens.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(raisedBeds.id));
+
+    const fields = (
+        await Promise.all(
+            farmRaisedBeds
+                .map((row) => row.raisedBed.id)
+                .map(getRaisedBedFieldsWithEvents),
+        )
+    ).flat();
+
+    return farmRaisedBeds.map(({ raisedBed }) => ({
+        ...raisedBed,
+        fields: fields.filter((field) => field.raisedBedId === raisedBed.id),
+    }));
 }
 
 export async function getAllRaisedBeds() {
+    return cacheScheduleRead(
+        scheduleCacheKeys.adminRaisedBeds(),
+        getAllRaisedBedsUncached,
+        scheduleCacheTtls.raisedBeds,
+    );
+}
+
+async function getAllRaisedBedsUncached() {
     const allRaisedBeds = await storage().query.raisedBeds.findMany({
         where: and(eq(raisedBeds.isDeleted, false)),
     });
@@ -1526,6 +1995,7 @@ export async function getRaisedBedFieldDiaryEntries(
                 knownEventTypes.raisedBedFields.plantSchedule,
                 knownEventTypes.raisedBedFields.plantUpdate,
                 knownEventTypes.raisedBedFields.plantReplaceSort,
+                knownEventTypes.raisedBedFields.aiAnalysis,
                 knownEventTypes.raisedBedFields.delete,
             ],
             [`${raisedBedId.toString()}|${positionIndex.toString()}`],
@@ -1589,6 +2059,14 @@ export async function getRaisedBedFieldDiaryEntries(
                     description = 'Polje je uklonjeno.';
                     break;
                 }
+                case knownEventTypes.raisedBedFields.aiAnalysis: {
+                    name = 'AI analiza vrta';
+                    description =
+                        typeof data?.markdown === 'string'
+                            ? data.markdown
+                            : 'AI analiza je spremljena.';
+                    break;
+                }
                 default:
                     name = 'Nepoznato';
                     description = 'Nepoznata promjena.';
@@ -1607,6 +2085,8 @@ export async function getRaisedBedFieldDiaryEntries(
                     : typeof data?.imageUrl === 'string'
                       ? [data.imageUrl]
                       : undefined,
+                isMarkdown:
+                    event.type === knownEventTypes.raisedBedFields.aiAnalysis,
             };
         })
         .filter((event) => event.name);
@@ -1644,6 +2124,8 @@ function operationStatusToLabel(status: string) {
             return 'Novo';
         case 'completed':
             return 'Završeno';
+        case 'pendingVerification':
+            return 'Završeno';
         case 'planned':
             return 'Planirano';
         case 'canceled':
@@ -1664,6 +2146,7 @@ export async function upsertRaisedBedField(
     await storage().transaction(async (tx) => {
         await syncRaisedBedFieldRow(tx, field);
     });
+    await bustScheduleCache();
 }
 
 export async function moveRaisedBedFieldPlantHistory({
@@ -1688,7 +2171,7 @@ export async function moveRaisedBedFieldPlantHistory({
     const sourceAggregateId = `${raisedBedId.toString()}|${sourcePositionIndex.toString()}`;
     const targetAggregateId = `${raisedBedId.toString()}|${targetPositionIndex.toString()}`;
 
-    return storage().transaction(async (tx) => {
+    const result = await storage().transaction(async (tx) => {
         const sourceFieldRows = await getRaisedBedFieldRowsAtPosition(
             tx,
             raisedBedId,
@@ -1753,6 +2236,8 @@ export async function moveRaisedBedFieldPlantHistory({
             swapped: shouldSwap,
         };
     });
+    await bustScheduleCache();
+    return result;
 }
 
 export async function deleteRaisedBedField(
@@ -1769,6 +2254,7 @@ export async function deleteRaisedBedField(
                 eq(raisedBedFields.isDeleted, false),
             ),
         );
+    await bustScheduleCache();
 }
 
 export async function getRaisedBedSensors(raisedBedId: number) {

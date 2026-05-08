@@ -1,22 +1,30 @@
+import { getAssignableFarmUsersByOperationIds } from '@gredice/storage';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
+import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
 import { RaisedBedOperationsScheduleSection } from './RaisedBedOperationsScheduleSection';
 import {
     getScheduleDayData,
     getScheduleOperationsData,
     getSchedulePlantSorts,
 } from './scheduleData';
+import {
+    groupRaisedBedsForSchedule,
+    isOperationCancelled,
+    isOperationCompleted,
+    isOperationPendingVerification,
+} from './scheduleShared';
 
 interface ScheduleDayOperationsSectionProps {
     isToday: boolean;
     date: Date;
-    userId: string;
 }
 
 export async function ScheduleDayOperationsSection({
     isToday,
     date,
-    userId,
 }: ScheduleDayOperationsSectionProps) {
     const [{ raisedBeds, scheduledOperations }, plantSorts, operationsData] =
         await Promise.all([
@@ -28,6 +36,11 @@ export async function ScheduleDayOperationsSection({
         return null;
     }
 
+    const assignableFarmUsersByOperationId =
+        await getAssignableFarmUsersByOperationIds(
+            scheduledOperations.map((operation) => operation.id),
+        );
+
     const affectedRaisedBedIds = [
         ...new Set(
             scheduledOperations
@@ -35,36 +48,64 @@ export async function ScheduleDayOperationsSection({
                 .filter((id): id is number => id !== null),
         ),
     ];
-    const physicalIds = [
-        ...new Set(
-            raisedBeds
-                .filter((raisedBed) =>
-                    affectedRaisedBedIds.includes(raisedBed.id),
-                )
-                .map((raisedBed) => raisedBed.physicalId)
-                .filter(
-                    (physicalId): physicalId is string => physicalId !== null,
-                ),
-        ),
-    ].sort((a, b) => Number(a) - Number(b));
+    const raisedBedGroups = groupRaisedBedsForSchedule(
+        raisedBeds,
+        affectedRaisedBedIds,
+    );
+
+    const dayOperationsToApprove = scheduledOperations
+        .filter(
+            (operation) =>
+                !operation.isAccepted &&
+                !isOperationCompleted(operation.status) &&
+                !isOperationCancelled(operation.status) &&
+                !!operation.assignedUserId,
+        )
+        .map((operation) => ({
+            id: operation.id,
+            label: operation.entityId,
+        }));
+
+    const dayOperationsToAssign = scheduledOperations
+        .filter(
+            (operation) =>
+                !operation.assignedUserId &&
+                !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
+                !isOperationCancelled(operation.status),
+        )
+        .map((operation) => ({
+            id: operation.id,
+            farmUsers: assignableFarmUsersByOperationId[operation.id] ?? [],
+        }));
 
     return (
         <Stack spacing={2}>
-            <Typography level="h6">Radnje</Typography>
-            {physicalIds.map((physicalId) => {
-                const beds = raisedBeds
-                    .filter((raisedBed) => raisedBed.physicalId === physicalId)
-                    .sort((a, b) => a.id - b.id);
-
+            <Row spacing={1} alignItems="center">
+                <Typography level="h6">Radnje</Typography>
+                <BulkApproveRaisedBedButton
+                    physicalId="dan"
+                    fields={[]}
+                    operations={dayOperationsToApprove}
+                />
+                <BulkAssignRaisedBedButton
+                    physicalId="dan"
+                    fields={[]}
+                    operations={dayOperationsToAssign}
+                />
+            </Row>
+            {raisedBedGroups.map(({ key, physicalId, raisedBeds: beds }) => {
                 return (
                     <RaisedBedOperationsScheduleSection
-                        key={physicalId}
+                        key={key}
                         physicalId={physicalId}
                         raisedBeds={beds}
                         scheduledOperations={scheduledOperations}
                         plantSorts={plantSorts}
                         operationsData={operationsData}
-                        userId={userId}
+                        assignableFarmUsersByOperationId={
+                            assignableFarmUsersByOperationId
+                        }
                     />
                 );
             })}

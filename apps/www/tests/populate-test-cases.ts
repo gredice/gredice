@@ -7,8 +7,21 @@ interface SitemapUrl {
     [key: string]: unknown;
 }
 
+const NON_PAGE_ROUTE_SEGMENTS = new Set(['opengraph-image']);
+
 async function readSitemapFile(filePath: string): Promise<string> {
     return readFile(filePath, 'utf8');
+}
+
+function isPageRoute(relativeUrl: string): boolean {
+    const url = new URL(relativeUrl, 'https://www.gredice.test');
+
+    if (path.extname(url.pathname)) {
+        return false;
+    }
+
+    const lastSegment = url.pathname.split('/').filter(Boolean).at(-1);
+    return !lastSegment || !NON_PAGE_ROUTE_SEGMENTS.has(lastSegment);
 }
 
 // Parse the local sitemap files produced by the app build.
@@ -42,10 +55,12 @@ async function getSitemapPages(sitemapPath: string): Promise<string[]> {
     }
 
     // Convert to relative paths for local testing
-    const relativeUrls = allUrls.map((url) => {
-        const u = new URL(url);
-        return u.pathname + (u.search || '');
-    });
+    const relativeUrls = allUrls
+        .map((url) => {
+            const u = new URL(url);
+            return u.pathname + (u.search || '');
+        })
+        .filter(isPageRoute);
 
     relativeUrls.forEach((url) => {
         console.info(`Found page: ${url}`);

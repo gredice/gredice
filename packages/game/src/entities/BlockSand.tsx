@@ -4,6 +4,7 @@ import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { BlockSurfaceDecorationSprites } from './groundDecorations/BlockSurfaceDecorationSprites';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function BlockSand({ stack, block, rotation }: EntityInstanceProps) {
@@ -26,6 +27,7 @@ export function BlockSand({ stack, block, rotation }: EntityInstanceProps) {
                 geometry={nodes.Block_Sand_1.geometry}
                 {...snowPresets.sand}
             />
+            <BlockSurfaceDecorationSprites block={block} surface="sand" />
         </animated.group>
     );
 }

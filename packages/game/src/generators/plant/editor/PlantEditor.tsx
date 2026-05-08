@@ -26,7 +26,11 @@ const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
 const desktopEditorTarget: [x: number, y: number, z: number] = [-0.55, 0.9, 0];
 const mobileEditorTarget: [x: number, y: number, z: number] = [0, 0.9, 0];
 
-export function PlantEditor({ initialPlantType }: { initialPlantType?: string } = {}) {
+export function PlantEditor({
+    initialPlantType,
+}: {
+    initialPlantType?: string;
+} = {}) {
     const [isDesktop, setIsDesktop] = useState(false);
     const {
         state,

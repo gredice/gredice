@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import {
     attributeDefinitionCategories,
     attributeDefinitions,
@@ -11,6 +11,12 @@ import {
     type UpdateAttributeDefinition,
     type UpdateAttributeDefinitionCategory,
 } from '..';
+import { bustCachedByPrefixes } from '../cache/directoriesCached';
+
+const entityReadModelCachePrefixes = [
+    'entities:formatted:',
+    'dashboard:admin:',
+];
 
 export function getAttributeDefinitions(
     entityTypeName?: string,
@@ -26,7 +32,7 @@ export function getAttributeDefinitions(
             categoryDefinition: true,
             entityType: true,
         },
-        orderBy: attributeDefinitions.order,
+        orderBy: (table) => [asc(table.order), asc(table.id)],
     });
 }
 
@@ -39,26 +45,33 @@ export function getAttributeDefinition(id: number) {
     });
 }
 
-export function createAttributeDefinition(
+export async function createAttributeDefinition(
     definition: InsertAttributeDefinition,
-) {
-    return storage().insert(attributeDefinitions).values(definition);
+): Promise<number> {
+    const [inserted] = await storage()
+        .insert(attributeDefinitions)
+        .values(definition)
+        .returning({ id: attributeDefinitions.id });
+    await bustCachedByPrefixes(entityReadModelCachePrefixes);
+    return inserted.id;
 }
 
-export function updateAttributeDefinition(
+export async function updateAttributeDefinition(
     definition: UpdateAttributeDefinition,
 ) {
-    return storage()
+    await storage()
         .update(attributeDefinitions)
         .set({ ...definition })
         .where(eq(attributeDefinitions.id, definition.id));
+    await bustCachedByPrefixes(entityReadModelCachePrefixes);
 }
 
-export function deleteAttributeDefinition(id: number) {
-    return storage()
+export async function deleteAttributeDefinition(id: number) {
+    await storage()
         .update(attributeDefinitions)
         .set({ isDeleted: true })
         .where(eq(attributeDefinitions.id, id));
+    await bustCachedByPrefixes(entityReadModelCachePrefixes);
 }
 
 export async function getAttributeDefinitionCategories(
@@ -67,7 +80,10 @@ export async function getAttributeDefinitionCategories(
     const query = storage()
         .select()
         .from(attributeDefinitionCategories)
-        .orderBy(attributeDefinitionCategories.order);
+        .orderBy(
+            asc(attributeDefinitionCategories.order),
+            asc(attributeDefinitionCategories.id),
+        );
 
     return entityType
         ? query.where(
@@ -79,21 +95,24 @@ export async function getAttributeDefinitionCategories(
 export async function createAttributeDefinitionCategory(
     category: InsertAttributeDefinitionCategory,
 ) {
-    return storage().insert(attributeDefinitionCategories).values(category);
+    await storage().insert(attributeDefinitionCategories).values(category);
+    await bustCachedByPrefixes(entityReadModelCachePrefixes);
 }
 
 export async function updateAttributeDefinitionCategory(
     category: UpdateAttributeDefinitionCategory,
 ) {
-    return storage()
+    await storage()
         .update(attributeDefinitionCategories)
         .set(category)
         .where(eq(attributeDefinitionCategories.id, category.id));
+    await bustCachedByPrefixes(entityReadModelCachePrefixes);
 }
 
 export async function deleteAttributeDefinitionCategory(id: number) {
-    return storage()
+    await storage()
         .update(attributeDefinitionCategories)
         .set({ isDeleted: true })
         .where(eq(attributeDefinitionCategories.id, id));
+    await bustCachedByPrefixes(entityReadModelCachePrefixes);
 }

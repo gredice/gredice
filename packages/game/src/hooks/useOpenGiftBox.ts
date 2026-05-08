@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys } from './useCurrentGarden';
@@ -17,9 +17,9 @@ export function useOpenGiftBox() {
             gardenId: number;
             blockId: string;
         }) => {
-            const response = await client().api.gardens[':gardenId'].blocks[
-                ':blockId'
-            ]['open-gift-box'].$post({
+            const response = await clientAuthenticated().api.gardens[
+                ':gardenId'
+            ].blocks[':blockId']['open-gift-box'].$post({
                 param: {
                     gardenId: gardenId.toString(),
                     blockId,

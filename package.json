@@ -1,11 +1,13 @@
 {
     "name": "gredice-monorepo",
     "private": true,
+    "type": "module",
     "scripts": {
         "build": "turbo build",
         "clean": "turbo clean",
         "dev": "node ./scripts/dev-with-proxy.mjs",
         "env:pull": "node ./scripts/pull-envs.mjs",
+        "vercel:link": "node ./scripts/link-vercel.mjs",
         "lint": "turbo lint",
         "lint:migrate": "turbo lint:migrate",
         "lint:ci-filters": "node ./scripts/check-ci-filters.mjs",
@@ -14,14 +16,17 @@
         "regenerate": "turbo regenerate",
         "test": "turbo test",
         "generate:models-types": "turbo generate:models-types",
-        "generate:game-assets": "node ./scripts/generate-game-assets.mjs"
+        "generate:game-assets": "node ./scripts/generate-game-assets.mjs",
+        "doctor": "node ./scripts/worktree-health.mjs doctor",
+        "bootstrap": "node ./scripts/worktree-health.mjs setup",
+        "dev:all": "node ./scripts/dev-with-proxy.mjs --all-apps"
     },
     "devDependencies": {
         "rimraf": "6.1.3",
-        "turbo": "2.8.20",
-        "typescript": "5.9.3"
+        "turbo": "2.9.9",
+        "typescript": "6.0.3"
     },
-    "packageManager": "pnpm@10.32.1+sha512.a706938f0e89ac1456b6563eab4edf1d1faf3368d1191fc5c59790e96dc918e4456ab2e67d613de1043d2e8c81f87303e6b40d4ffeca9df15ef1ad567348f2be",
+    "packageManager": "pnpm@10.33.2+sha512.a90faf6feeab71ad6c6e57f94e0fe1a12f5dcc22cd754db40ae9593eb6a3e0b6b12e3540218bb37ae083404b1f2ce6db2a4121e979829b4aff94b99f49da1cf8",
     "engines": {
         "node": ">=24"
     },
@@ -30,11 +35,11 @@
             "@ffmpeg-installer/darwin-arm64",
             "@ffmpeg-installer/linux-x64",
             "@parcel/watcher",
-            "@sentry/cli",
             "bufferutil",
             "core-js",
             "es5-ext",
             "esbuild",
+            "protobufjs",
             "sharp",
             "unrs-resolver",
             "vue-demi"

@@ -1,9 +1,17 @@
+import { slugify } from '@gredice/js/slug';
 import type { Route } from 'next';
 
 export const KnownPages = {
     Dashboard: '/admin',
     Settings: '/admin/settings',
     Directories: '/admin/directories',
+    CmsPages: '/admin/cms/pages',
+    CmsPageCreate: '/admin/cms/pages/create',
+    CmsPage: (pageId: number) => `/admin/cms/pages/${pageId}` as Route,
+    CmsPageEdit: (pageId: number) => `/admin/cms/pages/${pageId}/edit` as Route,
+    CmsPagePreview: (pageId: number) =>
+        `/admin/cms/pages/${pageId}/preview` as Route,
+    DirectoryEntityTypePath: '/admin/directories/[entityType]',
     DirectoryEntityType: (entityTypeName: string) =>
         `/admin/directories/${entityTypeName}` as Route,
     DirectoryEntityTypeEdit: (entityTypeName: string) =>
@@ -23,6 +31,8 @@ export const KnownPages = {
         `/admin/directories/${entityTypeName}/attribute-definitions/${id}` as Route,
     DirectoryEntity: (entityTypeName: string, entityId: number) =>
         `/admin/directories/${entityTypeName}/${entityId}` as Route,
+    DirectoryEntityPreview: (entityTypeName: string, entityId: number) =>
+        `/admin/directories/${entityTypeName}/${entityId}/preview` as Route,
     DirectoryEntityPath: '/admin/directories/[entityType]/[entityId]',
     DirectoryCategoryCreate: '/admin/directories/categories/create',
     DirectoryCategoryEdit: (categoryId: number) =>
@@ -30,6 +40,7 @@ export const KnownPages = {
     Users: '/admin/users',
     User: (userId: string) => `/admin/users/${userId}` as Route,
     Schedule: '/admin/schedule',
+    SowingStatistics: '/admin/statistics/sowing',
     Accounts: '/admin/accounts',
     Account: (accountId: string) => `/admin/accounts/${accountId}` as Route,
     Farms: '/admin/farms',
@@ -51,6 +62,7 @@ export const KnownPages = {
     Transactions: '/admin/transactions',
     Transaction: (transactionId: number) =>
         `/admin/transactions/${transactionId}` as Route,
+    Sunflowers: '/admin/sunflowers',
     Invoices: '/admin/invoices',
     CreateInvoice: '/admin/invoices/create',
     Invoice: (invoiceId: number) => `/admin/invoices/${invoiceId}` as Route,
@@ -78,6 +90,9 @@ export const KnownPages = {
     InventoryItem: (inventoryId: number, itemId: number) =>
         `/admin/inventory/${inventoryId}/items/${itemId}` as Route,
 
+    // AI
+    AiAnalytics: '/admin/ai-analytics',
+
     // Delivery management
     DeliverySlots: '/admin/delivery/slots',
     DeliveryRequests: '/admin/delivery/requests',
@@ -87,5 +102,7 @@ export const KnownPages = {
         `https://dashboard.stripe.com/payments/${paymentId}`,
     GrediceOperations: `https://www.gredice.com/radnje`,
     GrediceOperation: (operationAlias: string) =>
-        `https://www.gredice.com/radnje/${encodeURIComponent(operationAlias)}`,
+        `https://www.gredice.com/radnje/${slugify(operationAlias)}`,
+    GrediceUser: (publicId: string) =>
+        `https://www.gredice.com/korisnici/${publicId}`,
 } as const;

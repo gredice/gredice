@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     type ShoppingCartData,
@@ -26,7 +26,7 @@ export function useSwapShoppingCartPositions() {
             }
 
             // Update item A to the target position
-            await client().api['shopping-cart'].$post({
+            await clientAuthenticated().api['shopping-cart'].$post({
                 json: {
                     id: itemA.id,
                     cartId: cart.id,
@@ -43,7 +43,7 @@ export function useSwapShoppingCartPositions() {
 
             // If swapping with an existing item, update item B to item A's position
             if (itemB) {
-                await client().api['shopping-cart'].$post({
+                await clientAuthenticated().api['shopping-cart'].$post({
                     json: {
                         id: itemB.id,
                         cartId: cart.id,

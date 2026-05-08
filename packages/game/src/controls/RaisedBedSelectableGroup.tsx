@@ -1,4 +1,5 @@
 import { type PropsWithChildren, useRef } from 'react';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import type { Block } from '../types/Block';
 import {
     useRemoveRaisedBedCloseupParam,
@@ -12,6 +13,7 @@ export function RaisedBedSelectableGroup({
     raisedBedName,
 }: PropsWithChildren<{ block: Block; raisedBedName: string }>) {
     const groupRef = useRef(null);
+    const { track } = useGameAnalytics();
     const hovered = useHoveredBlockStore();
     const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
     const { mutate: removeRaisedBedCloseupParam } =
@@ -23,6 +25,10 @@ export function RaisedBedSelectableGroup({
 
     function handleOpenChange(open: boolean) {
         if (open) {
+            track('game_raised_bed_opened', {
+                block_id: block.id,
+                raised_bed_name: raisedBedName,
+            });
             setRaisedBedCloseupParam(raisedBedName);
             hovered.setHoveredBlock(null);
         } else {

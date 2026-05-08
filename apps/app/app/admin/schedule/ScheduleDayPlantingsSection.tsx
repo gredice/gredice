@@ -1,7 +1,17 @@
+import { getAssignableFarmUsersByRaisedBedFieldIds } from '@gredice/storage';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
+import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
 import { RaisedBedPlantingScheduleSection } from './RaisedBedPlantingScheduleSection';
 import { getScheduleDayData, getSchedulePlantSorts } from './scheduleData';
+import {
+    groupRaisedBedsForSchedule,
+    isFieldApproved,
+    isFieldCompleted,
+    isFieldPendingVerification,
+} from './scheduleShared';
 
 interface ScheduleDayPlantingsSectionProps {
     isToday: boolean;
@@ -23,34 +33,67 @@ export async function ScheduleDayPlantingsSection({
     const affectedRaisedBedIds = [
         ...new Set(scheduledFields.map((field) => field.raisedBedId)),
     ];
-    const physicalIds = [
-        ...new Set(
-            raisedBeds
-                .filter((raisedBed) =>
-                    affectedRaisedBedIds.includes(raisedBed.id),
-                )
-                .map((raisedBed) => raisedBed.physicalId)
-                .filter(
-                    (physicalId): physicalId is string => physicalId !== null,
-                ),
-        ),
-    ].sort((a, b) => Number(a) - Number(b));
+    const assignableFarmUsersByRaisedBedFieldId =
+        await getAssignableFarmUsersByRaisedBedFieldIds(
+            scheduledFields.map((field) => field.id),
+        );
+    const raisedBedGroups = groupRaisedBedsForSchedule(
+        raisedBeds,
+        affectedRaisedBedIds,
+    );
+
+    const dayFieldsToApprove = scheduledFields
+        .filter(
+            (field) =>
+                !isFieldApproved(field.plantStatus) &&
+                !isFieldPendingVerification(field.plantStatus) &&
+                !isFieldCompleted(field.plantStatus) &&
+                !!field.assignedUserId,
+        )
+        .map((field) => ({
+            raisedBedId: field.raisedBedId,
+            positionIndex: field.positionIndex,
+            label: `${field.positionIndex + 1}`,
+        }));
+
+    const dayFieldsToAssign = scheduledFields
+        .filter(
+            (field) =>
+                !field.assignedUserId &&
+                !isFieldCompleted(field.plantStatus) &&
+                !isFieldPendingVerification(field.plantStatus),
+        )
+        .map((field) => ({
+            id: field.id,
+            farmUsers: assignableFarmUsersByRaisedBedFieldId[field.id] ?? [],
+        }));
 
     return (
         <Stack spacing={2}>
-            <Typography level="h6">Sijanje</Typography>
-            {physicalIds.map((physicalId) => {
-                const beds = raisedBeds
-                    .filter((raisedBed) => raisedBed.physicalId === physicalId)
-                    .sort((a, b) => a.id - b.id);
-
+            <Row spacing={1} alignItems="center">
+                <Typography level="h6">Sijanje</Typography>
+                <BulkApproveRaisedBedButton
+                    physicalId="dan"
+                    fields={dayFieldsToApprove}
+                    operations={[]}
+                />
+                <BulkAssignRaisedBedButton
+                    physicalId="dan"
+                    fields={dayFieldsToAssign}
+                    operations={[]}
+                />
+            </Row>
+            {raisedBedGroups.map(({ key, physicalId, raisedBeds: beds }) => {
                 return (
                     <RaisedBedPlantingScheduleSection
-                        key={physicalId}
+                        key={key}
                         physicalId={physicalId}
                         raisedBeds={beds}
                         scheduledFields={scheduledFields}
                         plantSorts={plantSorts}
+                        assignableFarmUsersByRaisedBedFieldId={
+                            assignableFarmUsersByRaisedBedFieldId
+                        }
                     />
                 );
             })}

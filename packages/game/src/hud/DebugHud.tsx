@@ -4,10 +4,14 @@ import { DebugPanel, DebugPanelSection } from '@gredice/ui/DebugControls';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Slider } from '@signalco/ui-primitives/Slider';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLiveTime } from '../hooks/useLiveTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
+import {
+    type GameProfileMetadata,
+    readGameProfileMetadata,
+} from '../scene/gameProfileMetadata';
 import { useGameState } from '../useGameState';
 
 function getTimeOfDayFromDate(date: Date) {
@@ -58,6 +62,100 @@ function formatWindDirection(value: number) {
     return directions[index];
 }
 
+function formatMetric(value: number | null | undefined, suffix = '') {
+    return typeof value === 'number' && Number.isFinite(value)
+        ? `${Math.round(value * 10) / 10}${suffix}`
+        : 'n/a';
+}
+
+type FrameStats = {
+    fps: number;
+    p95FrameMs: number;
+};
+
+type ProfileHudSnapshot = GameProfileMetadata & {
+    canvasHeight?: number;
+    canvasWidth?: number;
+    reportedDpr?: number;
+};
+
+function useFrameStats() {
+    const [stats, setStats] = useState<FrameStats>({
+        fps: 0,
+        p95FrameMs: 0,
+    });
+
+    useEffect(() => {
+        const intervals: number[] = [];
+        let animationFrame = 0;
+        let lastFrame = performance.now();
+
+        const sample = (now: number) => {
+            intervals.push(now - lastFrame);
+            if (intervals.length > 180) {
+                intervals.shift();
+            }
+            lastFrame = now;
+            animationFrame = window.requestAnimationFrame(sample);
+        };
+
+        const interval = window.setInterval(() => {
+            if (!intervals.length) {
+                setStats({ fps: 0, p95FrameMs: 0 });
+                return;
+            }
+
+            const sortedIntervals = [...intervals].sort((a, b) => a - b);
+            const averageFrameMs =
+                intervals.reduce((sum, value) => sum + value, 0) /
+                intervals.length;
+            const p95FrameMs =
+                sortedIntervals[
+                    Math.min(
+                        sortedIntervals.length - 1,
+                        Math.floor(sortedIntervals.length * 0.95),
+                    )
+                ] ?? 0;
+
+            setStats({
+                fps: averageFrameMs > 0 ? 1000 / averageFrameMs : 0,
+                p95FrameMs,
+            });
+        }, 1000);
+
+        animationFrame = window.requestAnimationFrame(sample);
+
+        return () => {
+            window.cancelAnimationFrame(animationFrame);
+            window.clearInterval(interval);
+        };
+    }, []);
+
+    return stats;
+}
+
+function useProfileHudSnapshot() {
+    const [snapshot, setSnapshot] = useState<ProfileHudSnapshot | undefined>();
+
+    useEffect(() => {
+        const readSnapshot = () => {
+            const canvas = document.querySelector('canvas');
+            setSnapshot({
+                ...readGameProfileMetadata(),
+                canvasHeight: canvas?.height,
+                canvasWidth: canvas?.width,
+                reportedDpr: window.devicePixelRatio,
+            });
+        };
+
+        readSnapshot();
+        const interval = window.setInterval(readSnapshot, 1000);
+        return () => window.clearInterval(interval);
+    }, []);
+
+    return snapshot;
+}
+
 const PANEL_MARGIN_PX = 16;
 const PANEL_STORAGE_KEY = 'gredice.debugPanel.position';
 
@@ -68,8 +166,10 @@ interface PanelPosition {
 
 export function DebugHud() {
     const setWeather = useGameState((s) => s.setWeather);
-    const currentTime = useGameState((s) => s.currentTime);
+    const currentTime = useLiveTime();
     const setFreezeTime = useGameState((s) => s.setFreezeTime);
+    const frameStats = useFrameStats();
+    const profileSnapshot = useProfileHudSnapshot();
 
     const { data: weather } = useWeatherNow();
 
@@ -473,18 +573,60 @@ export function DebugHud() {
         >
             <div ref={panelWrapperRef} className="pointer-events-auto">
                 <DebugPanel
-                    title="Environment"
-                    description="Tune lighting and weather parameters for debugging."
+                    title="Env"
                     dragging={isDraggingPanel}
                     onDragHandlePointerDown={handlePanelPointerDown}
                 >
                     <Stack spacing={2}>
-                        <DebugPanelSection
-                            title="Time of day"
-                            description="Adjust the sun position across the day."
-                        >
+                        <DebugPanelSection title="Performance">
+                            <Stack
+                                spacing={1}
+                                className="text-xs font-mono leading-5"
+                            >
+                                <div>
+                                    FPS {formatMetric(frameStats.fps)} / p95{' '}
+                                    {formatMetric(frameStats.p95FrameMs, ' ms')}
+                                </div>
+                                <div>
+                                    Tier {profileSnapshot?.qualityTier ?? 'n/a'}{' '}
+                                    / DPR{' '}
+                                    {formatMetric(profileSnapshot?.dprCap)} of{' '}
+                                    {formatMetric(profileSnapshot?.reportedDpr)}
+                                </div>
+                                <div>
+                                    Canvas{' '}
+                                    {profileSnapshot?.canvasWidth &&
+                                    profileSnapshot.canvasHeight
+                                        ? `${profileSnapshot.canvasWidth}x${profileSnapshot.canvasHeight}`
+                                        : 'n/a'}
+                                </div>
+                                <div>
+                                    Shadow{' '}
+                                    {profileSnapshot?.shadowsEnabled
+                                        ? `${profileSnapshot.shadowMapSize}px`
+                                        : 'off'}
+                                </div>
+                                <div>
+                                    Weather{' '}
+                                    {profileSnapshot?.rainParticleCount ?? 0} /{' '}
+                                    {profileSnapshot?.snowParticleCount ?? 0}
+                                </div>
+                                <div>
+                                    Details snow{' '}
+                                    {profileSnapshot?.instancedSnowOverlayCount ??
+                                        0}{' '}
+                                    / mulch{' '}
+                                    {profileSnapshot?.raisedBedMulchOverlayCount ??
+                                        0}{' '}
+                                    / decor{' '}
+                                    {profileSnapshot?.groundDecorationCount ??
+                                        0}
+                                </div>
+                            </Stack>
+                        </DebugPanelSection>
+                        <DebugPanelSection title="Time">
                             <Slider
-                                label={`Time: ${formatTimeLabel(timeOfDay)}`}
+                                label={formatTimeLabel(timeOfDay)}
                                 min={0}
                                 max={1}
                                 step={0.01}
@@ -498,22 +640,16 @@ export function DebugHud() {
                                     }
                                 }}
                             />
-                            <Typography level="body3" secondary>
-                                Local time freeze is applied immediately.
-                            </Typography>
                         </DebugPanelSection>
-                        <DebugPanelSection
-                            title="Weather"
-                            description="Override live weather data when necessary."
-                        >
+                        <DebugPanelSection title="Weather">
                             <Checkbox
-                                label="Override live weather"
+                                label="Override"
                                 checked={overrideWeather}
                                 onCheckedChange={handleOverrideChange}
                             />
                             <Stack spacing={1} className="pt-1">
                                 <Slider
-                                    label={`Cloudiness: ${formatPercent(cloudy)}`}
+                                    label={`Cloud ${formatPercent(cloudy)}`}
                                     min={0}
                                     max={1}
                                     step={0.01}
@@ -529,7 +665,7 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Rain: ${formatPercent(rainy)}`}
+                                    label={`Rain ${formatPercent(rainy)}`}
                                     min={0}
                                     max={1}
                                     step={0.01}
@@ -545,7 +681,7 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Snow: ${formatPercent(snowy)}`}
+                                    label={`Snow ${formatPercent(snowy)}`}
                                     min={0}
                                     max={1}
                                     step={0.01}
@@ -561,7 +697,7 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Fog: ${formatPercent(foggy)}`}
+                                    label={`Fog ${formatPercent(foggy)}`}
                                     min={0}
                                     max={1}
                                     step={0.01}
@@ -577,7 +713,7 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Wind Speed: ${formatWindSpeed(windSpeed)}`}
+                                    label={`Wind ${formatWindSpeed(windSpeed)}`}
                                     min={0}
                                     max={3}
                                     step={1}
@@ -593,7 +729,7 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Wind Direction: ${formatWindDirection(windDirection)}`}
+                                    label={`Dir ${formatWindDirection(windDirection)}`}
                                     min={0}
                                     max={315}
                                     step={45}
@@ -609,7 +745,7 @@ export function DebugHud() {
                                     }}
                                 />
                                 <Slider
-                                    label={`Snow Accumulation: ${snowAccumulation} cm`}
+                                    label={`Accum ${snowAccumulation} cm`}
                                     min={0}
                                     max={50}
                                     step={1}

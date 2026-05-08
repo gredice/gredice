@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
 export const timeSlotsQueryKey = ['delivery', 'timeSlots'];
@@ -21,7 +21,7 @@ export function useTimeSlots(params?: {
                   }
                 : {};
 
-            const response = await client().api.delivery.slots.$get({
+            const response = await clientPublic().api.delivery.slots.$get({
                 query: queryParams,
             });
             if (response.status !== 200) {

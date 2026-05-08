@@ -1,5 +1,7 @@
 import { revokeRefreshToken } from '@gredice/storage';
+import { cookies } from 'next/headers';
 import { clearCookie } from '../../../lib/auth/auth';
+import { clearImpersonationCookies } from '../../../lib/auth/impersonationCookies';
 import {
     clearRefreshCookie,
     getRefreshTokenCookie,
@@ -8,10 +10,19 @@ import {
 export async function POST() {
     const refreshToken = await getRefreshTokenCookie();
     if (refreshToken) {
-        await revokeRefreshToken(refreshToken);
+        try {
+            await revokeRefreshToken(refreshToken);
+        } catch (cause) {
+            console.error(
+                'Failed to revoke refresh token during logout',
+                cause,
+            );
+        }
     }
+
     await clearCookie();
     await clearRefreshCookie();
+    clearImpersonationCookies(await cookies());
 
     return new Response(null, { status: 200 });
 }

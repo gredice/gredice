@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { useGameState } from '../useGameState';
@@ -31,7 +31,7 @@ export function useBlockRotate() {
             );
             await Promise.all(
                 targetBlockIds.map(async (targetBlockId) => {
-                    await client().api.gardens[':gardenId'].blocks[
+                    await clientAuthenticated().api.gardens[':gardenId'].blocks[
                         ':blockId'
                     ].$put({
                         param: {

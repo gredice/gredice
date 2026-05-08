@@ -14,6 +14,7 @@ export function StyledHtml({
                 'prose prose-p:my-2 prose-sm prose-headings:font-normal prose-hr:my-6',
                 'text-primary prose-headings:text-primary',
                 'prose-a:text-primary',
+                'prose-hr:border-border',
                 className,
             )}
             {...rest}

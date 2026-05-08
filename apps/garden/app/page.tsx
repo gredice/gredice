@@ -1,18 +1,33 @@
-import { GameScene } from '@gredice/game';
-import { SignedOut } from '@signalco/auth-client/components';
+import { SignedIn, SignedOut } from '@signalco/auth-client/components';
 import type { ComponentProps } from 'react';
 import LoginModal from '../components/auth/LoginModal';
-import { enableDebugHudFlag, enablePlantGeneratorFlag } from './flags';
+import { GameSceneWithAnalytics } from '../components/game/GameSceneWithAnalytics';
+import {
+    enableDebugHudFlag,
+    lsystemPlantsFlag,
+    raisedBedImageAIFlag,
+} from './flags';
 
 export default async function Home() {
-    const flags: ComponentProps<typeof GameScene>['flags'] = {
+    const flags: ComponentProps<typeof GameSceneWithAnalytics>['flags'] = {
         enableDebugHudFlag: await enableDebugHudFlag(),
-        enablePlantGeneratorFlag: await enablePlantGeneratorFlag(),
+        enablePlantGeneratorFlag: await lsystemPlantsFlag(),
+        raisedBedImageAI: await raisedBedImageAIFlag(),
     };
 
     return (
         <div className="grid grid-cols-1 h-[100dvh] relative overflow-hidden">
-            <GameScene flags={flags} />
+            <SignedIn>
+                <GameSceneWithAnalytics flags={flags} deferDetails />
+            </SignedIn>
+            <SignedOut>
+                <GameSceneWithAnalytics
+                    flags={flags}
+                    mockGarden
+                    hideHud
+                    deferDetails
+                />
+            </SignedOut>
             <SignedOut>
                 <div className="relative h-full">
                     <LoginModal />

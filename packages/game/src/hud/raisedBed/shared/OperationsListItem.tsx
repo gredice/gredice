@@ -1,5 +1,7 @@
 import type { OperationData } from '@gredice/client';
 import { formatPrice } from '@gredice/js/currency';
+import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
+import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Calendar } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
@@ -8,7 +10,6 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useInventory } from '../../../hooks/useInventory';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
-import { BackpackIcon } from '../../../icons/Backpack';
 import {
     AnimateFlyToItem,
     useAnimateFlyToShoppingCart,
@@ -32,6 +33,14 @@ export function OperationsListItem({
     const { data: inventory } = useInventory();
 
     const price = formatPrice(operation.prices?.perOperation);
+    const isHarvestOperation =
+        operation.attributes.stage.information?.name === 'harvest';
+    const harvestPlantRemovalDescription = isHarvestOperation
+        ? getHarvestOperationRemovalDisclaimer(
+              operation.actions?.removePlant,
+              true,
+          )
+        : null;
 
     const availableFromInventory = inventory?.items?.find(
         (item) =>
@@ -85,6 +94,11 @@ export function OperationsListItem({
                         className="line-clamp-2 break-words"
                     >
                         {operation.information.shortDescription}
+                    </Typography>
+                )}
+                {harvestPlantRemovalDescription && (
+                    <Typography level="body2" className="text-muted-foreground">
+                        {harvestPlantRemovalDescription}
                     </Typography>
                 )}
             </Stack>

@@ -20,15 +20,17 @@ import { KnownPages } from '../../src/KnownPages';
 
 export async function upsertAttributeDefinition(
     definition: InsertAttributeDefinition | UpdateAttributeDefinition,
-) {
+): Promise<{ id: number }> {
     await auth(['admin']);
 
     const id = definition.id;
+    let resultId: number;
     if (id) {
         await storageUpdateAttributeDefinition({
             ...definition,
             id,
         });
+        resultId = id;
     } else {
         // Validate required fields
         const name = definition.name;
@@ -47,7 +49,7 @@ export async function upsertAttributeDefinition(
             throw new Error('Missing required fields.');
         }
 
-        await storageCreateAttributeDefinition({
+        resultId = await storageCreateAttributeDefinition({
             ...definition,
             name,
             label,
@@ -74,6 +76,8 @@ export async function upsertAttributeDefinition(
             ),
         );
     }
+
+    return { id: resultId };
 }
 
 export async function deleteAttributeDefinition(
@@ -154,26 +158,6 @@ export async function reorderAttributeDefinition(
     revalidatePath(
         KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName),
     );
-}
-
-export async function createAttributeDefinitionFromForm(
-    entityTypeName: string,
-    categoryName: string,
-    formData: FormData,
-) {
-    await auth(['admin']);
-
-    const name = formData.get('name') as string;
-    const label = formData.get('label') as string;
-    const dataType = formData.get('dataType') as string;
-
-    await upsertAttributeDefinition({
-        name,
-        label,
-        dataType,
-        entityTypeName,
-        category: categoryName,
-    });
 }
 
 export async function createAttributeDefinitionCategoryFromForm(

@@ -1,6 +1,7 @@
 import { type BlockData, directoriesClient } from '@gredice/client';
 import { decodeRouteParam } from '@gredice/js/uri';
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { Markdown } from '@gredice/ui/Markdown';
 import { SplitView } from '@signalco/ui/SplitView';
 import { Layers, Ruler } from '@signalco/ui-icons';
 import { ListHeader } from '@signalco/ui-primitives/List';
@@ -9,10 +10,10 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import Markdown from 'react-markdown';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../../components/shared/PageHeader';
+import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
 import { BlocksList } from './BlocksList';
 
 export const revalidate = 3600; // 1 hour
@@ -39,7 +40,9 @@ export async function generateMetadata(
     const { alias: aliasUnescaped } = await props.params;
     const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     const blockData = await getBlocksData();
-    const block = blockData?.find((block) => block.information.label === alias);
+    const block = blockData?.find((block) =>
+        matchesPageAlias(block.information.label, alias),
+    );
     if (!block) {
         return {
             title: 'Blok nije pronađen',
@@ -56,7 +59,7 @@ export async function generateStaticParams() {
     const entities = await getBlocksData();
     return (
         entities?.map((entity) => ({
-            alias: String(entity.information.label),
+            alias: toPageAlias(String(entity.information.label)),
         })) ?? []
     );
 }
@@ -96,8 +99,8 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
 
     // TODO: Query API for single entities with filter on 'label' attribute
     const blockData = await getBlocksData();
-    const entity = blockData?.find(
-        (block) => block.information.label === alias,
+    const entity = blockData?.find((block) =>
+        matchesPageAlias(block.information.label, alias),
     );
     if (!entity) {
         notFound();

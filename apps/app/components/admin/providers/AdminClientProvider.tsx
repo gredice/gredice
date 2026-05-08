@@ -1,5 +1,6 @@
 'use client';
 
+import { AdminTitleProvider } from '../navigation/AdminTitleProvider';
 import { NavContext, type NavContextType } from '../navigation/NavContext';
 
 export function AdminClientProvider({
@@ -7,12 +8,14 @@ export function AdminClientProvider({
     uncategorizedTypes,
     shadowTypes,
     pendingAchievementsCount,
+    quickActions,
     children,
 }: {
     categorizedTypes: NavContextType['categorizedTypes'];
     uncategorizedTypes: NavContextType['uncategorizedTypes'];
     shadowTypes: NavContextType['shadowTypes'];
     pendingAchievementsCount: number;
+    quickActions: NavContextType['quickActions'];
     children: React.ReactNode;
 }) {
     return (
@@ -22,9 +25,10 @@ export function AdminClientProvider({
                 uncategorizedTypes,
                 shadowTypes,
                 pendingAchievementsCount,
+                quickActions,
             }}
         >
-            {children}
+            <AdminTitleProvider>{children}</AdminTitleProvider>
         </NavContext.Provider>
     );
 }

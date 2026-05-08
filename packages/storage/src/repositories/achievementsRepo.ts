@@ -447,7 +447,7 @@ export async function evaluateAchievements() {
         const operationId = Number.parseInt(event.aggregateId, 10);
         if (Number.isNaN(operationId)) continue;
         const info = operationAccountMap.get(operationId);
-        if (!info || !info.accountId) continue;
+        if (!info?.accountId) continue;
 
         // Track watering operations
         if (wateringEntityIds.has(info.entityId)) {

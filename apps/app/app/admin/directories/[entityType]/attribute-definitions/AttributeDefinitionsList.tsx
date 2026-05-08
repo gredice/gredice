@@ -5,68 +5,18 @@ import {
     type SelectAttributeDefinitionCategory,
 } from '@gredice/storage';
 import { SplitView } from '@signalco/ui/SplitView';
-import {
-    Binary,
-    BookA,
-    Bookmark,
-    File,
-    FontType,
-    Hash,
-    Tally3,
-    ToggleRight,
-} from '@signalco/ui-icons';
+import { BookA, Bookmark } from '@signalco/ui-icons';
 import { Card } from '@signalco/ui-primitives/Card';
+import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
-import type { HTMLAttributes } from 'react';
 import { NoDataPlaceholder } from '../../../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../../../src/KnownPages';
+import { AttributeDataTypeIcon } from './AttributeDataTypes';
 import { CreateAttributeDefinitionButton } from './CreateAttributeDefinitionButton';
 import { CreateAttributeDefinitionCategoryButton } from './CreateAttributeDefinitionCategoryButton';
-
-function AttributeDataTypeIcon({
-    dataType,
-    ...rest
-}: { dataType: string } & HTMLAttributes<SVGElement>) {
-    if (dataType.startsWith('ref:')) {
-        return <File {...rest} />;
-    }
-    switch (dataType) {
-        case 'text':
-            return <FontType {...rest} />;
-        case 'number':
-            return <Hash {...rest} />;
-        case 'boolean':
-            return <ToggleRight {...rest} />;
-        case 'barcode':
-            return <Tally3 {...rest} />;
-        case 'markdown':
-            return (
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    {...rest}
-                >
-                    <title>Markdown</title>
-                    <path d="M2 16V8l4 4 4-4v8" />
-                    <path d="M18 8v8" />
-                    <path d="m22 12-4 4-4-4" />
-                </svg>
-            );
-        // case 'json': return <Text />;
-        default:
-            return <Binary {...rest} />;
-    }
-}
 
 function AttributeDefinitionCard({
     attributeDefinition,
@@ -87,12 +37,19 @@ function AttributeDefinitionCard({
                         className="size-5 text-muted-foreground"
                     />
                     <Stack>
-                        <Typography level="body1">
-                            {attributeDefinition.label}
-                            {attributeDefinition.required && (
-                                <span className="text-red-600/60 ml-1">*</span>
+                        <Row spacing={1}>
+                            <Typography level="body1">
+                                {attributeDefinition.label}
+                                {attributeDefinition.required && (
+                                    <span className="text-red-600/60 ml-1">
+                                        *
+                                    </span>
+                                )}
+                            </Typography>
+                            {attributeDefinition.display && (
+                                <Chip color="info">Prikaz</Chip>
                             )}
-                        </Typography>
+                        </Row>
                         <Typography level="body3" className="line-clamp-2">
                             {attributeDefinition.description}
                         </Typography>

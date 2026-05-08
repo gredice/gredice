@@ -6,6 +6,8 @@ import { lexinsert } from '@gredice/js/lexorder';
 import {
     deleteAttributeValue,
     deleteEntity,
+    getEntityIncomingLinks,
+    type IncomingEntityLinkGroup,
     type SelectAttributeDefinition,
     type SelectAttributeValue,
     createEntity as storageCreateEntity,
@@ -25,12 +27,14 @@ export async function createEntityType(
     label: string,
     categoryId?: number,
     isRoot = true,
+    icon?: string,
 ) {
     await auth(['admin']);
 
     await upsertEntityType({
         name: entityTypeName,
         label: label,
+        icon: icon || null,
         categoryId,
         isRoot,
     });
@@ -46,6 +50,7 @@ export async function updateEntityType(
     label: string,
     categoryId?: number,
     isRoot = true,
+    icon?: string,
 ) {
     await auth(['admin']);
 
@@ -53,6 +58,7 @@ export async function updateEntityType(
         id,
         name: entityTypeName,
         label,
+        icon: icon || null,
         categoryId,
         isRoot,
     });
@@ -77,6 +83,8 @@ export async function updateEntityTypeFromEditPage(formData: FormData) {
     const id = parseInt(formData.get('id') as string, 10);
     const name = formData.get('name') as string;
     const label = formData.get('label') as string;
+    const icon = (formData.get('icon') as string) || undefined;
+    const resolvedIcon = icon === 'none' ? undefined : icon;
     const categoryId =
         (formData.get('categoryId') as string) === 'none'
             ? undefined
@@ -90,6 +98,7 @@ export async function updateEntityTypeFromEditPage(formData: FormData) {
         label,
         categoryId ? parseInt(categoryId, 10) : undefined,
         isRoot,
+        resolvedIcon,
     );
 
     revalidatePath(KnownPages.Directories);
@@ -108,7 +117,12 @@ export async function deleteEntityTypeFromEditPage(formData: FormData) {
 export async function createEntity(entityTypeName: string) {
     await auth(['admin']);
 
-    const entityId = await storageCreateEntity(entityTypeName);
+    const authData = await auth(['admin']);
+
+    const entityId = await storageCreateEntity(entityTypeName, {
+        id: authData.userId,
+        name: authData.user.userName,
+    });
     revalidatePath(KnownPages.Directories);
     revalidatePath(KnownPages.DirectoryEntityType(entityTypeName));
     revalidatePath(KnownPages.DirectoryEntity(entityTypeName, entityId));
@@ -118,8 +132,15 @@ export async function createEntity(entityTypeName: string) {
 export async function updateEntity(entity: UpdateEntity) {
     await auth(['admin']);
 
-    await storageUpdateEntity(entity);
+    const authData = await auth(['admin']);
+
+    await storageUpdateEntity(entity, {
+        id: authData.userId,
+        name: authData.user.userName,
+    });
     revalidatePath(KnownPages.Directories);
+    revalidatePath(KnownPages.DirectoryEntityTypePath, 'page');
+    revalidatePath(KnownPages.DirectoryEntityTypePath, 'layout');
     revalidatePath(KnownPages.DirectoryEntityPath, 'page');
     revalidatePath(KnownPages.DirectoryEntityPath, 'layout');
 }
@@ -147,20 +168,33 @@ export async function handleValueSave(
 
     const newAttributeValueValue =
         (newValue?.length ?? 0) <= 0 ? null : newValue;
-    await upsertAttributeValue({
-        id: !attributeValueId ? undefined : attributeValueId,
-        attributeDefinitionId: attributeDefinition.id,
-        entityTypeName: entityTypeName,
-        entityId: entityId,
-        value: newAttributeValueValue,
-    });
+    const authData = await auth(['admin']);
+
+    await upsertAttributeValue(
+        {
+            id: !attributeValueId ? undefined : attributeValueId,
+            attributeDefinitionId: attributeDefinition.id,
+            entityTypeName: entityTypeName,
+            entityId: entityId,
+            value: newAttributeValueValue,
+        },
+        {
+            id: authData.userId,
+            name: authData.user.userName,
+        },
+    );
     revalidatePath(KnownPages.DirectoryEntity(entityTypeName, entityId));
 }
 
 export async function handleValueDelete(attributeValue: SelectAttributeValue) {
     await auth(['admin']);
 
-    await deleteAttributeValue(attributeValue.id);
+    const authData = await auth(['admin']);
+
+    await deleteAttributeValue(attributeValue.id, {
+        id: authData.userId,
+        name: authData.user.userName,
+    });
     revalidatePath(
         `/admin/directories/${attributeValue.entityTypeName}/${attributeValue.entityId}`,
     );
@@ -219,9 +253,21 @@ export async function handleEntityDelete(
 ) {
     await auth(['admin']);
 
-    await deleteEntity(entityId);
+    const authData = await auth(['admin']);
+
+    await deleteEntity(entityId, {
+        id: authData.userId,
+        name: authData.user.userName,
+    });
     revalidatePath(KnownPages.Directories);
     redirect(KnownPages.DirectoryEntityType(entityTypeName));
+}
+
+export async function getEntityIncomingLinksAction(
+    entityId: number,
+): Promise<IncomingEntityLinkGroup[]> {
+    await auth(['admin']);
+    return getEntityIncomingLinks(entityId);
 }
 
 export async function reorderEntityType(

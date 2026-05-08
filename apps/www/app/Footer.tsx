@@ -37,13 +37,14 @@ export function CompanyWhatsApp(props: React.SVGProps<SVGSVGElement>) {
 const sectionsData: SectionData[] = [
     {
         component: 'Footer1',
-        tagline: 'Gredice',
+        tagline: 'Gredice d.o.o',
         asset: <Logotype className="w-[320px] h-[87px]" />,
         features: [
             {
                 header: 'Informacije',
                 ctas: [
                     { label: 'Dostava', href: KnownPages.Delivery },
+                    { label: 'Cjenik', href: KnownPages.Pricing },
                     {
                         label: 'Termini dostave',
                         href: KnownPages.DeliverySlots,
@@ -100,7 +101,7 @@ const sectionsData: SectionData[] = [
                     },
                     {
                         label: 'Status sustava',
-                        href: 'https://status.gredice.com/',
+                        href: KnownPages.Status,
                     },
                     {
                         label: 'Licenca izvornog koda',
@@ -146,11 +147,11 @@ const sectionsData: SectionData[] = [
 
 export function Footer() {
     return (
-        <footer>
+        <div className="site-footer">
             <SectionsView
                 sectionsData={sectionsData}
                 componentsRegistry={sectionsComponentRegistry}
             />
-        </footer>
+        </div>
     );
 }

@@ -1,7 +1,5 @@
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { auth } from '../../../lib/auth/auth';
 import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
 import { AccountsFilters } from './AccountsFilters';
@@ -18,12 +16,6 @@ export default async function AccountsPage({
 
     return (
         <Stack spacing={2}>
-            <Row spacing={1}>
-                <Typography level="h1" className="text-2xl" semiBold>
-                    {'Računi'}
-                </Typography>
-            </Row>
-
             <AccountsFilters />
 
             <Card>

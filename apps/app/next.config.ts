@@ -1,13 +1,24 @@
-import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
+import { getAppByName } from '../../scripts/app-registry.ts';
 
+const app = getAppByName('app');
 const nextConfig: NextConfig = {
     reactStrictMode: true,
     typedRoutes: true,
     reactCompiler: true,
+    logging: {
+        browserToTerminal: true,
+    },
     experimental: {
         typedEnv: true,
         turbopackFileSystemCacheForDev: true,
+        optimizePackageImports: [
+            '@signalco/ui-primitives',
+            '@signalco/ui-icons',
+            'three',
+            '@react-three/drei',
+            '@react-three/fiber',
+        ],
         serverActions: {
             bodySizeLimit: '10mb',
         },
@@ -43,30 +54,8 @@ const nextConfig: NextConfig = {
             },
         ],
     },
-    productionBrowserSourceMaps: true,
-    allowedDevOrigins: ['app.gredice.test'],
+    productionBrowserSourceMaps: !process.env.CI,
+    allowedDevOrigins: [app.localDomain],
 };
 
-export default withSentryConfig(nextConfig, {
-    // For all available options, see:
-    // https://www.npmjs.com/package/@sentry/webpack-plugin#options
-
-    org: 'gredice',
-
-    project: 'app',
-
-    // Only print logs for uploading source maps in CI
-    silent: !process.env.CI,
-
-    // For all available options, see:
-    // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
-    // Upload a larger set of source maps for prettier stack traces (increases build time)
-    widenClientFileUpload: true,
-
-    // Uncomment to route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-    // This can increase your server load as well as your hosting bill.
-    // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-    // side errors will fail.
-    // tunnelRoute: "/monitoring",pnp
-});
+export default nextConfig;

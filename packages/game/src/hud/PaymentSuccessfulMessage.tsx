@@ -71,6 +71,7 @@ export function PaymentSuccessfulMessage() {
                             alt="Suncokret"
                             width={160}
                             height={160}
+                            loading="eager"
                         />
                     </div>
                 </div>

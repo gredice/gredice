@@ -1,17 +1,24 @@
 'use client';
 
+import type { OperationAssignableFarmUser } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Calendar, Close } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { Chip } from '@signalco/ui-primitives/Chip';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import Link from 'next/link';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { KnownPages } from '../../../src/KnownPages';
 import { AcceptOperationModal } from './AcceptOperationModal';
+import { AssignOperationModal } from './AssignOperationModal';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
+import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
+import { BulkRescheduleRaisedBedButton } from './BulkRescheduleRaisedBedButton';
 import { CancelOperationModal } from './CancelOperationModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { CopyTasksButton } from './CopyTasksButton';
@@ -21,8 +28,10 @@ import {
     getOperationDurationMinutes,
     isOperationCancelled,
     isOperationCompleted,
+    isOperationPendingVerification,
 } from './scheduleShared';
 import type { Operation, RaisedBed } from './types';
+import { VerifyOperationModal } from './VerifyOperationModal';
 
 interface RaisedBedOperationsScheduleSectionProps {
     physicalId: string;
@@ -30,7 +39,10 @@ interface RaisedBedOperationsScheduleSectionProps {
     scheduledOperations: Operation[];
     plantSorts: EntityStandardized[] | null | undefined;
     operationsData: EntityStandardized[] | null | undefined;
-    userId: string;
+    assignableFarmUsersByOperationId: Record<
+        number,
+        OperationAssignableFarmUser[]
+    >;
 }
 
 export function RaisedBedOperationsScheduleSection({
@@ -39,13 +51,17 @@ export function RaisedBedOperationsScheduleSection({
     scheduledOperations,
     plantSorts,
     operationsData,
-    userId,
+    assignableFarmUsersByOperationId,
 }: RaisedBedOperationsScheduleSectionProps) {
     if (raisedBeds.length === 0) {
         return null;
     }
 
     const sortedRaisedBeds = [...raisedBeds].sort((a, b) => a.id - b.id);
+    const firstRaisedBed = sortedRaisedBeds.at(0);
+    const raisedBedDetailsLink = firstRaisedBed
+        ? KnownPages.RaisedBed(firstRaisedBed.id)
+        : null;
 
     const operationDataById = new Map<number, EntityStandardized>();
     if (operationsData) {
@@ -112,6 +128,7 @@ export function RaisedBedOperationsScheduleSection({
             approved:
                 operation.isAccepted &&
                 !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
                 !isOperationCancelled(operation.status),
         };
     });
@@ -121,7 +138,8 @@ export function RaisedBedOperationsScheduleSection({
             (operation) =>
                 !operation.isAccepted &&
                 !isOperationCompleted(operation.status) &&
-                !isOperationCancelled(operation.status),
+                !isOperationCancelled(operation.status) &&
+                !!operation.assignedUserId,
         )
         .map((operation) => {
             const operationData = operationDataById.get(operation.entityId);
@@ -134,6 +152,27 @@ export function RaisedBedOperationsScheduleSection({
                 label,
             };
         });
+    const operationsToReschedule = dayOperations
+        .filter(
+            (operation) =>
+                !operation.isAccepted &&
+                !isOperationCompleted(operation.status) &&
+                !isOperationCancelled(operation.status),
+        )
+        .map((operation) => ({
+            id: operation.id,
+        }));
+    const operationsToAssign = dayOperations
+        .filter(
+            (operation) =>
+                !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
+                !isOperationCancelled(operation.status),
+        )
+        .map((operation) => ({
+            id: operation.id,
+            farmUsers: assignableFarmUsersByOperationId[operation.id] ?? [],
+        }));
 
     const durations = dayOperations.reduce(
         (acc, operation) => {
@@ -147,6 +186,7 @@ export function RaisedBedOperationsScheduleSection({
             if (
                 operation.isAccepted &&
                 !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
                 !isOperationCancelled(operation.status)
             ) {
                 acc.approved += duration;
@@ -158,22 +198,45 @@ export function RaisedBedOperationsScheduleSection({
 
     return (
         <Stack key={physicalId} spacing={1}>
-            <Row spacing={0.5} className="items-center flex-wrap gap-y-1">
+            <Row spacing={1} className="w-full items-center flex-wrap gap-y-1">
                 <BulkApproveRaisedBedButton
                     physicalId={physicalId.toString()}
                     fields={[]}
                     operations={operationsToApprove}
                 />
-                <RaisedBedLabel physicalId={physicalId} />
-                <Typography level="body2" className="text-muted-foreground">
-                    Vrijeme: {formatMinutes(durations.completed, true)} /{' '}
-                    {formatMinutes(durations.approved)} (
-                    {formatMinutes(durations.total)})
-                </Typography>
-                <CopyTasksButton
-                    physicalId={physicalId.toString()}
-                    tasks={copyTasks}
-                />
+                <Row
+                    spacing={0.5}
+                    className="min-w-0 grow items-center flex-wrap gap-y-1"
+                >
+                    {raisedBedDetailsLink ? (
+                        <Link href={raisedBedDetailsLink}>
+                            <RaisedBedLabel physicalId={physicalId} />
+                        </Link>
+                    ) : (
+                        <RaisedBedLabel physicalId={physicalId} />
+                    )}
+                    <Typography level="body2" className="text-muted-foreground">
+                        Vrijeme: {formatMinutes(durations.completed, true)} /{' '}
+                        {formatMinutes(durations.approved)} (
+                        {formatMinutes(durations.total)})
+                    </Typography>
+                    <CopyTasksButton
+                        physicalId={physicalId.toString()}
+                        tasks={copyTasks}
+                    />
+                </Row>
+                <Row spacing={0.5} className="ml-auto shrink-0 items-center">
+                    <BulkAssignRaisedBedButton
+                        physicalId={physicalId.toString()}
+                        fields={[]}
+                        operations={operationsToAssign}
+                    />
+                    <BulkRescheduleRaisedBedButton
+                        physicalId={physicalId.toString()}
+                        fields={[]}
+                        operations={operationsToReschedule}
+                    />
+                </Row>
             </Row>
             <Stack spacing={1}>
                 {!dayOperations.length && (
@@ -190,28 +253,43 @@ export function RaisedBedOperationsScheduleSection({
                         'raisedBedFull';
                     const operationLabel = `${isFullRaisedBed || !operation.physicalPositionIndex ? '' : `${operation.physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${operation.sort ? `: ${operation.sort.information?.name ?? 'Nepoznato'}` : ''}`;
 
-                    const operationInactive =
+                    const operationPendingVerification =
+                        isOperationPendingVerification(operation.status);
+
+                    const operationLocked =
+                        isOperationCancelled(operation.status) ||
+                        isOperationCompleted(operation.status) ||
+                        operationPendingVerification;
+                    const operationTextInactive =
                         isOperationCancelled(operation.status) ||
                         isOperationCompleted(operation.status);
+                    const operationApproved =
+                        operation.isAccepted &&
+                        !operationLocked &&
+                        !operationTextInactive;
 
                     const operationStatusText = isOperationCancelled(
                         operation.status,
                     )
                         ? 'Otkazano'
-                        : isOperationCompleted(operation.status)
-                          ? 'Završeno'
-                          : operation.isAccepted
-                            ? 'Potvrđeno'
-                            : 'Nije potvrđeno';
+                        : operationPendingVerification
+                          ? 'Čeka verifikaciju'
+                          : isOperationCompleted(operation.status)
+                            ? 'Završeno'
+                            : operation.isAccepted
+                              ? 'Potvrđeno'
+                              : 'Nije potvrđeno';
                     const operationStatusClassName = isOperationCancelled(
                         operation.status,
                     )
                         ? 'text-muted-foreground'
-                        : isOperationCompleted(operation.status)
-                          ? 'text-green-600'
-                          : operation.isAccepted
+                        : operationPendingVerification
+                          ? 'text-amber-600'
+                          : isOperationCompleted(operation.status)
                             ? 'text-green-600'
-                            : 'text-muted-foreground';
+                            : operation.isAccepted
+                              ? 'text-green-600'
+                              : 'text-muted-foreground';
                     const attachImages =
                         operationData?.conditions?.completionAttachImages;
                     const attachRequired =
@@ -225,7 +303,14 @@ export function RaisedBedOperationsScheduleSection({
 
                     return (
                         <div key={operation.id}>
-                            <Row spacing={1} className="hover:bg-muted rounded">
+                            <Row
+                                spacing={1}
+                                className={
+                                    operationApproved
+                                        ? 'rounded bg-muted/60 text-foreground hover:bg-muted/80'
+                                        : 'rounded hover:bg-muted'
+                                }
+                            >
                                 <Row spacing={1} className="grow">
                                     {isOperationCompleted(operation.status) ? (
                                         <Checkbox
@@ -233,7 +318,33 @@ export function RaisedBedOperationsScheduleSection({
                                             checked
                                             disabled
                                         />
-                                    ) : operationInactive ? (
+                                    ) : operationPendingVerification ? (
+                                        <VerifyOperationModal
+                                            operationId={operation.id}
+                                            label={operationLabel}
+                                            renderTrigger={({
+                                                isSubmitting,
+                                                openModal,
+                                                defaultTrigger,
+                                            }) => (
+                                                <Row
+                                                    spacing={0.5}
+                                                    className="items-center"
+                                                >
+                                                    {defaultTrigger}
+                                                    <Button
+                                                        variant="solid"
+                                                        size="sm"
+                                                        className="bg-green-600 hover:bg-green-700 text-white"
+                                                        onClick={openModal}
+                                                        disabled={isSubmitting}
+                                                    >
+                                                        Potvrdi
+                                                    </Button>
+                                                </Row>
+                                            )}
+                                        />
+                                    ) : operationLocked ? (
                                         <Checkbox
                                             className="size-5 mx-2"
                                             disabled
@@ -241,7 +352,6 @@ export function RaisedBedOperationsScheduleSection({
                                     ) : operation.isAccepted ? (
                                         <CompleteOperationModal
                                             operationId={operation.id}
-                                            userId={userId}
                                             label={operationLabel}
                                             conditions={
                                                 operationData?.conditions
@@ -251,6 +361,7 @@ export function RaisedBedOperationsScheduleSection({
                                         <AcceptOperationModal
                                             operationId={operation.id}
                                             label={operationLabel}
+                                            disabled={!operation.assignedUserId}
                                         />
                                     )}
                                     <a
@@ -267,7 +378,7 @@ export function RaisedBedOperationsScheduleSection({
                                     >
                                         <Typography
                                             className={
-                                                operationInactive
+                                                operationTextInactive
                                                     ? 'line-through text-muted-foreground'
                                                     : undefined
                                             }
@@ -284,7 +395,8 @@ export function RaisedBedOperationsScheduleSection({
                                     {imageStatusText &&
                                         !isOperationCompleted(
                                             operation.status,
-                                        ) && (
+                                        ) &&
+                                        !operationPendingVerification && (
                                             <Typography
                                                 level="body2"
                                                 className="ml-1 text-xs text-muted-foreground"
@@ -301,11 +413,28 @@ export function RaisedBedOperationsScheduleSection({
                                                 {operation.scheduledDate}
                                             </LocalDateTime>
                                         ) : (
-                                            <span>Danas</span>
+                                            <Chip
+                                                size="sm"
+                                                color="warning"
+                                                className="w-fit"
+                                            >
+                                                Nije planirano
+                                            </Chip>
                                         )}
                                     </Typography>
                                 </Row>
                                 <Row>
+                                    <AssignOperationModal
+                                        operationId={operation.id}
+                                        label={operationLabel}
+                                        farmUsers={
+                                            assignableFarmUsersByOperationId[
+                                                operation.id
+                                            ] ?? []
+                                        }
+                                        assignedUsers={operation.assignedUsers}
+                                        disabled={operationLocked}
+                                    />
                                     <RescheduleOperationModal
                                         operation={{
                                             id: operation.id,
@@ -322,10 +451,10 @@ export function RaisedBedOperationsScheduleSection({
                                                 variant="plain"
                                                 title={
                                                     operation.scheduledDate
-                                                        ? 'Prerasporedi operaciju'
-                                                        : 'Zakaži operaciju'
+                                                        ? 'Prerasporedi radnju'
+                                                        : 'Zakaži radnju'
                                                 }
-                                                disabled={operationInactive}
+                                                disabled={operationLocked}
                                             >
                                                 <Calendar className="size-4 shrink-0" />
                                             </IconButton>
@@ -347,7 +476,7 @@ export function RaisedBedOperationsScheduleSection({
                                             <IconButton
                                                 variant="plain"
                                                 title="Otkaži operaciju"
-                                                disabled={operationInactive}
+                                                disabled={operationLocked}
                                             >
                                                 <Close className="size-4 shrink-0" />
                                             </IconButton>

@@ -1,0 +1,1 @@
+ALTER TABLE "attribute_definitions" ADD COLUMN "display" boolean DEFAULT false NOT NULL;

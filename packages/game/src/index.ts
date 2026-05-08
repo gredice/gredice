@@ -1,3 +1,7 @@
+export {
+    GameAnalyticsProvider,
+    useGameAnalytics,
+} from './analytics/GameAnalyticsContext';
 export type { GameSceneProps } from './GameScene';
 export { GameSceneDynamic as GameScene } from './GameSceneDynamic';
 export { PlantEditor } from './generators/plant/editor/PlantEditor';
@@ -7,6 +11,18 @@ export {
     PLANT_STAGE_LABELS,
     PLANT_STAGES,
 } from './hud/raisedBed/featuredOperations';
+export type { GameQualityTier } from './scene/gameQuality';
+export { resolveSpriteAtlasAssetPaths } from './sprites/resolveSpriteAtlasAssetPaths';
+export { SpriteAtlasBillboard } from './sprites/SpriteAtlasBillboard';
+export type {
+    SpriteAtlasAssetPaths,
+    SpriteAtlasGrid,
+    SpriteAtlasManifest,
+    SpriteAtlasPage,
+    SpriteAtlasSprite,
+} from './sprites/types';
+export { useSpriteAtlasManifest } from './sprites/useSpriteAtlasManifest';
+export { useSpriteAtlasTexture } from './sprites/useSpriteAtlasTexture';
 export type { EntityGridViewerProps } from './viewers/EntityGridViewer';
 export { EntityGridViewer } from './viewers/EntityGridViewer';
 export type { EntityViewerProps } from './viewers/EntityViewer';
@@ -19,3 +35,9 @@ export {
     PlantViewer,
     plantTypes,
 } from './viewers/PlantViewer';
+export type {
+    PublicGardenBlock,
+    PublicGardenStack,
+    PublicGardenViewerProps,
+} from './viewers/PublicGardenViewer';
+export { PublicGardenViewer } from './viewers/PublicGardenViewer';

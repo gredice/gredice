@@ -165,10 +165,9 @@ function getRaisedBedAdjacentCount(params: {
     stacks: GardenStack[];
     x: number;
     y: number;
-    index: number;
     blockNameById: Map<string, string>;
 }) {
-    const { stacks, x, y, index, blockNameById } = params;
+    const { stacks, x, y, blockNameById } = params;
     const neighborPositions = [
         { x: x - 1, y },
         { x: x + 1, y },
@@ -182,12 +181,9 @@ function getRaisedBedAdjacentCount(params: {
             return false;
         }
 
-        const blockId = stack.blocks[index];
-        if (!blockId) {
-            return false;
-        }
-
-        return blockNameById.get(blockId) === 'Raised_Bed';
+        return stack.blocks.some(
+            (blockId) => blockNameById.get(blockId) === 'Raised_Bed',
+        );
     }).length;
 }
 
@@ -198,7 +194,19 @@ export function validateRaisedBedPlacement(params: {
     index: number;
     blockNameById: Map<string, string>;
 }): ValidationResult {
-    const { stacks, x, y, index, blockNameById } = params;
+    const { stacks, x, y, blockNameById } = params;
+    const targetStack = findStackByPosition(stacks, x, y);
+
+    if (
+        targetStack?.blocks.some(
+            (blockId) => blockNameById.get(blockId) === 'Raised_Bed',
+        )
+    ) {
+        return {
+            valid: false,
+            error: 'Invalid raised bed placement: cannot stack on another raised bed',
+        };
+    }
 
     const neighborPositions = [
         { x: x - 1, y },
@@ -211,12 +219,9 @@ export function validateRaisedBedPlacement(params: {
             return false;
         }
 
-        const blockId = stack.blocks[index];
-        if (!blockId) {
-            return false;
-        }
-
-        return blockNameById.get(blockId) === 'Raised_Bed';
+        return stack.blocks.some(
+            (blockId) => blockNameById.get(blockId) === 'Raised_Bed',
+        );
     });
 
     if (neighborPositions.length > 1) {
@@ -232,7 +237,6 @@ export function validateRaisedBedPlacement(params: {
             stacks,
             x: neighborX,
             y: neighborY,
-            index,
             blockNameById,
         });
         if (neighborAdjacentCount > 0) {

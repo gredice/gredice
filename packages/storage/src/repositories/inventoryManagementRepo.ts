@@ -1,10 +1,12 @@
 import 'server-only';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import {
     type InsertInventoryConfig,
     type InsertInventoryItem,
+    type InsertInventoryItemEvent,
     type InsertInventoryItemFieldDefinition,
     inventoryConfigs,
+    inventoryItemEvents,
     inventoryItemFieldDefinitions,
     inventoryItems,
     type UpdateInventoryConfig,
@@ -150,6 +152,26 @@ export async function getInventoryItemsByConfig(inventoryConfigId: number) {
     });
 }
 
+export async function getInventoryStatusItemsByConfigIds(
+    inventoryConfigIds: number[],
+) {
+    if (inventoryConfigIds.length === 0) {
+        return [];
+    }
+
+    return storage().query.inventoryItems.findMany({
+        columns: {
+            inventoryConfigId: true,
+            quantity: true,
+            lowCountThreshold: true,
+        },
+        where: and(
+            inArray(inventoryItems.inventoryConfigId, inventoryConfigIds),
+            eq(inventoryItems.isDeleted, false),
+        ),
+    });
+}
+
 export async function getInventoryItem(id: number) {
     return storage().query.inventoryItems.findFirst({
         where: and(
@@ -207,6 +229,44 @@ export async function deleteInventoryItem(
                 eq(inventoryItems.inventoryConfigId, inventoryConfigId),
             ),
         );
+}
+
+export async function getInventoryItemEvents(inventoryItemId: number) {
+    return storage().query.inventoryItemEvents.findMany({
+        where: and(
+            eq(inventoryItemEvents.inventoryItemId, inventoryItemId),
+            eq(inventoryItemEvents.isDeleted, false),
+        ),
+        orderBy: (table, { desc }) => [desc(table.createdAt), desc(table.id)],
+    });
+}
+
+export async function createInventoryItemEvent(
+    data: Omit<InsertInventoryItemEvent, 'id' | 'createdAt' | 'isDeleted'>,
+) {
+    const [created] = await storage()
+        .insert(inventoryItemEvents)
+        .values(data)
+        .returning({ id: inventoryItemEvents.id });
+    return created.id;
+}
+
+export async function deleteInventoryItemEvent(
+    id: number,
+    inventoryItemId: number,
+) {
+    const [deleted] = await storage()
+        .update(inventoryItemEvents)
+        .set({ isDeleted: true })
+        .where(
+            and(
+                eq(inventoryItemEvents.id, id),
+                eq(inventoryItemEvents.inventoryItemId, inventoryItemId),
+                eq(inventoryItemEvents.isDeleted, false),
+            ),
+        )
+        .returning({ id: inventoryItemEvents.id });
+    return Boolean(deleted);
 }
 
 // ==================== Summary ====================

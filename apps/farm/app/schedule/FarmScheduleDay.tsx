@@ -1,52 +1,49 @@
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Calendar } from '@signalco/ui-icons';
-import {
-    Card,
-    CardHeader,
-    CardOverflow,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Suspense } from 'react';
+import { FarmScheduleEmptyState } from './FarmScheduleEmptyState';
+import { FarmScheduleOperationsSectionContent } from './FarmScheduleOperationsSectionContent';
+import { FarmSchedulePlantingsSectionContent } from './FarmSchedulePlantingsSectionContent';
+import { FarmScheduleSectionSkeleton } from './FarmScheduleSectionSkeleton';
+import {
+    type FarmScheduleDayData,
+    getFarmSchedulePlantSorts,
+} from './scheduleData';
 
 interface FarmScheduleDayProps {
-    date: Date;
-    isToday: boolean;
+    dayDataPromise: Promise<FarmScheduleDayData>;
+    operationsDataPromise: ReturnType<
+        typeof import('./scheduleData').getFarmScheduleOperationsData
+    >;
+    userId: string;
 }
 
-export function FarmScheduleDay({ date, isToday }: FarmScheduleDayProps) {
-    const isCurrentDay = new Date().toDateString() === date.toDateString();
-    const dayLabel =
-        isToday && isCurrentDay
-            ? 'Danas'
-            : new Intl.DateTimeFormat('hr-HR', {
-                  weekday: 'long',
-              })
-                  .format(date)
-                  .substring(0, 3);
+export function FarmScheduleDay({
+    dayDataPromise,
+    operationsDataPromise,
+    userId,
+}: FarmScheduleDayProps) {
+    const plantSortsPromise = getFarmSchedulePlantSorts();
 
     return (
-        <Card>
-            <CardHeader>
-                <Stack spacing={1}>
-                    <div className="flex items-start gap-2">
-                        <Calendar className="size-4 shrink-0 text-muted-foreground" />
-                        <Stack spacing={0.5}>
-                            <Typography level="body2">
-                                <LocalDateTime time={false}>
-                                    {date}
-                                </LocalDateTime>
-                            </Typography>
-                            <CardTitle>{dayLabel}</CardTitle>
-                        </Stack>
-                    </div>
-                </Stack>
-            </CardHeader>
-            <CardOverflow>
-                <div className="px-6 pb-6 text-sm text-muted-foreground">
-                    Nema zakazanih zadataka za ovaj dan.
-                </div>
-            </CardOverflow>
-        </Card>
+        <Stack spacing={4}>
+            <Suspense fallback={null}>
+                <FarmScheduleEmptyState dayDataPromise={dayDataPromise} />
+            </Suspense>
+            <Suspense fallback={<FarmScheduleSectionSkeleton />}>
+                <FarmSchedulePlantingsSectionContent
+                    dayDataPromise={dayDataPromise}
+                    plantSortsPromise={plantSortsPromise}
+                    userId={userId}
+                />
+            </Suspense>
+            <Suspense fallback={<FarmScheduleSectionSkeleton />}>
+                <FarmScheduleOperationsSectionContent
+                    dayDataPromise={dayDataPromise}
+                    plantSortsPromise={plantSortsPromise}
+                    operationsDataPromise={operationsDataPromise}
+                    userId={userId}
+                />
+            </Suspense>
+        </Stack>
     );
 }

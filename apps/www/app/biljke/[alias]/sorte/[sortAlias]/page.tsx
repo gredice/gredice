@@ -6,9 +6,12 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { FeedbackModal } from '../../../../../components/shared/feedback/FeedbackModal';
+import { StructuredDataScript } from '../../../../../components/shared/seo/StructuredDataScript';
 import { getPlantSortsData } from '../../../../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../../../../lib/plants/getPlantsData';
 import { KnownPages } from '../../../../../src/KnownPages';
+import { merchantReturnPolicy } from '../../../../../src/merchantReturnPolicy';
+import { matchesPageAlias, toPageAlias } from '../../../../../src/pageAliases';
 import { GrowthAttributeCards } from '../../GrowthAttributeCards';
 import { getPlantInforationSections } from '../../getPlantInforationSections';
 import { HarvestAttributeCards } from '../../HarvestAttributeCards';
@@ -31,9 +34,10 @@ export async function generateMetadata(
         : null;
     const sort = (await getPlantSortsData())?.find(
         (sort) =>
-            sort.information.plant.information?.name.toLowerCase() ===
-                alias?.toLowerCase() &&
-            sort.information.name.toLowerCase() === sortAlias?.toLowerCase(),
+            matchesPageAlias(
+                sort.information.plant.information?.name ?? '',
+                alias,
+            ) && matchesPageAlias(sort.information.name, sortAlias),
     );
     if (!sort) {
         return {
@@ -53,10 +57,32 @@ export async function generateMetadata(
 export async function generateStaticParams() {
     const sorts = await getPlantSortsData();
     return (
-        sorts?.map((entity) => ({
-            alias: String(entity.information.plant.information?.name),
-            sortAlias: String(entity.information.name),
-        })) ?? []
+        sorts?.map((entity, index) => {
+            const sortName = entity?.information?.name;
+            const plantName = entity?.information?.plant?.information?.name;
+
+            if (!sortName || !plantName) {
+                console.error(
+                    'Invalid plant sort while generating static params for plant sort page',
+                    {
+                        index,
+                        sortId: entity?.id ?? null,
+                        sortName: sortName ?? null,
+                        plantId: entity?.information?.plant?.id ?? null,
+                        plantName: plantName ?? null,
+                    },
+                );
+
+                throw new Error(
+                    'Invalid plant sort data while generating static params for /biljke/[alias]/sorte/[sortAlias]',
+                );
+            }
+
+            return {
+                alias: toPageAlias(String(plantName)),
+                sortAlias: toPageAlias(String(sortName)),
+            };
+        }) ?? []
     );
 }
 
@@ -81,14 +107,16 @@ export default async function PlantSortPage(
         getPlantsData(),
         getPlantSortsData(),
     ]);
-    const basePlantData = plants?.find(
-        (p) => p.information.name.toLowerCase() === alias.toLowerCase(),
+    const basePlantData = plants?.find((p) =>
+        matchesPageAlias(p.information.name, alias),
     );
     const sortData = sorts?.find(
         (s) =>
-            s.information.name.toLowerCase() === sort.toLowerCase() &&
-            s.information.plant.information?.name?.toLowerCase() ===
-                alias.toLowerCase(),
+            matchesPageAlias(s.information.name, sort) &&
+            matchesPageAlias(
+                s.information.plant.information?.name ?? '',
+                alias,
+            ),
     );
     if (!basePlantData || !sortData) {
         console.error('Base plant or sort not found:', {
@@ -134,6 +162,47 @@ export default async function PlantSortPage(
 
     return (
         <div className="py-8">
+            <StructuredDataScript
+                data={{
+                    '@context': 'https://schema.org',
+                    '@type': 'Product',
+                    name: sortData.information.name,
+                    description:
+                        sortData.information.shortDescription ??
+                        sortData.information.description ??
+                        basePlantData.information.description,
+                    category: 'Sorta biljke',
+                    image:
+                        sortData.image?.cover?.url ??
+                        basePlantData.image?.cover?.url,
+                    brand: {
+                        '@type': 'Brand',
+                        name: 'Gredice',
+                    },
+                    isVariantOf: {
+                        '@type': 'Product',
+                        name: basePlantData.information.name,
+                        url: `https://www.gredice.com${KnownPages.Plant(alias)}`,
+                    },
+                    url: `https://www.gredice.com${KnownPages.PlantSort(alias, sortData.information.name)}`,
+                    offers:
+                        typeof basePlantData.prices?.perPlant === 'number'
+                            ? {
+                                  '@type': 'Offer',
+                                  price: basePlantData.prices.perPlant.toFixed(
+                                      2,
+                                  ),
+                                  priceCurrency: 'EUR',
+                                  availability:
+                                      sortData.store?.availableInStore === false
+                                          ? 'https://schema.org/OutOfStock'
+                                          : 'https://schema.org/InStock',
+                                  url: `https://www.gredice.com${KnownPages.PlantSort(alias, sortData.information.name)}`,
+                                  hasMerchantReturnPolicy: merchantReturnPolicy,
+                              }
+                            : undefined,
+                }}
+            />
             <Stack spacing={4}>
                 <Breadcrumbs
                     items={[

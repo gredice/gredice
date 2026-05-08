@@ -8,6 +8,7 @@ import {
     resolveInGamePlantPreset,
 } from '../../generators/plant/lib/inGamePlantPresets';
 import { usePlantSort } from '../../hooks/usePlantSorts';
+import { useSnapshotTime } from '../../hooks/useSnapshotTime';
 import { useGameState } from '../../useGameState';
 import {
     getGridPositionFromIndex,
@@ -33,7 +34,8 @@ export function RaisedBedPlantField({
     const { positionIndex, plantSortId, plantSowDate } = field;
     const { data: sortData } = usePlantSort(plantSortId);
     const flags = useGameFlags();
-    const currentTime = useGameState((state) => state.currentTime);
+    const isMock = useGameState((state) => state.isMock);
+    const currentTime = useSnapshotTime();
     const offsetX =
         orientation === 'vertical' ? 0.31 - blockIndex * 0.05 : 0.27;
     const offsetY =
@@ -99,7 +101,7 @@ export function RaisedBedPlantField({
               })
             : 0;
     const shouldRenderGeneratedPlants =
-        Boolean(flags.enablePlantGeneratorFlag) &&
+        Boolean(flags.enablePlantGeneratorFlag || isMock) &&
         Boolean(resolvedPlantPreset) &&
         Boolean(plantSowDate) &&
         (field.plantStatus === 'sprouted' ||

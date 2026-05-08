@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys } from './useCurrentGarden';
@@ -24,7 +24,7 @@ export function useRenameGarden(gardenId?: number) {
                 throw new Error('Garden name is required');
             }
 
-            await client().api.gardens[':gardenId'].$patch({
+            await clientAuthenticated().api.gardens[':gardenId'].$patch({
                 param: { gardenId: gardenId.toString() },
                 json: { name: trimmedName },
             });

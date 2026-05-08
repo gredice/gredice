@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Vector3 } from 'three';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
@@ -134,7 +134,7 @@ export function useBlockMove() {
                 });
             }
 
-            await client().api.gardens[':gardenId'].stacks.$patch({
+            await clientAuthenticated().api.gardens[':gardenId'].stacks.$patch({
                 param: {
                     gardenId: gardenId.toString(),
                 },

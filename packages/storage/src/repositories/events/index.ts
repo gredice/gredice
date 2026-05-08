@@ -1,17 +1,22 @@
 // Types
 
+export { buildRaisedBedFieldPlantUpdatePayload } from './buildRaisedBedFieldPlantUpdatePayload';
 export { knownEvents } from './knownEvents';
 
 // Constants
 export { knownEventTypes } from './knownEventTypes';
 // Query functions
 export {
+    countEventsSince,
     createEvent,
     deleteEventById,
+    getAiAnalysisEvents,
+    getAiAnalysisTotals,
     getEvents,
     getLastBirthdayRewardEvent,
     getPlantPlaceEventsCount,
     getPlantUpdateEvents,
+    getSunflowersDailyTotals,
 } from './queries';
 export type {
     // Account
@@ -42,6 +47,7 @@ export type {
     InvoiceCreatePayload,
     InvoicePaidPayload,
     InvoiceUpdatePayload,
+    OperationAssignPayload,
     OperationCancelPayload,
     OperationCompletePayload,
     OperationEventsAnyPayload,
@@ -49,9 +55,11 @@ export type {
     OperationFailPayload,
     // Operation
     OperationSchedulePayload,
+    OperationVerifyPayload,
     RaisedBedAbandonPayload,
     // Raised bed
     RaisedBedCreatePayload,
+    RaisedBedFieldAiAnalysisPayload,
     // Raised bed field
     RaisedBedFieldCreatePayload,
     RaisedBedFieldPlantEventsAnyPayload,

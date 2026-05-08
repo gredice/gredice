@@ -158,23 +158,55 @@ export type RaisedBedFieldPlantSchedulePayload = {
     scheduledDate: string | null | undefined;
 };
 
-export type RaisedBedFieldPlantUpdatePayload = {
-    status: string;
-};
+export type RaisedBedFieldPlantUpdatePayload =
+    | {
+          status: string;
+          assignedUserId?: undefined;
+          assignedUserIds?: undefined;
+          assignedBy?: undefined;
+      }
+    | {
+          status?: string;
+          assignedUserId: string;
+          assignedUserIds?: string[];
+          assignedBy: string;
+      }
+    | {
+          status?: string;
+          assignedUserId: null;
+          assignedUserIds?: string[];
+          assignedBy?: string | null;
+      }
+    | {
+          status?: string;
+          assignedUserIds: string[];
+          assignedBy?: string | null;
+      };
 
 export type RaisedBedFieldPlantReplaceSortPayload = {
     plantSortId: string;
+};
+export type RaisedBedFieldAiAnalysisPayload = {
+    markdown: string;
+    imageUrl: string;
+    model: string;
+    analyzedAt: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
 };
 export type RaisedBedFieldPlantEventsPayload =
     | RaisedBedFieldPlantPlacePayload
     | RaisedBedFieldPlantSchedulePayload
     | RaisedBedFieldPlantUpdatePayload
-    | RaisedBedFieldPlantReplaceSortPayload;
+    | RaisedBedFieldPlantReplaceSortPayload
+    | RaisedBedFieldAiAnalysisPayload;
 export type RaisedBedFieldPlantEventsAnyPayload = Partial<
     RaisedBedFieldPlantPlacePayload &
         RaisedBedFieldPlantSchedulePayload &
         RaisedBedFieldPlantUpdatePayload &
-        RaisedBedFieldPlantReplaceSortPayload
+        RaisedBedFieldPlantReplaceSortPayload &
+        RaisedBedFieldAiAnalysisPayload
 >;
 
 // ============================================================================
@@ -184,9 +216,30 @@ export type OperationSchedulePayload = {
     scheduledDate: string;
 };
 
+export type OperationAssignPayload =
+    | {
+          assignedUserId: string;
+          assignedUserIds?: string[];
+          assignedBy: string;
+      }
+    | {
+          assignedUserId: null;
+          assignedUserIds?: string[];
+          assignedBy: string;
+      }
+    | {
+          assignedUserId?: string | null;
+          assignedUserIds: string[];
+          assignedBy: string;
+      };
+
 export type OperationCompletePayload = {
     completedBy: string;
     images?: string[];
+};
+
+export type OperationVerifyPayload = {
+    verifiedBy: string;
 };
 
 export type OperationFailPayload = {
@@ -201,14 +254,18 @@ export type OperationCancelPayload = {
 
 /** Union of all operation event payloads */
 export type OperationEventsPayload =
+    | OperationAssignPayload
     | OperationSchedulePayload
     | OperationCompletePayload
+    | OperationVerifyPayload
     | OperationFailPayload
     | OperationCancelPayload;
 
 export type OperationEventsAnyPayload = Partial<
-    OperationSchedulePayload &
+    OperationAssignPayload &
+        OperationSchedulePayload &
         OperationCompletePayload &
+        OperationVerifyPayload &
         OperationFailPayload &
         OperationCancelPayload
 >;
@@ -257,6 +314,15 @@ export type DeliveryRequestFulfilledPayload = {
 export type DeliveryRequestSurveySentPayload = {
     sentTo: string[];
 };
+
+export type DeliveryRequestReadyEmailProcessedPayload = {
+    readyEventId: number;
+    sentTo: string[];
+    batchRequestIds: string[];
+    completed?: boolean;
+    skipped?: boolean;
+};
+
 export type DeliveryRequestEventsPayload =
     | DeliveryRequestCreatePayload
     | DeliveryRequestSlotChangedPayload
@@ -264,7 +330,8 @@ export type DeliveryRequestEventsPayload =
     | DeliveryRequestCancelledPayload
     | DeliveryRequestStatusPayload
     | DeliveryRequestFulfilledPayload
-    | DeliveryRequestSurveySentPayload;
+    | DeliveryRequestSurveySentPayload
+    | DeliveryRequestReadyEmailProcessedPayload;
 
 export type DeliveryRequestEventsAnyPayload = Partial<
     DeliveryRequestCreatePayload &
@@ -273,7 +340,8 @@ export type DeliveryRequestEventsAnyPayload = Partial<
         DeliveryRequestCancelledPayload &
         DeliveryRequestStatusPayload &
         DeliveryRequestFulfilledPayload &
-        DeliveryRequestSurveySentPayload
+        DeliveryRequestSurveySentPayload &
+        DeliveryRequestReadyEmailProcessedPayload
 >;
 
 // ============================================================================

@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
 export const pendingInvitationsKeys = ['accounts', 'invitations', 'pending'];
@@ -8,9 +8,9 @@ export function usePendingInvitations() {
         queryKey: pendingInvitationsKeys,
         queryFn: async () => {
             const response =
-                await client().api.accounts.invitations.pending.$get();
+                await clientAuthenticated().api.accounts.invitations.pending.$get();
             if (response.status === 401) {
-                return [];
+                return null;
             }
             if (!response.ok) {
                 throw new Error(
@@ -19,6 +19,7 @@ export function usePendingInvitations() {
             }
             return response.json();
         },
+        retry: false,
         staleTime: 1000 * 60 * 5, // 5 minutes
     });
 }

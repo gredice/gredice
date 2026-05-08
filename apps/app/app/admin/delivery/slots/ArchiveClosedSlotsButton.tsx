@@ -41,7 +41,7 @@ export function ArchiveClosedSlotsButton({
                         <DotIndicator
                             size={24}
                             color="info"
-                            // biome-ignore lint/complexity/noUselessFragments: <explanation>
+                            // biome-ignore lint/complexity/noUselessFragments: This is needed to properly center the content within the DotIndicator
                             content={<>{slotIds.length.toString()}</>}
                         />
                     </div>

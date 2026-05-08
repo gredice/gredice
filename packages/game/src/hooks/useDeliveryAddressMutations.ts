@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { deliveryAddressesQueryKey } from './useDeliveryAddresses';
 
@@ -17,9 +17,10 @@ export function useCreateDeliveryAddress() {
             countryCode?: string;
             isDefault?: boolean;
         }) => {
-            const response = await client().api.delivery.addresses.$post({
-                json: data,
-            });
+            const response =
+                await clientAuthenticated().api.delivery.addresses.$post({
+                    json: data,
+                });
             if (!response.ok) {
                 throw new Error('Failed to create delivery address');
             }
@@ -50,7 +51,7 @@ export function useUpdateDeliveryAddress() {
             isDefault?: boolean;
         }) => {
             const { id, ...updateData } = data;
-            const response = await client().api.delivery.addresses[
+            const response = await clientAuthenticated().api.delivery.addresses[
                 ':id'
             ].$patch({
                 param: { id: id.toString() },
@@ -74,7 +75,7 @@ export function useDeleteDeliveryAddress() {
 
     return useMutation({
         mutationFn: async (id: number) => {
-            const response = await client().api.delivery.addresses[
+            const response = await clientAuthenticated().api.delivery.addresses[
                 ':id'
             ].$delete({
                 param: { id: id.toString() },

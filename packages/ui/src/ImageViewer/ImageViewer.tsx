@@ -324,7 +324,7 @@ export function ImageViewer({
                             style={{ touchAction: 'none' }}
                         >
                             <div
-                                className="relative h-full w-full select-none transition-transform duration-200 ease-out will-change-transform"
+                                className="relative flex h-full w-full select-none items-center justify-center transition-transform duration-200 ease-out will-change-transform"
                                 style={{
                                     transform: `scale(${zoomLevel}) translate(${position.x / zoomLevel}px, ${position.y / zoomLevel}px)`,
                                     transformOrigin: 'center center',
@@ -334,7 +334,7 @@ export function ImageViewer({
                                 <img
                                     src={src}
                                     alt={alt}
-                                    className="object-contain select-none"
+                                    className="max-h-full max-w-full object-contain select-none"
                                     draggable={false}
                                 />
                             </div>

@@ -64,7 +64,7 @@ export function AccountUsersCard() {
                         />
                     )}
                     {accountUsers.isSuccess &&
-                        accountUsers.data.length === 0 && (
+                        (accountUsers.data?.length ?? 0) === 0 && (
                             <Typography level="body3">
                                 Trenutno nema pridruženih korisnika.
                             </Typography>
@@ -75,31 +75,32 @@ export function AccountUsersCard() {
                             ponovno kasnije.
                         </Typography>
                     )}
-                    {accountUsers.isSuccess && accountUsers.data.length > 0 && (
-                        <Stack spacing={1}>
-                            {accountUsers.data.map((user) => (
-                                <Row
-                                    key={user.id}
-                                    spacing={2}
-                                    className="items-center"
-                                >
-                                    <UserAvatar
-                                        avatarUrl={user.avatarUrl}
-                                        displayName={user.displayName}
-                                        className="size-8"
-                                    />
-                                    <Stack spacing={0}>
-                                        <Typography level="body2" semiBold>
-                                            {user.displayName}
-                                        </Typography>
-                                        <Typography level="body3">
-                                            {user.userName}
-                                        </Typography>
-                                    </Stack>
-                                </Row>
-                            ))}
-                        </Stack>
-                    )}
+                    {accountUsers.isSuccess &&
+                        (accountUsers.data?.length ?? 0) > 0 && (
+                            <Stack spacing={1}>
+                                {accountUsers.data?.map((user) => (
+                                    <Row
+                                        key={user.id}
+                                        spacing={2}
+                                        className="items-center"
+                                    >
+                                        <UserAvatar
+                                            avatarUrl={user.avatarUrl}
+                                            displayName={user.displayName}
+                                            className="size-8"
+                                        />
+                                        <Stack spacing={0}>
+                                            <Typography level="body2" semiBold>
+                                                {user.displayName}
+                                            </Typography>
+                                            <Typography level="body3">
+                                                {user.userName}
+                                            </Typography>
+                                        </Stack>
+                                    </Row>
+                                ))}
+                            </Stack>
+                        )}
                     <PendingInvitationsList />
                 </Stack>
             </CardContent>

@@ -9,6 +9,7 @@ import { FeedbackModal } from '../../../../components/shared/feedback/FeedbackMo
 import { getPlantSortsData } from '../../../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../../../lib/plants/getPlantsData';
 import { KnownPages } from '../../../../src/KnownPages';
+import { matchesPageAlias, toPageAlias } from '../../../../src/pageAliases';
 import { resolvePlantType } from '../../plantNamesWithLSystem';
 import { PlantGrowthViewer } from './PlantGrowthViewer';
 
@@ -20,8 +21,8 @@ export async function generateMetadata(
     const { alias: aliasUnescaped } = await props.params;
     const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     const plants = await getPlantsData();
-    const plant = plants?.find(
-        (p) => p.information.name.toLowerCase() === alias?.toLowerCase(),
+    const plant = plants?.find((p) =>
+        matchesPageAlias(p.information.name, alias),
     );
     if (!plant) {
         return {
@@ -41,7 +42,7 @@ export async function generateStaticParams() {
         plants
             ?.filter((p) => resolvePlantType(p.information.name) !== null)
             .map((plant) => ({
-                alias: plant.information.name,
+                alias: toPageAlias(plant.information.name),
             })) ?? []
     );
 }
@@ -60,20 +61,44 @@ export default async function BlockPlantDetailPage(
         getPlantSortsData(),
     ]);
 
-    const plant = plants?.find(
-        (p) => p.information.name.toLowerCase() === alias.toLowerCase(),
+    const plant = plants?.find((p) =>
+        matchesPageAlias(p.information.name, alias),
     );
     if (!plant || !resolvePlantType(plant.information.name)) {
         notFound();
     }
 
-    const sorts = (
+    const normalizedPlantName = plant.information.name.toLowerCase();
+    const matchingSorts =
         allSorts?.filter(
             (sort) =>
-                sort.information.plant.information?.name?.toLowerCase() ===
-                plant.information.name.toLowerCase(),
-        ) ?? []
-    ).sort((a, b) => a.information.name.localeCompare(b.information.name));
+                sort?.information?.plant?.information?.name?.toLowerCase() ===
+                normalizedPlantName,
+        ) ?? [];
+
+    const invalidMatchingSorts = matchingSorts.filter(
+        (sort) => !sort?.information?.name,
+    );
+    if (invalidMatchingSorts.length > 0) {
+        console.error(
+            'Invalid plant sorts while rendering block plant detail page',
+            {
+                plantAlias: alias,
+                plantName: plant.information.name,
+                invalidSorts: invalidMatchingSorts.map((sort) => ({
+                    sortId: sort?.id ?? null,
+                    sortName: sort?.information?.name ?? null,
+                    plantId: sort?.information?.plant?.id ?? null,
+                    sortPlantName:
+                        sort?.information?.plant?.information?.name ?? null,
+                })),
+            },
+        );
+    }
+
+    const sorts = matchingSorts
+        .filter((sort) => Boolean(sort?.information?.name))
+        .sort((a, b) => a.information.name.localeCompare(b.information.name));
 
     return (
         <div className="py-8">

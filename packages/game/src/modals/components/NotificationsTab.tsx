@@ -6,14 +6,19 @@ import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
+import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useMarkAllNotificationsRead } from '../../hooks/useMarkAllNotificationsRead';
 import { NotificationList } from '../../hud/NotificationList';
 
 export function NotificationsTab() {
     const [notificationsFilter, setNotificationsFilter] = useState('unread');
     const markAllNotificationsRead = useMarkAllNotificationsRead();
+    const { track } = useGameAnalytics();
 
     const handleMarkAllNotificationsRead = () => {
+        track('game_notifications_mark_all_read', {
+            source: 'overview_tab',
+        });
         markAllNotificationsRead.mutate({ readWhere: 'game' });
     };
 
@@ -29,7 +34,12 @@ export function NotificationsTab() {
                     <Row justifyContent="space-between">
                         <SelectItems
                             value={notificationsFilter}
-                            onValueChange={setNotificationsFilter}
+                            onValueChange={(value) => {
+                                track('game_notifications_filter_changed', {
+                                    filter: value,
+                                });
+                                setNotificationsFilter(value);
+                            }}
                             items={[
                                 {
                                     label: 'Nepročitane',

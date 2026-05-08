@@ -1,4 +1,5 @@
 import type { OperationData, PlantSortData } from '@gredice/client';
+import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { cx } from '@signalco/ui-primitives/cx';
@@ -8,10 +9,10 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useMemo, useState } from 'react';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useInventory } from '../hooks/useInventory';
 import { useOperations } from '../hooks/useOperations';
 import { useSorts } from '../hooks/usePlantSorts';
-import { BackpackIcon } from '../icons/Backpack';
 import { useBackpackOpenParam } from '../useUrlState';
 import { HudCard } from './components/HudCard';
 
@@ -181,6 +182,7 @@ function InventoryItemModal({
 export function InventoryHud() {
     const { data: inventory } = useInventory();
     const { data: operations } = useOperations();
+    const { track } = useGameAnalytics();
     const [isOpen, setIsOpen] = useBackpackOpenParam();
     const [selectedItemKey, setSelectedItemKey] = useState<string | null>(null);
 
@@ -245,6 +247,11 @@ export function InventoryHud() {
         : undefined;
 
     const handleOpenChange = (open: boolean) => {
+        if (open) {
+            track('game_inventory_opened', {
+                total_items: totalItems,
+            });
+        }
         setIsOpen(open);
         if (!open) setSelectedItemKey(null);
     };
@@ -319,6 +326,14 @@ export function InventoryHud() {
                                     operationData={itemOperationData}
                                     onClick={() => {
                                         if (item) {
+                                            track(
+                                                'game_inventory_item_opened',
+                                                {
+                                                    entity_id: item.entityId,
+                                                    entity_type:
+                                                        item.entityTypeName,
+                                                },
+                                            );
                                             setSelectedItemKey(key);
                                         }
                                     }}

@@ -4,6 +4,7 @@ import {
     getOrCreateShoppingCart,
     getSunflowers,
     normalizeShoppingCartInventoryUsage,
+    normalizeShoppingCartScheduledDates,
     upsertOrRemoveCartItem,
 } from '@gredice/storage';
 import { Hono } from 'hono';
@@ -14,6 +15,7 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { getPostHogClient } from '../../../lib/posthog-server';
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -36,8 +38,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Cart not found' }, 404);
             }
 
-            const normalizedCart =
+            const inventoryNormalizedCart =
                 (await normalizeShoppingCartInventoryUsage(cart.id)) ?? cart;
+            const normalizedCart =
+                (await normalizeShoppingCartScheduledDates(
+                    inventoryNormalizedCart.id,
+                )) ?? inventoryNormalizedCart;
 
             // Calculate total amount of items in the cart (exclude paid items)
             const cartInfo = await getCartInfo(normalizedCart.items, accountId);
@@ -132,6 +138,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 currency,
                 forceCreate,
             } = context.req.valid('json');
+            const { accountId } = context.get('authContext');
             await upsertOrRemoveCartItem(
                 id,
                 cartId,
@@ -145,6 +152,17 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 currency,
                 forceCreate,
             );
+            (await getPostHogClient()).capture({
+                distinctId: accountId,
+                event: 'cart_item_updated',
+                properties: {
+                    cart_id: cartId,
+                    entity_id: entityId,
+                    entity_type: entityTypeName,
+                    amount,
+                    currency: currency ?? undefined,
+                },
+            });
             return context.json({ success: true });
         },
     )

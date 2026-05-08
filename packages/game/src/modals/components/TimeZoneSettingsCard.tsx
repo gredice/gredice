@@ -6,6 +6,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { getTimeZones } from '@vvo/tzdb';
 import { useMemo } from 'react';
+import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCurrentAccount } from '../../hooks/useCurrentAccount';
 import { useUpdateAccountTimeZone } from '../../hooks/useUpdateAccountTimeZone';
 
@@ -13,6 +14,7 @@ const timeZones = getTimeZones();
 
 export function TimeZoneSettingsCard() {
     const { data: currentAccount } = useCurrentAccount();
+    const { track } = useGameAnalytics();
     const updateTimeZone = useUpdateAccountTimeZone();
 
     const timeZoneOptions = useMemo(
@@ -25,6 +27,9 @@ export function TimeZoneSettingsCard() {
     );
 
     const handleTimeZoneChange = (value: string) => {
+        track('game_account_time_zone_changed', {
+            time_zone: value,
+        });
         updateTimeZone.mutate(value);
     };
 

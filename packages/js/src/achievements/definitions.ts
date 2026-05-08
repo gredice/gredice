@@ -24,7 +24,10 @@ const plantingThresholds: Array<[threshold: number, reward: number]> = [
     [20, 400],
     [50, 750],
     [100, 1_200],
-    [200, 2_000],
+    [150, 2_000],
+    [200, 5_000],
+    [300, 10_000],
+    [500, 50_000],
 ];
 
 // TODO: Balance the rewards
@@ -34,7 +37,10 @@ const wateringThresholds: Array<[threshold: number, reward: number]> = [
     [20, 300],
     [50, 600],
     [100, 900],
-    [200, 1_500],
+    [150, 1_200],
+    [200, 2_000],
+    [300, 5_000],
+    [500, 10_000],
 ];
 
 // TODO: Balance the rewards
@@ -44,14 +50,17 @@ const harvestThresholds: Array<[threshold: number, reward: number]> = [
     [20, 600],
     [50, 1_200],
     [100, 2_000],
-    [200, 3_500],
+    [150, 3_000],
+    [200, 5_000],
+    [300, 10_000],
+    [500, 50_000],
 ];
 
 function plantingTitle(threshold: number) {
     if (threshold === 1) {
         return 'Prvo sjeme';
     }
-    return `Posađeno ${threshold} biljaka`;
+    return ` ${threshold} biljaka`;
 }
 
 function wateringTitle(threshold: number) {
