@@ -1,4 +1,4 @@
-import { directoriesClient } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 import { SectionsView } from '@signalco/cms-core/SectionsView';
 import { notFound } from 'next/navigation';
 import { sectionsComponentRegistry } from '../../components/shared/sectionsComponentRegistry';
@@ -20,22 +20,20 @@ export default async function CmsPublishedPageRoute({
         notFound();
     }
 
-    const response = await directoriesClient().GET('/pages/{slug}', {
-        params: {
-            path: {
-                slug: normalizedSlug,
-            },
-        },
+    const response = await clientPublic().api.directories.pages[':slug{.+}'].$get({
+        param: { slug: normalizedSlug },
     });
 
-    if (response.error || !response.data) {
+    if (response.status !== 200) {
         notFound();
     }
+
+    const page = await response.json();
 
     return (
         <main>
             <SectionsView
-                sectionsData={parseCmsSectionData(response.data.content)}
+                sectionsData={parseCmsSectionData(page.content)}
                 componentsRegistry={sectionsComponentRegistry}
             />
         </main>
