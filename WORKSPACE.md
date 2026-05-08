@@ -137,6 +137,14 @@ pnpm env:pull
 
 `pnpm env:pull` runs `vercel env pull .env` in `apps/www`, `apps/garden`, `apps/farm`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
 
+### Local and test environment examples
+
+Each app now includes a checked-in `.env.example` (or `.env.test.example` where needed) with safe local defaults for smoke tests. Copy the file to `.env` in each app when starting from a fresh worktree.
+
+- Local smoke tests should run with placeholders for analytics, email, payment, and similar nonessential integrations.
+- Integration or visual tests that validate those providers still require real secrets pulled from Vercel (`pnpm env:pull`) or another secure secret source.
+- Never commit real secrets; keep examples sanitized and use them as shape documentation only.
+
 ## Asset generation
 
 Coordinate with teammates before editing shared game asset files. Only one person should export shared asset changes at a time.
