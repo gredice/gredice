@@ -27,14 +27,27 @@ function getNavigatorPlatform() {
     return uaData?.platform ?? navigator.platform;
 }
 
+type CurrentUserState = NonNullable<
+    ReturnType<typeof useCurrentUser<User>>['data']
+>;
+type CurrentUserStateWithCorrectedLogin = CurrentUserState & {
+    isLoggedIn: boolean;
+};
+
+function hasCorrectedLoginState(
+    value: CurrentUserState,
+): value is CurrentUserStateWithCorrectedLogin {
+    return 'isLoggedIn' in value;
+}
+
 export function PushNotificationManager() {
     const { data } = useCurrentUser<User>();
-    const currentUser = data as
-        | (NonNullable<typeof data> & { isLoggedIn?: boolean })
-        | undefined;
     const isLoggedIn = Boolean(
-        (currentUser?.isLoggedIn ?? currentUser?.isLogginedIn) &&
-            currentUser.user,
+        data &&
+            (hasCorrectedLoginState(data)
+                ? data.isLoggedIn
+                : data.isLogginedIn) &&
+            data.user,
     );
     const [attempted, setAttempted] = useState(false);
 
