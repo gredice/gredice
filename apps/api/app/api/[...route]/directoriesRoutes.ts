@@ -1,7 +1,7 @@
 import {
+    type EntityStandardized,
     getCmsPageBySlug,
     getCmsPages,
-    type EntityStandardized,
     getEntitiesFormatted,
     getEntityFormatted,
 } from '@gredice/storage';
@@ -18,16 +18,18 @@ const app = new Hono()
         const pages = await getCmsPages({ state: 'published' });
         setCacheControl(context, cacheControlPresets.directories);
         return context.json(
-            pages.map((page) => ({
-                slug: page.slug,
-                title: page.title,
-                state: page.state,
-                publishedAt: page.publishedAt,
-                metaTitle: page.metaTitle,
-                metaDescription: page.metaDescription,
-                metaImageUrl: page.metaImageUrl,
-                updatedAt: page.updatedAt,
-            })),
+            pages
+                .filter((page) => page.publishedAt)
+                .map((page) => ({
+                    slug: page.slug,
+                    title: page.title,
+                    state: page.state,
+                    publishedAt: page.publishedAt,
+                    metaTitle: page.metaTitle,
+                    metaDescription: page.metaDescription,
+                    metaImageUrl: page.metaImageUrl,
+                    updatedAt: page.updatedAt,
+                })),
         );
     })
     .get('/pages/:slug{.+}', async (context) => {

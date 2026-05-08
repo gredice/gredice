@@ -452,7 +452,10 @@ export async function openApiDocs(
         },
     };
 
-    baseDoc.paths['/pages'] = {
+    const paths = baseDoc.paths ?? {};
+    baseDoc.paths = paths;
+
+    paths['/pages'] = {
         get: {
             summary: '/pages',
             description: 'Get published CMS pages.',
@@ -474,7 +477,7 @@ export async function openApiDocs(
         },
     };
 
-    baseDoc.paths['/pages/{slug}'] = {
+    paths['/pages/{slug}'] = {
         get: {
             summary: '/pages/{slug}',
             description: 'Get a published CMS page by slug/path.',
@@ -522,10 +525,10 @@ export async function openApiDocs(
                 slug: { type: 'string' },
                 title: { type: 'string' },
                 state: { type: 'string', enum: ['published'] },
-                publishedAt: { type: 'string', format: 'date-time', nullable: true },
-                metaTitle: { type: 'string', nullable: true },
-                metaDescription: { type: 'string', nullable: true },
-                metaImageUrl: { type: 'string', nullable: true },
+                publishedAt: { type: ['string', 'null'], format: 'date-time' },
+                metaTitle: { type: ['string', 'null'] },
+                metaDescription: { type: ['string', 'null'] },
+                metaImageUrl: { type: ['string', 'null'] },
                 updatedAt: { type: 'string', format: 'date-time' },
             },
         };
@@ -538,7 +541,9 @@ export async function openApiDocs(
                     properties: {
                         content: {
                             type: 'array',
-                            items: { $ref: '#/components/schemas/section-data' },
+                            items: {
+                                $ref: '#/components/schemas/section-data',
+                            },
                         },
                     },
                 },
