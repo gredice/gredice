@@ -9,8 +9,8 @@ import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Delete, Edit, ExternalLink, Megaphone } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
+import { Divider } from '@signalco/ui-primitives/Divider';
 import { Row } from '@signalco/ui-primitives/Row';
-import { Separator } from '@signalco/ui-primitives/Separator';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
@@ -31,6 +31,15 @@ import { CmsPageStateChip } from '../CmsPageStateChip';
 
 export const dynamic = 'force-dynamic';
 
+function keyedCmsPageSection(
+    section: { component: string },
+    occurrence: number,
+) {
+    return {
+        key: `${JSON.stringify(section)}-${occurrence}`,
+        section,
+    };
+}
 
 function parseCmsPageSections(content: string | null) {
     if (!content) {
@@ -43,13 +52,21 @@ function parseCmsPageSections(content: string | null) {
             return [];
         }
 
-        return parsed.filter(
-            (section): section is { component: string } =>
-                Boolean(section) &&
-                typeof section === 'object' &&
-                'component' in section &&
-                typeof section.component === 'string',
-        );
+        const sectionCounts = new Map<string, number>();
+        return parsed
+            .filter(
+                (section): section is { component: string } =>
+                    Boolean(section) &&
+                    typeof section === 'object' &&
+                    'component' in section &&
+                    typeof section.component === 'string',
+            )
+            .map((section) => {
+                const sectionKey = JSON.stringify(section);
+                const occurrence = sectionCounts.get(sectionKey) ?? 0;
+                sectionCounts.set(sectionKey, occurrence + 1);
+                return keyedCmsPageSection(section, occurrence);
+            });
     } catch {
         return [];
     }
@@ -87,6 +104,7 @@ export default async function CmsPageDetailsPage({
         notFound();
     }
 
+    const pageSections = parseCmsPageSections(page.content);
     const publishAction = publishCmsPageAction.bind(null, id);
     const unpublishAction = unpublishCmsPageAction.bind(null, id);
     const deleteAction = deleteCmsPageAction.bind(null, id);
@@ -192,17 +210,17 @@ export default async function CmsPageDetailsPage({
                     <Typography level="h3" semiBold>
                         Sekcije stranice
                     </Typography>
-                    {parseCmsPageSections(page.content).length === 0 ? (
+                    {pageSections.length === 0 ? (
                         <Typography level="body2" secondary>
                             Nema konfiguriranih sekcija.
                         </Typography>
                     ) : (
-                        parseCmsPageSections(page.content).map((section, index) => (
-                            <Stack spacing={1} key={`${section.component}-${index}`}>
+                        pageSections.map(({ key, section }, index) => (
+                            <Stack spacing={1} key={key}>
                                 <Typography level="body2">
                                     {index + 1}. {section.component}
                                 </Typography>
-                                <Separator />
+                                <Divider />
                             </Stack>
                         ))
                     )}

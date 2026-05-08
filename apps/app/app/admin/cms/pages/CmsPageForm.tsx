@@ -20,11 +20,14 @@ type CmsPageFormProps = {
     submitLabel: string;
 };
 
-type CmsPageSectionComponent = 'Heading1' | 'Faq1' | 'Feature1' | 'Footer1';
-
 type CmsPageSectionData = {
-    component: CmsPageSectionComponent;
+    component: string;
     [key: string]: unknown;
+};
+
+type CmsPageEditableSection = {
+    id: string;
+    data: CmsPageSectionData;
 };
 
 const cmsPageStateItems = [
@@ -35,51 +38,84 @@ const cmsPageStateItems = [
     },
 ];
 
-const cmsPageSectionItems: { value: CmsPageSectionComponent; label: string }[] = [
+const cmsPageSectionItems = [
     { value: 'Heading1', label: 'Heading1' },
     { value: 'Feature1', label: 'Feature1' },
     { value: 'Faq1', label: 'Faq1' },
     { value: 'Footer1', label: 'Footer1' },
 ];
 
-function parseSections(content?: string | null): CmsPageSectionData[] {
+function parseSections(content?: string | null) {
     if (!content) {
-        return [];
+        return { isStructured: true, sections: [] };
     }
 
     try {
         const parsed: unknown = JSON.parse(content);
         if (!Array.isArray(parsed)) {
-            return [];
+            return { isStructured: false, sections: [] };
         }
 
-        return parsed.filter(
-            (section): section is CmsPageSectionData =>
-                Boolean(section) &&
-                typeof section === 'object' &&
-                'component' in section &&
-                typeof section.component === 'string',
-        );
+        return {
+            isStructured: true,
+            sections: parsed.filter(
+                (section): section is CmsPageSectionData =>
+                    Boolean(section) &&
+                    typeof section === 'object' &&
+                    'component' in section &&
+                    typeof section.component === 'string',
+            ),
+        };
     } catch {
-        return [];
+        return { isStructured: false, sections: [] };
     }
 }
 
-function stringifySections(sections: CmsPageSectionData[]) {
-    return sections.length > 0 ? JSON.stringify(sections) : '';
+function editableSection(section: CmsPageSectionData): CmsPageEditableSection {
+    return {
+        id: crypto.randomUUID(),
+        data: section,
+    };
 }
 
-function sectionValue(section: CmsPageSectionData, key: string) {
-    const value = section[key];
+function newSection(component: string): CmsPageEditableSection {
+    return editableSection({ component });
+}
+
+function stringifySections(
+    sections: CmsPageEditableSection[],
+    fallbackContent?: string | null,
+    preserveFallback = false,
+) {
+    if (preserveFallback && sections.length === 0) {
+        return fallbackContent ?? '';
+    }
+
+    const data = sections.map((section) => section.data);
+    return data.length > 0 ? JSON.stringify(data) : '';
+}
+
+function sectionValue(section: CmsPageEditableSection, key: string) {
+    const value = section.data[key];
     return typeof value === 'string' ? value : '';
 }
 
 export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
     const [state, formAction, pending] = useActionState(action, null);
-    const [sections, setSections] = useState<CmsPageSectionData[]>(() =>
-        parseSections(page?.content),
+    const parsedSections = useMemo(
+        () => parseSections(page?.content),
+        [page?.content],
     );
-    const serializedContent = useMemo(() => stringifySections(sections), [sections]);
+    const [sections, setSections] = useState<CmsPageEditableSection[]>(() =>
+        parsedSections.sections.map(editableSection),
+    );
+    const preserveFallbackContent =
+        !parsedSections.isStructured && Boolean(page?.content);
+    const serializedContent = useMemo(
+        () =>
+            stringifySections(sections, page?.content, preserveFallbackContent),
+        [page?.content, preserveFallbackContent, sections],
+    );
 
     return (
         <Card className="max-w-3xl">
@@ -112,7 +148,8 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                                     Sadržaj stranice
                                 </Typography>
                                 <Typography level="body3" secondary>
-                                    Dodaj i uređuj sekcije bez ručnog uređivanja JSON-a.
+                                    Dodaj i uređuj sekcije bez ručnog uređivanja
+                                    JSON-a.
                                 </Typography>
                                 <input
                                     name="content"
@@ -122,39 +159,179 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                                 />
                                 {sections.length === 0 ? (
                                     <Card className="p-4 text-sm text-muted-foreground">
-                                        Stranica još nema sekcija.
+                                        {preserveFallbackContent
+                                            ? 'Postojeći sadržaj nije JSON niz sekcija i bit će sačuvan dok ne dodaš novu sekciju.'
+                                            : 'Stranica još nema sekcija.'}
                                     </Card>
                                 ) : (
                                     <Stack spacing={2}>
                                         {sections.map((section, index) => (
-                                            <Card key={`${section.component}-${index}`} className="p-4">
+                                            <Card
+                                                key={section.id}
+                                                className="p-4"
+                                            >
                                                 <Stack spacing={2}>
-                                                    <Row spacing={2} className="items-center justify-between">
-                                                        <Typography level="body1" semiBold>
-                                                            {index + 1}. {section.component}
+                                                    <Row
+                                                        spacing={2}
+                                                        className="items-center justify-between"
+                                                    >
+                                                        <Typography
+                                                            level="body1"
+                                                            semiBold
+                                                        >
+                                                            {index + 1}.{' '}
+                                                            {
+                                                                section.data
+                                                                    .component
+                                                            }
                                                         </Typography>
                                                         <Row spacing={1}>
-                                                            <Button type="button" variant="plain" disabled={index === 0} onClick={() => setSections((current) => {
-                                                                if (index === 0) return current;
-                                                                const next = [...current];
-                                                                [next[index - 1], next[index]] = [next[index], next[index - 1]];
-                                                                return next;
-                                                            })}>Gore</Button>
-                                                            <Button type="button" variant="plain" disabled={index === sections.length - 1} onClick={() => setSections((current) => {
-                                                                if (index >= current.length - 1) return current;
-                                                                const next = [...current];
-                                                                [next[index + 1], next[index]] = [next[index], next[index + 1]];
-                                                                return next;
-                                                            })}>Dolje</Button>
-                                                            <Button type="button" variant="plain" color="danger" onClick={() => setSections((current) => current.filter((_, currentIndex) => currentIndex !== index))}>Ukloni</Button>
+                                                            <Button
+                                                                type="button"
+                                                                variant="plain"
+                                                                disabled={
+                                                                    index === 0
+                                                                }
+                                                                onClick={() =>
+                                                                    setSections(
+                                                                        (
+                                                                            current,
+                                                                        ) => {
+                                                                            if (
+                                                                                index ===
+                                                                                0
+                                                                            )
+                                                                                return current;
+                                                                            const next =
+                                                                                [
+                                                                                    ...current,
+                                                                                ];
+                                                                            [
+                                                                                next[
+                                                                                    index -
+                                                                                        1
+                                                                                ],
+                                                                                next[
+                                                                                    index
+                                                                                ],
+                                                                            ] =
+                                                                                [
+                                                                                    next[
+                                                                                        index
+                                                                                    ],
+                                                                                    next[
+                                                                                        index -
+                                                                                            1
+                                                                                    ],
+                                                                                ];
+                                                                            return next;
+                                                                        },
+                                                                    )
+                                                                }
+                                                            >
+                                                                Gore
+                                                            </Button>
+                                                            <Button
+                                                                type="button"
+                                                                variant="plain"
+                                                                disabled={
+                                                                    index ===
+                                                                    sections.length -
+                                                                        1
+                                                                }
+                                                                onClick={() =>
+                                                                    setSections(
+                                                                        (
+                                                                            current,
+                                                                        ) => {
+                                                                            if (
+                                                                                index >=
+                                                                                current.length -
+                                                                                    1
+                                                                            ) {
+                                                                                return current;
+                                                                            }
+
+                                                                            const next =
+                                                                                [
+                                                                                    ...current,
+                                                                                ];
+                                                                            [
+                                                                                next[
+                                                                                    index +
+                                                                                        1
+                                                                                ],
+                                                                                next[
+                                                                                    index
+                                                                                ],
+                                                                            ] =
+                                                                                [
+                                                                                    next[
+                                                                                        index
+                                                                                    ],
+                                                                                    next[
+                                                                                        index +
+                                                                                            1
+                                                                                    ],
+                                                                                ];
+                                                                            return next;
+                                                                        },
+                                                                    )
+                                                                }
+                                                            >
+                                                                Dolje
+                                                            </Button>
+                                                            <Button
+                                                                type="button"
+                                                                variant="plain"
+                                                                color="danger"
+                                                                onClick={() =>
+                                                                    setSections(
+                                                                        (
+                                                                            current,
+                                                                        ) =>
+                                                                            current.filter(
+                                                                                (
+                                                                                    currentSection,
+                                                                                ) =>
+                                                                                    currentSection.id !==
+                                                                                    section.id,
+                                                                            ),
+                                                                    )
+                                                                }
+                                                            >
+                                                                Ukloni
+                                                            </Button>
                                                         </Row>
                                                     </Row>
                                                     <Input
                                                         label="Naslov"
-                                                        value={sectionValue(section, 'header')}
+                                                        value={sectionValue(
+                                                            section,
+                                                            'header',
+                                                        )}
                                                         onChange={(event) => {
-                                                            const value = event.target.value;
-                                                            setSections((current) => current.map((currentSection, currentIndex) => currentIndex === index ? { ...currentSection, header: value } : currentSection));
+                                                            const value =
+                                                                event.target
+                                                                    .value;
+                                                            setSections(
+                                                                (current) =>
+                                                                    current.map(
+                                                                        (
+                                                                            currentSection,
+                                                                        ) =>
+                                                                            currentSection.id ===
+                                                                            section.id
+                                                                                ? {
+                                                                                      ...currentSection,
+                                                                                      data: {
+                                                                                          ...currentSection.data,
+                                                                                          header: value,
+                                                                                      },
+                                                                                  }
+                                                                                : currentSection,
+                                                                    ),
+                                                            );
                                                         }}
                                                     />
                                                     <label className="space-y-1">
@@ -162,12 +339,37 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                                                             Opis
                                                         </span>
                                                         <textarea
-                                                            value={sectionValue(section, 'description')}
+                                                            value={sectionValue(
+                                                                section,
+                                                                'description',
+                                                            )}
                                                             rows={4}
                                                             className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                                            onChange={(event) => {
-                                                                const value = event.target.value;
-                                                                setSections((current) => current.map((currentSection, currentIndex) => currentIndex === index ? { ...currentSection, description: value } : currentSection));
+                                                            onChange={(
+                                                                event,
+                                                            ) => {
+                                                                const value =
+                                                                    event.target
+                                                                        .value;
+                                                                setSections(
+                                                                    (current) =>
+                                                                        current.map(
+                                                                            (
+                                                                                currentSection,
+                                                                            ) =>
+                                                                                currentSection.id ===
+                                                                                section.id
+                                                                                    ? {
+                                                                                          ...currentSection,
+                                                                                          data: {
+                                                                                              ...currentSection.data,
+                                                                                              description:
+                                                                                                  value,
+                                                                                          },
+                                                                                      }
+                                                                                    : currentSection,
+                                                                        ),
+                                                                );
                                                             }}
                                                         />
                                                     </label>
@@ -185,7 +387,7 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                                             onClick={() => {
                                                 setSections((current) => [
                                                     ...current,
-                                                    { component: item.value },
+                                                    newSection(item.value),
                                                 ]);
                                             }}
                                         >
