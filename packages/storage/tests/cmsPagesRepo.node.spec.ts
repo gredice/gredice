@@ -6,8 +6,10 @@ import {
     createCmsPage,
     getCmsPage,
     getCmsPageBySlug,
+    getCmsPageRevisions,
     getCmsPages,
     normalizeCmsPageSlug,
+    restoreCmsPageRevision,
     softDeleteCmsPage,
     storage,
     updateCmsPage,
@@ -225,4 +227,39 @@ test('CMS page update allows legacy plaintext content when unchanged', async () 
     const updated = await getCmsPage(created.id);
     assert.equal(updated?.title, 'Legacy page updated');
     assert.equal(updated?.content, legacyContent);
+});
+
+test('CMS page revisions are recorded and can be restored', async () => {
+    createTestDb();
+    const slug = `history-${randomUUID()}`;
+    const firstContent = JSON.stringify([
+        { component: 'Feature1', header: 'V1' },
+    ]);
+    const secondContent = JSON.stringify([
+        { component: 'Heading1', header: 'V2' },
+    ]);
+
+    const pageId = await createCmsPage({
+        slug,
+        title: 'V1 title',
+        content: firstContent,
+    });
+    await updateCmsPage({
+        id: pageId,
+        title: 'V2 title',
+        content: secondContent,
+    });
+
+    const revisions = await getCmsPageRevisions(pageId);
+    assert.equal(revisions.length >= 2, true);
+    const latest = revisions[0];
+    assert.equal(latest?.action, 'cms_page.updated');
+
+    if (!latest) {
+        throw new Error('Latest revision missing.');
+    }
+    await restoreCmsPageRevision(pageId, latest.id);
+    const restored = await getCmsPage(pageId);
+    assert.equal(restored?.title, 'V1 title');
+    assert.equal(restored?.content, firstContent);
 });

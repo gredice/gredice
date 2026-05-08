@@ -1,6 +1,7 @@
 import {
     cmsPagePublicPath,
     getCmsPage,
+    getCmsPageRevisions,
     type SelectCmsPage,
 } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
@@ -22,6 +23,7 @@ import { KnownPages } from '../../../../../src/KnownPages';
 import {
     deleteCmsPageAction,
     publishCmsPageAction,
+    restoreCmsPageRevisionAction,
     unpublishCmsPageAction,
 } from '../actions';
 import { CmsPageStateChip } from '../CmsPageStateChip';
@@ -52,7 +54,10 @@ export default async function CmsPageDetailsPage({
         notFound();
     }
 
-    const page = await getCmsPage(id);
+    const [page, revisions] = await Promise.all([
+        getCmsPage(id),
+        getCmsPageRevisions(id),
+    ]);
     if (!page) {
         notFound();
     }
@@ -164,6 +169,40 @@ export default async function CmsPageDetailsPage({
                     </div>
                 </Card>
             )}
+            <FieldSet>
+                {revisions.length === 0 ? (
+                    <Field name="Historija" value="Nema promjena" />
+                ) : (
+                    revisions.map((revision) => (
+                        <Field
+                            key={revision.id}
+                            name={`${revision.action} • ${revision.actorName ?? 'Nepoznat korisnik'}`}
+                            value={
+                                <Row spacing={2} className="items-center">
+                                    <span>
+                                        {revision.createdAt.toISOString()}
+                                    </span>
+                                    <form
+                                        action={restoreCmsPageRevisionAction.bind(
+                                            null,
+                                            id,
+                                            revision.id,
+                                        )}
+                                    >
+                                        <Button
+                                            variant="plain"
+                                            type="submit"
+                                            className="text-xs"
+                                        >
+                                            Vrati ovu verziju
+                                        </Button>
+                                    </form>
+                                </Row>
+                            }
+                        />
+                    ))
+                )}
+            </FieldSet>
         </Stack>
     );
 }

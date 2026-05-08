@@ -1,7 +1,14 @@
 import 'server-only';
 import { slugify } from '@gredice/js/slug';
 import { and, desc, eq, ne } from 'drizzle-orm';
-import { cmsPages, type InsertCmsPage, type SelectCmsPage, storage } from '..';
+import {
+    cmsPageRevisions,
+    cmsPages,
+    type InsertCmsPage,
+    type InsertCmsPageRevision,
+    type SelectCmsPage,
+    storage,
+} from '..';
 
 export type CmsPageState = 'draft' | 'published';
 
@@ -18,6 +25,7 @@ export type CreateCmsPageInput = {
 export type UpdateCmsPageInput = Partial<CreateCmsPageInput> & {
     id: number;
 };
+type CmsActor = { id?: string; name?: string };
 
 export type GetCmsPagesOptions = {
     state?: CmsPageState;
@@ -285,7 +293,10 @@ export function getCmsPageBySlug(slug: string) {
     });
 }
 
-export async function createCmsPage(input: CreateCmsPageInput) {
+export async function createCmsPage(
+    input: CreateCmsPageInput,
+    actor?: CmsActor,
+) {
     const values = pageInsertValues(input);
     await assertCmsPageSlugIsValid(values.slug);
 
@@ -297,11 +308,28 @@ export async function createCmsPage(input: CreateCmsPageInput) {
     if (!created) {
         throw new Error('Failed to create CMS page.');
     }
+    await storage().insert(cmsPageRevisions).values({
+        cmsPageId: created.id,
+        action: 'cms_page.created',
+        actorId: actor?.id,
+        actorName: actor?.name,
+        nextSlug: values.slug,
+        nextTitle: values.title,
+        nextContent: values.content,
+        nextState: values.state,
+        nextMetaTitle: values.metaTitle,
+        nextMetaDescription: values.metaDescription,
+        nextMetaImageUrl: values.metaImageUrl,
+        nextPublishedAt: values.publishedAt,
+    });
 
     return created.id;
 }
 
-export async function updateCmsPage(input: UpdateCmsPageInput) {
+export async function updateCmsPage(
+    input: UpdateCmsPageInput,
+    actor?: CmsActor,
+) {
     const existing = await getCmsPage(input.id);
     if (!existing) {
         throw new Error(`CMS page with id ${input.id} not found.`);
@@ -360,13 +388,59 @@ export async function updateCmsPage(input: UpdateCmsPageInput) {
         .update(cmsPages)
         .set(updateData)
         .where(and(eq(cmsPages.id, input.id), eq(cmsPages.isDeleted, false)));
+    const next = await getCmsPage(input.id);
+    if (!next) {
+        return;
+    }
+
+    const action =
+        existing.state !== next.state
+            ? 'cms_page.state_changed'
+            : 'cms_page.updated';
+    await storage()
+        .insert(cmsPageRevisions)
+        .values({
+            ...cmsPageRevisionValues(existing, next),
+            cmsPageId: input.id,
+            action,
+            actorId: actor?.id,
+            actorName: actor?.name,
+        });
 }
 
-export async function updateCmsPageState(id: number, state: CmsPageState) {
-    await updateCmsPage({ id, state });
+export async function updateCmsPageState(
+    id: number,
+    state: CmsPageState,
+    actor?: CmsActor,
+) {
+    await updateCmsPage({ id, state }, actor);
 }
 
-export async function softDeleteCmsPage(id: number) {
+function cmsPageRevisionValues(
+    previous: SelectCmsPage,
+    next: SelectCmsPage,
+): Omit<InsertCmsPageRevision, 'cmsPageId' | 'action'> {
+    return {
+        previousSlug: previous.slug,
+        nextSlug: next.slug,
+        previousTitle: previous.title,
+        nextTitle: next.title,
+        previousContent: previous.content,
+        nextContent: next.content,
+        previousState: previous.state,
+        nextState: next.state,
+        previousMetaTitle: previous.metaTitle,
+        nextMetaTitle: next.metaTitle,
+        previousMetaDescription: previous.metaDescription,
+        nextMetaDescription: next.metaDescription,
+        previousMetaImageUrl: previous.metaImageUrl,
+        nextMetaImageUrl: next.metaImageUrl,
+        previousPublishedAt: previous.publishedAt,
+        nextPublishedAt: next.publishedAt,
+    };
+}
+
+export async function softDeleteCmsPage(id: number, actor?: CmsActor) {
     const existing = await getCmsPage(id);
     if (!existing) {
         throw new Error(`CMS page with id ${id} not found.`);
@@ -376,6 +450,61 @@ export async function softDeleteCmsPage(id: number) {
         .update(cmsPages)
         .set({ isDeleted: true })
         .where(eq(cmsPages.id, id));
+    await storage()
+        .insert(cmsPageRevisions)
+        .values({
+            ...cmsPageRevisionValues(existing, existing),
+            cmsPageId: id,
+            action: 'cms_page.deleted',
+            actorId: actor?.id,
+            actorName: actor?.name,
+        });
+}
+
+export async function getCmsPageRevisions(cmsPageId: number) {
+    return storage().query.cmsPageRevisions.findMany({
+        where: eq(cmsPageRevisions.cmsPageId, cmsPageId),
+        orderBy: (revisions, { desc }) => [
+            desc(revisions.createdAt),
+            desc(revisions.id),
+        ],
+    });
+}
+
+export async function restoreCmsPageRevision(
+    cmsPageId: number,
+    revisionId: number,
+    actor?: CmsActor,
+) {
+    const revision = await storage().query.cmsPageRevisions.findFirst({
+        where: and(
+            eq(cmsPageRevisions.id, revisionId),
+            eq(cmsPageRevisions.cmsPageId, cmsPageId),
+        ),
+    });
+    if (!revision) throw new Error('CMS page revision not found.');
+    await updateCmsPage(
+        {
+            id: cmsPageId,
+            slug: revision.previousSlug ?? revision.nextSlug ?? '',
+            title: revision.previousTitle ?? revision.nextTitle ?? '',
+            content: revision.previousContent ?? revision.nextContent ?? null,
+            state: isCmsPageState(revision.previousState ?? '')
+                ? revision.previousState
+                : 'draft',
+            metaTitle:
+                revision.previousMetaTitle ?? revision.nextMetaTitle ?? null,
+            metaDescription:
+                revision.previousMetaDescription ??
+                revision.nextMetaDescription ??
+                null,
+            metaImageUrl:
+                revision.previousMetaImageUrl ??
+                revision.nextMetaImageUrl ??
+                null,
+        },
+        actor,
+    );
 }
 
 export function cmsPagePublicPath(page: Pick<SelectCmsPage, 'slug'>) {
