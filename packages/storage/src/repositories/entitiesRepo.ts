@@ -727,6 +727,52 @@ export async function updateEntity(
     const previousEntity = await storage().query.entities.findFirst({
         where: eq(entities.id, entity.id),
     });
+    if (!previousEntity) {
+        throw new Error(`Entity with id ${entity.id} not found`);
+    }
+
+    if (typeof entity.parentId !== 'undefined') {
+        if (entity.parentId === entity.id) {
+            throw new Error('Entity cannot be its own parent.');
+        }
+        if (entity.parentId !== null) {
+            const parentEntity = await storage().query.entities.findFirst({
+                where: and(
+                    eq(entities.id, entity.parentId),
+                    eq(entities.isDeleted, false),
+                ),
+            });
+            if (!parentEntity) {
+                throw new Error(
+                    `Parent entity ${entity.parentId} was not found.`,
+                );
+            }
+            if (parentEntity.entityTypeName !== previousEntity.entityTypeName) {
+                throw new Error(
+                    'Parent entity must have the same entity type as the child.',
+                );
+            }
+
+            let cursor = parentEntity;
+            const visited = new Set<number>([entity.id]);
+            while (cursor.parentId !== null) {
+                if (visited.has(cursor.id)) {
+                    throw new Error('Cycle detected in entity hierarchy.');
+                }
+                visited.add(cursor.id);
+                const nextParent = await storage().query.entities.findFirst({
+                    where: and(
+                        eq(entities.id, cursor.parentId),
+                        eq(entities.isDeleted, false),
+                    ),
+                });
+                if (!nextParent) {
+                    break;
+                }
+                cursor = nextParent;
+            }
+        }
+    }
 
     const updateData = {
         ...entity,
@@ -734,7 +780,10 @@ export async function updateEntity(
 
     if (updateData.state === 'published') {
         const entityForValidation = await storage().query.entities.findFirst({
-            where: and(eq(entities.id, entity.id), eq(entities.isDeleted, false)),
+            where: and(
+                eq(entities.id, entity.id),
+                eq(entities.isDeleted, false),
+            ),
             with: {
                 attributes: {
                     where: eq(attributeValues.isDeleted, false),
