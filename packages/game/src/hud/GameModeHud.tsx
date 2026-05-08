@@ -1,8 +1,8 @@
+import { ShovelIcon } from '@gredice/ui/ShovelIcon';
 import { Check } from '@signalco/ui-icons';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { useEffect } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
-import { ShovelIcon } from '../icons/Shovel';
 import { useGameState } from '../useGameState';
 import { useGameModeParam } from '../useUrlState';
 import { HudCard } from './components/HudCard';
@@ -11,6 +11,7 @@ export function GameModeHud() {
     const [isEditMode, setIsEditMode] = useGameModeParam();
     const { track } = useGameAnalytics();
     const mode = useGameState((state) => state.mode);
+    const view = useGameState((state) => state.view);
     const setMode = useGameState((state) => state.setMode);
 
     // Sync URL param to game state
@@ -20,6 +21,10 @@ export function GameModeHud() {
             setMode(gameMode);
         }
     }, [isEditMode, mode, setMode]);
+
+    if (view === 'closeup') {
+        return null;
+    }
 
     const handleToggleMode = () => {
         const newEditMode = !isEditMode;

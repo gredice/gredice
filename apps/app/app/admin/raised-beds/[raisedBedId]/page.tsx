@@ -10,7 +10,9 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { NotificationsTableCard } from '../../../../components/notifications/NotificationsTableCard';
 import { RaisedBedEventsTable } from '../../../../components/raised-beds/RaisedBedEventsTable';
 import { RaisedBedFieldsTable } from '../../../../components/raised-beds/RaisedBedFieldsTable';
@@ -36,11 +38,14 @@ export default async function RaisedBedPage({
     if (!raisedBed) {
         notFound();
     }
+    const raisedBedTitle =
+        raisedBed.name || `Gredica ${raisedBed.physicalId ?? raisedBed.id}`;
 
     return (
         <Stack spacing={4}>
-            <Stack spacing={2}>
-                <Stack spacing={2}>
+            <AdminPageTitle title={raisedBedTitle} />
+            <AdminPageHeader
+                breadcrumbs={
                     <Breadcrumbs
                         items={[
                             {
@@ -65,14 +70,17 @@ export default async function RaisedBedPage({
                             { label: raisedBed?.id },
                         ]}
                     />
-                    <div className="flex items-start justify-between gap-2">
-                        <Typography level="h1" semiBold>
-                            Gredica
-                        </Typography>
-                        <RaisedBedActionsMenu
-                            targetRaisedBedId={raisedBed.id}
-                        />
-                    </div>
+                }
+                actions={
+                    <RaisedBedActionsMenu targetRaisedBedId={raisedBed.id} />
+                }
+                heading="Gredica"
+            />
+            <Stack spacing={2}>
+                <Stack spacing={2}>
+                    <Typography level="h1" semiBold>
+                        Gredica
+                    </Typography>
                 </Stack>
                 <Stack spacing={2}>
                     <FieldSet>

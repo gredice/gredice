@@ -30,7 +30,7 @@ const buildKeyframes = (
     });
     return keyframes;
 };
-const BlurText: React.FC<BlurTextProps> = ({
+function BlurText({
     text = '',
     delay = 200,
     className = '',
@@ -43,22 +43,23 @@ const BlurText: React.FC<BlurTextProps> = ({
     easing = (t: number) => t,
     onAnimationComplete,
     stepDuration = 0.35,
-}) => {
+}: BlurTextProps) {
     const elements = animateBy === 'words' ? text.split(' ') : text.split('');
     const [inView, setInView] = useState(false);
     const ref = useRef<HTMLParagraphElement>(null);
     useEffect(() => {
-        if (!ref.current) return;
+        const element = ref.current;
+        if (!element) return;
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
                     setInView(true);
-                    observer.unobserve(ref.current as Element);
+                    observer.unobserve(element);
                 }
             },
             { threshold, rootMargin },
         );
-        observer.observe(ref.current);
+        observer.observe(element);
         return () => observer.disconnect();
     }, [threshold, rootMargin]);
     const defaultFrom = useMemo(
@@ -125,5 +126,7 @@ const BlurText: React.FC<BlurTextProps> = ({
             })}
         </p>
     );
-};
+}
+
+export { BlurText, type BlurTextProps };
 export default BlurText;

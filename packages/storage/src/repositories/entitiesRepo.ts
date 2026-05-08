@@ -4,6 +4,7 @@ import {
     attributeDefinitions,
     attributeValues,
     entities,
+    entityRevisions,
     type SelectAttributeDefinition,
     type SelectAttributeValue,
     type SelectEntity,
@@ -13,9 +14,11 @@ import {
 } from '..';
 import {
     bustCached,
+    bustCachedByPrefixes,
     cacheKeys,
     directoriesCached,
 } from '../cache/directoriesCached';
+import { getEntityCompleteness } from '../helpers/entityCompleteness';
 
 const entityCacheTtl = 60 * 60; // 1 hour
 
@@ -669,15 +672,27 @@ export async function getEntityIncomingLinks(
         .sort((a, b) => a.entityTypeLabel.localeCompare(b.entityTypeLabel));
 }
 
-export async function createEntity(entityTypeName: string) {
+export async function createEntity(
+    entityTypeName: string,
+    actor?: { id?: string; name?: string },
+) {
     const [result] = await Promise.all([
         storage()
             .insert(entities)
             .values({ entityTypeName })
             .returning({ id: entities.id }),
         bustCached(cacheKeys.entityTypeName(entityTypeName)),
+        bustCachedByPrefixes(['dashboard:admin:']),
     ]);
-    return result[0].id;
+    const entityId = result[0].id;
+    await storage().insert(entityRevisions).values({
+        entityId,
+        entityTypeName,
+        action: 'entity.created',
+        actorId: actor?.id,
+        actorName: actor?.name,
+    });
+    return entityId;
 }
 
 export async function duplicateEntity(id: number) {
@@ -699,21 +714,80 @@ export async function duplicateEntity(id: number) {
         storage().insert(attributeValues).values(newAttributes),
         bustCached(cacheKeys.entityTypeName(entity.entityTypeName)),
         bustCached(cacheKeys.entity(newEntityId)),
+        bustCachedByPrefixes(['dashboard:admin:']),
     ]);
 
     return newEntityId;
 }
 
-export async function updateEntity(entity: UpdateEntity) {
+export async function updateEntity(
+    entity: UpdateEntity,
+    actor?: { id?: string; name?: string },
+) {
+    const previousEntity = await storage().query.entities.findFirst({
+        where: eq(entities.id, entity.id),
+    });
+
     const updateData = {
         ...entity,
     };
 
     if (updateData.state === 'published') {
+        const entityForValidation = await storage().query.entities.findFirst({
+            where: and(eq(entities.id, entity.id), eq(entities.isDeleted, false)),
+            with: {
+                attributes: {
+                    where: eq(attributeValues.isDeleted, false),
+                },
+                entityType: {
+                    with: {
+                        attributeDefinitions: {
+                            where: eq(attributeDefinitions.isDeleted, false),
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!entityForValidation) {
+            throw new Error(`Entity with id ${entity.id} not found.`);
+        }
+
+        const completeness = getEntityCompleteness(
+            entityForValidation,
+            entityForValidation.entityType.attributeDefinitions,
+        );
+        if (!completeness.isComplete) {
+            const missingFields = completeness.missingRequiredDefinitions
+                .map((definition) => definition.label)
+                .join(', ');
+            throw new Error(
+                `Entity is not ready for publishing. Fill required fields: ${missingFields}.`,
+            );
+        }
+
         updateData.publishedAt = new Date();
     }
 
     await Promise.all([
+        previousEntity
+            ? storage()
+                  .insert(entityRevisions)
+                  .values({
+                      entityId: entity.id,
+                      entityTypeName:
+                          entity.entityTypeName ??
+                          previousEntity.entityTypeName,
+                      action:
+                          previousEntity.state !== updateData.state
+                              ? 'entity.state_changed'
+                              : 'entity.updated',
+                      actorId: actor?.id,
+                      actorName: actor?.name,
+                      previousState: previousEntity.state,
+                      nextState: updateData.state ?? previousEntity.state,
+                  })
+            : undefined,
         storage()
             .update(entities)
             .set(updateData)
@@ -744,16 +818,29 @@ export async function updateEntity(entity: UpdateEntity) {
         entity.entityTypeName
             ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))
             : null,
+        bustCachedByPrefixes(['dashboard:admin:']),
     ]);
 }
 
-export async function deleteEntity(id: number) {
+export async function deleteEntity(
+    id: number,
+    actor?: { id?: string; name?: string },
+) {
     const entity = await getEntityRaw(id);
     if (!entity) {
         throw new Error(`Entity with id ${id} not found`);
     }
 
     await Promise.all([
+        storage().insert(entityRevisions).values({
+            entityId: id,
+            entityTypeName: entity.entityTypeName,
+            action: 'entity.deleted',
+            actorId: actor?.id,
+            actorName: actor?.name,
+            previousState: entity.state,
+            nextState: entity.state,
+        }),
         storage()
             .update(entities)
             .set({ isDeleted: true })
@@ -762,5 +849,16 @@ export async function deleteEntity(id: number) {
         entity.entityTypeName
             ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))
             : null,
+        bustCachedByPrefixes(['dashboard:admin:']),
     ]);
+}
+
+export async function getEntityRevisions(entityId: number) {
+    return storage().query.entityRevisions.findMany({
+        where: eq(entityRevisions.entityId, entityId),
+        orderBy: (revisions, { desc }) => [
+            desc(revisions.createdAt),
+            desc(revisions.id),
+        ],
+    });
 }

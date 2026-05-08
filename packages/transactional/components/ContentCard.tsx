@@ -1,5 +1,5 @@
-import { Body, Container } from '@react-email/components';
 import type { PropsWithChildren } from 'react';
+import { Body, Container } from 'react-email';
 
 export function ContentCard({ children }: PropsWithChildren) {
     return (

@@ -1,5 +1,5 @@
-import { Button } from '@react-email/components';
 import type { PropsWithChildren } from 'react';
+import { Button } from 'react-email';
 
 export function PrimaryButton({
     href,

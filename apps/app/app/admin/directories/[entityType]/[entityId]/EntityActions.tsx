@@ -1,7 +1,13 @@
 'use client';
 
 import type { SelectEntity } from '@gredice/storage';
-import { Delete, Edit, Megaphone, MoreHorizontal } from '@signalco/ui-icons';
+import {
+    Delete,
+    Edit,
+    ExternalLink,
+    Megaphone,
+    MoreHorizontal,
+} from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Input } from '@signalco/ui-primitives/Input';
@@ -14,31 +20,47 @@ import {
     DropdownMenuTrigger,
 } from '@signalco/ui-primitives/Menu';
 import { Row } from '@signalco/ui-primitives/Row';
+import Link from 'next/link';
 import { startTransition, useState } from 'react';
+import { KnownPages } from '../../../../../src/KnownPages';
 import { updateEntity } from '../../../../(actions)/entityActions';
 import { useEntityDetailsSave } from './EntityDetailsSaveContext';
 
 export function EntityActions({
     entity,
+    entityType,
     importAction,
     deleteAction,
 }: {
     entity: SelectEntity;
+    entityType: string;
     importAction: (formData: FormData) => Promise<void>;
     deleteAction: () => Promise<void>;
 }) {
     const [state, setState] = useState(entity.state);
+    const [publishError, setPublishError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const { trackSave } = useEntityDetailsSave();
 
     async function changeState(newState: string) {
+        const previousState = state;
         setState(newState);
-        await trackSave(() =>
-            updateEntity({
-                id: entity.id,
-                state: newState,
-            }),
-        );
+        setPublishError(null);
+        try {
+            await trackSave(() =>
+                updateEntity({
+                    id: entity.id,
+                    state: newState,
+                }),
+            );
+        } catch (error) {
+            setState(previousState);
+            setPublishError(
+                error instanceof Error
+                    ? error.message
+                    : 'Promjena statusa nije uspjela.',
+            );
+        }
     }
 
     function handleDelete(event: Event) {
@@ -58,6 +80,21 @@ export function EntityActions({
 
     return (
         <Row spacing={1} className="items-center">
+            {publishError && (
+                <span className="text-sm text-red-600">{publishError}</span>
+            )}
+            <Link
+                href={KnownPages.DirectoryEntityPreview(entityType, entity.id)}
+                target="_blank"
+            >
+                <Button
+                    variant="outlined"
+                    size="sm"
+                    startDecorator={<ExternalLink className="size-4" />}
+                >
+                    Preview
+                </Button>
+            </Link>
             {!isPublished && (
                 <Button
                     variant="solid"

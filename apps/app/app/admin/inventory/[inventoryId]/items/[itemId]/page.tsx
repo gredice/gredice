@@ -13,7 +13,9 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../../../components/admin/navigation/AdminPageTitle';
 import { auth } from '../../../../../../lib/auth/auth';
 import {
     getInventoryFieldType,
@@ -63,6 +65,14 @@ export default async function InventoryItemPage({
             };
         }),
     ];
+    const entityLabel = item.entityId
+        ? entityItems.find(
+              (entityItem) => entityItem.value === item.entityId.toString(),
+          )?.label
+        : null;
+    const itemTitle = entityLabel
+        ? `${entityLabel} - stavka #${id}`
+        : `Stavka #${id}`;
 
     const additionalFields = item.additionalFields ?? {};
     const trackingTypeItems =
@@ -113,17 +123,25 @@ export default async function InventoryItemPage({
 
     return (
         <Stack spacing={4}>
-            <Breadcrumbs
-                items={[
-                    {
-                        label: <AdminBreadcrumbLevelSelector />,
-                    },
-                    {
-                        label: config.label,
-                        href: KnownPages.InventoryConfig(inventoryConfigId),
-                    },
-                    { label: `Stavka #${id}` },
-                ]}
+            <AdminPageTitle title={itemTitle} />
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                            },
+                            {
+                                label: config.label,
+                                href: KnownPages.InventoryConfig(
+                                    inventoryConfigId,
+                                ),
+                            },
+                            { label: `Stavka #${id}` },
+                        ]}
+                    />
+                }
+                heading={`Uredi stavku #${id}`}
             />
 
             <Typography level="h2" className="text-2xl" semiBold>

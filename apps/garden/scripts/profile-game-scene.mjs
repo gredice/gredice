@@ -348,6 +348,7 @@ function startServer(baseUrl) {
         cwd: appRoot,
         env: {
             ...process.env,
+            GREDICE_GARDEN_START_PORT: port,
             PORT: port,
         },
         stdio: ['ignore', 'pipe', 'pipe'],

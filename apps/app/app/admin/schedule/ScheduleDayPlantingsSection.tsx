@@ -1,9 +1,17 @@
 import { getAssignableFarmUsersByRaisedBedFieldIds } from '@gredice/storage';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
+import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
 import { RaisedBedPlantingScheduleSection } from './RaisedBedPlantingScheduleSection';
 import { getScheduleDayData, getSchedulePlantSorts } from './scheduleData';
-import { groupRaisedBedsForSchedule } from './scheduleShared';
+import {
+    groupRaisedBedsForSchedule,
+    isFieldApproved,
+    isFieldCompleted,
+    isFieldPendingVerification,
+} from './scheduleShared';
 
 interface ScheduleDayPlantingsSectionProps {
     isToday: boolean;
@@ -34,9 +42,47 @@ export async function ScheduleDayPlantingsSection({
         affectedRaisedBedIds,
     );
 
+    const dayFieldsToApprove = scheduledFields
+        .filter(
+            (field) =>
+                !isFieldApproved(field.plantStatus) &&
+                !isFieldPendingVerification(field.plantStatus) &&
+                !isFieldCompleted(field.plantStatus) &&
+                !!field.assignedUserId,
+        )
+        .map((field) => ({
+            raisedBedId: field.raisedBedId,
+            positionIndex: field.positionIndex,
+            label: `${field.positionIndex + 1}`,
+        }));
+
+    const dayFieldsToAssign = scheduledFields
+        .filter(
+            (field) =>
+                !field.assignedUserId &&
+                !isFieldCompleted(field.plantStatus) &&
+                !isFieldPendingVerification(field.plantStatus),
+        )
+        .map((field) => ({
+            id: field.id,
+            farmUsers: assignableFarmUsersByRaisedBedFieldId[field.id] ?? [],
+        }));
+
     return (
         <Stack spacing={2}>
-            <Typography level="h6">Sijanje</Typography>
+            <Row spacing={1} alignItems="center">
+                <Typography level="h6">Sijanje</Typography>
+                <BulkApproveRaisedBedButton
+                    physicalId="dan"
+                    fields={dayFieldsToApprove}
+                    operations={[]}
+                />
+                <BulkAssignRaisedBedButton
+                    physicalId="dan"
+                    fields={dayFieldsToAssign}
+                    operations={[]}
+                />
+            </Row>
             {raisedBedGroups.map(({ key, physicalId, raisedBeds: beds }) => {
                 return (
                     <RaisedBedPlantingScheduleSection

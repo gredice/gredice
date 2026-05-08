@@ -1,13 +1,60 @@
 'use client';
 
 import { useFrame } from '@react-three/fiber';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useGameState } from '../../../useGameState';
 import { SeededRNG } from '../lib/rng';
 
 interface PlantSwayOptions {
     amplitude: number;
+    enabled?: boolean;
     speed: number;
+}
+
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+
+function getPrefersReducedMotion() {
+    if (
+        typeof window === 'undefined' ||
+        typeof window.matchMedia !== 'function'
+    ) {
+        return false;
+    }
+
+    return window.matchMedia(REDUCED_MOTION_QUERY).matches;
+}
+
+function usePrefersReducedMotion() {
+    const [prefersReducedMotion, setPrefersReducedMotion] = useState(
+        getPrefersReducedMotion,
+    );
+
+    useEffect(() => {
+        if (
+            typeof window === 'undefined' ||
+            typeof window.matchMedia !== 'function'
+        ) {
+            return;
+        }
+
+        const mediaQueryList = window.matchMedia(REDUCED_MOTION_QUERY);
+        const handleChange = () => {
+            setPrefersReducedMotion(mediaQueryList.matches);
+        };
+
+        handleChange();
+        mediaQueryList.addEventListener('change', handleChange);
+
+        return () => {
+            mediaQueryList.removeEventListener('change', handleChange);
+        };
+    }, []);
+
+    return prefersReducedMotion;
+}
+
+function defaultWindDirection(): [number, number] {
+    return [1, 0];
 }
 
 export const plantSwayVertexShader = /* glsl */ `
@@ -63,19 +110,32 @@ export const plantSwayVertexShader = /* glsl */ `
 
 export function usePlantSway(seed: string, options: PlantSwayOptions) {
     const weather = useGameState((state) => state.weather);
+    const prefersReducedMotion = usePrefersReducedMotion();
+    const swayDisabled = options.enabled === false || prefersReducedMotion;
     const uniforms = useMemo(() => {
         const rng = new SeededRNG(seed);
         return {
             uTime: { value: 0 },
-            uSwayAmplitude: { value: options.amplitude },
-            uSwaySpeed: { value: options.speed },
+            uSwayAmplitude: {
+                value: swayDisabled ? 0 : options.amplitude,
+            },
+            uSwaySpeed: { value: swayDisabled ? 0 : options.speed },
             uSwayPhase: { value: rng.nextRange(0, Math.PI * 2) },
             uWindStrength: { value: 0 },
-            uWindDirection: { value: [1, 0] as [number, number] },
+            uWindDirection: { value: defaultWindDirection() },
         };
-    }, [options.amplitude, options.speed, seed]);
+    }, [options.amplitude, options.speed, seed, swayDisabled]);
 
     useFrame(({ clock }) => {
+        if (swayDisabled) {
+            uniforms.uTime.value = 0;
+            uniforms.uSwayAmplitude.value = 0;
+            uniforms.uSwaySpeed.value = 0;
+            uniforms.uWindStrength.value = 0;
+            uniforms.uWindDirection.value = defaultWindDirection();
+            return;
+        }
+
         uniforms.uTime.value = clock.getElapsedTime();
         const windStrength = Math.max(
             0,

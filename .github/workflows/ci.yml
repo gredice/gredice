@@ -88,6 +88,21 @@ jobs:
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
               - turbo.json
+            app_storybook:
+              - apps/storybook/**
+              - packages/ui/**
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - turbo.json
+            app_status:
+              - apps/status/**
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - turbo.json
             packages_storage:
               - packages/storage/**
               - .github/workflows/**
@@ -101,6 +116,8 @@ jobs:
       app_farm: ${{ steps.filter.outputs.app_farm }}
       app_app: ${{ steps.filter.outputs.app_app }}
       app_api: ${{ steps.filter.outputs.app_api }}
+      app_storybook: ${{ steps.filter.outputs.app_storybook }}
+      app_status: ${{ steps.filter.outputs.app_status }}
       packages_storage: ${{ steps.filter.outputs.packages_storage }}
 
   ci_www:
@@ -158,6 +175,17 @@ jobs:
       vercelProjectIdSecretName: "VERCEL_PROJECT_ID_API"
     secrets: inherit
 
+  ci_status:
+    name: "CI - status"
+    needs: changes
+    if: success() && needs.changes.outputs.app_status == 'true'
+    uses: ./.github/workflows/nextjs_ci_reusable.yml
+    with:
+      name: "status"
+      path: "apps/status"
+      vercelProjectIdSecretName: "VERCEL_PROJECT_ID_STATUS"
+    secrets: inherit
+
   test_packages:
     name: "CI - test @gredice/storage"
     timeout-minutes: 5
@@ -173,7 +201,7 @@ jobs:
         with:
           fetch-depth: 2
 
-      - uses: pnpm/action-setup@v6.0.3
+      - uses: pnpm/action-setup@v6.0.4
         name: ✨ Install pnpm
 
       - name: ✨ Setup Node
@@ -227,8 +255,8 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-latest
     needs: changes
-    if: success() && needs.changes.outputs.app_www == 'true' &&
-      (github.event_name == 'pull_request' || github.ref == 'refs/heads/main')
+    if: success() && needs.changes.outputs.app_www == 'true' && (github.event_name
+      == 'pull_request' || github.ref == 'refs/heads/main')
     env:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WWW }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -237,7 +265,7 @@ jobs:
         with:
           fetch-depth: 2
 
-      - uses: pnpm/action-setup@v6.0.3
+      - uses: pnpm/action-setup@v6.0.4
         name: ✨ Install pnpm
 
       - name: ✨ Setup Node
@@ -265,7 +293,8 @@ jobs:
         run: npm i -g vercel@latest
 
       - name: ⚙️ Pull Vercel Environment Information
-        run: vercel env pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel env pull --yes --environment=preview --token=${{
+          secrets.VERCEL_TOKEN }}
         working-directory: apps/www/
 
       - name: 🖼️ Prepare visual tests
@@ -288,14 +317,14 @@ jobs:
     name: "CI - visual www (${{ matrix.shard }}/4)"
     timeout-minutes: 30
     runs-on: ubuntu-latest
-    needs: [changes, ci_visual_www_prepare]
-    if: always() && needs.changes.outputs.app_www == 'true' &&
-      (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') &&
+    needs: [ changes, ci_visual_www_prepare ]
+    if: always() && needs.changes.outputs.app_www == 'true' && (github.event_name ==
+      'pull_request' || github.ref == 'refs/heads/main') &&
       needs.ci_visual_www_prepare.result == 'success'
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [ 1, 2, 3, 4 ]
     env:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WWW }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -304,7 +333,7 @@ jobs:
         with:
           fetch-depth: 2
 
-      - uses: pnpm/action-setup@v6.0.3
+      - uses: pnpm/action-setup@v6.0.4
         name: ✨ Install pnpm
 
       - name: ✨ Setup Node
@@ -338,7 +367,8 @@ jobs:
         run: npm i -g vercel@latest
 
       - name: ⚙️ Pull Vercel Environment Information
-        run: vercel env pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel env pull --yes --environment=preview --token=${{
+          secrets.VERCEL_TOKEN }}
         working-directory: apps/www/
 
       - name: 🔑 Load VIZZLY_TOKEN from Vercel env
@@ -376,7 +406,9 @@ jobs:
 
       - name: 🖼️ Run visual tests
         if: steps.vizzly_token.outputs.configured == 'true'
-        run: pnpm exec vizzly run "pnpm exec playwright test --project=visual --shard=${{ matrix.shard }}/4" --parallel-id "${{ github.run_id }}-${{ github.run_attempt }}"
+        run: pnpm exec vizzly run "pnpm exec playwright test --project=visual
+          --shard=${{ matrix.shard }}/4" --parallel-id "${{ github.run_id }}-${{
+          github.run_attempt }}"
         working-directory: apps/www/
         env:
           GREDICE_API_HOST: https://api.gredice.com
@@ -385,48 +417,27 @@ jobs:
     name: "CI - visual www finalize"
     timeout-minutes: 10
     runs-on: ubuntu-latest
-    needs: [changes, ci_visual_www]
-    if: always() && needs.changes.outputs.app_www == 'true' &&
-      (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') &&
+    needs: [ changes, ci_visual_www ]
+    if: always() && needs.changes.outputs.app_www == 'true' && (github.event_name ==
+      'pull_request' || github.ref == 'refs/heads/main') &&
       needs.ci_visual_www.result == 'success'
     env:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WWW }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
     steps:
-      - uses: actions/checkout@v6.0.2
-        with:
-          fetch-depth: 2
-
-      - uses: pnpm/action-setup@v6.0.3
-        name: ✨ Install pnpm
-
       - name: ✨ Setup Node
         uses: actions/setup-node@v6.4.0
         with:
           node-version: "24.15.0"
 
-      - name: ✨ Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - uses: actions/cache@v5.0.5
-        name: ✨ Setup pnpm cache
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: 📦️ Install dependencies
-        run: pnpm install --frozen-lockfile --filter www... --filter .
-
       - name: ✨ Setup Vercel CLI
-        run: npm i -g vercel@latest
+        run: command -v vercel >/dev/null 2>&1 || npm i -g vercel@latest
 
       - name: ⚙️ Pull Vercel Environment Information
-        run: vercel env pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
-        working-directory: apps/www/
+        run: |
+          mkdir -p apps/www
+          cd apps/www
+          vercel env pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: 🔑 Load VIZZLY_TOKEN from Vercel env
         id: vizzly_token
@@ -446,16 +457,8 @@ jobs:
           echo "configured=true" >> "$GITHUB_OUTPUT"
 
       - name: 🖼️ Finalize visual tests
-        if: steps.vizzly_token.outputs.configured == 'true' &&
-          github.event_name == 'pull_request'
-        run: pnpm exec vizzly finalize "${{ github.run_id }}-${{ github.run_attempt }}"
-        working-directory: apps/www/
-
-      - name: 🖼️ Publish visual tests
-        if: steps.vizzly_token.outputs.configured == 'true' &&
-          github.ref == 'refs/heads/main'
-        run: pnpm exec vizzly finalize "${{ github.run_id }}-${{ github.run_attempt }}"
-        working-directory: apps/www/
+        if: steps.vizzly_token.outputs.configured == 'true'
+        run: npx --yes --package=@vizzly-testing/cli@latest vizzly finalize "${{ github.run_id }}-${{ github.run_attempt }}"
 
   ci_ok:
     name: "[CI] OK"
@@ -467,6 +470,7 @@ jobs:
         ci_farm,
         ci_app,
         ci_api,
+        ci_status,
         test_packages,
         ci_filter_check,
         ci_visual_www_prepare,

@@ -1,0 +1,19 @@
+{
+    "name": "Gredice Status",
+    "short_name": "Status",
+    "description": "Trenutna dostupnost Gredice servisa.",
+    "lang": "hr",
+    "dir": "ltr",
+    "start_url": "/",
+    "display": "minimal-ui",
+    "theme_color": "#2e6f40",
+    "background_color": "#2e6f40",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "/icon.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

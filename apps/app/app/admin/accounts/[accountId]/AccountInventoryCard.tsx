@@ -86,7 +86,6 @@ export async function AccountInventoryCard({
                 </div>
             </CardContent>
             <CardOverflow>
-                <Divider />
                 <div className="max-h-80 overflow-auto">
                     <Table>
                         <Table.Header>

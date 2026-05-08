@@ -4,15 +4,11 @@ import { cx } from '@signalco/ui-primitives/cx';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 export type EntityDetailsStickyHeaderProps = {
-    breadcrumbs: ReactNode;
     tabs: ReactNode;
-    actions: ReactNode;
 };
 
 export function EntityDetailsStickyHeader({
-    breadcrumbs,
     tabs,
-    actions,
 }: EntityDetailsStickyHeaderProps) {
     const sentinelRef = useRef<HTMLDivElement | null>(null);
     const [isStuck, setIsStuck] = useState(false);
@@ -50,13 +46,7 @@ export function EntityDetailsStickyHeader({
                         'rounded-2xl border bg-background/90 px-3 py-2 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80',
                 )}
             >
-                <div className="flex flex-row items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">{breadcrumbs}</div>
-                    <div className="flex min-w-0 shrink-0 items-center gap-2">
-                        <div className="min-w-0 overflow-x-auto">{tabs}</div>
-                        <div className="shrink-0">{actions}</div>
-                    </div>
-                </div>
+                <div className="min-w-0 overflow-x-auto">{tabs}</div>
             </div>
         </>
     );

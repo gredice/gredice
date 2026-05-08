@@ -23,19 +23,55 @@ export interface PlantViewerProps {
     generation: number;
     seed?: string;
     className?: string;
+    animate?: boolean;
+    includeEnvironment?: boolean;
+    lightingPreset?: 'default' | 'snapshot';
+    zoom?: number;
+    cameraPosition?: [x: number, y: number, z: number];
+    orbitTarget?: [x: number, y: number, z: number];
 }
 
-const zoom = 600;
-const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
-const orbitTarget: [x: number, y: number, z: number] = [0, 0.9, 0];
+const defaultZoom = 600;
+const defaultCameraPosition: [x: number, y: number, z: number] = [
+    -100, 100, -100,
+];
+const defaultOrbitTarget: [x: number, y: number, z: number] = [0, 0.9, 0];
+
+const lightingPresets = {
+    default: {
+        ambientIntensity: 0.7,
+        keyIntensity: 1.5,
+        keyPosition: [5, 10, 7.5] as const,
+        shadowIntensity: 1,
+    },
+    snapshot: {
+        ambientIntensity: 2.35,
+        fillIntensity: 1.1,
+        fillPosition: [-8, 10, -6] as const,
+        hemisphereGroundColor: '#d8c5a5',
+        hemisphereIntensity: 2.2,
+        hemisphereSkyColor: '#f5fff3',
+        keyIntensity: 3.4,
+        keyPosition: [6, 18, 10] as const,
+        shadowIntensity: 0.22,
+    },
+};
 
 export function PlantViewer({
     plantType,
     generation,
     seed = 'viewer',
     className,
+    animate = true,
+    includeEnvironment = true,
+    lightingPreset = 'default',
+    zoom = defaultZoom,
+    cameraPosition = defaultCameraPosition,
+    orbitTarget = defaultOrbitTarget,
 }: PlantViewerProps) {
     const definition = plantTypes[plantType];
+    const lighting = lightingPresets[lightingPreset];
+    const snapshotLighting = lightingPresets.snapshot;
 
     const lSystemTask = useMemo(
         () => ({
@@ -59,7 +95,7 @@ export function PlantViewer({
     if (!storeRef.current) {
         storeRef.current = createGameState({
             appBaseUrl: APP_BASE_URL,
-            freezeTime: new Date('2024-06-21T10:00:00'),
+            freezeTime: new Date(2024, 5, 21, 12, 0, 0),
             isMock: true,
             winterMode: 'summer',
         });
@@ -68,15 +104,34 @@ export function PlantViewer({
     return (
         <GameStateContext.Provider value={storeRef.current}>
             <Scene position={cameraPosition} zoom={zoom} className={className}>
-                <ambientLight intensity={0.7} />
+                <ambientLight intensity={lighting.ambientIntensity} />
+                {lightingPreset === 'snapshot' && (
+                    <hemisphereLight
+                        position={[0, 1, 0]}
+                        color={snapshotLighting.hemisphereSkyColor}
+                        groundColor={snapshotLighting.hemisphereGroundColor}
+                        intensity={snapshotLighting.hemisphereIntensity}
+                    />
+                )}
                 <directionalLight
-                    position={[5, 10, 7.5]}
-                    intensity={1.5}
+                    position={lighting.keyPosition}
+                    intensity={lighting.keyIntensity}
+                    shadow-intensity={lighting.shadowIntensity}
+                    shadow-radius={2}
+                    shadow-normalBias={0.025}
                     castShadow
                     shadow-mapSize-width={2048}
                     shadow-mapSize-height={2048}
                 />
-                <Environment noWeather noBackground noSound />
+                {lightingPreset === 'snapshot' && (
+                    <directionalLight
+                        position={snapshotLighting.fillPosition}
+                        intensity={snapshotLighting.fillIntensity}
+                    />
+                )}
+                {includeEnvironment && (
+                    <Environment noWeather noBackground noSound />
+                )}
                 <group position={[0, 0.5, 0]}>
                     <group position={[0, 0.4, 0]}>
                         <PlantGenerator
@@ -87,6 +142,7 @@ export function PlantViewer({
                             seed={seed}
                             flowerGrowth={1}
                             fruitGrowth={1}
+                            animate={animate}
                             showLeaves
                             showFlowers
                             showProduce

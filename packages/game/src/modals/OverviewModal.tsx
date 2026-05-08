@@ -15,6 +15,7 @@ import { GameTab } from './components/GameTab';
 import { GardenTab } from './components/GardenTab';
 import { GeneralTab } from './components/GeneralTab';
 import { NotificationsTab } from './components/NotificationsTab';
+import { ReferralsTab } from './components/ReferralsTab';
 import { SecurityTab } from './components/SecurityTab';
 import { SoundTab } from './components/SoundTab';
 import { SunflowersTab } from './components/SunflowersTab';
@@ -52,6 +53,12 @@ const navGroups = [
                 icon: '🔔',
                 label: 'Obavijesti',
                 value: 'obavijesti',
+            },
+            {
+                nodeId: 'profile-referrals',
+                icon: '💮',
+                label: 'Preporuke',
+                value: 'preporuke',
             },
         ],
     },
@@ -123,10 +130,10 @@ export function OverviewModal() {
         <Modal
             open={Boolean(settingsMode)}
             onOpenChange={handleOpenChange}
-            className="md:min-w-full lg:min-w-[80%] xl:min-w-[60%] md:min-h-[70%] md:max-h-full md:border-tertiary md:border-b-4"
+            className="max-h-[90dvh] overflow-hidden md:min-w-full lg:min-w-[80%] xl:min-w-[60%] md:min-h-[70%] md:max-h-full md:border-tertiary md:border-b-4"
             title="Profil"
         >
-            <div className="grid grid-rows-[auto_1fr] gap-4 md:gap-0 md:grid-rows-1 md:grid-cols-[minmax(230px,auto)_1fr]">
+            <div className="grid max-h-[calc(90dvh-5rem)] grid-rows-[auto_1fr] gap-4 overflow-y-auto pr-1 md:max-h-none md:gap-0 md:grid-rows-1 md:grid-cols-[minmax(230px,auto)_1fr] md:overflow-hidden md:pr-0">
                 <Stack spacing={2} className="md:border-r md:pl-2">
                     <ProfileInfo />
                     <SelectItems
@@ -168,7 +175,7 @@ export function OverviewModal() {
                         ))}
                     </List>
                 </Stack>
-                <div className="md:pl-6">
+                <div className="overflow-y-auto md:pl-6">
                     {settingsMode === 'generalno' && <GeneralTab />}
                     {settingsMode === 'vrt' && <GardenTab />}
                     {settingsMode === 'igra' && <GameTab />}
@@ -179,6 +186,7 @@ export function OverviewModal() {
                     {settingsMode === 'suncokreti' && <SunflowersTab />}
                     {settingsMode === 'postignuca' && <AchievementsTab />}
                     {settingsMode === 'korisnici' && <AccountUsersTab />}
+                    {settingsMode === 'preporuke' && <ReferralsTab />}
                 </div>
             </div>
         </Modal>
