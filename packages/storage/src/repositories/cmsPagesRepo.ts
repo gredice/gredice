@@ -20,6 +20,8 @@ export type CreateCmsPageInput = {
     metaTitle?: string | null;
     metaDescription?: string | null;
     metaImageUrl?: string | null;
+    canonicalPath?: string | null;
+    noIndex?: boolean;
 };
 
 export type UpdateCmsPageInput = Partial<CreateCmsPageInput> & {
@@ -82,6 +84,18 @@ const reservedCmsPageFirstSegments = new Set([
 function optionalText(value: string | null | undefined) {
     const trimmed = value?.trim();
     return trimmed ? trimmed : null;
+}
+
+function boundedOptionalText(
+    value: string | null | undefined,
+    fieldLabel: string,
+    maxLength: number,
+) {
+    const normalized = optionalText(value);
+    if (normalized && normalized.length > maxLength) {
+        throw new Error(`${fieldLabel} must be at most ${maxLength} characters.`);
+    }
+    return normalized;
 }
 
 function requiredText(value: string, fieldLabel: string) {
@@ -154,8 +168,14 @@ function pageInsertValues(input: CreateCmsPageInput): InsertCmsPage {
         state,
         publishedAt: state === 'published' ? new Date() : null,
         metaTitle: optionalText(input.metaTitle),
-        metaDescription: optionalText(input.metaDescription),
+        metaDescription: boundedOptionalText(
+            input.metaDescription,
+            'Meta description',
+            160,
+        ),
         metaImageUrl: optionalText(input.metaImageUrl),
+        canonicalPath: optionalText(input.canonicalPath),
+        noIndex: input.noIndex ?? false,
     };
 
     if (state === 'published') {
@@ -320,6 +340,8 @@ export async function createCmsPage(
         nextMetaTitle: values.metaTitle,
         nextMetaDescription: values.metaDescription,
         nextMetaImageUrl: values.metaImageUrl,
+        nextCanonicalPath: values.canonicalPath,
+        nextNoIndex: values.noIndex,
         nextPublishedAt: values.publishedAt,
     });
 
@@ -359,11 +381,23 @@ export async function updateCmsPage(
     }
 
     if (input.metaDescription !== undefined) {
-        updateData.metaDescription = optionalText(input.metaDescription);
+        updateData.metaDescription = boundedOptionalText(
+            input.metaDescription,
+            'Meta description',
+            160,
+        );
     }
 
     if (input.metaImageUrl !== undefined) {
         updateData.metaImageUrl = optionalText(input.metaImageUrl);
+    }
+
+    if (input.canonicalPath !== undefined) {
+        updateData.canonicalPath = optionalText(input.canonicalPath);
+    }
+
+    if (input.noIndex !== undefined) {
+        updateData.noIndex = input.noIndex;
     }
 
     if (input.state !== undefined) {
@@ -435,6 +469,10 @@ function cmsPageRevisionValues(
         nextMetaDescription: next.metaDescription,
         previousMetaImageUrl: previous.metaImageUrl,
         nextMetaImageUrl: next.metaImageUrl,
+        previousCanonicalPath: previous.canonicalPath,
+        nextCanonicalPath: next.canonicalPath,
+        previousNoIndex: previous.noIndex,
+        nextNoIndex: next.noIndex,
         previousPublishedAt: previous.publishedAt,
         nextPublishedAt: next.publishedAt,
     };

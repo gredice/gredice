@@ -28,6 +28,8 @@ const app = new Hono()
                     metaTitle: page.metaTitle,
                     metaDescription: page.metaDescription,
                     metaImageUrl: page.metaImageUrl,
+                    canonicalPath: page.canonicalPath,
+                    noIndex: page.noIndex,
                     updatedAt: page.updatedAt,
                 })),
         );
@@ -89,6 +91,8 @@ const app = new Hono()
                 metaTitle: page.metaTitle,
                 metaDescription: page.metaDescription,
                 metaImageUrl: page.metaImageUrl,
+                canonicalPath: page.canonicalPath,
+                noIndex: page.noIndex,
                 updatedAt: page.updatedAt,
             });
         },
