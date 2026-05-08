@@ -33,7 +33,13 @@ module.exports = {
     }),
     additionalPaths: async (config) => {
         const baseUrl = process.env.API_URL || 'https://api.gredice.com';
-        const response = await fetch(`${baseUrl}/api/directories/pages`);
+        let response;
+        try {
+            response = await fetch(`${baseUrl}/api/directories/pages`);
+        } catch {
+            return [];
+        }
+
         if (!response.ok) {
             return [];
         }
@@ -41,17 +47,24 @@ module.exports = {
         /** @type {Array<{ slug: string; noIndex?: boolean; state: string; publishedAt?: string | null }>} */
         const pages = await response.json();
         const seen = new Set();
-        return pages
-            .filter((page) => page.state === 'published' && page.publishedAt && !page.noIndex)
-            .map((page) => `/${page.slug}`)
-            .filter((path) => {
-                if (seen.has(path)) {
-                    return false;
-                }
-                seen.add(path);
-                return true;
-            })
-            .map((path) => config.transform(config, path))
-            .filter(Boolean);
+        const sitemapPaths = await Promise.all(
+            pages
+                .filter(
+                    (page) =>
+                        page.state === 'published' &&
+                        page.publishedAt &&
+                        !page.noIndex,
+                )
+                .map((page) => `/${page.slug}`)
+                .filter((path) => {
+                    if (seen.has(path)) {
+                        return false;
+                    }
+                    seen.add(path);
+                    return true;
+                })
+                .map((path) => config.transform(config, path)),
+        );
+        return sitemapPaths.filter(Boolean);
     },
 };

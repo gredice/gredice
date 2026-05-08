@@ -529,26 +529,39 @@ export async function restoreCmsPageRevision(
         ),
     });
     if (!revision) throw new Error('CMS page revision not found.');
+    const restoreNextSnapshot = revision.action === 'cms_page.created';
     await updateCmsPage(
         {
             id: cmsPageId,
-            slug: revision.previousSlug ?? revision.nextSlug ?? '',
-            title: revision.previousTitle ?? revision.nextTitle ?? '',
-            content: revision.previousContent ?? revision.nextContent ?? null,
+            slug: restoreNextSnapshot
+                ? (revision.nextSlug ?? '')
+                : (revision.previousSlug ?? ''),
+            title: restoreNextSnapshot
+                ? (revision.nextTitle ?? '')
+                : (revision.previousTitle ?? ''),
+            content: restoreNextSnapshot
+                ? revision.nextContent
+                : revision.previousContent,
             state: cmsPageRevisionState(
-                revision.previousState,
-                revision.nextState,
+                restoreNextSnapshot ? null : revision.previousState,
+                restoreNextSnapshot ? revision.nextState : null,
             ),
-            metaTitle:
-                revision.previousMetaTitle ?? revision.nextMetaTitle ?? null,
-            metaDescription:
-                revision.previousMetaDescription ??
-                revision.nextMetaDescription ??
-                null,
-            metaImageUrl:
-                revision.previousMetaImageUrl ??
-                revision.nextMetaImageUrl ??
-                null,
+            metaTitle: restoreNextSnapshot
+                ? revision.nextMetaTitle
+                : revision.previousMetaTitle,
+            metaDescription: restoreNextSnapshot
+                ? revision.nextMetaDescription
+                : revision.previousMetaDescription,
+            metaImageUrl: restoreNextSnapshot
+                ? revision.nextMetaImageUrl
+                : revision.previousMetaImageUrl,
+            canonicalPath: restoreNextSnapshot
+                ? revision.nextCanonicalPath
+                : revision.previousCanonicalPath,
+            noIndex:
+                (restoreNextSnapshot
+                    ? revision.nextNoIndex
+                    : revision.previousNoIndex) ?? false,
         },
         actor,
     );
