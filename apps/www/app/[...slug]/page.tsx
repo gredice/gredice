@@ -1,5 +1,6 @@
 import { clientPublic } from '@gredice/client';
 import { SectionsView } from '@signalco/cms-core/SectionsView';
+import { draftMode } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { sectionsComponentRegistry } from '../../components/shared/sectionsComponentRegistry';
 import {
@@ -20,8 +21,21 @@ export default async function CmsPublishedPageRoute({
         notFound();
     }
 
-    const response = await clientPublic().api.directories.pages[':slug{.+}'].$get({
+    const { isEnabled } = await draftMode();
+    const previewSecret = process.env.CMS_PAGES_PREVIEW_SECRET;
+
+    const response = await clientPublic().api.directories.pages[
+        ':slug{.+}'
+    ].$get({
         param: { slug: normalizedSlug },
+        query: isEnabled ? { draft: '1' } : undefined,
+        ...(isEnabled && previewSecret
+            ? {
+                  header: {
+                      'x-preview-secret': previewSecret,
+                  },
+              }
+            : {}),
     });
 
     if (response.status !== 200) {

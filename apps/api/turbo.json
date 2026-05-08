@@ -9,6 +9,7 @@
                 "BLOB_READ_WRITE_TOKEN",
                 "CHECKLY_ACCOUNT_ID",
                 "CHECKLY_API_KEY",
+                "CMS_PAGES_PREVIEW_SECRET",
                 "CRON_SECRET",
                 "ENABLE_EXPERIMENTAL_COREPACK",
                 "FACEBOOK_CLIENT_ID",

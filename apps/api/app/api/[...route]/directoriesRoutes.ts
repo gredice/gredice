@@ -34,8 +34,21 @@ const app = new Hono()
     })
     .get('/pages/:slug{.+}', async (context) => {
         const slug = context.req.param('slug');
+        const includeDraft = context.req.query('draft') === '1';
+        const previewSecret = context.req.header('x-preview-secret');
+        const expectedPreviewSecret = process.env.CMS_PAGES_PREVIEW_SECRET;
+
+        const canAccessDraft =
+            includeDraft &&
+            Boolean(expectedPreviewSecret) &&
+            previewSecret === expectedPreviewSecret;
+
         const page = await getCmsPageBySlug(slug);
-        if (!page || page.state !== 'published' || !page.publishedAt) {
+        if (
+            !page ||
+            (!canAccessDraft &&
+                (page.state !== 'published' || !page.publishedAt))
+        ) {
             return context.json({ error: 'Page not found' }, { status: 404 });
         }
 
