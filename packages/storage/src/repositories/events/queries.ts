@@ -1,4 +1,8 @@
 import { and, asc, count, desc, eq, gte, inArray, lte } from 'drizzle-orm';
+import {
+    bustDeliveryRequestsCache,
+    bustScheduleCache,
+} from '../../cache/scheduleCache';
 import { events } from '../../schema';
 import { storage } from '../../storage';
 import { knownEventTypes } from './knownEventTypes';
@@ -9,6 +13,45 @@ import type {
 } from './types';
 
 type DatabaseClient = ReturnType<typeof storage>;
+
+const scheduleInvalidatingEventTypes = new Set<string>([
+    knownEventTypes.operations.assign,
+    knownEventTypes.operations.schedule,
+    knownEventTypes.operations.complete,
+    knownEventTypes.operations.verify,
+    knownEventTypes.operations.fail,
+    knownEventTypes.operations.cancel,
+    knownEventTypes.raisedBedFields.create,
+    knownEventTypes.raisedBedFields.delete,
+    knownEventTypes.raisedBedFields.plantPlace,
+    knownEventTypes.raisedBedFields.plantSchedule,
+    knownEventTypes.raisedBedFields.plantUpdate,
+    knownEventTypes.raisedBedFields.plantReplaceSort,
+]);
+
+const deliveryInvalidatingEventTypes = new Set<string>([
+    knownEventTypes.delivery.requestCreated,
+    knownEventTypes.delivery.requestCancelled,
+    knownEventTypes.delivery.requestAddressChanged,
+    knownEventTypes.delivery.requestConfirmed,
+    knownEventTypes.delivery.requestPreparing,
+    knownEventTypes.delivery.requestReady,
+    knownEventTypes.delivery.requestFulfilled,
+    knownEventTypes.delivery.requestSurveySent,
+    knownEventTypes.delivery.requestSlotChanged,
+    knownEventTypes.delivery.userCancelled,
+]);
+
+async function bustReadModelCachesForEvent(event: Event) {
+    await Promise.all([
+        scheduleInvalidatingEventTypes.has(event.type)
+            ? bustScheduleCache()
+            : undefined,
+        deliveryInvalidatingEventTypes.has(event.type)
+            ? bustDeliveryRequestsCache()
+            : undefined,
+    ]);
+}
 
 export function getEvents(
     type: string | string[],
@@ -84,16 +127,17 @@ export async function countEventsSince(
     return result[0]?.count ?? 0;
 }
 
-export function createEvent(
+export async function createEvent(
     { type, version, aggregateId, data }: Event,
     db: DatabaseClient = storage(),
 ) {
-    return db.insert(events).values({
+    await db.insert(events).values({
         type,
         version,
         aggregateId,
         data,
     });
+    await bustReadModelCachesForEvent({ type, version, aggregateId, data });
 }
 
 export async function getAiAnalysisEvents(filter?: { from?: Date; to?: Date }) {
@@ -179,8 +223,14 @@ export async function getSunflowersDailyTotals(filter?: {
     );
 }
 
-export function deleteEventById(eventId: number) {
-    return storage().delete(events).where(eq(events.id, eventId));
+export async function deleteEventById(eventId: number) {
+    const event = await storage().query.events.findFirst({
+        where: eq(events.id, eventId),
+    });
+    await storage().delete(events).where(eq(events.id, eventId));
+    if (event) {
+        await bustReadModelCachesForEvent(event);
+    }
 }
 
 export async function getLastBirthdayRewardEvent(userId: string) {

@@ -314,6 +314,15 @@ export type DeliveryRequestFulfilledPayload = {
 export type DeliveryRequestSurveySentPayload = {
     sentTo: string[];
 };
+
+export type DeliveryRequestReadyEmailProcessedPayload = {
+    readyEventId: number;
+    sentTo: string[];
+    batchRequestIds: string[];
+    completed?: boolean;
+    skipped?: boolean;
+};
+
 export type DeliveryRequestEventsPayload =
     | DeliveryRequestCreatePayload
     | DeliveryRequestSlotChangedPayload
@@ -321,7 +330,8 @@ export type DeliveryRequestEventsPayload =
     | DeliveryRequestCancelledPayload
     | DeliveryRequestStatusPayload
     | DeliveryRequestFulfilledPayload
-    | DeliveryRequestSurveySentPayload;
+    | DeliveryRequestSurveySentPayload
+    | DeliveryRequestReadyEmailProcessedPayload;
 
 export type DeliveryRequestEventsAnyPayload = Partial<
     DeliveryRequestCreatePayload &
@@ -330,7 +340,8 @@ export type DeliveryRequestEventsAnyPayload = Partial<
         DeliveryRequestCancelledPayload &
         DeliveryRequestStatusPayload &
         DeliveryRequestFulfilledPayload &
-        DeliveryRequestSurveySentPayload
+        DeliveryRequestSurveySentPayload &
+        DeliveryRequestReadyEmailProcessedPayload
 >;
 
 // ============================================================================

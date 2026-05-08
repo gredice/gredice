@@ -9,6 +9,7 @@ interface FlowersProps {
     seed: string;
     matrices: THREE.Matrix4[];
     color: string;
+    animate?: boolean;
 }
 
 const flowerGeometry = (() => {
@@ -25,10 +26,16 @@ const flowerGeometry = (() => {
     return new THREE.ShapeGeometry(shape);
 })();
 
-export function Flowers({ seed, matrices, color }: FlowersProps) {
+export function Flowers({
+    seed,
+    matrices,
+    color,
+    animate = true,
+}: FlowersProps) {
     const ref = useRef<THREE.InstancedMesh | null>(null);
     const swayUniforms = usePlantSway(`${seed}-flowers`, {
         amplitude: 0.14,
+        enabled: animate,
         speed: 1.6,
     });
 

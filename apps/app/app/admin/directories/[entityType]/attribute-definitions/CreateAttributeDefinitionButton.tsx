@@ -32,6 +32,7 @@ export function CreateAttributeDefinitionButton({
         const name = formData.get('name') as string;
         const label = formData.get('label') as string;
         const defaultValue = formData.get('defaultValue') as string;
+        const unit = formData.get('unit') as string;
         const dataType =
             selectedDataType === 'range'
                 ? buildRangeDataType(rangeMinValue, rangeMaxValue)
@@ -42,6 +43,7 @@ export function CreateAttributeDefinitionButton({
             label,
             dataType,
             defaultValue: defaultValue.length > 0 ? defaultValue : null,
+            unit: unit.length > 0 ? unit : null,
             entityTypeName,
             category: categoryName,
         });
@@ -101,6 +103,11 @@ export function CreateAttributeDefinitionButton({
                                 name="defaultValue"
                                 label="Zadana vrijednost"
                                 placeholder="-"
+                            />
+                            <Input
+                                name="unit"
+                                label="Jedinica"
+                                placeholder="°C, €, cm"
                             />
                         </Stack>
                         <Button variant="solid" type="submit">

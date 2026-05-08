@@ -23,6 +23,7 @@ export const inventoryConfigs = pgTable(
         statusAttributeName: text('status_attribute_name'),
         emptyStatusValue: text('empty_status_value'),
         amountAttributeName: text('amount_attribute_name'),
+        lowCountThreshold: integer('low_count_threshold'),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
@@ -122,6 +123,7 @@ export const inventoryItems = pgTable(
         trackingType: text('tracking_type').notNull().default('pieces'), // 'pieces' | 'serialNumber'
         serialNumber: text('serial_number'),
         quantity: integer('quantity').notNull().default(1),
+        lowCountThreshold: integer('low_count_threshold'),
         additionalFields:
             jsonb('additional_fields').$type<Record<string, unknown>>(), // configurable extra fields (e.g., expiry date)
         notes: text('notes'),

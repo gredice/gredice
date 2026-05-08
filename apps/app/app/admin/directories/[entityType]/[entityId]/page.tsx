@@ -3,24 +3,14 @@ import {
     getAttributeDefinitionCategories,
     getAttributeDefinitions,
     getEntityRaw,
+    getEntityRevisions,
     getInventoryConfigByEntityTypeName,
     getInventoryItemsByConfig,
     updateInventoryItem,
 } from '@gredice/storage';
+import { getEntityCompleteness } from '@gredice/storage/entityCompleteness';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Delete, ExternalLink } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import {
     Tabs,
@@ -29,24 +19,29 @@ import {
     TabsTrigger,
 } from '@signalco/ui-primitives/Tabs';
 import { revalidatePath } from 'next/cache';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { importEntityData } from '../../../../../app/admin/directories/(actions)/importEntityData';
 import { EntityAttributeProgress } from '../../../../../components/admin/directories/EntityAttributeProgress';
-import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import {
+    AdminDirectoryBreadcrumbs,
+    AdminPageHeader,
+} from '../../../../../components/admin/navigation';
+import { AdminPageTitle } from '../../../../../components/admin/navigation/AdminPageTitle';
+import { BarcodeValue } from '../../../../../components/shared/attributes/BarcodeValue';
+import { formatAttributeValueWithUnit } from '../../../../../components/shared/attributes/formatAttributeValueWithUnit';
 import { Field } from '../../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../../components/shared/fields/FieldSet';
-import { ServerActionIconButton } from '../../../../../components/shared/ServerActionIconButton';
 import { auth } from '../../../../../lib/auth/auth';
 import { entityDisplayName } from '../../../../../src/entities/entityAttributes';
 import { KnownPages } from '../../../../../src/KnownPages';
 import { handleEntityDelete } from '../../../../(actions)/entityActions';
 import { AttributeCategoryDetails } from './AttributeCategoryDetails';
+import { EntityActions } from './EntityActions';
 import { EntityDetailsSaveIndicator } from './EntityDetailsSaveIndicator';
 import { EntityDetailsSaveProvider } from './EntityDetailsSaveProvider';
 import { EntityDetailsStickyHeader } from './EntityDetailsStickyHeader';
-import { EntityImportMenu } from './EntityImportMenu';
-import { EntityStateSelect } from './EntityStateSelect';
+import { EntityInventoryCard } from './EntityInventoryCard';
+import { EntityLinksPanel } from './EntityLinksPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,13 +62,20 @@ export default async function EntityDetailsPage(props: {
     params: Promise<{ entityType: string; entityId: string }>;
 }) {
     const params = await props.params;
-    const [attributeDefinitions, attributeCategories, entity, inventoryConfig] =
-        await Promise.all([
-            getAttributeDefinitions(params.entityType),
-            getAttributeDefinitionCategories(params.entityType),
-            getEntityRaw(parseInt(params.entityId, 10)),
-            getInventoryConfigByEntityTypeName(params.entityType),
-        ]);
+    const entityId = parseInt(params.entityId, 10);
+    const [
+        attributeDefinitions,
+        attributeCategories,
+        entity,
+        inventoryConfig,
+        revisions,
+    ] = await Promise.all([
+        getAttributeDefinitions(params.entityType),
+        getAttributeDefinitionCategories(params.entityType),
+        getEntityRaw(entityId),
+        getInventoryConfigByEntityTypeName(params.entityType),
+        getEntityRevisions(entityId),
+    ]);
     if (!entity) {
         notFound();
     }
@@ -81,17 +83,16 @@ export default async function EntityDetailsPage(props: {
     const inventoryItems = inventoryConfig
         ? await getInventoryItemsByConfig(inventoryConfig.id)
         : [];
-    const entityId = parseInt(params.entityId, 10);
     const entityInventoryItem = inventoryItems.find(
         (item) => item.entityId === entityId,
     );
+    const entityTitle = entityDisplayName(entity);
 
     const entityDeleteBound = handleEntityDelete.bind(
         null,
         params.entityType,
         entityId,
     );
-
     async function upsertInventoryAction(formData: FormData) {
         'use server';
         await auth(['admin']);
@@ -100,12 +101,8 @@ export default async function EntityDetailsPage(props: {
             return;
         }
 
-        const trackingType =
-            (formData.get('trackingType') as string) ||
-            inventoryConfig.defaultTrackingType;
-        const quantityRaw = formData.get('quantity');
         const quantityParsed = Number.parseInt(
-            typeof quantityRaw === 'string' ? quantityRaw : '0',
+            (formData.get('quantity') as string) ?? '0',
             10,
         );
         const quantity = Number.isFinite(quantityParsed)
@@ -117,15 +114,17 @@ export default async function EntityDetailsPage(props: {
             await updateInventoryItem({
                 id: entityInventoryItem.id,
                 entityId,
-                trackingType,
+                trackingType: entityInventoryItem.trackingType,
                 quantity,
                 notes,
+                lowCountThreshold:
+                    entityInventoryItem.lowCountThreshold ?? undefined,
             });
         } else {
             await createInventoryItem({
                 inventoryConfigId: inventoryConfig.id,
                 entityId,
-                trackingType,
+                trackingType: inventoryConfig.defaultTrackingType,
                 quantity,
                 notes,
             });
@@ -135,7 +134,6 @@ export default async function EntityDetailsPage(props: {
         revalidatePath(KnownPages.InventoryConfig(inventoryConfig.id));
     }
 
-    // Remove useFormState, use a plain form with server action
     async function importAction(formData: FormData) {
         'use server';
         await auth(['admin']);
@@ -152,208 +150,96 @@ export default async function EntityDetailsPage(props: {
     }
 
     const displayDefinitions = attributeDefinitions.filter((d) => d.display);
-    const populatedAttributeDefinitionIds = new Set(
-        entity.attributes
-            .filter((attribute) => (attribute.value?.length ?? 0) > 0)
-            .map((attribute) => attribute.attributeDefinitionId),
-    );
+    const completeness = getEntityCompleteness(entity, attributeDefinitions);
     const categoriesWithMissingRequiredAttributes = new Set(
-        attributeDefinitions
-            .filter(
-                (definition) =>
-                    definition.required &&
-                    !definition.defaultValue &&
-                    !populatedAttributeDefinitionIds.has(definition.id),
-            )
-            .map((definition) => definition.category),
+        completeness.missingRequiredDefinitions.map(
+            (definition) => definition.category,
+        ),
     );
 
     return (
         <EntityDetailsSaveProvider>
-            <Tabs defaultValue={attributeCategories.at(0)?.name}>
-                <Stack spacing={2}>
-                    <EntityDetailsStickyHeader
-                        breadcrumbs={
-                            <Breadcrumbs
+            <AdminPageTitle title={entityTitle} />
+            <AdminPageHeader
+                breadcrumbs={
+                    <Row spacing={2} className="min-w-0">
+                        <div className="min-w-0">
+                            <AdminDirectoryBreadcrumbs
+                                entityTypeName={params.entityType}
+                                entityTypeLabel={entity.entityType.label}
                                 items={[
                                     {
-                                        label: <AdminBreadcrumbLevelSelector />,
-                                        href: KnownPages.Directories,
+                                        label: entityDisplayName(entity),
                                     },
-                                    {
-                                        label: entity.entityType.label,
-                                        href: KnownPages.DirectoryEntityType(
-                                            params.entityType,
-                                        ),
-                                    },
-                                    { label: entityDisplayName(entity) },
                                 ]}
                             />
-                        }
-                        tabs={
-                            <TabsList>
-                                {attributeCategories.map((category) => (
-                                    <TabsTrigger
-                                        key={category.name}
-                                        value={category.name}
-                                    >
-                                        <Row
-                                            spacing={1}
-                                            className="items-center"
-                                        >
-                                            <span>{category.label}</span>
-                                            {categoriesWithMissingRequiredAttributes.has(
-                                                category.name,
-                                            ) && (
-                                                <>
-                                                    <span
-                                                        className="size-2 rounded-full bg-red-500"
-                                                        aria-hidden
-                                                    />
-                                                    <span className="sr-only">
-                                                        Nedostaju obavezni
-                                                        atributi
-                                                    </span>
-                                                </>
-                                            )}
-                                        </Row>
-                                    </TabsTrigger>
-                                ))}
-                            </TabsList>
-                        }
-                        actions={
-                            <Row className="items-center" spacing={1}>
-                                <EntityDetailsSaveIndicator />
-                                <div className="w-28">
-                                    <EntityAttributeProgress
-                                        entity={entity}
-                                        definitions={attributeDefinitions}
-                                    />
-                                </div>
-                                <EntityStateSelect entity={entity} />
-                                <Button
-                                    variant="plain"
-                                    href={KnownPages.DirectoryEntityLinks(
-                                        params.entityType,
-                                        parseInt(params.entityId, 10),
-                                    )}
+                        </div>
+                        <div className="w-20 shrink-0">
+                            <EntityAttributeProgress
+                                entity={entity}
+                                definitions={attributeDefinitions}
+                            />
+                        </div>
+                    </Row>
+                }
+                actions={
+                    <Row className="items-center" spacing={1}>
+                        <EntityDetailsSaveIndicator />
+                        <EntityLinksPanel entityId={entityId} />
+                        <EntityActions
+                            entity={entity}
+                            entityType={params.entityType}
+                            importAction={importAction}
+                            deleteAction={entityDeleteBound}
+                        />
+                    </Row>
+                }
+                heading={entityDisplayName(entity)}
+            />
+            <Tabs defaultValue={attributeCategories.at(0)?.name}>
+                <EntityDetailsStickyHeader
+                    tabs={
+                        <TabsList>
+                            {[
+                                ...attributeCategories,
+                                { name: 'history', label: 'Historija' },
+                            ].map((category) => (
+                                <TabsTrigger
+                                    key={category.name}
+                                    value={category.name}
                                 >
-                                    Povezani zapisi
-                                </Button>
-                                <EntityImportMenu importAction={importAction} />
-                                <ServerActionIconButton
-                                    title="Obriši"
-                                    onClick={entityDeleteBound}
-                                    variant="plain"
-                                >
-                                    <Delete />
-                                </ServerActionIconButton>
-                            </Row>
-                        }
-                    />
+                                    <Row spacing={1} className="items-center">
+                                        <span>{category.label}</span>
+                                        {categoriesWithMissingRequiredAttributes.has(
+                                            category.name,
+                                        ) && (
+                                            <>
+                                                <span
+                                                    className="size-2 rounded-full bg-red-500"
+                                                    aria-hidden
+                                                />
+                                                <span className="sr-only">
+                                                    Nedostaju obavezni atributi
+                                                </span>
+                                            </>
+                                        )}
+                                    </Row>
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    }
+                />
+                <Stack spacing={2}>
                     <Stack spacing={2}>
                         {inventoryConfig && (
-                            <Card>
-                                <CardHeader>
-                                    <Row
-                                        justifyContent="space-between"
-                                        className="items-center"
-                                    >
-                                        <CardTitle>
-                                            Zaliha za ovaj entitet
-                                        </CardTitle>
-                                        <Link
-                                            href={KnownPages.InventoryConfig(
-                                                inventoryConfig.id,
-                                            )}
-                                        >
-                                            <IconButton
-                                                variant="plain"
-                                                title="Otvori stranicu zalihe"
-                                            >
-                                                <ExternalLink className="size-4" />
-                                            </IconButton>
-                                        </Link>
-                                    </Row>
-                                </CardHeader>
-                                <CardContent>
-                                    <Stack spacing={2}>
-                                        <Row spacing={4} className="flex-wrap">
-                                            <Field
-                                                name="Stanje"
-                                                value={
-                                                    entityInventoryItem
-                                                        ? entityInventoryItem.trackingType ===
-                                                          'serialNumber'
-                                                            ? 'Serijski broj'
-                                                            : 'Komadi'
-                                                        : 'Nema u zalihi'
-                                                }
-                                            />
-                                            <Field
-                                                name="Količina"
-                                                value={
-                                                    entityInventoryItem?.quantity ??
-                                                    0
-                                                }
-                                            />
-                                        </Row>
-
-                                        <form action={upsertInventoryAction}>
-                                            <Row
-                                                spacing={2}
-                                                className="items-end flex-wrap"
-                                            >
-                                                <SelectItems
-                                                    name="trackingType"
-                                                    label="Stanje"
-                                                    items={[
-                                                        {
-                                                            value: 'pieces',
-                                                            label: 'Komadi',
-                                                        },
-                                                        {
-                                                            value: 'serialNumber',
-                                                            label: 'Serijski broj',
-                                                        },
-                                                    ]}
-                                                    defaultValue={
-                                                        entityInventoryItem?.trackingType ??
-                                                        inventoryConfig.defaultTrackingType
-                                                    }
-                                                />
-                                                <Input
-                                                    name="quantity"
-                                                    label="Količina"
-                                                    type="number"
-                                                    min={0}
-                                                    defaultValue={String(
-                                                        entityInventoryItem?.quantity ??
-                                                            0,
-                                                    )}
-                                                />
-                                                <Input
-                                                    name="notes"
-                                                    label="Bilješka"
-                                                    defaultValue={
-                                                        entityInventoryItem?.notes ??
-                                                        ''
-                                                    }
-                                                />
-                                                <Button
-                                                    type="submit"
-                                                    variant="solid"
-                                                    className="w-fit"
-                                                >
-                                                    {entityInventoryItem
-                                                        ? 'Ažuriraj zalihu'
-                                                        : 'Dodaj u zalihu'}
-                                                </Button>
-                                            </Row>
-                                        </form>
-                                    </Stack>
-                                </CardContent>
-                            </Card>
+                            <EntityInventoryCard
+                                inventoryConfigId={inventoryConfig.id}
+                                inventoryLowCountThreshold={
+                                    inventoryConfig.lowCountThreshold
+                                }
+                                entityInventoryItem={entityInventoryItem}
+                                upsertInventoryAction={upsertInventoryAction}
+                            />
                         )}
                         <FieldSet>
                             <Field
@@ -397,13 +283,25 @@ export default async function EntityDetailsPage(props: {
                                             }
                                         }
 
-                                        return value;
+                                        if (d.dataType === 'barcode') {
+                                            return (
+                                                <BarcodeValue value={value} />
+                                            );
+                                        }
+
+                                        return formatAttributeValueWithUnit(
+                                            value,
+                                            d.unit,
+                                        );
                                     })()}
                                 />
                             ))}
                         </FieldSet>
                     </Stack>
-                    {attributeCategories.map((category) => (
+                    {[
+                        ...attributeCategories,
+                        { name: 'history', label: 'Historija' },
+                    ].map((category) => (
                         <TabsContent value={category.name} key={category.name}>
                             <AttributeCategoryDetails
                                 entity={entity}
@@ -412,6 +310,22 @@ export default async function EntityDetailsPage(props: {
                             />
                         </TabsContent>
                     ))}
+
+                    <TabsContent value="history" key="history">
+                        <FieldSet>
+                            {revisions.length === 0 ? (
+                                <Field name="Historija" value="Nema promjena" />
+                            ) : (
+                                revisions.map((revision) => (
+                                    <Field
+                                        key={revision.id}
+                                        name={`${revision.action} • ${revision.actorName ?? 'Nepoznat korisnik'}`}
+                                        value={`${revision.createdAt.toISOString()} | ${revision.previousValue ?? revision.previousState ?? '-'} → ${revision.nextValue ?? revision.nextState ?? '-'}`}
+                                    />
+                                ))
+                            )}
+                        </FieldSet>
+                    </TabsContent>
                 </Stack>
             </Tabs>
         </EntityDetailsSaveProvider>

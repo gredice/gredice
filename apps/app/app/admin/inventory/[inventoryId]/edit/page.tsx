@@ -7,6 +7,7 @@ import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../lib/auth/auth';
 import {
@@ -86,17 +87,22 @@ export default async function EditInventoryConfigPage({
 
     return (
         <Stack spacing={4}>
-            <Breadcrumbs
-                items={[
-                    {
-                        label: <AdminBreadcrumbLevelSelector />,
-                    },
-                    {
-                        label: config.label,
-                        href: KnownPages.InventoryConfig(id),
-                    },
-                    { label: 'Uredi' },
-                ]}
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                            },
+                            {
+                                label: config.label,
+                                href: KnownPages.InventoryConfig(id),
+                            },
+                            { label: 'Uredi' },
+                        ]}
+                    />
+                }
+                heading="Uredi zalihu"
             />
 
             <Typography level="h2" className="text-2xl" semiBold>
@@ -154,6 +160,17 @@ export default async function EditInventoryConfigPage({
                                         noAttributeValue
                                     }
                                     helperText="Polje stavke zalihe koje doprinosi izračunu ukupne količine"
+                                />
+                                <Input
+                                    name="lowCountThreshold"
+                                    label="Niska količina (opcionalno)"
+                                    type="number"
+                                    min={0}
+                                    defaultValue={
+                                        config.lowCountThreshold?.toString() ??
+                                        ''
+                                    }
+                                    helperText="Prikaži indikator niske zalihe kada je količina manja ili jednaka ovoj vrijednosti"
                                 />
                             </Stack>
                             <Button

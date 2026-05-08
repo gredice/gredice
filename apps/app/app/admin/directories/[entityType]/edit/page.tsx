@@ -2,12 +2,13 @@ import {
     getEntityTypeByNameWithCategory,
     getEntityTypeCategories,
 } from '@gredice/storage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { notFound } from 'next/navigation';
-import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import {
+    AdminDirectoryBreadcrumbs,
+    AdminPageHeader,
+} from '../../../../../components/admin/navigation';
 import { auth } from '../../../../../lib/auth/auth';
-import { KnownPages } from '../../../../../src/KnownPages';
 import { EntityTypeEditForm } from './EntityTypeEditForm';
 
 export const dynamic = 'force-dynamic';
@@ -27,18 +28,15 @@ export default async function EditEntityTypePage({
 
     return (
         <Stack spacing={4}>
-            <Breadcrumbs
-                items={[
-                    {
-                        label: <AdminBreadcrumbLevelSelector />,
-                        href: KnownPages.Directories,
-                    },
-                    {
-                        label: entityType.label,
-                        href: KnownPages.DirectoryEntityType(entityTypeName),
-                    },
-                    { label: 'Uredi' },
-                ]}
+            <AdminPageHeader
+                breadcrumbs={
+                    <AdminDirectoryBreadcrumbs
+                        entityTypeName={entityTypeName}
+                        entityTypeLabel={entityType.label}
+                        items={[{ label: 'Uredi' }]}
+                    />
+                }
+                heading={`Uredi ${entityType.label}`}
             />
             <EntityTypeEditForm
                 entityType={entityType}

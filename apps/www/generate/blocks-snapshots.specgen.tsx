@@ -4,7 +4,14 @@ import { EntityViewer } from '@gredice/game';
 import { test } from '@playwright/experimental-ct-react';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 
-test.use({ deviceScaleFactor: 2, viewport: { width: 320 / 2, height: 320 } });
+test.use({
+    deviceScaleFactor: 2,
+    viewport: { width: 320 / 2, height: 320 },
+});
+
+test.beforeEach(async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+});
 
 type SnapshotView = 'normal' | 'far' | 'closeup';
 
@@ -94,6 +101,7 @@ test.describe('block screenshots', async () => {
                     await component.screenshot({
                         omitBackground: true,
                         path: `./public/assets/blocks/${entity.information.name}.png`,
+                        animations: 'disabled',
                     });
                 }
             });

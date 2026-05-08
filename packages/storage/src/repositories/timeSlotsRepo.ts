@@ -1,5 +1,6 @@
 import 'server-only';
 import { and, asc, desc, eq, gte, lte } from 'drizzle-orm';
+import { bustDeliveryRequestsCache } from '../cache/scheduleCache';
 import {
     type InsertTimeSlot,
     type SelectTimeSlot,
@@ -102,6 +103,7 @@ export async function updateTimeSlot(update: UpdateTimeSlot): Promise<void> {
     if (!result[0]?.id) {
         throw new Error('Failed to update time slot - slot not found');
     }
+    await bustDeliveryRequestsCache();
 }
 
 // Close a time slot (prevents new bookings)
@@ -233,5 +235,6 @@ export async function archivePastSlots(): Promise<number> {
         )
         .returning({ id: timeSlots.id });
 
+    await bustDeliveryRequestsCache();
     return result.length;
 }

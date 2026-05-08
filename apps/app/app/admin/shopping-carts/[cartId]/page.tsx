@@ -13,7 +13,9 @@ import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
@@ -170,16 +172,22 @@ export default async function ShoppingCartDetailsPage({
 
     return (
         <Stack spacing={4}>
+            <AdminPageTitle title={`Košarica ${cartIdNumber}`} />
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.ShoppingCarts,
+                            },
+                            { label: `Košarica ${cartIdNumber}` },
+                        ]}
+                    />
+                }
+                heading="Detalji košarice"
+            />
             <Stack spacing={2}>
-                <Breadcrumbs
-                    items={[
-                        {
-                            label: <AdminBreadcrumbLevelSelector />,
-                            href: KnownPages.ShoppingCarts,
-                        },
-                        { label: `Košarica ${cartIdNumber}` },
-                    ]}
-                />
                 <Typography level="h1" className="text-2xl" semiBold>
                     Detalji košarice
                 </Typography>

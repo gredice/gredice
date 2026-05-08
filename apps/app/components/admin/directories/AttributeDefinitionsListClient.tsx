@@ -288,6 +288,7 @@ function CategorySection({
                 />
             </Row>
             <DndContext
+                id={`attribute-definition-category-${entityTypeName}-${category.id}`}
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
@@ -367,6 +368,7 @@ export function AttributeDefinitionsListClient({
                     />
                 </Row>
                 <DndContext
+                    id={`attribute-definition-categories-${entityTypeName}`}
                     sensors={sensors}
                     collisionDetection={closestCenter}
                     onDragEnd={handleCategoryDragEnd}

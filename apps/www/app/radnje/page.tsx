@@ -1,5 +1,6 @@
 import type { PlantStageName } from '@gredice/game';
 import { PLANT_STAGES } from '@gredice/game';
+import { ShovelIcon } from '@gredice/ui/ShovelIcon';
 import { slug } from '@signalco/js';
 import {
     Droplet,
@@ -15,7 +16,6 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { ShovelIcon } from '../../../../packages/game/src/icons/Shovel';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInput } from '../../components/shared/PageFilterInput';
 import { PageHeader } from '../../components/shared/PageHeader';

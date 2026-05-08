@@ -1,19 +1,18 @@
-import { createHypertuneAdapter } from '@flags-sdk/hypertune';
 import { flag } from 'flags/next';
-import {
-    type Context,
-    createSource,
-    type FlagValues,
-    vercelFlagDefinitions as flagDefinitions,
-    flagFallbacks,
-} from '../lib/flags/generated/hypertune';
-import { identify } from '../lib/flags/identify';
 
-const hypertuneAdapter = createHypertuneAdapter<FlagValues, Context>({
-    createSource,
-    flagDefinitions,
-    flagFallbacks,
-    identify,
+function isDevOrTestEnvironment() {
+    return (
+        process.env.NODE_ENV === 'development' ||
+        process.env.NODE_ENV === 'test'
+    );
+}
+
+export const showUIFlag = flag<boolean>({
+    key: 'showUI',
+    description: 'Enable feature-gated UI elements in farm app.',
+    decide: () => isDevOrTestEnvironment(),
+    options: [
+        { label: 'Off', value: false },
+        { label: 'On', value: true },
+    ],
 });
-
-export const showUIFlag = flag(hypertuneAdapter.declarations.showUI);
