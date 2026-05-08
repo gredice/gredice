@@ -18,7 +18,8 @@
         "generate:models-types": "turbo generate:models-types",
         "generate:game-assets": "node ./scripts/generate-game-assets.mjs",
         "doctor": "node ./scripts/worktree-health.mjs doctor",
-        "bootstrap": "node ./scripts/worktree-health.mjs setup"
+        "bootstrap": "node ./scripts/worktree-health.mjs setup",
+        "dev:all": "node ./scripts/dev-with-proxy.mjs --all-apps"
     },
     "devDependencies": {
         "rimraf": "6.1.3",

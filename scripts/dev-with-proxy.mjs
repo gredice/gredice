@@ -14,10 +14,12 @@ const worktreeSlug = worktreeId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replac
 const containerName = `gredice-dev-caddy-${worktreeSlug}`;
 const dockerImage = process.env.GREDICE_DEV_CADDY_IMAGE ?? 'gredice-caddy-dev';
 const shouldSkipProxy = parseEnvFlag(process.env.SKIP_DEV_PROXY ?? '');
-const extraTurboArgs = process.argv.slice(2);
-const excludedDefaultDevApps = appRegistry.filter(
-    (app) => !app.startsInDefaultDev,
-);
+const rawCliArgs = process.argv.slice(2);
+const includeAllApps = rawCliArgs.includes('--all-apps');
+const extraTurboArgs = rawCliArgs.filter((arg) => arg !== '--all-apps');
+const excludedDefaultDevApps = includeAllApps
+    ? []
+    : appRegistry.filter((app) => !app.startsInDefaultDev);
 const signalNumbers = os.constants?.signals ?? {};
 const defaultDataDir = (() => {
     const homeDir = os.homedir?.();
