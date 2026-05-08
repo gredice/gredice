@@ -28,7 +28,7 @@ export default async function CmsPublishedPageRoute({
         ':slug{.+}'
     ].$get({
         param: { slug: normalizedSlug },
-        query: isEnabled ? { draft: '1' } : undefined,
+        query: isEnabled ? { draft: '1' } : {},
         ...(isEnabled && previewSecret
             ? {
                   header: {

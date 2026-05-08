@@ -1,5 +1,4 @@
 import { draftMode } from 'next/headers';
-import { redirect } from 'next/navigation';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -10,8 +9,13 @@ export async function GET(request: Request) {
         return new Response('Invalid token', { status: 401 });
     }
 
+    const redirectPath = slug.startsWith('/') ? slug : `/${slug}`;
+    if (redirectPath.startsWith('//')) {
+        return new Response('Invalid slug', { status: 400 });
+    }
+
     const draft = await draftMode();
     draft.enable();
 
-    redirect(slug.startsWith('/') ? slug : `/${slug}`);
+    return Response.redirect(new URL(redirectPath, request.url), 307);
 }
