@@ -3,7 +3,6 @@
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import {
     AI,
-    ArrowDown,
     Bank,
     Calendar,
     Euro,
@@ -23,7 +22,6 @@ import {
     Truck,
     User,
 } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -34,6 +32,7 @@ import {
 } from '@signalco/ui-primitives/Menu';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { AdminBreadcrumbSelectorTrigger } from './AdminBreadcrumbSelectorTrigger';
 import { adminBreadcrumbPages, adminPages } from './adminPages';
 
 export function resolveCurrentTopLevel(pathname: string) {
@@ -57,45 +56,6 @@ export function resolveCurrentTopLevel(pathname: string) {
     }, undefined);
 }
 
-export function shouldUseInlineBreadcrumbs(pathname: string) {
-    return inlineBreadcrumbPathPatterns.some((pattern) =>
-        pattern.test(pathname),
-    );
-}
-
-const inlineBreadcrumbPathPatterns = [
-    /^\/admin\/settings$/,
-    /^\/admin\/accounts\/[^/]+$/,
-    /^\/admin\/communication\/emails\/\d+$/,
-    /^\/admin\/directories\/entity-types\/create$/,
-    /^\/admin\/directories\/categories\/create$/,
-    /^\/admin\/directories\/categories\/\d+\/edit$/,
-    /^\/admin\/directories\/[^/]+$/,
-    /^\/admin\/directories\/[^/]+\/edit$/,
-    /^\/admin\/directories\/[^/]+\/attribute-definitions$/,
-    /^\/admin\/directories\/[^/]+\/attribute-definitions\/categories$/,
-    /^\/admin\/directories\/[^/]+\/attribute-definitions\/\d+$/,
-    /^\/admin\/directories\/[^/]+\/attribute-definitions\/categories\/\d+$/,
-    /^\/admin\/directories\/[^/]+\/\d+$/,
-    /^\/admin\/directories\/[^/]+\/\d+\/links$/,
-    /^\/admin\/farms\/\d+$/,
-    /^\/admin\/gardens\/\d+$/,
-    /^\/admin\/inventory\/create$/,
-    /^\/admin\/inventory\/\d+$/,
-    /^\/admin\/inventory\/\d+\/edit$/,
-    /^\/admin\/inventory\/\d+\/items\/create$/,
-    /^\/admin\/inventory\/\d+\/items\/\d+$/,
-    /^\/admin\/invoices\/create$/,
-    /^\/admin\/invoices\/\d+$/,
-    /^\/admin\/invoices\/\d+\/edit$/,
-    /^\/admin\/operations\/\d+$/,
-    /^\/admin\/raised-beds\/\d+$/,
-    /^\/admin\/receipts\/\d+$/,
-    /^\/admin\/shopping-carts\/\d+$/,
-    /^\/admin\/transactions\/\d+$/,
-    /^\/admin\/users\/[^/]+$/,
-];
-
 const breadcrumbSections: {
     title: string;
     pages: {
@@ -118,6 +78,15 @@ const breadcrumbSections: {
         pages: [
             {
                 ...adminPages.Directories,
+                icon: <File className="size-4" />,
+            },
+        ],
+    },
+    {
+        title: 'Stranice',
+        pages: [
+            {
+                ...adminPages.CmsPages,
                 icon: <File className="size-4" />,
             },
         ],
@@ -210,13 +179,9 @@ export function AdminBreadcrumbLevelSelector() {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button
-                    variant="plain"
-                    className="h-auto p-0 font-medium"
-                    endDecorator={<ArrowDown className="size-3" />}
-                >
+                <AdminBreadcrumbSelectorTrigger>
                     {currentTopLevel.label}
-                </Button>
+                </AdminBreadcrumbSelectorTrigger>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
                 {breadcrumbSections.map((section, index) => (

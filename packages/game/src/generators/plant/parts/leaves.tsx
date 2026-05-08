@@ -11,6 +11,7 @@ interface LeavesProps {
     matrices: THREE.Matrix4[];
     colors: THREE.Color[];
     type: PlantDefinition['leaf']['type'];
+    animate?: boolean;
 }
 
 const MAX_LEAF_INSTANCES = 10000;
@@ -99,10 +100,17 @@ const leafColorFragmentShader = /* glsl */ `
     }
 `;
 
-export function Leaves({ seed, matrices, colors, type }: LeavesProps) {
+export function Leaves({
+    seed,
+    matrices,
+    colors,
+    type,
+    animate = true,
+}: LeavesProps) {
     const leafRef = useRef<THREE.InstancedMesh | null>(null);
     const swayUniforms = usePlantSway(`${seed}-leaves`, {
         amplitude: 0.11,
+        enabled: animate,
         speed: 1.45,
     });
     const fallbackColor = useMemo(() => new THREE.Color('#ffffff'), []);

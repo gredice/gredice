@@ -69,7 +69,9 @@ export function LoginDialog() {
             // No need to store them in localStorage
             await response.json();
 
-            const currentUserResponse = await fetch('/api/users/current');
+            const currentUserResponse = await fetch(
+                '/api/users/current-claims',
+            );
             if (!currentUserResponse.ok) {
                 posthog?.capture('user_login_failed', {
                     provider: 'password',

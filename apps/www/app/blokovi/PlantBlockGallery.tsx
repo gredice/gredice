@@ -1,7 +1,6 @@
 'use client';
 
 import type { PlantData } from '@gredice/client';
-import { PlantOrSortImage } from '@gredice/ui/plants';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { orderBy } from '@signalco/js';
 import { Gallery } from '@signalco/ui/Gallery';
@@ -9,6 +8,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { ItemCard } from '../../components/shared/ItemCard';
 import { KnownPages } from '../../src/KnownPages';
+import { PlantBlockImage } from './PlantBlockImage';
 import { plantNamesWithLSystem } from './plantNamesWithLSystem';
 
 function PlantBlockGalleryItem(props: Omit<PlantData, 'id'> & { id: string }) {
@@ -21,8 +21,8 @@ function PlantBlockGalleryItem(props: Omit<PlantData, 'id'> & { id: string }) {
             }
             href={KnownPages.BlockPlant(props.information.name)}
         >
-            <PlantOrSortImage
-                plant={props}
+            <PlantBlockImage
+                plantName={props.information.name}
                 fill
                 sizes="(max-width: 768px) 50vw, (min-width: 768px) 33vw, (min-width: 1200px) 9vw"
             />

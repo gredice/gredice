@@ -178,7 +178,6 @@ export function SnowOverlay({
         <mesh
             geometry={overlayGeometry}
             material={material}
-            castShadow
             receiveShadow
             renderOrder={renderOrder}
         />

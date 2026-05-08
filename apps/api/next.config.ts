@@ -1,7 +1,12 @@
 import type { NextConfig } from 'next';
+import { getAppByName } from '../../scripts/app-registry.ts';
 
+const app = getAppByName('api');
 const nextConfig: NextConfig = {
     reactStrictMode: true,
+    logging: {
+        browserToTerminal: true,
+    },
     experimental: {
         typedEnv: true,
         turbopackFileSystemCacheForDev: true,
@@ -20,7 +25,7 @@ const nextConfig: NextConfig = {
         qualities: [80, 100],
     },
     productionBrowserSourceMaps: !process.env.CI,
-    allowedDevOrigins: ['api.gredice.test'],
+    allowedDevOrigins: [app.localDomain],
     skipTrailingSlashRedirect: true,
 };
 

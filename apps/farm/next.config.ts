@@ -1,9 +1,14 @@
 import type { NextConfig } from 'next';
+import { getAppByName } from '../../scripts/app-registry.ts';
 
+const app = getAppByName('farm');
 const nextConfig: NextConfig = {
     reactStrictMode: true,
     typedRoutes: true,
     reactCompiler: true,
+    logging: {
+        browserToTerminal: true,
+    },
     experimental: {
         turbopackFileSystemCacheForDev: true,
         typedEnv: true,
@@ -22,7 +27,7 @@ const nextConfig: NextConfig = {
         ],
     },
     productionBrowserSourceMaps: !process.env.CI,
-    allowedDevOrigins: ['farma.gredice.test'],
+    allowedDevOrigins: [app.localDomain],
 };
 
 export default nextConfig;

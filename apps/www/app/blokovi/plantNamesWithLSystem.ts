@@ -1,9 +1,14 @@
+import type { PlantViewerProps } from '@gredice/game';
+
+export type PlantLSystemType = PlantViewerProps['plantType'];
+
 /**
  * Mapping of normalized Croatian plant names to L-system plant type keys.
  * This is a lightweight mirror of inGamePlantRuntimeConfigs aliases,
- * kept separate to avoid importing the heavy game package in gallery components.
+ * kept separate to avoid importing the heavy game package at runtime in gallery
+ * components.
  */
-const plantNameToType: Record<string, string> = {
+const plantNameToType: Record<string, PlantLSystemType> = {
     jagoda: 'strawberry',
     borovnica: 'blueberry',
     malina: 'raspberry',
@@ -60,7 +65,7 @@ const plantNameToType: Record<string, string> = {
 export const plantNamesWithLSystem = new Set(Object.keys(plantNameToType));
 
 /** Resolve a plant name (Croatian) to an L-system plant type key. */
-export function resolvePlantType(name: string): string | null {
+export function resolvePlantType(name: string): PlantLSystemType | null {
     const lower = name.toLowerCase();
     return plantNameToType[lower] ?? null;
 }

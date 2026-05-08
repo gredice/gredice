@@ -1,9 +1,9 @@
+import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { ShoppingCart } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
-import { PlantingSeed } from '../../icons/PlantingSeed';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import { PlantPicker } from './RaisedBedPlantPicker';
 
@@ -70,7 +70,7 @@ export function RaisedBedFieldItemEmpty({
                     )}
                 >
                     {(isLoading || !cartPlantItem) && (
-                        <PlantingSeed className="size-8 stroke-green-800" />
+                        <PlantingSeedIcon className="size-8 text-green-800" />
                     )}
                     {!isLoading && cartPlantItem && (
                         <>

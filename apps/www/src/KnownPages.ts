@@ -39,5 +39,6 @@ export const KnownPages = {
     LegalOccasions: '/legalno/natjecaji',
 
     GardenApp: 'https://vrt.gredice.com',
+    Status: 'https://status.gredice.com',
     GoogleMapsGrediceHQ: 'https://maps.app.goo.gl/hJbidDQzhHWGCZwS6',
 } as const;

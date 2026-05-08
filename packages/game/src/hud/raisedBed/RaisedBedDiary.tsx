@@ -1,4 +1,4 @@
-import { ImageViewer } from '@gredice/ui/ImageViewer';
+import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { Alert } from '@signalco/ui/Alert';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { List } from '@signalco/ui-primitives/List';
@@ -95,18 +95,13 @@ function DiaryEntryImages({
     }
 
     return (
-        <Row spacing={1} className="flex-wrap items-start shrink-0">
-            {imageUrls.map((url) => (
-                <ImageViewer
-                    key={url}
-                    src={url}
-                    alt={name}
-                    previewWidth={80}
-                    previewHeight={80}
-                    previewAs="div"
-                />
-            ))}
-        </Row>
+        <ImageGallery
+            images={imageUrls.map((url) => ({ src: url, alt: name }))}
+            previewWidth={80}
+            previewHeight={80}
+            previewAs="div"
+            previewVariant="carousel"
+        />
     );
 }
 

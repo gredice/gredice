@@ -1,4 +1,5 @@
 import type { OperationData, PlantSortData } from '@gredice/client';
+import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { cx } from '@signalco/ui-primitives/cx';
@@ -12,7 +13,6 @@ import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useInventory } from '../hooks/useInventory';
 import { useOperations } from '../hooks/useOperations';
 import { useSorts } from '../hooks/usePlantSorts';
-import { BackpackIcon } from '../icons/Backpack';
 import { useBackpackOpenParam } from '../useUrlState';
 import { HudCard } from './components/HudCard';
 

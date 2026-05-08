@@ -25,6 +25,14 @@
 			"path": "apps/api"
 		},
 		{
+			"name": "📗 storybook",
+			"path": "apps/storybook"
+		},
+		{
+			"name": "🛜 status",
+			"path": "apps/status"
+		},
+		{
 			"name": "📦 @gredice/client",
 			"path": "packages/client"
 		},
@@ -74,22 +82,8 @@
 		}
 	],
 	"settings": {
-		"typescript.tsdk": "📦 @gredice/game/node_modules/typescript/lib",
 		"powershell.cwd": "✨ gredice-monorepo",
 		"editor.defaultFormatter": "biomejs.biome",
-		"mcp": {
-			"servers": {
-				"next-devtools": {
-					"type": "stdio",
-					"command": "npx",
-					"args": [
-						"-y",
-						"next-devtools-mcp@latest"
-					]
-				}
-			},
-			"inputs": []
-		},
 		"chatgpt.runCodexInWindowsSubsystemForLinux": true
 	}
 }

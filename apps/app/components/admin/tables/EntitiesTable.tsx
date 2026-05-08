@@ -4,6 +4,10 @@ import type {
     getEntitiesRaw,
     SelectAttributeDefinition,
 } from '@gredice/storage';
+import {
+    filterEntitiesByCompletionAndState,
+    getEntityCompleteness,
+} from '@gredice/storage/entityCompleteness';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Duplicate } from '@signalco/ui-icons';
@@ -11,23 +15,50 @@ import { Chip } from '@signalco/ui-primitives/Chip';
 import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
+import { useState } from 'react';
+import { updateEntity } from '../../../app/(actions)/entityActions';
 import { KnownPages } from '../../../src/KnownPages';
+import { BarcodeValue } from '../../shared/attributes/BarcodeValue';
+import { formatAttributeValueWithUnit } from '../../shared/attributes/formatAttributeValueWithUnit';
+import { InventoryQuantityValue } from '../../shared/inventory/InventoryQuantityValue';
 import { NoDataPlaceholder } from '../../shared/placeholders/NoDataPlaceholder';
 import { ServerActionIconButton } from '../../shared/ServerActionIconButton';
 import { EntityAttributeProgress } from '../directories/EntityAttributeProgress';
 import { useFilter } from '../providers';
+import { EntityTableStateChip } from './EntityTableStateChip';
 
 type Entities = Awaited<ReturnType<typeof getEntitiesRaw>>;
+type InventoryItem = {
+    entityId: number | null;
+    quantity: number;
+    lowCountThreshold: number | null;
+};
+type InventoryItemWithEntityId = InventoryItem & { entityId: number };
+type SortDirection = 'asc' | 'desc';
+type SortKey =
+    | 'name'
+    | 'inventory'
+    | 'progress'
+    | 'updatedAt'
+    | `attribute:${number}`;
+type SortState = {
+    key: SortKey;
+    direction: SortDirection;
+};
+
+const defaultSort: SortState = {
+    key: 'updatedAt',
+    direction: 'desc',
+};
 
 type EntitiesTableProps = {
     entityTypeName: string;
     entities: Entities;
     attributeDefinitions: SelectAttributeDefinition[];
-    inventoryItems: Array<{
-        entityId: number | null;
-        trackingType: 'pieces' | 'serialNumber';
-        quantity: number;
-    }>;
+    inventoryItems: InventoryItem[];
+    inventoryLowCountThreshold?: number | null;
+    completionFilter?: string;
+    stateFilter?: string;
     onDuplicate: (entityId: number) => Promise<void>;
 };
 
@@ -36,11 +67,23 @@ export function EntitiesTable({
     entities,
     attributeDefinitions,
     inventoryItems,
+    inventoryLowCountThreshold = null,
+    completionFilter = '',
+    stateFilter = '',
     onDuplicate,
 }: EntitiesTableProps) {
     const { filter } = useFilter();
+    const [sort, setSort] = useState<SortState>(defaultSort);
     const normalized = filter.toLowerCase();
-    const filteredEntities = entities.filter((entity) =>
+    const statusFilteredEntities = filterEntitiesByCompletionAndState(
+        entities,
+        attributeDefinitions,
+        {
+            completion: completionFilter,
+            state: stateFilter,
+        },
+    );
+    const filteredEntities = statusFilteredEntities.filter((entity) =>
         entityDisplayName(entity).toLowerCase().includes(normalized),
     );
     const displayDefinitions = attributeDefinitions.filter((d) => d.display);
@@ -53,23 +96,82 @@ export function EntitiesTable({
             .map((item) => [item.entityId, item]),
     );
     const hasInventory = inventoryByEntityId.size > 0;
+    const sortedEntities = [...filteredEntities].sort((left, right) =>
+        compareEntities(
+            left,
+            right,
+            sort,
+            attributeDefinitions,
+            inventoryByEntityId,
+        ),
+    );
+
+    function handleSort(key: SortKey) {
+        setSort((current) =>
+            current.key === key
+                ? {
+                      key,
+                      direction: current.direction === 'asc' ? 'desc' : 'asc',
+                  }
+                : { key, direction: defaultSortDirection(key) },
+        );
+    }
+
+    function sortableHead(key: SortKey, label: string, headKey?: number) {
+        const isSorted = sort.key === key;
+        const directionLabel = sort.direction === 'asc' ? 'uzlazno' : 'silazno';
+
+        return (
+            <Table.Head
+                key={headKey}
+                aria-sort={
+                    isSorted
+                        ? sort.direction === 'asc'
+                            ? 'ascending'
+                            : 'descending'
+                        : 'none'
+                }
+            >
+                <button
+                    type="button"
+                    className="flex w-full min-w-0 items-center gap-1 text-left font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm"
+                    onClick={() => handleSort(key)}
+                    aria-label={`Sortiraj ${label.toLowerCase()}`}
+                >
+                    <span className="block min-w-0 flex-1 truncate">
+                        {label}
+                    </span>
+                    {isSorted && (
+                        <>
+                            <span aria-hidden>
+                                {sort.direction === 'asc' ? '↑' : '↓'}
+                            </span>
+                            <span className="sr-only">
+                                Sortirano {directionLabel}
+                            </span>
+                        </>
+                    )}
+                </button>
+            </Table.Head>
+        );
+    }
 
     return (
         <Table>
             <Table.Header>
                 <Table.Row>
-                    <Table.Head>Naziv</Table.Head>
-                    {displayDefinitions.map((d) => (
-                        <Table.Head key={d.id}>{d.label}</Table.Head>
-                    ))}
-                    {hasInventory && <Table.Head>Stanje zalihe</Table.Head>}
-                    <Table.Head>Ispunjenost</Table.Head>
-                    <Table.Head>Zadnja izmjena</Table.Head>
+                    {sortableHead('name', 'Naziv')}
+                    {displayDefinitions.map((d) =>
+                        sortableHead(`attribute:${d.id}`, d.label, d.id),
+                    )}
+                    {hasInventory && sortableHead('inventory', 'Zalihe')}
+                    {sortableHead('progress', 'Ispunjeno')}
+                    {sortableHead('updatedAt', 'Izmjene')}
                     <Table.Head></Table.Head>
                 </Table.Row>
             </Table.Header>
             <Table.Body>
-                {!filteredEntities.length && (
+                {!sortedEntities.length && (
                     <Table.Row>
                         <Table.Cell
                             colSpan={
@@ -82,32 +184,33 @@ export function EntitiesTable({
                         </Table.Cell>
                     </Table.Row>
                 )}
-                {filteredEntities.map((entity) => {
+                {sortedEntities.map((entity) => {
                     const inventoryItem = inventoryByEntityId.get(entity.id);
 
                     return (
                         <Table.Row key={entity.id} className="group">
                             <Table.Cell>
-                                <Link
-                                    href={KnownPages.DirectoryEntity(
-                                        entityTypeName,
-                                        entity.id,
-                                    )}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        {entity.state === 'draft' ? (
-                                            <Chip
-                                                color="neutral"
-                                                className="w-fit"
-                                            >
-                                                Draft
-                                            </Chip>
-                                        ) : null}
+                                <div className="flex items-center gap-2">
+                                    <EntityTableStateChip
+                                        initialState={entity.state}
+                                        onPublish={() =>
+                                            updateEntity({
+                                                id: entity.id,
+                                                state: 'published',
+                                            })
+                                        }
+                                    />
+                                    <Link
+                                        href={KnownPages.DirectoryEntity(
+                                            entityTypeName,
+                                            entity.id,
+                                        )}
+                                    >
                                         <Typography>
                                             {entityDisplayName(entity)}
                                         </Typography>
-                                    </div>
-                                </Link>
+                                    </Link>
+                                </div>
                             </Table.Cell>
                             {displayDefinitions.map((d) => (
                                 <Table.Cell key={d.id}>
@@ -119,13 +222,17 @@ export function EntitiesTable({
                             ))}
                             {hasInventory && (
                                 <Table.Cell>
-                                    <Typography secondary>
-                                        {inventoryItem?.quantity ?? 0}
-                                    </Typography>
+                                    <InventoryQuantityValue
+                                        quantity={inventoryItem?.quantity ?? 0}
+                                        lowCountThreshold={
+                                            inventoryItem?.lowCountThreshold ??
+                                            inventoryLowCountThreshold
+                                        }
+                                    />
                                 </Table.Cell>
                             )}
                             <Table.Cell>
-                                <div className="w-24">
+                                <div className="w-20">
                                     <EntityAttributeProgress
                                         entity={entity}
                                         definitions={attributeDefinitions}
@@ -198,7 +305,127 @@ function EntityAttributeValueCell({
         }
     }
 
-    return <Typography secondary>{value}</Typography>;
+    if (definition.dataType === 'barcode') {
+        return <BarcodeValue value={value} />;
+    }
+
+    return (
+        <Typography secondary>
+            {formatAttributeValueWithUnit(value, definition.unit)}
+        </Typography>
+    );
+}
+
+function compareEntities(
+    left: Entities[number],
+    right: Entities[number],
+    sort: SortState,
+    definitions: SelectAttributeDefinition[],
+    inventoryByEntityId: Map<number, InventoryItemWithEntityId>,
+) {
+    const leftValue = entitySortValue(
+        left,
+        sort.key,
+        definitions,
+        inventoryByEntityId,
+    );
+    const rightValue = entitySortValue(
+        right,
+        sort.key,
+        definitions,
+        inventoryByEntityId,
+    );
+
+    if (leftValue === null && rightValue === null) {
+        return left.id - right.id;
+    }
+
+    if (leftValue === null) {
+        return 1;
+    }
+
+    if (rightValue === null) {
+        return -1;
+    }
+
+    const compared = compareSortValues(leftValue, rightValue);
+    if (compared === 0) {
+        return left.id - right.id;
+    }
+
+    return sort.direction === 'asc' ? compared : -compared;
+}
+
+function entitySortValue(
+    entity: Entities[number],
+    key: SortKey,
+    definitions: SelectAttributeDefinition[],
+    inventoryByEntityId: Map<number, InventoryItemWithEntityId>,
+) {
+    if (key === 'name') {
+        return entityDisplayName(entity);
+    }
+
+    if (key === 'inventory') {
+        return inventoryByEntityId.get(entity.id)?.quantity ?? null;
+    }
+
+    if (key === 'progress') {
+        return getEntityCompleteness(entity, definitions).progress;
+    }
+
+    if (key === 'updatedAt') {
+        return entity.updatedAt.getTime();
+    }
+
+    const definitionId = Number(key.slice('attribute:'.length));
+    const definition = definitions.find((item) => item.id === definitionId);
+    const value = entityAttributeValueByDefinitionId(entity, definitionId);
+    return attributeSortValue(value, definition);
+}
+
+function compareSortValues(
+    left: string | number | boolean,
+    right: string | number | boolean,
+) {
+    if (typeof left === 'number' && typeof right === 'number') {
+        return left - right;
+    }
+
+    if (typeof left === 'boolean' && typeof right === 'boolean') {
+        return Number(left) - Number(right);
+    }
+
+    return String(left).localeCompare(String(right), 'hr', {
+        numeric: true,
+        sensitivity: 'base',
+    });
+}
+
+function defaultSortDirection(key: SortKey): SortDirection {
+    return key === 'updatedAt' || key === 'inventory' || key === 'progress'
+        ? 'desc'
+        : 'asc';
+}
+
+function attributeSortValue(
+    value: string | null | undefined,
+    definition: SelectAttributeDefinition | undefined,
+) {
+    if (!value) {
+        return null;
+    }
+
+    if (definition?.dataType === 'number') {
+        const numberValue = Number(value);
+        return Number.isNaN(numberValue) ? null : numberValue;
+    }
+
+    if (definition?.dataType === 'boolean') {
+        return booleanAttributeValue(value);
+    }
+
+    return value;
 }
 
 function entityDisplayName(entity: Entities[number]) {
