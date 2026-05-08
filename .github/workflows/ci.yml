@@ -425,6 +425,11 @@ jobs:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WWW }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
     steps:
+      - name: ✨ Setup Node
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: "24.15.0"
+
       - name: ✨ Setup Vercel CLI
         run: command -v vercel >/dev/null 2>&1 || npm i -g vercel@latest
 
@@ -453,7 +458,7 @@ jobs:
 
       - name: 🖼️ Finalize visual tests
         if: steps.vizzly_token.outputs.configured == 'true'
-        run: npx --yes --package=@vizzly-testing/cli@0.30.0 vizzly finalize "${{ github.run_id }}-${{ github.run_attempt }}"
+        run: npx --yes --package=@vizzly-testing/cli@latest vizzly finalize "${{ github.run_id }}-${{ github.run_attempt }}"
 
   ci_ok:
     name: "[CI] OK"
