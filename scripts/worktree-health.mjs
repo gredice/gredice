@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import { resolve } from 'node:path';
 import net from 'node:net';
@@ -73,6 +73,73 @@ function checkHosts() {
   addCheck('Hosts entries', true, ok, detail, `Add this line to hosts: ${requiredHostsLine}`);
 }
 
+
+function readRequiredBlenderVersion() {
+  const versionFile = resolve(rootDir, 'assets', 'BLENDER_VERSION');
+  if (!existsSync(versionFile)) {
+    return { error: `Missing ${versionFile}.` };
+  }
+
+  const raw = readFileSync(versionFile, 'utf8').trim();
+  const match = raw.match(/^(\d+)\.(\d+)$/);
+  if (!match) {
+    return { error: `Invalid Blender version format in assets/BLENDER_VERSION: "${raw}". Expected MAJOR.MINOR.` };
+  }
+
+  return { major: Number(match[1]), minor: Number(match[2]), raw };
+}
+
+function extractInstalledBlenderMajorMinor(output) {
+  const firstLine = output.split(/\r?\n/)[0] || '';
+  const match = firstLine.match(/Blender\s+(\d+)\.(\d+)/i);
+  if (!match) return undefined;
+  return { major: Number(match[1]), minor: Number(match[2]), line: firstLine.trim() };
+}
+
+function checkBlenderVersion() {
+  const required = readRequiredBlenderVersion();
+  if (required.error) {
+    addCheck('Blender version', false, false, required.error, 'Create assets/BLENDER_VERSION with MAJOR.MINOR (example: 4.5).');
+    return;
+  }
+
+  if (process.platform !== 'darwin' && process.platform !== 'win32') {
+    addCheck('Blender version', false, false, `Optional: install Blender ${required.raw}. Automatic detection is supported on macOS and Windows.`, 'See WORKSPACE.md game-assets section for platform-specific export setup.');
+    return;
+  }
+
+  const candidates = process.platform === 'darwin'
+    ? [
+      { cmd: '/Applications/Blender.app/Contents/MacOS/Blender', args: ['--version'] },
+      { cmd: 'blender', args: ['--version'] },
+    ]
+    : [
+      { cmd: 'blender', args: ['--version'] },
+      { cmd: `C:/Program Files/Blender Foundation/Blender ${required.raw}/blender.exe`, args: ['--version'] },
+    ];
+
+  let installed;
+  for (const candidate of candidates) {
+    const r = run(candidate.cmd, candidate.args);
+    if (r.status === 0) {
+      const parsed = extractInstalledBlenderMajorMinor(`${r.stdout || ''}
+${r.stderr || ''}`);
+      if (parsed) {
+        installed = parsed;
+        break;
+      }
+    }
+  }
+
+  if (!installed) {
+    addCheck('Blender version', false, false, `Optional: Blender not detected. Install Blender ${required.raw} to work with game assets.`, 'See WORKSPACE.md game-assets section for expected install paths.');
+    return;
+  }
+
+  const ok = installed.major === required.major && installed.minor === required.minor;
+  addCheck('Blender version', false, ok, ok ? `Detected ${installed.line}. Required ${required.raw}.` : `Detected ${installed.line}. Required ${required.raw} (major.minor must match).`, 'Install the required Blender major/minor version to avoid asset export incompatibilities.');
+}
+
 function checkCertificate() {
   const ok = existsSync(caddyCert);
   addCheck('Caddy local certificate', false, ok, ok ? `Certificate found at ${caddyCert}.` : `Certificate not found at ${caddyCert}.`, 'Run `pnpm dev` once, then trust the certificate if prompted.');
@@ -139,6 +206,7 @@ checkEnvFiles();
 checkPlaywright();
 checkHosts();
 checkCertificate();
+checkBlenderVersion();
 await checkPorts();
 await maybeRunSetupActions();
 printResults();
