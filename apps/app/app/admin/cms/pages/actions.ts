@@ -108,7 +108,12 @@ export async function updateCmsPageAction(
 export async function publishCmsPageAction(pageId: number) {
     await auth(['admin']);
 
-    await updateCmsPageState(pageId, 'published');
+    try {
+        await updateCmsPageState(pageId, 'published');
+    } catch (error) {
+        const message = encodeURIComponent(cmsPageErrorMessage(error));
+        redirect(`${KnownPages.CmsPage(pageId)}?publishError=${message}`);
+    }
     revalidateCmsPagePaths(pageId);
 }
 

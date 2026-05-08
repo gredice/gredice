@@ -126,6 +126,31 @@ test('CMS page slugs reject reserved static route conflicts', async () => {
     );
 });
 
+test('CMS page publish readiness uses metadata from the same update', async () => {
+    createTestDb();
+    const content = JSON.stringify([
+        { component: 'Feature1', header: 'Ready section' },
+    ]);
+    const pageId = await createCmsPage({
+        slug: `publish-with-meta-${randomUUID()}`,
+        title: 'Publish with meta',
+        content,
+    });
+
+    await updateCmsPage({
+        id: pageId,
+        state: 'published',
+        metaTitle: 'Publishable meta title',
+        metaDescription: 'Publishable meta description',
+    });
+
+    const page = await getCmsPage(pageId);
+    assert.equal(page?.state, 'published');
+    assert.equal(page?.metaTitle, 'Publishable meta title');
+    assert.equal(page?.metaDescription, 'Publishable meta description');
+    assert.ok(page?.publishedAt instanceof Date);
+});
+
 test('CMS page content stores valid SectionData JSON payload', async () => {
     createTestDb();
     const sectionData = [

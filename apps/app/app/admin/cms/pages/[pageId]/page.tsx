@@ -38,12 +38,15 @@ function publishedAtValue(page: SelectCmsPage) {
 
 export default async function CmsPageDetailsPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ pageId: string }>;
+    searchParams: Promise<{ publishError?: string }>;
 }) {
     await auth(['admin']);
 
     const { pageId } = await params;
+    const resolvedSearchParams = await searchParams;
     const id = Number.parseInt(pageId, 10);
     if (Number.isNaN(id)) {
         notFound();
@@ -129,6 +132,11 @@ export default async function CmsPageDetailsPage({
                 heading={page.title}
             />
             <Stack spacing={2}>
+                {resolvedSearchParams.publishError && (
+                    <Card className="border-red-200 bg-red-50 px-4 py-3 text-red-700">
+                        {resolvedSearchParams.publishError}
+                    </Card>
+                )}
                 <Typography level="h2" className="text-2xl" semiBold>
                     {page.title}
                 </Typography>

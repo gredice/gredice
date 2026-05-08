@@ -38,17 +38,29 @@ export function EntityActions({
     deleteAction: () => Promise<void>;
 }) {
     const [state, setState] = useState(entity.state);
+    const [publishError, setPublishError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const { trackSave } = useEntityDetailsSave();
 
     async function changeState(newState: string) {
+        const previousState = state;
         setState(newState);
-        await trackSave(() =>
-            updateEntity({
-                id: entity.id,
-                state: newState,
-            }),
-        );
+        setPublishError(null);
+        try {
+            await trackSave(() =>
+                updateEntity({
+                    id: entity.id,
+                    state: newState,
+                }),
+            );
+        } catch (error) {
+            setState(previousState);
+            setPublishError(
+                error instanceof Error
+                    ? error.message
+                    : 'Promjena statusa nije uspjela.',
+            );
+        }
     }
 
     function handleDelete(event: Event) {
@@ -68,6 +80,9 @@ export function EntityActions({
 
     return (
         <Row spacing={1} className="items-center">
+            {publishError && (
+                <span className="text-sm text-red-600">{publishError}</span>
+            )}
             <Link
                 href={KnownPages.DirectoryEntityPreview(entityType, entity.id)}
                 target="_blank"

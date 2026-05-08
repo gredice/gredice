@@ -139,7 +139,7 @@ function pageInsertValues(input: CreateCmsPageInput): InsertCmsPage {
     const state = input.state ?? 'draft';
     const title = requiredText(input.title, 'Page title');
 
-    return {
+    const values: InsertCmsPage = {
         slug: normalizeCmsPageSlug(input.slug),
         title,
         content: normalizeCmsPageContent(input.content),
@@ -149,6 +149,12 @@ function pageInsertValues(input: CreateCmsPageInput): InsertCmsPage {
         metaDescription: optionalText(input.metaDescription),
         metaImageUrl: optionalText(input.metaImageUrl),
     };
+
+    if (state === 'published') {
+        assertCmsPagePublishReadiness(values);
+    }
+
+    return values;
 }
 
 function normalizeCmsPageContent(content: string | null | undefined) {
@@ -179,7 +185,10 @@ function normalizeCmsPageContent(content: string | null | undefined) {
             );
         }
 
-        if (!('component' in section) || typeof section.component !== 'string') {
+        if (
+            !('component' in section) ||
+            typeof section.component !== 'string'
+        ) {
             throw new Error(
                 `Section at index ${index} must define a string component.`,
             );
@@ -207,6 +216,38 @@ function normalizeCmsPageContentForUpdate(
     }
 
     return normalizeCmsPageContent(content);
+}
+
+function assertCmsPagePublishReadiness(input: {
+    slug: string;
+    content?: string | null;
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+}) {
+    const issues: string[] = [];
+
+    const slugError = getCmsPageSlugValidationError(input.slug);
+    if (slugError) {
+        issues.push(slugError);
+    }
+
+    if (!input.content) {
+        issues.push('Page content is required before publishing.');
+    }
+
+    if (!input.metaTitle) {
+        issues.push('Meta title is required before publishing.');
+    }
+
+    if (!input.metaDescription) {
+        issues.push('Meta description is required before publishing.');
+    }
+
+    if (issues.length > 0) {
+        throw new Error(
+            `Page is not ready for publishing. ${issues.join(' ')}`,
+        );
+    }
 }
 
 export async function getCmsPages(options: GetCmsPagesOptions = {}) {
@@ -285,13 +326,6 @@ export async function updateCmsPage(input: UpdateCmsPageInput) {
         );
     }
 
-    if (input.state !== undefined) {
-        updateData.state = input.state;
-        if (input.state === 'published' && existing.state !== 'published') {
-            updateData.publishedAt = new Date();
-        }
-    }
-
     if (input.metaTitle !== undefined) {
         updateData.metaTitle = optionalText(input.metaTitle);
     }
@@ -302,6 +336,20 @@ export async function updateCmsPage(input: UpdateCmsPageInput) {
 
     if (input.metaImageUrl !== undefined) {
         updateData.metaImageUrl = optionalText(input.metaImageUrl);
+    }
+
+    if (input.state !== undefined) {
+        updateData.state = input.state;
+        if (input.state === 'published' && existing.state !== 'published') {
+            assertCmsPagePublishReadiness({
+                slug: updateData.slug ?? existing.slug,
+                content: updateData.content ?? existing.content,
+                metaTitle: updateData.metaTitle ?? existing.metaTitle,
+                metaDescription:
+                    updateData.metaDescription ?? existing.metaDescription,
+            });
+            updateData.publishedAt = new Date();
+        }
     }
 
     if (Object.keys(updateData).length === 0) {
