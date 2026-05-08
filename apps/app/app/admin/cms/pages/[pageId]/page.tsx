@@ -10,6 +10,7 @@ import { Delete, Edit, ExternalLink, Megaphone } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
+import { Separator } from '@signalco/ui-primitives/Separator';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
@@ -29,6 +30,30 @@ import {
 import { CmsPageStateChip } from '../CmsPageStateChip';
 
 export const dynamic = 'force-dynamic';
+
+
+function parseCmsPageSections(content: string | null) {
+    if (!content) {
+        return [];
+    }
+
+    try {
+        const parsed: unknown = JSON.parse(content);
+        if (!Array.isArray(parsed)) {
+            return [];
+        }
+
+        return parsed.filter(
+            (section): section is { component: string } =>
+                Boolean(section) &&
+                typeof section === 'object' &&
+                'component' in section &&
+                typeof section.component === 'string',
+        );
+    } catch {
+        return [];
+    }
+}
 
 function publishedAtValue(page: SelectCmsPage) {
     if (!page.publishedAt) {
@@ -162,13 +187,27 @@ export default async function CmsPageDetailsPage({
                     <Field name="Meta slika" value={page.metaImageUrl ?? '-'} />
                 </FieldSet>
             </Stack>
-            {page.content && (
-                <Card className="max-w-4xl">
-                    <div className="whitespace-pre-wrap p-6 text-sm leading-6">
-                        {page.content}
-                    </div>
-                </Card>
-            )}
+            <Card className="max-w-4xl p-6">
+                <Stack spacing={2}>
+                    <Typography level="h3" semiBold>
+                        Sekcije stranice
+                    </Typography>
+                    {parseCmsPageSections(page.content).length === 0 ? (
+                        <Typography level="body2" secondary>
+                            Nema konfiguriranih sekcija.
+                        </Typography>
+                    ) : (
+                        parseCmsPageSections(page.content).map((section, index) => (
+                            <Stack spacing={1} key={`${section.component}-${index}`}>
+                                <Typography level="body2">
+                                    {index + 1}. {section.component}
+                                </Typography>
+                                <Separator />
+                            </Stack>
+                        ))
+                    )}
+                </Stack>
+            </Card>
             <FieldSet>
                 {revisions.length === 0 ? (
                     <Field name="Historija" value="Nema promjena" />
