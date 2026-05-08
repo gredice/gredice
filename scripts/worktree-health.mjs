@@ -35,7 +35,15 @@ function checkDependencies() {
 
 function checkDocker() {
   const r = run('docker', ['info']);
-  addCheck('Docker available and running', true, r.status === 0, r.status === 0 ? 'Docker daemon reachable.' : 'Docker daemon unavailable.', 'Start Docker Desktop/daemon.');
+  addCheck(
+    'Docker available and running',
+    true,
+    r.status === 0,
+    r.status === 0
+      ? 'Docker daemon reachable.'
+      : 'Docker daemon unavailable. `pnpm dev` and Docker-backed tests require Docker.',
+    'Start Docker Desktop/daemon. For Dockerless storage tests, set GREDICE_STORAGE_TEST_DB_ADMIN_URL to a local Postgres admin URL.'
+  );
 }
 
 function checkVercelAuth() {
