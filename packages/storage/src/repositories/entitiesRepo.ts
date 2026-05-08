@@ -731,23 +731,31 @@ export async function updateEntity(
         throw new Error(`Entity with id ${entity.id} not found`);
     }
 
-    if (typeof entity.parentId !== 'undefined') {
-        if (entity.parentId === entity.id) {
+    const nextParentId =
+        typeof entity.parentId === 'undefined'
+            ? previousEntity.parentId
+            : entity.parentId;
+    const nextEntityTypeName =
+        entity.entityTypeName ?? previousEntity.entityTypeName;
+
+    if (
+        typeof entity.parentId !== 'undefined' ||
+        typeof entity.entityTypeName !== 'undefined'
+    ) {
+        if (nextParentId === entity.id) {
             throw new Error('Entity cannot be its own parent.');
         }
-        if (entity.parentId !== null) {
+        if (nextParentId !== null) {
             const parentEntity = await storage().query.entities.findFirst({
                 where: and(
-                    eq(entities.id, entity.parentId),
+                    eq(entities.id, nextParentId),
                     eq(entities.isDeleted, false),
                 ),
             });
             if (!parentEntity) {
-                throw new Error(
-                    `Parent entity ${entity.parentId} was not found.`,
-                );
+                throw new Error(`Parent entity ${nextParentId} was not found.`);
             }
-            if (parentEntity.entityTypeName !== previousEntity.entityTypeName) {
+            if (parentEntity.entityTypeName !== nextEntityTypeName) {
                 throw new Error(
                     'Parent entity must have the same entity type as the child.',
                 );

@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { entities, storage } from '..';
 
 type EntityHierarchyNode = {
@@ -23,7 +23,7 @@ export async function getEntityRoots(entityTypeName: string) {
         where: and(
             eq(entities.entityTypeName, entityTypeName),
             eq(entities.isDeleted, false),
-            eq(entities.parentId, null),
+            isNull(entities.parentId),
         ),
         orderBy: (table) => [asc(table.hierarchyOrder), asc(table.id)],
     });
