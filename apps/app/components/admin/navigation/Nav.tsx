@@ -206,7 +206,6 @@ export function Nav({
         pathname,
         adminPages.SowingStatistics.href,
     );
-    const cmsPagesActive = isSelectedPath(pathname, adminPages.CmsPages.href);
 
     return (
         <div className={navClassName}>
@@ -231,22 +230,16 @@ export function Nav({
                     />
                 ))}
             </div>
-            <NavSection label="Zapisi" compact={compact}>
-                <NavGroup
-                    label="CMS"
+            <NavSection label="Stranice" compact={compact}>
+                <NavItem
+                    href={adminPages.CmsPages.href}
+                    label={adminPages.CmsPages.label}
                     icon={<File className="size-5" />}
-                    forceOpen={cmsPagesActive}
+                    onClick={onItemClick}
                     compact={compact}
-                >
-                    <NavItem
-                        href={adminPages.CmsPages.href}
-                        label={adminPages.CmsPages.label}
-                        icon={<File className="size-5" />}
-                        onClick={onItemClick}
-                        compact={compact}
-                        nested
-                    />
-                </NavGroup>
+                />
+            </NavSection>
+            <NavSection label="Zapisi" compact={compact}>
                 {hasDirectoryRecords && (
                     <>
                         {/* Categories with their entity types */}
