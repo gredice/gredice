@@ -244,6 +244,7 @@ export async function sendWebPush(
         return { status: 'invalid-subscription' };
     }
 
+    // Node types expose hkdfSync output as ArrayBuffer; downstream crypto APIs expect Buffers.
     const prk = Buffer.from(
         hkdfSync(
             'sha256',

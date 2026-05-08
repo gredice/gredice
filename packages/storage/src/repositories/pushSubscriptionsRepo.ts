@@ -45,6 +45,7 @@ export async function savePushSubscription(input: SavePushSubscriptionInput) {
                 webPushSubscriptions.accountId,
             ],
             set: {
+                // accountId is part of the conflict target, so it already matches.
                 userId: input.userId,
                 auth: input.keys.auth,
                 p256dh: input.keys.p256dh,
