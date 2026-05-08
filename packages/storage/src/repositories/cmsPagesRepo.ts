@@ -93,7 +93,9 @@ function boundedOptionalText(
 ) {
     const normalized = optionalText(value);
     if (normalized && normalized.length > maxLength) {
-        throw new Error(`${fieldLabel} must be at most ${maxLength} characters.`);
+        throw new Error(
+            `${fieldLabel} must be at most ${maxLength} characters.`,
+        );
     }
     return normalized;
 }

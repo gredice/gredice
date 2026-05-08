@@ -734,7 +734,10 @@ export async function updateEntity(
 
     if (updateData.state === 'published') {
         const entityForValidation = await storage().query.entities.findFirst({
-            where: and(eq(entities.id, entity.id), eq(entities.isDeleted, false)),
+            where: and(
+                eq(entities.id, entity.id),
+                eq(entities.isDeleted, false),
+            ),
             with: {
                 attributes: {
                     where: eq(attributeValues.isDeleted, false),

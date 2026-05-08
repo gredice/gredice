@@ -18,7 +18,12 @@ if ! grep -qx 'TEST_ENV=1' "$ENV_FILE"; then
 fi
 
 DB_PROVIDER="$(awk -F= '$1 == "GREDICE_TEST_DB_PROVIDER" { value = substr($0, index($0, "=") + 1) } END { print value }' "$ENV_FILE")"
-if [[ "$DB_PROVIDER" == "fallback" ]]; then
+if [[ "$DB_PROVIDER" == "pglite" ]]; then
+    if ! grep -Eq '^GREDICE_TEST_DB_PGLITE_DIR=/.+' "$ENV_FILE"; then
+        echo "Refusing to run storage test migrations because GREDICE_TEST_DB_PGLITE_DIR is missing from PGlite config in $ENV_FILE." >&2
+        exit 1
+    fi
+elif [[ "$DB_PROVIDER" == "fallback" ]]; then
     if ! grep -Eq '^POSTGRES_URL=postgres://.+' "$ENV_FILE"; then
         echo "Refusing to run storage test migrations because POSTGRES_URL is missing from fallback config in $ENV_FILE." >&2
         exit 1

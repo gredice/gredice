@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module';
+import type { PGlite } from '@electric-sql/pglite';
 import { Pool } from '@neondatabase/serverless';
 import {
     type NeonDatabase,
@@ -9,6 +11,7 @@ import {
     drizzle as nodeDrizzle,
 } from 'drizzle-orm/node-postgres';
 import { migrate as nodeMigrate } from 'drizzle-orm/node-postgres/migrator';
+import type { PgliteDatabase } from 'drizzle-orm/pglite';
 // @ts-expect-error Type definitions for 'pg' ESM entry may not be resolved under NodeNext; runtime is fine for tests
 import { Pool as PgPool } from 'pg';
 import * as schema from './schema';
@@ -26,10 +29,60 @@ function getDbConnectionString() {
 
 let pool: Pool | null = null;
 let testPool: PgPool | null = null;
-let client: NodePgDatabase<typeof schema> | NeonDatabase<typeof schema> | null =
-    null;
+let pgliteClient: PGlite | null = null;
+let client:
+    | NodePgDatabase<typeof schema>
+    | NeonDatabase<typeof schema>
+    | PgliteDatabase<typeof schema>
+    | null = null;
+
+function isPgliteTest() {
+    return process.env.GREDICE_TEST_DB_PROVIDER === 'pglite';
+}
+
+function getPgliteDataDir() {
+    const dataDir = process.env.GREDICE_TEST_DB_PGLITE_DIR;
+    if (!dataDir) {
+        throw new Error(
+            'GREDICE_TEST_DB_PGLITE_DIR environment variable is not set.',
+        );
+    }
+    return dataDir;
+}
+
+function loadPgliteDriver() {
+    const require = createRequire(import.meta.url);
+    const pgliteModule: typeof import('@electric-sql/pglite') =
+        require('@electric-sql/pglite');
+    const drizzleModule: typeof import('drizzle-orm/pglite') = require('drizzle-orm/pglite');
+
+    return {
+        PGlite: pgliteModule.PGlite,
+        pgliteDrizzle: drizzleModule.drizzle,
+    };
+}
+
+function loadPgliteMigrator() {
+    const require = createRequire(import.meta.url);
+    const migratorModule: typeof import('drizzle-orm/pglite/migrator') =
+        require('drizzle-orm/pglite/migrator');
+
+    return migratorModule.migrate;
+}
+
 export function storage() {
     if (isTest) {
+        if (isPgliteTest()) {
+            if (!client) {
+                console.debug('Instantiating PgliteDatabase for testing');
+                const { PGlite: PGliteClient, pgliteDrizzle } =
+                    loadPgliteDriver();
+                pgliteClient = new PGliteClient(getPgliteDataDir());
+                client = pgliteDrizzle(pgliteClient, { schema });
+            }
+            return client as PgliteDatabase<typeof schema>;
+        }
+
         if (!client) {
             console.debug('Instantiating NodePgDatabase for testing');
             if (!testPool) {
@@ -56,6 +109,16 @@ export function storage() {
 
 export async function migrate() {
     if (isTest) {
+        if (isPgliteTest()) {
+            await loadPgliteMigrator()(
+                storage() as PgliteDatabase<typeof schema>,
+                {
+                    migrationsFolder: './src/migrations',
+                },
+            );
+            return;
+        }
+
         await nodeMigrate(storage(), { migrationsFolder: './src/migrations' });
     } else {
         await neonMigrate(storage(), { migrationsFolder: './src/migrations' });
@@ -64,6 +127,10 @@ export async function migrate() {
 
 export async function closeStorage() {
     if (isTest) {
+        if (pgliteClient) {
+            await pgliteClient.close();
+            pgliteClient = null;
+        }
         if (testPool) {
             await testPool.end();
             testPool = null;
