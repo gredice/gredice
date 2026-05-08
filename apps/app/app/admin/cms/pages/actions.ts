@@ -46,6 +46,8 @@ function cmsPageInputFromForm(formData: FormData): CreateCmsPageInput {
         metaTitle: formOptionalText(formData, 'metaTitle'),
         metaDescription: formOptionalText(formData, 'metaDescription'),
         metaImageUrl: formOptionalText(formData, 'metaImageUrl'),
+        canonicalPath: formOptionalText(formData, 'canonicalPath'),
+        noIndex: formData.get('noIndex') === 'on',
     };
 }
 

@@ -305,6 +305,8 @@ export const cmsPages = pgTable(
         metaTitle: text('meta_title'),
         metaDescription: text('meta_description'),
         metaImageUrl: text('meta_image_url'),
+        canonicalPath: text('canonical_path'),
+        noIndex: boolean('no_index').notNull().default(false),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
@@ -355,6 +357,10 @@ export const cmsPageRevisions = pgTable(
         nextMetaDescription: text('next_meta_description'),
         previousMetaImageUrl: text('previous_meta_image_url'),
         nextMetaImageUrl: text('next_meta_image_url'),
+        previousCanonicalPath: text('previous_canonical_path'),
+        nextCanonicalPath: text('next_canonical_path'),
+        previousNoIndex: boolean('previous_no_index'),
+        nextNoIndex: boolean('next_no_index'),
         previousPublishedAt: timestamp('previous_published_at'),
         nextPublishedAt: timestamp('next_published_at'),
         createdAt: timestamp('created_at').notNull().defaultNow(),

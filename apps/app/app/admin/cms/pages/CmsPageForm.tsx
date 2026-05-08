@@ -95,6 +95,20 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                                 type="url"
                                 defaultValue={page?.metaImageUrl ?? ''}
                             />
+                            <Input
+                                name="canonicalPath"
+                                label="Canonical putanja"
+                                defaultValue={page?.canonicalPath ?? ''}
+                                placeholder="/primjer-stranice"
+                            />
+                            <label className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    name="noIndex"
+                                    defaultChecked={page?.noIndex ?? false}
+                                />
+                                Isključi iz indeksiranja (noindex)
+                            </label>
                         </Stack>
 
                         {state?.message && (
