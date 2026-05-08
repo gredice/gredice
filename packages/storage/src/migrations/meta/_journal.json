@@ -176,6 +176,13 @@
       "when": 1778107460345,
       "tag": "0024_salty_bullseye",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1778185919034,
+      "tag": "0025_careful_thanos",
+      "breakpoints": true
     }
   ]
 }
