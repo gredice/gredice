@@ -183,6 +183,13 @@
       "when": 1778185919034,
       "tag": "0025_careful_thanos",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1778273245731,
+      "tag": "0026_funny_red_skull",
+      "breakpoints": true
     }
   ]
 }
