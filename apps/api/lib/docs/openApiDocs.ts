@@ -452,6 +452,100 @@ export async function openApiDocs(
         },
     };
 
+    baseDoc.paths['/pages'] = {
+        get: {
+            summary: '/pages',
+            description: 'Get published CMS pages.',
+            responses: {
+                200: {
+                    description: 'Successful response',
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: 'array',
+                                items: {
+                                    $ref: '#/components/schemas/page-summary',
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    };
+
+    baseDoc.paths['/pages/{slug}'] = {
+        get: {
+            summary: '/pages/{slug}',
+            description: 'Get a published CMS page by slug/path.',
+            parameters: [
+                {
+                    name: 'slug',
+                    in: 'path',
+                    required: true,
+                    schema: { type: 'string' },
+                },
+            ],
+            responses: {
+                200: {
+                    description: 'Successful response',
+                    content: {
+                        'application/json': {
+                            schema: {
+                                $ref: '#/components/schemas/page-detail',
+                            },
+                        },
+                    },
+                },
+                404: {
+                    description: 'Page not found',
+                },
+            },
+        },
+    };
+
+    if (baseDoc.components?.schemas) {
+        baseDoc.components.schemas['section-data'] = {
+            type: 'object',
+            additionalProperties: true,
+            required: ['component'],
+            properties: {
+                component: {
+                    type: 'string',
+                },
+            },
+        };
+        baseDoc.components.schemas['page-summary'] = {
+            type: 'object',
+            required: ['slug', 'title', 'state', 'updatedAt'],
+            properties: {
+                slug: { type: 'string' },
+                title: { type: 'string' },
+                state: { type: 'string', enum: ['published'] },
+                publishedAt: { type: 'string', format: 'date-time', nullable: true },
+                metaTitle: { type: 'string', nullable: true },
+                metaDescription: { type: 'string', nullable: true },
+                metaImageUrl: { type: 'string', nullable: true },
+                updatedAt: { type: 'string', format: 'date-time' },
+            },
+        };
+        baseDoc.components.schemas['page-detail'] = {
+            allOf: [
+                { $ref: '#/components/schemas/page-summary' },
+                {
+                    type: 'object',
+                    required: ['content'],
+                    properties: {
+                        content: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/section-data' },
+                        },
+                    },
+                },
+            ],
+        };
+    }
+
     const entityTypes = await getEntityTypes();
     const typeDocs = await Promise.all(
         entityTypes.map((entityType) => openApiEntitiesDoc(entityType)),
