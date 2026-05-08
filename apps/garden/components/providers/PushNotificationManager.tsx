@@ -30,13 +30,13 @@ function getNavigatorPlatform() {
 type CurrentUserState = NonNullable<
     ReturnType<typeof useCurrentUser<User>>['data']
 >;
-type CurrentUserStateWithCorrectedLogin = CurrentUserState & {
+type CurrentUserStateWithIsLoggedIn = CurrentUserState & {
     isLoggedIn: boolean;
 };
 
-function hasCorrectedLoginState(
+function hasIsLoggedInProperty(
     value: CurrentUserState,
-): value is CurrentUserStateWithCorrectedLogin {
+): value is CurrentUserStateWithIsLoggedIn {
     return 'isLoggedIn' in value;
 }
 
@@ -44,7 +44,7 @@ export function PushNotificationManager() {
     const { data } = useCurrentUser<User>();
     const isLoggedIn = Boolean(
         data &&
-            (hasCorrectedLoginState(data)
+            (hasIsLoggedInProperty(data)
                 ? data.isLoggedIn
                 : data.isLogginedIn) &&
             data.user,
