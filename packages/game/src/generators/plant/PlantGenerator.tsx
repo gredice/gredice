@@ -29,6 +29,7 @@ interface PlantGeneratorProps {
     seed: string;
     flowerGrowth: number;
     fruitGrowth: number;
+    animate?: boolean;
     showLeaves?: boolean;
     showFlowers?: boolean;
     showProduce?: boolean;
@@ -41,12 +42,14 @@ export function PlantGenerator({
     seed,
     flowerGrowth,
     fruitGrowth,
+    animate = true,
     showLeaves = true,
     showFlowers = true,
     showProduce = true,
 }: PlantGeneratorProps) {
     const stemSwayUniforms = usePlantSway(seed, {
         amplitude: 0.055,
+        enabled: animate,
         speed: 1.1,
     });
     const stemSurfaceUniforms = useMemo(
@@ -108,6 +111,7 @@ export function PlantGenerator({
                             matrices={renderData.leaves}
                             colors={renderData.leafColors}
                             type={plantDefinition.leaf.type}
+                            animate={animate}
                         />
                     )}
                     {showFlowers && plantDefinition.flower.enabled && (
@@ -115,12 +119,14 @@ export function PlantGenerator({
                             seed={seed}
                             matrices={renderData.flowers}
                             color={plantDefinition.flower.color}
+                            animate={animate}
                         />
                     )}
                     {showProduce && plantDefinition.vegetable.enabled && (
                         <Vegetables
                             seed={seed}
                             vegetables={renderData.vegetables}
+                            animate={animate}
                         />
                     )}
                     {plantDefinition.thorn?.enabled && (
@@ -128,6 +134,7 @@ export function PlantGenerator({
                             seed={seed}
                             matrices={renderData.thorns}
                             color={plantDefinition.thorn.color}
+                            animate={animate}
                         />
                     )}
                 </group>

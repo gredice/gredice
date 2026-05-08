@@ -20,6 +20,14 @@ const meta = {
     title: 'packages/ui/Media/ImageGallery',
     component: ImageGallery,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'ImageGallery presents one or more images with configurable preview sizing and carousel or stacked preview layouts.',
+            },
+        },
+    },
     args: {
         images: sampleImages,
         previewWidth: 300,

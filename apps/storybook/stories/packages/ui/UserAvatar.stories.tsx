@@ -5,6 +5,14 @@ const meta = {
     title: 'packages/ui/Data Display/UserAvatar',
     component: UserAvatar,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'UserAvatar displays either a user image or generated initials with configurable sizing and optional entry animation.',
+            },
+        },
+    },
     args: {
         displayName: 'Ana Kovač',
     },

@@ -6,6 +6,12 @@ const meta = {
     component: ErrorFallback,
     tags: ['autodocs'],
     parameters: {
+        docs: {
+            description: {
+                component:
+                    'ErrorFallback displays a recoverable error state with optional retry handling and correlation details for support workflows.',
+            },
+        },
         layout: 'fullscreen',
     },
     args: {

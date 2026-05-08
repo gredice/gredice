@@ -1,6 +1,7 @@
 import type { OperationData } from '@gredice/client';
 import { formatPrice } from '@gredice/js/currency';
 import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
+import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Calendar } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
@@ -9,7 +10,6 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useInventory } from '../../../hooks/useInventory';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
-import { BackpackIcon } from '../../../icons/Backpack';
 import {
     AnimateFlyToItem,
     useAnimateFlyToShoppingCart,

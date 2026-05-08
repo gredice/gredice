@@ -3,12 +3,13 @@ import {
     getAttributeDefinitionCategories,
     getAttributeDefinitions,
     getEntityRaw,
+    getEntityRevisions,
     getInventoryConfigByEntityTypeName,
     getInventoryItemsByConfig,
     updateInventoryItem,
 } from '@gredice/storage';
+import { getEntityCompleteness } from '@gredice/storage/entityCompleteness';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import {
@@ -21,7 +22,11 @@ import { revalidatePath } from 'next/cache';
 import { notFound } from 'next/navigation';
 import { importEntityData } from '../../../../../app/admin/directories/(actions)/importEntityData';
 import { EntityAttributeProgress } from '../../../../../components/admin/directories/EntityAttributeProgress';
-import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import {
+    AdminDirectoryBreadcrumbs,
+    AdminPageHeader,
+} from '../../../../../components/admin/navigation';
+import { AdminPageTitle } from '../../../../../components/admin/navigation/AdminPageTitle';
 import { BarcodeValue } from '../../../../../components/shared/attributes/BarcodeValue';
 import { formatAttributeValueWithUnit } from '../../../../../components/shared/attributes/formatAttributeValueWithUnit';
 import { Field } from '../../../../../components/shared/fields/Field';
@@ -58,13 +63,19 @@ export default async function EntityDetailsPage(props: {
 }) {
     const params = await props.params;
     const entityId = parseInt(params.entityId, 10);
-    const [attributeDefinitions, attributeCategories, entity, inventoryConfig] =
-        await Promise.all([
-            getAttributeDefinitions(params.entityType),
-            getAttributeDefinitionCategories(params.entityType),
-            getEntityRaw(entityId),
-            getInventoryConfigByEntityTypeName(params.entityType),
-        ]);
+    const [
+        attributeDefinitions,
+        attributeCategories,
+        entity,
+        inventoryConfig,
+        revisions,
+    ] = await Promise.all([
+        getAttributeDefinitions(params.entityType),
+        getAttributeDefinitionCategories(params.entityType),
+        getEntityRaw(entityId),
+        getInventoryConfigByEntityTypeName(params.entityType),
+        getEntityRevisions(entityId),
+    ]);
     if (!entity) {
         notFound();
     }
@@ -75,6 +86,7 @@ export default async function EntityDetailsPage(props: {
     const entityInventoryItem = inventoryItems.find(
         (item) => item.entityId === entityId,
     );
+    const entityTitle = entityDisplayName(entity);
 
     const entityDeleteBound = handleEntityDelete.bind(
         null,
@@ -138,60 +150,60 @@ export default async function EntityDetailsPage(props: {
     }
 
     const displayDefinitions = attributeDefinitions.filter((d) => d.display);
-    const populatedAttributeDefinitionIds = new Set(
-        entity.attributes
-            .filter((attribute) => (attribute.value?.length ?? 0) > 0)
-            .map((attribute) => attribute.attributeDefinitionId),
-    );
+    const completeness = getEntityCompleteness(entity, attributeDefinitions);
     const categoriesWithMissingRequiredAttributes = new Set(
-        attributeDefinitions
-            .filter(
-                (definition) =>
-                    definition.required &&
-                    !definition.defaultValue &&
-                    !populatedAttributeDefinitionIds.has(definition.id),
-            )
-            .map((definition) => definition.category),
+        completeness.missingRequiredDefinitions.map(
+            (definition) => definition.category,
+        ),
     );
 
     return (
         <EntityDetailsSaveProvider>
+            <AdminPageTitle title={entityTitle} />
+            <AdminPageHeader
+                breadcrumbs={
+                    <Row spacing={2} className="min-w-0">
+                        <div className="min-w-0">
+                            <AdminDirectoryBreadcrumbs
+                                entityTypeName={params.entityType}
+                                entityTypeLabel={entity.entityType.label}
+                                items={[
+                                    {
+                                        label: entityDisplayName(entity),
+                                    },
+                                ]}
+                            />
+                        </div>
+                        <div className="w-20 shrink-0">
+                            <EntityAttributeProgress
+                                entity={entity}
+                                definitions={attributeDefinitions}
+                            />
+                        </div>
+                    </Row>
+                }
+                actions={
+                    <Row className="items-center" spacing={1}>
+                        <EntityDetailsSaveIndicator />
+                        <EntityLinksPanel entityId={entityId} />
+                        <EntityActions
+                            entity={entity}
+                            entityType={params.entityType}
+                            importAction={importAction}
+                            deleteAction={entityDeleteBound}
+                        />
+                    </Row>
+                }
+                heading={entityDisplayName(entity)}
+            />
             <Tabs defaultValue={attributeCategories.at(0)?.name}>
                 <EntityDetailsStickyHeader
-                    breadcrumbs={
-                        <Row spacing={2} className="min-w-0">
-                            <div className="min-w-0">
-                                <Breadcrumbs
-                                    items={[
-                                        {
-                                            label: (
-                                                <AdminBreadcrumbLevelSelector />
-                                            ),
-                                            href: KnownPages.Directories,
-                                        },
-                                        {
-                                            label: entity.entityType.label,
-                                            href: KnownPages.DirectoryEntityType(
-                                                params.entityType,
-                                            ),
-                                        },
-                                        {
-                                            label: entityDisplayName(entity),
-                                        },
-                                    ]}
-                                />
-                            </div>
-                            <div className="w-20 shrink-0">
-                                <EntityAttributeProgress
-                                    entity={entity}
-                                    definitions={attributeDefinitions}
-                                />
-                            </div>
-                        </Row>
-                    }
                     tabs={
                         <TabsList>
-                            {attributeCategories.map((category) => (
+                            {[
+                                ...attributeCategories,
+                                { name: 'history', label: 'Historija' },
+                            ].map((category) => (
                                 <TabsTrigger
                                     key={category.name}
                                     value={category.name}
@@ -215,17 +227,6 @@ export default async function EntityDetailsPage(props: {
                                 </TabsTrigger>
                             ))}
                         </TabsList>
-                    }
-                    actions={
-                        <Row className="items-center" spacing={1}>
-                            <EntityDetailsSaveIndicator />
-                            <EntityLinksPanel entityId={entityId} />
-                            <EntityActions
-                                entity={entity}
-                                importAction={importAction}
-                                deleteAction={entityDeleteBound}
-                            />
-                        </Row>
                     }
                 />
                 <Stack spacing={2}>
@@ -297,7 +298,10 @@ export default async function EntityDetailsPage(props: {
                             ))}
                         </FieldSet>
                     </Stack>
-                    {attributeCategories.map((category) => (
+                    {[
+                        ...attributeCategories,
+                        { name: 'history', label: 'Historija' },
+                    ].map((category) => (
                         <TabsContent value={category.name} key={category.name}>
                             <AttributeCategoryDetails
                                 entity={entity}
@@ -306,6 +310,22 @@ export default async function EntityDetailsPage(props: {
                             />
                         </TabsContent>
                     ))}
+
+                    <TabsContent value="history" key="history">
+                        <FieldSet>
+                            {revisions.length === 0 ? (
+                                <Field name="Historija" value="Nema promjena" />
+                            ) : (
+                                revisions.map((revision) => (
+                                    <Field
+                                        key={revision.id}
+                                        name={`${revision.action} • ${revision.actorName ?? 'Nepoznat korisnik'}`}
+                                        value={`${revision.createdAt.toISOString()} | ${revision.previousValue ?? revision.previousState ?? '-'} → ${revision.nextValue ?? revision.nextState ?? '-'}`}
+                                    />
+                                ))
+                            )}
+                        </FieldSet>
+                    </TabsContent>
                 </Stack>
             </Tabs>
         </EntityDetailsSaveProvider>

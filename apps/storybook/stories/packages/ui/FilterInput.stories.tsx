@@ -5,6 +5,14 @@ const meta = {
     title: 'packages/ui/Inputs/FilterInput',
     component: FilterInput,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'FilterInput binds a search field to URL query state and can update either on submit or immediately as the user types.',
+            },
+        },
+    },
     args: {
         searchParamName: 'q',
         fieldName: 'search',

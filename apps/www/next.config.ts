@@ -1,6 +1,13 @@
 import vercelToolbar from '@vercel/toolbar/plugins/next';
 import type { NextConfig } from 'next';
+import {
+    getAppByName,
+    getAppDevPort,
+    localAppHostnameUrl,
+} from '../../scripts/app-registry.ts';
 
+const app = getAppByName('www');
+const apiApp = getAppByName('api');
 // Use the Vercel deployment ID (or git commit SHA) as a cache-busting tag.
 // Assets are not truly immutable – they change when game models or sprites are updated.
 // CDN (s-maxage) is purged automatically by Vercel on each deployment.
@@ -36,6 +43,10 @@ const nextConfig: NextConfig = {
                 headers: assetCacheHeaders,
             },
             {
+                source: '/assets/plants/:path*',
+                headers: assetCacheHeaders,
+            },
+            {
                 source: '/assets/sprites/:path*',
                 headers: assetCacheHeaders,
             },
@@ -51,7 +62,13 @@ const nextConfig: NextConfig = {
             process.env.NEXT_PUBLIC_VERCEL_ENV === 'development';
         const apiHost =
             process.env.GREDICE_API_HOST ??
-            (isDev ? 'http://localhost:3005' : 'https://api.gredice.com');
+            (isDev
+                ? localAppHostnameUrl(
+                      apiApp,
+                      'localhost',
+                      getAppDevPort(apiApp),
+                  )
+                : 'https://api.gredice.com');
 
         return [
             {
@@ -92,7 +109,7 @@ const nextConfig: NextConfig = {
         ],
     },
     productionBrowserSourceMaps: !process.env.CI,
-    allowedDevOrigins: ['www.gredice.test'],
+    allowedDevOrigins: [app.localDomain],
 };
 
 const withVercelToolbar = vercelToolbar();

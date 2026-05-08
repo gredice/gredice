@@ -3,11 +3,13 @@ import {
     getEntitiesFormatted,
     getFarmUserRaisedBeds,
 } from '@gredice/storage';
+import { PlantOrSortImage } from '@gredice/ui/plants';
+import { RaisedBedIdentifierIcon } from '@gredice/ui/RaisedBedIdentifierIcon';
 import {
     AuthProtectedSection,
     SignedOut,
 } from '@signalco/auth-server/components';
-import { Fence } from '@signalco/ui-icons';
+import { Sprout } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
@@ -29,30 +31,57 @@ function getPlantPreview(
     fields: Awaited<ReturnType<typeof getFarmUserRaisedBeds>>[number]['fields'],
     sorts: EntityStandardized[] | null | undefined,
 ) {
-    const plantSortNamesById = new Map<number, string>();
+    const plantSortsById = new Map<number, EntityStandardized>();
     if (sorts) {
         for (const sort of sorts) {
-            const name = sort.information?.name;
-            if (name) {
-                plantSortNamesById.set(sort.id, name);
-            }
+            plantSortsById.set(sort.id, sort);
         }
     }
 
-    const activePlants = fields
+    return fields
         .filter(
             (field): field is typeof field & { plantSortId: number } =>
                 field.active && typeof field.plantSortId === 'number',
         )
         .map((field) => {
-            const plantName = plantSortNamesById.get(field.plantSortId);
+            const plantSort = plantSortsById.get(field.plantSortId);
 
-            return plantName
-                ? String(plantName)
-                : `Sorta #${field.plantSortId}`;
+            return {
+                fieldId: field.id,
+                plantSortId: field.plantSortId,
+                label:
+                    plantSort?.information?.label ??
+                    plantSort?.information?.name ??
+                    `Sorta #${field.plantSortId}`,
+                plantSort: plantSort ?? null,
+            };
         });
+}
 
-    return Array.from(new Set(activePlants));
+function comparePhysicalIdsDescending(
+    left: string | null,
+    right: string | null,
+) {
+    if (left && right) {
+        const leftNumber = Number(left);
+        const rightNumber = Number(right);
+
+        if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
+            return rightNumber - leftNumber;
+        }
+
+        return right.localeCompare(left, 'hr-HR', { numeric: true });
+    }
+
+    if (left) {
+        return -1;
+    }
+
+    if (right) {
+        return 1;
+    }
+
+    return 0;
 }
 
 async function RaisedBedsPageContent() {
@@ -61,6 +90,24 @@ async function RaisedBedsPageContent() {
         getFarmUserRaisedBeds(userId),
         getEntitiesFormatted<EntityStandardized>('plantSort'),
     ]);
+
+    const activeRaisedBeds = raisedBeds
+        .filter(
+            (raisedBed) =>
+                raisedBed.status === 'active' && Boolean(raisedBed.physicalId),
+        )
+        .sort((left, right) => {
+            const physicalIdComparison = comparePhysicalIdsDescending(
+                left.physicalId,
+                right.physicalId,
+            );
+
+            if (physicalIdComparison !== 0) {
+                return physicalIdComparison;
+            }
+
+            return right.id - left.id;
+        });
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
@@ -71,29 +118,24 @@ async function RaisedBedsPageContent() {
                 </Typography>
             </Row>
 
-            {raisedBeds.length === 0 ? (
+            {activeRaisedBeds.length === 0 ? (
                 <Card>
                     <CardContent noHeader>
                         <Typography
                             level="body2"
                             className="text-muted-foreground"
                         >
-                            Trenutno nema dostupnih gredica za vaš korisnički
-                            račun.
+                            Trenutno nema aktivnih gredica s fizičkim
+                            identifikatorom za vaš korisnički račun.
                         </Typography>
                     </CardContent>
                 </Card>
             ) : (
-                <div className="grid gap-4 sm:grid-cols-2">
-                    {raisedBeds.map((raisedBed) => {
-                        const plantPreview = getPlantPreview(
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {activeRaisedBeds.map((raisedBed) => {
+                        const plants = getPlantPreview(
                             raisedBed.fields,
                             plantSorts,
-                        );
-                        const previewVisible = plantPreview.slice(0, 4);
-                        const hiddenCount = Math.max(
-                            plantPreview.length - previewVisible.length,
-                            0,
                         );
 
                         return (
@@ -105,46 +147,55 @@ async function RaisedBedsPageContent() {
                                                 spacing={1}
                                                 alignItems="center"
                                             >
-                                                <Fence className="size-4" />
+                                                <RaisedBedIdentifierIcon
+                                                    className="text-primary"
+                                                    physicalId={
+                                                        raisedBed.physicalId
+                                                    }
+                                                />
                                                 <Typography level="h6" semiBold>
                                                     {raisedBed.name ||
-                                                        `Gredica #${raisedBed.id}`}
+                                                        `Gredica ${raisedBed.physicalId}`}
                                                 </Typography>
                                             </Row>
                                         </CardTitle>
-                                        <Typography
-                                            level="body3"
-                                            className="text-muted-foreground"
-                                        >
-                                            ID: {raisedBed.id} · Polja:{' '}
-                                            {raisedBed.fields.length}
-                                        </Typography>
                                     </Stack>
                                 </CardHeader>
                                 <CardContent>
                                     <Stack spacing={2}>
-                                        <Row spacing={1} className="flex-wrap">
-                                            {previewVisible.length > 0 ? (
-                                                previewVisible.map((label) => (
-                                                    <Chip
-                                                        key={`${raisedBed.id}-${label}`}
-                                                        color="success"
-                                                        className="max-w-full"
+                                        {plants.length > 0 ? (
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {plants.map((plant) => (
+                                                    <div
+                                                        key={`${raisedBed.id}-${plant.fieldId}`}
+                                                        title={plant.label}
+                                                        className="flex aspect-square items-center justify-center rounded-md border bg-muted/40 p-1"
                                                     >
-                                                        {label}
-                                                    </Chip>
-                                                ))
-                                            ) : (
+                                                        {plant.plantSort ? (
+                                                            <PlantOrSortImage
+                                                                plantSort={
+                                                                    plant.plantSort
+                                                                }
+                                                                width={40}
+                                                                height={40}
+                                                                className="size-10 rounded-md object-cover"
+                                                            />
+                                                        ) : (
+                                                            <Sprout className="size-6 text-primary" />
+                                                        )}
+                                                        <span className="sr-only">
+                                                            {plant.label}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <Row>
                                                 <Chip color="neutral">
                                                     Nema aktivnih biljaka
                                                 </Chip>
-                                            )}
-                                            {hiddenCount > 0 && (
-                                                <Chip color="neutral">
-                                                    +{hiddenCount} više
-                                                </Chip>
-                                            )}
-                                        </Row>
+                                            </Row>
+                                        )}
                                         <Button
                                             href={`/raised-beds/${raisedBed.id}`}
                                         >

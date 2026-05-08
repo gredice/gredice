@@ -27,10 +27,19 @@ function SubmitButton() {
     );
 }
 
+function formatDateInputValue(date: Date) {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
 export function BulkGenerateForm({ locations }: BulkGenerateFormProps) {
     const [state, formAction] = useActionState(bulkGenerateSlotsAction, null);
     const [selectedLocation, setSelectedLocation] = useState('');
     const [selectedType, setSelectedType] = useState('');
+    const [timeZone, setTimeZone] = useState('Europe/Zagreb');
 
     // Default to tomorrow and next week
     const tomorrow = new Date();
@@ -38,8 +47,12 @@ export function BulkGenerateForm({ locations }: BulkGenerateFormProps) {
     const nextWeek = new Date();
     nextWeek.setDate(nextWeek.getDate() + 7);
 
-    const defaultStartDate = tomorrow.toISOString().split('T')[0];
-    const defaultEndDate = nextWeek.toISOString().split('T')[0];
+    const defaultStartDate = formatDateInputValue(tomorrow);
+    const defaultEndDate = formatDateInputValue(nextWeek);
+
+    useEffect(() => {
+        setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    }, []);
 
     // Reset form on successful submission
     useEffect(() => {
@@ -81,7 +94,7 @@ export function BulkGenerateForm({ locations }: BulkGenerateFormProps) {
             return;
         }
 
-        if (new Date(endDate) < new Date(startDate)) {
+        if (endDate < startDate) {
             alert('Datum završetka mora biti nakon datuma početka');
             return;
         }
@@ -92,6 +105,8 @@ export function BulkGenerateForm({ locations }: BulkGenerateFormProps) {
     return (
         <form action={handleSubmit}>
             <Stack spacing={3}>
+                <input type="hidden" name="timeZone" value={timeZone} />
+
                 <SelectItems
                     variant="outlined"
                     placeholder="Odaberi lokaciju"

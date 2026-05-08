@@ -1,6 +1,6 @@
 'use client';
 
-import { Close, Menu } from '@signalco/ui-icons';
+import { Close, PanelRightClose } from '@signalco/ui-icons';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useEffect, useState } from 'react';
@@ -109,9 +109,9 @@ export function MobileNav() {
                 variant="plain"
                 onClick={() => setIsOpen(true)}
                 title="Otvori izbornik"
-                className="md:hidden"
+                className="rounded-md text-muted-foreground hover:text-foreground md:hidden"
             >
-                <Menu className="size-4" />
+                <PanelRightClose className="size-4" />
             </IconButton>
 
             {portalElement ? createPortal(drawer, portalElement) : null}

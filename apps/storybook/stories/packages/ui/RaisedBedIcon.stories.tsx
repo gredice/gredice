@@ -5,6 +5,14 @@ const meta = {
     title: 'packages/ui/Icons/RaisedBedIcon',
     component: RaisedBedIcon,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'RaisedBedIcon visualizes a raised garden bed and can include a physical bed identifier when one is available.',
+            },
+        },
+    },
     args: {
         className: 'text-primary',
         physicalId: 'A12',

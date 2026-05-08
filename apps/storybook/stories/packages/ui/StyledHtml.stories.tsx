@@ -5,6 +5,14 @@ const meta = {
     title: 'packages/ui/Typography/StyledHtml',
     component: StyledHtml,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'StyledHtml applies Gredice prose styling to trusted HTML content such as plant guides, articles, and CMS-rendered sections.',
+            },
+        },
+    },
     args: {
         children: (
             <div>

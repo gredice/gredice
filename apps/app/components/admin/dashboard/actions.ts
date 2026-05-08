@@ -1,6 +1,7 @@
 'use server';
 
 import {
+    getAttributeDefinitions,
     getAiAnalysisEvents,
     getAiAnalysisTotals,
     getAllOperations,
@@ -8,9 +9,11 @@ import {
     getEntitiesFormatted,
     getEntitiesRaw,
     getEntityTypes,
+    getIncompleteEntityCountsByState,
     getPlantUpdateEvents,
     getSunflowersDailyTotals,
     getUserRegistrationsByWeekday,
+    redisCached,
 } from '@gredice/storage';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 
@@ -67,6 +70,22 @@ function toDateKey(date: Date) {
     const month = `${date.getMonth() + 1}`.padStart(2, '0');
     const day = `${date.getDate()}`.padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+function cacheKeyPart(value: string | number | undefined) {
+    if (typeof value === 'undefined' || value === '') {
+        return 'none';
+    }
+
+    return encodeURIComponent(String(value));
+}
+
+function analyticsCacheKey(
+    days: number | undefined,
+    from?: string,
+    to?: string,
+) {
+    return `dashboard:admin:analytics:days:${cacheKeyPart(days)}:from:${cacheKeyPart(from)}:to:${cacheKeyPart(to)}:v1`;
 }
 
 function parseDuration(value: unknown) {
@@ -294,6 +313,21 @@ export async function getAnalyticsData(
     from?: string,
     to?: string,
 ) {
+    return redisCached(
+        analyticsCacheKey(days, from, to),
+        () => getAnalyticsDataUncached(days, from, to),
+        {
+            ttl: 60,
+            maxPayloadBytes: 2 * 1024 * 1024,
+        },
+    );
+}
+
+async function getAnalyticsDataUncached(
+    days: number | undefined,
+    from?: string,
+    to?: string,
+) {
     const { startDate, endDate } = createDateRange(days, from, to);
     const rangeDays = getRangeDays(startDate, endDate);
 
@@ -323,10 +357,17 @@ export async function getAnalyticsData(
     const entitiesCounts = await Promise.all(
         entityTypes.map(async (entityType) => {
             const entities = await getEntitiesRaw(entityType.name);
+            const definitions = await getAttributeDefinitions(entityType.name);
+            const incompleteCounts = getIncompleteEntityCountsByState(
+                entities,
+                definitions,
+            );
             return {
                 entityTypeName: entityType.name,
                 label: entityType.label,
                 count: entities.length,
+                incompleteDraftCount: incompleteCounts.draft,
+                incompletePublishedCount: incompleteCounts.published,
             };
         }),
     );

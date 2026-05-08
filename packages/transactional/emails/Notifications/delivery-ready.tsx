@@ -14,6 +14,7 @@ export interface DeliveryReadyEmailTemplateProps {
     addressLine?: string;
     contactName?: string;
     manageUrl?: string;
+    readyItems?: string[];
     appName?: string;
     appDomain?: string;
 }
@@ -24,10 +25,24 @@ export default function DeliveryReadyEmailTemplate({
     addressLine,
     contactName,
     manageUrl = 'https://vrt.gredice.com/?pregled=dostava',
+    readyItems = [],
     appName = 'Gredice',
     appDomain = 'gredice.com',
 }: DeliveryReadyEmailTemplateProps) {
-    const previewText = `${appName} - dostava je spremna`;
+    const distinctReadyItems = Array.from(
+        new Set(readyItems.map((item) => item.trim()).filter(Boolean)),
+    );
+    const readyItemsCount = distinctReadyItems.length;
+    const readyItemsPreviewText =
+        readyItemsCount === 1
+            ? '1 stavka je spremna'
+            : readyItemsCount < 5
+              ? `${readyItemsCount} stavke su spremne`
+              : `${readyItemsCount} stavki je spremno`;
+    const previewText =
+        readyItemsCount > 0
+            ? `${appName} - ${readyItemsPreviewText}`
+            : `${appName} - dostava je spremna`;
     const greeting = contactName ? `Bok ${contactName}!` : 'Bok!';
 
     return (
@@ -45,6 +60,21 @@ export default function DeliveryReadyEmailTemplate({
                         Podsjećamo te da je tvoja dostava spremna za uručenje u
                         dogovorenom terminu.
                     </Paragraph>
+                    {readyItemsCount > 0 ? (
+                        <Section className="my-4 rounded-2xl bg-[#f7f7f7] p-4">
+                            <Paragraph className="m-0 text-[16px] font-semibold">
+                                Spremno za dostavu:
+                            </Paragraph>
+                            {distinctReadyItems.map((item) => (
+                                <Paragraph
+                                    key={item}
+                                    className="m-0 py-1 text-[15px]"
+                                >
+                                    • {item}
+                                </Paragraph>
+                            ))}
+                        </Section>
+                    ) : null}
                     <Paragraph>
                         <strong>📅 Termin:</strong> {deliveryWindow}
                     </Paragraph>

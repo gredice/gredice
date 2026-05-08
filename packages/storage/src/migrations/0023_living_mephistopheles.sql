@@ -1,0 +1,1 @@
+ALTER TABLE "entity_type_categories" ADD COLUMN "icon" text;

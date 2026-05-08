@@ -19,6 +19,12 @@ const meta = {
         ),
     },
     parameters: {
+        docs: {
+            description: {
+                component:
+                    'PageHeader composes public page titles, alternate labels, supporting copy, optional visuals, and adjacent content.',
+            },
+        },
         layout: 'fullscreen',
     },
     render: (args) => (

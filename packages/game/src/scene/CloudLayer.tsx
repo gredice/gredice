@@ -16,7 +16,7 @@ import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 
 const MAX_CLOUDS = 8;
-const CLOUD_ALPHA_TEST = 0.08;
+const CLOUD_ALPHA_TEST = 0.025;
 const CLOUD_MARGIN = 12;
 const CLOUD_WORLD_ALTITUDE = 10;
 const CLOUD_ALTITUDE_VARIATION = 4;
@@ -478,6 +478,7 @@ export function CloudLayer({
                     }}
                 >
                     <planeGeometry args={[cloud.width, cloud.height]} />
+                    <meshDepthMaterial attach="customDepthMaterial" alphaHash />
                     <meshBasicMaterial
                         alphaMap={cloudAlphaTexture}
                         alphaTest={CLOUD_ALPHA_TEST}

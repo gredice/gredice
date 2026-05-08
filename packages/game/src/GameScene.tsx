@@ -27,6 +27,10 @@ import { EditModeGrid } from './indicators/EditModeGrid';
 import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
 import { Environment } from './scene/Environment';
+import {
+    type GameQualityTier,
+    resolveGameQualityProfile,
+} from './scene/gameQuality';
 import { Scene } from './scene/Scene';
 import { type GameState, useGameState, type WinterMode } from './useGameState';
 import { useRaisedBedCloseup } from './useRaisedBedCloseup';
@@ -47,6 +51,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     winterMode?: WinterMode;
     weather?: Partial<GameState['weather']>;
     deferDetails?: boolean;
+    quality?: GameQualityTier;
 
     // Development purposes
     flags?: GameFeatureFlags;
@@ -61,6 +66,7 @@ export function GameScene({
     hideHud,
     className,
     flags,
+    quality,
     weather,
     deferDetails,
     ...rest
@@ -72,6 +78,7 @@ export function GameScene({
     );
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
     const renderDetails = useDeferredSceneDetails(deferDetails);
+    const qualityProfile = resolveGameQualityProfile(quality);
 
     // Start non-critical metadata early, but don't block the first scene frame.
     useBlockData();
@@ -99,6 +106,7 @@ export function GameScene({
             <GameSceneDetailContext.Provider value={{ renderDetails }}>
                 <Scene
                     position={defaultGameCameraPosition}
+                    quality={qualityProfile}
                     zoom={
                         zoom === 'far'
                             ? farGameCameraZoom
@@ -112,6 +120,7 @@ export function GameScene({
                             noBackground={noBackground}
                             noWeather={weatherDisabled}
                             noSound={noSound}
+                            quality={qualityProfile}
                             weather={weather}
                         />
                         <group>
@@ -130,8 +139,16 @@ export function GameScene({
                                     />
                                 )),
                             )}
-                            {renderDetails && <RaisedBedMulchOverlays />}
+                            {renderDetails && zoom !== 'far' && (
+                                <RaisedBedMulchOverlays
+                                    quality={qualityProfile}
+                                />
+                            )}
                             <EntityInstances
+                                quality={qualityProfile}
+                                renderGroundDecorations={
+                                    renderDetails && zoom !== 'far'
+                                }
                                 stacks={garden?.stacks}
                                 renderDetails={renderDetails}
                             />

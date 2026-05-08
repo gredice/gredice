@@ -5,6 +5,14 @@ const meta = {
     title: 'packages/ui/Plants/SeedTimeInformationBadge',
     component: SeedTimeInformationBadge,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'SeedTimeInformationBadge summarizes plant sowing timing in a compact badge that can scale across dense and spacious layouts.',
+            },
+        },
+    },
     args: {
         size: 'md',
     },

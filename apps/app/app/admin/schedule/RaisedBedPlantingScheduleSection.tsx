@@ -249,10 +249,18 @@ export function RaisedBedPlantingScheduleSection({
                             : 'text-muted-foreground';
                     const fieldLocked =
                         fieldCompleted || fieldPendingVerification;
+                    const fieldApprovedActive = fieldApproved && !fieldLocked;
 
                     return (
                         <div key={field.id}>
-                            <Row spacing={1} className="hover:bg-muted rounded">
+                            <Row
+                                spacing={1}
+                                className={
+                                    fieldApprovedActive
+                                        ? 'rounded bg-muted/60 text-foreground hover:bg-muted/80'
+                                        : 'rounded hover:bg-muted'
+                                }
+                            >
                                 <Row spacing={1} className="grow">
                                     {fieldCompleted ? (
                                         <Checkbox

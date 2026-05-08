@@ -1,11 +1,19 @@
 import { AttributeCard } from '@apps/www/components/attributes/DetailCard';
-import { Leaf, Sprout, Droplet } from '@signalco/ui-icons';
+import { Droplet, Leaf, Sprout } from '@signalco/ui-icons';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 const meta = {
     title: 'apps/www/Attributes/AttributeCard',
     component: AttributeCard,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'AttributeCard displays a labeled plant or product attribute with an icon, value, optional description, and optional navigation.',
+            },
+        },
+    },
     args: {
         icon: <Leaf className="size-5 text-primary" />,
         header: 'Tip biljke',

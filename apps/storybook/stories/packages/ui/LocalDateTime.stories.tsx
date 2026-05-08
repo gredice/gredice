@@ -5,6 +5,14 @@ const meta = {
     title: 'packages/ui/Data Display/LocalDateTime',
     component: LocalDateTime,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'LocalDateTime formats Date, string, or empty values for the selected locale with independent date and time display controls.',
+            },
+        },
+    },
     args: {
         children: new Date('2025-06-15T10:30:00'),
         date: true,

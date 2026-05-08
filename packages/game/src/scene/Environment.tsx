@@ -9,6 +9,11 @@ import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import { type GameState, useGameState } from '../useGameState';
 import { CloudLayer } from './CloudLayer';
+import { updateGameProfileMetadata } from './gameProfileMetadata';
+import {
+    type GameQualityProfile,
+    resolveGameQualityProfile,
+} from './gameQuality';
 import { Drops } from './Rain/Drops';
 import Snow from './Snow/Snow';
 import { Stars } from './Stars';
@@ -119,6 +124,7 @@ export type EnvironmentProps = {
     noBackground?: boolean;
     noSound?: boolean;
     noWeather?: boolean;
+    quality?: GameQualityProfile;
     weather?: Partial<GameState['weather']>;
 };
 
@@ -261,10 +267,11 @@ export function Environment({
     noBackground,
     noSound,
     noWeather,
+    quality,
     weather,
 }: EnvironmentProps) {
+    const qualityProfile = quality ?? resolveGameQualityProfile();
     const baseCameraShadowSize = 20;
-    const shadowMapSize = 8;
 
     const currentTime = useSnapshotTime();
     const timeOfDay = useGameState((state) => state.timeOfDay);
@@ -449,9 +456,36 @@ export function Environment({
 
     // Handle rain
     const rain = actualWeather?.rainy ?? 0;
+    const baseRainParticleCount = rain < 0.4 ? 200 : rain > 0.9 ? 2000 : 600;
+    const rainParticleCount = Math.round(
+        baseRainParticleCount * qualityProfile.rainParticleMultiplier,
+    );
 
     // Handle snow particles - based on current weather (snowy intensity 0-1)
     const snowParticles = actualWeather?.snowy ?? 0;
+    const snowParticleCount = Math.round(
+        snowParticles * 5000 * qualityProfile.snowParticleMultiplier,
+    );
+
+    useEffect(() => {
+        updateGameProfileMetadata({
+            rainParticleCount:
+                !weatherDisabled && rain > 0 ? rainParticleCount : 0,
+            shadowMapSize: qualityProfile.shadowMapSize,
+            shadowsEnabled: qualityProfile.shadows,
+            snowParticleCount:
+                !weatherDisabled && snowParticles > 0 ? snowParticleCount : 0,
+            weatherDisabled,
+        });
+    }, [
+        qualityProfile.shadowMapSize,
+        qualityProfile.shadows,
+        rain,
+        rainParticleCount,
+        snowParticleCount,
+        snowParticles,
+        weatherDisabled,
+    ]);
 
     const dawnVisibility =
         timeOfDay <= STAR_NIGHT_VISIBILITY.dawnFadeStart
@@ -552,13 +586,15 @@ export function Environment({
                 intensity={directionalLight.intensity}
                 color={directionalLight.color}
                 position={directionalLight.position}
-                shadow-intensity={shadowVisibility}
-                shadow-mapSize={shadowMapSize * 1024}
+                shadow-intensity={qualityProfile.shadows ? shadowVisibility : 0}
+                shadow-mapSize={
+                    qualityProfile.shadows ? qualityProfile.shadowMapSize : 1
+                }
                 shadow-radius={2.2}
                 // shadow-near={0.01}
                 // shadow-far={1000}
                 shadow-normalBias={0.03}
-                castShadow
+                castShadow={qualityProfile.shadows}
             >
                 <orthographicCamera
                     attach="shadow-camera"
@@ -574,7 +610,9 @@ export function Environment({
                 <CloudLayer
                     cloudy={actualWeather.cloudy ?? 0}
                     foggy={actualWeather.foggy ?? 0}
-                    shadowStrength={cloudShadowStrength}
+                    shadowStrength={
+                        qualityProfile.shadows ? cloudShadowStrength : 0
+                    }
                     stacks={garden?.stacks}
                     timeOfDay={timeOfDay}
                     windDirection={windDirection}
@@ -587,11 +625,11 @@ export function Environment({
                 <fog attach="fog" args={[fogColor, fogNear, 190]} />
             )}
             {!weatherDisabled && rain > 0 && (
-                <Drops count={rain < 0.4 ? 200 : rain > 0.9 ? 2000 : 600} />
+                <Drops count={rainParticleCount} />
             )}
             {!weatherDisabled && snowParticles > 0 && (
                 <Snow
-                    count={snowParticles * 5000}
+                    count={snowParticleCount}
                     windSpeed={windSpeed}
                     windDirection={windDirection}
                 />

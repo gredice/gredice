@@ -5,6 +5,14 @@ const meta = {
     title: 'apps/app/Shared/NoDataPlaceholder',
     component: NoDataPlaceholder,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'NoDataPlaceholder provides a compact empty state message for admin and app views when a list or query has no results.',
+            },
+        },
+    },
     args: {
         children: 'No records match the current filters.',
     },

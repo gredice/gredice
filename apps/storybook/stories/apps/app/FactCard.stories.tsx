@@ -5,6 +5,14 @@ const meta = {
     title: 'apps/app/Admin/FactCard',
     component: FactCard,
     tags: ['autodocs'],
+    parameters: {
+        docs: {
+            description: {
+                component:
+                    'FactCard presents an admin metric with its current value and optional comparison against a previous value.',
+            },
+        },
+    },
     args: {
         beforeValue: 108,
         header: 'Active subscriptions',

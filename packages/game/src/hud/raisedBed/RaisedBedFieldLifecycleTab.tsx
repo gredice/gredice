@@ -1,5 +1,6 @@
 import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
+import { ShovelIcon } from '@gredice/ui/ShovelIcon';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -9,7 +10,6 @@ import type { ReactNode } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useRaisedBedFieldRemove } from '../../hooks/useRaisedBedFieldRemove';
-import { ShovelIcon } from '../../icons/Shovel';
 import {
     findRaisedBedFieldWithPlant,
     findRaisedBedOccupiedField,
