@@ -18,6 +18,7 @@ import {
     cacheKeys,
     directoriesCached,
 } from '../cache/directoriesCached';
+import { getEntityCompleteness } from '../helpers/entityCompleteness';
 
 const entityCacheTtl = 60 * 60; // 1 hour
 
@@ -732,6 +733,39 @@ export async function updateEntity(
     };
 
     if (updateData.state === 'published') {
+        const entityForValidation = await storage().query.entities.findFirst({
+            where: and(eq(entities.id, entity.id), eq(entities.isDeleted, false)),
+            with: {
+                attributes: {
+                    where: eq(attributeValues.isDeleted, false),
+                },
+                entityType: {
+                    with: {
+                        attributeDefinitions: {
+                            where: eq(attributeDefinitions.isDeleted, false),
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!entityForValidation) {
+            throw new Error(`Entity with id ${entity.id} not found.`);
+        }
+
+        const completeness = getEntityCompleteness(
+            entityForValidation,
+            entityForValidation.entityType.attributeDefinitions,
+        );
+        if (!completeness.isComplete) {
+            const missingFields = completeness.missingRequiredDefinitions
+                .map((definition) => definition.label)
+                .join(', ');
+            throw new Error(
+                `Entity is not ready for publishing. Fill required fields: ${missingFields}.`,
+            );
+        }
+
         updateData.publishedAt = new Date();
     }
 
