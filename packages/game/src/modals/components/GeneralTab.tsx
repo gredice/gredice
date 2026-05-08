@@ -1,6 +1,5 @@
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { ReferralsManagementCard } from './ReferralsManagementCard';
 import { TimeZoneSettingsCard } from './TimeZoneSettingsCard';
 import { UserBirthdayCard } from './UserBirthdayCard';
 import { UserProfileCard } from './UserProfileCard';
@@ -15,7 +14,6 @@ export function GeneralTab() {
                 <UserProfileCard />
                 <UserBirthdayCard />
                 <TimeZoneSettingsCard />
-                <ReferralsManagementCard />
             </Stack>
         </Stack>
     );
