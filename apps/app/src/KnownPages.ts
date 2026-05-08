@@ -9,6 +9,8 @@ export const KnownPages = {
     CmsPageCreate: '/admin/cms/pages/create',
     CmsPage: (pageId: number) => `/admin/cms/pages/${pageId}` as Route,
     CmsPageEdit: (pageId: number) => `/admin/cms/pages/${pageId}/edit` as Route,
+    CmsPagePreview: (pageId: number) =>
+        `/admin/cms/pages/${pageId}/preview` as Route,
     DirectoryEntityTypePath: '/admin/directories/[entityType]',
     DirectoryEntityType: (entityTypeName: string) =>
         `/admin/directories/${entityTypeName}` as Route,
@@ -29,6 +31,8 @@ export const KnownPages = {
         `/admin/directories/${entityTypeName}/attribute-definitions/${id}` as Route,
     DirectoryEntity: (entityTypeName: string, entityId: number) =>
         `/admin/directories/${entityTypeName}/${entityId}` as Route,
+    DirectoryEntityPreview: (entityTypeName: string, entityId: number) =>
+        `/admin/directories/${entityTypeName}/${entityId}/preview` as Route,
     DirectoryEntityPath: '/admin/directories/[entityType]/[entityId]',
     DirectoryCategoryCreate: '/admin/directories/categories/create',
     DirectoryCategoryEdit: (categoryId: number) =>

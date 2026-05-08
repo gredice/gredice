@@ -188,6 +188,7 @@ export default async function EntityDetailsPage(props: {
                         <EntityLinksPanel entityId={entityId} />
                         <EntityActions
                             entity={entity}
+                            entityType={params.entityType}
                             importAction={importAction}
                             deleteAction={entityDeleteBound}
                         />
