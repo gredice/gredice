@@ -12,7 +12,7 @@ export const queryClient = new QueryClient();
 export function ClientAppProvider({ children }: PropsWithChildren) {
     return (
         <QueryClientProvider client={queryClient}>
-            <ThemeProvider attribute="class">
+            <ThemeProvider attribute="class" disableTransitionOnChange>
                 <DayNightThemeSync />
                 <NuqsAdapter>
                     <WinterModeProvider>{children}</WinterModeProvider>
