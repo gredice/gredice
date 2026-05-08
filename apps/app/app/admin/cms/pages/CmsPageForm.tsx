@@ -71,15 +71,30 @@ function parseSections(content?: string | null) {
     }
 }
 
-function editableSection(section: CmsPageSectionData): CmsPageEditableSection {
+function editableSection(
+    section: CmsPageSectionData,
+    occurrence: number,
+): CmsPageEditableSection {
     return {
-        id: crypto.randomUUID(),
+        id: `${section.component}-${occurrence}`,
         data: section,
     };
 }
 
 function newSection(component: string): CmsPageEditableSection {
-    return editableSection({ component });
+    return {
+        id: `new-${crypto.randomUUID()}`,
+        data: { component },
+    };
+}
+
+function editableSections(sections: CmsPageSectionData[]) {
+    const sectionCounts = new Map<string, number>();
+    return sections.map((section) => {
+        const occurrence = sectionCounts.get(section.component) ?? 0;
+        sectionCounts.set(section.component, occurrence + 1);
+        return editableSection(section, occurrence);
+    });
 }
 
 function stringifySections(
@@ -100,6 +115,28 @@ function sectionValue(section: CmsPageEditableSection, key: string) {
     return typeof value === 'string' ? value : '';
 }
 
+function moveSection(
+    sections: CmsPageEditableSection[],
+    sectionId: string,
+    offset: number,
+) {
+    const index = sections.findIndex((section) => section.id === sectionId);
+    const targetIndex = index + offset;
+    if (
+        index < 0 ||
+        targetIndex < 0 ||
+        targetIndex >= sections.length ||
+        !sections[index] ||
+        !sections[targetIndex]
+    ) {
+        return sections;
+    }
+
+    const next = [...sections];
+    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+    return next;
+}
+
 export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
     const [state, formAction, pending] = useActionState(action, null);
     const parsedSections = useMemo(
@@ -107,7 +144,7 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
         [page?.content],
     );
     const [sections, setSections] = useState<CmsPageEditableSection[]>(() =>
-        parsedSections.sections.map(editableSection),
+        editableSections(parsedSections.sections),
     );
     const preserveFallbackContent =
         !parsedSections.isStructured && Boolean(page?.content);
@@ -196,36 +233,12 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                                                                     setSections(
                                                                         (
                                                                             current,
-                                                                        ) => {
-                                                                            if (
-                                                                                index ===
-                                                                                0
-                                                                            )
-                                                                                return current;
-                                                                            const next =
-                                                                                [
-                                                                                    ...current,
-                                                                                ];
-                                                                            [
-                                                                                next[
-                                                                                    index -
-                                                                                        1
-                                                                                ],
-                                                                                next[
-                                                                                    index
-                                                                                ],
-                                                                            ] =
-                                                                                [
-                                                                                    next[
-                                                                                        index
-                                                                                    ],
-                                                                                    next[
-                                                                                        index -
-                                                                                            1
-                                                                                    ],
-                                                                                ];
-                                                                            return next;
-                                                                        },
+                                                                        ) =>
+                                                                            moveSection(
+                                                                                current,
+                                                                                section.id,
+                                                                                -1,
+                                                                            ),
                                                                     )
                                                                 }
                                                             >
@@ -243,39 +256,12 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                                                                     setSections(
                                                                         (
                                                                             current,
-                                                                        ) => {
-                                                                            if (
-                                                                                index >=
-                                                                                current.length -
-                                                                                    1
-                                                                            ) {
-                                                                                return current;
-                                                                            }
-
-                                                                            const next =
-                                                                                [
-                                                                                    ...current,
-                                                                                ];
-                                                                            [
-                                                                                next[
-                                                                                    index +
-                                                                                        1
-                                                                                ],
-                                                                                next[
-                                                                                    index
-                                                                                ],
-                                                                            ] =
-                                                                                [
-                                                                                    next[
-                                                                                        index
-                                                                                    ],
-                                                                                    next[
-                                                                                        index +
-                                                                                            1
-                                                                                    ],
-                                                                                ];
-                                                                            return next;
-                                                                        },
+                                                                        ) =>
+                                                                            moveSection(
+                                                                                current,
+                                                                                section.id,
+                                                                                1,
+                                                                            ),
                                                                     )
                                                                 }
                                                             >

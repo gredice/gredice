@@ -36,7 +36,7 @@ function keyedCmsPageSection(
     occurrence: number,
 ) {
     return {
-        key: `${JSON.stringify(section)}-${occurrence}`,
+        key: `${section.component}-${occurrence}`,
         section,
     };
 }
@@ -62,9 +62,8 @@ function parseCmsPageSections(content: string | null) {
                     typeof section.component === 'string',
             )
             .map((section) => {
-                const sectionKey = JSON.stringify(section);
-                const occurrence = sectionCounts.get(sectionKey) ?? 0;
-                sectionCounts.set(sectionKey, occurrence + 1);
+                const occurrence = sectionCounts.get(section.component) ?? 0;
+                sectionCounts.set(section.component, occurrence + 1);
                 return keyedCmsPageSection(section, occurrence);
             });
     } catch {
