@@ -425,41 +425,14 @@ jobs:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WWW }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
     steps:
-      - uses: actions/checkout@v6.0.2
-        with:
-          fetch-depth: 2
-
-      - uses: pnpm/action-setup@v6.0.4
-        name: ✨ Install pnpm
-
-      - name: ✨ Setup Node
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: "24.15.0"
-
-      - name: ✨ Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - uses: actions/cache@v5.0.5
-        name: ✨ Setup pnpm cache
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: 📦️ Install dependencies
-        run: pnpm install --frozen-lockfile --filter www... --filter .
-
       - name: ✨ Setup Vercel CLI
-        run: npm i -g vercel@latest
+        run: command -v vercel >/dev/null 2>&1 || npm i -g vercel@latest
 
       - name: ⚙️ Pull Vercel Environment Information
-        run: vercel env pull --yes --environment=preview --token=${{
-          secrets.VERCEL_TOKEN }}
-        working-directory: apps/www/
+        run: |
+          mkdir -p apps/www
+          cd apps/www
+          vercel env pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: 🔑 Load VIZZLY_TOKEN from Vercel env
         id: vizzly_token
@@ -479,16 +452,8 @@ jobs:
           echo "configured=true" >> "$GITHUB_OUTPUT"
 
       - name: 🖼️ Finalize visual tests
-        if: steps.vizzly_token.outputs.configured == 'true' && github.event_name ==
-          'pull_request'
-        run: pnpm exec vizzly finalize "${{ github.run_id }}-${{ github.run_attempt }}"
-        working-directory: apps/www/
-
-      - name: 🖼️ Publish visual tests
-        if: steps.vizzly_token.outputs.configured == 'true' && github.ref ==
-          'refs/heads/main'
-        run: pnpm exec vizzly finalize "${{ github.run_id }}-${{ github.run_attempt }}"
-        working-directory: apps/www/
+        if: steps.vizzly_token.outputs.configured == 'true'
+        run: npx --yes --package=@vizzly-testing/cli@0.30.0 vizzly finalize "${{ github.run_id }}-${{ github.run_attempt }}"
 
   ci_ok:
     name: "[CI] OK"
