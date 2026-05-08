@@ -440,6 +440,14 @@ function cmsPageRevisionValues(
     };
 }
 
+function cmsPageRevisionState(
+    previousState: string | null,
+    nextState: string | null,
+): CmsPageState {
+    const state = previousState ?? nextState;
+    return state && isCmsPageState(state) ? state : 'draft';
+}
+
 export async function softDeleteCmsPage(id: number, actor?: CmsActor) {
     const existing = await getCmsPage(id);
     if (!existing) {
@@ -489,9 +497,10 @@ export async function restoreCmsPageRevision(
             slug: revision.previousSlug ?? revision.nextSlug ?? '',
             title: revision.previousTitle ?? revision.nextTitle ?? '',
             content: revision.previousContent ?? revision.nextContent ?? null,
-            state: isCmsPageState(revision.previousState ?? '')
-                ? revision.previousState
-                : 'draft',
+            state: cmsPageRevisionState(
+                revision.previousState,
+                revision.nextState,
+            ),
             metaTitle:
                 revision.previousMetaTitle ?? revision.nextMetaTitle ?? null,
             metaDescription:
