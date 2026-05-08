@@ -14,7 +14,7 @@ self.addEventListener('push', (event) => {
     let payload;
     try {
         payload = event.data.json();
-    } catch (error) {
+    } catch (_error) {
         payload = { title: 'Gredice', body: event.data.text() };
     }
 
