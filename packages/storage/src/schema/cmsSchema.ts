@@ -331,6 +331,44 @@ export type UpdateCmsPage = Partial<
     Pick<typeof cmsPages.$inferSelect, 'id'>;
 export type SelectCmsPage = typeof cmsPages.$inferSelect;
 
+export const cmsPageRevisions = pgTable(
+    'cms_page_revisions',
+    {
+        id: serial('id').primaryKey(),
+        cmsPageId: integer('cms_page_id')
+            .notNull()
+            .references(() => cmsPages.id),
+        action: text('action').notNull(),
+        actorId: text('actor_id'),
+        actorName: text('actor_name'),
+        previousSlug: text('previous_slug'),
+        nextSlug: text('next_slug'),
+        previousTitle: text('previous_title'),
+        nextTitle: text('next_title'),
+        previousContent: text('previous_content'),
+        nextContent: text('next_content'),
+        previousState: text('previous_state'),
+        nextState: text('next_state'),
+        previousMetaTitle: text('previous_meta_title'),
+        nextMetaTitle: text('next_meta_title'),
+        previousMetaDescription: text('previous_meta_description'),
+        nextMetaDescription: text('next_meta_description'),
+        previousMetaImageUrl: text('previous_meta_image_url'),
+        nextMetaImageUrl: text('next_meta_image_url'),
+        previousPublishedAt: timestamp('previous_published_at'),
+        nextPublishedAt: timestamp('next_published_at'),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+    },
+    (table) => [
+        index('cms_page_revisions_page_id_idx').on(table.cmsPageId),
+        index('cms_page_revisions_action_idx').on(table.action),
+        index('cms_page_revisions_created_at_idx').on(table.createdAt),
+    ],
+);
+
+export type InsertCmsPageRevision = typeof cmsPageRevisions.$inferInsert;
+export type SelectCmsPageRevision = typeof cmsPageRevisions.$inferSelect;
+
 export const entityRevisions = pgTable(
     'entity_revisions',
     {

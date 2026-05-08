@@ -4,6 +4,7 @@ import {
     type CreateCmsPageInput,
     createCmsPage,
     isCmsPageState,
+    restoreCmsPageRevision,
     softDeleteCmsPage,
     updateCmsPage,
     updateCmsPageState,
@@ -66,11 +67,14 @@ export async function createCmsPageAction(
     _previousState: CmsPageFormState,
     formData: FormData,
 ): Promise<CmsPageFormState> {
-    await auth(['admin']);
+    const authContext = await auth(['admin']);
 
     let pageId: number;
     try {
-        pageId = await createCmsPage(cmsPageInputFromForm(formData));
+        pageId = await createCmsPage(cmsPageInputFromForm(formData), {
+            id: authContext.user.id,
+            name: authContext.user.userName,
+        });
     } catch (error) {
         return {
             success: false,
@@ -87,13 +91,19 @@ export async function updateCmsPageAction(
     _previousState: CmsPageFormState,
     formData: FormData,
 ): Promise<CmsPageFormState> {
-    await auth(['admin']);
+    const authContext = await auth(['admin']);
 
     try {
-        await updateCmsPage({
-            id: pageId,
-            ...cmsPageInputFromForm(formData),
-        });
+        await updateCmsPage(
+            {
+                id: pageId,
+                ...cmsPageInputFromForm(formData),
+            },
+            {
+                id: authContext.user.id,
+                name: authContext.user.userName,
+            },
+        );
     } catch (error) {
         return {
             success: false,
@@ -106,10 +116,13 @@ export async function updateCmsPageAction(
 }
 
 export async function publishCmsPageAction(pageId: number) {
-    await auth(['admin']);
+    const authContext = await auth(['admin']);
 
     try {
-        await updateCmsPageState(pageId, 'published');
+        await updateCmsPageState(pageId, 'published', {
+            id: authContext.user.id,
+            name: authContext.user.userName,
+        });
     } catch (error) {
         const message = encodeURIComponent(cmsPageErrorMessage(error));
         redirect(`${KnownPages.CmsPage(pageId)}?publishError=${message}`);
@@ -118,16 +131,34 @@ export async function publishCmsPageAction(pageId: number) {
 }
 
 export async function unpublishCmsPageAction(pageId: number) {
-    await auth(['admin']);
+    const authContext = await auth(['admin']);
 
-    await updateCmsPageState(pageId, 'draft');
+    await updateCmsPageState(pageId, 'draft', {
+        id: authContext.user.id,
+        name: authContext.user.userName,
+    });
     revalidateCmsPagePaths(pageId);
 }
 
 export async function deleteCmsPageAction(pageId: number) {
-    await auth(['admin']);
+    const authContext = await auth(['admin']);
 
-    await softDeleteCmsPage(pageId);
+    await softDeleteCmsPage(pageId, {
+        id: authContext.user.id,
+        name: authContext.user.userName,
+    });
     revalidateCmsPagePaths(pageId);
     redirect(KnownPages.CmsPages);
+}
+
+export async function restoreCmsPageRevisionAction(
+    pageId: number,
+    revisionId: number,
+) {
+    const authContext = await auth(['admin']);
+    await restoreCmsPageRevision(pageId, revisionId, {
+        id: authContext.user.id,
+        name: authContext.user.userName,
+    });
+    revalidateCmsPagePaths(pageId);
 }
