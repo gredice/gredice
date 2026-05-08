@@ -52,7 +52,9 @@ function getVapidConfig() {
         const privateKeyBuffer = base64UrlDecode(privateKey);
 
         if (publicKeyBuffer.length !== 65 || privateKeyBuffer.length !== 32) {
-            console.error('Invalid VAPID key lengths.');
+            console.error(
+                `Invalid VAPID key lengths. Expected public key: 65 bytes (got ${publicKeyBuffer.length}), private key: 32 bytes (got ${privateKeyBuffer.length})`,
+            );
             cachedVapidConfig = null;
             return null;
         }
@@ -242,33 +244,42 @@ export async function sendWebPush(
         return { status: 'invalid-subscription' };
     }
 
-    const prk = hkdfSync(
-        'sha256',
-        sharedSecret,
-        authSecret,
-        Buffer.from('Content-Encoding: auth\u0000'),
-        32,
+    const prk = Buffer.from(
+        hkdfSync(
+            'sha256',
+            sharedSecret,
+            authSecret,
+            Buffer.from('Content-Encoding: auth\u0000'),
+            32,
+        ),
     );
 
     const context = createContext(clientPublicKey, serverPublicKey);
 
-    const contentEncryptionKey = hkdfSync(
-        'sha256',
-        prk,
-        salt,
-        Buffer.concat([
-            Buffer.from('Content-Encoding: aes128gcm\u0000'),
-            context,
-        ]),
-        16,
+    const contentEncryptionKey = Buffer.from(
+        hkdfSync(
+            'sha256',
+            prk,
+            salt,
+            Buffer.concat([
+                Buffer.from('Content-Encoding: aes128gcm\u0000'),
+                context,
+            ]),
+            16,
+        ),
     );
 
-    const nonce = hkdfSync(
-        'sha256',
-        prk,
-        salt,
-        Buffer.concat([Buffer.from('Content-Encoding: nonce\u0000'), context]),
-        12,
+    const nonce = Buffer.from(
+        hkdfSync(
+            'sha256',
+            prk,
+            salt,
+            Buffer.concat([
+                Buffer.from('Content-Encoding: nonce\u0000'),
+                context,
+            ]),
+            12,
+        ),
     );
 
     const bodyPayload = JSON.stringify({

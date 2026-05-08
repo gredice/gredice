@@ -118,7 +118,10 @@ export const webPushSubscriptions = pgTable(
         updatedAt: timestamp('updated_at').notNull().defaultNow(),
     },
     (table) => [
-        uniqueIndex('web_push_subscriptions_endpoint_idx').on(table.endpoint),
+        uniqueIndex('web_push_subscriptions_endpoint_account_id_idx').on(
+            table.endpoint,
+            table.accountId,
+        ),
         index('web_push_subscriptions_account_id_idx').on(table.accountId),
         index('web_push_subscriptions_user_id_idx').on(table.userId),
     ],

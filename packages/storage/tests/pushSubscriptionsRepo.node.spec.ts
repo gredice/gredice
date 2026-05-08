@@ -8,6 +8,7 @@ import {
     removePushSubscription,
     savePushSubscription,
 } from '@gredice/storage';
+import { ensureFarmId } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
 function toBase64Url(buffer: Buffer) {
@@ -20,6 +21,8 @@ function toBase64Url(buffer: Buffer) {
 
 test('savePushSubscription upserts and retrieves subscriptions', async () => {
     createTestDb();
+    await ensureFarmId();
+
     const email = `push-user-${Date.now()}@example.com`;
     const userId = await createUserWithPassword(email, 'password');
     const user = await getUser(userId);
@@ -57,6 +60,37 @@ test('savePushSubscription upserts and retrieves subscriptions', async () => {
         keys,
         userAgent: 'updated-agent',
     });
+
+    subscriptions = await getPushSubscriptionsForNotification({
+        accountId,
+        userId,
+    });
+    assert.equal(subscriptions.length, 1);
+    assert.equal(subscriptions[0]?.userAgent, 'updated-agent');
+
+    const otherUserId = await createUserWithPassword(
+        `push-user-other-${Date.now()}@example.com`,
+        'password',
+    );
+    const otherUser = await getUser(otherUserId);
+    assert.ok(otherUser);
+    const otherAccountId = otherUser.accounts[0]?.accountId;
+    assert.ok(otherAccountId);
+
+    await savePushSubscription({
+        accountId: otherAccountId,
+        userId: otherUserId,
+        endpoint,
+        keys,
+        userAgent: 'other-account-agent',
+    });
+
+    subscriptions = await getPushSubscriptionsForNotification({
+        accountId: otherAccountId,
+        userId: otherUserId,
+    });
+    assert.equal(subscriptions.length, 1);
+    assert.equal(subscriptions[0]?.userAgent, 'other-account-agent');
 
     subscriptions = await getPushSubscriptionsForNotification({
         accountId,

@@ -169,7 +169,10 @@ async function notifyPushSubscribers(
             }
         }
     } catch (error) {
-        console.error('Failed to broadcast push notification', error);
+        console.error(
+            `Failed to broadcast push notification for notification ${notification.id} (account ${notification.accountId})`,
+            error,
+        );
     }
 }
 

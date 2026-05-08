@@ -29,7 +29,13 @@ function getNavigatorPlatform() {
 
 export function PushNotificationManager() {
     const { data } = useCurrentUser<User>();
-    const isLoggedIn = Boolean(data?.isLogginedIn && data.user);
+    const currentUser = data as
+        | (NonNullable<typeof data> & { isLoggedIn?: boolean })
+        | undefined;
+    const isLoggedIn = Boolean(
+        (currentUser?.isLoggedIn ?? currentUser?.isLogginedIn) &&
+            currentUser.user,
+    );
     const [attempted, setAttempted] = useState(false);
 
     useEffect(() => {

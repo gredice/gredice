@@ -3,7 +3,6 @@ import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { storage } from '..';
 import {
-    type InsertWebPushSubscription,
     type SelectWebPushSubscription,
     webPushSubscriptions,
 } from '../schema';
@@ -23,7 +22,7 @@ export type SavePushSubscriptionInput = {
 
 export async function savePushSubscription(input: SavePushSubscriptionInput) {
     const now = new Date();
-    const values: InsertWebPushSubscription & { id: string } = {
+    const values: typeof webPushSubscriptions.$inferInsert = {
         id: randomUUID(),
         accountId: input.accountId,
         userId: input.userId,
@@ -41,9 +40,11 @@ export async function savePushSubscription(input: SavePushSubscriptionInput) {
         .insert(webPushSubscriptions)
         .values(values)
         .onConflictDoUpdate({
-            target: webPushSubscriptions.endpoint,
+            target: [
+                webPushSubscriptions.endpoint,
+                webPushSubscriptions.accountId,
+            ],
             set: {
-                accountId: input.accountId,
                 userId: input.userId,
                 auth: input.keys.auth,
                 p256dh: input.keys.p256dh,

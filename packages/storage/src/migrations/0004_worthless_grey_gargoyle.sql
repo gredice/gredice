@@ -14,6 +14,6 @@ CREATE TABLE "web_push_subscriptions" (
 --> statement-breakpoint
 ALTER TABLE "web_push_subscriptions" ADD CONSTRAINT "web_push_subscriptions_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "web_push_subscriptions" ADD CONSTRAINT "web_push_subscriptions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE UNIQUE INDEX "web_push_subscriptions_endpoint_idx" ON "web_push_subscriptions" USING btree ("endpoint");--> statement-breakpoint
+CREATE UNIQUE INDEX "web_push_subscriptions_endpoint_account_id_idx" ON "web_push_subscriptions" USING btree ("endpoint","account_id");--> statement-breakpoint
 CREATE INDEX "web_push_subscriptions_account_id_idx" ON "web_push_subscriptions" USING btree ("account_id");--> statement-breakpoint
 CREATE INDEX "web_push_subscriptions_user_id_idx" ON "web_push_subscriptions" USING btree ("user_id");

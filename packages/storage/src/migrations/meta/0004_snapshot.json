@@ -3629,11 +3629,17 @@
         }
       },
       "indexes": {
-        "web_push_subscriptions_endpoint_idx": {
-          "name": "web_push_subscriptions_endpoint_idx",
+        "web_push_subscriptions_endpoint_account_id_idx": {
+          "name": "web_push_subscriptions_endpoint_account_id_idx",
           "columns": [
             {
               "expression": "endpoint",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "account_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
