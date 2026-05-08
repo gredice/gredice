@@ -5,7 +5,7 @@ import {
 } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Delete, Edit, Megaphone } from '@signalco/ui-icons';
+import { Delete, Edit, ExternalLink, Megaphone } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -85,6 +85,18 @@ export default async function CmsPageDetailsPage({
                             >
                                 <Edit className="size-4" />
                                 <span>Uredi</span>
+                            </Row>
+                        </Link>
+                        <Link
+                            href={KnownPages.CmsPagePreview(id)}
+                            target="_blank"
+                        >
+                            <Row
+                                spacing={1}
+                                className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
+                            >
+                                <ExternalLink className="size-4" />
+                                <span>Preview</span>
                             </Row>
                         </Link>
                         <form
