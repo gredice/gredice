@@ -82,7 +82,7 @@ export default function DeliveryPage() {
                         <a href="#osobno-preuzimanje">
                             lokacije za osobno preuzimanje
                         </a>
-                        :
+                        :{' '}
                         <strong>
                             {formatPrice(distanceSurchargePerKm)} po kilometru
                         </strong>
@@ -215,7 +215,11 @@ export default function DeliveryPage() {
                                             }}
                                         >
                                             <strong>
-                                                {formatPrice(distanceFee)}
+                                                {location.distance} km ×{' '}
+                                                {formatPrice(
+                                                    distanceSurchargePerKm,
+                                                )}
+                                                /km = {formatPrice(distanceFee)}
                                             </strong>
                                         </td>
                                     </tr>
@@ -254,6 +258,7 @@ export default function DeliveryPage() {
                                     }}
                                 >
                                     <strong>
+                                        udaljenost ×{' '}
                                         {formatPrice(distanceSurchargePerKm)}
                                         /km
                                     </strong>
