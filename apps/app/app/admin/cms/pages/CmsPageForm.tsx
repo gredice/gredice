@@ -1,6 +1,7 @@
 "use client";
 
 import type { SelectCmsPage } from '@gredice/storage';
+import { SectionsView } from '@signalco/cms-core/SectionsView';
 import { cmsPageSectionComponents } from '@gredice/storage/cmsPageSections';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
@@ -9,8 +10,9 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { useActionState, useId, useMemo, useRef, useState } from 'react';
-import type { CmsPageFormState } from './actions';
+import { useActionState, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { sectionsComponentRegistry } from '../../../../components/shared/sectionsComponentRegistry';
+import type { CmsPageAutosaveState, CmsPageFormState } from './actions';
 
 type CmsPageFormProps = {
   page?: SelectCmsPage;
@@ -19,6 +21,7 @@ type CmsPageFormProps = {
     formData: FormData,
   ) => Promise<CmsPageFormState>;
   submitLabel: string;
+  autosaveAction?: (formData: FormData) => Promise<CmsPageAutosaveState>;
 };
 
 type CmsPageSectionData = {
@@ -175,7 +178,7 @@ function validateSection(section: CmsPageEditableSection) {
         .map((field) => `${field.label} je obavezno polje.`);
 }
 
-export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
+export function CmsPageForm({ page, action, submitLabel, autosaveAction }: CmsPageFormProps) {
   const [state, formAction, pending] = useActionState(action, null);
   const reactId = useId();
   const newSectionIdPrefix = useMemo(
@@ -201,6 +204,52 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
     : preserveFallbackContent && sections.length === 0
       ? page?.content ?? ""
       : builderContent;
+  const [autosaveStatus, setAutosaveStatus] = useState("saved");
+  const [autosaveMessage, setAutosaveMessage] = useState<string | null>(null);
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState(serializedContent);
+  const [previewSections, setPreviewSections] = useState<CmsPageSectionData[]>([]);
+
+  useEffect(() => {
+    if (!autosaveAction) {
+      return;
+    }
+
+    if (serializedContent === lastSavedSnapshot) {
+      setAutosaveStatus("saved");
+      return;
+    }
+
+    setAutosaveStatus("unsaved");
+    const timer = setTimeout(async () => {
+      setAutosaveStatus("saving");
+      const formData = new FormData();
+      formData.set("title", page?.title ?? "");
+      formData.set("slug", page?.slug ?? "");
+      formData.set("state", "draft");
+      formData.set("content", serializedContent);
+      formData.set("metaTitle", page?.metaTitle ?? "");
+      formData.set("metaDescription", page?.metaDescription ?? "");
+      formData.set("metaImageUrl", page?.metaImageUrl ?? "");
+      formData.set("canonicalPath", page?.canonicalPath ?? "");
+
+      const result = await autosaveAction(formData);
+      if (!result.success) {
+        setAutosaveStatus("failed");
+        setAutosaveMessage(result.message);
+        return;
+      }
+
+      setAutosaveStatus("saved");
+      setAutosaveMessage(result.message);
+      setLastSavedSnapshot(serializedContent);
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [autosaveAction, serializedContent, lastSavedSnapshot, page]);
+
+  useEffect(() => {
+    setPreviewSections(parseSections(serializedContent).sections);
+  }, [serializedContent]);
 
   return (
     <Card className="max-w-3xl">
@@ -223,6 +272,11 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
         >
           <Stack spacing={4}>
             <Stack spacing={3}>
+              {autosaveAction && (
+                <Typography level="body3" secondary>
+                  Autosave: {autosaveStatus}{autosaveMessage ? ` • ${autosaveMessage}` : ""}
+                </Typography>
+              )}
               <Input
                 name="title"
                 label="Naslov"
@@ -509,6 +563,16 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                     ))}
                 </Row>
               </Stack>
+            </Stack>
+
+            <Stack spacing={2}>
+              <Typography level="h3" semiBold>Live preview</Typography>
+              <Card className="p-4">
+                <SectionsView
+                  sectionsData={previewSections}
+                  componentsRegistry={sectionsComponentRegistry}
+                />
+              </Card>
             </Stack>
 
             <Stack spacing={3}>

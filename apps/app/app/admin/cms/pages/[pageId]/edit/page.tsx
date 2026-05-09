@@ -7,7 +7,7 @@ import { AdminPageHeader } from '../../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../../lib/auth/auth';
 import { KnownPages } from '../../../../../../src/KnownPages';
-import { updateCmsPageAction } from '../../actions';
+import { autosaveCmsPageAction, updateCmsPageAction } from '../../actions';
 import { CmsPageForm } from '../../CmsPageForm';
 
 export const dynamic = 'force-dynamic';
@@ -31,6 +31,7 @@ export default async function EditCmsPagePage({
     }
 
     const updateAction = updateCmsPageAction.bind(null, id);
+    const autosaveAction = autosaveCmsPageAction.bind(null, id);
 
     return (
         <Stack spacing={4}>
@@ -62,6 +63,7 @@ export default async function EditCmsPagePage({
                 page={page}
                 action={updateAction}
                 submitLabel="Spremi promjene"
+                autosaveAction={autosaveAction}
             />
         </Stack>
     );
