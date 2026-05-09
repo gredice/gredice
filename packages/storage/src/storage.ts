@@ -35,7 +35,8 @@ function getDbConnectionString() {
 let pool: Pool | null = null;
 let testPool: PgPool | null = null;
 let pgliteClient: PGlite | null = null;
-let client: StorageDatabase | PgliteStorageDatabase | null = null;
+let pgliteStorageClient: PgliteStorageDatabase | null = null;
+let client: StorageDatabase | null = null;
 
 function isPgliteTest() {
     return process.env.GREDICE_TEST_DB_PROVIDER === 'pglite';
@@ -71,17 +72,20 @@ function loadPgliteMigrator() {
     return migratorModule.migrate;
 }
 
+function pgliteStorage() {
+    if (!pgliteStorageClient) {
+        console.debug('Instantiating PgliteDatabase for testing');
+        const { PGlite: PGliteClient, pgliteDrizzle } = loadPgliteDriver();
+        pgliteClient = new PGliteClient(getPgliteDataDir());
+        pgliteStorageClient = pgliteDrizzle(pgliteClient, { schema });
+    }
+    return pgliteStorageClient;
+}
+
 export function storage(): StorageDatabase {
     if (isTest) {
         if (isPgliteTest()) {
-            if (!client) {
-                console.debug('Instantiating PgliteDatabase for testing');
-                const { PGlite: PGliteClient, pgliteDrizzle } =
-                    loadPgliteDriver();
-                pgliteClient = new PGliteClient(getPgliteDataDir());
-                client = pgliteDrizzle(pgliteClient, { schema });
-            }
-            return client as unknown as NodePgDatabase<typeof schema>;
+            return pgliteStorage() as NodePgDatabase<typeof schema>;
         }
 
         if (!client) {
@@ -111,12 +115,9 @@ export function storage(): StorageDatabase {
 export async function migrate() {
     if (isTest) {
         if (isPgliteTest()) {
-            await loadPgliteMigrator()(
-                storage() as unknown as PgliteStorageDatabase,
-                {
-                    migrationsFolder: './src/migrations',
-                },
-            );
+            await loadPgliteMigrator()(pgliteStorage(), {
+                migrationsFolder: './src/migrations',
+            });
             return;
         }
 
@@ -131,6 +132,7 @@ export async function closeStorage() {
         if (pgliteClient) {
             await pgliteClient.close();
             pgliteClient = null;
+            pgliteStorageClient = null;
         }
         if (testPool) {
             await testPool.end();
