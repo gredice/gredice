@@ -875,10 +875,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { user, accountId } = context.get('authContext');
             const accountUsers = await getAccountUsers(accountId);
-            if (
-                accountUsers.length !== 1 ||
-                accountUsers[0]?.userId !== user.id
-            ) {
+            if (accountUsers.length !== 1) {
+                return context.json(
+                    { error: 'Račun mora imati točno jednog korisnika.' },
+                    400,
+                );
+            }
+
+            const accountUser = accountUsers[0];
+            if (!accountUser || accountUser.userId !== user.id) {
                 return context.json(
                     { error: 'Račun mora imati točno jednog korisnika.' },
                     400,
@@ -892,13 +897,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 '72h',
             );
             const confirmLink = `https://vrt.gredice.com/racun/brisanje?token=${token}`;
+            const email = accountUser.user.userName;
             await sendEmail({
                 from: 'suncokret@obavijesti.gredice.com',
-                to: user.userName,
+                to: email,
                 subject: 'Gredice - potvrda brisanja računa',
                 template: AccountDeleteConfirmationTemplate({
                     confirmLink,
-                    email: user.userName,
+                    email,
                 }),
                 templateName: 'account-delete-confirmation',
                 messageType: 'account',
