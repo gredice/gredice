@@ -1,10 +1,13 @@
+import { Footer1 } from '@signalco/cms-components-marketing/Footer';
 import type { SectionData } from '@signalco/cms-core/SectionData';
 import { SectionsView } from '@signalco/cms-core/SectionsView';
-import { Logotype } from '../../www/components/Logotype';
-import { sectionsComponentRegistry } from '../../www/components/shared/sectionsComponentRegistry';
-import { KnownPages } from '../../www/src/KnownPages';
+import { memo } from 'react';
+import { Logotype } from './Logotype';
 
 const wwwOrigin = 'https://www.gredice.com';
+const statusFooterComponentRegistry = {
+    Footer1: memo(Footer1),
+};
 
 const footerSections: SectionData[] = [
     {
@@ -13,20 +16,20 @@ const footerSections: SectionData[] = [
         features: [
             {
                 ctas: [
-                    { href: toWwwUrl(KnownPages.Landing), label: 'Naslovnica' },
-                    { href: toWwwUrl(KnownPages.AboutUs), label: 'O nama' },
-                    { href: toWwwUrl(KnownPages.Contact), label: 'Kontakt' },
+                    { href: toWwwUrl('/'), label: 'Naslovnica' },
+                    { href: toWwwUrl('/o-nama'), label: 'O nama' },
+                    { href: toWwwUrl('/kontakt'), label: 'Kontakt' },
                 ],
                 header: 'Gredice',
             },
             {
                 ctas: [
                     {
-                        href: toWwwUrl(KnownPages.LegalPrivacy),
+                        href: toWwwUrl('/legalno/politika-privatnosti'),
                         label: 'Politika privatnosti',
                     },
                     {
-                        href: toWwwUrl(KnownPages.LegalTerms),
+                        href: toWwwUrl('/legalno/uvjeti-koristenja'),
                         label: 'Uvjeti korištenja',
                     },
                 ],
@@ -48,7 +51,7 @@ export function StatusFooter() {
     return (
         <footer className="site-footer status-footer">
             <SectionsView
-                componentsRegistry={sectionsComponentRegistry}
+                componentsRegistry={statusFooterComponentRegistry}
                 sectionsData={footerSections}
             />
         </footer>
