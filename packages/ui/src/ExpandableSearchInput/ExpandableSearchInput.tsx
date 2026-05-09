@@ -21,7 +21,7 @@ export function ExpandableSearchInput({
     className,
     inputClassName,
 }: ExpandableSearchInputProps) {
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(Boolean(value));
     const rootRef = useRef<HTMLDivElement>(null);
     const desktopInputRef = useRef<HTMLInputElement>(null);
     const mobileInputRef = useRef<HTMLInputElement>(null);
@@ -31,6 +31,12 @@ export function ExpandableSearchInput({
             mobileInputRef.current?.focus();
         }
     }, [isExpanded]);
+
+    useEffect(() => {
+        if (value) {
+            setIsExpanded(true);
+        }
+    }, [value]);
 
     useEffect(() => {
         const handlePointerDown = (event: PointerEvent) => {
@@ -61,7 +67,7 @@ export function ExpandableSearchInput({
                 <IconButton
                     variant="plain"
                     title="Pretraži"
-                    onClick={() => setIsExpanded((open) => !open)}
+                    onClick={() => setIsExpanded(true)}
                 >
                     <Search className="size-5" />
                 </IconButton>

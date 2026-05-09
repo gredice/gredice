@@ -6,6 +6,7 @@ export type CmsPageSectionComponent = {
         label: string;
         type: 'text' | 'textarea';
         rows?: number;
+        required?: boolean;
     }>;
     isCustom?: boolean;
 };
@@ -15,24 +16,42 @@ export const cmsPageSectionComponents = [
         component: 'Heading1',
         label: 'Heading1',
         fields: [
-            { key: 'header', label: 'Naslov', type: 'text' },
-            { key: 'description', label: 'Opis', type: 'textarea', rows: 4 },
+            { key: 'header', label: 'Naslov', type: 'text', required: true },
+            {
+                key: 'description',
+                label: 'Opis',
+                type: 'textarea',
+                rows: 4,
+                required: true,
+            },
         ],
     },
     {
         component: 'Feature1',
         label: 'Feature1',
         fields: [
-            { key: 'header', label: 'Naslov', type: 'text' },
-            { key: 'description', label: 'Opis', type: 'textarea', rows: 4 },
+            { key: 'header', label: 'Naslov', type: 'text', required: true },
+            {
+                key: 'description',
+                label: 'Opis',
+                type: 'textarea',
+                rows: 4,
+                required: true,
+            },
         ],
     },
     {
         component: 'Faq1',
         label: 'Faq1',
         fields: [
-            { key: 'header', label: 'Naslov', type: 'text' },
-            { key: 'description', label: 'Opis', type: 'textarea', rows: 4 },
+            { key: 'header', label: 'Naslov', type: 'text', required: true },
+            {
+                key: 'description',
+                label: 'Opis',
+                type: 'textarea',
+                rows: 4,
+                required: true,
+            },
         ],
     },
     {

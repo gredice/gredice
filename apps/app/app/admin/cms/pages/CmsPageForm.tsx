@@ -44,6 +44,13 @@ const cmsPageSectionItems = cmsPageSectionComponents.map((component) => ({
     label: component.label,
 }));
 
+const cmsPageSectionComponentsByName = new Map(
+    cmsPageSectionComponents.map((component) => [
+        component.component,
+        component,
+    ]),
+);
+
 function parseSections(content?: string | null) {
     if (!content) {
         return { isStructured: true, sections: [] };
@@ -142,6 +149,28 @@ function moveSection(
 
     next.splice(targetIndex, 0, movingSection);
     return next;
+}
+
+function copySection(
+    section: CmsPageEditableSection,
+    id: string,
+): CmsPageEditableSection {
+    return {
+        id,
+        data: JSON.parse(JSON.stringify(section.data)) as CmsPageSectionData,
+    };
+}
+
+function validateSection(section: CmsPageEditableSection) {
+    const fields =
+        cmsPageSectionComponentsByName.get(section.data.component)?.fields ?? [];
+    return fields
+        .filter((field) => field.required)
+        .filter((field) => {
+            const value = section.data[field.key];
+            return !(typeof value === 'string' && value.trim().length > 0);
+        })
+        .map((field) => `${field.label} je obavezno polje.`);
 }
 
 export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
@@ -283,6 +312,54 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                                                             <Button
                                                                 type="button"
                                                                 variant="plain"
+                                                                onClick={() => {
+                                                                    setSections(
+                                                                        (
+                                                                            current,
+                                                                        ) => {
+                                                                            const index =
+                                                                                current.findIndex(
+                                                                                    (
+                                                                                        candidate,
+                                                                                    ) =>
+                                                                                        candidate.id ===
+                                                                                        section.id,
+                                                                                );
+                                                                            if (
+                                                                                index <
+                                                                                0
+                                                                            ) {
+                                                                                return current;
+                                                                            }
+                                                                            const sectionId =
+                                                                                nextSectionId.current;
+                                                                            nextSectionId.current += 1;
+                                                                            const duplicate =
+                                                                                copySection(
+                                                                                    section,
+                                                                                    `${newSectionIdPrefix}-${sectionId}`,
+                                                                                );
+                                                                            return [
+                                                                                ...current.slice(
+                                                                                    0,
+                                                                                    index +
+                                                                                        1,
+                                                                                ),
+                                                                                duplicate,
+                                                                                ...current.slice(
+                                                                                    index +
+                                                                                        1,
+                                                                                ),
+                                                                            ];
+                                                                        },
+                                                                    );
+                                                                }}
+                                                            >
+                                                                Dupliciraj
+                                                            </Button>
+                                                            <Button
+                                                                type="button"
+                                                                variant="plain"
                                                                 color="danger"
                                                                 onClick={() =>
                                                                     setSections(
@@ -303,30 +380,58 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                                                             </Button>
                                                         </Row>
                                                     </Row>
-                                                    {(cmsPageSectionComponents.find((component) => component.component === section.data.component)?.fields ?? []).map((field) =>
-                                                        field.type === 'textarea' ? (
-                                                            <label key={field.key} className="space-y-1">
+                                                    {(
+                                                        cmsPageSectionComponentsByName.get(
+                                                            section.data
+                                                                .component,
+                                                        )?.fields ?? []
+                                                    ).map((field) =>
+                                                        field.type ===
+                                                        'textarea' ? (
+                                                            <label
+                                                                key={field.key}
+                                                                className="space-y-1"
+                                                            >
                                                                 <span className="block text-sm font-medium">
                                                                     {field.label}
                                                                 </span>
                                                                 <textarea
-                                                                    value={sectionValue(section, field.key)}
-                                                                    rows={field.rows ?? 4}
+                                                                    value={sectionValue(
+                                                                        section,
+                                                                        field.key,
+                                                                    )}
+                                                                    rows={
+                                                                        field.rows ??
+                                                                        4
+                                                                    }
                                                                     className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                                                    onChange={(event) => {
-                                                                        const value = event.target.value;
-                                                                        setSections((current) =>
-                                                                            current.map((currentSection) =>
-                                                                                currentSection.id === section.id
-                                                                                    ? {
-                                                                                          ...currentSection,
-                                                                                          data: {
-                                                                                              ...currentSection.data,
-                                                                                              [field.key]: value,
-                                                                                          },
-                                                                                      }
-                                                                                    : currentSection,
-                                                                            ),
+                                                                    onChange={(
+                                                                        event,
+                                                                    ) => {
+                                                                        const value =
+                                                                            event
+                                                                                .target
+                                                                                .value;
+                                                                        setSections(
+                                                                            (
+                                                                                current,
+                                                                            ) =>
+                                                                                current.map(
+                                                                                    (
+                                                                                        currentSection,
+                                                                                    ) =>
+                                                                                        currentSection.id ===
+                                                                                        section.id
+                                                                                            ? {
+                                                                                                  ...currentSection,
+                                                                                                  data: {
+                                                                                                      ...currentSection.data,
+                                                                                                      [field.key]:
+                                                                                                          value,
+                                                                                                  },
+                                                                                              }
+                                                                                            : currentSection,
+                                                                                ),
                                                                         );
                                                                     }}
                                                                 />
@@ -334,27 +439,56 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                                                         ) : (
                                                             <Input
                                                                 key={field.key}
-                                                                label={field.label}
-                                                                value={sectionValue(section, field.key)}
-                                                                onChange={(event) => {
-                                                                    const value = event.target.value;
-                                                                    setSections((current) =>
-                                                                        current.map((currentSection) =>
-                                                                            currentSection.id === section.id
-                                                                                ? {
-                                                                                      ...currentSection,
-                                                                                      data: {
-                                                                                          ...currentSection.data,
-                                                                                          [field.key]: value,
-                                                                                      },
-                                                                                  }
-                                                                                : currentSection,
-                                                                        ),
+                                                                label={
+                                                                    field.label
+                                                                }
+                                                                value={sectionValue(
+                                                                    section,
+                                                                    field.key,
+                                                                )}
+                                                                onChange={(
+                                                                    event,
+                                                                ) => {
+                                                                    const value =
+                                                                        event
+                                                                            .target
+                                                                            .value;
+                                                                    setSections(
+                                                                        (
+                                                                            current,
+                                                                        ) =>
+                                                                            current.map(
+                                                                                (
+                                                                                    currentSection,
+                                                                                ) =>
+                                                                                    currentSection.id ===
+                                                                                    section.id
+                                                                                        ? {
+                                                                                              ...currentSection,
+                                                                                              data: {
+                                                                                                  ...currentSection.data,
+                                                                                                  [field.key]:
+                                                                                                      value,
+                                                                                              },
+                                                                                          }
+                                                                                        : currentSection,
+                                                                            ),
                                                                     );
                                                                 }}
                                                             />
                                                         ),
                                                     )}
+                                                    {validateSection(
+                                                        section,
+                                                    ).map((error) => (
+                                                        <Typography
+                                                            key={error}
+                                                            level="body3"
+                                                            className="text-red-600"
+                                                        >
+                                                            {error}
+                                                        </Typography>
+                                                    ))}
                                                 </Stack>
                                             </Card>
                                         ))}
