@@ -47,7 +47,13 @@ async function assertFarmerCanCompletePlanting(
         throw new Error('Nemaš dozvolu za označavanje ovog sijanja.');
     }
 
-    if (field.assignedUserId && field.assignedUserId !== userId) {
+    const assignedUserIds = field.assignedUserIds ?? [];
+    const isAssignedToAnotherUser =
+        assignedUserIds.length > 0
+            ? !assignedUserIds.includes(userId)
+            : !!field.assignedUserId && field.assignedUserId !== userId;
+
+    if (isAssignedToAnotherUser) {
         throw new Error('Ovo sijanje je dodijeljeno drugom korisniku.');
     }
 
