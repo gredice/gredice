@@ -64,6 +64,67 @@ function parseEntityRefId(value: string | null | undefined) {
     return Number.parseInt(trimmedValue, 10);
 }
 
+
+async function buildEffectiveEntity(
+    entity: SelectEntity & {
+        attributes: (SelectAttributeValue & {
+            attributeDefinition: SelectAttributeDefinition;
+        })[];
+        entityType: SelectEntityType & {
+            attributeDefinitions: SelectAttributeDefinition[];
+        };
+    },
+    visited = new Set<number>(),
+) {
+    if (visited.has(entity.id)) {
+        throw new Error('Cycle detected in entity hierarchy.');
+    }
+    visited.add(entity.id);
+
+    if (!entity.parentId) {
+        return populateMissingAttributes(entity);
+    }
+
+    const parent = await storage().query.entities.findFirst({
+        where: and(eq(entities.id, entity.parentId), eq(entities.isDeleted, false)),
+        with: {
+            attributes: {
+                where: eq(attributeValues.isDeleted, false),
+                with: {
+                    attributeDefinition: true,
+                },
+            },
+            entityType: {
+                with: {
+                    attributeDefinitions: {
+                        where: eq(attributeDefinitions.isDeleted, false),
+                    },
+                },
+            },
+        },
+    });
+
+    if (!parent || parent.entityTypeName !== entity.entityTypeName) {
+        return populateMissingAttributes(entity);
+    }
+
+    const parentEffective = await buildEffectiveEntity(parent, visited);
+    const childByDefinitionId = new Map(
+        entity.attributes.map((attribute) => [
+            attribute.attributeDefinitionId,
+            attribute,
+        ]),
+    );
+
+    const inheritedAttributes = parentEffective.attributes.filter(
+        (attribute) => !childByDefinitionId.has(attribute.attributeDefinitionId),
+    );
+
+    return populateMissingAttributes({
+        ...entity,
+        attributes: [...entity.attributes, ...inheritedAttributes],
+    });
+}
 function populateMissingAttributes(
     entity: SelectEntity & {
         attributes: (SelectAttributeValue & {
@@ -140,7 +201,7 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
         },
     });
 
-    return rawEntities.map(populateMissingAttributes);
+    return Promise.all(rawEntities.map((entity) => buildEffectiveEntity(entity)));
 }
 
 export async function getEntitiesCount(entityTypeName: string, state?: string) {
