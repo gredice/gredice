@@ -137,14 +137,15 @@ pnpm env:pull
 
 `pnpm env:pull` runs `vercel env pull .env` in `apps/www`, `apps/garden`, `apps/farm`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
 
-## Storage test database (Docker and Dockerless)
+## Storage test database (Docker, local Postgres, and PGlite)
 
 `@gredice/storage` tests start a disposable Postgres database automatically through `pnpm --filter @gredice/storage test`.
 
 - **Default path (Docker available):** uses a disposable Docker Postgres container.
-- **Dockerless fallback:** set `GREDICE_STORAGE_TEST_DB_ADMIN_URL` to a local Postgres admin connection URL (for example `postgres://postgres:postgres@127.0.0.1:5432/postgres`). The test scripts will create a unique per-run database, run migrations/tests, and drop that database during cleanup.
+- **Local Postgres fallback:** set `GREDICE_STORAGE_TEST_DB_ADMIN_URL` to a local Postgres admin connection URL (for example `postgres://postgres:postgres@127.0.0.1:5432/postgres`). The test scripts will create a unique per-run database, run migrations/tests, and drop that database during cleanup.
+- **Embedded fallback:** when Docker is unavailable and no local Postgres admin URL is configured, the scripts use a temporary PGlite database so limited environments such as Codex can still run storage repository tests.
 
-If Docker is unavailable and `GREDICE_STORAGE_TEST_DB_ADMIN_URL` is not set, storage tests fail with an actionable setup message.
+Use Docker or local Postgres when validating behavior that depends on exact Postgres server semantics. The embedded fallback is intended for routine repository tests in service-limited environments.
 
 ### Local and test environment examples
 

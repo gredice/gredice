@@ -1,4 +1,4 @@
-import { migrate } from './storage';
+import { closeStorage, migrate } from './storage';
 
 const main = async () => {
     try {
@@ -8,7 +8,9 @@ const main = async () => {
         console.info('Migration completed in', Date.now() - start, 'ms');
     } catch (error) {
         console.error('Error during migration:', error);
-        process.exit(1);
+        process.exitCode = 1;
+    } finally {
+        await closeStorage();
     }
 };
 

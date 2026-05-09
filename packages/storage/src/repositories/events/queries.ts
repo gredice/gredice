@@ -66,7 +66,7 @@ export function getEvents(
                 ? inArray(events.type, type)
                 : eq(events.type, type),
         ),
-        orderBy: [asc(events.createdAt)],
+        orderBy: [asc(events.createdAt), asc(events.id)],
         offset,
         limit,
     });
