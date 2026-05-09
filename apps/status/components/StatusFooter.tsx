@@ -2,7 +2,7 @@ import { Footer1 } from '@signalco/cms-components-marketing/Footer';
 import type { SectionData } from '@signalco/cms-core/SectionData';
 import { SectionsView } from '@signalco/cms-core/SectionsView';
 import { memo } from 'react';
-import { Logotype } from '../../www/components/Logotype';
+import { Logotype } from './Logotype';
 
 const wwwOrigin = 'https://www.gredice.com';
 const statusFooterComponentRegistry = {
