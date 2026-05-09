@@ -34,6 +34,7 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { getPostHogClient } from '../../../lib/posthog-server';
 
 // Validation schemas
 const createAddressSchema = z.object({
@@ -149,6 +150,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     addressId,
                     accountId,
                 );
+                (await getPostHogClient()).capture({
+                    distinctId: accountId,
+                    event: 'delivery_address_created',
+                    properties: {
+                        city: data.city,
+                        country_code: data.countryCode,
+                        is_default: data.isDefault,
+                    },
+                });
                 return context.json(newAddress, 201);
             } catch (error) {
                 logAddressVerificationFailure('create', error);
@@ -368,6 +378,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 await notifyDeliveryRequestEvent(id, 'cancelled', {
                     reason: cancelReason,
                     note,
+                });
+                (await getPostHogClient()).capture({
+                    distinctId: accountId,
+                    event: 'delivery_request_cancelled',
+                    properties: {
+                        request_id: id,
+                        cancel_reason: cancelReason,
+                    },
                 });
                 return context.json({ success: true });
             } catch (error) {

@@ -1,8 +1,11 @@
-import { getAllRaisedBeds, getGardens } from '@gredice/storage';
+import {
+    getAllRaisedBeds,
+    getGardens,
+    getUniqueAssignableFarmUsersByGardenIds,
+} from '@gredice/storage';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { AdminPageHeader } from '../../../components/admin/navigation';
 import { OperationsTable } from '../../../components/operations/OperationsTable';
 import { auth } from '../../../lib/auth/auth';
 import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
@@ -21,6 +24,15 @@ export default async function OperationsPage({
         getGardens(),
         getAllRaisedBeds(),
     ]);
+    const assignableUsers = (
+        await getUniqueAssignableFarmUsersByGardenIds(
+            gardens.map((garden) => garden.id),
+        )
+    ).map((user) => ({
+        id: user.id,
+        userName: user.userName,
+        displayName: user.displayName,
+    }));
 
     const params = await searchParams;
     const fromFilter =
@@ -29,15 +41,15 @@ export default async function OperationsPage({
 
     return (
         <Stack spacing={2}>
-            <Row justifyContent="space-between">
-                <Typography level="h1" className="text-2xl" semiBold>
-                    Radnje
-                </Typography>
-                <BulkOperationCreateModal
-                    gardens={gardens}
-                    raisedBeds={raisedBeds}
-                />
-            </Row>
+            <AdminPageHeader
+                actions={
+                    <BulkOperationCreateModal
+                        gardens={gardens}
+                        raisedBeds={raisedBeds}
+                        assignableUsers={assignableUsers}
+                    />
+                }
+            />
             <OperationsFilters />
             <Card>
                 <CardOverflow>

@@ -169,6 +169,7 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
                 <CSM
                     key={vertexShader + fragmentShader}
                     baseMaterial={THREE.MeshBasicMaterial}
+                    depthWrite={false}
                     vertexShader={vertexShader}
                     fragmentShader={fragmentShader}
                     uniforms={uniforms}

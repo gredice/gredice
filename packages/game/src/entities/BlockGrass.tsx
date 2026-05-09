@@ -4,6 +4,7 @@ import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { BlockSurfaceDecorationSprites } from './groundDecorations/BlockSurfaceDecorationSprites';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function BlockGrass({ stack, block, rotation }: EntityInstanceProps) {
@@ -29,6 +30,7 @@ export function BlockGrass({ stack, block, rotation }: EntityInstanceProps) {
                 geometry={nodes[`Block_Grass_${variantResolved}_2`].geometry}
                 {...snowPresets.grassFlat}
             />
+            <BlockSurfaceDecorationSprites block={block} surface="grass" />
         </animated.group>
     );
 }

@@ -1,5 +1,4 @@
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { auth } from '../../../lib/auth/auth';
 import { RaisedBedsTableCard } from '../accounts/[accountId]/RaisedBedsTableCard';
 import { RaisedBedsFilters } from './RaisedBedsFilters';
@@ -16,10 +15,6 @@ export default async function RaisedBedsPage({
 
     return (
         <Stack spacing={2}>
-            <Typography level="h1" className="text-2xl" semiBold>
-                Gredice
-            </Typography>
-
             <RaisedBedsFilters />
 
             <RaisedBedsTableCard searchParams={params} />

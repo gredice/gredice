@@ -73,12 +73,19 @@ export function groupRaisedBedsForSchedule(
 
 export const PLANTING_TASK_DURATION_MINUTES = 5;
 
-export const FIELD_STATUSES_TO_INCLUDE = new Set(['new', 'planned', 'sowed']);
+export const FIELD_STATUSES_TO_INCLUDE = new Set([
+    'new',
+    'planned',
+    'pendingVerification',
+    'sowed',
+]);
 export const FIELD_COMPLETED_STATUSES = new Set(['sowed']);
 export const OPERATION_STATUSES_TO_INCLUDE = new Set([
     'new',
     'planned',
+    'pendingVerification',
     'completed',
+    'canceled',
     'cancelled',
 ]);
 
@@ -94,17 +101,39 @@ export function isFieldCompleted(status?: string) {
     return FIELD_COMPLETED_STATUSES.has(status);
 }
 
+export function isFieldPendingVerification(status?: string) {
+    return status === 'pendingVerification';
+}
+
 export function isOperationCompleted(status?: string) {
     return status === 'completed';
 }
 
+export function isOperationPendingVerification(status?: string) {
+    return status === 'pendingVerification';
+}
+
 export function isOperationCancelled(status?: string) {
-    return status === 'cancelled';
+    return status === 'canceled' || status === 'cancelled';
 }
 
 export function formatMinutes(minutes: number, hideUnit = false) {
     const rounded = Math.ceil(Math.max(0, minutes));
     return hideUnit ? `${rounded}` : `${rounded} min`;
+}
+
+export function isTaskDateBeforeToday(date: Date | undefined) {
+    if (!date) {
+        return false;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const taskDate = new Date(date);
+    taskDate.setHours(0, 0, 0, 0);
+
+    return Number.isFinite(taskDate.getTime()) && taskDate < today;
 }
 
 export function getOperationDurationMinutes(

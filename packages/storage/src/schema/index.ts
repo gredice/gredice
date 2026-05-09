@@ -14,6 +14,7 @@ export * from './notificationSettingsSchema';
 export * from './notificationsSchema';
 export * from './operationsSchema';
 export * from './refreshTokensSchema';
+export * from './settingsSchema';
 export * from './shoppingCartSchema';
 export * from './transactionSchema';
 export * from './usersSchema';

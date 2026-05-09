@@ -5,7 +5,11 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { useState } from 'react';
 import type { AttributeInputProps } from '../AttributeInputProps';
 
-export function NumberInput({ value, onChange }: AttributeInputProps) {
+export function NumberInput({
+    value,
+    onChange,
+    attributeDefinition,
+}: AttributeInputProps) {
     const [inputValue, setInputValue] = useState<string>(value || '');
 
     const handleIncrementDecrement = (inc: boolean) => {
@@ -37,11 +41,12 @@ export function NumberInput({ value, onChange }: AttributeInputProps) {
                 <Remove className="size-4" />
             </Button>
             <Input
-                className="w-20 rounded-none"
+                className="w-28 rounded-none"
                 placeholder={'NA'}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onBlur={() => onChange(inputValue || null)}
+                endDecorator={attributeDefinition?.unit}
             />
             <Button
                 className="rounded-l-none h-auto border-l-0"

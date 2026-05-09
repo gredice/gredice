@@ -1,6 +1,7 @@
 import {
     getEntitiesFormatted,
     getInventory,
+    getRaisedBed,
     getShoppingCart,
 } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
@@ -12,6 +13,9 @@ import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
@@ -61,6 +65,29 @@ export default async function ShoppingCartDetailsPage({
     entitiesResults.forEach(({ entityTypeName, entities }) => {
         entitiesLookup[entityTypeName] = entities as EntityStandardized[];
     });
+
+    const raisedBedIds = [
+        ...new Set(
+            cart.items
+                .map((item) => item.raisedBedId)
+                .filter(
+                    (raisedBedId): raisedBedId is number =>
+                        typeof raisedBedId === 'number',
+                ),
+        ),
+    ];
+    const raisedBeds = await Promise.all(
+        raisedBedIds.map(async (raisedBedId) => ({
+            raisedBedId,
+            raisedBed: await getRaisedBed(raisedBedId),
+        })),
+    );
+    const raisedBedPhysicalIdLookup = new Map(
+        raisedBeds.map(({ raisedBedId, raisedBed }) => [
+            raisedBedId,
+            raisedBed?.physicalId,
+        ]),
+    );
 
     // Enhance cart items with entity names
     const enhancedItems = cart.items.map((item) => {
@@ -145,13 +172,22 @@ export default async function ShoppingCartDetailsPage({
 
     return (
         <Stack spacing={4}>
+            <AdminPageTitle title={`Košarica ${cartIdNumber}`} />
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.ShoppingCarts,
+                            },
+                            { label: `Košarica ${cartIdNumber}` },
+                        ]}
+                    />
+                }
+                heading="Detalji košarice"
+            />
             <Stack spacing={2}>
-                <Breadcrumbs
-                    items={[
-                        { label: 'Košarice', href: KnownPages.ShoppingCarts },
-                        { label: `Košarica ${cartIdNumber}` },
-                    ]}
-                />
                 <Typography level="h1" className="text-2xl" semiBold>
                     Detalji košarice
                 </Typography>
@@ -333,7 +369,10 @@ export default async function ShoppingCartDetailsPage({
                                                         item.raisedBedId,
                                                     )}
                                                 >
-                                                    Gr {item.raisedBedId}
+                                                    Gr{' '}
+                                                    {raisedBedPhysicalIdLookup.get(
+                                                        item.raisedBedId,
+                                                    ) ?? item.raisedBedId}
                                                 </Link>
                                             </>
                                         ) : (

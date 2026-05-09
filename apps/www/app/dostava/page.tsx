@@ -16,6 +16,7 @@ import type { Metadata } from 'next';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
+import { formatPrice } from '../../lib/formatPrice';
 import { KnownPages } from '../../src/KnownPages';
 
 export const metadata: Metadata = {
@@ -33,14 +34,11 @@ const deliveryLocations = [
     { name: 'Varaždin', distance: 90 },
 ] as const;
 
-function formatPrice(price: number): string {
-    return `${price.toFixed(2).replace('.', ',')} €`;
-}
-
 export default function DeliveryPage() {
     return (
         <Container maxWidth="md">
             <Stack>
+                <h1 className="sr-only">Dostava</h1>
                 <PageHeader
                     padded
                     header="🚚 Dostava"
@@ -266,7 +264,8 @@ export default function DeliveryPage() {
                                     }}
                                 >
                                     <strong>
-                                        {formatPrice(distanceSurchargePerKm)}/km
+                                        {formatPrice(distanceSurchargePerKm)}
+                                        /km
                                     </strong>
                                 </td>
                                 <td
@@ -280,7 +279,8 @@ export default function DeliveryPage() {
                                     </strong>{' '}
                                     +{' '}
                                     <strong>
-                                        {formatPrice(distanceSurchargePerKm)}/km
+                                        {formatPrice(distanceSurchargePerKm)}
+                                        /km
                                     </strong>
                                 </td>
                             </tr>

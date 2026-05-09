@@ -27,6 +27,8 @@ export const KnownPages = {
     AboutUs: '/o-nama',
     FAQ: '/cesta-pitanja',
     Contact: '/kontakt',
+    Pricing: '/cjenik',
+    Refunds: '/povrati-i-povrat-novca',
 
     LegalPrivacy: '/legalno/politika-privatnosti',
     LegalTerms: '/legalno/uvjeti-koristenja',
@@ -37,5 +39,6 @@ export const KnownPages = {
     LegalOccasions: '/legalno/natjecaji',
 
     GardenApp: 'https://vrt.gredice.com',
+    Status: 'https://status.gredice.com',
     GoogleMapsGrediceHQ: 'https://maps.app.goo.gl/hJbidDQzhHWGCZwS6',
 } as const;

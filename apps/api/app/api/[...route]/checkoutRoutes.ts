@@ -24,6 +24,7 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { getPostHogClient } from '../../../lib/posthog-server';
 import { processItem } from '../../../lib/stripe/processCheckoutSession';
 
 const app = new Hono<{ Variables: AuthVariables }>()
@@ -208,7 +209,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 const valueInCents = Math.round((finalPrice ?? 0) * 100);
                 const quantity = item.amount;
                 const imageUrls = item.shopData.image
-                    ? [`https://www.gredice.com${item.shopData.image}`]
+                    ? [
+                          /^https?:\/\//u.test(item.shopData.image)
+                              ? item.shopData.image
+                              : `https://www.gredice.com${item.shopData.image}`,
+                      ]
                     : [];
 
                 // TODO: Validate item data
@@ -284,8 +289,33 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     await assignStripeCustomerId(account.id, customerId);
                 }
 
+                (await getPostHogClient()).capture({
+                    distinctId: accountId,
+                    event: 'checkout_initiated',
+                    properties: {
+                        cart_id: cartId,
+                        payment_method: 'stripe',
+                        item_count: stripeItems.length,
+                    },
+                });
+
                 return context.json({ sessionId, url });
             }
+
+            (await getPostHogClient()).capture({
+                distinctId: accountId,
+                event: 'checkout_initiated',
+                properties: {
+                    cart_id: cartId,
+                    payment_method: cartInfo.items.some(
+                        (i) => i.currency === 'sunflower',
+                    )
+                        ? 'sunflower'
+                        : 'inventory',
+                    item_count: cartInfo.items.length,
+                },
+            });
+
             return context.json({ success: true });
         },
     )
@@ -341,6 +371,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     500,
                 );
             }
+
+            (await getPostHogClient()).capture({
+                distinctId: accountId,
+                event: 'checkout_cancelled',
+                properties: { session_id: sessionId },
+            });
 
             return context.json({ success: true });
         },

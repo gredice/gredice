@@ -1,10 +1,9 @@
+import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { ShoppingCart } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
-import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
-import { PlantingSeed } from '../../icons/PlantingSeed';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import { PlantPicker } from './RaisedBedPlantPicker';
 
@@ -34,13 +33,12 @@ export function RaisedBedFieldItemEmpty({
     const cartPlantSortId = cartPlantItem
         ? Number(cartPlantItem.entityId)
         : null;
-    const { data: cartPlantSort, isLoading: isCartPlantSortPending } =
-        usePlantSort(cartPlantSortId);
     if (!raisedBed) {
         return null;
     }
 
-    const cartPlantId = cartPlantSort?.information.plant.id;
+    const cartPlantSort = cartPlantItem?.entityData;
+    const cartPlantId = cartPlantSort?.information?.plant?.id;
     const additionalDataRaw = cartPlantItem?.additionalData
         ? JSON.parse(cartPlantItem.additionalData)
         : null;
@@ -50,10 +48,7 @@ export function RaisedBedFieldItemEmpty({
             : null,
     };
 
-    const isLoading =
-        isCartPending ||
-        isGardenPending ||
-        (Boolean(cartPlantSortId) && isCartPlantSortPending);
+    const isLoading = isCartPending || isGardenPending;
     if (isLoading) {
         return (
             <RaisedBedFieldItemButton
@@ -75,12 +70,12 @@ export function RaisedBedFieldItemEmpty({
                     )}
                 >
                     {(isLoading || !cartPlantItem) && (
-                        <PlantingSeed className="size-8 stroke-green-800" />
+                        <PlantingSeedIcon className="size-8 text-green-800" />
                     )}
                     {!isLoading && cartPlantItem && (
                         <>
                             <PlantOrSortImage
-                                coverUrl={cartPlantItem.shopData.image}
+                                plantSort={cartPlantSort}
                                 alt={cartPlantItem.shopData.name ?? 'Nepoznato'}
                                 width={50}
                                 height={50}
@@ -98,7 +93,7 @@ export function RaisedBedFieldItemEmpty({
             raisedBedId={raisedBedId}
             positionIndex={positionIndex}
             inShoppingCart={Boolean(cartPlantItem)}
-            selectedPlantId={cartPlantId}
+            selectedPlantId={cartPlantId ?? null}
             selectedSortId={cartPlantSortId}
             selectedPlantOptions={cartPlantOptions}
         />

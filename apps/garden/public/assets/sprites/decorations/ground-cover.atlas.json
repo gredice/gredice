@@ -1,0 +1,344 @@
+{
+    "atlas": {
+        "cellSize": 512,
+        "columns": 4,
+        "height": 2048,
+        "innerSize": 480,
+        "offsetX": 0,
+        "offsetY": 0,
+        "padding": 16,
+        "rows": 4,
+        "width": 2048
+    },
+    "layout": {
+        "atlasSize": 2048,
+        "columns": 4,
+        "pageCapacity": 16,
+        "padding": 16,
+        "rows": 4,
+        "version": 2
+    },
+    "pages": [
+        {
+            "atlas": {
+                "cellSize": 512,
+                "columns": 4,
+                "height": 2048,
+                "innerSize": 480,
+                "offsetX": 0,
+                "offsetY": 0,
+                "padding": 16,
+                "rows": 4,
+                "width": 2048
+            },
+            "index": 0,
+            "spriteCount": 16
+        }
+    ],
+    "sprites": {
+        "desert__01": {
+            "aspect": 1.1851851851851851,
+            "cell": {
+                "column": 0,
+                "height": 512,
+                "row": 0,
+                "width": 512,
+                "x": 0,
+                "y": 0
+            },
+            "frame": {
+                "height": 243,
+                "width": 288,
+                "x": 112,
+                "y": 253
+            },
+            "page": 0,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/desert/01.png"
+        },
+        "desert__02": {
+            "aspect": 1.2459893048128343,
+            "cell": {
+                "column": 1,
+                "height": 512,
+                "row": 0,
+                "width": 512,
+                "x": 512,
+                "y": 0
+            },
+            "frame": {
+                "height": 187,
+                "width": 233,
+                "x": 651,
+                "y": 309
+            },
+            "page": 0,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/desert/02.png"
+        },
+        "desert__03": {
+            "aspect": 1.306532663316583,
+            "cell": {
+                "column": 2,
+                "height": 512,
+                "row": 0,
+                "width": 512,
+                "x": 1024,
+                "y": 0
+            },
+            "frame": {
+                "height": 199,
+                "width": 260,
+                "x": 1150,
+                "y": 297
+            },
+            "page": 0,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/desert/03.png"
+        },
+        "desert__04": {
+            "aspect": 1.3574660633484164,
+            "cell": {
+                "column": 3,
+                "height": 512,
+                "row": 0,
+                "width": 512,
+                "x": 1536,
+                "y": 0
+            },
+            "frame": {
+                "height": 221,
+                "width": 300,
+                "x": 1642,
+                "y": 275
+            },
+            "page": 0,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/desert/04.png"
+        },
+        "desert__05": {
+            "aspect": 1.1099476439790577,
+            "cell": {
+                "column": 0,
+                "height": 512,
+                "row": 1,
+                "width": 512,
+                "x": 0,
+                "y": 512
+            },
+            "frame": {
+                "height": 191,
+                "width": 212,
+                "x": 150,
+                "y": 817
+            },
+            "page": 0,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/desert/05.png"
+        },
+        "desert__06": {
+            "aspect": 1.3294117647058823,
+            "cell": {
+                "column": 1,
+                "height": 512,
+                "row": 1,
+                "width": 512,
+                "x": 512,
+                "y": 512
+            },
+            "frame": {
+                "height": 170,
+                "width": 226,
+                "x": 655,
+                "y": 838
+            },
+            "page": 0,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/desert/06.png"
+        },
+        "desert__07": {
+            "aspect": 1.164021164021164,
+            "cell": {
+                "column": 2,
+                "height": 512,
+                "row": 1,
+                "width": 512,
+                "x": 1024,
+                "y": 512
+            },
+            "frame": {
+                "height": 189,
+                "width": 220,
+                "x": 1170,
+                "y": 819
+            },
+            "page": 0,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/desert/07.png"
+        },
+        "desert__08": {
+            "aspect": 1.2801418439716312,
+            "cell": {
+                "column": 3,
+                "height": 512,
+                "row": 1,
+                "width": 512,
+                "x": 1536,
+                "y": 512
+            },
+            "frame": {
+                "height": 282,
+                "width": 361,
+                "x": 1611,
+                "y": 726
+            },
+            "page": 0,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/desert/08.png"
+        },
+        "grass__01": {
+            "aspect": 1.919463087248322,
+            "cell": {
+                "column": 0,
+                "height": 512,
+                "row": 2,
+                "width": 512,
+                "x": 0,
+                "y": 1024
+            },
+            "frame": {
+                "height": 149,
+                "width": 286,
+                "x": 113,
+                "y": 1371
+            },
+            "page": 0,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/grass/01.png"
+        },
+        "grass__02": {
+            "aspect": 2.0180722891566263,
+            "cell": {
+                "column": 1,
+                "height": 512,
+                "row": 2,
+                "width": 512,
+                "x": 512,
+                "y": 1024
+            },
+            "frame": {
+                "height": 166,
+                "width": 335,
+                "x": 600,
+                "y": 1354
+            },
+            "page": 0,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/grass/02.png"
+        },
+        "grass__03": {
+            "aspect": 2.029940119760479,
+            "cell": {
+                "column": 2,
+                "height": 512,
+                "row": 2,
+                "width": 512,
+                "x": 1024,
+                "y": 1024
+            },
+            "frame": {
+                "height": 167,
+                "width": 339,
+                "x": 1110,
+                "y": 1353
+            },
+            "page": 0,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/grass/03.png"
+        },
+        "grass__04": {
+            "aspect": 2.0546875,
+            "cell": {
+                "column": 3,
+                "height": 512,
+                "row": 2,
+                "width": 512,
+                "x": 1536,
+                "y": 1024
+            },
+            "frame": {
+                "height": 128,
+                "width": 263,
+                "x": 1660,
+                "y": 1392
+            },
+            "page": 0,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/grass/04.png"
+        },
+        "grass__05": {
+            "aspect": 2.0719424460431655,
+            "cell": {
+                "column": 0,
+                "height": 512,
+                "row": 3,
+                "width": 512,
+                "x": 0,
+                "y": 1536
+            },
+            "frame": {
+                "height": 139,
+                "width": 288,
+                "x": 112,
+                "y": 1893
+            },
+            "page": 0,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/grass/05.png"
+        },
+        "grass__06": {
+            "aspect": 2.0833333333333335,
+            "cell": {
+                "column": 1,
+                "height": 512,
+                "row": 3,
+                "width": 512,
+                "x": 512,
+                "y": 1536
+            },
+            "frame": {
+                "height": 156,
+                "width": 325,
+                "x": 605,
+                "y": 1876
+            },
+            "page": 0,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/grass/06.png"
+        },
+        "grass__07": {
+            "aspect": 2.0425531914893615,
+            "cell": {
+                "column": 2,
+                "height": 512,
+                "row": 3,
+                "width": 512,
+                "x": 1024,
+                "y": 1536
+            },
+            "frame": {
+                "height": 141,
+                "width": 288,
+                "x": 1136,
+                "y": 1891
+            },
+            "page": 0,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/grass/07.png"
+        },
+        "grass__08": {
+            "aspect": 2.2373737373737375,
+            "cell": {
+                "column": 3,
+                "height": 512,
+                "row": 3,
+                "width": 512,
+                "x": 1536,
+                "y": 1536
+            },
+            "frame": {
+                "height": 198,
+                "width": 443,
+                "x": 1570,
+                "y": 1834
+            },
+            "page": 0,
+            "source": "apps/garden/data/sriptes/extracted/ground-cover/grass/08.png"
+        }
+    }
+}

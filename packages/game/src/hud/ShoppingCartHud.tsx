@@ -15,6 +15,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { isCompleteDeliverySelection, useCheckout } from '../hooks/useCheckout';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
 import { useShoppingCart } from '../hooks/useShoppingCart';
@@ -31,6 +32,7 @@ import { ShoppingCartItem } from './components/shopping-cart/ShoppingCartItem';
 export function ShoppingCart() {
     const { data: account } = useCurrentAccount();
     const { data: cart, isLoading, isError } = useShoppingCart();
+    const { track } = useGameAnalytics();
     const deleteCart = useShoppingCartDelete();
     const checkout = useCheckout();
 
@@ -51,13 +53,17 @@ export function ShoppingCart() {
         );
 
     function handleCheckout() {
-        if (!cart || !cart.id) {
+        if (!cart?.id) {
             console.error('No cart available for checkout');
             return;
         }
 
         // If cart contains deliverable items and user hasn't gone through delivery step yet
         if (cart.hasDeliverableItems && !deliverySelection) {
+            track('game_cart_delivery_opened', {
+                item_count: cart.items.length,
+                total: cart.total,
+            });
             setShowDeliveryStep(true);
             return;
         }
@@ -70,10 +76,21 @@ export function ShoppingCart() {
             }),
         };
 
+        track('game_cart_checkout_clicked', {
+            has_delivery_selection:
+                isCompleteDeliverySelection(deliverySelection),
+            item_count: cart.items.length,
+            total: cart.total,
+            total_sunflowers: cart.totalSunflowers,
+        });
         checkout.mutate(checkoutData);
     }
 
     function handleDeleteCart() {
+        track('game_cart_cleared', {
+            item_count: cart?.items.length,
+            total: cart?.total,
+        });
         deleteCart.mutate();
     }
 
@@ -82,6 +99,10 @@ export function ShoppingCart() {
     }
 
     function handleDelivery() {
+        track('game_cart_delivery_opened', {
+            item_count: cart?.items.length,
+            total: cart?.total,
+        });
         setShowDeliveryStep(true);
     }
 
@@ -322,9 +343,10 @@ function ButtonConfirmPayment({
 
 export function ShoppingCartHud() {
     const { data: cart } = useShoppingCart();
+    const { track } = useGameAnalytics();
     const [isOpen, setIsOpen] = useShoppingCartOpenParam();
 
-    if (!cart || !cart.items.length) {
+    if (!cart?.items.length) {
         return null;
     }
 
@@ -333,7 +355,15 @@ export function ShoppingCartHud() {
             <Row spacing={1}>
                 <Modal
                     open={isOpen}
-                    onOpenChange={setIsOpen}
+                    onOpenChange={(open) => {
+                        if (open) {
+                            track('game_cart_opened', {
+                                item_count: cart.items.length,
+                                total: cart.total,
+                            });
+                        }
+                        setIsOpen(open);
+                    }}
                     title="Košarica"
                     className="border-tertiary border-b-4 md:max-w-2xl"
                     trigger={

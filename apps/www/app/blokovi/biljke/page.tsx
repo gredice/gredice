@@ -1,5 +1,4 @@
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { PageFilterInputNoSSR } from '../../../components/shared/PageFilterInputNoSSR';

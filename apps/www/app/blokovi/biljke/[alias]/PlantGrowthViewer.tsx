@@ -1,7 +1,6 @@
 'use client';
 
 import type { PlantData, PlantSortData } from '@gredice/client';
-import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Edit } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
@@ -9,9 +8,9 @@ import { cx } from '@signalco/ui-primitives/cx';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { KnownPages } from '../../../../src/KnownPages';
+import { PlantBlockImage } from '../../PlantBlockImage';
 import { resolvePlantType } from '../../plantNamesWithLSystem';
 import { PlantGrowthControls } from './PlantGrowthControls';
 import { PlantViewerDynamic } from './PlantViewerDynamic';
@@ -71,7 +70,7 @@ export function PlantGrowthViewer({
                 <CardOverflow>
                     <div className="h-[400px] md:h-[500px]">
                         <PlantViewerDynamic
-                            plantType={plantType as any}
+                            plantType={plantType}
                             generation={generation}
                             seed={seed}
                             className="h-full w-full"
@@ -83,8 +82,8 @@ export function PlantGrowthViewer({
                 <Row spacing={2} alignItems="start">
                     <Card className="shrink-0">
                         <CardOverflow>
-                            <PlantOrSortImage
-                                plant={plant}
+                            <PlantBlockImage
+                                plantName={plant.information.name}
                                 width={80}
                                 height={80}
                             />

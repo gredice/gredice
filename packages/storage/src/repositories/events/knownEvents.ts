@@ -7,6 +7,7 @@ import type {
     DeliveryRequestCancelledPayload,
     DeliveryRequestCreatePayload,
     DeliveryRequestFulfilledPayload,
+    DeliveryRequestReadyEmailProcessedPayload,
     DeliveryRequestSlotChangedPayload,
     DeliveryRequestStatusPayload,
     DeliveryRequestSurveySentPayload,
@@ -18,12 +19,15 @@ import type {
     InvoiceCreatePayload,
     InvoicePaidPayload,
     InvoiceUpdatePayload,
+    OperationAssignPayload,
     OperationCancelPayload,
     OperationCompletePayload,
     OperationFailPayload,
     OperationSchedulePayload,
+    OperationVerifyPayload,
     RaisedBedAbandonPayload,
     RaisedBedCreatePayload,
+    RaisedBedFieldAiAnalysisPayload,
     RaisedBedFieldCreatePayload,
     RaisedBedFieldPlantPlacePayload,
     RaisedBedFieldPlantReplaceSortPayload,
@@ -205,6 +209,15 @@ export const knownEvents = {
             aggregateId,
             data: { status: 'abandoned' } satisfies RaisedBedAbandonPayload,
         }),
+        aiAnalysisV1: (
+            aggregateId: string,
+            data: RaisedBedFieldAiAnalysisPayload,
+        ) => ({
+            type: knownEventTypes.raisedBeds.aiAnalysis,
+            version: 1,
+            aggregateId,
+            data,
+        }),
     },
     raisedBedFields: {
         createdV1: (
@@ -257,8 +270,23 @@ export const knownEvents = {
             aggregateId,
             data,
         }),
+        aiAnalysisV1: (
+            aggregateId: string,
+            data: RaisedBedFieldAiAnalysisPayload,
+        ) => ({
+            type: knownEventTypes.raisedBedFields.aiAnalysis,
+            version: 1,
+            aggregateId,
+            data,
+        }),
     },
     operations: {
+        assignedV1: (aggregateId: string, data: OperationAssignPayload) => ({
+            type: knownEventTypes.operations.assign,
+            version: 1,
+            aggregateId,
+            data,
+        }),
         scheduledV1: (aggregateId: string, data: OperationSchedulePayload) => ({
             type: knownEventTypes.operations.schedule,
             version: 1,
@@ -267,6 +295,12 @@ export const knownEvents = {
         }),
         completedV1: (aggregateId: string, data: OperationCompletePayload) => ({
             type: knownEventTypes.operations.complete,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        verifiedV1: (aggregateId: string, data: OperationVerifyPayload) => ({
+            type: knownEventTypes.operations.verify,
             version: 1,
             aggregateId,
             data,
@@ -344,6 +378,15 @@ export const knownEvents = {
             data: DeliveryRequestStatusPayload,
         ) => ({
             type: knownEventTypes.delivery.requestReady,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        requestReadyEmailProcessedV1: (
+            aggregateId: string,
+            data: DeliveryRequestReadyEmailProcessedPayload,
+        ) => ({
+            type: knownEventTypes.delivery.requestReadyEmailProcessed,
             version: 1,
             aggregateId,
             data,

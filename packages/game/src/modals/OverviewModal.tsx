@@ -5,13 +5,17 @@ import { Modal } from '@signalco/ui-primitives/Modal';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useEffect } from 'react';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
 import { AccountUsersTab } from './components/AccountUsersTab';
 import { AchievementsTab } from './components/AchievementsTab';
 import { DeliveryTab } from './components/DeliveryTab';
+import { GameTab } from './components/GameTab';
 import { GardenTab } from './components/GardenTab';
 import { GeneralTab } from './components/GeneralTab';
 import { NotificationsTab } from './components/NotificationsTab';
+import { ReferralsTab } from './components/ReferralsTab';
 import { SecurityTab } from './components/SecurityTab';
 import { SoundTab } from './components/SoundTab';
 import { SunflowersTab } from './components/SunflowersTab';
@@ -50,6 +54,12 @@ const navGroups = [
                 label: 'Obavijesti',
                 value: 'obavijesti',
             },
+            {
+                nodeId: 'profile-referrals',
+                icon: '💮',
+                label: 'Preporuke',
+                value: 'preporuke',
+            },
         ],
     },
     {
@@ -73,6 +83,12 @@ const navGroups = [
         label: 'Postavke',
         items: [
             {
+                nodeId: 'settings-game',
+                icon: '🎮',
+                label: 'Igra',
+                value: 'igra',
+            },
+            {
                 nodeId: 'profile-security',
                 icon: '🔒',
                 label: 'Sigurnost',
@@ -92,6 +108,17 @@ const allNavItems = navGroups.flatMap((g) => g.items);
 
 export function OverviewModal() {
     const [settingsMode, setProfileModalOpen] = useSearchParam('pregled');
+    const { track } = useGameAnalytics();
+
+    useEffect(() => {
+        if (!settingsMode) {
+            return;
+        }
+
+        track('game_overview_section_opened', {
+            section: settingsMode,
+        });
+    }, [settingsMode, track]);
 
     const handleOpenChange = (open: boolean) => {
         if (!open) {
@@ -103,10 +130,10 @@ export function OverviewModal() {
         <Modal
             open={Boolean(settingsMode)}
             onOpenChange={handleOpenChange}
-            className="md:min-w-full lg:min-w-[80%] xl:min-w-[60%] md:min-h-[70%] md:max-h-full md:border-tertiary md:border-b-4"
+            className="max-h-[90dvh] overflow-hidden md:min-w-full lg:min-w-[80%] xl:min-w-[60%] md:min-h-[70%] md:max-h-full md:border-tertiary md:border-b-4"
             title="Profil"
         >
-            <div className="grid grid-rows-[auto_1fr] gap-4 md:gap-0 md:grid-rows-1 md:grid-cols-[minmax(230px,auto)_1fr]">
+            <div className="grid max-h-[calc(90dvh-5rem)] grid-rows-[auto_1fr] gap-4 overflow-y-auto pr-1 md:max-h-none md:gap-0 md:grid-rows-1 md:grid-cols-[minmax(230px,auto)_1fr] md:overflow-hidden md:pr-0">
                 <Stack spacing={2} className="md:border-r md:pl-2">
                     <ProfileInfo />
                     <SelectItems
@@ -148,9 +175,10 @@ export function OverviewModal() {
                         ))}
                     </List>
                 </Stack>
-                <div className="md:pl-6">
+                <div className="overflow-y-auto md:pl-6">
                     {settingsMode === 'generalno' && <GeneralTab />}
                     {settingsMode === 'vrt' && <GardenTab />}
+                    {settingsMode === 'igra' && <GameTab />}
                     {settingsMode === 'sigurnost' && <SecurityTab />}
                     {settingsMode === 'dostava' && <DeliveryTab />}
                     {settingsMode === 'zvuk' && <SoundTab />}
@@ -158,6 +186,7 @@ export function OverviewModal() {
                     {settingsMode === 'suncokreti' && <SunflowersTab />}
                     {settingsMode === 'postignuca' && <AchievementsTab />}
                     {settingsMode === 'korisnici' && <AccountUsersTab />}
+                    {settingsMode === 'preporuke' && <ReferralsTab />}
                 </div>
             </div>
         </Modal>

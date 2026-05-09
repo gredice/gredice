@@ -10,7 +10,7 @@ export function useAccountInvitations() {
             const response =
                 await clientAuthenticated().api.accounts.current.invitations.$get();
             if (response.status === 401) {
-                return [];
+                return null;
             }
             if (!response.ok) {
                 throw new Error(
@@ -19,6 +19,7 @@ export function useAccountInvitations() {
             }
             return response.json();
         },
+        retry: false,
         staleTime: 1000 * 60 * 5, // 5 minutes
     });
 }

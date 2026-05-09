@@ -1,17 +1,35 @@
-import { getEntitiesRaw, getInventoryItem } from '@gredice/storage';
+import {
+    getEntitiesRaw,
+    getInventoryItem,
+    getInventoryItemEvents,
+} from '@gredice/storage';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Input } from '@signalco/ui-primitives/Input';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
+import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../../../components/admin/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../../../components/admin/navigation/AdminPageTitle';
 import { auth } from '../../../../../../lib/auth/auth';
+import {
+    getInventoryFieldType,
+    getInventorySelectOptions,
+} from '../../../../../../lib/inventoryFieldTypes';
 import { KnownPages } from '../../../../../../src/KnownPages';
-import { updateInventoryItemAction } from '../../../../../(actions)/inventoryActions';
+import {
+    quickAdjustInventoryItemAction,
+    updateInventoryItemAction,
+} from '../../../../../(actions)/inventoryActions';
+import { DeleteInventoryItemEventButton } from './DeleteInventoryItemEventButton';
 
 export const dynamic = 'force-dynamic';
+const noEntityValue = 'none';
 
 export default async function InventoryItemPage({
     params,
@@ -28,11 +46,12 @@ export default async function InventoryItemPage({
     if (!item || item.inventoryConfigId !== inventoryConfigId) {
         notFound();
     }
+    const events = await getInventoryItemEvents(id);
 
     const config = item.inventoryConfig;
     const entities = await getEntitiesRaw(config.entityTypeName, 'published');
     const entityItems = [
-        { value: '', label: '- Bez entiteta -' },
+        { value: noEntityValue, label: '- Bez entiteta -' },
         ...entities.map((entity) => {
             const nameAttr = entity.attributes.find(
                 (a) =>
@@ -46,26 +65,83 @@ export default async function InventoryItemPage({
             };
         }),
     ];
+    const entityLabel = item.entityId
+        ? entityItems.find(
+              (entityItem) => entityItem.value === item.entityId.toString(),
+          )?.label
+        : null;
+    const itemTitle = entityLabel
+        ? `${entityLabel} - stavka #${id}`
+        : `Stavka #${id}`;
 
     const additionalFields = item.additionalFields ?? {};
+    const trackingTypeItems =
+        config.defaultTrackingType === 'serialNumber'
+            ? [
+                  {
+                      value: 'pieces',
+                      label: 'Komadi',
+                  },
+                  {
+                      value: 'serialNumber',
+                      label: 'Serijski broj',
+                  },
+              ]
+            : [
+                  {
+                      value: 'pieces',
+                      label: 'Komadi',
+                  },
+              ];
+    const trackingTypeDefault =
+        config.defaultTrackingType === 'serialNumber'
+            ? item.trackingType
+            : 'pieces';
 
     const updateItemBound = updateInventoryItemAction.bind(
         null,
         inventoryConfigId,
         id,
     );
+    const quickAdjustItemBound = quickAdjustInventoryItemAction.bind(
+        null,
+        inventoryConfigId,
+        id,
+    );
+    const statusAttributeName = config.statusAttributeName;
+    const statusFieldDefinition = statusAttributeName
+        ? config.fieldDefinitions.find(
+              (field) => field.name === statusAttributeName,
+          )
+        : undefined;
+    const statusOptions = statusFieldDefinition
+        ? getInventorySelectOptions(statusFieldDefinition.dataType)
+        : [];
+    const currentState = statusAttributeName
+        ? ((additionalFields[statusAttributeName] as string) ?? '')
+        : '';
 
     return (
         <Stack spacing={4}>
-            <Breadcrumbs
-                items={[
-                    { label: 'Zalihe', href: KnownPages.Inventory },
-                    {
-                        label: config.label,
-                        href: KnownPages.InventoryConfig(inventoryConfigId),
-                    },
-                    { label: `Stavka #${id}` },
-                ]}
+            <AdminPageTitle title={itemTitle} />
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                            },
+                            {
+                                label: config.label,
+                                href: KnownPages.InventoryConfig(
+                                    inventoryConfigId,
+                                ),
+                            },
+                            { label: `Stavka #${id}` },
+                        ]}
+                    />
+                }
+                heading={`Uredi stavku #${id}`}
             />
 
             <Typography level="h2" className="text-2xl" semiBold>
@@ -82,29 +158,24 @@ export default async function InventoryItemPage({
                                     label="Entitet (opcionalno)"
                                     items={entityItems}
                                     defaultValue={
-                                        item.entityId?.toString() ?? ''
+                                        item.entityId?.toString() ??
+                                        noEntityValue
                                     }
                                 />
                                 <SelectItems
                                     name="trackingType"
                                     label="Način praćenja"
-                                    items={[
-                                        {
-                                            value: 'pieces',
-                                            label: 'Komadi',
-                                        },
-                                        {
-                                            value: 'serialNumber',
-                                            label: 'Serijski broj',
-                                        },
-                                    ]}
-                                    defaultValue={item.trackingType}
+                                    items={trackingTypeItems}
+                                    defaultValue={trackingTypeDefault}
                                 />
-                                <Input
-                                    name="serialNumber"
-                                    label="Serijski broj (opcionalno)"
-                                    defaultValue={item.serialNumber ?? ''}
-                                />
+                                {config.defaultTrackingType ===
+                                    'serialNumber' && (
+                                    <Input
+                                        name="serialNumber"
+                                        label="Serijski broj (opcionalno)"
+                                        defaultValue={item.serialNumber ?? ''}
+                                    />
+                                )}
                                 <Input
                                     name="quantity"
                                     label="Količina"
@@ -116,6 +187,16 @@ export default async function InventoryItemPage({
                                     name="notes"
                                     label="Bilješke (opcionalno)"
                                     defaultValue={item.notes ?? ''}
+                                />
+                                <Input
+                                    name="lowCountThreshold"
+                                    label="Niska količina (opcionalno)"
+                                    type="number"
+                                    min={0}
+                                    defaultValue={
+                                        item.lowCountThreshold?.toString() ?? ''
+                                    }
+                                    helperText="Ako nije definirano, koristi se postavka tipa entiteta."
                                 />
 
                                 {config.fieldDefinitions.length > 0 && (
@@ -129,10 +210,12 @@ export default async function InventoryItemPage({
                                                     additionalFields[
                                                         field.name
                                                     ];
+                                                const fieldType =
+                                                    getInventoryFieldType(
+                                                        field.dataType,
+                                                    );
 
-                                                if (
-                                                    field.dataType === 'boolean'
-                                                ) {
+                                                if (fieldType === 'boolean') {
                                                     return (
                                                         <SelectItems
                                                             key={field.id}
@@ -164,16 +247,46 @@ export default async function InventoryItemPage({
                                                     );
                                                 }
 
+                                                if (fieldType === 'select') {
+                                                    const options =
+                                                        getInventorySelectOptions(
+                                                            field.dataType,
+                                                        );
+                                                    const selectedValue =
+                                                        typeof fieldValue ===
+                                                        'string'
+                                                            ? fieldValue
+                                                            : options[0]?.value;
+                                                    if (!selectedValue) {
+                                                        return null;
+                                                    }
+
+                                                    return (
+                                                        <SelectItems
+                                                            key={field.id}
+                                                            name={`field_${field.name}`}
+                                                            label={field.label}
+                                                            items={options}
+                                                            defaultValue={
+                                                                selectedValue
+                                                            }
+                                                            required={
+                                                                field.required
+                                                            }
+                                                        />
+                                                    );
+                                                }
+
                                                 return (
                                                     <Input
                                                         key={field.id}
                                                         name={`field_${field.name}`}
                                                         label={field.label}
                                                         type={
-                                                            field.dataType ===
+                                                            fieldType ===
                                                             'number'
                                                                 ? 'number'
-                                                                : field.dataType ===
+                                                                : fieldType ===
                                                                     'date'
                                                                   ? 'date'
                                                                   : 'text'
@@ -202,6 +315,109 @@ export default async function InventoryItemPage({
                         </Stack>
                     </form>
                 </Stack>
+            </Card>
+
+            <Card className="max-w-2xl">
+                <Stack spacing={4} className="p-6">
+                    <Typography level="h3" semiBold>
+                        Brza promjena stanja/količine
+                    </Typography>
+                    <form action={quickAdjustItemBound}>
+                        <Stack spacing={3}>
+                            <Input
+                                name="quantity"
+                                label="Nova količina (opcionalno)"
+                                type="number"
+                                min={0}
+                                defaultValue={item.quantity.toString()}
+                            />
+                            {statusAttributeName &&
+                                (statusOptions.length > 0 ? (
+                                    <SelectItems
+                                        name="state"
+                                        label="Novo stanje (opcionalno)"
+                                        items={statusOptions}
+                                        defaultValue={
+                                            currentState ||
+                                            statusOptions[0].value
+                                        }
+                                    />
+                                ) : (
+                                    <Input
+                                        name="state"
+                                        label="Novo stanje (opcionalno)"
+                                        defaultValue={currentState}
+                                    />
+                                ))}
+                            <Input
+                                name="notes"
+                                label="Napomena događaja (opcionalno)"
+                            />
+                            <Button
+                                variant="solid"
+                                type="submit"
+                                className="w-fit"
+                            >
+                                Dodaj događaj
+                            </Button>
+                        </Stack>
+                    </form>
+                </Stack>
+            </Card>
+
+            <Card>
+                <Stack spacing={2} className="p-6 pb-0">
+                    <Typography level="h3" semiBold>
+                        Povijest promjena
+                    </Typography>
+                </Stack>
+                <Table>
+                    <Table.Header>
+                        <Table.Row>
+                            <Table.Head>Vrijeme</Table.Head>
+                            <Table.Head>Akcija</Table.Head>
+                            <Table.Head>Količina</Table.Head>
+                            <Table.Head>Stanje</Table.Head>
+                            <Table.Head>Napomena</Table.Head>
+                            <Table.Head />
+                        </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
+                        {events.length === 0 && (
+                            <Table.Row>
+                                <Table.Cell colSpan={6}>
+                                    Nema događaja za ovu stavku.
+                                </Table.Cell>
+                            </Table.Row>
+                        )}
+                        {events.map((event) => (
+                            <Table.Row key={event.id}>
+                                <Table.Cell>
+                                    <LocalDateTime time>
+                                        {event.createdAt}
+                                    </LocalDateTime>
+                                </Table.Cell>
+                                <Table.Cell>{event.action}</Table.Cell>
+                                <Table.Cell>
+                                    {event.previousQuantity ?? '-'} →{' '}
+                                    {event.newQuantity ?? '-'}
+                                </Table.Cell>
+                                <Table.Cell>
+                                    {event.previousState ?? '-'} →{' '}
+                                    {event.newState ?? '-'}
+                                </Table.Cell>
+                                <Table.Cell>{event.notes ?? '-'}</Table.Cell>
+                                <Table.Cell>
+                                    <DeleteInventoryItemEventButton
+                                        inventoryConfigId={inventoryConfigId}
+                                        itemId={id}
+                                        eventId={event.id}
+                                    />
+                                </Table.Cell>
+                            </Table.Row>
+                        ))}
+                    </Table.Body>
+                </Table>
             </Card>
         </Stack>
     );

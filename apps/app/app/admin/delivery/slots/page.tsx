@@ -4,7 +4,7 @@ import { Button } from '@signalco/ui-primitives/Button';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { auth } from '../../../../lib/auth/auth';
 import { ArchiveClosedSlotsButton } from './ArchiveClosedSlotsButton';
 import { BulkGenerateModal } from './BulkGenerateModal';
@@ -39,38 +39,39 @@ export default async function AdminTimeSlotsPage({
 
     return (
         <Stack spacing={4}>
-            <Row justifyContent="space-between">
-                <Typography level="h1" className="text-2xl">
-                    Upravljanje vremenskim slotovima dostave
-                </Typography>
-                <Row spacing={2}>
-                    <ArchiveClosedSlotsButton
-                        slotIds={archivableClosedSlotIds}
-                    />
-                    <CreateTimeSlotModal
-                        trigger={
-                            <Button
-                                variant="solid"
-                                startDecorator={<Add className="size-4" />}
-                            >
-                                Kreiraj slot
-                            </Button>
-                        }
-                        locations={pickupLocations}
-                    />
-                    <BulkGenerateModal
-                        trigger={
-                            <Button
-                                variant="outlined"
-                                startDecorator={<Calendar className="size-4" />}
-                            >
-                                Generiraj u bloku
-                            </Button>
-                        }
-                        locations={pickupLocations}
-                    />
-                </Row>
-            </Row>
+            <AdminPageHeader
+                actions={
+                    <Row spacing={2}>
+                        <ArchiveClosedSlotsButton
+                            slotIds={archivableClosedSlotIds}
+                        />
+                        <CreateTimeSlotModal
+                            trigger={
+                                <Button
+                                    variant="solid"
+                                    startDecorator={<Add className="size-4" />}
+                                >
+                                    Kreiraj slot
+                                </Button>
+                            }
+                            locations={pickupLocations}
+                        />
+                        <BulkGenerateModal
+                            trigger={
+                                <Button
+                                    variant="outlined"
+                                    startDecorator={
+                                        <Calendar className="size-4" />
+                                    }
+                                >
+                                    Generiraj u bloku
+                                </Button>
+                            }
+                            locations={pickupLocations}
+                        />
+                    </Row>
+                }
+            />
 
             <TimeSlotsFilters />
 

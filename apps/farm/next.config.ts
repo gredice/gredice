@@ -1,44 +1,33 @@
-import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
+import { getAppByName } from '../../scripts/app-registry.ts';
 
-const shouldSkipSentrySourceMaps = Boolean(process.env.CI);
-
+const app = getAppByName('farm');
 const nextConfig: NextConfig = {
     reactStrictMode: true,
     typedRoutes: true,
     reactCompiler: true,
+    logging: {
+        browserToTerminal: true,
+    },
     experimental: {
         turbopackFileSystemCacheForDev: true,
         typedEnv: true,
+        optimizePackageImports: [
+            '@signalco/ui-primitives',
+            '@signalco/ui-icons',
+        ],
     },
     expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
-    productionBrowserSourceMaps: !shouldSkipSentrySourceMaps,
-    allowedDevOrigins: ['farma.gredice.test'],
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'cdn.gredice.com',
+            },
+        ],
+    },
+    productionBrowserSourceMaps: !process.env.CI,
+    allowedDevOrigins: [app.localDomain],
 };
 
-export default withSentryConfig(nextConfig, {
-    // For all available options, see:
-    // https://www.npmjs.com/package/@sentry/webpack-plugin#options
-
-    org: 'gredice',
-
-    project: 'farm',
-
-    // Only print logs for uploading source maps in CI
-    silent: !process.env.CI,
-
-    // For all available options, see:
-    // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
-    // Upload a larger set of source maps for prettier stack traces (increases build time)
-    widenClientFileUpload: !shouldSkipSentrySourceMaps,
-    sourcemaps: {
-        disable: shouldSkipSentrySourceMaps,
-    },
-
-    // Uncomment to route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-    // This can increase your server load as well as your hosting bill.
-    // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-    // side errors will fail.
-    // tunnelRoute: "/monitoring",
-});
+export default nextConfig;

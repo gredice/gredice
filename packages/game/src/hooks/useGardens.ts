@@ -12,6 +12,7 @@ export function useGardens(disabled?: boolean) {
 
             return resp.json();
         },
+        retry: false,
         enabled: !disabled,
         staleTime: 1000 * 60 * 60, // 1h
     });

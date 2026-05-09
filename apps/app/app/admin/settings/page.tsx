@@ -1,12 +1,14 @@
 import {
     getEntityTypeCategories,
+    getEntityTypes,
     getNotificationSetting,
+    getSetting,
     IntegrationTypes,
     NotificationSettingKeys,
     type SelectNotificationSetting,
+    SettingsKeys,
     type SlackConfig,
 } from '@gredice/storage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Add, Edit } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import {
@@ -20,9 +22,15 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
+import { EntityTypeIcon } from '../../../components/admin/directories/EntityTypeIcon';
 import { auth } from '../../../lib/auth/auth';
+import {
+    buildDashboardQuickActionOptions,
+    getQuickActionIdsFromConfig,
+} from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { SlackChannelSettingForm } from '../communication/slack/SlackChannelSettingForm';
+import { DashboardQuickActionsSettingForm } from './DashboardQuickActionsSettingForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +38,10 @@ const SETTINGS_SECTIONS = [
     {
         id: 'directory-settings',
         title: 'Zapisi',
+    },
+    {
+        id: 'dashboard-settings',
+        title: 'Kontrolna ploča',
     },
     {
         id: 'notification-settings',
@@ -56,25 +68,36 @@ function getSlackChannelId(
 export default async function SettingsPage() {
     await auth(['admin']);
 
-    const [delivery, newUsers, shopping, categories] = await Promise.all([
+    const [
+        delivery,
+        newUsers,
+        shopping,
+        categories,
+        entityTypes,
+        dashboardQuickActionsSetting,
+    ] = await Promise.all([
         getNotificationSetting(NotificationSettingKeys.SlackDeliveryChannel),
         getNotificationSetting(NotificationSettingKeys.SlackNewUsersChannel),
         getNotificationSetting(NotificationSettingKeys.SlackShoppingChannel),
         getEntityTypeCategories(),
+        getEntityTypes(),
+        getSetting(SettingsKeys.DashboardQuickActions),
     ]);
+
+    const dashboardQuickActionOptions = buildDashboardQuickActionOptions(
+        entityTypes.map((entityType) => ({
+            name: entityType.name,
+            label: entityType.label,
+            icon: entityType.icon,
+        })),
+    );
+
+    const selectedDashboardQuickActionIds = getQuickActionIdsFromConfig(
+        dashboardQuickActionsSetting?.value,
+    );
 
     return (
         <Stack spacing={4}>
-            <Breadcrumbs
-                items={[
-                    {
-                        label: 'Početna',
-                        href: KnownPages.Dashboard,
-                    },
-                    { label: 'Postavke' },
-                ]}
-            />
-
             <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
                 <nav className="lg:sticky self-start">
                     <Card>
@@ -143,7 +166,24 @@ export default async function SettingsPage() {
                                                     alignItems="center"
                                                 >
                                                     <CardTitle>
-                                                        {category.label}
+                                                        <Row
+                                                            spacing={1}
+                                                            alignItems="center"
+                                                        >
+                                                            <EntityTypeIcon
+                                                                icon={
+                                                                    category.icon ??
+                                                                    (category.label ===
+                                                                    'Ostali'
+                                                                        ? 'MoreHorizontal'
+                                                                        : undefined)
+                                                                }
+                                                                className="size-4"
+                                                            />
+                                                            <span>
+                                                                {category.label}
+                                                            </span>
+                                                        </Row>
                                                     </CardTitle>
                                                     <Link
                                                         href={KnownPages.DirectoryCategoryEdit(
@@ -173,6 +213,42 @@ export default async function SettingsPage() {
                             )}
                         </Stack>
                     </section>
+
+                    <section
+                        id="dashboard-settings"
+                        className="scroll-mt-28"
+                        aria-labelledby="dashboard-settings-heading"
+                    >
+                        <Stack spacing={3}>
+                            <Stack spacing={1}>
+                                <Typography
+                                    id="dashboard-settings-heading"
+                                    level="h2"
+                                    semiBold
+                                >
+                                    Kontrolna ploča
+                                </Typography>
+                                <Typography level="body1">
+                                    Odaberi koje će se brze poveznice
+                                    prikazivati na vrhu početne kontrolne ploče.
+                                </Typography>
+                            </Stack>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Brze poveznice</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <DashboardQuickActionsSettingForm
+                                        options={dashboardQuickActionOptions}
+                                        selectedActionIds={
+                                            selectedDashboardQuickActionIds
+                                        }
+                                    />
+                                </CardContent>
+                            </Card>
+                        </Stack>
+                    </section>
+
                     <section
                         id="notification-settings"
                         className="scroll-mt-28"

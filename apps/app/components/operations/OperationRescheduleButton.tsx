@@ -19,7 +19,12 @@ export function OperationRescheduleButton({
     operationLabel,
 }: OperationRescheduleButtonProps) {
     // Only show reschedule button for new and planned operations
-    if (operation.status === 'completed' || operation.status === 'failed') {
+    if (
+        operation.status === 'completed' ||
+        operation.status === 'pendingVerification' ||
+        operation.status === 'failed' ||
+        operation.status === 'canceled'
+    ) {
         return null;
     }
 

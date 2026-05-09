@@ -4,11 +4,14 @@ import type { getAttributeDefinition } from '@gredice/storage';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Input } from '@signalco/ui-primitives/Input';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { Stack } from '@signalco/ui-primitives/Stack';
 import { type ChangeEvent, useState } from 'react';
 import { upsertAttributeDefinition } from '../../../../../(actions)/definitionActions';
 import {
     attributeDataTypeItems,
+    buildRangeDataType,
     getAttributeDataTypeLabel,
+    parseRangeDataType,
 } from '../AttributeDataTypes';
 
 type GetAttributeDefinition = Exclude<
@@ -60,36 +63,85 @@ export function FormDataTypeSelect({
     definition: GetAttributeDefinition;
     value: string;
 }) {
-    const [internalValue, setValue] = useState(value);
+    const isInitialRangeDataType =
+        value === 'range' || value.startsWith('range|');
+    const [selectedDataType, setSelectedDataType] = useState(
+        isInitialRangeDataType ? 'range' : value,
+    );
+    const parsedRangeDataType = parseRangeDataType(value);
+    const [rangeMinValue, setRangeMinValue] = useState(parsedRangeDataType.min);
+    const [rangeMaxValue, setRangeMaxValue] = useState(parsedRangeDataType.max);
+    const isRangeDataType = selectedDataType === 'range';
 
     const handleValueChange = async (nextValue: string) => {
-        setValue(nextValue);
+        setSelectedDataType(nextValue);
+
+        const nextDataType =
+            nextValue === 'range'
+                ? buildRangeDataType(rangeMinValue, rangeMaxValue)
+                : nextValue;
         await upsertAttributeDefinition({
             id: definition.id,
-            dataType: nextValue,
+            dataType: nextDataType,
+        });
+    };
+
+    const handleRangeBlur = async () => {
+        if (!isRangeDataType) {
+            return;
+        }
+
+        const rangeDataType = buildRangeDataType(rangeMinValue, rangeMaxValue);
+        await upsertAttributeDefinition({
+            id: definition.id,
+            dataType: rangeDataType,
         });
     };
 
     const items = attributeDataTypeItems.some(
-        (item) => item.value === internalValue,
+        (item) => item.value === selectedDataType,
     )
         ? attributeDataTypeItems
         : [
               ...attributeDataTypeItems,
               {
-                  value: internalValue,
-                  label: getAttributeDataTypeLabel(internalValue),
+                  value: selectedDataType,
+                  label: getAttributeDataTypeLabel(selectedDataType),
               },
           ];
 
     return (
-        <SelectItems
-            label="Tip podatka"
-            value={internalValue}
-            onValueChange={handleValueChange}
-            items={items}
-            placeholder={getAttributeDataTypeLabel(value)}
-        />
+        <Stack spacing={1} className="grow">
+            <SelectItems
+                label="Tip podatka"
+                value={selectedDataType}
+                onValueChange={handleValueChange}
+                items={items}
+                placeholder={getAttributeDataTypeLabel(value)}
+            />
+            {isRangeDataType && (
+                <div className="grid grid-cols-2 gap-2">
+                    <Input
+                        type="number"
+                        label="Minimalna vrijednost"
+                        value={rangeMinValue}
+                        onChange={(event) =>
+                            setRangeMinValue(event.target.value)
+                        }
+                        onBlur={handleRangeBlur}
+                    />
+                    <Input
+                        type="number"
+                        label="Maksimalna vrijednost"
+                        value={rangeMaxValue}
+                        onChange={(event) =>
+                            setRangeMaxValue(event.target.value)
+                        }
+                        onBlur={handleRangeBlur}
+                    />
+                </div>
+            )}
+        </Stack>
     );
 }
 

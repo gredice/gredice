@@ -1,10 +1,19 @@
 'use server';
 
-import {
-    type EntityStandardized,
-    getEntitiesFormatted,
-} from '@gredice/storage';
+import { getEntitiesFormatted, getEntitiesRaw } from '@gredice/storage';
+import { cache } from 'react';
+import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
+import { entityDisplayName } from '../../../../src/entities/entityAttributes';
 
 export async function getEntities(entityTypeName: string) {
-    return await getEntitiesFormatted<EntityStandardized>(entityTypeName);
+    return getEntitiesFormatted<EntityStandardized>(entityTypeName);
 }
+
+export const getRefEntities = cache(async (entityTypeName: string) => {
+    const entities = await getEntitiesRaw(entityTypeName);
+    return entities.map((entity) => ({
+        id: entity.id,
+        label: entityDisplayName(entity),
+        state: entity.state,
+    }));
+});

@@ -205,6 +205,7 @@ export function WelcomeMessage() {
                             alt="Suncokret"
                             width={160}
                             height={160}
+                            loading="eager"
                         />
                     </div>
                 </div>

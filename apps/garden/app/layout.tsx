@@ -1,7 +1,7 @@
+import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import * as Sentry from '@sentry/nextjs';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
@@ -12,9 +12,6 @@ export function generateMetadata(): Metadata {
     return {
         title: 'Vrt | Gredice',
         description: 'Gredice vrt - vrt po tvom',
-        other: {
-            ...Sentry.getTraceData(),
-        },
     };
 }
 
@@ -31,6 +28,23 @@ export default function RootLayout({
     children: ReactNode;
 }>) {
     const shouldInjectToolbar = process.env.NODE_ENV === 'development';
+    const postHogApiKey =
+        process.env.NEXT_PUBLIC_POSTHOG_KEY ??
+        process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+    const postHogApiHost = '/ingest';
+    const postHogUiHost =
+        process.env.NEXT_PUBLIC_POSTHOG_UI_HOST ??
+        process.env.NEXT_PUBLIC_POSTHOG_HOST;
+    const content = (
+        <>
+            <ClientAppProvider>
+                <ImpersonationBanner />
+                {children}
+            </ClientAppProvider>
+            <Analytics />
+            {shouldInjectToolbar && <VercelToolbar />}
+        </>
+    );
 
     return (
         <html lang="hr" translate="no" suppressHydrationWarning={true}>
@@ -39,12 +53,23 @@ export default function RootLayout({
                 <meta name="apple-mobile-web-app-title" content="Gredice" />
             </Head>
             <body className="antialiased bg-muted">
-                <ClientAppProvider>
-                    <ImpersonationBanner />
-                    {children}
-                </ClientAppProvider>
-                <Analytics />
-                {shouldInjectToolbar && <VercelToolbar />}
+                {postHogApiKey ? (
+                    <PostHogProvider
+                        apiKey={postHogApiKey}
+                        clientOptions={{
+                            api_host: postHogApiHost,
+                            capture_exceptions: true,
+                            debug: process.env.NODE_ENV === 'development',
+                            defaults: '2026-01-30',
+                            ui_host: postHogUiHost ?? null,
+                        }}
+                    >
+                        <PostHogPageView />
+                        {content}
+                    </PostHogProvider>
+                ) : (
+                    content
+                )}
             </body>
         </html>
     );

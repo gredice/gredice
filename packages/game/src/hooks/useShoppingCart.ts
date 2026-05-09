@@ -4,7 +4,7 @@ import { useCurrentUser } from './useCurrentUser';
 
 export const useShoppingCartQueryKey = ['shopping-cart'];
 
-export function useShoppingCart() {
+export function useShoppingCart(enabled = true) {
     const { data: currentUser } = useCurrentUser();
     return useQuery({
         queryKey: useShoppingCartQueryKey,
@@ -19,8 +19,9 @@ export function useShoppingCart() {
             }
             return await response.json();
         },
+        retry: false,
         staleTime: 1000 * 60 * 5, // 5 minutes
-        enabled: !!currentUser,
+        enabled: enabled && !!currentUser,
     });
 }
 

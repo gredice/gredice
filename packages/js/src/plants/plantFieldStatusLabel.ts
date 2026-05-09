@@ -15,6 +15,7 @@ export function plantFieldStatusLabel(status: string | undefined) {
                     'Termin sijanja je određen i biljka čeka svoj red.',
             };
         case 'sowed':
+        case 'pendingVerification':
             return {
                 shortLabel: 'Posijana',
                 label: 'Biljka je posijana',
@@ -32,6 +33,19 @@ export function plantFieldStatusLabel(status: string | undefined) {
                 label: 'Biljka je proklijala',
                 description:
                     'Sjeme je uspješno proklijalo i biljka je krenula rasti.',
+            };
+        case 'firstFlowers':
+            return {
+                shortLabel: 'Prvi cvjetovi',
+                label: 'Biljka je razvila prve cvjetove',
+                description:
+                    'Biljka je ušla u fazu cvjetanja i pojavili su se prvi cvjetovi.',
+            };
+        case 'firstFruitSet':
+            return {
+                shortLabel: 'Prvi plodovi',
+                label: 'Biljka je razvila prve plodove',
+                description: 'Nakon cvjetanja formirani su prvi plodovi.',
             };
         case 'ready':
             return {

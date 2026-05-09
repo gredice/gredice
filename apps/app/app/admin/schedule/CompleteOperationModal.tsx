@@ -87,14 +87,12 @@ function getUploadItemProgressClassName(uploadItem: UploadItem) {
 type CompleteOperationModalProps = {
     operationId: number;
     label: string;
-    userId: string;
     conditions?: EntityStandardized['conditions'];
 };
 
 export function CompleteOperationModal({
     operationId,
     label,
-    userId,
     conditions,
 }: CompleteOperationModalProps) {
     const [isOpen, setIsOpen] = useState(false);
@@ -102,6 +100,7 @@ export function CompleteOperationModal({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const cameraInputRef = useRef<HTMLInputElement>(null);
 
     const attachImages = conditions?.completionAttachImages;
     const attachRequired = conditions?.completionAttachImagesRequired;
@@ -115,6 +114,7 @@ export function CompleteOperationModal({
         if (!open) {
             setUploadItems([]);
             if (fileInputRef.current) fileInputRef.current.value = '';
+            if (cameraInputRef.current) cameraInputRef.current.value = '';
         }
     };
 
@@ -130,6 +130,7 @@ export function CompleteOperationModal({
             setErrorMessage(null);
         }
         if (fileInputRef.current) fileInputRef.current.value = '';
+        if (cameraInputRef.current) cameraInputRef.current.value = '';
     };
 
     const updateUploadItem = (
@@ -233,6 +234,7 @@ export function CompleteOperationModal({
         try {
             setErrorMessage(null);
             setIsSubmitting(true);
+            let shouldResetModalState = false;
             if (attachImages && uploadItems.length > 0) {
                 const imageUrls: string[] = [];
                 for (const uploadItem of uploadItems) {
@@ -254,18 +256,21 @@ export function CompleteOperationModal({
 
                     imageUrls.push(uploadedUrl);
                 }
-                await completeOperationWithImageUrls(
-                    operationId,
-                    userId,
-                    imageUrls,
-                );
+                setIsOpen(false);
+                await completeOperationWithImageUrls(operationId, imageUrls);
+                shouldResetModalState = true;
             } else {
-                await completeOperation(operationId, userId);
+                setIsOpen(false);
+                await completeOperation(operationId);
+                shouldResetModalState = true;
             }
-            handleOpenChange(false);
+            if (shouldResetModalState) {
+                handleOpenChange(false);
+            }
         } catch (error) {
             console.error('Error completing operation:', error);
-            setErrorMessage('Spremanje slika nije uspjelo. Pokušajte ponovno.');
+            setIsOpen(true);
+            setErrorMessage('Spremanje nije uspjelo. Pokušajte ponovno.');
         } finally {
             setIsSubmitting(false);
         }
@@ -312,6 +317,22 @@ export function CompleteOperationModal({
                             className="hidden"
                             onChange={handleFileChange}
                         />
+                        <input
+                            ref={cameraInputRef}
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="hidden"
+                            onChange={handleFileChange}
+                        />
+                        <Button
+                            variant="outlined"
+                            type="button"
+                            onClick={() => cameraInputRef.current?.click()}
+                            disabled={isSubmitting}
+                        >
+                            Uslikaj fotografiju
+                        </Button>
                         <Button
                             variant="outlined"
                             type="button"
@@ -401,12 +422,12 @@ export function CompleteOperationModal({
                                 Učitavanje slika u tijeku...
                             </Typography>
                         )}
-                        {errorMessage && (
-                            <Typography level="body2" className="text-red-600">
-                                {errorMessage}
-                            </Typography>
-                        )}
                     </Stack>
+                )}
+                {errorMessage && (
+                    <Typography level="body2" className="text-red-600">
+                        {errorMessage}
+                    </Typography>
                 )}
                 <Row spacing={1} justifyContent="end">
                     <Button

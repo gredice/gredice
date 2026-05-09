@@ -1,18 +1,25 @@
 'use client';
 
 import { calculatePlantsPerField, FIELD_SIZE_CM } from '@gredice/js/plants';
+import type { RaisedBedFieldAssignableFarmUser } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Calendar, Close } from '@signalco/ui-icons';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { Chip } from '@signalco/ui-primitives/Chip';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import Link from 'next/link';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
+import { KnownPages } from '../../../src/KnownPages';
 import { raisedBedPlanted } from '../../(actions)/raisedBedFieldsActions';
 import { AcceptRaisedBedFieldModal } from './AcceptRaisedBedFieldModal';
+import { AssignRaisedBedFieldModal } from './AssignRaisedBedFieldModal';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
+import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
+import { BulkRescheduleRaisedBedButton } from './BulkRescheduleRaisedBedButton';
 import { CancelRaisedBedFieldModal } from './CancelRaisedBedFieldModal';
 import { CompletePlantingModal } from './CompletePlantingModal';
 import { CopyTasksButton } from './CopyTasksButton';
@@ -21,15 +28,21 @@ import {
     formatMinutes,
     isFieldApproved,
     isFieldCompleted,
+    isFieldPendingVerification,
     PLANTING_TASK_DURATION_MINUTES,
 } from './scheduleShared';
 import type { RaisedBed, RaisedBedField } from './types';
+import { VerifyPlantingModal } from './VerifyPlantingModal';
 
 interface RaisedBedPlantingScheduleSectionProps {
     physicalId: string;
     raisedBeds: RaisedBed[];
     scheduledFields: RaisedBedField[];
     plantSorts: EntityStandardized[] | null | undefined;
+    assignableFarmUsersByRaisedBedFieldId: Record<
+        number,
+        RaisedBedFieldAssignableFarmUser[]
+    >;
 }
 
 export function RaisedBedPlantingScheduleSection({
@@ -37,12 +50,17 @@ export function RaisedBedPlantingScheduleSection({
     raisedBeds,
     scheduledFields,
     plantSorts,
+    assignableFarmUsersByRaisedBedFieldId,
 }: RaisedBedPlantingScheduleSectionProps) {
     if (raisedBeds.length === 0) {
         return null;
     }
 
     const sortedRaisedBeds = [...raisedBeds].sort((a, b) => a.id - b.id);
+    const firstRaisedBed = sortedRaisedBeds.at(0);
+    const raisedBedDetailsLink = firstRaisedBed
+        ? KnownPages.RaisedBed(firstRaisedBed.id)
+        : null;
 
     const dayFields = scheduledFields
         .filter((field) =>
@@ -75,6 +93,7 @@ export function RaisedBedPlantingScheduleSection({
             text: `${field.physicalPositionIndex} - sijanje: ${totalPlants} ${field.plantSortId ? `${sortData?.information?.name}` : '?'}`,
             approved:
                 isFieldApproved(field.plantStatus) &&
+                !isFieldPendingVerification(field.plantStatus) &&
                 !isFieldCompleted(field.plantStatus),
         };
     });
@@ -83,7 +102,9 @@ export function RaisedBedPlantingScheduleSection({
         .filter(
             (field) =>
                 !isFieldApproved(field.plantStatus) &&
-                !isFieldCompleted(field.plantStatus),
+                !isFieldPendingVerification(field.plantStatus) &&
+                !isFieldCompleted(field.plantStatus) &&
+                !!field.assignedUserId,
         )
         .map((field) => {
             const sortData = plantSorts?.find(
@@ -102,6 +123,27 @@ export function RaisedBedPlantingScheduleSection({
                 label: `${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : 'Nepoznato'}`,
             };
         });
+    const fieldsToReschedule = dayFields
+        .filter(
+            (field) =>
+                !isFieldApproved(field.plantStatus) &&
+                !isFieldPendingVerification(field.plantStatus) &&
+                !isFieldCompleted(field.plantStatus),
+        )
+        .map((field) => ({
+            raisedBedId: field.raisedBedId,
+            positionIndex: field.positionIndex,
+        }));
+    const fieldsToAssign = dayFields
+        .filter(
+            (field) =>
+                !isFieldCompleted(field.plantStatus) &&
+                !isFieldPendingVerification(field.plantStatus),
+        )
+        .map((field) => ({
+            id: field.id,
+            farmUsers: assignableFarmUsersByRaisedBedFieldId[field.id] ?? [],
+        }));
 
     const durations = dayFields.reduce(
         (acc, field) => {
@@ -119,22 +161,45 @@ export function RaisedBedPlantingScheduleSection({
 
     return (
         <Stack key={physicalId} spacing={1}>
-            <Row spacing={0.5} className="items-center flex-wrap gap-y-1">
+            <Row spacing={1} className="w-full items-center flex-wrap gap-y-1">
                 <BulkApproveRaisedBedButton
                     physicalId={physicalId.toString()}
                     fields={fieldsToApprove}
                     operations={[]}
                 />
-                <RaisedBedLabel physicalId={physicalId} />
-                <Typography level="body2" className="text-muted-foreground">
-                    Vrijeme: {formatMinutes(durations.completed, true)} /{' '}
-                    {formatMinutes(durations.approved)} (
-                    {formatMinutes(durations.total)})
-                </Typography>
-                <CopyTasksButton
-                    physicalId={physicalId.toString()}
-                    tasks={copyTasks}
-                />
+                <Row
+                    spacing={0.5}
+                    className="min-w-0 grow items-center flex-wrap gap-y-1"
+                >
+                    {raisedBedDetailsLink ? (
+                        <Link href={raisedBedDetailsLink}>
+                            <RaisedBedLabel physicalId={physicalId} />
+                        </Link>
+                    ) : (
+                        <RaisedBedLabel physicalId={physicalId} />
+                    )}
+                    <Typography level="body2" className="text-muted-foreground">
+                        Vrijeme: {formatMinutes(durations.completed, true)} /{' '}
+                        {formatMinutes(durations.approved)} (
+                        {formatMinutes(durations.total)})
+                    </Typography>
+                    <CopyTasksButton
+                        physicalId={physicalId.toString()}
+                        tasks={copyTasks}
+                    />
+                </Row>
+                <Row spacing={0.5} className="ml-auto shrink-0 items-center">
+                    <BulkAssignRaisedBedButton
+                        physicalId={physicalId.toString()}
+                        fields={fieldsToAssign}
+                        operations={[]}
+                    />
+                    <BulkRescheduleRaisedBedButton
+                        physicalId={physicalId.toString()}
+                        fields={fieldsToReschedule}
+                        operations={[]}
+                    />
+                </Row>
             </Row>
             <Stack spacing={1}>
                 {!dayFields.length && (
@@ -165,21 +230,37 @@ export function RaisedBedPlantingScheduleSection({
                     const fieldLabel = `${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : 'Nepoznato'}`;
                     const fieldStatus = field.plantStatus;
                     const fieldCompleted = isFieldCompleted(fieldStatus);
+                    const fieldPendingVerification =
+                        isFieldPendingVerification(fieldStatus);
                     const fieldApproved = isFieldApproved(fieldStatus);
                     const fieldStatusText = fieldCompleted
                         ? 'Završeno'
-                        : fieldApproved
-                          ? 'Potvrđeno'
-                          : 'Nije potvrđeno';
+                        : fieldPendingVerification
+                          ? 'Čeka verifikaciju'
+                          : fieldApproved
+                            ? 'Potvrđeno'
+                            : 'Nije potvrđeno';
                     const fieldStatusClassName = fieldCompleted
                         ? 'text-green-600'
-                        : fieldApproved
-                          ? 'text-green-600'
-                          : 'text-muted-foreground';
+                        : fieldPendingVerification
+                          ? 'text-amber-600'
+                          : fieldApproved
+                            ? 'text-green-600'
+                            : 'text-muted-foreground';
+                    const fieldLocked =
+                        fieldCompleted || fieldPendingVerification;
+                    const fieldApprovedActive = fieldApproved && !fieldLocked;
 
                     return (
                         <div key={field.id}>
-                            <Row spacing={1} className="hover:bg-muted rounded">
+                            <Row
+                                spacing={1}
+                                className={
+                                    fieldApprovedActive
+                                        ? 'rounded bg-muted/60 text-foreground hover:bg-muted/80'
+                                        : 'rounded hover:bg-muted'
+                                }
+                            >
                                 <Row spacing={1} className="grow">
                                     {fieldCompleted ? (
                                         <Checkbox
@@ -187,11 +268,18 @@ export function RaisedBedPlantingScheduleSection({
                                             checked
                                             disabled
                                         />
+                                    ) : fieldPendingVerification ? (
+                                        <VerifyPlantingModal
+                                            raisedBedId={field.raisedBedId}
+                                            positionIndex={field.positionIndex}
+                                            label={fieldLabel}
+                                        />
                                     ) : field.plantSortId && !fieldApproved ? (
                                         <AcceptRaisedBedFieldModal
                                             raisedBedId={field.raisedBedId}
                                             positionIndex={field.positionIndex}
                                             label={fieldLabel}
+                                            disabled={!field.assignedUserId}
                                         />
                                     ) : (
                                         <CompletePlantingModal
@@ -223,11 +311,28 @@ export function RaisedBedPlantingScheduleSection({
                                                 {field.plantScheduledDate}
                                             </LocalDateTime>
                                         ) : (
-                                            <span>Danas</span>
+                                            <Chip
+                                                size="sm"
+                                                color="warning"
+                                                className="w-fit"
+                                            >
+                                                Nije planirano
+                                            </Chip>
                                         )}
                                     </Typography>
                                 </Row>
                                 <Row>
+                                    <AssignRaisedBedFieldModal
+                                        raisedBedFieldId={field.id}
+                                        label={fieldLabel}
+                                        farmUsers={
+                                            assignableFarmUsersByRaisedBedFieldId[
+                                                field.id
+                                            ] ?? []
+                                        }
+                                        assignedUserIds={field.assignedUserIds}
+                                        disabled={fieldLocked}
+                                    />
                                     <RescheduleRaisedBedFieldModal
                                         field={{
                                             raisedBedId: field.raisedBedId,
@@ -248,7 +353,7 @@ export function RaisedBedPlantingScheduleSection({
                                                         ? 'Prerasporedi sijanje'
                                                         : 'Zakaži sijanje'
                                                 }
-                                                disabled={fieldCompleted}
+                                                disabled={fieldLocked}
                                             >
                                                 <Calendar className="size-4 shrink-0" />
                                             </IconButton>
@@ -264,7 +369,7 @@ export function RaisedBedPlantingScheduleSection({
                                             <IconButton
                                                 variant="plain"
                                                 title="Otkaži sijanje"
-                                                disabled={fieldCompleted}
+                                                disabled={fieldLocked}
                                             >
                                                 <Close className="size-4 shrink-0" />
                                             </IconButton>

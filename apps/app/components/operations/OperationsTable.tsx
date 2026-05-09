@@ -7,12 +7,14 @@ import {
 } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
-import { Calendar } from '@signalco/ui-icons';
+import { Calendar, Check } from '@signalco/ui-icons';
 import { Chip } from '@signalco/ui-primitives/Chip';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Table } from '@signalco/ui-primitives/Table';
 import Link from 'next/link';
+import { VerifyOperationModal } from '../../app/admin/schedule/VerifyOperationModal';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { KnownPages } from '../../src/KnownPages';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
@@ -112,21 +114,40 @@ export async function OperationsTable({
                                         color={
                                             operation.status === 'completed'
                                                 ? 'success'
-                                                : operation.status === 'planned'
-                                                  ? 'info'
+                                                : operation.status ===
+                                                    'pendingVerification'
+                                                  ? 'warning'
                                                   : operation.status ===
-                                                      'canceled'
-                                                    ? 'neutral'
-                                                    : 'warning'
+                                                      'planned'
+                                                    ? 'info'
+                                                    : operation.status ===
+                                                        'canceled'
+                                                      ? 'neutral'
+                                                      : 'warning'
                                         }
                                     >
-                                        {operation.status}
+                                        {operation.status ===
+                                        'pendingVerification'
+                                            ? 'Čeka verifikaciju'
+                                            : operation.status}
                                     </Chip>
                                     {operation.status === 'planned' && (
                                         <Row spacing={1}>
                                             <Calendar className="size-4 shrink-0" />
                                             <LocalDateTime time={false}>
                                                 {operation.scheduledDate}
+                                            </LocalDateTime>
+                                        </Row>
+                                    )}
+                                    {operation.status ===
+                                        'pendingVerification' && (
+                                        <Row spacing={1}>
+                                            <LocalDateTime time={false}>
+                                                {operation.completedAt
+                                                    ? new Date(
+                                                          operation.completedAt,
+                                                      )
+                                                    : null}
                                             </LocalDateTime>
                                         </Row>
                                     )}
@@ -200,6 +221,24 @@ export async function OperationsTable({
                             </Table.Cell>
                             <Table.Cell>
                                 <Row spacing={1}>
+                                    {operation.status ===
+                                        'pendingVerification' && (
+                                        <VerifyOperationModal
+                                            operationId={operation.id}
+                                            label={
+                                                operation.details.label ||
+                                                operation.entityId.toString()
+                                            }
+                                            trigger={
+                                                <IconButton
+                                                    variant="plain"
+                                                    title="Verificiraj operaciju"
+                                                >
+                                                    <Check className="size-4 shrink-0" />
+                                                </IconButton>
+                                            }
+                                        />
+                                    )}
                                     <OperationRescheduleButton
                                         operation={{
                                             id: operation.id,

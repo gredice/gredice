@@ -1,13 +1,19 @@
 'use server';
 
 import {
+    getAttributeDefinitions,
+    getAiAnalysisEvents,
+    getAiAnalysisTotals,
     getAllOperations,
     getAnalyticsTotals,
     getEntitiesFormatted,
     getEntitiesRaw,
     getEntityTypes,
+    getIncompleteEntityCountsByState,
     getPlantUpdateEvents,
+    getSunflowersDailyTotals,
     getUserRegistrationsByWeekday,
+    redisCached,
 } from '@gredice/storage';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 
@@ -16,18 +22,35 @@ type OperationsDurationPoint = {
     operationsMinutes: number;
     sowingMinutes: number;
     totalMinutes: number;
+    byUser: {
+        userId: string;
+        userName: string;
+        operationsMinutes: number;
+    }[];
 };
 
 type OperationsDurationData = {
     totalMinutes: number;
     operationsMinutes: number;
     sowingMinutes: number;
+    byUser: {
+        userId: string;
+        userName: string;
+        operationsMinutes: number;
+        operationsCount: number;
+    }[];
     daily: OperationsDurationPoint[];
 };
 
 type DateRange = {
     startDate: Date;
     endDate: Date;
+};
+
+type SunflowersDailyTotalsPoint = {
+    date: string;
+    spent: number;
+    earned: number;
 };
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -49,6 +72,22 @@ function toDateKey(date: Date) {
     return `${year}-${month}-${day}`;
 }
 
+function cacheKeyPart(value: string | number | undefined) {
+    if (typeof value === 'undefined' || value === '') {
+        return 'none';
+    }
+
+    return encodeURIComponent(String(value));
+}
+
+function analyticsCacheKey(
+    days: number | undefined,
+    from?: string,
+    to?: string,
+) {
+    return `dashboard:admin:analytics:days:${cacheKeyPart(days)}:from:${cacheKeyPart(from)}:to:${cacheKeyPart(to)}:v1`;
+}
+
 function parseDuration(value: unknown) {
     if (typeof value === 'number' && Number.isFinite(value)) {
         return Math.max(0, value);
@@ -60,6 +99,101 @@ function parseDuration(value: unknown) {
         }
     }
     return 0;
+}
+
+function parseAssignedUserIds(value: unknown) {
+    if (!value || typeof value !== 'object') {
+        return [];
+    }
+
+    const payload = value as {
+        assignedUserId?: unknown;
+        assignedUserIds?: unknown;
+    };
+    const assignedUserIds = new Set<string>();
+
+    if (typeof payload.assignedUserId === 'string') {
+        const assignedUserId = payload.assignedUserId.trim();
+        if (assignedUserId.length > 0) {
+            assignedUserIds.add(assignedUserId);
+        }
+    }
+
+    if (Array.isArray(payload.assignedUserIds)) {
+        for (const item of payload.assignedUserIds) {
+            if (typeof item !== 'string') {
+                continue;
+            }
+
+            const assignedUserId = item.trim();
+            if (assignedUserId.length > 0) {
+                assignedUserIds.add(assignedUserId);
+            }
+        }
+    }
+
+    return Array.from(assignedUserIds);
+}
+
+function addDurationToUsers({
+    date,
+    durationMinutes,
+    userId,
+    userName,
+    operationsByUser,
+    dailyOperationsByUser,
+    includeInDailyTotals = true,
+}: {
+    date: string;
+    durationMinutes: number;
+    userId: string;
+    userName: string;
+    operationsByUser: Map<
+        string,
+        {
+            userId: string;
+            userName: string;
+            operationsMinutes: number;
+            operationsCount: number;
+        }
+    >;
+    dailyOperationsByUser: Map<
+        string,
+        Map<
+            string,
+            { userId: string; userName: string; operationsMinutes: number }
+        >
+    >;
+    includeInDailyTotals?: boolean;
+}) {
+    if (includeInDailyTotals) {
+        const dateUserStats = dailyOperationsByUser.get(date) ?? new Map();
+        const existingDailyStats = dateUserStats.get(userId);
+        if (!existingDailyStats) {
+            dateUserStats.set(userId, {
+                userId,
+                userName,
+                operationsMinutes: durationMinutes,
+            });
+        } else {
+            existingDailyStats.operationsMinutes += durationMinutes;
+        }
+        dailyOperationsByUser.set(date, dateUserStats);
+    }
+
+    const existingUserStats = operationsByUser.get(userId);
+    if (!existingUserStats) {
+        operationsByUser.set(userId, {
+            userId,
+            userName,
+            operationsMinutes: durationMinutes,
+            operationsCount: 1,
+        });
+        return;
+    }
+
+    existingUserStats.operationsMinutes += durationMinutes;
+    existingUserStats.operationsCount += 1;
 }
 
 function createDurationBuckets(startDate: Date, days: number) {
@@ -93,6 +227,7 @@ function formatOperationsDurationData(
         sowingMinutes: sowingTotals.get(date) ?? 0,
         totalMinutes:
             (operationsTotals.get(date) ?? 0) + (sowingTotals.get(date) ?? 0),
+        byUser: [],
     }));
     const operationsMinutes = daily.reduce(
         (total, day) => total + day.operationsMinutes,
@@ -108,6 +243,7 @@ function formatOperationsDurationData(
         totalMinutes,
         operationsMinutes,
         sowingMinutes,
+        byUser: [],
         daily,
     };
 }
@@ -177,6 +313,21 @@ export async function getAnalyticsData(
     from?: string,
     to?: string,
 ) {
+    return redisCached(
+        analyticsCacheKey(days, from, to),
+        () => getAnalyticsDataUncached(days, from, to),
+        {
+            ttl: 60,
+            maxPayloadBytes: 2 * 1024 * 1024,
+        },
+    );
+}
+
+async function getAnalyticsDataUncached(
+    days: number | undefined,
+    from?: string,
+    to?: string,
+) {
     const { startDate, endDate } = createDateRange(days, from, to);
     const rangeDays = getRangeDays(startDate, endDate);
 
@@ -186,6 +337,9 @@ export async function getAnalyticsData(
         operationsList,
         operationsData,
         weekdayRegistrationsRaw,
+        aiTotals,
+        aiEvents,
+        sunflowersDailyTotalsRaw,
     ] = await Promise.all([
         getAnalyticsTotals(rangeDays),
         getEntityTypes(),
@@ -195,15 +349,25 @@ export async function getAnalyticsData(
         }),
         getEntitiesFormatted<EntityStandardized>('operation'),
         getUserRegistrationsByWeekday(startDate, endDate),
+        getAiAnalysisTotals({ from: startDate, to: endDate }),
+        getAiAnalysisEvents({ from: startDate, to: endDate }),
+        getSunflowersDailyTotals({ from: startDate, to: endDate }),
     ]);
 
     const entitiesCounts = await Promise.all(
         entityTypes.map(async (entityType) => {
             const entities = await getEntitiesRaw(entityType.name);
+            const definitions = await getAttributeDefinitions(entityType.name);
+            const incompleteCounts = getIncompleteEntityCountsByState(
+                entities,
+                definitions,
+            );
             return {
                 entityTypeName: entityType.name,
                 label: entityType.label,
                 count: entities.length,
+                incompleteDraftCount: incompleteCounts.draft,
+                incompletePublishedCount: incompleteCounts.published,
             };
         }),
     );
@@ -221,6 +385,23 @@ export async function getAnalyticsData(
         );
         operationDurations.set(operation.id, duration);
     }
+
+    const operationsByUser = new Map<
+        string,
+        {
+            userId: string;
+            userName: string;
+            operationsMinutes: number;
+            operationsCount: number;
+        }
+    >();
+    const dailyOperationsByUser = new Map<
+        string,
+        Map<
+            string,
+            { userId: string; userName: string; operationsMinutes: number }
+        >
+    >();
 
     for (const operation of operationsList) {
         if (operation.status !== 'completed' || !operation.completedAt) {
@@ -241,6 +422,20 @@ export async function getAnalyticsData(
             key,
             (operationsTotals.get(key) ?? 0) + durationMinutes,
         );
+
+        const userId = operation.assignedUser?.id ?? 'unassigned';
+        const userName =
+            operation.assignedUser?.displayName ??
+            operation.assignedUser?.userName ??
+            'Nedodijeljeno';
+        addDurationToUsers({
+            date: key,
+            durationMinutes,
+            userId,
+            userName,
+            operationsByUser,
+            dailyOperationsByUser,
+        });
     }
 
     const sowingEvents = await getPlantUpdateEvents({
@@ -259,6 +454,24 @@ export async function getAnalyticsData(
             key,
             (sowingTotals.get(key) ?? 0) + PLANT_SOWING_DURATION_MINUTES,
         );
+
+        const assignedUserIds = parseAssignedUserIds(event.data);
+        if (!assignedUserIds.length) {
+            continue;
+        }
+
+        for (const userId of assignedUserIds) {
+            const userName = operationsByUser.get(userId)?.userName ?? userId;
+            addDurationToUsers({
+                date: key,
+                durationMinutes: PLANT_SOWING_DURATION_MINUTES,
+                userId,
+                userName,
+                operationsByUser,
+                dailyOperationsByUser,
+                includeInDailyTotals: false,
+            });
+        }
     }
 
     const operationsDuration = formatOperationsDurationData(
@@ -267,15 +480,48 @@ export async function getAnalyticsData(
         sowingTotals,
     );
 
+    operationsDuration.byUser = Array.from(operationsByUser.values()).sort(
+        (a, b) => b.operationsMinutes - a.operationsMinutes,
+    );
+    operationsDuration.daily = operationsDuration.daily.map((day) => ({
+        ...day,
+        byUser: Array.from(dailyOperationsByUser.get(day.date)?.values() ?? [])
+            .filter((user) => user.operationsMinutes > 0)
+            .sort((a, b) => b.operationsMinutes - a.operationsMinutes),
+    }));
+
     const weekdayRegistrations = WEEKDAY_LABELS.map((label, index) => ({
         label,
         count: weekdayRegistrationsRaw[index] ?? 0,
     }));
+
+    const sunflowersByDate = new Map<string, SunflowersDailyTotalsPoint>();
+    for (const day of sunflowersDailyTotalsRaw) {
+        sunflowersByDate.set(day.date, day);
+    }
+    const sunflowersDailyTotals = dateKeys.map((date) => {
+        const day = sunflowersByDate.get(date);
+        return {
+            date,
+            spent: day?.spent ?? 0,
+            earned: day?.earned ?? 0,
+        };
+    });
+
+    const aiTotalTokens = aiEvents.reduce(
+        (sum, e) => sum + (e.data?.totalTokens ?? 0),
+        0,
+    );
 
     return {
         analytics: analyticsResult,
         entities: entitiesCounts,
         operationsDuration,
         weekdayRegistrations,
+        ai: {
+            count: aiTotals.count,
+            totalTokens: aiTotalTokens,
+        },
+        sunflowers: sunflowersDailyTotals,
     };
 }

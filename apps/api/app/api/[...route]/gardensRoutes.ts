@@ -1,5 +1,7 @@
 import { signalcoClient } from '@gredice/signalco';
 import {
+    buildRaisedBedFieldPlantUpdatePayload,
+    countEventsSince,
     createDefaultGardenForAccount,
     createEvent,
     createGardenBlock,
@@ -11,13 +13,17 @@ import {
     getGarden,
     getGardenBlocks,
     getGardenStack,
+    getOperations,
+    getOperationsPage,
     getRaisedBed,
     getRaisedBedDiaryEntries,
     getRaisedBedFieldDiaryEntries,
+    getRaisedBedIdsByAccount,
     getRaisedBedSensors,
     knownEvents,
     knownEventTypes,
     spendSunflowers,
+    deleteGardenBlock as storageDeleteGardenBlock,
     updateGarden,
     updateGardenBlock,
     updateGardenStack,
@@ -29,8 +35,15 @@ import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getBlockData } from '../../../lib/blocks/blockDataService';
 import { publicSecurity } from '../../../lib/docs/security';
+import { resolveGardenBlockPlacement } from '../../../lib/garden/blockPlacementService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
+import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
+import {
+    AI_ANALYSIS_DAILY_LIMIT,
+    streamRaisedBedImageAnalysis,
+    validateImageUrl,
+} from '../../../lib/garden/raisedBedAiAnalysisService';
 import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
     validateConnectedRaisedBedMove,
@@ -41,9 +54,164 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { queryBooleanSchema } from '../../../lib/http/queryBoolean';
 import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
+import { getPostHogClient } from '../../../lib/posthog-server';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
+
+async function countRecentRaisedBedAiAnalyses(accountId: string) {
+    const accountBedIds = await getRaisedBedIdsByAccount(accountId);
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const raisedBedAggregateIds = accountBedIds.map((bedId) =>
+        bedId.toString(),
+    );
+    const raisedBedFieldAggregateIds = accountBedIds.flatMap((bedId) =>
+        Array.from(
+            { length: 20 },
+            (_, index) => `${bedId.toString()}|${index.toString()}`,
+        ),
+    );
+
+    const [raisedBedCount, raisedBedFieldCount] = await Promise.all([
+        countEventsSince(
+            knownEventTypes.raisedBeds.aiAnalysis,
+            since,
+            raisedBedAggregateIds,
+        ),
+        countEventsSince(
+            knownEventTypes.raisedBedFields.aiAnalysis,
+            since,
+            raisedBedFieldAggregateIds,
+        ),
+    ]);
+
+    return raisedBedCount + raisedBedFieldCount;
+}
+
+async function trackGardenCreated(input: {
+    accountId: string;
+    gardenId: number;
+    name?: string;
+    userId: string;
+}) {
+    await (await getPostHogClient()).capture({
+        distinctId: input.userId,
+        event: 'garden_created',
+        properties: {
+            account_id: input.accountId,
+            garden_id: input.gardenId,
+            has_custom_name: Boolean(input.name?.trim()),
+        },
+    });
+}
+
+function isAppliedRaisedBedOperationStatus(status: string) {
+    return status === 'completed' || status === 'pendingVerification';
+}
+
+function serializeAppliedRaisedBedOperation(
+    operation: Awaited<ReturnType<typeof getOperations>>[number],
+) {
+    return {
+        id: operation.id,
+        entityId: operation.entityId,
+        raisedBedFieldId: operation.raisedBedFieldId,
+        status: operation.status,
+        createdAt: operation.createdAt.toISOString(),
+        completedAt: operation.completedAt?.toISOString() ?? null,
+        scheduledDate: operation.scheduledDate?.toISOString() ?? null,
+    };
+}
+
+function serializeGardenOperation(
+    operation: Awaited<ReturnType<typeof getOperations>>[number],
+    targetsByRaisedBedFieldId: Map<number, string>,
+    targetsByRaisedBedId: Map<number, string>,
+) {
+    const hasAssignedUser = (operation.assignedUserIds?.length ?? 0) > 0;
+    const isAssigned = operation.status === 'planned' && hasAssignedUser;
+    const isConfirmed = isAssigned && operation.isAccepted;
+    const timelineStatus = isConfirmed
+        ? 'confirmed'
+        : isAssigned
+          ? 'assigned'
+          : operation.status;
+
+    const statusHistory = [
+        {
+            status: 'new',
+            changedAt: operation.createdAt.toISOString(),
+        },
+        operation.scheduledDate
+            ? {
+                  status: 'planned',
+                  changedAt:
+                      operation.scheduledAt?.toISOString() ??
+                      operation.scheduledDate.toISOString(),
+              }
+            : null,
+        isAssigned
+            ? {
+                  status: 'assigned',
+                  changedAt:
+                      operation.assignedAt?.toISOString() ??
+                      operation.scheduledAt?.toISOString() ??
+                      operation.createdAt.toISOString(),
+              }
+            : null,
+        isConfirmed
+            ? {
+                  status: 'confirmed',
+                  changedAt:
+                      operation.assignedAt?.toISOString() ??
+                      operation.scheduledAt?.toISOString() ??
+                      operation.createdAt.toISOString(),
+              }
+            : null,
+        operation.completedAt
+            ? {
+                  status: 'pendingVerification',
+                  changedAt: operation.completedAt.toISOString(),
+              }
+            : null,
+        operation.verifiedAt
+            ? {
+                  status: 'completed',
+                  changedAt: operation.verifiedAt.toISOString(),
+              }
+            : null,
+        operation.canceledAt
+            ? {
+                  status: 'canceled',
+                  changedAt: operation.canceledAt.toISOString(),
+              }
+            : null,
+    ].filter(Boolean);
+
+    return {
+        id: operation.id,
+        entityId: operation.entityId,
+        raisedBedId: operation.raisedBedId,
+        raisedBedFieldId: operation.raisedBedFieldId,
+        status: timelineStatus,
+        createdAt: operation.createdAt.toISOString(),
+        scheduledDate: operation.scheduledDate?.toISOString() ?? null,
+        scheduledAt: operation.scheduledAt?.toISOString() ?? null,
+        completedAt: operation.completedAt?.toISOString() ?? null,
+        verifiedAt: operation.verifiedAt?.toISOString() ?? null,
+        canceledAt: operation.canceledAt?.toISOString() ?? null,
+        targetLabel:
+            (operation.raisedBedFieldId
+                ? targetsByRaisedBedFieldId.get(operation.raisedBedFieldId)
+                : null) ??
+            (operation.raisedBedId
+                ? targetsByRaisedBedId.get(operation.raisedBedId)
+                : null) ??
+            'Vrt',
+        statusHistory,
+    };
+}
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -77,35 +245,88 @@ const app = new Hono<{ Variables: AuthVariables }>()
         ),
         authValidator(['user', 'admin']),
         async (context) => {
-            const { accountId } = context.get('authContext');
+            const { accountId, userId } = context.get('authContext');
             const { name } = context.req.valid('json');
             const gardenId = await createDefaultGardenForAccount({
                 accountId,
                 name,
             });
+            await trackGardenCreated({ accountId, gardenId, name, userId });
             return context.json({ id: gardenId }, 201);
         },
     )
-    .post(
-        '/',
+    .get(
+        '/:gardenId/operations',
         describeRoute({
-            description: 'Create a new garden for current account',
+            description:
+                'Get garden operations for timeline and history with cursor pagination',
         }),
         zValidator(
-            'json',
+            'param',
             z.object({
-                name: z.string().trim().min(1).optional(),
+                gardenId: z.string(),
+            }),
+        ),
+        zValidator(
+            'query',
+            z.object({
+                cursor: z.coerce.number().int().min(0).optional(),
+                limit: z.coerce.number().int().min(1).max(50).optional(),
+                includeCompleted: queryBooleanSchema.optional(),
             }),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const { cursor, limit, includeCompleted } =
+                context.req.valid('query');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
             const { accountId } = context.get('authContext');
-            const { name } = context.req.valid('json');
-            const gardenId = await createDefaultGardenForAccount({
+            const garden = await getGarden(gardenIdNumber);
+
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            const operationsPage = await getOperationsPage({
                 accountId,
-                name,
+                gardenId: gardenIdNumber,
+                cursor,
+                limit,
+                includeCompleted,
             });
-            return context.json({ id: gardenId }, 201);
+
+            const targetsByRaisedBedId = new Map(
+                garden.raisedBeds.map((raisedBed) => [
+                    raisedBed.id,
+                    `Gredica: ${raisedBed.name}`,
+                ]),
+            );
+            const targetsByRaisedBedFieldId = new Map(
+                garden.raisedBeds.flatMap((raisedBed) =>
+                    raisedBed.fields.map((field) => [
+                        field.id,
+                        `Polje ${field.positionIndex + 1} • ${raisedBed.name}`,
+                    ]),
+                ),
+            );
+
+            return context.json({
+                items: operationsPage.items.map((operation) =>
+                    serializeGardenOperation(
+                        operation,
+                        targetsByRaisedBedFieldId,
+                        targetsByRaisedBedId,
+                    ),
+                ),
+                nextCursor: operationsPage.nextCursor,
+                total: operationsPage.total,
+            });
         },
     )
     .get(
@@ -128,13 +349,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const { accountId } = context.get('authContext');
-            const [garden, /*blockPlaceEventsRaw,*/ blocks] = await Promise.all(
-                [
+            const [garden, /*blockPlaceEventsRaw,*/ blocks, operations] =
+                await Promise.all([
                     getGarden(gardenIdNumber),
                     // getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 10000),
                     getGardenBlocks(gardenIdNumber),
-                ],
-            );
+                    getOperations(accountId, gardenIdNumber),
+                ]);
             if (!garden || garden.accountId !== accountId) {
                 return context.json({ error: 'Garden not found' }, 404);
             }
@@ -144,6 +365,27 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
             const blockNameById = new Map(
                 blocks.map((block) => [block.id, block.name] as const),
+            );
+            const appliedOperationsByRaisedBedId = operations.reduce(
+                (acc, operation) => {
+                    if (
+                        !operation.raisedBedId ||
+                        !isAppliedRaisedBedOperationStatus(operation.status)
+                    ) {
+                        return acc;
+                    }
+
+                    const existing = acc.get(operation.raisedBedId) ?? [];
+                    existing.push(
+                        serializeAppliedRaisedBedOperation(operation),
+                    );
+                    acc.set(operation.raisedBedId, existing);
+                    return acc;
+                },
+                new Map<
+                    number,
+                    ReturnType<typeof serializeAppliedRaisedBedOperation>[]
+                >(),
             );
 
             // Stacks: group by x then by y
@@ -206,6 +448,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         status: raisedBed.status,
                         orientation: raisedBed.orientation,
                         fields: raisedBed.fields,
+                        appliedOperations:
+                            appliedOperationsByRaisedBedId.get(raisedBed.id) ??
+                            [],
                         createdAt: raisedBed.createdAt,
                         updatedAt: raisedBed.updatedAt,
                         isValid: validityMap.get(raisedBed.id) ?? false,
@@ -939,6 +1184,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
             'json',
             z.object({
                 blockName: z.string(),
+                position: z
+                    .object({
+                        x: z.number().int(),
+                        y: z.number().int(),
+                    })
+                    .optional(),
             }),
         ),
         authValidator(['user', 'admin']),
@@ -952,8 +1203,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // Check garden exists and is owned by user
             const { accountId } = context.get('authContext');
 
-            const [garden, blockData] = await Promise.all([
+            const [garden, gardenBlocks, blockData] = await Promise.all([
                 getGarden(gardenIdNumber),
+                getGardenBlocks(gardenIdNumber),
                 getBlockData(),
             ]);
 
@@ -966,7 +1218,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const { blockName } = context.req.valid('json');
+            const { blockName, position } = context.req.valid('json');
 
             // Retrieve block information (cost)
             const block = blockData.find(
@@ -986,13 +1238,65 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            // Spend sunflowers and create block in parallel
-            const [, blockId] = await Promise.all([
-                spendSunflowers(accountId, cost, `block:${blockName}`),
-                createGardenBlock(gardenIdNumber, blockName),
-            ]);
+            const blockNameById = new Map(
+                gardenBlocks.map((block) => [block.id, block.name] as const),
+            );
+            const blockDataByName = new Map<
+                string,
+                (typeof blockData)[number]
+            >();
+            for (const candidate of blockData) {
+                const candidateName = candidate.information?.name;
+                if (candidateName) {
+                    blockDataByName.set(candidateName, candidate);
+                }
+            }
+            const placement = resolveGardenBlockPlacement({
+                blockName,
+                stacks: garden.stacks,
+                blockNameById,
+                blockDataByName,
+                requestedPosition: position,
+            });
+            if (!placement.valid) {
+                return context.json({ error: placement.error }, 400);
+            }
 
-            return context.json({ id: blockId });
+            const { x, y, existingBlocks } = placement.placement;
+            const hasTargetStack = garden.stacks.some(
+                (stack) => stack.positionX === x && stack.positionY === y,
+            );
+            const purchaseResult = await purchaseGardenBlock({
+                accountId,
+                blockName,
+                cost,
+                dependencies: {
+                    createGardenBlock,
+                    createGardenStack,
+                    deleteGardenBlock: storageDeleteGardenBlock,
+                    spendSunflowers,
+                    synchronizeGardenStacksAndRaisedBeds,
+                    updateGardenStack,
+                },
+                gardenId: gardenIdNumber,
+                hasTargetStack,
+                placement: {
+                    x,
+                    y,
+                    existingBlocks,
+                },
+            });
+            if (!purchaseResult.ok) {
+                return context.json(
+                    { error: purchaseResult.error },
+                    purchaseResult.status,
+                );
+            }
+
+            return context.json({
+                id: purchaseResult.blockId,
+                position: purchaseResult.position,
+            });
         },
     )
     .put(
@@ -1279,6 +1583,100 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json(diaryEntries);
         },
     )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/analyze-image',
+        describeRoute({
+            description:
+                'Analyze raised bed image with AI and save response to diary',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+            }),
+        ),
+        zValidator(
+            'json',
+            z.object({
+                imageUrl: z.url(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId } = context.req.valid('param');
+            const { imageUrl } = context.req.valid('json');
+
+            const urlError = validateImageUrl(imageUrl);
+            if (urlError) {
+                return context.json({ error: urlError }, 400);
+            }
+
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const raisedBed = await getRaisedBed(raisedBedIdNumber);
+            if (
+                !raisedBed ||
+                raisedBed.gardenId !== gardenIdNumber ||
+                raisedBed.accountId !== accountId
+            ) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            const recentCount = await countRecentRaisedBedAiAnalyses(accountId);
+            if (recentCount >= AI_ANALYSIS_DAILY_LIMIT) {
+                return context.json(
+                    {
+                        error: `Daily AI analysis limit reached (${AI_ANALYSIS_DAILY_LIMIT.toString()}/day). Try again tomorrow.`,
+                    },
+                    429,
+                );
+            }
+
+            if (!process.env.AI_GATEWAY_API_KEY) {
+                return context.json(
+                    { error: 'AI_GATEWAY_API_KEY is not configured' },
+                    500,
+                );
+            }
+
+            const result = await streamRaisedBedImageAnalysis(
+                {
+                    accountId,
+                    gardenId: gardenIdNumber,
+                    raisedBed,
+                    imageUrl,
+                },
+                async (analysis) => {
+                    await createEvent(
+                        knownEvents.raisedBeds.aiAnalysisV1(
+                            raisedBedIdNumber.toString(),
+                            {
+                                markdown: analysis.markdown,
+                                imageUrl,
+                                model: analysis.model,
+                                analyzedAt: analysis.analyzedAt,
+                                inputTokens: analysis.inputTokens,
+                                outputTokens: analysis.outputTokens,
+                                totalTokens: analysis.totalTokens,
+                            },
+                        ),
+                    );
+                },
+            );
+
+            return result.toTextStreamResponse();
+        },
+    )
     .get(
         '/:gardenId/raised-beds/:raisedBedId/sensors',
         describeRoute({
@@ -1537,7 +1935,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 await createEvent(
                     knownEvents.raisedBedFields.plantUpdateV1(
                         `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
-                        { status: status },
+                        buildRaisedBedFieldPlantUpdatePayload(
+                            status,
+                            field.assignedUserIds,
+                        ),
                     ),
                 );
 
@@ -1554,6 +1955,124 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     500,
                 );
             }
+        },
+    )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex/analyze-image',
+        describeRoute({
+            description:
+                'Analyze raised bed field image with AI and save response to diary',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+                positionIndex: z.string(),
+            }),
+        ),
+        zValidator(
+            'json',
+            z.object({
+                imageUrl: z.url(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId, positionIndex } =
+                context.req.valid('param');
+            const { imageUrl } = context.req.valid('json');
+
+            // Validate image URL against allowed hosts
+            const urlError = validateImageUrl(imageUrl);
+            if (urlError) {
+                return context.json({ error: urlError }, 400);
+            }
+
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+
+            const positionIndexNumber = parseInt(positionIndex, 10);
+            if (Number.isNaN(positionIndexNumber) || positionIndexNumber < 0) {
+                return context.json({ error: 'Invalid position index' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const raisedBed = await getRaisedBed(raisedBedIdNumber);
+            if (
+                !raisedBed ||
+                raisedBed.gardenId !== gardenIdNumber ||
+                raisedBed.accountId !== accountId
+            ) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            const field = raisedBed.fields.find(
+                (value) =>
+                    value.positionIndex === positionIndexNumber &&
+                    value.active &&
+                    value.plantSortId,
+            );
+            if (!field) {
+                return context.json(
+                    {
+                        error: 'Field not found or does not have an active plant',
+                    },
+                    404,
+                );
+            }
+
+            const recentCount = await countRecentRaisedBedAiAnalyses(accountId);
+            if (recentCount >= AI_ANALYSIS_DAILY_LIMIT) {
+                return context.json(
+                    {
+                        error: `Daily AI analysis limit reached (${AI_ANALYSIS_DAILY_LIMIT.toString()}/day). Try again tomorrow.`,
+                    },
+                    429,
+                );
+            }
+
+            if (!process.env.AI_GATEWAY_API_KEY) {
+                return context.json(
+                    { error: 'AI_GATEWAY_API_KEY is not configured' },
+                    500,
+                );
+            }
+
+            const result = await streamRaisedBedImageAnalysis(
+                {
+                    accountId,
+                    gardenId: gardenIdNumber,
+                    raisedBed,
+                    positionIndex: positionIndexNumber,
+                    imageUrl,
+                },
+                async (analysis) => {
+                    await createEvent(
+                        knownEvents.raisedBedFields.aiAnalysisV1(
+                            `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
+                            {
+                                markdown: analysis.markdown,
+                                imageUrl,
+                                model: analysis.model,
+                                analyzedAt: analysis.analyzedAt,
+                                inputTokens: analysis.inputTokens,
+                                outputTokens: analysis.outputTokens,
+                                totalTokens: analysis.totalTokens,
+                            },
+                        ),
+                    );
+                },
+            );
+
+            return result.toTextStreamResponse();
         },
     )
     .get(

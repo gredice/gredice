@@ -3,14 +3,18 @@ import {
     acceptAccountInvitation,
     cancelAccountInvitation,
     createAccountInvitation,
+    createEvent,
     deleteAccountWithDependencies,
     earnSunflowers,
     getAccount,
     getAccountAchievements,
+    getAccountGardens,
     getAccountInvitationByToken,
     getAccountInvitations,
     getAccountInvitationsByEmail,
     getAccountUsers,
+    getEvents,
+    getRaisedBeds,
     getSunflowers,
     getSunflowersHistory,
     getUser,
@@ -32,12 +36,19 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { getPostHogClient } from '../../../lib/posthog-server';
 
 const dailyRewards = [5, 10, 15, 20, 25, 50];
 const DAILY_REWARD_TIME_ZONE = 'Europe/Zagreb';
 
 function rewardForDay(day: number) {
     return dailyRewards[Math.min(day, dailyRewards.length) - 1] ?? 0;
+}
+
+function getEmailDomain(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const [, domain] = normalizedEmail.split('@');
+    return domain ?? 'unknown';
 }
 
 async function getDailyRewardState(accountId: string) {
@@ -165,6 +176,26 @@ async function getDailyRewardState(accountId: string) {
     };
 }
 
+const REFERRAL_REWARD = 10000;
+const REFERRAL_EVENT_TYPE = 'account.referral.v1';
+
+function normalizeReferralCode(code: string) {
+    return code
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, '')
+        .slice(0, 32);
+}
+
+async function hasActiveRaisedBed(accountId: string) {
+    const gardens = await getAccountGardens(accountId);
+    for (const garden of gardens) {
+        const raisedBeds = await getRaisedBeds(garden.id, { status: 'active' });
+        if (raisedBeds.length > 0) return true;
+    }
+    return false;
+}
+
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
         '/current',
@@ -245,6 +276,130 @@ const app = new Hono<{ Variables: AuthVariables }>()
             });
         },
     )
+    .get(
+        '/current/referrals',
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const events = await getEvents(
+                REFERRAL_EVENT_TYPE,
+                [accountId],
+                0,
+                1000,
+            );
+
+            let myCode = '';
+            let usedReferralCode: string | null = null;
+            const referredAccounts: Array<{
+                accountId: string;
+                rewarded: boolean;
+            }> = [];
+
+            for (const event of events) {
+                const data = event.data as Record<string, unknown> | null;
+                if (
+                    data?.action === 'code_set' &&
+                    typeof data.code === 'string'
+                ) {
+                    myCode = data.code;
+                }
+                if (
+                    data?.action === 'used_code' &&
+                    typeof data.code === 'string'
+                ) {
+                    usedReferralCode = data.code;
+                }
+                if (
+                    data?.action === 'referred_account' &&
+                    typeof data.referredAccountId === 'string'
+                ) {
+                    referredAccounts.push({
+                        accountId: data.referredAccountId,
+                        rewarded: data.rewarded === true,
+                    });
+                }
+            }
+
+            if (!myCode) {
+                myCode = normalizeReferralCode(accountId.slice(0, 12));
+            }
+
+            return context.json({
+                myCode,
+                usedReferralCode,
+                referredAccounts,
+                rewardAmount: REFERRAL_REWARD,
+                referralLink: `https://www.gredice.com/preporuke?ref=${encodeURIComponent(myCode)}`,
+            });
+        },
+    )
+    .post(
+        '/current/referrals/code',
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const body = await context.req.json<{ code?: string }>();
+            const code = normalizeReferralCode(body.code ?? '');
+            if (!code) return context.json({ error: 'Neispravan kod' }, 400);
+            if (await hasActiveRaisedBed(accountId)) {
+                return context.json(
+                    { error: 'Kod se ne može mijenjati nakon aktivne gredice' },
+                    400,
+                );
+            }
+            await createEvent({
+                type: REFERRAL_EVENT_TYPE,
+                version: 1,
+                aggregateId: accountId,
+                data: { action: 'code_set', code },
+            });
+            return context.json({ code });
+        },
+    )
+    .post(
+        '/current/referrals/use',
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const body = await context.req.json<{ code?: string }>();
+            const code = normalizeReferralCode(body.code ?? '');
+            if (!code) return context.json({ error: 'Neispravan kod' }, 400);
+            if (await hasActiveRaisedBed(accountId)) {
+                return context.json(
+                    { error: 'Kod se ne može unijeti nakon aktivne gredice' },
+                    400,
+                );
+            }
+
+            const myEvents = await getEvents(
+                REFERRAL_EVENT_TYPE,
+                [accountId],
+                0,
+                1000,
+            );
+            if (
+                myEvents.some(
+                    (e) =>
+                        (e.data as Record<string, unknown> | null)?.action ===
+                        'used_code',
+                )
+            ) {
+                return context.json(
+                    { error: 'Referral kod je već iskorišten' },
+                    400,
+                );
+            }
+
+            await createEvent({
+                type: REFERRAL_EVENT_TYPE,
+                version: 1,
+                aggregateId: accountId,
+                data: { action: 'used_code', code },
+            });
+            return context.json({ ok: true });
+        },
+    )
+
     .get(
         '/current/sunflowers',
         describeRoute({
@@ -440,6 +595,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            await (await getPostHogClient()).capture({
+                distinctId: userId,
+                event: 'account_invitation_sent',
+                properties: {
+                    account_id: accountId,
+                    invitation_id: invitation.id,
+                    invited_email_domain: getEmailDomain(email),
+                },
+            });
+
             return context.json(
                 {
                     id: invitation.id,
@@ -543,6 +708,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 sameSite: 'Lax',
                 domain: cookieDomain,
                 maxAge: 365 * 24 * 60 * 60, // 1 year
+            });
+
+            await (await getPostHogClient()).capture({
+                distinctId: userId,
+                event: 'account_invitation_accepted',
+                properties: {
+                    account_id: result.accountId,
+                    invitation_id: invitation.id,
+                    invited_by_user_id: invitation.invitedByUserId,
+                },
             });
 
             return context.json({ success: true, accountId: result.accountId });

@@ -5,7 +5,16 @@ import { createStore, useStore } from 'zustand';
 import { audioMixer } from './audio/audioMixer';
 import type { Block } from './types/Block';
 import { audioConfig } from './utils/audioConfig';
+import {
+    ALWAYS_DAY_TIME,
+    isDayNightCycleDisabled,
+    setDayNightCycleDisabled as persistDayNightCycleDisabled,
+} from './utils/dayNightCycle';
 import { triggerSelectionHaptic } from './utils/haptics';
+import {
+    isWeatherVisualizationDisabled,
+    setWeatherVisualizationDisabled as persistWeatherVisualizationDisabled,
+} from './utils/weather';
 
 const sunriseValue = 0.2;
 const sunsetValue = 0.8;
@@ -63,6 +72,12 @@ function getTimeOfDay(
     }
 }
 
+function resolveTimeOfDay(currentTime: Date, dayNightCycleDisabled: boolean) {
+    return dayNightCycleDisabled
+        ? ALWAYS_DAY_TIME
+        : getTimeOfDay(defaultLocation, currentTime);
+}
+
 type GameMode = 'normal' | 'edit';
 export type WinterMode = 'summer' | 'winter' | 'holiday';
 
@@ -85,17 +100,20 @@ export type GameState = {
     winterMode: WinterMode;
     setWinterMode: (winterMode: WinterMode) => void;
     appBaseUrl: string;
+    spriteBaseUrl: string;
     audio: {
         ambient: ReturnType<typeof audioMixer>;
         effects: ReturnType<typeof audioMixer>;
     };
     freezeTime?: Date | null;
     setFreezeTime: (freezeTime: Date | null) => void;
-    currentTime: Date;
+    dayNightCycleDisabled: boolean;
+    setDayNightCycleDisabled: (disabled: boolean) => void;
+    weatherVisualizationDisabled: boolean;
+    setWeatherVisualizationDisabled: (disabled: boolean) => void;
     timeOfDay: number;
     sunsetTime: Date | null;
     sunriseTime: Date | null;
-    setCurrentTime: (currentTime: Date) => void;
 
     // Game
     mode: GameMode;
@@ -154,22 +172,28 @@ const defaultLocation = { lat: 45.739, lon: 16.572 };
 
 export function createGameState({
     appBaseUrl,
+    spriteBaseUrl,
     freezeTime,
     isMock,
     winterMode,
 }: {
     appBaseUrl: string;
+    spriteBaseUrl?: string;
     freezeTime: Date | null;
     isMock: boolean;
     winterMode?: WinterMode;
 }) {
+    const dayNightCycleDisabled = isDayNightCycleDisabled();
+    const weatherVisualizationDisabled = isWeatherVisualizationDisabled();
     const now = freezeTime ?? new Date();
-    const timeOfDay = getTimeOfDay(defaultLocation, now);
+    const timeOfDay = resolveTimeOfDay(now, dayNightCycleDisabled);
+    const { sunrise, sunset } = getSunriseSunset(defaultLocation, now);
     return createStore<GameState>((set, get) => ({
         isMock: isMock,
         winterMode: winterMode ?? 'summer',
         setWinterMode: (winterMode) => set({ winterMode }),
         appBaseUrl: appBaseUrl,
+        spriteBaseUrl: spriteBaseUrl ?? appBaseUrl,
         audio: {
             ambient: audioMixer(
                 audioConfig().config.ambientVolume *
@@ -183,15 +207,43 @@ export function createGameState({
             ),
         },
         freezeTime,
-        setFreezeTime: (freezeTime) =>
+        setFreezeTime: (freezeTime) => {
+            const referenceTime = freezeTime ?? new Date();
+            const { sunrise, sunset } = getSunriseSunset(
+                defaultLocation,
+                referenceTime,
+            );
             set({
                 freezeTime,
-                currentTime: freezeTime ? freezeTime : new Date(),
-            }),
-        currentTime: now,
+                timeOfDay: resolveTimeOfDay(
+                    referenceTime,
+                    get().dayNightCycleDisabled,
+                ),
+                sunriseTime: sunrise,
+                sunsetTime: sunset,
+            });
+        },
+        dayNightCycleDisabled,
+        setDayNightCycleDisabled: (disabled) => {
+            persistDayNightCycleDisabled(disabled);
+            set({
+                dayNightCycleDisabled: disabled,
+                timeOfDay: resolveTimeOfDay(
+                    get().freezeTime ?? new Date(),
+                    disabled,
+                ),
+            });
+        },
+        weatherVisualizationDisabled,
+        setWeatherVisualizationDisabled: (disabled) => {
+            persistWeatherVisualizationDisabled(disabled);
+            set({
+                weatherVisualizationDisabled: disabled,
+            });
+        },
         timeOfDay,
-        sunriseTime: getSunriseSunset(defaultLocation, now).sunrise,
-        sunsetTime: getSunriseSunset(defaultLocation, now).sunset,
+        sunriseTime: sunrise,
+        sunsetTime: sunset,
 
         // Game
         mode: 'normal',
@@ -239,21 +291,6 @@ export function createGameState({
             })),
         setWorldRotation: (worldRotation) => set({ worldRotation }),
         setIsDragging: (isDragging) => set({ isDragging }),
-        setCurrentTime: (currentTime) => {
-            const freezeTime = get().freezeTime;
-            if (freezeTime) {
-                currentTime = freezeTime;
-            }
-
-            return set({
-                currentTime,
-                timeOfDay: getTimeOfDay(defaultLocation, currentTime),
-                sunriseTime: getSunriseSunset(defaultLocation, currentTime)
-                    .sunrise,
-                sunsetTime: getSunriseSunset(defaultLocation, currentTime)
-                    .sunset,
-            });
-        },
         setWeather: (weather) => set({ weather }),
         snowCoverage: 0,
         setSnowCoverage: (snowCoverage) => set({ snowCoverage }),

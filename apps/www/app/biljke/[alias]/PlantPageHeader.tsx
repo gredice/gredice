@@ -9,6 +9,7 @@ import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import Link from 'next/link';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../../components/shared/PageHeader';
@@ -36,15 +37,21 @@ export function PlantPageHeader({
     return (
         <PageHeader
             visual={
-                <PlantOrSortImage
-                    coverUrl={
-                        sort?.image?.cover?.url ?? plant.image?.cover?.url
-                    }
-                    alt={sort?.information?.name ?? plant.information.name}
-                    preload
-                    width={192}
-                    height={192}
-                />
+                sort ? (
+                    <PlantOrSortImage
+                        plantSort={sort}
+                        preload
+                        width={192}
+                        height={192}
+                    />
+                ) : (
+                    <PlantOrSortImage
+                        plant={plant}
+                        preload
+                        width={192}
+                        height={192}
+                    />
+                )
             }
             header={sort?.information?.name ?? plant.information.name}
             alternativeName={
@@ -161,6 +168,13 @@ export function PlantPageHeader({
                         }}
                         className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
                     />
+                    <Typography level="body2" secondary>
+                        Nisi zadovoljan uslugom ili proizvodom? Pogledaj{' '}
+                        <Link className="underline" href={KnownPages.Refunds}>
+                            30-dnevnu politiku povrata novca
+                        </Link>
+                        .
+                    </Typography>
                 </Stack>
             </Stack>
         </PageHeader>

@@ -50,7 +50,6 @@ export async function AccountAchievementsCard({
                 </Stack>
             </CardContent>
             <CardOverflow>
-                <Divider />
                 <div className="max-h-80 overflow-auto">
                     <Table>
                         <Table.Header>
