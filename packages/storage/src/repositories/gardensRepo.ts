@@ -1563,11 +1563,9 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                     plantDeadDate = event.createdAt;
                     stoppedDate = event.createdAt;
                 } else if (plantStatus === 'firstFlowers') {
-                    plantGrowthDate =
-                        plantGrowthDate ?? plantCycleEvent.createdAt;
+                    plantGrowthDate = plantGrowthDate ?? event.createdAt;
                 } else if (plantStatus === 'firstFruitSet') {
-                    plantGrowthDate =
-                        plantGrowthDate ?? plantCycleEvent.createdAt;
+                    plantGrowthDate = plantGrowthDate ?? event.createdAt;
                 } else if (plantStatus === 'ready') {
                     plantReadyDate = event.createdAt;
                 } else if (plantStatus === 'harvested') {
