@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
+    cmsPageCacheKeysForSlug,
     cmsPages,
     createCmsPage,
     getCmsPage,
@@ -268,4 +269,15 @@ test('CMS page revisions are recorded and can be restored', async () => {
     assert.equal(restored?.content, firstContent);
     assert.equal(restored?.canonicalPath, '/history-v1');
     assert.equal(restored?.noIndex, true);
+});
+
+test('CMS page cache keys include normalized page and list variants', () => {
+    const keys = cmsPageCacheKeysForSlug(' /Vodiči/Cesta pitanja/ ');
+
+    assert.deepEqual(keys, [
+        'cms:page:slug:vodici/cesta-pitanja:v1',
+        'cms:pages:list:all:v1',
+        'cms:pages:list:draft:v1',
+        'cms:pages:list:published:v1',
+    ]);
 });
