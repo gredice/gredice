@@ -147,7 +147,7 @@ function moveSection(
 
 export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
     const [state, formAction, pending] = useActionState(action, null);
-    const newSectionIdPrefix = useId();
+    const newSectionIdPrefix = `${useId()}-${page?.id ?? 'new'}`;
     const nextSectionId = useRef(0);
     const parsedSections = useMemo(
         () => parseSections(page?.content),
@@ -207,7 +207,7 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                                 {sections.length === 0 ? (
                                     <Card className="p-4 text-sm text-muted-foreground">
                                         {preserveFallbackContent
-                                            ? 'Postojeći sadržaj nije JSON niz sekcija i bit će sačuvan dok ne dodaš novu sekciju.'
+                                            ? 'Postojeći sadržaj nije JSON niz sekcija i bit će sačuvan dok ne dodaš novu sekciju. Dodavanje nove sekcije zamijenit će ga novom strukturom sekcija.'
                                             : 'Stranica još nema sekcija.'}
                                     </Card>
                                 ) : (
