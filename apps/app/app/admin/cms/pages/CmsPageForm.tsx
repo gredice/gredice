@@ -8,7 +8,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { useActionState, useMemo, useRef, useState } from 'react';
+import { useActionState, useId, useMemo, useRef, useState } from 'react';
 import type { CmsPageFormState } from './actions';
 
 type CmsPageFormProps = {
@@ -81,9 +81,13 @@ function editableSection(
     };
 }
 
-function newSection(component: string, id: number): CmsPageEditableSection {
+function newSection(
+    component: string,
+    idPrefix: string,
+    id: number,
+): CmsPageEditableSection {
     return {
-        id: `new-${component}-${id}`,
+        id: `${idPrefix}-${id}`,
         data: { component },
     };
 }
@@ -143,6 +147,7 @@ function moveSection(
 
 export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
     const [state, formAction, pending] = useActionState(action, null);
+    const newSectionIdPrefix = useId();
     const nextSectionId = useRef(0);
     const parsedSections = useMemo(
         () => parseSections(page?.content),
@@ -381,6 +386,7 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                                                     ...current,
                                                     newSection(
                                                         item.value,
+                                                        newSectionIdPrefix,
                                                         nextSectionId.current,
                                                     ),
                                                 ]);
