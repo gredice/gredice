@@ -92,13 +92,33 @@ jobs:
         run: pnpm install --frozen-lockfile --filter ${{ inputs.name }}... --filter .
 
       - name: ✨ Setup Vercel CLI
-        run: npm i --g vercel@latest
+        run: npm i --global vercel@latest
 
       - name: ⚙️ Pull Vercel Environment Information
         run: vercel env pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
         working-directory: ${{ inputs.path }}/
 
+      - name: 🔎 Check Playwright dependency
+        id: playwright
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const packageJson = JSON.parse(
+            fs.readFileSync('${{ inputs.path }}/package.json', 'utf8'),
+          );
+          const dependencies = {
+            ...packageJson.dependencies,
+            ...packageJson.devDependencies,
+          };
+          const hasPlaywright =
+            '@playwright/test' in dependencies || 'playwright' in dependencies;
+
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `enabled=${hasPlaywright}\n`);
+          NODE
+
       - name: ✨ Cache Playwright browsers
+        if: steps.playwright.outputs.enabled == 'true'
         uses: actions/cache@v5.0.5
         id: playwright-cache
         with:
@@ -108,7 +128,7 @@ jobs:
             ${{ runner.os }}-playwright-
 
       - name: 📦️ Install playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        if: steps.playwright.outputs.enabled == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
         run: pnpm exec playwright install --with-deps chromium
         working-directory: ${{ inputs.path }}/
 
