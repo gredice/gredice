@@ -3,6 +3,7 @@
 import { DebugPanel, DebugPanelSection } from '@gredice/ui/DebugControls';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Slider } from '@signalco/ui-primitives/Slider';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
@@ -768,7 +769,7 @@ export function DebugHud() {
                                         }
                                     }}
                                 />
-                                <div className="flex flex-wrap gap-2">
+                                <Row spacing={1} className="flex-wrap">
                                     {SNOW_ACCUMULATION_PRESETS.map((preset) => (
                                         <Button
                                             key={preset.label}
@@ -789,7 +790,7 @@ export function DebugHud() {
                                             {preset.label}
                                         </Button>
                                     ))}
-                                </div>
+                                </Row>
                             </Stack>
                         </DebugPanelSection>
                     </Stack>
