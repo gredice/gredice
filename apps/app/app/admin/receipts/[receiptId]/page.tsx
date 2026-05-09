@@ -97,7 +97,8 @@ export default async function ReceiptPage({
         notFound();
     }
 
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://api.gredice.com';
+    const apiBaseUrl =
+        process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://api.gredice.com';
 
     const fiscalizeReceiptActionBound = fiscalizeReceiptAction.bind(
         null,
@@ -246,7 +247,8 @@ export default async function ReceiptPage({
                                                         receipt.pdfStatus,
                                                     )}
                                                 </Chip>
-                                                {receipt.pdfStatus === 'succeeded' && (
+                                                {receipt.pdfStatus ===
+                                                    'succeeded' && (
                                                     <Link
                                                         href={`${apiBaseUrl}/api/receipts/${receipt.id}/pdf`}
                                                         target="_blank"

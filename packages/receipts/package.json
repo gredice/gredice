@@ -12,5 +12,8 @@
     "dependencies": {
         "@gredice/fiscalization": "workspace:*",
         "@gredice/storage": "workspace:*"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.4.14"
     }
 }

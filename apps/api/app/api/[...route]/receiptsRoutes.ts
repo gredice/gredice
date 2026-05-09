@@ -2,10 +2,13 @@ import { ensureReceiptPdf, getReceiptPdfAsset } from '@gredice/receipts';
 import { getReceipt } from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute } from 'hono-openapi';
-import { authValidator } from '../../lib/hono/authValidator';
-import { downloadReceiptPdf, uploadReceiptPdf } from '../../lib/r2Client';
+import {
+    type AuthVariables,
+    authValidator,
+} from '../../../lib/hono/authValidator';
+import { downloadReceiptPdf, uploadReceiptPdf } from '../../../lib/r2Client';
 
-const app = new Hono().get(
+const app = new Hono<{ Variables: AuthVariables }>().get(
     '/:receiptId/pdf',
     describeRoute({
         description: 'Download receipt PDF',
@@ -24,7 +27,7 @@ const app = new Hono().get(
             return context.json({ error: 'Receipt not found' }, 404);
         }
 
-        const isAdmin = authContext.role === 'admin';
+        const isAdmin = authContext.user.role === 'admin';
         if (!isAdmin) {
             const accountId = authContext.accountId;
             if (!accountId || receipt.invoice?.accountId !== accountId) {
@@ -43,18 +46,24 @@ const app = new Hono().get(
                 { force: true },
             );
             if (pdfResult.status === 'failed') {
-                return context.json({ error: pdfResult.error ?? 'Failed to generate PDF' }, 500);
+                return context.json(
+                    { error: pdfResult.error ?? 'Failed to generate PDF' },
+                    500,
+                );
             }
         }
 
         const asset = await getReceiptPdfAsset(id, async (storagePath) => {
             return downloadReceiptPdf(storagePath);
         });
+        const body = Uint8Array.from(asset.data);
 
-        return new Response(asset.data, {
+        return new Response(body, {
             headers: {
                 'Content-Type': asset.contentType ?? 'application/pdf',
-                'Content-Length': asset.contentLength?.toString() ?? asset.data.length.toString(),
+                'Content-Length':
+                    asset.contentLength?.toString() ??
+                    asset.data.length.toString(),
                 'Content-Disposition': `attachment; filename="${asset.fileName}"`,
             },
         });

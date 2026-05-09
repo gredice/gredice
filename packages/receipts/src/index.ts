@@ -1,2 +1,2 @@
-export { ensureReceiptPdf, getReceiptPdfAsset } from './service';
 export { buildReceiptPdfBuffer } from './generator';
+export { ensureReceiptPdf, getReceiptPdfAsset } from './service';

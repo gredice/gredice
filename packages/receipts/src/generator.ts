@@ -1,14 +1,18 @@
 import 'server-only';
-import { generateQr } from '@gredice/fiscalization';
+import { deflateSync, inflateSync } from 'node:zlib';
+import { generateQr } from '@gredice/fiscalization/generateQr';
 import type {
     SelectInvoice,
     SelectInvoiceItem,
     SelectReceipt,
 } from '@gredice/storage';
-import { deflateSync, inflateSync } from 'node:zlib';
 
 type ReceiptForPdf = SelectReceipt & {
-    invoice?: (SelectInvoice & { invoiceItems: SelectInvoiceItem[] | undefined | null }) | null;
+    invoice?:
+        | (SelectInvoice & {
+              invoiceItems: SelectInvoiceItem[] | undefined | null;
+          })
+        | null;
 };
 
 type QrImage = {
@@ -45,12 +49,16 @@ function hexToRgb(color: string) {
     return { r, g, b };
 }
 
-function formatCurrency(amount: string | number | null | undefined, currency = 'EUR') {
+function formatCurrency(
+    amount: string | number | null | undefined,
+    currency = 'EUR',
+) {
     if (amount === null || amount === undefined) {
         return '-';
     }
 
-    const numeric = typeof amount === 'string' ? Number.parseFloat(amount) : amount;
+    const numeric =
+        typeof amount === 'string' ? Number.parseFloat(amount) : amount;
     if (Number.isNaN(numeric)) {
         return '-';
     }
@@ -71,7 +79,8 @@ function formatQuantity(value: string | number | null | undefined) {
     if (value === null || value === undefined) {
         return '-';
     }
-    const numeric = typeof value === 'string' ? Number.parseFloat(value) : value;
+    const numeric =
+        typeof value === 'string' ? Number.parseFloat(value) : value;
     if (Number.isNaN(numeric)) {
         return '-';
     }
@@ -93,7 +102,9 @@ function formatDate(value: Date | string | null | undefined) {
 }
 
 function resolveCustomerName(receipt: ReceiptForPdf) {
-    return receipt.customerName || receipt.invoice?.billToName || 'Nepoznat kupac';
+    return (
+        receipt.customerName || receipt.invoice?.billToName || 'Nepoznat kupac'
+    );
 }
 
 function resolveCustomerAddress(receipt: ReceiptForPdf) {
@@ -145,23 +156,43 @@ function wrapText(value: string, maxWidth: number, fontSize: number) {
     return lines;
 }
 
-function appendColor(commands: string[], color: string, type: 'fill' | 'stroke') {
+function appendColor(
+    commands: string[],
+    color: string,
+    type: 'fill' | 'stroke',
+) {
     const { r, g, b } = hexToRgb(color);
     const command = `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)} ${type === 'fill' ? 'rg' : 'RG'}`;
     commands.push(command);
 }
 
-function drawRect(commands: string[], xOffset: number, top: number, width: number, height: number, color?: string) {
+function drawRect(
+    commands: string[],
+    xOffset: number,
+    top: number,
+    width: number,
+    height: number,
+    color?: string,
+) {
     if (color) {
         appendColor(commands, color, 'fill');
     }
     const x = MARGIN + xOffset;
     const y = PAGE_HEIGHT - top - height;
-    commands.push(`${x.toFixed(2)} ${y.toFixed(2)} ${width.toFixed(2)} ${height.toFixed(2)} re`);
+    commands.push(
+        `${x.toFixed(2)} ${y.toFixed(2)} ${width.toFixed(2)} ${height.toFixed(2)} re`,
+    );
     commands.push('f');
 }
 
-function drawLine(commands: string[], x1: number, y1: number, x2: number, y2: number, color: string) {
+function drawLine(
+    commands: string[],
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    color: string,
+) {
     appendColor(commands, color, 'stroke');
     const startX = MARGIN + x1;
     const startY = PAGE_HEIGHT - y1;
@@ -311,10 +342,13 @@ function decodePng(data: Buffer) {
                     recon[i] = (rawByte + Math.floor((left + up) / 2)) & 0xff;
                     break;
                 case 4:
-                    recon[i] = (rawByte + paethPredictor(left, up, upLeft)) & 0xff;
+                    recon[i] =
+                        (rawByte + paethPredictor(left, up, upLeft)) & 0xff;
                     break;
                 default:
-                    throw new Error(`Unsupported PNG filter type: ${filterType}`);
+                    throw new Error(
+                        `Unsupported PNG filter type: ${filterType}`,
+                    );
             }
         }
         recon.copy(raw, rawOffset);
@@ -352,8 +386,11 @@ function decodePng(data: Buffer) {
     };
 }
 
-async function createQrImage(receipt: ReceiptForPdf): Promise<QrImage | undefined> {
-    const dateSource = receipt.cisTimestamp || receipt.issuedAt || receipt.createdAt;
+async function createQrImage(
+    receipt: ReceiptForPdf,
+): Promise<QrImage | undefined> {
+    const dateSource =
+        receipt.cisTimestamp || receipt.issuedAt || receipt.createdAt;
     const totalNumber = Number.parseFloat(receipt.totalAmount ?? '0');
     if (!dateSource || Number.isNaN(totalNumber) || totalNumber <= 0) {
         return undefined;
@@ -417,9 +454,13 @@ function composePdf(objects: Buffer[]) {
     }
 
     const xrefStart = offset;
-    parts.push(Buffer.from(`xref\n0 ${objects.length + 1}\n${xrefEntries.join('')}trailer\n<< /Size ${
-        objects.length + 1
-    } /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`));
+    parts.push(
+        Buffer.from(
+            `xref\n0 ${objects.length + 1}\n${xrefEntries.join('')}trailer\n<< /Size ${
+                objects.length + 1
+            } /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`,
+        ),
+    );
 
     return Buffer.concat(parts);
 }
@@ -429,8 +470,23 @@ export async function buildReceiptPdfBuffer(receipt: ReceiptForPdf) {
     let cursorTop = MARGIN;
 
     const headerHeight = 90;
-    drawRect(commands, 0, cursorTop, CONTENT_WIDTH, headerHeight, LIGHT_BACKGROUND);
-    drawText(commands, 'Gredice fiskalni račun', 20, cursorTop + 34, 'F2', 24, ACCENT_COLOR);
+    drawRect(
+        commands,
+        0,
+        cursorTop,
+        CONTENT_WIDTH,
+        headerHeight,
+        LIGHT_BACKGROUND,
+    );
+    drawText(
+        commands,
+        'Gredice fiskalni račun',
+        20,
+        cursorTop + 34,
+        'F2',
+        24,
+        ACCENT_COLOR,
+    );
     drawText(
         commands,
         `Broj računa: ${receipt.receiptNumber}`,
@@ -468,10 +524,27 @@ export async function buildReceiptPdfBuffer(receipt: ReceiptForPdf) {
     drawText(commands, 'Izdavatelj', 0, cursorTop + 12, 'F2', 12, ACCENT_COLOR);
     let leftTop = cursorTop + 28;
     for (const value of leftValues) {
-        leftTop = drawWrappedText(commands, value, 0, leftTop, 'F1', 12, columnWidth, TEXT_COLOR);
+        leftTop = drawWrappedText(
+            commands,
+            value,
+            0,
+            leftTop,
+            'F1',
+            12,
+            columnWidth,
+            TEXT_COLOR,
+        );
     }
 
-    drawText(commands, 'Kupac', columnWidth + columnGap, cursorTop + 12, 'F2', 12, ACCENT_COLOR);
+    drawText(
+        commands,
+        'Kupac',
+        columnWidth + columnGap,
+        cursorTop + 12,
+        'F2',
+        12,
+        ACCENT_COLOR,
+    );
     let rightTop = cursorTop + 28;
     for (const value of rightValues) {
         rightTop = drawWrappedText(
@@ -488,7 +561,15 @@ export async function buildReceiptPdfBuffer(receipt: ReceiptForPdf) {
 
     cursorTop = Math.max(leftTop, rightTop) + 16;
 
-    drawText(commands, 'Detalji plaćanja', 0, cursorTop, 'F2', 14, ACCENT_COLOR);
+    drawText(
+        commands,
+        'Detalji plaćanja',
+        0,
+        cursorTop,
+        'F2',
+        14,
+        ACCENT_COLOR,
+    );
     cursorTop += 20;
     cursorTop = drawWrappedText(
         commands,
@@ -536,11 +617,31 @@ export async function buildReceiptPdfBuffer(receipt: ReceiptForPdf) {
 
     const items = receipt.invoice?.invoiceItems ?? [];
     if (items.length > 0) {
-        drawText(commands, 'Stavke računa', 0, cursorTop, 'F2', 14, ACCENT_COLOR);
+        drawText(
+            commands,
+            'Stavke računa',
+            0,
+            cursorTop,
+            'F2',
+            14,
+            ACCENT_COLOR,
+        );
         cursorTop += 20;
 
-        const columnWidths = [CONTENT_WIDTH * 0.45, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.2, CONTENT_WIDTH * 0.2];
-        drawRect(commands, 0, cursorTop - 6, CONTENT_WIDTH, 28, LIGHT_BACKGROUND);
+        const columnWidths = [
+            CONTENT_WIDTH * 0.45,
+            CONTENT_WIDTH * 0.15,
+            CONTENT_WIDTH * 0.2,
+            CONTENT_WIDTH * 0.2,
+        ];
+        drawRect(
+            commands,
+            0,
+            cursorTop - 6,
+            CONTENT_WIDTH,
+            28,
+            LIGHT_BACKGROUND,
+        );
         drawText(commands, 'Opis', 10, cursorTop + 12, 'F2', 12, MUTED_COLOR);
         drawText(
             commands,
@@ -572,7 +673,14 @@ export async function buildReceiptPdfBuffer(receipt: ReceiptForPdf) {
         cursorTop += 28;
 
         for (const item of items) {
-            drawLine(commands, 0, cursorTop + 4, CONTENT_WIDTH, cursorTop + 4, TABLE_BORDER);
+            drawLine(
+                commands,
+                0,
+                cursorTop + 4,
+                CONTENT_WIDTH,
+                cursorTop + 4,
+                TABLE_BORDER,
+            );
             const rowTop = cursorTop;
             const rowBottom = drawWrappedText(
                 commands,
@@ -716,7 +824,9 @@ export async function buildReceiptPdfBuffer(receipt: ReceiptForPdf) {
         const pdfX = MARGIN + x;
         const pdfY = PAGE_HEIGHT - y - qrSize;
         commands.push('q');
-        commands.push(`${qrSize.toFixed(2)} 0 0 ${qrSize.toFixed(2)} ${pdfX.toFixed(2)} ${pdfY.toFixed(2)} cm`);
+        commands.push(
+            `${qrSize.toFixed(2)} 0 0 ${qrSize.toFixed(2)} ${pdfX.toFixed(2)} ${pdfY.toFixed(2)} cm`,
+        );
         commands.push('/Im1 Do');
         commands.push('Q');
         drawText(
@@ -730,7 +840,7 @@ export async function buildReceiptPdfBuffer(receipt: ReceiptForPdf) {
         );
     }
 
-    const contentBuffer = Buffer.from(commands.join('\n') + '\n', 'utf8');
+    const contentBuffer = Buffer.from(`${commands.join('\n')}\n`, 'utf8');
 
     const hasQr = Boolean(qrImage);
     const objects: Buffer[] = [];
@@ -748,8 +858,14 @@ export async function buildReceiptPdfBuffer(receipt: ReceiptForPdf) {
             )}] /Resources ${pageResources} /Contents ${contentObjectId} 0 R >>\n`,
         ),
     );
-    objects.push(Buffer.from('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\n'));
-    objects.push(Buffer.from('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\n'));
+    objects.push(
+        Buffer.from('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\n'),
+    );
+    objects.push(
+        Buffer.from(
+            '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\n',
+        ),
+    );
     if (qrImage) {
         objects.push(qrImage.object);
     }

@@ -67,7 +67,11 @@ export async function ensureReceiptPdf(
         return { status: 'skipped', reason: 'not_fiscalized' };
     }
 
-    if (!options?.force && receipt.pdfStatus === 'succeeded' && receipt.pdfStoragePath) {
+    if (
+        !options?.force &&
+        receipt.pdfStatus === 'succeeded' &&
+        receipt.pdfStoragePath
+    ) {
         return {
             status: 'skipped',
             reason: 'already_generated',
