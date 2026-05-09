@@ -163,7 +163,8 @@ function copySection(
 
 function validateSection(section: CmsPageEditableSection) {
     const fields =
-        cmsPageSectionComponentsByName.get(section.data.component)?.fields ?? [];
+        cmsPageSectionComponentsByName.get(section.data.component)?.fields ??
+        [];
     return fields
         .filter((field) => field.required)
         .filter((field) => {
@@ -393,7 +394,9 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                                                                 className="space-y-1"
                                                             >
                                                                 <span className="block text-sm font-medium">
-                                                                    {field.label}
+                                                                    {
+                                                                        field.label
+                                                                    }
                                                                 </span>
                                                                 <textarea
                                                                     value={sectionValue(

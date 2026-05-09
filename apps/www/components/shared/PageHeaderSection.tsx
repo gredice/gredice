@@ -1,12 +1,11 @@
-import { PageHeader, type PageHeaderProps } from './PageHeader';
+import type { SectionData } from '@signalco/cms-core/SectionData';
+import { PageHeader } from './PageHeader';
 
-type PageHeaderSectionProps = Omit<PageHeaderProps, 'subHeader'> & {
-    description?: string | null;
-};
-
-export function PageHeaderSection({
-    description,
-    ...props
-}: PageHeaderSectionProps) {
-    return <PageHeader {...props} subHeader={description} />;
+export function PageHeaderSection({ header, description }: SectionData) {
+    return (
+        <PageHeader
+            header={typeof header === 'string' ? header : ''}
+            subHeader={typeof description === 'string' ? description : null}
+        />
+    );
 }

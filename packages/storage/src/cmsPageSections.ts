@@ -78,5 +78,7 @@ export const supportedCmsPageSectionComponents = new Set(
 );
 
 export function getCmsPageSectionComponent(component: string) {
-    return cmsPageSectionComponents.find((item) => item.component === component);
+    return cmsPageSectionComponents.find(
+        (item) => item.component === component,
+    );
 }
