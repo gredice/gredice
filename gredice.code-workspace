@@ -61,6 +61,10 @@
 			"path": "packages/js"
 		},
 		{
+			"name": "📦 @gredice/label-printer",
+			"path": "packages/label-printer"
+		},
+		{
 			"name": "📦 @gredice/signalco",
 			"path": "packages/signalco"
 		},

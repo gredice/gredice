@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, count, desc, eq, inArray, like } from 'drizzle-orm';
+import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import {
     attributeDefinitions,
     attributeValues,
@@ -49,6 +49,19 @@ function isRangeValue(value: unknown): value is { min: number; max: number } {
         typeof value.min === 'number' &&
         typeof value.max === 'number'
     );
+}
+
+function parseEntityRefId(value: string | null | undefined) {
+    if (!value) {
+        return null;
+    }
+
+    const trimmedValue = value.trim();
+    if (!/^\d+$/.test(trimmedValue)) {
+        return null;
+    }
+
+    return Number.parseInt(trimmedValue, 10);
 }
 
 function populateMissingAttributes(
@@ -101,14 +114,14 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
     const rawEntities = await storage().query.entities.findMany({
         where: state
             ? and(
-                  eq(entities.entityTypeName, entityTypeName),
-                  eq(entities.state, state),
-                  eq(entities.isDeleted, false),
-              )
+                eq(entities.entityTypeName, entityTypeName),
+                eq(entities.state, state),
+                eq(entities.isDeleted, false),
+            )
             : and(
-                  eq(entities.entityTypeName, entityTypeName),
-                  eq(entities.isDeleted, false),
-              ),
+                eq(entities.entityTypeName, entityTypeName),
+                eq(entities.isDeleted, false),
+            ),
         orderBy: desc(entities.updatedAt),
         with: {
             attributes: {
@@ -137,14 +150,14 @@ export async function getEntitiesCount(entityTypeName: string, state?: string) {
         .where(
             state
                 ? and(
-                      eq(entities.entityTypeName, entityTypeName),
-                      eq(entities.state, state),
-                      eq(entities.isDeleted, false),
-                  )
+                    eq(entities.entityTypeName, entityTypeName),
+                    eq(entities.state, state),
+                    eq(entities.isDeleted, false),
+                )
                 : and(
-                      eq(entities.entityTypeName, entityTypeName),
-                      eq(entities.isDeleted, false),
-                  ),
+                    eq(entities.entityTypeName, entityTypeName),
+                    eq(entities.isDeleted, false),
+                ),
         );
     return result[0]?.count ?? 0;
 }
@@ -228,7 +241,6 @@ async function expandEntityAttributes<T extends Record<string, unknown>>(
             attribute.attributeDefinition.category
         ] as Record<string, unknown>;
         if (attribute.attributeDefinition.multiple) {
-            // Create array if it doesn't exist
             if (category[attribute.attributeDefinition.name] === undefined) {
                 category[attribute.attributeDefinition.name] = [];
             }
@@ -240,9 +252,7 @@ async function expandEntityAttributes<T extends Record<string, unknown>>(
                 attribute.attributeDefinition,
                 cache,
             );
-
-            // When expanding to array, ignore the null values
-            if (typeof result !== 'undefined' && result !== null) {
+            if (result !== undefined && result !== null) {
                 if (Array.isArray(result)) {
                     array.push(...result);
                 } else {
@@ -313,39 +323,17 @@ async function expandValue(
     }
 }
 
-// Update resolveRef to use the cache and correct types
 async function resolveRef(
     value: string | null,
     attributeDefinition: SelectAttributeDefinition,
     cache: EntityTypeCache = {},
 ) {
-    const refEntityTypeName = attributeDefinition.dataType.split(':')[1];
-    if (!value) {
-        return;
-    }
-    const refNames: string[] = [];
-    if (attributeDefinition.multiple) {
-        try {
-            const parsedValue = JSON.parse(value);
-            if (!Array.isArray(parsedValue)) {
-                refNames.push(value);
-            } else {
-                for (const item of parsedValue) {
-                    if (typeof item === 'string') {
-                        refNames.push(item);
-                    } else {
-                        refNames.push(JSON.stringify(item));
-                    }
-                }
-            }
-        } catch {
-            refNames.push(value);
-        }
-    } else {
-        refNames.push(value);
+    const refId = parseEntityRefId(value);
+    if (refId === null) {
+        return null;
     }
 
-    // Use cache key based on entity type and state
+    const refEntityTypeName = attributeDefinition.dataType.split(':')[1];
     const cacheKey = `${refEntityTypeName}:published`;
     if (!cache[cacheKey]) {
         cache[cacheKey] = getEntitiesRaw(
@@ -354,45 +342,16 @@ async function resolveRef(
         ) as Promise<EntityWithAttributesAndType[]>;
     }
     const refEntitiesByType = await cache[cacheKey];
-    const refNameSet = new Set(refNames);
-    const refEntities = refEntitiesByType.filter(
-        (e: EntityWithAttributesAndType) =>
-            e.attributes.some(
-                (
-                    a: SelectAttributeValue & {
-                        attributeDefinition: SelectAttributeDefinition;
-                    },
-                ) =>
-                    a.value != null &&
-                    a.attributeDefinition.category === 'information' &&
-                    a.attributeDefinition.name === 'name' &&
-                    refNameSet.has(a.value),
-            ),
-    );
-
-    if (attributeDefinition.multiple) {
-        return await Promise.all(
-            refEntities.map((ref) =>
-                expandEntityAttributes(
-                    {
-                        id: ref.id,
-                    },
-                    ref.attributes,
-                    cache,
-                ),
-            ),
-        );
-    } else {
-        return refEntities[0]
-            ? await expandEntityAttributes(
-                  {
-                      id: refEntities[0].id,
-                  },
-                  refEntities[0].attributes,
-                  cache,
-              )
-            : null;
+    const refEntity = refEntitiesByType.find((e) => e.id === refId);
+    if (!refEntity) {
+        return null;
     }
+
+    return await expandEntityAttributes(
+        { id: refEntity.id },
+        refEntity.attributes,
+        cache,
+    );
 }
 
 export async function getEntitiesFormatted<T>(entityTypeName: string) {
@@ -451,10 +410,6 @@ export async function getEntityRaw(id: number) {
     return populateMissingAttributes(entity);
 }
 
-function escapeForLike(value: string) {
-    return value.replace(/[\\%_]/g, '\\$&');
-}
-
 function entityNameFromAttributes(
     entity: SelectEntity & {
         attributes: (SelectAttributeValue & {
@@ -488,45 +443,12 @@ function entityDisplayNameFromAttributes(
     return label ?? name ?? `${entity.entityType.label} ${entity.id}`;
 }
 
-function attributeValueContainsEntityName(
-    value: string | null,
-    entityName: string,
-    multiple: boolean,
-) {
-    if (!value) {
-        return false;
-    }
-    if (!multiple) {
-        return value === entityName;
-    }
-
-    try {
-        const parsed = JSON.parse(value);
-        if (!Array.isArray(parsed)) {
-            return value === entityName;
-        }
-
-        return parsed.some((item) =>
-            typeof item === 'string'
-                ? item === entityName
-                : JSON.stringify(item) === entityName,
-        );
-    } catch {
-        return value === entityName;
-    }
-}
-
 export async function getEntityIncomingLinks(
     entityId: number,
     sourceEntity?: NonNullable<Awaited<ReturnType<typeof getEntityRaw>>>,
 ): Promise<IncomingEntityLinkGroup[]> {
     const entity = sourceEntity ?? (await getEntityRaw(entityId));
     if (!entity) {
-        return [];
-    }
-
-    const entityName = entityNameFromAttributes(entity);
-    if (!entityName) {
         return [];
     }
 
@@ -542,44 +464,14 @@ export async function getEntityIncomingLinks(
 
     const definitionById = new Map(refDefinitions.map((d) => [d.id, d]));
     const definitionIds = refDefinitions.map((d) => d.id);
-    const exactValueMatches = await storage().query.attributeValues.findMany({
+    const linkAttributeValues = await storage().query.attributeValues.findMany({
         where: and(
             inArray(attributeValues.attributeDefinitionId, definitionIds),
             eq(attributeValues.isDeleted, false),
-            eq(attributeValues.value, entityName),
+            eq(attributeValues.value, String(entityId)),
         ),
     });
 
-    const multipleDefinitionIds = refDefinitions
-        .filter((definition) => definition.multiple)
-        .map((definition) => definition.id);
-    const linkAttributeValues = [...exactValueMatches];
-    if (multipleDefinitionIds.length > 0) {
-        const escapedJsonEntityName = escapeForLike(JSON.stringify(entityName));
-        const legacyJsonArrayMatches =
-            await storage().query.attributeValues.findMany({
-                where: and(
-                    inArray(
-                        attributeValues.attributeDefinitionId,
-                        multipleDefinitionIds,
-                    ),
-                    eq(attributeValues.isDeleted, false),
-                    like(attributeValues.value, `%${escapedJsonEntityName}%`),
-                ),
-            });
-
-        const seenAttributeValueIds = new Set(
-            linkAttributeValues.map((v) => v.id),
-        );
-        for (const legacyJsonArrayMatch of legacyJsonArrayMatches) {
-            if (seenAttributeValueIds.has(legacyJsonArrayMatch.id)) {
-                continue;
-            }
-
-            linkAttributeValues.push(legacyJsonArrayMatch);
-            seenAttributeValueIds.add(legacyJsonArrayMatch.id);
-        }
-    }
     const entityToDefinitionIds = new Map<number, Set<number>>();
     for (const attributeValue of linkAttributeValues) {
         if (attributeValue.entityId === entityId) {
@@ -589,15 +481,6 @@ export async function getEntityIncomingLinks(
             attributeValue.attributeDefinitionId,
         );
         if (!definition) {
-            continue;
-        }
-        if (
-            !attributeValueContainsEntityName(
-                attributeValue.value,
-                entityName,
-                definition.multiple,
-            )
-        ) {
             continue;
         }
 
@@ -852,25 +735,25 @@ export async function updateEntity(
         bustCached(cacheKeys.entity(entity.id)),
         entity.id
             ? storage()
-                  .select()
-                  .from(entities)
-                  .where(eq(entities.id, entity.id))
-                  .then((entityToUpdate) => {
-                      return Promise.all([
-                          entityToUpdate?.[0].id
-                              ? bustCached(
-                                    cacheKeys.entity(entityToUpdate?.[0]?.id),
-                                )
-                              : undefined,
-                          entityToUpdate?.[0].entityTypeName
-                              ? bustCached(
-                                    cacheKeys.entityTypeName(
-                                        entityToUpdate?.[0].entityTypeName,
-                                    ),
-                                )
-                              : undefined,
-                      ]);
-                  })
+                .select()
+                .from(entities)
+                .where(eq(entities.id, entity.id))
+                .then((entityToUpdate) => {
+                    return Promise.all([
+                        entityToUpdate?.[0].id
+                            ? bustCached(
+                                cacheKeys.entity(entityToUpdate?.[0]?.id),
+                            )
+                            : undefined,
+                        entityToUpdate?.[0].entityTypeName
+                            ? bustCached(
+                                cacheKeys.entityTypeName(
+                                    entityToUpdate?.[0].entityTypeName,
+                                ),
+                            )
+                            : undefined,
+                    ]);
+                })
             : undefined,
         entity.entityTypeName
             ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))

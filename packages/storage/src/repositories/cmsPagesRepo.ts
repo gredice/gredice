@@ -9,6 +9,11 @@ import {
     type SelectCmsPage,
     storage,
 } from '..';
+import {
+    bustCached,
+    cacheKeys,
+    directoriesCached,
+} from '../cache/directoriesCached';
 
 export type CmsPageState = 'draft' | 'published';
 
@@ -93,7 +98,9 @@ function boundedOptionalText(
 ) {
     const normalized = optionalText(value);
     if (normalized && normalized.length > maxLength) {
-        throw new Error(`${fieldLabel} must be at most ${maxLength} characters.`);
+        throw new Error(
+            `${fieldLabel} must be at most ${maxLength} characters.`,
+        );
     }
     return normalized;
 }
@@ -290,12 +297,21 @@ export async function getCmsPages(options: GetCmsPagesOptions = {}) {
             )
           : eq(cmsPages.isDeleted, false);
 
-    const query = storage()
-        .select()
-        .from(cmsPages)
-        .orderBy(desc(cmsPages.updatedAt), desc(cmsPages.id));
+    const query = async () => {
+        const baseQuery = storage()
+            .select()
+            .from(cmsPages)
+            .orderBy(desc(cmsPages.updatedAt), desc(cmsPages.id));
 
-    return where ? query.where(where) : query;
+        return where ? baseQuery.where(where) : baseQuery;
+    };
+
+    if (options.includeDeleted) {
+        return query();
+    }
+
+    const stateKey = options.state ?? 'all';
+    return directoriesCached(cacheKeys.cmsPagesList(stateKey), query, 300);
 }
 
 export function getCmsPage(id: number) {
@@ -305,12 +321,39 @@ export function getCmsPage(id: number) {
 }
 
 export function getCmsPageBySlug(slug: string) {
-    return storage().query.cmsPages.findFirst({
-        where: and(
-            eq(cmsPages.slug, normalizeCmsPageSlug(slug)),
-            eq(cmsPages.isDeleted, false),
-        ),
-    });
+    const normalizedSlug = normalizeCmsPageSlug(slug);
+    return directoriesCached(
+        cacheKeys.cmsPageBySlug(normalizedSlug),
+        () =>
+            storage().query.cmsPages.findFirst({
+                where: and(
+                    eq(cmsPages.slug, normalizedSlug),
+                    eq(cmsPages.isDeleted, false),
+                ),
+            }),
+        300,
+    );
+}
+
+export function cmsPageCacheKeysForSlug(slug: string) {
+    const normalizedSlug = normalizeCmsPageSlug(slug);
+    return [
+        cacheKeys.cmsPageBySlug(normalizedSlug),
+        cacheKeys.cmsPagesList('all'),
+        cacheKeys.cmsPagesList('draft'),
+        cacheKeys.cmsPagesList('published'),
+    ];
+}
+
+async function bustCmsPageCaches(slugs: string[]) {
+    const keys = new Set<string>();
+    for (const slug of slugs) {
+        for (const key of cmsPageCacheKeysForSlug(slug)) {
+            keys.add(key);
+        }
+    }
+
+    await Promise.all(Array.from(keys, (key) => bustCached(key)));
 }
 
 export async function createCmsPage(
@@ -344,6 +387,8 @@ export async function createCmsPage(
         nextNoIndex: values.noIndex,
         nextPublishedAt: values.publishedAt,
     });
+
+    await bustCmsPageCaches([values.slug]);
 
     return created.id;
 }
@@ -440,6 +485,8 @@ export async function updateCmsPage(
             actorId: actor?.id,
             actorName: actor?.name,
         });
+
+    await bustCmsPageCaches([existing.slug, next.slug]);
 }
 
 export async function updateCmsPageState(
@@ -505,6 +552,8 @@ export async function softDeleteCmsPage(id: number, actor?: CmsActor) {
             actorId: actor?.id,
             actorName: actor?.name,
         });
+
+    await bustCmsPageCaches([existing.slug]);
 }
 
 export async function getCmsPageRevisions(cmsPageId: number) {
