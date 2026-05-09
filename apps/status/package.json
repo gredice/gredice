@@ -18,7 +18,9 @@
         "next": "16.2.4",
         "react": "19.2.6",
         "react-dom": "19.2.6",
-        "server-only": "0.0.1"
+        "server-only": "0.0.1",
+        "@gredice/js": "workspace:*",
+        "babel-plugin-react-compiler": "19.1.0-rc.3"
     },
     "devDependencies": {
         "@biomejs/biome": "2.4.14",
