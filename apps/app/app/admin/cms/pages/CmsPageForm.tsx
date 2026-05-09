@@ -1,6 +1,7 @@
 'use client';
 
 import type { SelectCmsPage } from '@gredice/storage';
+import { cmsPageSectionComponents } from '@gredice/storage/cmsPageSections';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Input } from '@signalco/ui-primitives/Input';
@@ -38,12 +39,10 @@ const cmsPageStateItems = [
     },
 ];
 
-const cmsPageSectionItems = [
-    { value: 'Heading1', label: 'Heading1' },
-    { value: 'Feature1', label: 'Feature1' },
-    { value: 'Faq1', label: 'Faq1' },
-    { value: 'Footer1', label: 'Footer1' },
-];
+const cmsPageSectionItems = cmsPageSectionComponents.map((component) => ({
+    value: component.component,
+    label: component.label,
+}));
 
 function parseSections(content?: string | null) {
     if (!content) {
@@ -304,75 +303,58 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                                                             </Button>
                                                         </Row>
                                                     </Row>
-                                                    <Input
-                                                        label="Naslov"
-                                                        value={sectionValue(
-                                                            section,
-                                                            'header',
-                                                        )}
-                                                        onChange={(event) => {
-                                                            const value =
-                                                                event.target
-                                                                    .value;
-                                                            setSections(
-                                                                (current) =>
-                                                                    current.map(
-                                                                        (
-                                                                            currentSection,
-                                                                        ) =>
-                                                                            currentSection.id ===
-                                                                            section.id
-                                                                                ? {
-                                                                                      ...currentSection,
-                                                                                      data: {
-                                                                                          ...currentSection.data,
-                                                                                          header: value,
-                                                                                      },
-                                                                                  }
-                                                                                : currentSection,
-                                                                    ),
-                                                            );
-                                                        }}
-                                                    />
-                                                    <label className="space-y-1">
-                                                        <span className="block text-sm font-medium">
-                                                            Opis
-                                                        </span>
-                                                        <textarea
-                                                            value={sectionValue(
-                                                                section,
-                                                                'description',
-                                                            )}
-                                                            rows={4}
-                                                            className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                                            onChange={(
-                                                                event,
-                                                            ) => {
-                                                                const value =
-                                                                    event.target
-                                                                        .value;
-                                                                setSections(
-                                                                    (current) =>
-                                                                        current.map(
-                                                                            (
-                                                                                currentSection,
-                                                                            ) =>
-                                                                                currentSection.id ===
-                                                                                section.id
+                                                    {(cmsPageSectionComponents.find((component) => component.component === section.data.component)?.fields ?? []).map((field) =>
+                                                        field.type === 'textarea' ? (
+                                                            <label key={field.key} className="space-y-1">
+                                                                <span className="block text-sm font-medium">
+                                                                    {field.label}
+                                                                </span>
+                                                                <textarea
+                                                                    value={sectionValue(section, field.key)}
+                                                                    rows={field.rows ?? 4}
+                                                                    className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                                                    onChange={(event) => {
+                                                                        const value = event.target.value;
+                                                                        setSections((current) =>
+                                                                            current.map((currentSection) =>
+                                                                                currentSection.id === section.id
                                                                                     ? {
                                                                                           ...currentSection,
                                                                                           data: {
                                                                                               ...currentSection.data,
-                                                                                              description:
-                                                                                                  value,
+                                                                                              [field.key]: value,
                                                                                           },
                                                                                       }
                                                                                     : currentSection,
+                                                                            ),
+                                                                        );
+                                                                    }}
+                                                                />
+                                                            </label>
+                                                        ) : (
+                                                            <Input
+                                                                key={field.key}
+                                                                label={field.label}
+                                                                value={sectionValue(section, field.key)}
+                                                                onChange={(event) => {
+                                                                    const value = event.target.value;
+                                                                    setSections((current) =>
+                                                                        current.map((currentSection) =>
+                                                                            currentSection.id === section.id
+                                                                                ? {
+                                                                                      ...currentSection,
+                                                                                      data: {
+                                                                                          ...currentSection.data,
+                                                                                          [field.key]: value,
+                                                                                      },
+                                                                                  }
+                                                                                : currentSection,
                                                                         ),
-                                                                );
-                                                            }}
-                                                        />
-                                                    </label>
+                                                                    );
+                                                                }}
+                                                            />
+                                                        ),
+                                                    )}
                                                 </Stack>
                                             </Card>
                                         ))}
