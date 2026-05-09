@@ -8,7 +8,7 @@ const JWT_ASSERTION_LIFETIME_SECONDS = 3600;
 const TOKEN_EXPIRY_BUFFER_SECONDS = 60;
 const TOKEN_REFRESH_THRESHOLD_SECONDS = 30;
 
-type GoogleCalendarConfig = {
+export type GoogleCalendarConfig = {
     clientEmail: string;
     privateKey: string;
     calendarId: string;
@@ -77,7 +77,7 @@ function createJwtAssertion(config: GoogleCalendarConfig): string {
     signer.update(unsignedToken);
     signer.end();
 
-    const signature = signer.sign(config.privateKey);
+    const signature = signer.sign(normalizePrivateKey(config.privateKey));
     const encodedSignature = base64UrlEncode(signature);
 
     return `${unsignedToken}.${encodedSignature}`;
@@ -154,8 +154,10 @@ async function authorizedFetch(
     });
 }
 
-export function isGoogleCalendarConfigured(): boolean {
-    return getCalendarConfig() !== undefined;
+export function isGoogleCalendarConfigured(
+    config?: GoogleCalendarConfig,
+): boolean {
+    return (config ?? getCalendarConfig()) !== undefined;
 }
 
 export type CalendarEventDateTime = {
@@ -174,9 +176,8 @@ export type CreateCalendarEventInput = {
 
 export async function createCalendarEvent(
     input: CreateCalendarEventInput,
+    config = getCalendarConfig(),
 ): Promise<Record<string, unknown> | undefined> {
-    const config = getCalendarConfig();
-
     if (!config) {
         return undefined;
     }
@@ -241,9 +242,10 @@ export async function createCalendarEvent(
     return (await createResponse.json()) as Record<string, unknown>;
 }
 
-export async function deleteCalendarEvent(eventId: string): Promise<void> {
-    const config = getCalendarConfig();
-
+export async function deleteCalendarEvent(
+    eventId: string,
+    config = getCalendarConfig(),
+): Promise<void> {
     if (!config) {
         return;
     }

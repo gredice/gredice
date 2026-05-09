@@ -2,12 +2,20 @@ import 'server-only';
 import {
     createCalendarEvent,
     deleteCalendarEvent,
+    type GoogleCalendarConfig,
     getCalendarEventIdFromRequestId,
     isGoogleCalendarConfigured,
 } from '@gredice/google';
-import { getDeliveryRequest } from '@gredice/storage';
+import {
+    getDeliveryRequest,
+    getSetting,
+    isGoogleCalendarSettingValue,
+    SettingsKeys,
+} from '@gredice/storage';
 
-function formatAddress(parts: Array<string | undefined>): string | undefined {
+function formatAddress(
+    parts: Array<string | null | undefined>,
+): string | undefined {
     const value = parts.filter((part) => Boolean(part?.trim())).join(', ');
 
     return value.length > 0 ? value : undefined;
@@ -27,10 +35,6 @@ function buildDeliveryDescription(
 
     if (request?.accountId) {
         details.push(`Account ID: ${request.accountId}`);
-    }
-
-    if (request?.slot?.location?.name) {
-        details.push(`Location: ${request.slot.location.name}`);
     }
 
     if (request?.address) {
@@ -94,10 +98,24 @@ function resolveEventLocation(
     return undefined;
 }
 
+async function getDeliveryCalendarConfig(): Promise<
+    GoogleCalendarConfig | undefined
+> {
+    const setting = await getSetting(SettingsKeys.GoogleCalendar);
+
+    if (isGoogleCalendarSettingValue(setting?.value)) {
+        return setting.value;
+    }
+
+    return undefined;
+}
+
 export async function createDeliveryRequestCalendarEvent(
     requestId: string,
 ): Promise<void> {
-    if (!isGoogleCalendarConfigured()) {
+    const config = await getDeliveryCalendarConfig();
+
+    if (!isGoogleCalendarConfigured(config)) {
         return;
     }
 
@@ -111,17 +129,20 @@ export async function createDeliveryRequestCalendarEvent(
             return;
         }
 
-        await createCalendarEvent({
-            id: getCalendarEventIdFromRequestId(requestId),
-            summary:
-                request.mode === 'pickup'
-                    ? 'Pickup window scheduled'
-                    : 'Delivery window scheduled',
-            description: buildDeliveryDescription(request),
-            location: resolveEventLocation(request),
-            start: { date: request.slot.startAt },
-            end: { date: request.slot.endAt },
-        });
+        await createCalendarEvent(
+            {
+                id: getCalendarEventIdFromRequestId(requestId),
+                summary:
+                    request.mode === 'pickup'
+                        ? 'Pickup window scheduled'
+                        : 'Delivery window scheduled',
+                description: buildDeliveryDescription(request),
+                location: resolveEventLocation(request),
+                start: { date: request.slot.startAt },
+                end: { date: request.slot.endAt },
+            },
+            config,
+        );
     } catch (error) {
         console.error(
             `Failed to create Google Calendar event for delivery request ${requestId}:`,
@@ -133,12 +154,17 @@ export async function createDeliveryRequestCalendarEvent(
 export async function deleteDeliveryRequestCalendarEvent(
     requestId: string,
 ): Promise<void> {
-    if (!isGoogleCalendarConfigured()) {
+    const config = await getDeliveryCalendarConfig();
+
+    if (!isGoogleCalendarConfigured(config)) {
         return;
     }
 
     try {
-        await deleteCalendarEvent(getCalendarEventIdFromRequestId(requestId));
+        await deleteCalendarEvent(
+            getCalendarEventIdFromRequestId(requestId),
+            config,
+        );
     } catch (error) {
         console.error(
             `Failed to delete Google Calendar event for delivery request ${requestId}:`,

@@ -17,11 +17,11 @@ import {
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
-import { authSecurity, publicSecurity } from '../../../lib/docs/security';
 import {
     createDeliveryRequestCalendarEvent,
     deleteDeliveryRequestCalendarEvent,
 } from '../../../lib/delivery/calendarSync';
+import { authSecurity, publicSecurity } from '../../../lib/docs/security';
 import {
     type AuthVariables,
     authValidator,
