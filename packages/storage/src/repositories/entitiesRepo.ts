@@ -22,6 +22,17 @@ import { getEntityCompleteness } from '../helpers/entityCompleteness';
 
 const entityCacheTtl = 60 * 60; // 1 hour
 
+type EntityAttribute = SelectAttributeValue & {
+    attributeDefinition: SelectAttributeDefinition;
+};
+
+type EntityWithAttributesAndDefinitions = SelectEntity & {
+    attributes: EntityAttribute[];
+    entityType: SelectEntityType & {
+        attributeDefinitions: SelectAttributeDefinition[];
+    };
+};
+
 function tryParseAttributeJson(
     value: string,
     attributeDefinition: SelectAttributeDefinition,
@@ -64,18 +75,10 @@ function parseEntityRefId(value: string | null | undefined) {
     return Number.parseInt(trimmedValue, 10);
 }
 
-
 async function buildEffectiveEntity(
-    entity: SelectEntity & {
-        attributes: (SelectAttributeValue & {
-            attributeDefinition: SelectAttributeDefinition;
-        })[];
-        entityType: SelectEntityType & {
-            attributeDefinitions: SelectAttributeDefinition[];
-        };
-    },
+    entity: EntityWithAttributesAndDefinitions,
     visited = new Set<number>(),
-) {
+): Promise<EntityWithAttributesAndDefinitions> {
     if (visited.has(entity.id)) {
         throw new Error('Cycle detected in entity hierarchy.');
     }
@@ -86,7 +89,10 @@ async function buildEffectiveEntity(
     }
 
     const parent = await storage().query.entities.findFirst({
-        where: and(eq(entities.id, entity.parentId), eq(entities.isDeleted, false)),
+        where: and(
+            eq(entities.id, entity.parentId),
+            eq(entities.isDeleted, false),
+        ),
         with: {
             attributes: {
                 where: eq(attributeValues.isDeleted, false),
@@ -117,7 +123,8 @@ async function buildEffectiveEntity(
     );
 
     const inheritedAttributes = parentEffective.attributes.filter(
-        (attribute) => !childByDefinitionId.has(attribute.attributeDefinitionId),
+        (attribute) =>
+            !childByDefinitionId.has(attribute.attributeDefinitionId),
     );
 
     return populateMissingAttributes({
@@ -126,15 +133,8 @@ async function buildEffectiveEntity(
     });
 }
 function populateMissingAttributes(
-    entity: SelectEntity & {
-        attributes: (SelectAttributeValue & {
-            attributeDefinition: SelectAttributeDefinition;
-        })[];
-        entityType: SelectEntityType & {
-            attributeDefinitions: SelectAttributeDefinition[];
-        };
-    },
-) {
+    entity: EntityWithAttributesAndDefinitions,
+): EntityWithAttributesAndDefinitions {
     // Create missing attributes that have default value based on entity type definitions
     for (const definition of entity.entityType.attributeDefinitions) {
         const hasAtleastOneAttributeValue = entity.attributes.some(
@@ -201,7 +201,9 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
         },
     });
 
-    return Promise.all(rawEntities.map((entity) => buildEffectiveEntity(entity)));
+    return Promise.all(
+        rawEntities.map((entity) => buildEffectiveEntity(entity)),
+    );
 }
 
 export async function getEntitiesCount(entityTypeName: string, state?: string) {
@@ -225,9 +227,7 @@ export async function getEntitiesCount(entityTypeName: string, state?: string) {
 
 // Add a type for the cache, ensuring attributes and entityType are included
 interface EntityWithAttributesAndType extends SelectEntity {
-    attributes: (SelectAttributeValue & {
-        attributeDefinition: SelectAttributeDefinition;
-    })[];
+    attributes: EntityAttribute[];
     entityType: SelectEntityType;
 }
 interface EntityTypeCache {
