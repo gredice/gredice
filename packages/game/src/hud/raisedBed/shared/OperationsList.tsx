@@ -10,12 +10,42 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { memo, useMemo, useState } from 'react';
 import { useOperations } from '../../../hooks/useOperations';
 import { usePlantSort } from '../../../hooks/usePlantSorts';
-import { useShoppingCart } from '../../../hooks/useShoppingCart';
+import {
+    type ShoppingCartItemData,
+    useShoppingCart,
+} from '../../../hooks/useShoppingCart';
 import { useShoppingCartOpenParam } from '../../../useUrlState';
 import { OperationListItemSkeleton } from '../OperationListItemSkeleton';
 import { OperationsListItem } from './OperationsListItem';
 
 const MemoizedOperationsListItem = memo(OperationsListItem);
+
+function isOperationInCurrentContext(
+    {
+        entityTypeName,
+        status,
+        gardenId: itemGardenId,
+        raisedBedId: itemRaisedBedId,
+        positionIndex: itemPositionIndex,
+    }: ShoppingCartItemData,
+    {
+        gardenId,
+        raisedBedId,
+        positionIndex,
+    }: {
+        gardenId: number;
+        raisedBedId?: number;
+        positionIndex?: number;
+    },
+) {
+    return (
+        entityTypeName === 'operation' &&
+        status === 'new' &&
+        itemGardenId === gardenId &&
+        (itemRaisedBedId ?? undefined) === raisedBedId &&
+        (itemPositionIndex ?? undefined) === positionIndex
+    );
+}
 
 const OperationsListContent = memo(function OperationsListContent({
     operations,
@@ -92,10 +122,16 @@ export function OperationsList({
         () =>
             new Set(
                 (cart?.items ?? [])
-                    .filter((item) => item.entityTypeName === 'operation')
+                    .filter((item) =>
+                        isOperationInCurrentContext(item, {
+                            gardenId,
+                            raisedBedId,
+                            positionIndex,
+                        }),
+                    )
                     .map((item) => Number(item.entityId)),
             ),
-        [cart?.items],
+        [cart?.items, gardenId, raisedBedId, positionIndex],
     );
 
     const filteredOperations = operations
