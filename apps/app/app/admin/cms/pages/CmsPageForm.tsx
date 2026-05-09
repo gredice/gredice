@@ -147,12 +147,16 @@ function moveSection(
 
 export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
     const [state, formAction, pending] = useActionState(action, null);
-    const newSectionIdPrefix = `${useId()}-${page?.id ?? 'new'}`;
-    const nextSectionId = useRef(0);
+    const reactId = useId();
+    const newSectionIdPrefix = useMemo(
+        () => `${reactId}-${page?.id ?? 'new'}`,
+        [page?.id, reactId],
+    );
     const parsedSections = useMemo(
         () => parseSections(page?.content),
         [page?.content],
     );
+    const nextSectionId = useRef(parsedSections.sections.length);
     const [sections, setSections] = useState<CmsPageEditableSection[]>(() =>
         editableSections(parsedSections.sections),
     );
@@ -381,15 +385,19 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                                             type="button"
                                             variant="outlined"
                                             onClick={() => {
-                                                nextSectionId.current += 1;
-                                                setSections((current) => [
-                                                    ...current,
-                                                    newSection(
-                                                        item.value,
-                                                        newSectionIdPrefix,
-                                                        nextSectionId.current,
-                                                    ),
-                                                ]);
+                                                setSections((current) => {
+                                                    const sectionId =
+                                                        nextSectionId.current;
+                                                    nextSectionId.current += 1;
+                                                    return [
+                                                        ...current,
+                                                        newSection(
+                                                            item.value,
+                                                            newSectionIdPrefix,
+                                                            sectionId,
+                                                        ),
+                                                    ];
+                                                });
                                             }}
                                         >
                                             Dodaj {item.label}
