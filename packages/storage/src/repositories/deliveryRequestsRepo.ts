@@ -1115,7 +1115,7 @@ export async function getPendingDeliveryReadyEmailRequestIds({
         'delivery_ready_email_processed_events',
     );
     const pendingReadyEvents = await storage()
-        .selectDistinct({
+        .select({
             requestId: events.aggregateId,
             readyEventId: events.id,
         })
@@ -1158,7 +1158,7 @@ export async function getPendingDeliveryReadyEmailRequestIds({
                 ),
             ),
         )
-        .orderBy(asc(events.createdAt))
+        .orderBy(asc(events.createdAt), asc(events.id))
         .limit(limit);
 
     if (pendingReadyEvents.length === 0) {
