@@ -15,9 +15,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-env:
-  VERCEL_CLI_VERSION: "53.2.0"
-
 jobs:
   changes:
     name: "Detect changes"
@@ -236,7 +233,7 @@ jobs:
         run: pnpm install --frozen-lockfile --filter @gredice/storage... --filter .
 
       - name: ✨ Setup Vercel CLI
-        run: npm i --g vercel@${VERCEL_CLI_VERSION}
+        run: npm i --global vercel@latest
 
       - name: ⚙️ Pull Vercel Environment Information
         run: vercel env pull --yes --environment=preview --token=${{
@@ -300,7 +297,7 @@ jobs:
         run: pnpm install --frozen-lockfile --filter www... --filter .
 
       - name: ✨ Setup Vercel CLI
-        run: npm i -g vercel@${VERCEL_CLI_VERSION}
+        run: npm i --global vercel@latest
 
       - name: ⚙️ Pull Vercel Environment Information
         run: vercel env pull --yes --environment=preview --token=${{
@@ -374,7 +371,7 @@ jobs:
           path: apps/www
 
       - name: ✨ Setup Vercel CLI
-        run: npm i -g vercel@${VERCEL_CLI_VERSION}
+        run: npm i --global vercel@latest
 
       - name: ⚙️ Pull Vercel Environment Information
         run: vercel env pull --yes --environment=preview --token=${{
@@ -441,7 +438,7 @@ jobs:
           node-version: "24.15.0"
 
       - name: ✨ Setup Vercel CLI
-        run: command -v vercel >/dev/null 2>&1 || npm i -g vercel@${VERCEL_CLI_VERSION}
+        run: command -v vercel >/dev/null 2>&1 || npm i --global vercel@latest
 
       - name: ⚙️ Pull Vercel Environment Information
         run: |
