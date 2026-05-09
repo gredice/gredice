@@ -8,7 +8,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { useActionState, useMemo, useState } from 'react';
+import { useActionState, useMemo, useRef, useState } from 'react';
 import type { CmsPageFormState } from './actions';
 
 type CmsPageFormProps = {
@@ -44,8 +44,6 @@ const cmsPageSectionItems = [
     { value: 'Faq1', label: 'Faq1' },
     { value: 'Footer1', label: 'Footer1' },
 ];
-
-let nextSectionId = 0;
 
 function parseSections(content?: string | null) {
     if (!content) {
@@ -83,10 +81,9 @@ function editableSection(
     };
 }
 
-function newSection(component: string): CmsPageEditableSection {
-    nextSectionId += 1;
+function newSection(component: string, id: number): CmsPageEditableSection {
     return {
-        id: `new-${component}-${nextSectionId}`,
+        id: `new-${component}-${id}`,
         data: { component },
     };
 }
@@ -129,20 +126,24 @@ function moveSection(
         return sections;
     }
 
-    const currentSection = sections[index];
-    const targetSection = sections[targetIndex];
-    if (!currentSection || !targetSection) {
+    const next = [...sections];
+    const movingSections = next.splice(index, 1);
+    if (movingSections.length !== 1) {
         return sections;
     }
 
-    const next = [...sections];
-    next[index] = targetSection;
-    next[targetIndex] = currentSection;
+    const [movingSection] = movingSections;
+    if (!movingSection) {
+        return sections;
+    }
+
+    next.splice(targetIndex, 0, movingSection);
     return next;
 }
 
 export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
     const [state, formAction, pending] = useActionState(action, null);
+    const nextSectionId = useRef(0);
     const parsedSections = useMemo(
         () => parseSections(page?.content),
         [page?.content],
@@ -375,9 +376,13 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                                             type="button"
                                             variant="outlined"
                                             onClick={() => {
+                                                nextSectionId.current += 1;
                                                 setSections((current) => [
                                                     ...current,
-                                                    newSection(item.value),
+                                                    newSection(
+                                                        item.value,
+                                                        nextSectionId.current,
+                                                    ),
                                                 ]);
                                             }}
                                         >
