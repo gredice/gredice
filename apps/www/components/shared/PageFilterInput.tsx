@@ -5,7 +5,7 @@ import { Close, Search } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Input } from '@signalco/ui-primitives/Input';
-import type { HTMLAttributes } from 'react';
+import type { ChangeEvent, HTMLAttributes } from 'react';
 import { useEffect, useState } from 'react';
 
 export type PageFilterInputProps = HTMLAttributes<HTMLFormElement> & {
@@ -30,25 +30,22 @@ export function PageFilterInput({
         setSearch(value);
     };
 
-    const handleSubmit = (formData: FormData) => {
-        const nextSearch = formData.get(fieldName);
-        if (typeof nextSearch === 'string') {
-            setSearch(nextSearch);
-        }
+    const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+        updateSearch(event.target.value);
     };
 
     return (
-        <form action={handleSubmit} {...rest}>
+        <form {...rest}>
             <Input
                 name={fieldName}
                 value={localSearch}
-                onChange={(event) => setLocalSearch(event.target.value)}
+                onChange={handleChange}
                 placeholder="Pretraži..."
                 startDecorator={
                     <IconButton
                         className="hover:bg-neutral-300 ml-1 rounded-full aspect-square"
                         title="Pretraga"
-                        type="submit"
+                        type="button"
                         size="sm"
                         variant="plain"
                     >
