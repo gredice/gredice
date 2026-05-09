@@ -768,7 +768,7 @@ export function DebugHud() {
                                         }
                                     }}
                                 />
-                                <Stack direction="row" spacing={1} wrap>
+                                <div className="flex flex-wrap gap-1">
                                     {SNOW_ACCUMULATION_PRESETS.map((preset) => (
                                         <Button
                                             key={preset.label}
@@ -789,7 +789,7 @@ export function DebugHud() {
                                             {preset.label}
                                         </Button>
                                     ))}
-                                </Stack>
+                                </div>
                             </Stack>
                         </DebugPanelSection>
                     </Stack>
