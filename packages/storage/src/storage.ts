@@ -16,6 +16,11 @@ import type { PgliteDatabase } from 'drizzle-orm/pglite';
 import { Pool as PgPool } from 'pg';
 import * as schema from './schema';
 
+type StorageDatabase =
+    | NodePgDatabase<typeof schema>
+    | NeonDatabase<typeof schema>;
+type PgliteStorageDatabase = PgliteDatabase<typeof schema>;
+
 // Switch between test and production clients based on environment variable
 const isTest = process.env.TEST_ENV === '1';
 
@@ -30,11 +35,7 @@ function getDbConnectionString() {
 let pool: Pool | null = null;
 let testPool: PgPool | null = null;
 let pgliteClient: PGlite | null = null;
-let client:
-    | NodePgDatabase<typeof schema>
-    | NeonDatabase<typeof schema>
-    | PgliteDatabase<typeof schema>
-    | null = null;
+let client: StorageDatabase | PgliteStorageDatabase | null = null;
 
 function isPgliteTest() {
     return process.env.GREDICE_TEST_DB_PROVIDER === 'pglite';
@@ -70,7 +71,7 @@ function loadPgliteMigrator() {
     return migratorModule.migrate;
 }
 
-export function storage() {
+export function storage(): StorageDatabase {
     if (isTest) {
         if (isPgliteTest()) {
             if (!client) {
@@ -80,7 +81,7 @@ export function storage() {
                 pgliteClient = new PGliteClient(getPgliteDataDir());
                 client = pgliteDrizzle(pgliteClient, { schema });
             }
-            return client as PgliteDatabase<typeof schema>;
+            return client as unknown as NodePgDatabase<typeof schema>;
         }
 
         if (!client) {
@@ -111,7 +112,7 @@ export async function migrate() {
     if (isTest) {
         if (isPgliteTest()) {
             await loadPgliteMigrator()(
-                storage() as PgliteDatabase<typeof schema>,
+                storage() as unknown as PgliteStorageDatabase,
                 {
                     migrationsFolder: './src/migrations',
                 },
