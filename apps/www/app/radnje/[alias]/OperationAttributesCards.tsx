@@ -6,6 +6,7 @@ import {
     Sprout,
     Sun,
     Tally3,
+    Timer,
 } from '@signalco/ui-icons';
 import type { JSX } from 'react';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
@@ -54,6 +55,16 @@ export function OperationAttributesCards({
                 header="Učestalost"
                 subheader="Savjet o učestalosti izvođenja radnje"
                 value={operationFrequencyLabel(attributes?.frequency)}
+            />
+            <AttributeCard
+                icon={<Timer />}
+                header="Trajanje"
+                subheader="Prosječno vrijeme izvođenja radnje u minutama"
+                value={
+                    attributes?.duration != null
+                        ? `${attributes.duration} min`
+                        : '-'
+                }
             />
             <AttributeCard
                 icon={<Sprout />}

@@ -1,19 +1,25 @@
 import { directoriesClient } from '@gredice/client';
-import { unstable_cache } from 'next/cache';
+import { cache } from 'react';
 import { isPlantRecommended } from '../../../../packages/js/src/plants/isPlantRecommended';
 
-export const getPlantsData = unstable_cache(
-    async () => {
-        return (await directoriesClient().GET('/entities/plant')).data?.map(
-            (plant) => ({
+export const getPlantsData = cache(async () => {
+    try {
+        const { data, error } =
+            await directoriesClient().GET('/entities/plant');
+
+        if (error) {
+            console.error('Failed to fetch plants data', error);
+            return [];
+        }
+
+        return (
+            data?.map((plant) => ({
                 ...plant,
                 isRecommended: isPlantRecommended(plant),
-            }),
+            })) ?? []
         );
-    },
-    ['plantsData'],
-    {
-        revalidate: 60 * 60, // 1 hour
-        tags: ['plantsData'],
-    },
-);
+    } catch (error) {
+        console.error('Failed to fetch plants data', error);
+        return [];
+    }
+});

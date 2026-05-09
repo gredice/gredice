@@ -1,11 +1,17 @@
 import type { PlantData } from '@gredice/client';
+import { Markdown } from '@gredice/ui/Markdown';
 import { slug } from '@signalco/js';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import type { ReactNode } from 'react';
+import { ExpandableText } from '../../../components/shared/ExpandableText';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
-import { Markdown } from '../../../components/shared/Markdown';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
+import {
+    shouldMakeExpandable,
+    splitContentForExpansion,
+} from '../../../lib/content/expandableContent';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { PlantOperations } from './PlantOperations';
 
@@ -16,6 +22,7 @@ export type InformationSectionProps = {
     content: string | null | undefined;
     sortContent?: string | null | undefined;
     operations?: PlantData['information']['operations'] | null | undefined;
+    attributeCards?: ReactNode;
 };
 
 export async function InformationSection({
@@ -25,8 +32,13 @@ export async function InformationSection({
     content,
     sortContent,
     operations,
+    attributeCards,
 }: InformationSectionProps) {
-    if (!content) {
+    const hasContent = Boolean(content?.trim());
+    const hasSortContent = Boolean(sortContent?.trim());
+    const hasTextContent = hasContent || hasSortContent;
+
+    if (!hasTextContent && !attributeCards) {
         return null;
     }
 
@@ -60,7 +72,8 @@ export async function InformationSection({
     ];
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 group">
+        <div className="relative grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 group">
+            <div className="absolute -inset-4 border border-transparent rounded-2xl group-hover:border-border pointer-events-none group-focus-within:border-border"></div>
             <Typography
                 id={slug(header)}
                 level="h2"
@@ -69,39 +82,90 @@ export async function InformationSection({
                 {header}
             </Typography>
             <Stack spacing={1}>
-                {sortContent && (
-                    <Stack>
-                        <Typography level="body2" className="-mb-2">
-                            Specifično za ovu sortu:
-                        </Typography>
-                        <Markdown>{sortContent}</Markdown>
-                    </Stack>
-                )}
-                <Stack>
-                    {sortContent && (
-                        <Typography level="body2" className="-mb-2">
-                            Za biljku:
-                        </Typography>
-                    )}
-                    <Markdown>{content}</Markdown>
-                </Stack>
-            </Stack>
-            <Stack
-                className={cx(
-                    'border rounded-lg p-2 h-fit',
-                    !applicableOperations?.length && 'justify-center',
-                )}
-            >
-                {(applicableOperations?.length ?? 0) <= 0 && (
+                {hasTextContent ? (
+                    <>
+                        {hasSortContent && sortContent && (
+                            <Stack>
+                                <Typography level="body2" className="-mb-2">
+                                    Specifično za ovu sortu:
+                                </Typography>
+                                {(() => {
+                                    const { mainContent, additionalContent } =
+                                        splitContentForExpansion(sortContent);
+                                    if (shouldMakeExpandable(sortContent)) {
+                                        return (
+                                            <ExpandableText maxHeight={240}>
+                                                <Markdown>
+                                                    {mainContent}
+                                                </Markdown>
+                                                {additionalContent && (
+                                                    <Markdown>
+                                                        {additionalContent}
+                                                    </Markdown>
+                                                )}
+                                            </ExpandableText>
+                                        );
+                                    }
+                                    return <Markdown>{sortContent}</Markdown>;
+                                })()}
+                            </Stack>
+                        )}
+                        {hasContent && content && (
+                            <Stack>
+                                {hasSortContent && (
+                                    <Typography level="body2" className="-mb-2">
+                                        Za biljku:
+                                    </Typography>
+                                )}
+                                {(() => {
+                                    const { mainContent, additionalContent } =
+                                        splitContentForExpansion(content);
+                                    if (shouldMakeExpandable(content)) {
+                                        return (
+                                            <ExpandableText maxHeight={240}>
+                                                <Markdown>
+                                                    {mainContent}
+                                                </Markdown>
+                                                {additionalContent && (
+                                                    <Markdown>
+                                                        {additionalContent}
+                                                    </Markdown>
+                                                )}
+                                            </ExpandableText>
+                                        );
+                                    }
+                                    return <Markdown>{content}</Markdown>;
+                                })()}
+                            </Stack>
+                        )}
+                    </>
+                ) : (
                     <div className="py-4">
                         <NoDataPlaceholder>
-                            Nema dodatnih radnji
+                            Trenutno nema dodatnih savjeta
                         </NoDataPlaceholder>
                     </div>
                 )}
-                {(applicableOperations?.length ?? 0) > 0 && (
-                    <PlantOperations operations={applicableOperations} />
-                )}
+            </Stack>
+            <Stack spacing={1}>
+                {attributeCards}
+                <Stack
+                    className={cx(
+                        'border rounded-lg p-2 h-fit',
+                        !applicableOperations?.length && 'justify-center',
+                    )}
+                >
+                    {(applicableOperations?.length ?? 0) <= 0 && (
+                        <div className="py-4">
+                            <NoDataPlaceholder>
+                                Nema dodatnih radnji
+                            </NoDataPlaceholder>
+                        </div>
+                    )}
+                    {(applicableOperations?.length ?? 0) > 0 && (
+                        <PlantOperations operations={applicableOperations} />
+                    )}
+                </Stack>
             </Stack>
             <FeedbackModal
                 className="md:group-hover:opacity-100 md:opacity-0 transition-opacity ml-auto"

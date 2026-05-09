@@ -1,10 +1,9 @@
+import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { ShoppingCart } from '@signalco/ui-icons';
-import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
-import Image from 'next/image';
+import { cx } from '@signalco/ui-primitives/cx';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
-import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
-import { PlantingSeed } from '../../icons/PlantingSeed';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import { PlantPicker } from './RaisedBedPlantPicker';
 
@@ -12,10 +11,12 @@ export function RaisedBedFieldItemEmpty({
     gardenId,
     raisedBedId,
     positionIndex,
+    isDragging,
 }: {
     raisedBedId: number;
     gardenId: number;
     positionIndex: number;
+    isDragging?: boolean;
 }) {
     const { data: cart, isLoading: isCartPending } = useShoppingCart();
     const { data: garden, isLoading: isGardenPending } = useCurrentGarden();
@@ -32,13 +33,12 @@ export function RaisedBedFieldItemEmpty({
     const cartPlantSortId = cartPlantItem
         ? Number(cartPlantItem.entityId)
         : null;
-    const { data: cartPlantSort, isLoading: isCartPlantSortPending } =
-        usePlantSort(cartPlantSortId);
     if (!raisedBed) {
         return null;
     }
 
-    const cartPlantId = cartPlantSort?.information.plant.id;
+    const cartPlantSort = cartPlantItem?.entityData;
+    const cartPlantId = cartPlantSort?.information?.plant?.id;
     const additionalDataRaw = cartPlantItem?.additionalData
         ? JSON.parse(cartPlantItem.additionalData)
         : null;
@@ -48,10 +48,7 @@ export function RaisedBedFieldItemEmpty({
             : null,
     };
 
-    const isLoading =
-        isCartPending ||
-        isGardenPending ||
-        (Boolean(cartPlantSortId) && isCartPlantSortPending);
+    const isLoading = isCartPending || isGardenPending;
     if (isLoading) {
         return (
             <RaisedBedFieldItemButton
@@ -67,26 +64,26 @@ export function RaisedBedFieldItemEmpty({
                 <RaisedBedFieldItemButton
                     isLoading={isLoading}
                     positionIndex={positionIndex}
+                    className={cx(
+                        isDragging &&
+                            'opacity-50 ring-2 ring-lime-500 scale-105',
+                    )}
                 >
                     {(isLoading || !cartPlantItem) && (
-                        <PlantingSeed className="size-10 stroke-green-800" />
+                        <PlantingSeedIcon className="size-8 text-green-800" />
                     )}
                     {!isLoading && cartPlantItem && (
                         <>
-                            <Image
-                                src={`https://www.gredice.com/${cartPlantItem.shopData.image}`}
+                            <PlantOrSortImage
+                                plantSort={cartPlantSort}
                                 alt={cartPlantItem.shopData.name ?? 'Nepoznato'}
-                                width={60}
-                                height={60}
+                                width={50}
+                                height={50}
                             />
-                            <div className="absolute right-1 top-1">
-                                <DotIndicator
-                                    size={30}
-                                    color={'success'}
-                                    content={
-                                        <ShoppingCart className="size-6 stroke-white" />
-                                    }
-                                />
+                            <div className="absolute right-0.5 top-0.5">
+                                <div className="rounded-full border-2 p-1 bg-yellow-600 border-white shadow-lg">
+                                    <ShoppingCart className="size-4 stroke-white" />
+                                </div>
                             </div>
                         </>
                     )}
@@ -96,7 +93,7 @@ export function RaisedBedFieldItemEmpty({
             raisedBedId={raisedBedId}
             positionIndex={positionIndex}
             inShoppingCart={Boolean(cartPlantItem)}
-            selectedPlantId={cartPlantId}
+            selectedPlantId={cartPlantId ?? null}
             selectedSortId={cartPlantSortId}
             selectedPlantOptions={cartPlantOptions}
         />

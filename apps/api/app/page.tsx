@@ -12,6 +12,12 @@ const apis = [
     { label: '/api/directories', href: '/docs/directories' },
     { label: '/api/data', href: '/docs/data' },
     { label: '/api/gardens', href: '/docs/gardens' },
+    { label: '/api/feedback', href: '/docs/feedback' },
+    { label: '/api/occasions', href: '/docs/occasions' },
+    { label: '/api/shopping-cart', href: '/docs/shopping-cart' },
+    { label: '/api/checkout', href: '/docs/checkout' },
+    { label: '/api/delivery', href: '/docs/delivery' },
+    { label: '/api/notifications', href: '/docs/notifications' },
 ];
 
 export default function Home() {

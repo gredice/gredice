@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { and, desc, eq, inArray, isNull, notExists, or } from 'drizzle-orm';
-import { storage } from '..';
+import { accounts, storage } from '..';
+import { isTargetHourInTimeZone } from '../helpers/timezoneUtils';
 import { sendWebPush } from '../lib/webPush';
 import {
     accountUsers,
@@ -65,11 +66,23 @@ export function getNotificationsByAccount(
 ): Promise<SelectNotification[]> {
     return storage().query.notifications.findMany({
         where: read
-            ? eq(notifications.accountId, accountId)
+            ? and(
+                  eq(notifications.accountId, accountId),
+                  isNull(notifications.userId),
+              )
             : and(
                   eq(notifications.accountId, accountId),
+                  isNull(notifications.userId),
                   isNull(notifications.readAt),
               ),
+        orderBy: desc(notifications.timestamp),
+        limit,
+        offset: page * limit,
+    });
+}
+
+export function getNotifications(page: number, limit: number) {
+    return storage().query.notifications.findMany({
         orderBy: desc(notifications.timestamp),
         limit,
         offset: page * limit,
@@ -178,8 +191,15 @@ async function notifyPushSubscribers(
 
 export async function notificationsDigest({
     markSent = true,
+    targetHour,
 }: {
     markSent?: boolean;
+    /**
+     * If provided, only process users whose accounts have timezones
+     * where the current hour matches this target hour.
+     * Use this to send notifications at 8 AM user local time.
+     */
+    targetHour?: number;
 } = {}) {
     // 1. Get all users who want daily digests
     const digestUsers = await storage()
@@ -202,13 +222,15 @@ export async function notificationsDigest({
             ),
         );
 
-    // Get user accounts
+    // Get user accounts with timezone
     const usersAccounts = await storage()
         .select({
             accountId: accountUsers.accountId,
             userId: accountUsers.userId,
+            timeZone: accounts.timeZone,
         })
         .from(accountUsers)
+        .innerJoin(accounts, eq(accountUsers.accountId, accounts.id))
         .where(
             inArray(
                 accountUsers.userId,
@@ -216,14 +238,30 @@ export async function notificationsDigest({
             ),
         );
 
+    // If targetHour is specified, filter users based on their account timezone
+    const now = new Date();
+    const filteredUsers =
+        targetHour !== undefined
+            ? digestUsers.filter((user) => {
+                  const userAccountData = usersAccounts.filter(
+                      (ua) => ua.userId === user.id,
+                  );
+                  // User qualifies if any of their accounts is in the target hour
+                  return userAccountData.some((ua) =>
+                      isTargetHourInTimeZone(ua.timeZone, targetHour, now),
+                  );
+              })
+            : digestUsers;
+
     const bulkEmailData: {
         userId: string;
         email: string;
         newNotificationsCount: number;
+        notificationImageUrls: string[];
     }[] = [];
     const emailLogEntries: { userId: string; notificationId: string }[] = [];
 
-    for (const user of digestUsers) {
+    for (const user of filteredUsers) {
         const accountIds = usersAccounts
             .filter((ua) => ua.userId === user.id)
             .map((ua) => ua.accountId);
@@ -232,6 +270,7 @@ export async function notificationsDigest({
         const notificationsToEmail = await storage()
             .select({
                 id: notifications.id,
+                imageUrl: notifications.imageUrl,
             })
             .from(notifications)
             .where(
@@ -259,14 +298,26 @@ export async function notificationsDigest({
                             ),
                     ),
                 ),
-            );
+            )
+            .orderBy(desc(notifications.createdAt));
 
         if (notificationsToEmail.length > 0) {
             // Add to bulk email send
+            const notificationImageUrls = Array.from(
+                new Set(
+                    notificationsToEmail
+                        .map((notification) => notification.imageUrl)
+                        .filter((imageUrl): imageUrl is string =>
+                            Boolean(imageUrl),
+                        ),
+                ),
+            );
+
             bulkEmailData.push({
                 userId: user.id,
                 email: user.email,
                 newNotificationsCount: notificationsToEmail.length,
+                notificationImageUrls,
             });
 
             // Track these for logging

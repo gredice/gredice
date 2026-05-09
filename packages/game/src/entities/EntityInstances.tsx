@@ -1,206 +1,177 @@
-import { Instance, Instances, MeshWobbleMaterial } from '@react-three/drei';
-import type { BufferGeometry, Material } from 'three';
-import { useBlockData } from '../hooks/useBlockData';
+import { useEffect, useMemo } from 'react';
+import { MeshStandardMaterial } from 'three';
+import { updateGameProfileMetadata } from '../scene/gameProfileMetadata';
+import {
+    type GameQualityProfile,
+    resolveGameQualityProfile,
+} from '../scene/gameQuality';
+import { snowPresets } from '../snow/snowPresets';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
-import { getStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { EntityInstancesBlock } from './EntityInstancesBlock';
+import { GroundBlockDecorations } from './groundDecorations/GroundBlockDecorations';
 
-function EntityGrassInstances({ stacks }: { stacks: Stack[] | undefined }) {
+export const instancedBlockNames = [
+    'Block_Grass',
+    'Block_Grass_Angle',
+    'Block_Sand',
+    'Block_Sand_Angle',
+    'Block_Snow',
+    'Block_Snow_Angle',
+    'Bush',
+    'Pine',
+    'Tree',
+    'ShovelSmall',
+    'MulchHey',
+    'MulchCoconut',
+    'MulchWood',
+    'Tulip',
+    'BaleHey',
+    'Stick',
+    'Seed',
+    'StoneSmall',
+    'StoneMedium',
+    'StoneLarge',
+];
+
+const instancedSnowOverlayCounts = {
+    BaleHey: 1,
+    Block_Grass: 1,
+    Block_Grass_Angle: 1,
+    Block_Sand: 1,
+    Block_Sand_Angle: 1,
+    Block_Snow: 1,
+    Block_Snow_Angle: 1,
+    Bush: 2,
+    MulchCoconut: 1,
+    MulchHey: 1,
+    MulchWood: 1,
+    Pine: 1,
+    ShovelSmall: 1,
+    Stick: 1,
+    StoneLarge: 1,
+    StoneMedium: 1,
+    StoneSmall: 1,
+    Tree: 1,
+    Tulip: 1,
+} satisfies Partial<Record<(typeof instancedBlockNames)[number], number>>;
+
+function getInstancedSnowOverlayCount(blockName: string) {
+    const count = Reflect.get(instancedSnowOverlayCounts, blockName);
+    return typeof count === 'number' ? count : 0;
+}
+
+function countInstancedSnowOverlays(stacks: Stack[] | undefined) {
+    if (!stacks) {
+        return 0;
+    }
+
+    return stacks.reduce(
+        (sum, stack) =>
+            sum +
+            stack.blocks.reduce(
+                (blockSum, block) =>
+                    blockSum + getInstancedSnowOverlayCount(block.name),
+                0,
+            ),
+        0,
+    );
+}
+
+export function EntityInstances({
+    quality,
+    renderGroundDecorations,
+    stacks,
+    renderDetails = true,
+}: {
+    quality?: GameQualityProfile;
+    renderGroundDecorations?: boolean;
+    stacks: Stack[] | undefined;
+    renderDetails?: boolean;
+}) {
     const { nodes, materials } = useGameGLTF();
-    const { data: blockData } = useBlockData();
-    const pickupBlock = useGameState((state) => state.pickupBlock);
+    const qualityProfile = quality ?? resolveGameQualityProfile();
+    const isEditMode = useGameState((state) => state.mode) === 'edit';
+    const snowCoverage = useGameState((state) => state.snowCoverage);
+    const snowOverlaysVisible =
+        snowCoverage >= qualityProfile.snowOverlayMinCoverage;
+    const instancedSnowOverlayCount = snowOverlaysVisible
+        ? countInstancedSnowOverlays(stacks)
+        : 0;
+    const shouldRenderGroundDecorations =
+        (renderGroundDecorations ?? renderDetails) &&
+        qualityProfile.groundDecorationDensity > 0;
+    const snowMaterial = useMemo(
+        () =>
+            new MeshStandardMaterial({
+                color: '#FFFFFF',
+                roughness: 1,
+                metalness: 0,
+            }),
+        [],
+    );
 
-    const grassBlockData = stacks
-        ?.filter(
-            (s) =>
-                (!pickupBlock || !s.blocks.includes(pickupBlock)) &&
-                s.blocks.some(
-                    (b) =>
-                        b.name === 'Block_Grass' ||
-                        b.name === 'Block_Grass_Angle',
-                ),
-        )
-        .flatMap((s) =>
-            s.blocks
-                ?.filter(
-                    (b) =>
-                        b.name === 'Block_Grass' ||
-                        b.name === 'Block_Grass_Angle',
-                )
-                .map((b) => {
-                    const y = getStackHeight(blockData, s, b);
-                    const atAngle = b.name === 'Block_Grass_Angle';
-                    return {
-                        id: b.id,
-                        atAngle,
-                        position: [
-                            s.position.x,
-                            y + (atAngle ? 0.2 : 0.2),
-                            s.position.z,
-                        ] as [number, number, number],
-                        rotation: b.rotation || 0,
-                    };
-                }),
+    useEffect(() => {
+        const metadata = {
+            groundDecorationDensity: qualityProfile.groundDecorationDensity,
+            instancedSnowOverlayCount,
+            snowOverlayMinCoverage: qualityProfile.snowOverlayMinCoverage,
+        };
+
+        updateGameProfileMetadata(
+            shouldRenderGroundDecorations
+                ? metadata
+                : { ...metadata, groundDecorationCount: 0 },
         );
-    const limit = Math.max((grassBlockData?.length ?? 0) + 1, 100);
+    }, [
+        instancedSnowOverlayCount,
+        qualityProfile.groundDecorationDensity,
+        qualityProfile.snowOverlayMinCoverage,
+        shouldRenderGroundDecorations,
+    ]);
+
+    const commonSnowProps = {
+        renderSnow: snowOverlaysVisible,
+        snowOverlayMinCoverage: qualityProfile.snowOverlayMinCoverage,
+    };
+
+    // In edit mode, blocks are rendered by EntityFactory with proper controls
+    if (isEditMode) {
+        return null;
+    }
 
     return (
         <>
-            <Instances
-                limit={limit}
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Block_Grass"
+                yOffset={0.2}
                 geometry={nodes.Block_Grass_1_2.geometry}
                 material={nodes.Block_Grass_1_2.material}
-                receiveShadow
-                castShadow
-            >
-                {grassBlockData
-                    ?.filter((data) => !data.atAngle)
-                    .map((data) => (
-                        <Instance
-                            key={`grass-block-${data.id}`}
-                            position={data.position}
-                            rotation={[0, data.rotation * (Math.PI / 2), 0]}
-                        />
-                    ))}
-            </Instances>
-            <Instances
-                limit={limit}
+                snow={snowPresets.grassFlat}
+                snowLift={0.01}
+                {...commonSnowProps}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Block_Grass_Angle"
+                yOffset={0.2}
                 geometry={nodes.Block_Grass_Angle_1_2.geometry}
                 material={nodes.Block_Grass_Angle_1_2.material}
-                receiveShadow
-                castShadow
-            >
-                {grassBlockData
-                    ?.filter((data) => data.atAngle)
-                    .map((data) => (
-                        <Instance
-                            key={`grass-block-${data.id}`}
-                            position={data.position}
-                            rotation={[0, data.rotation * (Math.PI / 2), 0]}
-                        />
-                    ))}
-            </Instances>
-            <Instances
-                limit={limit}
-                geometry={nodes.Block_Grass_1_1.geometry}
-                receiveShadow
-                castShadow
-            >
-                <MeshWobbleMaterial
-                    {...materials['Material.GrassPart']}
-                    factor={0.01}
-                    speed={4}
-                />
-                {grassBlockData
-                    ?.filter((data) => !data.atAngle)
-                    .map((data) => (
-                        <Instance
-                            key={`grass-block-${data.id}`}
-                            position={data.position}
-                            rotation={[0, data.rotation * (Math.PI / 2), 0]}
-                        />
-                    ))}
-            </Instances>
-            <Instances
-                limit={limit}
-                geometry={nodes.Block_Grass_Angle_1_1.geometry}
-                receiveShadow
-                castShadow
-            >
-                <MeshWobbleMaterial
-                    {...materials['Material.GrassPart']}
-                    factor={0.01}
-                    speed={4}
-                />
-                {grassBlockData
-                    ?.filter((data) => data.atAngle)
-                    .map((data) => (
-                        <Instance
-                            key={`grass-block-${data.id}`}
-                            position={data.position}
-                            rotation={[0, data.rotation * (Math.PI / 2), 0]}
-                        />
-                    ))}
-            </Instances>
-        </>
-    );
-}
-
-function EntityInstancesBlock({
-    stacks,
-    name,
-    yOffset,
-    scale,
-    geometry,
-    material,
-}: {
-    stacks: Stack[] | undefined;
-    name: string;
-    yOffset?: number;
-    scale?: [number, number, number];
-    geometry: BufferGeometry;
-    material: Material | Material[];
-}) {
-    const { data: blockData } = useBlockData();
-    const pickupBlock = useGameState((state) => state.pickupBlock);
-
-    const blockInstances = stacks
-        ?.filter(
-            (stack) =>
-                (!pickupBlock || !stack.blocks.includes(pickupBlock)) &&
-                stack.blocks.some((b) => b.name === name),
-        )
-        .flatMap((stack) =>
-            stack.blocks
-                ?.filter((block) => block.name === name)
-                .map((block) => {
-                    const y = getStackHeight(blockData, stack, block);
-                    return {
-                        id: block.id,
-                        position: [
-                            stack.position.x,
-                            y + (yOffset ?? 0),
-                            stack.position.z,
-                        ] as const,
-                        rotation: block.rotation || 0,
-                    };
-                }),
-        );
-
-    const limit = Math.max((blockInstances?.length ?? 0) + 10, 100);
-
-    return (
-        <Instances
-            limit={limit}
-            geometry={geometry}
-            receiveShadow
-            castShadow
-            material={material}
-        >
-            {blockInstances?.map((data) => (
-                <Instance
-                    key={`block-${name}-${data.id}`}
-                    position={data.position}
-                    scale={scale}
-                    rotation={[0, data.rotation * (Math.PI / 2), 0]}
-                />
-            ))}
-        </Instances>
-    );
-}
-
-export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
-    const { nodes, materials } = useGameGLTF();
-    return (
-        <>
-            <EntityGrassInstances stacks={stacks} />
+                snow={snowPresets.grassAngle}
+                snowLift={0.003}
+                {...commonSnowProps}
+            />
             <EntityInstancesBlock
                 stacks={stacks}
                 name="Block_Sand"
                 yOffset={0.2}
                 geometry={nodes.Block_Sand_1.geometry}
                 material={nodes.Block_Sand_1.material}
+                snow={snowPresets.sand}
+                snowLift={0.003}
+                {...commonSnowProps}
             />
             <EntityInstancesBlock
                 stacks={stacks}
@@ -208,6 +179,64 @@ export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
                 yOffset={0.2}
                 geometry={nodes.Block_Sand_Angle_1.geometry}
                 material={nodes.Block_Sand_Angle_1.material}
+                snow={snowPresets.sandAngle}
+                snowLift={0.003}
+                {...commonSnowProps}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Block_Snow"
+                yOffset={0.2}
+                geometry={nodes.Block_Sand_1.geometry}
+                material={snowMaterial}
+                snow={snowPresets.snow}
+                snowLift={0.003}
+                {...commonSnowProps}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Block_Snow_Angle"
+                yOffset={0.2}
+                geometry={nodes.Block_Sand_Angle_1.geometry}
+                material={snowMaterial}
+                snow={snowPresets.snowAngle}
+                snowLift={0.003}
+                {...commonSnowProps}
+            />
+            {shouldRenderGroundDecorations && (
+                <GroundBlockDecorations
+                    density={qualityProfile.groundDecorationDensity}
+                    stacks={stacks}
+                />
+            )}
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Tree"
+                yOffset={0.5}
+                scale={[0.125, 0.5, 0.125]}
+                geometry={nodes.Tree_1_1.geometry}
+                material={nodes.Tree_1_1.material}
+                {...commonSnowProps}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Tree"
+                yOffset={0.5}
+                scale={[0.125, 0.5, 0.125]}
+                geometry={nodes.Tree_1_2.geometry}
+                material={nodes.Tree_1_2.material}
+                snow={snowPresets.treeCanopyInner}
+                snowLift={0.002}
+                {...commonSnowProps}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Tree"
+                yOffset={0.5}
+                scale={[0.125, 0.5, 0.125]}
+                geometry={nodes.Tree_1_3.geometry}
+                material={nodes.Tree_1_3.material}
+                {...commonSnowProps}
             />
             <EntityInstancesBlock
                 stacks={stacks}
@@ -216,48 +245,126 @@ export function EntityInstances({ stacks }: { stacks: Stack[] | undefined }) {
                 scale={[0.09, 1, 0.09]}
                 geometry={nodes.Tree_2.geometry}
                 material={nodes.Tree_2.material}
+                snow={snowPresets.pine}
+                snowLift={0.002}
+                {...commonSnowProps}
             />
             <EntityInstancesBlock
                 stacks={stacks}
-                name="Shovel_Small"
+                name="ShovelSmall"
+                yOffset={-0.1}
                 geometry={nodes.Shovel_Small.geometry}
                 material={materials['Material.ColorPaletteMain']}
+                snow={snowPresets.tool}
+                snowLift={0.002}
+                {...commonSnowProps}
             />
             <EntityInstancesBlock
                 stacks={stacks}
-                name="Mulch_Hey"
+                name="MulchHey"
+                scale={[3, 3, 3]}
                 geometry={nodes.Mulch_Hey.geometry}
                 material={materials['Material.ColorPaletteMain']}
+                snow={snowPresets.mulch}
+                snowLift={0.002}
+                {...commonSnowProps}
             />
             <EntityInstancesBlock
                 stacks={stacks}
-                name="Mulch_Coconut"
+                name="MulchCoconut"
+                scale={[3, 3, 3]}
                 geometry={nodes.Mulch_Coconut.geometry}
                 material={materials['Material.ColorPaletteMain']}
+                snow={snowPresets.mulch}
+                snowLift={0.002}
+                {...commonSnowProps}
             />
             <EntityInstancesBlock
                 stacks={stacks}
-                name="Mulch_Wood"
+                name="MulchWood"
+                scale={[3, 3, 3]}
                 geometry={nodes.Mulch_Wood.geometry}
                 material={materials['Material.ColorPaletteMain']}
+                snow={snowPresets.mulch}
+                snowLift={0.002}
+                {...commonSnowProps}
             />
             <EntityInstancesBlock
                 stacks={stacks}
                 name="Tulip"
                 geometry={nodes.Tulip.geometry}
                 material={materials['Material.ColorPaletteMain']}
+                snow={snowPresets.tulip}
+                snowLift={0.002}
+                {...commonSnowProps}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Bush"
+                geometry={nodes.Bush_1_1.geometry}
+                material={materials['Material.ColorPaletteMain']}
+                scale={[0.5, 0.5, 0.5]}
+                snow={snowPresets.bushCore}
+                snowLift={0.002}
+                {...commonSnowProps}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="Bush"
+                geometry={nodes.Bush_1_2.geometry}
+                material={materials['Material.Leaves']}
+                scale={[0.5, 0.5, 0.5]}
+                snow={snowPresets.bushFoliage}
+                snowLift={0.002}
+                {...commonSnowProps}
             />
             <EntityInstancesBlock
                 stacks={stacks}
                 name="BaleHey"
                 geometry={nodes.BaleHey.geometry}
                 material={materials['Material.ColorPaletteMain']}
+                snow={snowPresets.hay}
+                snowLift={0.002}
+                {...commonSnowProps}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="StoneSmall"
+                geometry={nodes.Stone_Small.geometry}
+                material={materials['Material.Stone']}
+                scale={[0.165, 0.165, 0.165]}
+                snow={snowPresets.stone}
+                snowLift={0.002}
+                {...commonSnowProps}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="StoneMedium"
+                geometry={nodes.Stone_Medium.geometry}
+                material={materials['Material.Stone']}
+                scale={[0.236, 0.269, 0.205]}
+                snow={snowPresets.stone}
+                snowLift={0.002}
+                {...commonSnowProps}
+            />
+            <EntityInstancesBlock
+                stacks={stacks}
+                name="StoneLarge"
+                geometry={nodes.Stone_Large.geometry}
+                material={materials['Material.Stone']}
+                scale={[0.263, 0.426, 0.291]}
+                snow={snowPresets.stone}
+                snowLift={0.002}
+                {...commonSnowProps}
             />
             <EntityInstancesBlock
                 stacks={stacks}
                 name="Stick"
                 geometry={nodes.Stick.geometry}
                 material={nodes.Stick.material}
+                snow={snowPresets.tool}
+                snowLift={0.002}
+                {...commonSnowProps}
             />
             <EntityInstancesBlock
                 stacks={stacks}

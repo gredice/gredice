@@ -1,9 +1,9 @@
+import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Container } from '@signalco/ui-primitives/Container';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import { PageHeader } from '../../../components/shared/PageHeader';
-import { StyledHtml } from '../../../components/shared/StyledHtml';
 
 export const metadata: Metadata = {
     title: 'Politika kolačića',
@@ -26,7 +26,7 @@ export default function PolitikaKolacicaPage() {
                         Kolačići su male tekstualne datoteke koje se pohranjuju
                         na vašem uređaju prilikom posjeta našoj web stranici.
                         Oni omogućuju web stranici da prepozna vaš uređaj i
-                        prikupiti informacije o vašem posjetu.
+                        prikupi informacije o vašem posjetu.
                     </p>
                     <h2>Kolačići koje koristimo</h2>
                     <p>
@@ -51,7 +51,7 @@ export default function PolitikaKolacicaPage() {
                             stranice.
                         </li>
                     </ul>
-                    <h2>Kako se možete upravljati kolačićima</h2>
+                    <h2>Kako možete upravljati kolačićima</h2>
                     <p>
                         Većina web preglednika automatski prihvaća kolačiće, ali
                         vi možete odabrati hoćete li ih prihvatiti ili ne. Ako
@@ -74,16 +74,16 @@ export default function PolitikaKolacicaPage() {
                     <h2>Kontakt informacije</h2>
                     <p>
                         Ako imate bilo kakva pitanja ili trebate više
-                        informacija o našoj Politici Kolačića, slobodno nas
+                        informacija o našoj politici kolačića, slobodno nas
                         kontaktirajte putem adrese e-pošte na{' '}
                         <a href="mailto:kontakt@gredice.com">
                             kontakt@gredice.com
                         </a>
                         .
                     </p>
-                    <h2>Promjene u Politici Kolačića</h2>
+                    <h2>Promjene u politici kolačića</h2>
                     <p>
-                        Zadržavamo pravo izmjene ove Politike Kolačića u bilo
+                        Zadržavamo pravo izmjene ove politike kolačića u bilo
                         kojem trenutku. Sve izmjene bit će objavljene na ovoj
                         stranici, uz datum ažuriranja.
                     </p>

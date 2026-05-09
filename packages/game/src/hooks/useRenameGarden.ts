@@ -1,5 +1,6 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useGameState } from '../useGameState';
 import { currentGardenKeys } from './useCurrentGarden';
 import { useGardensKeys } from './useGardens';
 
@@ -9,6 +10,8 @@ type RenameGardenVariables = {
 
 export function useRenameGarden(gardenId?: number) {
     const queryClient = useQueryClient();
+    const winterMode = useGameState((state) => state.winterMode);
+    const gardenQueryKey = currentGardenKeys(winterMode);
 
     return useMutation({
         mutationFn: async ({ name }: RenameGardenVariables) => {
@@ -21,13 +24,13 @@ export function useRenameGarden(gardenId?: number) {
                 throw new Error('Garden name is required');
             }
 
-            await client().api.gardens[':gardenId'].$patch({
+            await clientAuthenticated().api.gardens[':gardenId'].$patch({
                 param: { gardenId: gardenId.toString() },
                 json: { name: trimmedName },
             });
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: currentGardenKeys });
+            queryClient.invalidateQueries({ queryKey: gardenQueryKey });
             queryClient.invalidateQueries({ queryKey: useGardensKeys });
         },
         onError: (error) => {

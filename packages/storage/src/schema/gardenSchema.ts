@@ -150,6 +150,9 @@ export type UpdateGardenBlock = Partial<
     Pick<typeof gardenBlocks.$inferSelect, 'id'>;
 export type SelectGardenBlock = typeof gardenBlocks.$inferSelect;
 
+export const raisedBedOrientations = ['vertical', 'horizontal'] as const;
+export type RaisedBedOrientation = (typeof raisedBedOrientations)[number];
+
 export const raisedBeds = pgTable(
     'raised_beds',
     {
@@ -158,6 +161,10 @@ export const raisedBeds = pgTable(
         accountId: text('account_id').references(() => accounts.id),
         gardenId: integer('garden_id').references(() => gardens.id),
         blockId: text('block_id').references(() => gardenBlocks.id),
+        orientation: text('orientation')
+            .notNull()
+            .default('vertical')
+            .$type<RaisedBedOrientation>(),
         status: text('status').notNull().default('new'), // Possible values: 'new', 'approved', 'built'
         physicalId: text('physical_id'), // Optional physical ID for the raised bed
         createdAt: timestamp('created_at').notNull().defaultNow(),

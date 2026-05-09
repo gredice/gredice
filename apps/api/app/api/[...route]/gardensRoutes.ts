@@ -1,22 +1,29 @@
 import { signalcoClient } from '@gredice/signalco';
 import {
+    buildRaisedBedFieldPlantUpdatePayload,
+    countEventsSince,
+    createDefaultGardenForAccount,
     createEvent,
     createGardenBlock,
     createGardenStack,
-    createRaisedBed,
     deleteGardenStack,
+    getAccount,
     getAccountGardens,
     getEvents,
     getGarden,
     getGardenBlocks,
     getGardenStack,
+    getOperations,
+    getOperationsPage,
     getRaisedBed,
     getRaisedBedDiaryEntries,
     getRaisedBedFieldDiaryEntries,
+    getRaisedBedIdsByAccount,
     getRaisedBedSensors,
     knownEvents,
     knownEventTypes,
     spendSunflowers,
+    deleteGardenBlock as storageDeleteGardenBlock,
     updateGarden,
     updateGardenBlock,
     updateGardenStack,
@@ -27,12 +34,184 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getBlockData } from '../../../lib/blocks/blockDataService';
+import { publicSecurity } from '../../../lib/docs/security';
+import { resolveGardenBlockPlacement } from '../../../lib/garden/blockPlacementService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
+import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
+import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
+import {
+    AI_ANALYSIS_DAILY_LIMIT,
+    streamRaisedBedImageAnalysis,
+    validateImageUrl,
+} from '../../../lib/garden/raisedBedAiAnalysisService';
 import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
+import {
+    validateConnectedRaisedBedMove,
+    validateRaisedBedPlacement,
+    validateStackPlacement,
+} from '../../../lib/garden/stacksPatchValidation';
 import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { queryBooleanSchema } from '../../../lib/http/queryBoolean';
+import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
+import { getPostHogClient } from '../../../lib/posthog-server';
+
+const DEFAULT_TIMEZONE = 'Europe/Paris';
+
+async function countRecentRaisedBedAiAnalyses(accountId: string) {
+    const accountBedIds = await getRaisedBedIdsByAccount(accountId);
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const raisedBedAggregateIds = accountBedIds.map((bedId) =>
+        bedId.toString(),
+    );
+    const raisedBedFieldAggregateIds = accountBedIds.flatMap((bedId) =>
+        Array.from(
+            { length: 20 },
+            (_, index) => `${bedId.toString()}|${index.toString()}`,
+        ),
+    );
+
+    const [raisedBedCount, raisedBedFieldCount] = await Promise.all([
+        countEventsSince(
+            knownEventTypes.raisedBeds.aiAnalysis,
+            since,
+            raisedBedAggregateIds,
+        ),
+        countEventsSince(
+            knownEventTypes.raisedBedFields.aiAnalysis,
+            since,
+            raisedBedFieldAggregateIds,
+        ),
+    ]);
+
+    return raisedBedCount + raisedBedFieldCount;
+}
+
+async function trackGardenCreated(input: {
+    accountId: string;
+    gardenId: number;
+    name?: string;
+    userId: string;
+}) {
+    await (await getPostHogClient()).capture({
+        distinctId: input.userId,
+        event: 'garden_created',
+        properties: {
+            account_id: input.accountId,
+            garden_id: input.gardenId,
+            has_custom_name: Boolean(input.name?.trim()),
+        },
+    });
+}
+
+function isAppliedRaisedBedOperationStatus(status: string) {
+    return status === 'completed' || status === 'pendingVerification';
+}
+
+function serializeAppliedRaisedBedOperation(
+    operation: Awaited<ReturnType<typeof getOperations>>[number],
+) {
+    return {
+        id: operation.id,
+        entityId: operation.entityId,
+        raisedBedFieldId: operation.raisedBedFieldId,
+        status: operation.status,
+        createdAt: operation.createdAt.toISOString(),
+        completedAt: operation.completedAt?.toISOString() ?? null,
+        scheduledDate: operation.scheduledDate?.toISOString() ?? null,
+    };
+}
+
+function serializeGardenOperation(
+    operation: Awaited<ReturnType<typeof getOperations>>[number],
+    targetsByRaisedBedFieldId: Map<number, string>,
+    targetsByRaisedBedId: Map<number, string>,
+) {
+    const hasAssignedUser = (operation.assignedUserIds?.length ?? 0) > 0;
+    const isAssigned = operation.status === 'planned' && hasAssignedUser;
+    const isConfirmed = isAssigned && operation.isAccepted;
+    const timelineStatus = isConfirmed
+        ? 'confirmed'
+        : isAssigned
+          ? 'assigned'
+          : operation.status;
+
+    const statusHistory = [
+        {
+            status: 'new',
+            changedAt: operation.createdAt.toISOString(),
+        },
+        operation.scheduledDate
+            ? {
+                  status: 'planned',
+                  changedAt:
+                      operation.scheduledAt?.toISOString() ??
+                      operation.scheduledDate.toISOString(),
+              }
+            : null,
+        isAssigned
+            ? {
+                  status: 'assigned',
+                  changedAt:
+                      operation.assignedAt?.toISOString() ??
+                      operation.scheduledAt?.toISOString() ??
+                      operation.createdAt.toISOString(),
+              }
+            : null,
+        isConfirmed
+            ? {
+                  status: 'confirmed',
+                  changedAt:
+                      operation.assignedAt?.toISOString() ??
+                      operation.scheduledAt?.toISOString() ??
+                      operation.createdAt.toISOString(),
+              }
+            : null,
+        operation.completedAt
+            ? {
+                  status: 'pendingVerification',
+                  changedAt: operation.completedAt.toISOString(),
+              }
+            : null,
+        operation.verifiedAt
+            ? {
+                  status: 'completed',
+                  changedAt: operation.verifiedAt.toISOString(),
+              }
+            : null,
+        operation.canceledAt
+            ? {
+                  status: 'canceled',
+                  changedAt: operation.canceledAt.toISOString(),
+              }
+            : null,
+    ].filter(Boolean);
+
+    return {
+        id: operation.id,
+        entityId: operation.entityId,
+        raisedBedId: operation.raisedBedId,
+        raisedBedFieldId: operation.raisedBedFieldId,
+        status: timelineStatus,
+        createdAt: operation.createdAt.toISOString(),
+        scheduledDate: operation.scheduledDate?.toISOString() ?? null,
+        scheduledAt: operation.scheduledAt?.toISOString() ?? null,
+        completedAt: operation.completedAt?.toISOString() ?? null,
+        verifiedAt: operation.verifiedAt?.toISOString() ?? null,
+        canceledAt: operation.canceledAt?.toISOString() ?? null,
+        targetLabel:
+            (operation.raisedBedFieldId
+                ? targetsByRaisedBedFieldId.get(operation.raisedBedFieldId)
+                : null) ??
+            (operation.raisedBedId
+                ? targetsByRaisedBedId.get(operation.raisedBedId)
+                : null) ??
+            'Vrt',
+        statusHistory,
+    };
+}
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -51,6 +230,103 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     createdAt: garden.createdAt,
                 })),
             );
+        },
+    )
+    .post(
+        '/',
+        describeRoute({
+            description: 'Create a new garden for current account',
+        }),
+        zValidator(
+            'json',
+            z.object({
+                name: z.string().trim().min(1).optional(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId, userId } = context.get('authContext');
+            const { name } = context.req.valid('json');
+            const gardenId = await createDefaultGardenForAccount({
+                accountId,
+                name,
+            });
+            await trackGardenCreated({ accountId, gardenId, name, userId });
+            return context.json({ id: gardenId }, 201);
+        },
+    )
+    .get(
+        '/:gardenId/operations',
+        describeRoute({
+            description:
+                'Get garden operations for timeline and history with cursor pagination',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        zValidator(
+            'query',
+            z.object({
+                cursor: z.coerce.number().int().min(0).optional(),
+                limit: z.coerce.number().int().min(1).max(50).optional(),
+                includeCompleted: queryBooleanSchema.optional(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const { cursor, limit, includeCompleted } =
+                context.req.valid('query');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            const operationsPage = await getOperationsPage({
+                accountId,
+                gardenId: gardenIdNumber,
+                cursor,
+                limit,
+                includeCompleted,
+            });
+
+            const targetsByRaisedBedId = new Map(
+                garden.raisedBeds.map((raisedBed) => [
+                    raisedBed.id,
+                    `Gredica: ${raisedBed.name}`,
+                ]),
+            );
+            const targetsByRaisedBedFieldId = new Map(
+                garden.raisedBeds.flatMap((raisedBed) =>
+                    raisedBed.fields.map((field) => [
+                        field.id,
+                        `Polje ${field.positionIndex + 1} • ${raisedBed.name}`,
+                    ]),
+                ),
+            );
+
+            return context.json({
+                items: operationsPage.items.map((operation) =>
+                    serializeGardenOperation(
+                        operation,
+                        targetsByRaisedBedFieldId,
+                        targetsByRaisedBedId,
+                    ),
+                ),
+                nextCursor: operationsPage.nextCursor,
+                total: operationsPage.total,
+            });
         },
     )
     .get(
@@ -73,25 +349,46 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const { accountId } = context.get('authContext');
-            const [garden, /*blockPlaceEventsRaw,*/ blocks] = await Promise.all(
-                [
+            const [garden, /*blockPlaceEventsRaw,*/ blocks, operations] =
+                await Promise.all([
                     getGarden(gardenIdNumber),
                     // getEvents(knownEventTypes.gardens.blockPlace, gardenId, 0, 10000),
                     getGardenBlocks(gardenIdNumber),
-                ],
-            );
+                    getOperations(accountId, gardenIdNumber),
+                ]);
             if (!garden || garden.accountId !== accountId) {
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
-            // TODO: Implement validation of block place events
-            // const blockPlaceEvents = blockPlaceEventsRaw.map(event => ({
-            //     ...event,
-            //     data: event.data as { id: string, name: string }
-            // }));
+            const blocksById = new Map(
+                blocks.map((block) => [block.id, block]),
+            );
+            const blockNameById = new Map(
+                blocks.map((block) => [block.id, block.name] as const),
+            );
+            const appliedOperationsByRaisedBedId = operations.reduce(
+                (acc, operation) => {
+                    if (
+                        !operation.raisedBedId ||
+                        !isAppliedRaisedBedOperationStatus(operation.status)
+                    ) {
+                        return acc;
+                    }
+
+                    const existing = acc.get(operation.raisedBedId) ?? [];
+                    existing.push(
+                        serializeAppliedRaisedBedOperation(operation),
+                    );
+                    acc.set(operation.raisedBedId, existing);
+                    return acc;
+                },
+                new Map<
+                    number,
+                    ReturnType<typeof serializeAppliedRaisedBedOperation>[]
+                >(),
+            );
 
             // Stacks: group by x then by y
-            const raisedBedsToCreate: string[] = [];
             const stacks = garden.stacks.reduce(
                 (acc, stack) => {
                     if (!acc[stack.positionX]) {
@@ -99,30 +396,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     }
                     acc[stack.positionX][stack.positionY] = stack.blocks
                         .map((blockId) => {
-                            const block = blocks.find(
-                                (block) => block.id === blockId,
-                            );
-                            // const blockPlaceEvent = blockPlaceEvents.find(event => event.data.id === blockId)?.data.name;
-                            // if (!blockPlaceEvent) {
-                            //     console.warn('Block place event not found', { blockId });
-                            //     return null;
-                            // }
-                            if (!block) {
-                                console.warn('Block not found', { blockId });
-                                return null;
-                            }
-
-                            // Verify block has raised bed attached to it if it's type is raised bed
-                            if (block.name === 'Raised_Bed') {
-                                const assignedRaisedBed =
-                                    garden.raisedBeds.find(
-                                        (raisedBed) =>
-                                            raisedBed.blockId === blockId,
-                                    );
-                                if (!assignedRaisedBed) {
-                                    raisedBedsToCreate.push(blockId);
-                                }
-                            }
+                            const block = blocksById.get(blockId);
+                            if (!block) return null;
 
                             return {
                                 id: blockId,
@@ -153,55 +428,35 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 >,
             );
 
-            // Create missing raised beds
-            let freshGarden: NonNullable<
-                Awaited<ReturnType<typeof getGarden>>
-            > = garden;
-            if (raisedBedsToCreate.length > 0) {
-                for (const blockId of raisedBedsToCreate) {
-                    await createRaisedBed({
-                        blockId,
-                        gardenId: garden.id,
-                        accountId: garden.accountId,
-                    });
-                    console.info('Created missing raised bed', {
-                        gardenId: garden.id,
-                        blockId,
-                    });
-                }
-                const refreshed = await getGarden(gardenIdNumber); // Refresh garden to include new raised beds
-                if (!refreshed) {
-                    throw new Error(
-                        `Garden ${gardenIdNumber} not found after creating raised beds`,
-                    );
-                }
-                freshGarden = refreshed;
-            }
-
             return context.json({
-                id: freshGarden.id,
-                name: freshGarden.name,
-                latitude: freshGarden.farm.latitude,
-                longitude: freshGarden.farm.longitude,
+                id: garden.id,
+                name: garden.name,
+                latitude: garden.farm.latitude,
+                longitude: garden.farm.longitude,
                 stacks,
                 raisedBeds: (() => {
                     const validityMap = calculateRaisedBedsValidity(
-                        freshGarden.raisedBeds,
-                        freshGarden.stacks,
+                        garden.raisedBeds,
+                        garden.stacks,
+                        blockNameById,
                     );
-                    return freshGarden.raisedBeds.map((raisedBed) => ({
+                    return garden.raisedBeds.map((raisedBed) => ({
                         id: raisedBed.id,
                         name: raisedBed.name,
                         physicalId: raisedBed.physicalId,
                         blockId: raisedBed.blockId,
                         status: raisedBed.status,
+                        orientation: raisedBed.orientation,
                         fields: raisedBed.fields,
+                        appliedOperations:
+                            appliedOperationsByRaisedBedId.get(raisedBed.id) ??
+                            [],
                         createdAt: raisedBed.createdAt,
                         updatedAt: raisedBed.updatedAt,
                         isValid: validityMap.get(raisedBed.id) ?? false,
                     }));
                 })(),
-                createdAt: freshGarden.createdAt,
+                createdAt: garden.createdAt,
             });
         },
     )
@@ -209,6 +464,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId/public',
         describeRoute({
             description: 'Get public garden information',
+            security: publicSecurity,
         }),
         zValidator(
             'param',
@@ -244,6 +500,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 ...event,
                 data: event.data as { id: string; name: string },
             }));
+            const blockNamesById = new Map(
+                blockPlaceEvents.map((event) => [
+                    event.data.id,
+                    event.data.name,
+                ]),
+            );
+            const blocksById = new Map(
+                blocks.map((block) => [block.id, block]),
+            );
 
             // Stacks: group by x then by y
             const stacks = garden.stacks.reduce(
@@ -254,16 +519,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     acc[stack.positionX][stack.positionY] = stack.blocks.map(
                         (blockId) => ({
                             id: blockId,
-                            name:
-                                blockPlaceEvents.find(
-                                    (event) => event.data.id === blockId,
-                                )?.data.name ?? 'unknown',
-                            rotation:
-                                blocks.find((block) => block.id === blockId)
-                                    ?.rotation ?? 0,
-                            variant: blocks.find(
-                                (block) => block.id === blockId,
-                            )?.variant,
+                            name: blockNamesById.get(blockId) ?? 'unknown',
+                            rotation: blocksById.get(blockId)?.rotation ?? 0,
+                            variant: blocksById.get(blockId)?.variant,
                         }),
                     );
                     return acc;
@@ -408,10 +666,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
+            const [gardenBlocks, blockData] = await Promise.all([
+                getGardenBlocks(gardenIdNumber),
+                getBlockData(),
+            ]);
+            const blockNameById = new Map(
+                gardenBlocks.map((block) => [block.id, block.name]),
+            );
+            const blockDataByName = new Map(
+                blockData.map((block) => [block.information.name, block]),
+            );
+
+            const validateStackPlacementForGarden = (blockIds: string[]) =>
+                validateStackPlacement({
+                    blockIds,
+                    blockNameById,
+                    blockDataByName,
+                });
+
             const operations = context.req.valid('json');
             if (operations.length === 0) {
                 return context.json({ error: 'No operations provided' }, 400);
             }
+            const initialGardenState = garden;
 
             /**
              * Parses a path string into an object with x, y, and index properties.
@@ -453,8 +730,17 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return await getGardenStack(gardenIdNumber, parsePath(path));
             }
 
-            async function addStack(path: string, value: string | string[]) {
+            async function addStack(
+                path: string,
+                value: string | string[],
+                options?: { skipRaisedBedPlacementValidation?: boolean },
+            ) {
                 const stackPosition = parsePath(path);
+
+                console.debug(
+                    `Adding stack at position x:${stackPosition.x} y:${stackPosition.y} index:${stackPosition.index} append:${stackPosition.append} with value:`,
+                    value,
+                );
 
                 // Create stack if doesn't exist
                 const existing = await getGardenStack(
@@ -466,24 +752,99 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
 
                 if (stackPosition.index === undefined) {
+                    if (
+                        typeof value === 'string' &&
+                        !options?.skipRaisedBedPlacementValidation
+                    ) {
+                        const blockName = blockNameById.get(value);
+                        if (blockName === 'Raised_Bed') {
+                            const gardenState = await getGarden(gardenIdNumber);
+                            if (!gardenState) {
+                                return context.json(
+                                    { error: 'Garden not found' },
+                                    404,
+                                );
+                            }
+
+                            const targetIndex = stackPosition.append
+                                ? (existing?.blocks.length ?? 0)
+                                : 0;
+                            const placementValidation =
+                                validateRaisedBedPlacement({
+                                    stacks: gardenState.stacks,
+                                    x: stackPosition.x,
+                                    y: stackPosition.y,
+                                    index: targetIndex,
+                                    blockNameById,
+                                });
+                            if (!placementValidation.valid) {
+                                return context.json(
+                                    { error: placementValidation.error },
+                                    400,
+                                );
+                            }
+                        }
+                    }
+
+                    const nextBlocks = Array.isArray(value)
+                        ? stackPosition.append
+                            ? [...(existing?.blocks ?? []), ...value]
+                            : value
+                        : stackPosition.append
+                          ? [...(existing?.blocks ?? []), value]
+                          : [value];
+
+                    const validation =
+                        validateStackPlacementForGarden(nextBlocks);
+                    if (!validation.valid) {
+                        return context.json({ error: validation.error }, 400);
+                    }
+
                     if (Array.isArray(value)) {
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
-                            blocks: stackPosition.append
-                                ? [...(existing?.blocks ?? []), ...value]
-                                : value,
+                            blocks: nextBlocks,
                         });
                     } else {
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
-                            blocks: stackPosition.append
-                                ? [...(existing?.blocks ?? []), value]
-                                : [value],
+                            blocks: nextBlocks,
                         });
                     }
                 } else {
+                    if (
+                        typeof value === 'string' &&
+                        !options?.skipRaisedBedPlacementValidation
+                    ) {
+                        const blockName = blockNameById.get(value);
+                        if (blockName === 'Raised_Bed') {
+                            const gardenState = await getGarden(gardenIdNumber);
+                            if (!gardenState) {
+                                return context.json(
+                                    { error: 'Garden not found' },
+                                    404,
+                                );
+                            }
+
+                            const placementValidation =
+                                validateRaisedBedPlacement({
+                                    stacks: gardenState.stacks,
+                                    x: stackPosition.x,
+                                    y: stackPosition.y,
+                                    index: stackPosition.index,
+                                    blockNameById,
+                                });
+                            if (!placementValidation.valid) {
+                                return context.json(
+                                    { error: placementValidation.error },
+                                    400,
+                                );
+                            }
+                        }
+                    }
+
                     if (
                         !existing ||
                         (existing?.blocks.length ?? 0) < stackPosition.index ||
@@ -498,30 +859,46 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     }
 
                     if (Array.isArray(value)) {
+                        const nextBlocks = [
+                            ...existing.blocks.slice(0, stackPosition.index),
+                            ...value,
+                            ...existing.blocks.slice(stackPosition.index),
+                        ];
+
+                        const validation =
+                            validateStackPlacementForGarden(nextBlocks);
+                        if (!validation.valid) {
+                            return context.json(
+                                { error: validation.error },
+                                400,
+                            );
+                        }
+
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
-                            blocks: [
-                                ...existing.blocks.slice(
-                                    0,
-                                    stackPosition.index,
-                                ),
-                                ...value,
-                                ...existing.blocks.slice(stackPosition.index),
-                            ],
+                            blocks: nextBlocks,
                         });
                     } else {
+                        const nextBlocks = [
+                            ...existing.blocks.slice(0, stackPosition.index),
+                            value,
+                            ...existing.blocks.slice(stackPosition.index),
+                        ];
+
+                        const validation =
+                            validateStackPlacementForGarden(nextBlocks);
+                        if (!validation.valid) {
+                            return context.json(
+                                { error: validation.error },
+                                400,
+                            );
+                        }
+
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
-                            blocks: [
-                                ...existing.blocks.slice(
-                                    0,
-                                    stackPosition.index,
-                                ),
-                                value,
-                                ...existing.blocks.slice(stackPosition.index),
-                            ],
+                            blocks: nextBlocks,
                         });
                     }
                 }
@@ -629,6 +1006,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 400,
                             );
                         }
+
+                        const validation =
+                            validateStackPlacementForGarden(value);
+                        if (!validation.valid) {
+                            return context.json(
+                                { error: validation.error },
+                                400,
+                            );
+                        }
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
@@ -650,11 +1036,23 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             );
                         }
 
-                        stack.blocks[stackPosition.index] = value;
+                        const nextBlocks = stack.blocks.map((blockId, index) =>
+                            index === stackPosition.index ? value : blockId,
+                        );
+
+                        const validation =
+                            validateStackPlacementForGarden(nextBlocks);
+                        if (!validation.valid) {
+                            return context.json(
+                                { error: validation.error },
+                                400,
+                            );
+                        }
+
                         await updateGardenStack(gardenIdNumber, {
                             x: stackPosition.x,
                             y: stackPosition.y,
-                            blocks: stack.blocks,
+                            blocks: nextBlocks,
                         });
                     }
                 } else if (operation.op === 'move') {
@@ -663,7 +1061,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     const fromStack = await getStack(from);
                     if (!fromStack) {
                         return context.json(
-                            { error: `Stack ${from} not found` },
+                            { error: `Stack from:${from} not found` },
                             400,
                         );
                     }
@@ -672,7 +1070,27 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             ? fromStack.blocks
                             : fromStack.blocks[fromPosition.index];
 
-                    let resp = await addStack(path, fromValue);
+                    if (typeof fromValue === 'string') {
+                        const validation = validateConnectedRaisedBedMove({
+                            stacks: initialGardenState.stacks,
+                            fromPath: from,
+                            toPath: path,
+                            movedBlockId: fromValue,
+                            blockNameById,
+                            blockDataByName,
+                            parsePath,
+                        });
+                        if (!validation.valid) {
+                            return context.json(
+                                { error: validation.error },
+                                400,
+                            );
+                        }
+                    }
+
+                    let resp = await addStack(path, fromValue, {
+                        skipRaisedBedPlacementValidation: true,
+                    });
                     if (resp) {
                         return resp;
                     }
@@ -685,7 +1103,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     const fromStack = await getStack(from);
                     if (!fromStack) {
                         return context.json(
-                            { error: `Stack ${from} not found` },
+                            { error: `Stack from:${from} not found` },
                             400,
                         );
                     }
@@ -703,7 +1121,52 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
             }
 
+            await synchronizeGardenStacksAndRaisedBeds(gardenIdNumber);
+
             return context.json(null, 200);
+        },
+    )
+    .post(
+        '/:gardenId/blocks/:blockId/open-gift-box',
+        describeRoute({
+            description: 'Open an advent gift box and receive a reward.',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                blockId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, blockId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber) || gardenIdNumber <= 0) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const account = await getAccount(accountId);
+            const timeZone = account?.timeZone ?? DEFAULT_TIMEZONE;
+
+            const result = await openAdventGiftBox({
+                accountId,
+                gardenId: gardenIdNumber,
+                blockId,
+                timeZone,
+            });
+
+            if ('errorStatus' in result) {
+                return context.json(
+                    { error: result.errorMessage },
+                    result.errorStatus as ContentfulStatusCode,
+                );
+            }
+
+            await synchronizeGardenStacksAndRaisedBeds(gardenIdNumber);
+
+            return context.json({ reward: result.reward }, 200);
         },
     )
     .post(
@@ -721,6 +1184,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
             'json',
             z.object({
                 blockName: z.string(),
+                position: z
+                    .object({
+                        x: z.number().int(),
+                        y: z.number().int(),
+                    })
+                    .optional(),
             }),
         ),
         authValidator(['user', 'admin']),
@@ -734,8 +1203,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
             // Check garden exists and is owned by user
             const { accountId } = context.get('authContext');
 
-            const [garden, blockData] = await Promise.all([
+            const [garden, gardenBlocks, blockData] = await Promise.all([
                 getGarden(gardenIdNumber),
+                getGardenBlocks(gardenIdNumber),
                 getBlockData(),
             ]);
 
@@ -748,11 +1218,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const { blockName } = context.req.valid('json');
+            const { blockName, position } = context.req.valid('json');
 
             // Retrieve block information (cost)
             const block = blockData.find(
-                (block) => block.information.name === blockName,
+                (block) => block.information?.name === blockName,
             );
             if (!block) {
                 return context.json(
@@ -760,7 +1230,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     400,
                 );
             }
-            const cost = block.prices.sunflowers ?? 0;
+            const cost = block.prices?.sunflowers ?? 0;
             if (cost <= 0) {
                 return context.json(
                     { error: 'Requested block not for sale' },
@@ -768,17 +1238,65 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            // Spend sunflowers and create block in parallel
-            const [, blockId] = await Promise.all([
-                spendSunflowers(
-                    accountId,
-                    cost,
-                    `block:${block.information.name}`,
-                ),
-                createGardenBlock(gardenIdNumber, block.information.name),
-            ]);
+            const blockNameById = new Map(
+                gardenBlocks.map((block) => [block.id, block.name] as const),
+            );
+            const blockDataByName = new Map<
+                string,
+                (typeof blockData)[number]
+            >();
+            for (const candidate of blockData) {
+                const candidateName = candidate.information?.name;
+                if (candidateName) {
+                    blockDataByName.set(candidateName, candidate);
+                }
+            }
+            const placement = resolveGardenBlockPlacement({
+                blockName,
+                stacks: garden.stacks,
+                blockNameById,
+                blockDataByName,
+                requestedPosition: position,
+            });
+            if (!placement.valid) {
+                return context.json({ error: placement.error }, 400);
+            }
 
-            return context.json({ id: blockId });
+            const { x, y, existingBlocks } = placement.placement;
+            const hasTargetStack = garden.stacks.some(
+                (stack) => stack.positionX === x && stack.positionY === y,
+            );
+            const purchaseResult = await purchaseGardenBlock({
+                accountId,
+                blockName,
+                cost,
+                dependencies: {
+                    createGardenBlock,
+                    createGardenStack,
+                    deleteGardenBlock: storageDeleteGardenBlock,
+                    spendSunflowers,
+                    synchronizeGardenStacksAndRaisedBeds,
+                    updateGardenStack,
+                },
+                gardenId: gardenIdNumber,
+                hasTargetStack,
+                placement: {
+                    x,
+                    y,
+                    existingBlocks,
+                },
+            });
+            if (!purchaseResult.ok) {
+                return context.json(
+                    { error: purchaseResult.error },
+                    purchaseResult.status,
+                );
+            }
+
+            return context.json({
+                id: purchaseResult.blockId,
+                position: purchaseResult.position,
+            });
         },
     )
     .put(
@@ -873,6 +1391,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     result.errorStatus as ContentfulStatusCode,
                 );
             }
+
+            await synchronizeGardenStacksAndRaisedBeds(gardenIdNumber);
+
             return context.json(null, 200);
         },
     )
@@ -897,7 +1418,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // Check garden exists and is owned by user
             const { accountId } = context.get('authContext');
-            const garden = await getGarden(gardenIdNumber);
+            const [garden, blocks] = await Promise.all([
+                getGarden(gardenIdNumber),
+                getGardenBlocks(gardenIdNumber),
+            ]);
             if (!garden || garden.accountId !== accountId) {
                 return context.json(
                     {
@@ -907,14 +1431,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            const blockNameById = new Map(
+                blocks.map((block) => [block.id, block.name] as const),
+            );
             const validityMap = calculateRaisedBedsValidity(
                 garden.raisedBeds,
                 garden.stacks,
+                blockNameById,
             );
             return context.json(
                 garden.raisedBeds.map((raisedBed) => ({
                     id: raisedBed.id,
                     blockId: raisedBed.blockId,
+                    orientation: raisedBed.orientation,
                     createdAt: raisedBed.createdAt,
                     updatedAt: raisedBed.updatedAt,
                     isValid: validityMap.get(raisedBed.id) ?? false,
@@ -947,7 +1476,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const { accountId } = context.get('authContext');
-            const garden = await getGarden(gardenIdNumber);
+            const [garden, blocks] = await Promise.all([
+                getGarden(gardenIdNumber),
+                getGardenBlocks(gardenIdNumber),
+            ]);
             if (!garden || garden.accountId !== accountId) {
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
@@ -957,14 +1489,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!raisedBed) {
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
+            const blockNameById = new Map(
+                blocks.map((block) => [block.id, block.name] as const),
+            );
             const validityMap = calculateRaisedBedsValidity(
                 garden.raisedBeds,
                 garden.stacks,
+                blockNameById,
             );
 
             return context.json({
                 id: raisedBed.id,
                 blockId: raisedBed.blockId,
+                orientation: raisedBed.orientation,
                 createdAt: raisedBed.createdAt,
                 updatedAt: raisedBed.updatedAt,
                 isValid: validityMap.get(raisedBed.id) ?? false,
@@ -1044,6 +1581,100 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const diaryEntries =
                 await getRaisedBedDiaryEntries(raisedBedIdNumber);
             return context.json(diaryEntries);
+        },
+    )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/analyze-image',
+        describeRoute({
+            description:
+                'Analyze raised bed image with AI and save response to diary',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+            }),
+        ),
+        zValidator(
+            'json',
+            z.object({
+                imageUrl: z.url(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId } = context.req.valid('param');
+            const { imageUrl } = context.req.valid('json');
+
+            const urlError = validateImageUrl(imageUrl);
+            if (urlError) {
+                return context.json({ error: urlError }, 400);
+            }
+
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const raisedBed = await getRaisedBed(raisedBedIdNumber);
+            if (
+                !raisedBed ||
+                raisedBed.gardenId !== gardenIdNumber ||
+                raisedBed.accountId !== accountId
+            ) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            const recentCount = await countRecentRaisedBedAiAnalyses(accountId);
+            if (recentCount >= AI_ANALYSIS_DAILY_LIMIT) {
+                return context.json(
+                    {
+                        error: `Daily AI analysis limit reached (${AI_ANALYSIS_DAILY_LIMIT.toString()}/day). Try again tomorrow.`,
+                    },
+                    429,
+                );
+            }
+
+            if (!process.env.AI_GATEWAY_API_KEY) {
+                return context.json(
+                    { error: 'AI_GATEWAY_API_KEY is not configured' },
+                    500,
+                );
+            }
+
+            const result = await streamRaisedBedImageAnalysis(
+                {
+                    accountId,
+                    gardenId: gardenIdNumber,
+                    raisedBed,
+                    imageUrl,
+                },
+                async (analysis) => {
+                    await createEvent(
+                        knownEvents.raisedBeds.aiAnalysisV1(
+                            raisedBedIdNumber.toString(),
+                            {
+                                markdown: analysis.markdown,
+                                imageUrl,
+                                model: analysis.model,
+                                analyzedAt: analysis.analyzedAt,
+                                inputTokens: analysis.inputTokens,
+                                outputTokens: analysis.outputTokens,
+                                totalTokens: analysis.totalTokens,
+                            },
+                        ),
+                    );
+                },
+            );
+
+            return result.toTextStreamResponse();
         },
     )
     .get(
@@ -1304,7 +1935,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 await createEvent(
                     knownEvents.raisedBedFields.plantUpdateV1(
                         `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
-                        { status: status },
+                        buildRaisedBedFieldPlantUpdatePayload(
+                            status,
+                            field.assignedUserIds,
+                        ),
                     ),
                 );
 
@@ -1321,6 +1955,124 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     500,
                 );
             }
+        },
+    )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex/analyze-image',
+        describeRoute({
+            description:
+                'Analyze raised bed field image with AI and save response to diary',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+                positionIndex: z.string(),
+            }),
+        ),
+        zValidator(
+            'json',
+            z.object({
+                imageUrl: z.url(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId, positionIndex } =
+                context.req.valid('param');
+            const { imageUrl } = context.req.valid('json');
+
+            // Validate image URL against allowed hosts
+            const urlError = validateImageUrl(imageUrl);
+            if (urlError) {
+                return context.json({ error: urlError }, 400);
+            }
+
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+
+            const positionIndexNumber = parseInt(positionIndex, 10);
+            if (Number.isNaN(positionIndexNumber) || positionIndexNumber < 0) {
+                return context.json({ error: 'Invalid position index' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const raisedBed = await getRaisedBed(raisedBedIdNumber);
+            if (
+                !raisedBed ||
+                raisedBed.gardenId !== gardenIdNumber ||
+                raisedBed.accountId !== accountId
+            ) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            const field = raisedBed.fields.find(
+                (value) =>
+                    value.positionIndex === positionIndexNumber &&
+                    value.active &&
+                    value.plantSortId,
+            );
+            if (!field) {
+                return context.json(
+                    {
+                        error: 'Field not found or does not have an active plant',
+                    },
+                    404,
+                );
+            }
+
+            const recentCount = await countRecentRaisedBedAiAnalyses(accountId);
+            if (recentCount >= AI_ANALYSIS_DAILY_LIMIT) {
+                return context.json(
+                    {
+                        error: `Daily AI analysis limit reached (${AI_ANALYSIS_DAILY_LIMIT.toString()}/day). Try again tomorrow.`,
+                    },
+                    429,
+                );
+            }
+
+            if (!process.env.AI_GATEWAY_API_KEY) {
+                return context.json(
+                    { error: 'AI_GATEWAY_API_KEY is not configured' },
+                    500,
+                );
+            }
+
+            const result = await streamRaisedBedImageAnalysis(
+                {
+                    accountId,
+                    gardenId: gardenIdNumber,
+                    raisedBed,
+                    positionIndex: positionIndexNumber,
+                    imageUrl,
+                },
+                async (analysis) => {
+                    await createEvent(
+                        knownEvents.raisedBedFields.aiAnalysisV1(
+                            `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
+                            {
+                                markdown: analysis.markdown,
+                                imageUrl,
+                                model: analysis.model,
+                                analyzedAt: analysis.analyzedAt,
+                                inputTokens: analysis.inputTokens,
+                                outputTokens: analysis.outputTokens,
+                                totalTokens: analysis.totalTokens,
+                            },
+                        ),
+                    );
+                },
+            );
+
+            return result.toTextStreamResponse();
         },
     )
     .get(

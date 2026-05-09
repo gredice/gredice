@@ -394,6 +394,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/entities/occasions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /entities/occasions
+         * @description Get all entities of type occasions.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["entity-occasions"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/entities/hqLocations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /entities/hqLocations
+         * @description Get all entities of type hqLocations.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["entity-hqLocations"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -412,75 +490,30 @@ export interface components {
                 /** @default Biljka */
                 label: string;
             };
-            calendar: {
-                planting?: {
-                    start?: number;
-                    end?: number;
-                }[];
-                sowing?: {
-                    start?: number;
-                    end?: number;
-                }[];
-                propagating?: {
-                    start?: number;
-                    end?: number;
-                }[];
-                harvest: {
-                    start?: number;
-                    end?: number;
-                }[];
-            };
-            attributes: {
-                /** @description (u gramima) */
-                yieldMax: number;
-                /** @description (u danima) */
-                harvestWindowMax: number;
-                /** @description (u centimetrima) */
-                seedingDepth: number;
-                /** @description (u centimetrima) */
-                seedingDistance: number;
-                /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
-                soil: string;
-                /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
-                light: number;
-                /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
-                water: string;
-                /** @description (u stupnjevima °C) */
-                gernimationTemperature: number;
-                /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
-                nutrients: string;
-                /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
-                germinationType: string;
-                germinationWindowMin: number;
-                /** @description (u danima) */
-                germinationWindowMax: number;
-                /** @description (u danima) */
-                growthWindowMin: number;
-                /** @description (u danima) */
-                growthWindowMax: number;
-                /** @description (u danima) */
-                harvestWindowMin: number;
-                /** @description (u gramima) */
-                yieldMin: number;
-                /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
-                yieldType: string;
-            };
             information: {
-                storage: string;
-                maintenance: string;
-                /** @description Informacije o berbi biljke. */
-                harvest: string;
-                verified?: boolean;
-                origin: string;
-                planting?: string;
-                watering: string;
-                sowing?: string;
                 name: string;
                 latinName: string;
+                origin: string;
+                verified?: boolean;
                 description: string;
+                soilPreparation: string;
+                sowing?: string;
+                planting?: string;
+                growth: string;
+                maintenance: string;
+                watering: string;
+                flowering?: string;
+                /** @description Informacije o berbi biljke. */
+                harvest: string;
+                storage: string;
+                tip?: {
+                    header?: string;
+                    /** @description Markdown formatted text */
+                    content?: string;
+                }[];
                 operations: {
-                    id?: number;
-                    attributes?: {
+                    id: number;
+                    attributes: {
                         /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
                         relativeDays?: number;
                         /** @description (na koji stadij biljke se primjenjuje radnja) */
@@ -495,13 +528,18 @@ export interface components {
                         frequency?: string;
                         /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
                         application: string;
+                        /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
+                        duration: number;
                         /** @description (ako je radnja za dostavu, korisnik mora ugovoriti dostavu za odrađivanje ove radnje npr. Branje svih plodova) */
                         deliverable: boolean;
+                        /** @description (interna radnja se ne dojavljuje niti prikazuje korisnicima aplikacije - namjenjena je za poslove farmera) */
+                        internal?: boolean;
+                        printLabel?: boolean;
                     };
-                    image?: {
-                        cover: components["schemas"]["image"];
+                    image: {
+                        cover?: components["schemas"]["image"];
                     };
-                    information?: {
+                    information: {
                         /** @description (prevedeni naziv operacije) */
                         label: string;
                         /** @description (kratki opis operacije) */
@@ -513,38 +551,89 @@ export interface components {
                         /** @description (postupak za izvršavanje radnje) */
                         instructions: string;
                     };
-                    prices?: {
-                        /** @description (EUR cijena za jednu operaciju) */
-                        perOperation: number;
+                    prices: {
                         /** @description (EUR cijena s popustom) */
                         discounted?: number;
                         /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                         discountDescription?: string;
+                        /** @description (EUR cijena za jednu operaciju) */
+                        perOperation: number;
                     };
-                    conditions?: {
+                    conditions: {
                         /** @description (da li je obavezno proložiti slike za završetak radnje) */
                         completionAttachImagesRequired: boolean;
                         /** @description (da li se mogu proložiti slike za završetak radnje) */
                         completionAttachImages: boolean;
                     };
+                    actions: {
+                        removePlant?: boolean;
+                    };
                 }[];
-                flowering?: string;
-                tip?: {
-                    header?: string;
-                    content?: string;
+            };
+            calendar: {
+                sowing?: {
+                    start?: number;
+                    end?: number;
                 }[];
-                soilPreparation: string;
-                growth: string;
+                planting?: {
+                    start?: number;
+                    end?: number;
+                }[];
+                harvest: {
+                    start?: number;
+                    end?: number;
+                }[];
+                propagating?: {
+                    start?: number;
+                    end?: number;
+                }[];
+            };
+            attributes: {
+                /** @description (u gramima) */
+                yieldMin: number;
+                /** @description (u gramima) */
+                yieldMax: number;
+                /** @description (u danima) */
+                harvestWindowMin: number;
+                /** @description (u danima) */
+                harvestWindowMax: number;
+                /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
+                nutrients: string;
+                /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
+                germinationType: string;
+                /** @description (u stupnjevima °C) */
+                gernimationTemperature: number;
+                /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
+                water: string;
+                /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
+                light: number;
+                /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
+                soil: string;
+                /** @description (u centimetrima) */
+                seedingDistance: number;
+                germinationWindowMin: number;
+                /** @description (u danima) */
+                germinationWindowMax: number;
+                /** @description (u danima) */
+                growthWindowMin: number;
+                /** @description (u danima) */
+                growthWindowMax: number;
+                /** @description (u centimetrima) */
+                seedingDepth: number;
+                /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
+                yieldType: string;
+                /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
+                cleanHarvest: boolean;
             };
             prices: {
                 /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */
                 perPlant: number;
             };
-            image: {
-                cover: components["schemas"]["image"];
-            };
             store: {
                 availableInStore: boolean;
+            };
+            image: {
+                cover: components["schemas"]["image"];
             };
             /** Format: date-time */
             createdAt: string;
@@ -566,75 +655,30 @@ export interface components {
                 flowering?: string;
                 plant: {
                     id?: number;
-                    calendar?: {
-                        planting?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        sowing?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        propagating?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        harvest: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                    };
-                    attributes?: {
-                        /** @description (u gramima) */
-                        yieldMax: number;
-                        /** @description (u danima) */
-                        harvestWindowMax: number;
-                        /** @description (u centimetrima) */
-                        seedingDepth: number;
-                        /** @description (u centimetrima) */
-                        seedingDistance: number;
-                        /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
-                        soil: string;
-                        /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
-                        light: number;
-                        /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
-                        water: string;
-                        /** @description (u stupnjevima °C) */
-                        gernimationTemperature: number;
-                        /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
-                        nutrients: string;
-                        /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
-                        germinationType: string;
-                        germinationWindowMin: number;
-                        /** @description (u danima) */
-                        germinationWindowMax: number;
-                        /** @description (u danima) */
-                        growthWindowMin: number;
-                        /** @description (u danima) */
-                        growthWindowMax: number;
-                        /** @description (u danima) */
-                        harvestWindowMin: number;
-                        /** @description (u gramima) */
-                        yieldMin: number;
-                        /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
-                        yieldType: string;
-                    };
                     information?: {
-                        storage: string;
-                        maintenance: string;
-                        /** @description Informacije o berbi biljke. */
-                        harvest: string;
-                        verified?: boolean;
-                        origin: string;
-                        planting?: string;
-                        watering: string;
-                        sowing?: string;
                         name: string;
                         latinName: string;
+                        origin: string;
+                        verified?: boolean;
                         description: string;
+                        soilPreparation: string;
+                        sowing?: string;
+                        planting?: string;
+                        growth: string;
+                        maintenance: string;
+                        watering: string;
+                        flowering?: string;
+                        /** @description Informacije o berbi biljke. */
+                        harvest: string;
+                        storage: string;
+                        tip?: {
+                            header?: string;
+                            /** @description Markdown formatted text */
+                            content?: string;
+                        }[];
                         operations: {
-                            id?: number;
-                            attributes?: {
+                            id: number;
+                            attributes: {
                                 /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
                                 relativeDays?: number;
                                 /** @description (na koji stadij biljke se primjenjuje radnja) */
@@ -649,13 +693,18 @@ export interface components {
                                 frequency?: string;
                                 /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
                                 application: string;
+                                /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
+                                duration: number;
                                 /** @description (ako je radnja za dostavu, korisnik mora ugovoriti dostavu za odrađivanje ove radnje npr. Branje svih plodova) */
                                 deliverable: boolean;
+                                /** @description (interna radnja se ne dojavljuje niti prikazuje korisnicima aplikacije - namjenjena je za poslove farmera) */
+                                internal?: boolean;
+                                printLabel?: boolean;
                             };
-                            image?: {
-                                cover: components["schemas"]["image"];
+                            image: {
+                                cover?: components["schemas"]["image"];
                             };
-                            information?: {
+                            information: {
                                 /** @description (prevedeni naziv operacije) */
                                 label: string;
                                 /** @description (kratki opis operacije) */
@@ -667,38 +716,89 @@ export interface components {
                                 /** @description (postupak za izvršavanje radnje) */
                                 instructions: string;
                             };
-                            prices?: {
-                                /** @description (EUR cijena za jednu operaciju) */
-                                perOperation: number;
+                            prices: {
                                 /** @description (EUR cijena s popustom) */
                                 discounted?: number;
                                 /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                                 discountDescription?: string;
+                                /** @description (EUR cijena za jednu operaciju) */
+                                perOperation: number;
                             };
-                            conditions?: {
+                            conditions: {
                                 /** @description (da li je obavezno proložiti slike za završetak radnje) */
                                 completionAttachImagesRequired: boolean;
                                 /** @description (da li se mogu proložiti slike za završetak radnje) */
                                 completionAttachImages: boolean;
                             };
+                            actions: {
+                                removePlant?: boolean;
+                            };
                         }[];
-                        flowering?: string;
-                        tip?: {
-                            header?: string;
-                            content?: string;
+                    };
+                    calendar?: {
+                        sowing?: {
+                            start?: number;
+                            end?: number;
                         }[];
-                        soilPreparation: string;
-                        growth: string;
+                        planting?: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                        harvest: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                        propagating?: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                    };
+                    attributes?: {
+                        /** @description (u gramima) */
+                        yieldMin: number;
+                        /** @description (u gramima) */
+                        yieldMax: number;
+                        /** @description (u danima) */
+                        harvestWindowMin: number;
+                        /** @description (u danima) */
+                        harvestWindowMax: number;
+                        /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
+                        nutrients: string;
+                        /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
+                        germinationType: string;
+                        /** @description (u stupnjevima °C) */
+                        gernimationTemperature: number;
+                        /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
+                        water: string;
+                        /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
+                        light: number;
+                        /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
+                        soil: string;
+                        /** @description (u centimetrima) */
+                        seedingDistance: number;
+                        germinationWindowMin: number;
+                        /** @description (u danima) */
+                        germinationWindowMax: number;
+                        /** @description (u danima) */
+                        growthWindowMin: number;
+                        /** @description (u danima) */
+                        growthWindowMax: number;
+                        /** @description (u centimetrima) */
+                        seedingDepth: number;
+                        /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
+                        yieldType: string;
+                        /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
+                        cleanHarvest: boolean;
                     };
                     prices?: {
                         /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */
                         perPlant: number;
                     };
-                    image?: {
-                        cover: components["schemas"]["image"];
-                    };
                     store?: {
                         availableInStore: boolean;
+                    };
+                    image?: {
+                        cover: components["schemas"]["image"];
                     };
                 };
                 name: string;
@@ -714,11 +814,15 @@ export interface components {
                 harvest?: string;
                 shortDescription: string;
             };
-            image: {
-                cover?: components["schemas"]["image"];
-            };
             store: {
                 availableInStore: boolean;
+            };
+            attributes: {
+                /** @description (vrsta reprodukcije sorte dostupne u Gredicama; "seed" ili "bulb") */
+                reproductionType: string;
+            };
+            image: {
+                cover: components["schemas"]["image"];
             };
             /** Format: date-time */
             createdAt: string;
@@ -766,75 +870,30 @@ export interface components {
                 };
                 plant: {
                     id?: number;
-                    calendar?: {
-                        planting?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        sowing?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        propagating?: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                        harvest: {
-                            start?: number;
-                            end?: number;
-                        }[];
-                    };
-                    attributes?: {
-                        /** @description (u gramima) */
-                        yieldMax: number;
-                        /** @description (u danima) */
-                        harvestWindowMax: number;
-                        /** @description (u centimetrima) */
-                        seedingDepth: number;
-                        /** @description (u centimetrima) */
-                        seedingDistance: number;
-                        /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
-                        soil: string;
-                        /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
-                        light: number;
-                        /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
-                        water: string;
-                        /** @description (u stupnjevima °C) */
-                        gernimationTemperature: number;
-                        /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
-                        nutrients: string;
-                        /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
-                        germinationType: string;
-                        germinationWindowMin: number;
-                        /** @description (u danima) */
-                        germinationWindowMax: number;
-                        /** @description (u danima) */
-                        growthWindowMin: number;
-                        /** @description (u danima) */
-                        growthWindowMax: number;
-                        /** @description (u danima) */
-                        harvestWindowMin: number;
-                        /** @description (u gramima) */
-                        yieldMin: number;
-                        /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
-                        yieldType: string;
-                    };
                     information?: {
-                        storage: string;
-                        maintenance: string;
-                        /** @description Informacije o berbi biljke. */
-                        harvest: string;
-                        verified?: boolean;
-                        origin: string;
-                        planting?: string;
-                        watering: string;
-                        sowing?: string;
                         name: string;
                         latinName: string;
+                        origin: string;
+                        verified?: boolean;
                         description: string;
+                        soilPreparation: string;
+                        sowing?: string;
+                        planting?: string;
+                        growth: string;
+                        maintenance: string;
+                        watering: string;
+                        flowering?: string;
+                        /** @description Informacije o berbi biljke. */
+                        harvest: string;
+                        storage: string;
+                        tip?: {
+                            header?: string;
+                            /** @description Markdown formatted text */
+                            content?: string;
+                        }[];
                         operations: {
-                            id?: number;
-                            attributes?: {
+                            id: number;
+                            attributes: {
                                 /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
                                 relativeDays?: number;
                                 /** @description (na koji stadij biljke se primjenjuje radnja) */
@@ -849,13 +908,18 @@ export interface components {
                                 frequency?: string;
                                 /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
                                 application: string;
+                                /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
+                                duration: number;
                                 /** @description (ako je radnja za dostavu, korisnik mora ugovoriti dostavu za odrađivanje ove radnje npr. Branje svih plodova) */
                                 deliverable: boolean;
+                                /** @description (interna radnja se ne dojavljuje niti prikazuje korisnicima aplikacije - namjenjena je za poslove farmera) */
+                                internal?: boolean;
+                                printLabel?: boolean;
                             };
-                            image?: {
-                                cover: components["schemas"]["image"];
+                            image: {
+                                cover?: components["schemas"]["image"];
                             };
-                            information?: {
+                            information: {
                                 /** @description (prevedeni naziv operacije) */
                                 label: string;
                                 /** @description (kratki opis operacije) */
@@ -867,38 +931,89 @@ export interface components {
                                 /** @description (postupak za izvršavanje radnje) */
                                 instructions: string;
                             };
-                            prices?: {
-                                /** @description (EUR cijena za jednu operaciju) */
-                                perOperation: number;
+                            prices: {
                                 /** @description (EUR cijena s popustom) */
                                 discounted?: number;
                                 /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                                 discountDescription?: string;
+                                /** @description (EUR cijena za jednu operaciju) */
+                                perOperation: number;
                             };
-                            conditions?: {
+                            conditions: {
                                 /** @description (da li je obavezno proložiti slike za završetak radnje) */
                                 completionAttachImagesRequired: boolean;
                                 /** @description (da li se mogu proložiti slike za završetak radnje) */
                                 completionAttachImages: boolean;
                             };
+                            actions: {
+                                removePlant?: boolean;
+                            };
                         }[];
-                        flowering?: string;
-                        tip?: {
-                            header?: string;
-                            content?: string;
+                    };
+                    calendar?: {
+                        sowing?: {
+                            start?: number;
+                            end?: number;
                         }[];
-                        soilPreparation: string;
-                        growth: string;
+                        planting?: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                        harvest: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                        propagating?: {
+                            start?: number;
+                            end?: number;
+                        }[];
+                    };
+                    attributes?: {
+                        /** @description (u gramima) */
+                        yieldMin: number;
+                        /** @description (u gramima) */
+                        yieldMax: number;
+                        /** @description (u danima) */
+                        harvestWindowMin: number;
+                        /** @description (u danima) */
+                        harvestWindowMax: number;
+                        /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
+                        nutrients: string;
+                        /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
+                        germinationType: string;
+                        /** @description (u stupnjevima °C) */
+                        gernimationTemperature: number;
+                        /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
+                        water: string;
+                        /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
+                        light: number;
+                        /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
+                        soil: string;
+                        /** @description (u centimetrima) */
+                        seedingDistance: number;
+                        germinationWindowMin: number;
+                        /** @description (u danima) */
+                        germinationWindowMax: number;
+                        /** @description (u danima) */
+                        growthWindowMin: number;
+                        /** @description (u danima) */
+                        growthWindowMax: number;
+                        /** @description (u centimetrima) */
+                        seedingDepth: number;
+                        /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
+                        yieldType: string;
+                        /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
+                        cleanHarvest: boolean;
                     };
                     prices?: {
                         /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */
                         perPlant: number;
                     };
-                    image?: {
-                        cover: components["schemas"]["image"];
-                    };
                     store?: {
                         availableInStore: boolean;
+                    };
+                    image?: {
+                        cover: components["schemas"]["image"];
                     };
                 };
                 plantSort: {
@@ -908,75 +1023,30 @@ export interface components {
                         flowering?: string;
                         plant: {
                             id?: number;
-                            calendar?: {
-                                planting?: {
-                                    start?: number;
-                                    end?: number;
-                                }[];
-                                sowing?: {
-                                    start?: number;
-                                    end?: number;
-                                }[];
-                                propagating?: {
-                                    start?: number;
-                                    end?: number;
-                                }[];
-                                harvest: {
-                                    start?: number;
-                                    end?: number;
-                                }[];
-                            };
-                            attributes?: {
-                                /** @description (u gramima) */
-                                yieldMax: number;
-                                /** @description (u danima) */
-                                harvestWindowMax: number;
-                                /** @description (u centimetrima) */
-                                seedingDepth: number;
-                                /** @description (u centimetrima) */
-                                seedingDistance: number;
-                                /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
-                                soil: string;
-                                /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
-                                light: number;
-                                /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
-                                water: string;
-                                /** @description (u stupnjevima °C) */
-                                gernimationTemperature: number;
-                                /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
-                                nutrients: string;
-                                /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
-                                germinationType: string;
-                                germinationWindowMin: number;
-                                /** @description (u danima) */
-                                germinationWindowMax: number;
-                                /** @description (u danima) */
-                                growthWindowMin: number;
-                                /** @description (u danima) */
-                                growthWindowMax: number;
-                                /** @description (u danima) */
-                                harvestWindowMin: number;
-                                /** @description (u gramima) */
-                                yieldMin: number;
-                                /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
-                                yieldType: string;
-                            };
                             information?: {
-                                storage: string;
-                                maintenance: string;
-                                /** @description Informacije o berbi biljke. */
-                                harvest: string;
-                                verified?: boolean;
-                                origin: string;
-                                planting?: string;
-                                watering: string;
-                                sowing?: string;
                                 name: string;
                                 latinName: string;
+                                origin: string;
+                                verified?: boolean;
                                 description: string;
+                                soilPreparation: string;
+                                sowing?: string;
+                                planting?: string;
+                                growth: string;
+                                maintenance: string;
+                                watering: string;
+                                flowering?: string;
+                                /** @description Informacije o berbi biljke. */
+                                harvest: string;
+                                storage: string;
+                                tip?: {
+                                    header?: string;
+                                    /** @description Markdown formatted text */
+                                    content?: string;
+                                }[];
                                 operations: {
-                                    id?: number;
-                                    attributes?: {
+                                    id: number;
+                                    attributes: {
                                         /** @description (broj dana kada se radi operacija relativno na životni ciklus biljke) */
                                         relativeDays?: number;
                                         /** @description (na koji stadij biljke se primjenjuje radnja) */
@@ -991,13 +1061,18 @@ export interface components {
                                         frequency?: string;
                                         /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
                                         application: string;
+                                        /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
+                                        duration: number;
                                         /** @description (ako je radnja za dostavu, korisnik mora ugovoriti dostavu za odrađivanje ove radnje npr. Branje svih plodova) */
                                         deliverable: boolean;
+                                        /** @description (interna radnja se ne dojavljuje niti prikazuje korisnicima aplikacije - namjenjena je za poslove farmera) */
+                                        internal?: boolean;
+                                        printLabel?: boolean;
                                     };
-                                    image?: {
-                                        cover: components["schemas"]["image"];
+                                    image: {
+                                        cover?: components["schemas"]["image"];
                                     };
-                                    information?: {
+                                    information: {
                                         /** @description (prevedeni naziv operacije) */
                                         label: string;
                                         /** @description (kratki opis operacije) */
@@ -1009,38 +1084,89 @@ export interface components {
                                         /** @description (postupak za izvršavanje radnje) */
                                         instructions: string;
                                     };
-                                    prices?: {
-                                        /** @description (EUR cijena za jednu operaciju) */
-                                        perOperation: number;
+                                    prices: {
                                         /** @description (EUR cijena s popustom) */
                                         discounted?: number;
                                         /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                                         discountDescription?: string;
+                                        /** @description (EUR cijena za jednu operaciju) */
+                                        perOperation: number;
                                     };
-                                    conditions?: {
+                                    conditions: {
                                         /** @description (da li je obavezno proložiti slike za završetak radnje) */
                                         completionAttachImagesRequired: boolean;
                                         /** @description (da li se mogu proložiti slike za završetak radnje) */
                                         completionAttachImages: boolean;
                                     };
+                                    actions: {
+                                        removePlant?: boolean;
+                                    };
                                 }[];
-                                flowering?: string;
-                                tip?: {
-                                    header?: string;
-                                    content?: string;
+                            };
+                            calendar?: {
+                                sowing?: {
+                                    start?: number;
+                                    end?: number;
                                 }[];
-                                soilPreparation: string;
-                                growth: string;
+                                planting?: {
+                                    start?: number;
+                                    end?: number;
+                                }[];
+                                harvest: {
+                                    start?: number;
+                                    end?: number;
+                                }[];
+                                propagating?: {
+                                    start?: number;
+                                    end?: number;
+                                }[];
+                            };
+                            attributes?: {
+                                /** @description (u gramima) */
+                                yieldMin: number;
+                                /** @description (u gramima) */
+                                yieldMax: number;
+                                /** @description (u danima) */
+                                harvestWindowMin: number;
+                                /** @description (u danima) */
+                                harvestWindowMax: number;
+                                /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
+                                nutrients: string;
+                                /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
+                                germinationType: string;
+                                /** @description (u stupnjevima °C) */
+                                gernimationTemperature: number;
+                                /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
+                                water: string;
+                                /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
+                                light: number;
+                                /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
+                                soil: string;
+                                /** @description (u centimetrima) */
+                                seedingDistance: number;
+                                germinationWindowMin: number;
+                                /** @description (u danima) */
+                                germinationWindowMax: number;
+                                /** @description (u danima) */
+                                growthWindowMin: number;
+                                /** @description (u danima) */
+                                growthWindowMax: number;
+                                /** @description (u centimetrima) */
+                                seedingDepth: number;
+                                /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
+                                yieldType: string;
+                                /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
+                                cleanHarvest: boolean;
                             };
                             prices?: {
                                 /** @description (EUR cijena za jednu biljku - presadnica ili 30x30cm sijanje) */
                                 perPlant: number;
                             };
-                            image?: {
-                                cover: components["schemas"]["image"];
-                            };
                             store?: {
                                 availableInStore: boolean;
+                            };
+                            image?: {
+                                cover: components["schemas"]["image"];
                             };
                         };
                         name: string;
@@ -1056,11 +1182,15 @@ export interface components {
                         harvest?: string;
                         shortDescription: string;
                     };
-                    image?: {
-                        cover?: components["schemas"]["image"];
-                    };
                     store?: {
                         availableInStore: boolean;
+                    };
+                    attributes?: {
+                        /** @description (vrsta reprodukcije sorte dostupne u Gredicama; "seed" ili "bulb") */
+                        reproductionType: string;
+                    };
+                    image?: {
+                        cover: components["schemas"]["image"];
                     };
                 };
                 countryOfOrigin?: string;
@@ -1124,11 +1254,16 @@ export interface components {
                 frequency?: string;
                 /** @description (na što se primjenjuje operacije - jedno od: garden, raisedBedFull, raisedBed1m, plant) */
                 application: string;
+                /** @description (vrijeme potrebno za izvršavanje radnje u minutama) */
+                duration: number;
                 /** @description (ako je radnja za dostavu, korisnik mora ugovoriti dostavu za odrađivanje ove radnje npr. Branje svih plodova) */
                 deliverable: boolean;
+                /** @description (interna radnja se ne dojavljuje niti prikazuje korisnicima aplikacije - namjenjena je za poslove farmera) */
+                internal?: boolean;
+                printLabel?: boolean;
             };
             image: {
-                cover: components["schemas"]["image"];
+                cover?: components["schemas"]["image"];
             };
             information: {
                 /** @description (prevedeni naziv operacije) */
@@ -1143,18 +1278,21 @@ export interface components {
                 instructions: string;
             };
             prices: {
-                /** @description (EUR cijena za jednu operaciju) */
-                perOperation: number;
                 /** @description (EUR cijena s popustom) */
                 discounted?: number;
                 /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                 discountDescription?: string;
+                /** @description (EUR cijena za jednu operaciju) */
+                perOperation: number;
             };
             conditions: {
                 /** @description (da li je obavezno proložiti slike za završetak radnje) */
                 completionAttachImagesRequired: boolean;
                 /** @description (da li se mogu proložiti slike za završetak radnje) */
                 completionAttachImages: boolean;
+            };
+            actions: {
+                removePlant?: boolean;
             };
             /** Format: date-time */
             createdAt: string;
@@ -1255,6 +1393,63 @@ export interface components {
                 raisedBed: boolean;
                 /** @description Blokovi koji mogu reciklirati druge blokove */
                 recycler: boolean;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "entity-occasions": {
+            id: number;
+            entityType: {
+                /** @default 17 */
+                id: number;
+                /** @default occasions */
+                name: string;
+                /** @default Natječaji */
+                label: string;
+            };
+            information: {
+                name: string;
+                rulesChangedDate: string;
+                rules: string;
+                endDate?: string;
+                startDate: string;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "entity-hqLocations": {
+            id: number;
+            entityType: {
+                /** @default 18 */
+                id: number;
+                /** @default hqLocations */
+                name: string;
+                /** @default HQ lokacije */
+                label: string;
+            };
+            location: {
+                addressStreet1: string;
+                addressStreet2?: string;
+                addressCity: string;
+                addressZip: string;
+                addressCountry: string;
+                longitude: number;
+                latitude: number;
+            };
+            delivery: {
+                freeRadius: number;
+                zoneRadius: number;
+            };
+            prices: {
+                pricePerKilometer: number;
+            };
+            information: {
+                name: string;
+                label: string;
             };
             /** Format: date-time */
             createdAt: string;

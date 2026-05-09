@@ -1,5 +1,5 @@
-import { initials } from '@signalco/js';
-import { Avatar, type AvatarProps } from '@signalco/ui-primitives/Avatar';
+import { UserAvatar } from '@gredice/ui/UserAvatar';
+import type { AvatarProps } from '@signalco/ui-primitives/Avatar';
 import { cx } from '@signalco/ui-primitives/cx';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 
@@ -12,32 +12,16 @@ export function ProfileAvatar({
     'size' | 'className'
 >) {
     const currentUser = useCurrentUser();
-    const avatarUrl = currentUser.data?.avatarUrl;
-
-    if (!avatarUrl) {
-        return (
-            <Avatar
-                className={cx(
-                    variant === 'transparentOnMobile' &&
-                        'select-none border-none bg-transparent md:bg-muted md:border',
-                    className,
-                )}
-                size={size}
-            >
-                {initials(currentUser.data?.displayName ?? '')}
-            </Avatar>
-        );
-    }
 
     return (
-        <Avatar
+        <UserAvatar
+            avatarUrl={currentUser.data?.avatarUrl}
+            displayName={currentUser.data?.displayName ?? ''}
             className={cx(
                 variant === 'transparentOnMobile' &&
-                    'border-none bg-transparent md:bg-muted md:border',
+                    'select-none border-none bg-transparent md:bg-muted md:border',
                 className,
             )}
-            src={avatarUrl}
-            alt={currentUser.data?.displayName ?? 'Avatar'}
             size={size}
         />
     );

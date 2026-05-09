@@ -3,18 +3,29 @@ import {
     devices,
     type PlaywrightTestConfig,
 } from '@playwright/test';
+import {
+    getAppByName,
+    getPlaywrightBaseUrl,
+    shouldReusePlaywrightServer,
+} from '../../scripts/app-registry.ts';
+
+const app = getAppByName('api');
+const reporter: PlaywrightTestConfig['reporter'] = [
+    ['list'],
+    ['html', { open: 'never' }],
+];
 
 export const config: PlaywrightTestConfig = {
-    testDir: './',
+    testDir: './tests',
     snapshotDir: './__snapshots__',
     timeout: 10 * 1000,
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
     workers: process.env.CI ? 1 : undefined,
-    reporter: 'html',
+    reporter,
     use: {
-        baseURL: 'http://127.0.0.1:3005',
+        baseURL: getPlaywrightBaseUrl(app),
         trace: 'on-first-retry',
     },
     projects: [
@@ -24,9 +35,9 @@ export const config: PlaywrightTestConfig = {
         },
     ],
     webServer: {
-        command: 'pnpm dev',
-        url: 'http://127.0.0.1:3005',
-        reuseExistingServer: !process.env.CI,
+        command: 'pnpm start',
+        url: getPlaywrightBaseUrl(app),
+        reuseExistingServer: shouldReusePlaywrightServer(),
     },
 };
 

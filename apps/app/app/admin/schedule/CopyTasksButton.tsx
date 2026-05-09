@@ -9,6 +9,7 @@ type TaskItem = {
     id: string;
     text: string;
     link?: string;
+    approved?: boolean;
 };
 
 type CopyTasksButtonProps = {
@@ -18,13 +19,18 @@ type CopyTasksButtonProps = {
 
 export function CopyTasksButton({ physicalId, tasks }: CopyTasksButtonProps) {
     const [copied, setCopied] = useState(false);
+    const approvedTasks = tasks.filter((task) => task.approved ?? true);
 
     const handleCopy = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
 
+        if (approvedTasks.length === 0) {
+            return;
+        }
+
         // Create formatted text with links
-        const taskText = tasks
+        const taskText = approvedTasks
             .map((task) => {
                 // TODO: Not working for WhatsApp
                 // if (task.link) {
@@ -51,7 +57,7 @@ export function CopyTasksButton({ physicalId, tasks }: CopyTasksButtonProps) {
                 title="Kopiraj zadatke u međuspremnik"
                 onClick={handleCopy}
                 variant="plain"
-                disabled={tasks.length === 0}
+                disabled={approvedTasks.length === 0}
                 startDecorator={<Duplicate className="size-4 shrink-0" />}
             >
                 Kopiraj zadatke

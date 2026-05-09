@@ -1,3 +1,4 @@
+import { calculatePlantsPerField } from '@gredice/js/plants';
 import { Info } from '@signalco/ui-icons';
 import { Divider } from '@signalco/ui-primitives/Divider';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -28,20 +29,13 @@ export function PlantYieldTooltip({
         return null;
     }
 
-    let plantsPerRow = Math.floor(
-        30 / (plant.attributes.seedingDistance ?? 30),
+    const { totalPlants } = calculatePlantsPerField(
+        plant.attributes.seedingDistance,
     );
-    if (plantsPerRow < 1) {
-        console.warn(
-            `Plants per row is less than 1 (${plantsPerRow}) for ${plant.information.name}. Setting to 1.`,
-        );
-        plantsPerRow = 1;
-    }
 
     const yieldMin = plant.attributes.yieldMin ?? 0;
     const yieldMax = plant.attributes.yieldMax ?? 0;
     const yieldType = plant.attributes.yieldType ?? 'perField';
-    const totalPlants = Math.floor(plantsPerRow * plantsPerRow);
     const expectedYieldAverage = (yieldMax - yieldMin) / 2 + yieldMin;
     const minYieldPerField =
         yieldType === 'perField' ? yieldMin : yieldMin * totalPlants;

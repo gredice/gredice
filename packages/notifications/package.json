@@ -1,0 +1,26 @@
+{
+    "name": "@gredice/notifications",
+    "version": "0.0.0",
+    "private": true,
+    "sideEffects": false,
+    "type": "module",
+    "license": "MIT",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
+        "lint": "biome check --write",
+        "lint:migrate": "biome migrate --write"
+    },
+    "dependencies": {
+        "@gredice/directory-types": "workspace:*",
+        "@gredice/slack": "workspace:*",
+        "@gredice/storage": "workspace:*"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.4.14",
+        "@types/node": "24.12.2",
+        "typescript": "6.0.3"
+    }
+}

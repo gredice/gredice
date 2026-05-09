@@ -1,3 +1,4 @@
+import { Markdown } from '@gredice/ui/Markdown';
 import { orderBy } from '@signalco/js';
 import { Accordion } from '@signalco/ui/Accordion';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -5,7 +6,6 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
-import { Markdown } from '../../components/shared/Markdown';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { NoDataPlaceholder } from '../../components/shared/placeholders/NoDataPlaceholder';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
@@ -58,14 +58,16 @@ export default async function FaqPage() {
                                 .map((item) => (
                                     <Accordion
                                         key={item.information.name}
-                                        className="h-min"
+                                        className="h-min border-tertiary border-b-4"
                                     >
                                         <Typography className="px-3" semiBold>
                                             {item.information.header}
                                         </Typography>
-                                        <Markdown className="px-3">
-                                            {item.information.content}
-                                        </Markdown>
+                                        <div className="px-3">
+                                            <Markdown>
+                                                {item.information.content}
+                                            </Markdown>
+                                        </div>
                                     </Accordion>
                                 ))}
                         </div>

@@ -2,7 +2,7 @@
 
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
 import { LogOut } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { queryClient } from '../providers/ClientAppProvider';
@@ -20,7 +20,6 @@ export function LogoutButton() {
                 return;
             }
 
-            localStorage.removeItem('gredice-token');
             await queryClient.invalidateQueries({
                 queryKey: authCurrentUserQueryKeys,
             });
@@ -33,13 +32,14 @@ export function LogoutButton() {
     };
 
     return (
-        <Button
+        <IconButton
+            title="Odjavi se"
             variant="outlined"
-            startDecorator={<LogOut className="size-4" />}
             loading={loading}
             onClick={handleLogout}
+            className="whitespace-nowrap"
         >
-            Odjavi se
-        </Button>
+            <LogOut className="size-4 shrink-0" />
+        </IconButton>
     );
 }

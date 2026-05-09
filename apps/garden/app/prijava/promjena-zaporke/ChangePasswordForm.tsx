@@ -1,6 +1,6 @@
 'use client';
 
-import { client } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 import { Alert } from '@signalco/ui/Alert';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Input } from '@signalco/ui-primitives/Input';
@@ -30,12 +30,14 @@ export function ChangePasswordForm() {
             return;
         }
 
-        const response = await client().api.auth['change-password'].$post({
-            json: {
-                password,
-                token,
+        const response = await clientPublic().api.auth['change-password'].$post(
+            {
+                json: {
+                    password,
+                    token,
+                },
             },
-        });
+        );
 
         if (!response.ok) {
             console.error(response.statusText);

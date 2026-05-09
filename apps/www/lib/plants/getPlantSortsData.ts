@@ -1,17 +1,24 @@
-import { directoriesClient } from '@gredice/client';
-import { unstable_cache } from 'next/cache';
+import { directoriesClient, type PlantSortData } from '@gredice/client';
+import { cache } from 'react';
 
-export const getPlantSortsData = unstable_cache(
-    async () => {
-        return (await directoriesClient().GET('/entities/plantSort')).data;
-    },
-    ['plantSortsData'],
-    {
-        revalidate: 60 * 60, // 1 hour
-        tags: ['plantSortsData'],
-    },
-);
+export type { PlantSortData };
 
-export type PlantSortData = NonNullable<
-    Awaited<ReturnType<typeof getPlantSortsData>>
->[number];
+const getPlantSortsDataUncached = async () => {
+    try {
+        const { data, error } = await directoriesClient().GET(
+            '/entities/plantSort',
+        );
+
+        if (error) {
+            console.error('Failed to fetch plant sorts data', error);
+            return [];
+        }
+
+        return data ?? [];
+    } catch (error) {
+        console.error('Failed to fetch plant sorts data', error);
+        return [];
+    }
+};
+
+export const getPlantSortsData = cache(getPlantSortsDataUncached);

@@ -5,14 +5,34 @@ import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { type CSSProperties, useState } from 'react';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import { useGameState } from '../useGameState';
+import { useRemoveRaisedBedCloseupParam } from '../useRaisedBedCloseup';
+import {
+    findRaisedBedByBlockId,
+    getRaisedBedBlockIds,
+} from '../utils/raisedBedBlocks';
 import { RaisedBedField } from './raisedBed/RaisedBedField';
 import { RaisedBedFieldSuggestions } from './raisedBed/RaisedBedFieldSuggestions';
+import { RaisedBedGreenhouseSuggestion } from './raisedBed/RaisedBedGreenhouseSuggestion';
 import { RaisedBedInfo } from './raisedBed/RaisedBedInfo';
 import { RaisedBedSensorInfo } from './raisedBed/RaisedBedSensorInfo';
 import { RaisedBedWatering } from './raisedBed/RaisedBedWatering';
+
+const GRID_SIZE = 240;
+const GRID_HEIGHT_ADDITIONAL = 30;
+const BUTTON_HEIGHT = 40;
+const GRID_TOP_ANCHOR_OFFSET = 10;
+const SIDE_PANEL_MD_LEFT_OFFSET = GRID_SIZE / 2 + 4;
+const MOBILE_CLOSE_BUTTON_LEFT_OFFSET = GRID_SIZE / 2 + 2;
+
+function centerOffset(offset: number) {
+    const operator = offset >= 0 ? '+' : '-';
+    return `calc(50% ${operator} ${Math.abs(offset)}px)`;
+}
 
 export function RaisedBedFieldHud(_props: {
     flags?: {
@@ -25,12 +45,37 @@ export function RaisedBedFieldHud(_props: {
     };
 }) {
     const { data: currentGarden } = useCurrentGarden();
+    const { track } = useGameAnalytics();
+    const [isInfoOpen, setIsInfoOpen] = useState(false);
     const view = useGameState((state) => state.view);
-    const setView = useGameState((state) => state.setView);
+    const { mutate: removeRaisedBedCloseupParam } =
+        useRemoveRaisedBedCloseupParam();
     const closeupBlock = useGameState((state) => state.closeupBlock);
-    const raisedBed = currentGarden?.raisedBeds.find(
-        (bed) => bed.blockId === closeupBlock?.id,
-    );
+    const raisedBed = closeupBlock
+        ? findRaisedBedByBlockId(currentGarden, closeupBlock.id)
+        : null;
+    const raisedBedBlockCount =
+        currentGarden && raisedBed
+            ? getRaisedBedBlockIds(currentGarden, raisedBed.id).length
+            : 1;
+    const isDoubleRaisedBed = raisedBedBlockCount === 2;
+    const gridHeight = isDoubleRaisedBed
+        ? GRID_SIZE * 2 + GRID_HEIGHT_ADDITIONAL
+        : GRID_SIZE;
+    const gridTopOffset = (gridHeight + GRID_HEIGHT_ADDITIONAL) / 2;
+    const uiTopAnchor =
+        -gridTopOffset - BUTTON_HEIGHT / 2 - GRID_TOP_ANCHOR_OFFSET;
+    const hudStyles: CSSProperties & Record<string, string> = {
+        '--raised-bed-side-panel-left': `${SIDE_PANEL_MD_LEFT_OFFSET}px`,
+        '--raised-bed-ui-top': centerOffset(uiTopAnchor),
+        '--raised-bed-ui-top-mobile': `calc(${centerOffset(uiTopAnchor)} + 48px)`,
+        '--raised-bed-title-left': centerOffset(-(GRID_SIZE / 2)),
+        '--raised-bed-close-button-left': centerOffset(
+            MOBILE_CLOSE_BUTTON_LEFT_OFFSET,
+        ),
+        '--raised-bed-grid-size': `${GRID_SIZE}px`,
+        '--raised-bed-grid-height': `${gridHeight}px`,
+    };
 
     return (
         <div
@@ -39,25 +84,32 @@ export function RaisedBedFieldHud(_props: {
                 view === 'closeup' &&
                     'opacity-100 [transition-delay:950ms] pointer-events-auto',
             )}
+            style={hudStyles}
         >
             {currentGarden && raisedBed && (
-                <div className="absolute max-w-64 md:max-w-[312px] top-[calc(50%-203.5px)] left-[calc(50%-156.5px)]">
+                <div className="absolute max-w-64 md:max-w-[312px] top-[var(--raised-bed-ui-top)] left-[var(--raised-bed-title-left)]">
                     <Modal
+                        open={isInfoOpen}
+                        onOpenChange={(open) => {
+                            if (open) {
+                                track('game_raised_bed_info_opened', {
+                                    garden_id: currentGarden.id,
+                                    raised_bed_id: raisedBed.id,
+                                    raised_bed_name: raisedBed.name,
+                                });
+                            }
+                            setIsInfoOpen(open);
+                        }}
                         title="Informacije o gredici"
                         modal={false}
                         className="md:border-tertiary md:border-b-4"
                         trigger={
                             <ButtonGreen fullWidth>
                                 <Row spacing={1}>
-                                    <div
-                                        className="relative h-6 min-w-4"
-                                        title="Identifikator gredice"
-                                    >
-                                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 font-bold">
-                                            {raisedBed.physicalId}
-                                        </span>
-                                        <RaisedBedIcon className="absolute top-1 left-1/2 -translate-x-1/2 size-6" />
-                                    </div>
+                                    <RaisedBedIcon
+                                        physicalId={raisedBed.physicalId}
+                                        className="size-6"
+                                    />
                                     <Typography semiBold noWrap>
                                         {raisedBed?.name}
                                     </Typography>
@@ -72,7 +124,7 @@ export function RaisedBedFieldHud(_props: {
                     </Modal>
                 </div>
             )}
-            <div className="absolute top-[calc(50%-3px)] left-1/2 size-[316px] -translate-x-1/2 -translate-y-1/2">
+            <div className="absolute top-[calc(50%-1px)] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[var(--raised-bed-grid-size)] h-[var(--raised-bed-grid-height)]">
                 {view === 'closeup' && currentGarden && raisedBed && (
                     <RaisedBedField
                         gardenId={currentGarden.id}
@@ -80,41 +132,48 @@ export function RaisedBedFieldHud(_props: {
                     />
                 )}
             </div>
-            {currentGarden && raisedBed && raisedBed.isValid && (
-                <>
-                    <div className="absolute top-[calc(50%+160px)] left-[calc(50%-156.5px)] md:left-[calc(50%+210px)] md:top-[calc(50%+74px)]">
-                        <Stack spacing={0.5}>
-                            <RaisedBedWatering
-                                gardenId={currentGarden.id}
-                                raisedBedId={raisedBed.id}
-                            />
-                            <RaisedBedSensorInfo
-                                gardenId={currentGarden.id}
-                                raisedBedId={raisedBed.id}
-                            />
-                        </Stack>
-                    </div>
-                    <div className="absolute top-[calc(50%+160px)] left-[calc(50%+36px)] md:top-[calc(50%-158px)] md:left-[calc(50%+210px)]">
+            <Stack
+                className="absolute md:left-[calc(50%+var(--raised-bed-side-panel-left))] top-[var(--raised-bed-ui-top-mobile)] md:top-[var(--raised-bed-ui-top)] left-[var(--raised-bed-close-button-left)]"
+                spacing={1}
+                alignItems="center"
+            >
+                <ButtonGreen
+                    variant="plain"
+                    className="rounded-full size-10 md:size-auto"
+                    onClick={() => {
+                        track('game_raised_bed_closed', {
+                            garden_id: currentGarden?.id,
+                            raised_bed_id: raisedBed?.id,
+                            raised_bed_name: raisedBed?.name,
+                        });
+                        removeRaisedBedCloseupParam();
+                    }}
+                    startDecorator={<Check className="size-5 shrink-0" />}
+                    fullWidth
+                >
+                    <span className="hidden md:block">Završi uređivanje</span>
+                </ButtonGreen>
+                {currentGarden && raisedBed?.isValid && (
+                    <>
                         <RaisedBedFieldSuggestions
                             gardenId={currentGarden.id}
                             raisedBedId={raisedBed.id}
                         />
-                    </div>
-                </>
-            )}
-            <ButtonGreen
-                variant="plain"
-                className={cx(
-                    'absolute top-[calc(50%-203.5px)] md:left-[calc(50%+210px)] md:size-auto',
-                    'rounded-full size-10 left-[calc(50%+118px)]',
+                        <RaisedBedGreenhouseSuggestion
+                            gardenId={currentGarden.id}
+                            raisedBedId={raisedBed.id}
+                        />
+                        <RaisedBedWatering
+                            gardenId={currentGarden.id}
+                            raisedBedId={raisedBed.id}
+                        />
+                        <RaisedBedSensorInfo
+                            gardenId={currentGarden.id}
+                            raisedBedId={raisedBed.id}
+                        />
+                    </>
                 )}
-                onClick={() => {
-                    setView({ view: 'normal' });
-                }}
-                startDecorator={<Check className="size-5 shrink-0" />}
-            >
-                <span className="hidden md:block">Završi uređivanje</span>
-            </ButtonGreen>
+            </Stack>
         </div>
     );
 }

@@ -113,6 +113,8 @@ web_modules/
 # dotenv environment variable files
 .env
 .env.*
+!.env.example
+!apps/**/.env.example
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -198,3 +200,4 @@ apps/www/generate/test-cases.json
 
 ## Ignore test results
 test-results/
+scripts/dev/.caddy-data/

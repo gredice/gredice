@@ -1,7 +1,7 @@
-import { PoDogovoru } from "./PoDogovoru";
-import { Jednokratno } from "./Jednokratno";
-import { Dvokratno } from "./Dvokratno";
-import { ParniNeparni } from "./ParniNeparni";
+import type { Dvokratno } from './Dvokratno';
+import type { Jednokratno } from './Jednokratno';
+import type { ParniNeparni } from './ParniNeparni';
+import type { PoDogovoru } from './PoDogovoru';
 
 /**
  * Redovno

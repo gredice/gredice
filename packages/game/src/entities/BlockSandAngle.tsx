@@ -1,7 +1,10 @@
 import { animated } from '@react-spring/three';
+import { SnowOverlay } from '../snow/SnowOverlay';
+import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { BlockSurfaceDecorationSprites } from './groundDecorations/BlockSurfaceDecorationSprites';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function BlockSandAngle({
@@ -24,6 +27,11 @@ export function BlockSandAngle({
                 geometry={nodes.Block_Sand_Angle_1.geometry}
                 material={nodes.Block_Sand_Angle_1.material}
             />
+            <SnowOverlay
+                geometry={nodes.Block_Sand_Angle_1.geometry}
+                {...snowPresets.sandAngle}
+            />
+            <BlockSurfaceDecorationSprites block={block} surface="sand" />
         </animated.group>
     );
 }

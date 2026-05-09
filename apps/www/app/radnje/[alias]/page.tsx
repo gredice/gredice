@@ -1,4 +1,6 @@
-import { directoriesClient } from '@gredice/client';
+import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
+import { decodeRouteParam } from '@gredice/js/uri';
+import { Markdown } from '@gredice/ui/Markdown';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Euro } from '@signalco/ui-icons';
@@ -6,25 +8,29 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
-import { Markdown } from '../../../components/shared/Markdown';
 import { PageHeader } from '../../../components/shared/PageHeader';
+import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { KnownPages } from '../../../src/KnownPages';
+import { merchantReturnPolicy } from '../../../src/merchantReturnPolicy';
+import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
 import { OperationApplicationsList } from './OperationApplicationsList';
 import { OperationAttributesCards } from './OperationAttributesCards';
 
 export const revalidate = 3600; // 1 hour
+
 export async function generateMetadata(
     props: PageProps<'/radnje/[alias]'>,
 ): Promise<Metadata> {
     const { alias: aliasUnescaped } = await props.params;
-    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     const operationData = await getOperationsData();
-    const operation = operationData?.find(
-        (op) => op.information.label === alias,
+    const operation = operationData?.find((op) =>
+        matchesPageAlias(op.information.label, alias),
     );
     if (!operation) {
         return {
@@ -39,11 +45,10 @@ export async function generateMetadata(
 }
 
 export async function generateStaticParams() {
-    const entities = (await directoriesClient().GET('/entities/operation'))
-        .data;
+    const entities = await getOperationsData();
     return (
         entities?.map((entity) => ({
-            alias: String(entity.information.label),
+            alias: toPageAlias(String(entity.information.label)),
         })) ?? []
     );
 }
@@ -52,17 +57,47 @@ export default async function OperationPage(
     props: PageProps<'/radnje/[alias]'>,
 ) {
     const { alias: aliasUnescaped } = await props.params;
-    const alias = decodeURIComponent(aliasUnescaped);
+    const alias = decodeRouteParam(aliasUnescaped);
     const operationsData = await getOperationsData();
-    const operation = operationsData?.find(
-        (op) => op.information.label === alias,
+    const operation = operationsData?.find((op) =>
+        matchesPageAlias(op.information.label, alias),
     );
     if (!operation) {
         notFound();
     }
+    const isHarvestOperation =
+        operation.attributes.stage.information?.name === 'harvest';
+    const harvestPlantRemovalDescription = isHarvestOperation
+        ? getHarvestOperationRemovalDisclaimer(operation.actions?.removePlant)
+        : null;
 
     return (
-        <div className="py-8">
+        <div className="operation-page py-8">
+            <StructuredDataScript
+                data={{
+                    '@context': 'https://schema.org',
+                    '@type': 'Product',
+                    name: operation.information.label,
+                    description:
+                        operation.information.shortDescription ??
+                        operation.information.description,
+                    category: 'Radnja',
+                    image: operation.image?.cover?.url,
+                    brand: {
+                        '@type': 'Brand',
+                        name: 'Gredice',
+                    },
+                    url: `https://www.gredice.com${KnownPages.Operation(operation.information.label)}`,
+                    offers: {
+                        '@type': 'Offer',
+                        price: operation.prices.perOperation.toFixed(2),
+                        priceCurrency: 'EUR',
+                        availability: 'https://schema.org/InStock',
+                        url: `https://www.gredice.com${KnownPages.Operation(operation.information.label)}`,
+                        hasMerchantReturnPolicy: merchantReturnPolicy,
+                    },
+                }}
+            />
             <Stack spacing={4}>
                 <Breadcrumbs
                     items={[
@@ -71,7 +106,7 @@ export default async function OperationPage(
                     ]}
                 />
                 <PageHeader
-                    visual={<OperationImage operation={operation} size={128} />}
+                    visual={<OperationImage operation={operation} size={192} />}
                     header={operation.information.label}
                     subHeader={operation.information.shortDescription}
                 >
@@ -91,10 +126,25 @@ export default async function OperationPage(
                                 topic={'www/operations/information'}
                                 data={{
                                     operationId: operation.id,
-                                    operationAlias: alias,
+                                    operationAlias: operation.information.label,
                                 }}
                                 className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
                             />
+                            <Typography level="body2" secondary>
+                                Nisi zadovoljan uslugom? Dostupan je{' '}
+                                <Link
+                                    className="underline"
+                                    href={KnownPages.Refunds}
+                                >
+                                    povrat novca do 30 dana
+                                </Link>
+                                .
+                            </Typography>
+                            {harvestPlantRemovalDescription && (
+                                <Typography level="body2" secondary>
+                                    {harvestPlantRemovalDescription}
+                                </Typography>
+                            )}
                         </Stack>
                         <Typography level="h5" component="h2" gutterBottom>
                             Svojstva
@@ -107,7 +157,7 @@ export default async function OperationPage(
                                 topic={'www/operations/attributes'}
                                 data={{
                                     operationId: operation.id,
-                                    operationAlias: alias,
+                                    operationAlias: operation.information.label,
                                 }}
                                 className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
                             />
@@ -141,7 +191,7 @@ export default async function OperationPage(
                         topic="www/operations/details"
                         data={{
                             operationId: operation.id,
-                            operationAlias: alias,
+                            operationAlias: operation.information.label,
                         }}
                     />
                 </Row>

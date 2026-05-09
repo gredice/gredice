@@ -10,12 +10,12 @@ import {
 import { Button } from '@signalco/ui-primitives/Button';
 import { cx } from '@signalco/ui-primitives/cx';
 import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { isCompleteDeliverySelection, useCheckout } from '../hooks/useCheckout';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
 import { useShoppingCart } from '../hooks/useShoppingCart';
@@ -24,12 +24,15 @@ import {
     type DeliverySelectionData,
     DeliveryStep,
 } from '../shared-ui/delivery/DeliveryStep';
+import { useShoppingCartOpenParam } from '../useUrlState';
+import { calculateSunflowerAmountFromPrices } from '../utils/sunflowerPricing';
 import { HudCard } from './components/HudCard';
 import { ShoppingCartItem } from './components/shopping-cart/ShoppingCartItem';
 
 export function ShoppingCart() {
     const { data: account } = useCurrentAccount();
     const { data: cart, isLoading, isError } = useShoppingCart();
+    const { track } = useGameAnalytics();
     const deleteCart = useShoppingCartDelete();
     const checkout = useCheckout();
 
@@ -42,18 +45,25 @@ export function ShoppingCart() {
         !cart?.items.some((item) => item.currency === 'sunflower') &&
         cart?.items.some(
             (item) =>
-                (account?.sunflowers.amount ?? 0) >
-                (item.shopData.price ?? 0) * 100,
+                (account?.sunflowers.amount ?? 0) >=
+                calculateSunflowerAmountFromPrices({
+                    price: item.shopData.price,
+                    discountPrice: item.shopData.discountPrice,
+                }),
         );
 
     function handleCheckout() {
-        if (!cart || !cart.id) {
+        if (!cart?.id) {
             console.error('No cart available for checkout');
             return;
         }
 
         // If cart contains deliverable items and user hasn't gone through delivery step yet
         if (cart.hasDeliverableItems && !deliverySelection) {
+            track('game_cart_delivery_opened', {
+                item_count: cart.items.length,
+                total: cart.total,
+            });
             setShowDeliveryStep(true);
             return;
         }
@@ -66,10 +76,21 @@ export function ShoppingCart() {
             }),
         };
 
+        track('game_cart_checkout_clicked', {
+            has_delivery_selection:
+                isCompleteDeliverySelection(deliverySelection),
+            item_count: cart.items.length,
+            total: cart.total,
+            total_sunflowers: cart.totalSunflowers,
+        });
         checkout.mutate(checkoutData);
     }
 
     function handleDeleteCart() {
+        track('game_cart_cleared', {
+            item_count: cart?.items.length,
+            total: cart?.total,
+        });
         deleteCart.mutate();
     }
 
@@ -78,6 +99,10 @@ export function ShoppingCart() {
     }
 
     function handleDelivery() {
+        track('game_cart_delivery_opened', {
+            item_count: cart?.items.length,
+            total: cart?.total,
+        });
         setShowDeliveryStep(true);
     }
 
@@ -318,7 +343,10 @@ function ButtonConfirmPayment({
 
 export function ShoppingCartHud() {
     const { data: cart } = useShoppingCart();
-    if (!cart || !cart.items.length) {
+    const { track } = useGameAnalytics();
+    const [isOpen, setIsOpen] = useShoppingCartOpenParam();
+
+    if (!cart?.items.length) {
         return null;
     }
 
@@ -326,16 +354,32 @@ export function ShoppingCartHud() {
         <HudCard open position="floating" className="static p-0.5">
             <Row spacing={1}>
                 <Modal
+                    open={isOpen}
+                    onOpenChange={(open) => {
+                        if (open) {
+                            track('game_cart_opened', {
+                                item_count: cart.items.length,
+                                total: cart.total,
+                            });
+                        }
+                        setIsOpen(open);
+                    }}
                     title="Košarica"
-                    className="bg-card border-tertiary border-b-4 md:max-w-2xl"
-                    modal={false}
+                    className="border-tertiary border-b-4 md:max-w-2xl"
                     trigger={
-                        <IconButton
+                        <Button
                             title="Košarica"
                             variant="plain"
-                            className="relative rounded-full size-10"
+                            className="relative rounded-full p-2 gap-2"
                         >
-                            <ShoppingCartIcon className="!stroke-[1.4px] shrink-0" />
+                            <ShoppingCartIcon className="!stroke-[1.4px] shrink-0  size-6" />
+                            <Typography
+                                level="body2"
+                                semiBold
+                                className="text-foreground"
+                            >
+                                {(cart.total ?? 0).toFixed(2)} €
+                            </Typography>
                             {Boolean(cart?.items.length) && (
                                 <div className="absolute -right-2 -top-2">
                                     <DotIndicator
@@ -349,7 +393,7 @@ export function ShoppingCartHud() {
                                     />
                                 </div>
                             )}
-                        </IconButton>
+                        </Button>
                     }
                 >
                     <ShoppingCart />

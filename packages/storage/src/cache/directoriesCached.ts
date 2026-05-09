@@ -1,21 +1,17 @@
-import { Redis } from '@upstash/redis';
-
-let redis: Redis | null = null;
-
-function cacheClient() {
-    if (!redis) {
-        redis = new Redis({
-            url: process.env.PLANTS_SILO_KV_REST_API_URL,
-            token: process.env.PLANTS_SILO_KV_REST_API_TOKEN,
-        });
-    }
-    return redis;
-}
+import {
+    bustRedisCacheByPrefixes,
+    bustRedisCached,
+    redisCached,
+    redisCachedInfo,
+} from './redisCache';
 
 export const cacheKeys = {
     entity: (entityId: number) => `entity:${entityId}`,
     entityTypeName: (entityTypeName: string) =>
-        `entityTypeName:${entityTypeName}`,
+        `entities:formatted:${entityTypeName}:state:published:locale:default:v1`,
+    cmsPagesList: (state: 'draft' | 'published' | 'all' = 'all') =>
+        `cms:pages:list:${state}:v1`,
+    cmsPageBySlug: (slug: string) => `cms:page:slug:${slug}:v1`,
 };
 
 export async function directoriesCached<T>(
@@ -23,51 +19,18 @@ export async function directoriesCached<T>(
     fn: () => Promise<T>,
     ttl: number = 60,
 ) {
-    const client = cacheClient();
-    const cachedValue = await client.get<T>(key);
-    if (cachedValue) {
-        try {
-            return cachedValue as T;
-        } catch (error) {
-            console.error(
-                `Error parsing cached value for key "${key}":`,
-                error,
-            );
-            // Optionally, you could delete the corrupted cache entry
-            await client.del(key);
-        }
-    }
-
-    if (!cachedValue) {
-        const value = await fn();
-        await client.set(key, value, { ex: ttl });
-        return value;
-    }
+    return redisCached(key, fn, { ttl });
 }
 
 export async function directoriesCachedInfo() {
-    try {
-        const client = cacheClient();
-        const keys: string[] = [];
-        let cursor = '0';
-
-        do {
-            const scanResult = await client.scan(cursor);
-            cursor = scanResult[0];
-            keys.push(...scanResult[1]);
-        } while (cursor !== '0');
-
-        return {
-            keys,
-        };
-    } catch (error) {
-        console.error('Error fetching Redis info:', error);
-        return null;
-    }
+    return redisCachedInfo();
 }
 
 export async function bustCached(key: string) {
     console.debug(`Bust cache for key: ${key}`);
-    const client = cacheClient();
-    await client.del(key);
+    await bustRedisCached(key);
+}
+
+export async function bustCachedByPrefixes(prefixes: string[]) {
+    return bustRedisCacheByPrefixes(prefixes);
 }

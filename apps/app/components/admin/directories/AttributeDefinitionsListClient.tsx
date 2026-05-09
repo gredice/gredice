@@ -31,12 +31,13 @@ import {
     ToggleRight,
 } from '@signalco/ui-icons';
 import { Card } from '@signalco/ui-primitives/Card';
+import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import type { CSSProperties, HTMLAttributes, MouseEvent } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     reorderAttributeDefinition,
     reorderAttributeDefinitionCategory,
@@ -45,6 +46,7 @@ import { KnownPages } from '../../../src/KnownPages';
 import { NoDataPlaceholder } from '../../shared/placeholders/NoDataPlaceholder';
 import { CreateAttributeDefinitionButton } from '../buttons/CreateAttributeDefinitionButton';
 import { CreateAttributeDefinitionCategoryButton } from '../buttons/CreateAttributeDefinitionCategoryButton';
+import { TableAttributeOrderSection } from './TableAttributeOrderSection';
 
 function AttributeDataTypeIcon({
     dataType,
@@ -116,12 +118,19 @@ function AttributeDefinitionCard({
                         className="size-5 text-muted-foreground"
                     />
                     <Stack>
-                        <Typography level="body1">
-                            {attributeDefinition.label}
-                            {attributeDefinition.required && (
-                                <span className="text-red-600/60 ml-1">*</span>
+                        <Row spacing={1}>
+                            <Typography level="body1">
+                                {attributeDefinition.label}
+                                {attributeDefinition.required && (
+                                    <span className="text-red-600/60 ml-1">
+                                        *
+                                    </span>
+                                )}
+                            </Typography>
+                            {attributeDefinition.display && (
+                                <Chip color="info">Prikaz</Chip>
                             )}
-                        </Typography>
+                        </Row>
                         <Typography level="body3" className="line-clamp-2">
                             {attributeDefinition.description}
                         </Typography>
@@ -169,8 +178,10 @@ function AttributeDefinitionCategoryCard({
 
 function SortableCategory({
     category,
+    preventClick,
 }: {
     category: SelectAttributeDefinitionCategory;
+    preventClick: boolean;
 }) {
     const {
         attributes,
@@ -188,7 +199,7 @@ function SortableCategory({
         <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
             <AttributeDefinitionCategoryCard
                 attributeDefinitionCategory={category}
-                isDragging={isDragging}
+                isDragging={isDragging || preventClick}
             />
         </div>
     );
@@ -196,8 +207,10 @@ function SortableCategory({
 
 function SortableAttributeDefinition({
     attribute,
+    preventClick,
 }: {
     attribute: ExtendedAttributeDefinition;
+    preventClick: boolean;
 }) {
     const {
         attributes,
@@ -215,7 +228,7 @@ function SortableAttributeDefinition({
         <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
             <AttributeDefinitionCard
                 attributeDefinition={attribute}
-                isDragging={isDragging}
+                isDragging={isDragging || preventClick}
             />
         </div>
     );
@@ -231,7 +244,16 @@ function CategorySection({
     entityTypeName: string;
 }) {
     const [items, setItems] = useState(initialDefinitions);
+    const [preventClick, setPreventClick] = useState(false);
     const sensors = useSensors(useSensor(PointerSensor));
+
+    useEffect(() => {
+        if (!preventClick) return;
+        const timeout = setTimeout(() => {
+            setPreventClick(false);
+        }, 200);
+        return () => clearTimeout(timeout);
+    }, [preventClick]);
 
     async function handleDragEnd(event: DragEndEvent) {
         const { active, over } = event;
@@ -240,6 +262,7 @@ function CategorySection({
         const newIndex = items.findIndex((i) => i.id.toString() === over.id);
         const newItems = arrayMove(items, oldIndex, newIndex);
         setItems(newItems);
+        setPreventClick(true);
         const prev = newItems[newIndex - 1]?.order ?? null;
         const next = newItems[newIndex + 1]?.order ?? null;
         await reorderAttributeDefinition(
@@ -265,6 +288,7 @@ function CategorySection({
                 />
             </Row>
             <DndContext
+                id={`attribute-definition-category-${entityTypeName}-${category.id}`}
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
@@ -277,6 +301,7 @@ function CategorySection({
                         <SortableAttributeDefinition
                             key={attribute.id}
                             attribute={attribute}
+                            preventClick={preventClick}
                         />
                     ))}
                 </SortableContext>
@@ -295,7 +320,16 @@ export function AttributeDefinitionsListClient({
     attributeDefinitions: ExtendedAttributeDefinition[];
 }) {
     const [categories, setCategories] = useState(attributeDefinitionCategories);
+    const [preventCategoryClick, setPreventCategoryClick] = useState(false);
     const sensors = useSensors(useSensor(PointerSensor));
+
+    useEffect(() => {
+        if (!preventCategoryClick) return;
+        const timeout = setTimeout(() => {
+            setPreventCategoryClick(false);
+        }, 200);
+        return () => clearTimeout(timeout);
+    }, [preventCategoryClick]);
 
     async function handleCategoryDragEnd(event: DragEndEvent) {
         const { active, over } = event;
@@ -308,6 +342,7 @@ export function AttributeDefinitionsListClient({
         );
         const newItems = arrayMove(categories, oldIndex, newIndex);
         setCategories(newItems);
+        setPreventCategoryClick(true);
         const prev = newItems[newIndex - 1]?.order ?? null;
         const next = newItems[newIndex + 1]?.order ?? null;
         await reorderAttributeDefinitionCategory(
@@ -333,6 +368,7 @@ export function AttributeDefinitionsListClient({
                     />
                 </Row>
                 <DndContext
+                    id={`attribute-definition-categories-${entityTypeName}`}
                     sensors={sensors}
                     collisionDetection={closestCenter}
                     onDragEnd={handleCategoryDragEnd}
@@ -344,13 +380,21 @@ export function AttributeDefinitionsListClient({
                         <Stack spacing={1}>
                             {categories.length <= 0 && <NoDataPlaceholder />}
                             {categories.map((c) => (
-                                <SortableCategory key={c.id} category={c} />
+                                <SortableCategory
+                                    key={c.id}
+                                    category={c}
+                                    preventClick={preventCategoryClick}
+                                />
                             ))}
                         </Stack>
                     </SortableContext>
                 </DndContext>
             </Stack>
             <Stack spacing={2} className="ml-4">
+                <TableAttributeOrderSection
+                    entityTypeName={entityTypeName}
+                    attributeDefinitions={attributeDefinitions}
+                />
                 {categories.length <= 0 && <NoDataPlaceholder />}
                 {categories.map((category) => (
                     <CategorySection

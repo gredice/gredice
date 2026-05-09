@@ -1,2 +1,2 @@
-export { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
+export { getDateFromTimeFilter } from '@gredice/ui/TableFilter';
 export * from './TableFilter';

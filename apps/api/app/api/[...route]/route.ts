@@ -1,8 +1,9 @@
-import { openApiDocs } from '@gredice/apidocs/openApiDocs';
-import { Hono } from 'hono';
+import { type Env, Hono, type Schema } from 'hono';
 import { cors } from 'hono/cors';
 import { handle } from 'hono/vercel';
 import { openAPIRouteHandler } from 'hono-openapi';
+import { sessionCookieName } from '../../../lib/auth/sessionConfig';
+import { openApiDocs } from '../../../lib/docs/openApiDocs';
 import accountsRoutes from './accountsRoutes';
 import authRoutes from './authRoutes';
 import checkoutRoutes from './checkoutRoutes';
@@ -11,12 +12,59 @@ import deliveryRoutes from './deliveryRoutes';
 import directoriesRoutes from './directoriesRoutes';
 import feedbackRoutes from './feedbackRoutes';
 import gardensRoutes from './gardensRoutes';
+import inventoryRoutes from './inventoryRoutes';
+import newsletterRoutes from './newsletterRoutes';
 import notificationsRoutes from './notificationsRoutes';
+import occasionsRoutes from './occasionsRoutes';
 import pushNotificationsRoutes from './pushNotificationsRoutes';
 import shoppingCartRoutes from './shoppingCartRoutes';
 import usersRoutes from './usersRoutes';
 
 export const dynamic = 'force-dynamic';
+
+function docs<E extends Env, S extends Schema, P extends string>(
+    routes: Hono<E, S, P>,
+    title: string,
+    path: string,
+) {
+    return openAPIRouteHandler(routes, {
+        documentation: {
+            info: {
+                title,
+                version: '1.0.0',
+                description:
+                    'Security schemes are defined for authenticated endpoints (cookieAuth and bearerAuth).',
+            },
+            components: {
+                securitySchemes: {
+                    bearerAuth: {
+                        type: 'http',
+                        scheme: 'bearer',
+                        bearerFormat: 'JWT',
+                        description:
+                            'Use access token when calling API directly.',
+                    },
+                    cookieAuth: {
+                        type: 'apiKey',
+                        in: 'cookie',
+                        name: sessionCookieName,
+                        description: 'Session cookie used by web clients.',
+                    },
+                },
+            },
+            servers: [
+                {
+                    url: `https://api.gredice.com/api/${path}`,
+                    description: 'Production server',
+                },
+                {
+                    url: `https://api.gredice.test/api/${path}`,
+                    description: 'Local development server',
+                },
+            ],
+        },
+    });
+}
 
 const app = new Hono()
     .basePath('/api')
@@ -35,120 +83,48 @@ const app = new Hono()
     .route('/users', usersRoutes)
     .route('/gardens', gardensRoutes)
     .route('/feedback', feedbackRoutes)
+    .route('/occasions', occasionsRoutes)
+    .route('/inventory', inventoryRoutes)
     .route('/shopping-cart', shoppingCartRoutes)
     .route('/checkout', checkoutRoutes)
     .route('/delivery', deliveryRoutes)
     .route('/data', dataRoutes)
     .route('/notifications/push', pushNotificationsRoutes)
-    .route('/notifications', notificationsRoutes);
+    .route('/notifications', notificationsRoutes)
+    .route('/newsletter', newsletterRoutes);
 
-app.get(
-    `/docs/auth`,
-    openAPIRouteHandler(authRoutes, {
-        documentation: {
-            info: {
-                title: 'Auth API',
-                version: '1.0.0',
-            },
-            servers: [
-                {
-                    url: 'https://api.gredice.com/api/auth',
-                    description: 'Production server',
-                },
-                {
-                    url: 'http://localhost:3005/api/auth',
-                    description: 'Local development server',
-                },
-            ],
-        },
-    }),
-)
-    .get(
-        `/docs/accounts`,
-        openAPIRouteHandler(accountsRoutes, {
-            documentation: {
-                info: {
-                    title: 'Accounts API',
-                    version: '1.0.0',
-                },
-                servers: [
-                    {
-                        url: 'https://api.gredice.com/api/accounts',
-                        description: 'Production server',
-                    },
-                    {
-                        url: 'http://localhost:3005/api/accounts',
-                        description: 'Local development server',
-                    },
-                ],
-            },
-        }),
-    )
-    .get(
-        `/docs/users`,
-        openAPIRouteHandler(usersRoutes, {
-            documentation: {
-                info: {
-                    title: 'Users API',
-                    version: '1.0.0',
-                },
-                servers: [
-                    {
-                        url: 'https://api.gredice.com/api/users',
-                        description: 'Production server',
-                    },
-                    {
-                        url: 'http://localhost:3005/api/users',
-                        description: 'Local development server',
-                    },
-                ],
-            },
-        }),
-    )
-    .get(
-        `/docs/gardens`,
-        openAPIRouteHandler(gardensRoutes, {
-            documentation: {
-                info: {
-                    title: 'Gardens API',
-                    version: '1.0.0',
-                },
-                servers: [
-                    {
-                        url: 'https://api.gredice.com/api/gardens',
-                        description: 'Production server',
-                    },
-                    {
-                        url: 'http://localhost:3005/api/gardens',
-                        description: 'Local development server',
-                    },
-                ],
-            },
-        }),
-    )
+app.get('/docs/auth', docs(authRoutes, 'Auth API', 'auth'))
+    .get('/docs/accounts', docs(accountsRoutes, 'Accounts API', 'accounts'))
+    .get('/docs/users', docs(usersRoutes, 'Users API', 'users'))
+    .get('/docs/gardens', docs(gardensRoutes, 'Gardens API', 'gardens'))
     .get('/docs/directories', async (context) =>
         context.json(await openApiDocs()),
     )
+    .get('/docs/data', docs(dataRoutes, 'Data API', 'data'))
+    .get('/docs/feedback', docs(feedbackRoutes, 'Feedback API', 'feedback'))
+    .get('/docs/occasions', docs(occasionsRoutes, 'Occasions API', 'occasions'))
     .get(
-        `/docs/data`,
-        openAPIRouteHandler(dataRoutes, {
-            documentation: {
-                info: {
-                    title: 'Data API',
-                    version: '1.0.0',
-                },
-                servers: [
-                    {
-                        url: 'https://api.gredice.com/api/data',
-                        description: 'Production server',
-                    },
-                    {
-                        url: 'http://localhost:3005/api/data',
-                        description: 'Local development server',
-                    },
-                ],
-            },
-        }),
+        '/docs/shopping-cart',
+        docs(shoppingCartRoutes, 'Shopping Cart API', 'shopping-cart'),
+    )
+    .get('/docs/inventory', docs(inventoryRoutes, 'Inventory API', 'inventory'))
+    .get('/docs/checkout', docs(checkoutRoutes, 'Checkout API', 'checkout'))
+    .get('/docs/delivery', docs(deliveryRoutes, 'Delivery API', 'delivery'))
+    .get(
+        '/docs/notifications',
+        docs(notificationsRoutes, 'Notifications API', 'notifications'),
+    )
+    .get(
+        '/docs/notifications/push',
+        docs(
+            pushNotificationsRoutes,
+            'Push Notifications API',
+            'notifications/push',
+        ),
+    )
+    .get(
+        '/docs/newsletter',
+        docs(newsletterRoutes, 'Newsletter API', 'newsletter'),
     );
 
 export const GET = handle(app);

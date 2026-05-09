@@ -1,5 +1,7 @@
 import { type BlockData, directoriesClient } from '@gredice/client';
+import { decodeRouteParam } from '@gredice/js/uri';
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { Markdown } from '@gredice/ui/Markdown';
 import { SplitView } from '@signalco/ui/SplitView';
 import { Layers, Ruler } from '@signalco/ui-icons';
 import { ListHeader } from '@signalco/ui-primitives/List';
@@ -10,18 +12,37 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
-import { Markdown } from '../../../components/shared/Markdown';
 import { PageHeader } from '../../../components/shared/PageHeader';
+import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
 import { BlocksList } from './BlocksList';
 
 export const revalidate = 3600; // 1 hour
+
+async function getBlocksData() {
+    try {
+        const { data, error } =
+            await directoriesClient().GET('/entities/block');
+        if (error) {
+            console.error('Failed to fetch blocks data', error);
+            return [];
+        }
+
+        return data ?? [];
+    } catch (error) {
+        console.error('Failed to fetch blocks data', error);
+        return [];
+    }
+}
+
 export async function generateMetadata(
     props: PageProps<'/blokovi/[alias]'>,
 ): Promise<Metadata> {
     const { alias: aliasUnescaped } = await props.params;
-    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
-    const blockData = (await directoriesClient().GET('/entities/block')).data;
-    const block = blockData?.find((block) => block.information.label === alias);
+    const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
+    const blockData = await getBlocksData();
+    const block = blockData?.find((block) =>
+        matchesPageAlias(block.information.label, alias),
+    );
     if (!block) {
         return {
             title: 'Blok nije pronađen',
@@ -35,10 +56,10 @@ export async function generateMetadata(
 }
 
 export async function generateStaticParams() {
-    const entities = (await directoriesClient().GET('/entities/block')).data;
+    const entities = await getBlocksData();
     return (
         entities?.map((entity) => ({
-            alias: String(entity.information.label),
+            alias: toPageAlias(String(entity.information.label)),
         })) ?? []
     );
 }
@@ -59,7 +80,11 @@ function BlockAttributes({ prices, attributes }: BlockData) {
             <AttributeCard
                 icon={<span className="text-xl">🌻</span>}
                 header="Cijena"
-                value={prices.sunflowers?.toString() ?? '-'}
+                value={
+                    (prices.sunflowers ?? 0) <= 0
+                        ? 'Nije za kupnju'
+                        : (prices.sunflowers?.toString() ?? '-')
+                }
             />
         </div>
     );
@@ -67,15 +92,15 @@ function BlockAttributes({ prices, attributes }: BlockData) {
 
 export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
     const { alias: aliasUnescaped } = await props.params;
-    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     if (!alias) {
         notFound();
     }
 
     // TODO: Query API for single entities with filter on 'label' attribute
-    const blockData = (await directoriesClient().GET('/entities/block')).data;
-    const entity = blockData?.find(
-        (block) => block.information.label === alias,
+    const blockData = await getBlocksData();
+    const entity = blockData?.find((block) =>
+        matchesPageAlias(block.information.label, alias),
     );
     if (!entity) {
         notFound();
@@ -93,8 +118,8 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
                         visual={
                             <BlockImage
                                 blockName={entity.information.name}
-                                width={142}
-                                height={142}
+                                width={172}
+                                height={172}
                             />
                         }
                         header={entity.information.label}

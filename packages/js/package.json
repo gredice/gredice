@@ -7,12 +7,14 @@
         "./*": "./src/*/index.ts"
     },
     "scripts": {
-        "lint": "biome check"
+        "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
+        "lint": "biome check --write",
+        "lint:migrate": "biome migrate --write"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.2.4",
-        "@types/node": "22.18.4",
-        "typescript": "5.9.2"
+        "@biomejs/biome": "2.4.14",
+        "@types/node": "24.12.2",
+        "typescript": "6.0.3"
     },
     "dependencies": {
         "@signalco/js": "0.1.0"

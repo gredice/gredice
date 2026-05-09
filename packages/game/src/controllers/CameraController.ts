@@ -1,13 +1,21 @@
 'use client';
 
 import { useFrame, useThree } from '@react-three/fiber';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import {
+    defaultGameCameraPosition,
+    defaultGameCameraTarget,
+    defaultGameCameraZoom,
+} from '../gameCamera';
 import { useGameState } from '../useGameState';
+
+const closeupZoom = 300;
 
 interface CameraControllerProps {
     isCloseUp: boolean;
     targetPosition?: [number, number, number];
+    closeupOrientation?: 'vertical' | 'horizontal';
     onAnimationStart?: () => void;
     onAnimationComplete?: () => void;
 }
@@ -20,11 +28,10 @@ function easeInOutCubic(x: number): number {
 export function CameraController({
     isCloseUp,
     targetPosition,
+    closeupOrientation,
     onAnimationStart,
     onAnimationComplete,
 }: CameraControllerProps) {
-    const endZoom = 400;
-
     const { camera } = useThree();
     const controlsRef = useGameState((state) => state.orbitControls);
 
@@ -32,11 +39,22 @@ export function CameraController({
     const animationDuration = 1; // seconds
     const animationStartTime = useRef(0);
     const isAnimating = useRef(false);
-    const previousCloseUp = useRef(isCloseUp);
+    const previousCloseUp = useRef(false);
+    const previousTargetPosition = useRef<[number, number, number] | undefined>(
+        undefined,
+    );
+    const previousCloseupOrientation = useRef<
+        'vertical' | 'horizontal' | undefined
+    >(undefined);
 
-    const startPosition = useRef(new THREE.Vector3());
-    const startTarget = useRef(new THREE.Vector3());
-    const startZoom = useRef(0);
+    // Store the original isometric view position (when first entering closeup)
+    const isometricPosition = useRef(
+        new THREE.Vector3(...defaultGameCameraPosition),
+    );
+    const isometricTarget = useRef(
+        new THREE.Vector3(...defaultGameCameraTarget),
+    );
+    const isometricZoom = useRef(defaultGameCameraZoom);
 
     // Store animation start and end positions
     const animationStartPosition = useRef(new THREE.Vector3());
@@ -51,9 +69,41 @@ export function CameraController({
 
     const currentLookAt = useRef(new THREE.Vector3());
 
+    // Track if the component has captured the normal-view camera state
+    const isInitialized = useRef(false);
+
+    // Capture the current normal-view camera state once controls are available
+    // biome-ignore lint/correctness/useExhaustiveDependencies: We intentionally capture mount-time values and don't want to re-run when they change
+    useEffect(() => {
+        if (!isInitialized.current && controlsRef) {
+            if (!isCloseUp) {
+                // Starting in isometric mode - save current position as isometric
+                isometricPosition.current.copy(camera.position);
+                isometricTarget.current.copy(controlsRef.target);
+                isometricZoom.current = camera.zoom;
+            }
+            isInitialized.current = true;
+        }
+    }, [controlsRef]); // Only run when controlsRef becomes available
+
     useFrame((_, delta) => {
-        // Check if state changed
-        if (previousCloseUp.current !== isCloseUp) {
+        // Check if state changed or target position changed
+        const targetPositionChanged =
+            isCloseUp &&
+            targetPosition &&
+            previousTargetPosition.current &&
+            (previousTargetPosition.current[0] !== targetPosition[0] ||
+                previousTargetPosition.current[1] !== targetPosition[1] ||
+                previousTargetPosition.current[2] !== targetPosition[2]);
+        const closeupOrientationChanged =
+            isCloseUp &&
+            previousCloseupOrientation.current !== closeupOrientation;
+
+        if (
+            previousCloseUp.current !== isCloseUp ||
+            targetPositionChanged ||
+            closeupOrientationChanged
+        ) {
             if (!controlsRef) {
                 console.error('No controls ref provided for camera controller');
                 return;
@@ -62,26 +112,34 @@ export function CameraController({
             // Set the target position and look target based on the state
             if (isCloseUp && targetPosition) {
                 console.debug('Going to close-up view');
-                startPosition.current.copy(camera.position);
-                startTarget.current.copy(controlsRef.target);
-                startZoom.current = camera.zoom;
+
+                // Only save isometric position when first entering closeup (not when switching between blocks)
+                if (!previousCloseUp.current) {
+                    isometricPosition.current.copy(camera.position);
+                    isometricTarget.current.copy(controlsRef.target);
+                    isometricZoom.current = camera.zoom;
+                }
+
+                const isHorizontalCloseup = closeupOrientation === 'horizontal';
+                const closeupX = isHorizontalCloseup
+                    ? targetPosition[0]
+                    : targetPosition[0] - 1;
+                const closeupZ = isHorizontalCloseup
+                    ? targetPosition[2] + 1
+                    : targetPosition[2];
 
                 animationEndPosition.current.copy(
-                    new THREE.Vector3(
-                        targetPosition[0] - 1,
-                        camera.position.y,
-                        targetPosition[2],
-                    ),
+                    new THREE.Vector3(closeupX, camera.position.y, closeupZ),
                 );
                 animationEndTarget.current.copy(
                     new THREE.Vector3(...targetPosition),
                 );
-                animationEndZoom.current = endZoom;
+                animationEndZoom.current = closeupZoom;
             } else {
                 console.debug('Returning to isometric view');
-                animationEndPosition.current.copy(startPosition.current);
-                animationEndTarget.current.copy(startTarget.current);
-                animationEndZoom.current = startZoom.current;
+                animationEndPosition.current.copy(isometricPosition.current);
+                animationEndTarget.current.copy(isometricTarget.current);
+                animationEndZoom.current = isometricZoom.current;
             }
 
             // Capture current camera position and target as the starting point
@@ -93,6 +151,8 @@ export function CameraController({
             animationStartTime.current = 0;
             isAnimating.current = true;
             previousCloseUp.current = isCloseUp;
+            previousTargetPosition.current = targetPosition;
+            previousCloseupOrientation.current = closeupOrientation;
             onAnimationStart?.();
         }
 
@@ -143,11 +203,14 @@ export function CameraController({
 
                 // Ensure final position and orientation are correct
                 camera.position.copy(animationEndPosition.current);
+                camera.zoom = animationEndZoom.current;
                 camera.lookAt(animationEndTarget.current);
+                camera.updateProjectionMatrix();
 
                 // Update the controls target if available
-                if (controlsRef && !isCloseUp) {
+                if (controlsRef) {
                     controlsRef.target.copy(animationEndTarget.current);
+                    controlsRef.update();
                 }
             }
         }

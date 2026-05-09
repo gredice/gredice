@@ -1,4 +1,6 @@
 import { animated } from '@react-spring/three';
+import { SnowOverlay } from '../snow/SnowOverlay';
+import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -20,7 +22,12 @@ export function StoneMedium({ stack, block, rotation }: EntityInstanceProps) {
                 geometry={nodes.Stone_Medium.geometry}
                 material={materials['Material.Stone']}
                 scale={[0.236, 0.269, 0.205]}
-            />
+            >
+                <SnowOverlay
+                    geometry={nodes.Stone_Medium.geometry}
+                    {...snowPresets.stone}
+                />
+            </mesh>
         </animated.group>
     );
 }

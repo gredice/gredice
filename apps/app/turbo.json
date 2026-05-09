@@ -1,0 +1,50 @@
+{
+    "$schema": "https://turbo.build/schema.json",
+    "extends": ["//"],
+    "tasks": {
+        "build": {
+            "env": [
+                "ACS_CONNECTION_STRING",
+                "BLOB_READ_WRITE_TOKEN",
+                "CDN_R2_ACCESS_KEY_ID",
+                "CDN_R2_BUCKET_NAME",
+                "CDN_R2_ENDPOINT",
+                "CDN_R2_PUBLIC_URL",
+                "CDN_R2_SECRET_ACCESS_KEY",
+                "CHECKLY_ACCOUNT_ID",
+                "CHECKLY_API_KEY",
+                "ENABLE_EXPERIMENTAL_COREPACK",
+                "GREDICE_GOOGLE_MAPS_API_KEY",
+                "GREDICE_GOOGLE_MAPS_URL_SIGNING_SECRET",
+                "GREDICE_JWT_SIGN_SECRET",
+                "GREDICE_SILO_KV_REST_API_READ_ONLY_TOKEN",
+                "GREDICE_SILO_KV_REST_API_TOKEN",
+                "GREDICE_SILO_KV_REST_API_URL",
+                "GREDICE_SILO_KV_URL",
+                "GREDICE_SILO_REDIS_URL",
+                "NEXT_PUBLIC_POSTHOG_API_HOST",
+                "NEXT_PUBLIC_POSTHOG_HOST",
+                "NEXT_PUBLIC_POSTHOG_KEY",
+                "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN",
+                "NEXT_PUBLIC_POSTHOG_UI_HOST",
+                "PLANTS_SILO_KV_REST_API_READ_ONLY_TOKEN",
+                "PLANTS_SILO_KV_REST_API_TOKEN",
+                "PLANTS_SILO_KV_REST_API_URL",
+                "PLANTS_SILO_KV_URL",
+                "PLANTS_SILO_REDIS_URL",
+                "POSTGRES_DATABASE",
+                "POSTGRES_HOST",
+                "POSTGRES_PASSWORD",
+                "POSTGRES_PRISMA_URL",
+                "POSTGRES_URL",
+                "POSTGRES_URL_NON_POOLING",
+                "POSTGRES_URL_NO_SSL",
+                "POSTGRES_USER",
+                "POSTHOG_SERVER_HOST",
+                "SIGNALCO_API_KEY",
+                "SLACK_BOT_TOKEN",
+                "VERCEL_OIDC_TOKEN"
+            ]
+        }
+    }
+}

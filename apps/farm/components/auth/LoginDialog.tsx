@@ -1,19 +1,35 @@
 'use client';
 
+import {
+    FacebookLoginButton,
+    GoogleLoginButton,
+    useLastLoginProvider,
+} from '@gredice/ui/auth';
+import { usePostHog } from '@posthog/next';
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
 import { Alert } from '@signalco/ui/Alert';
 import { Warning } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
+import { Divider } from '@signalco/ui-primitives/Divider';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useActionState } from 'react';
+import { useActionState, useCallback } from 'react';
 import { queryClient } from '../providers/ClientAppProvider';
 
+type OAuthProvider = 'google' | 'facebook';
+
 export function LoginDialog() {
+    const posthog = usePostHog();
     const router = useRouter();
+    const fetchLastLogin = useCallback(
+        () => fetch('/api/gredice/api/auth/last-login'),
+        [],
+    );
+    const lastLoginProvider = useLastLoginProvider(fetchLastLogin);
     const [error, submitAction, isPending] = useActionState<
         string | null,
         FormData
@@ -26,6 +42,10 @@ export function LoginDialog() {
         }
 
         try {
+            posthog?.capture('user_login_started', {
+                provider: 'password',
+                surface: 'farm',
+            });
             const response = await fetch('/api/login', {
                 method: 'POST',
                 headers: {
@@ -35,18 +55,30 @@ export function LoginDialog() {
             });
 
             if (!response.ok) {
+                posthog?.capture('user_login_failed', {
+                    provider: 'password',
+                    reason: 'invalid_credentials_or_access',
+                    status: response.status,
+                    surface: 'farm',
+                });
                 console.error('Login failed with status', response.status);
                 return 'Prijava nije uspjela. Provjeri podatke i pokušaj ponovno.';
             }
 
-            const { token } = (await response.json()) as { token?: string };
-            if (token) {
-                localStorage.setItem('gredice-token', token);
-            }
+            // Tokens are now in httpOnly cookies set by the API
+            // No need to store them in localStorage
+            await response.json();
 
-            const currentUserResponse = await fetch('/api/users/current');
+            const currentUserResponse = await fetch(
+                '/api/users/current-claims',
+            );
             if (!currentUserResponse.ok) {
-                localStorage.removeItem('gredice-token');
+                posthog?.capture('user_login_failed', {
+                    provider: 'password',
+                    reason: 'no_farm_access',
+                    status: currentUserResponse.status,
+                    surface: 'farm',
+                });
                 return 'Tvoj korisnički račun nema pristup Gredice farmi.';
             }
 
@@ -56,28 +88,58 @@ export function LoginDialog() {
             router.refresh();
             return null;
         } catch (cause) {
+            posthog?.capture('user_login_failed', {
+                provider: 'password',
+                reason: 'unexpected_error',
+                surface: 'farm',
+            });
             console.error('Login request failed', cause);
             return 'Dogodila se neočekivana greška. Pokušaj ponovno kasnije.';
         }
     }, null);
+    const handleOAuthLogin = (provider: OAuthProvider) => {
+        posthog?.capture('user_oauth_started', {
+            provider,
+            surface: 'farm',
+        });
+        const callbackPath =
+            provider === 'google'
+                ? '/prijava/google-prijava/povratak'
+                : '/prijava/facebook-prijava/povratak';
+        const redirectUrl = `${window.location.origin}${callbackPath}`;
+        // Use proxy path instead of direct API URL
+        const authUrl = new URL(
+            `/api/gredice/api/auth/${provider}`,
+            window.location.origin,
+        );
+        authUrl.searchParams.set('redirect', redirectUrl);
+        window.location.href = authUrl.toString();
+    };
 
     return (
         <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-primary/10 via-transparent to-success/10 p-4">
+            <Image
+                src="/login-bg.webp"
+                alt="Pozadina"
+                fill
+                className="object-cover"
+                quality={100}
+                priority
+            />
             <Modal
                 open
                 dismissible={false}
-                hideClose
                 title="Prijava u Gredice farmu"
                 className="md:max-w-md"
             >
                 <Stack spacing={4}>
                     <Stack spacing={1}>
                         <Typography level="h3" className="text-2xl" semiBold>
-                            Dobrodošli natrag
+                            Dobrodošli
                         </Typography>
                         <Typography className="text-muted-foreground">
                             Prijavi se s Gredice računom kako bi upravljao
-                            farmom.
+                            svojom farmom.
                         </Typography>
                     </Stack>
                     <form action={submitAction} className="space-y-4">
@@ -119,6 +181,28 @@ export function LoginDialog() {
                             )}
                         </Stack>
                     </form>
+                    <Stack spacing={2}>
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <Divider />
+                            </div>
+                            <div className="relative flex justify-center">
+                                <span className="bg-background px-2 text-xs rounded-sm">
+                                    ili nastavi sa
+                                </span>
+                            </div>
+                        </div>
+                        <Stack spacing={1}>
+                            <FacebookLoginButton
+                                onClick={() => handleOAuthLogin('facebook')}
+                                lastUsed={lastLoginProvider === 'facebook'}
+                            />
+                            <GoogleLoginButton
+                                onClick={() => handleOAuthLogin('google')}
+                                lastUsed={lastLoginProvider === 'google'}
+                            />
+                        </Stack>
+                    </Stack>
                 </Stack>
             </Modal>
         </div>

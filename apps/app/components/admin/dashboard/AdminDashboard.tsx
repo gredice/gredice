@@ -1,10 +1,15 @@
-import { redirect } from 'next/navigation';
+import { getEntityTypes, getSetting, SettingsKeys } from '@gredice/storage';
 import { auth } from '../../../lib/auth/auth';
+import {
+    buildDashboardQuickActionOptions,
+    getDashboardQuickActionsFromConfig,
+    getDefaultDashboardQuickActions,
+} from '../../../src/dashboardQuickActions';
 import { AdminDashboardClient } from './AdminDashboardClient';
 import { getAnalyticsData } from './actions';
 
 type AdminDashboardProps = {
-    searchParams?: Promise<{ period?: string }>;
+    searchParams?: Promise<{ period?: string; from?: string; to?: string }>;
 };
 
 export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
@@ -12,20 +17,50 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
     const params = await searchParams;
     const selectedPeriod = params?.period || '7';
 
-    const data = await getAnalyticsData(Number(selectedPeriod));
+    const [data, entityTypes, dashboardQuickActionsSetting] = await Promise.all(
+        [
+            getAnalyticsData(
+                selectedPeriod === 'custom'
+                    ? undefined
+                    : Number(selectedPeriod),
+                params?.from,
+                params?.to,
+            ),
+            getEntityTypes(),
+            getSetting(SettingsKeys.DashboardQuickActions),
+        ],
+    );
 
-    const handlePeriodChange = async (period: string) => {
-        'use server';
-        auth(['admin']);
-        redirect(`?period=${period}`);
-    };
+    const quickActionOptions = buildDashboardQuickActionOptions(
+        entityTypes.map((entityType) => ({
+            name: entityType.name,
+            label: entityType.label,
+            icon: entityType.icon,
+        })),
+    );
+
+    const configuredQuickActions = getDashboardQuickActionsFromConfig(
+        dashboardQuickActionsSetting?.value,
+        quickActionOptions,
+    );
+
+    const quickActions =
+        configuredQuickActions.length > 0
+            ? configuredQuickActions
+            : getDefaultDashboardQuickActions(quickActionOptions);
 
     return (
         <AdminDashboardClient
             initialAnalyticsData={data.analytics}
             initialEntitiesData={data.entities}
-            onPeriodChange={handlePeriodChange}
+            initialOperationsDurationData={data.operationsDuration}
+            initialWeekdayRegistrations={data.weekdayRegistrations}
+            initialAiData={data.ai}
+            initialSunflowersData={data.sunflowers}
+            initialQuickActions={quickActions}
             initialPeriod={selectedPeriod}
+            initialFrom={params?.from}
+            initialTo={params?.to}
         />
     );
 }

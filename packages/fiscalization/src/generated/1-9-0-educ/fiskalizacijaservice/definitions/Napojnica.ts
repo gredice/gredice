@@ -1,4 +1,3 @@
-
 /**
  * Napojnica
  * @targetNSAlias `tns`

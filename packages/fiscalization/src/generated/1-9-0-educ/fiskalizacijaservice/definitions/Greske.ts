@@ -1,4 +1,4 @@
-import { Greska } from "./Greska";
+import type { Greska } from './Greska';
 
 /**
  * Greske

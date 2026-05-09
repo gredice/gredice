@@ -5,7 +5,8 @@ import { Close, Search } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Input } from '@signalco/ui-primitives/Input';
-import type { HTMLAttributes } from 'react';
+import type { ChangeEvent, HTMLAttributes } from 'react';
+import { useEffect, useState } from 'react';
 
 export type PageFilterInputProps = HTMLAttributes<HTMLFormElement> & {
     searchParamName: string;
@@ -18,24 +19,33 @@ export function PageFilterInput({
     ...rest
 }: PageFilterInputProps) {
     const [search, setSearch] = useSearchParam(searchParamName);
-    const handleSubmit = (data: FormData) => {
-        const searchInput = data.get(fieldName);
-        if (typeof searchInput === 'string') {
-            setSearch(searchInput);
-        }
+    const [localSearch, setLocalSearch] = useState(search ?? '');
+
+    useEffect(() => {
+        setLocalSearch(search ?? '');
+    }, [search]);
+
+    const updateSearch = (value: string) => {
+        setLocalSearch(value);
+        setSearch(value);
+    };
+
+    const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+        updateSearch(event.target.value);
     };
 
     return (
-        <form action={handleSubmit} {...rest}>
+        <form {...rest}>
             <Input
                 name={fieldName}
-                defaultValue={search}
+                value={localSearch}
+                onChange={handleChange}
                 placeholder="Pretraži..."
                 startDecorator={
                     <IconButton
                         className="hover:bg-neutral-300 ml-1 rounded-full aspect-square"
                         title="Pretraga"
-                        type="submit"
+                        type="button"
                         size="sm"
                         variant="plain"
                     >
@@ -47,10 +57,11 @@ export function PageFilterInput({
                     <IconButton
                         className={cx(
                             'hover:bg-neutral-300 mr-1 rounded-full aspect-square',
-                            search ? 'visible' : 'invisible',
+                            localSearch ? 'visible' : 'invisible',
                         )}
                         title="Očisti pretragu"
-                        onClick={() => setSearch('')}
+                        type="button"
+                        onClick={() => updateSearch('')}
                         size="sm"
                         variant="plain"
                     >

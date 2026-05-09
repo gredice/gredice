@@ -1,25 +1,43 @@
 'use client';
 
 import { cx } from '@signalco/ui-primitives/cx';
-// import { Perf } from 'r3f-perf';
-import type { HTMLAttributes } from 'react';
+import { type HTMLAttributes, useEffect } from 'react';
 import { Controls } from './controls/Controls';
 import { EntityFactory } from './entities/EntityFactory';
-import { EntityInstances } from './entities/EntityInstances';
+import {
+    EntityInstances,
+    instancedBlockNames,
+} from './entities/EntityInstances';
+import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
+import type { GameFeatureFlags } from './GameFlagsContext';
 import { GameHud } from './GameHud';
+import { useGameLoading } from './GameLoadingContext';
+import { GameSceneDetailContext } from './GameSceneDetailContext';
+import {
+    defaultGameCameraPosition,
+    defaultGameCameraZoom,
+    farGameCameraZoom,
+} from './gameCamera';
 import { useBlockData } from './hooks/useBlockData';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
-import { useGameTimeManager } from './hooks/useGameTimeManager';
-import { useThemeManager } from './hooks/useThemeManager';
+import { useDeferredSceneDetails } from './hooks/useDeferredSceneDetails';
+import { useFocusPlacedBlock } from './hooks/useFocusPlacedBlock';
 import { useWeatherNow } from './hooks/useWeatherNow';
 import { EditModeGrid } from './indicators/EditModeGrid';
 import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
 import { Environment } from './scene/Environment';
+import {
+    type GameQualityTier,
+    resolveGameQualityProfile,
+} from './scene/gameQuality';
 import { Scene } from './scene/Scene';
+import { type GameState, useGameState, type WinterMode } from './useGameState';
+import { useRaisedBedCloseup } from './useRaisedBedCloseup';
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string;
+    spriteBaseUrl?: string;
     zoom?: 'far' | 'normal';
 
     // Demo purposes only
@@ -30,37 +48,14 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     noWeather?: boolean;
     noSound?: boolean;
     mockGarden?: boolean;
+    winterMode?: WinterMode;
+    weather?: Partial<GameState['weather']>;
+    deferDetails?: boolean;
+    quality?: GameQualityTier;
 
     // Development purposes
-    flags?: {
-        enableDebugHudFlag?: boolean;
-        enableRaisedBedWateringFlag?: boolean;
-        enableRaisedBedDiaryFlag?: boolean;
-        enableRaisedBedOperationsFlag?: boolean;
-        enableRaisedBedFieldOperationsFlag?: boolean;
-        enableRaisedBedFieldWateringFlag?: boolean;
-        enableRaisedBedFieldDiaryFlag?: boolean;
-    };
+    flags?: GameFeatureFlags;
 };
-
-const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
-
-// TODO: Move all blocks to instanced rendering
-const noRenderInViewDefault = [
-    'Block_Grass',
-    'Block_Grass_Angle',
-    'Pine',
-    'Block_Sand',
-    'Block_Sand_Angle',
-    'Shovel_Small',
-    'Mulch_Hey',
-    'Mulch_Coconut',
-    'Mulch_Wood',
-    'Tulip',
-    'BaleHey',
-    'Stick',
-    'Seed',
-];
 
 export function GameScene({
     zoom = 'normal',
@@ -71,18 +66,36 @@ export function GameScene({
     hideHud,
     className,
     flags,
+    quality,
+    weather,
+    deferDetails,
     ...rest
 }: GameSceneProps) {
-    useGameTimeManager();
-    useThemeManager();
+    useFocusPlacedBlock();
+    useRaisedBedCloseup();
+    const weatherVisualizationDisabled = useGameState(
+        (state) => state.weatherVisualizationDisabled,
+    );
+    const weatherDisabled = noWeather || weatherVisualizationDisabled;
+    const renderDetails = useDeferredSceneDetails(deferDetails);
+    const qualityProfile = resolveGameQualityProfile(quality);
 
-    // Prelaod all required data
-    const { isLoading: blockDataPending } = useBlockData();
-    const { data: garden, isLoading: gardenPending } = useCurrentGarden();
-    const { isLoading: weatherPending } = useWeatherNow();
-    const isLoading = gardenPending || blockDataPending || weatherPending;
+    // Start non-critical metadata early, but don't block the first scene frame.
+    useBlockData();
+    const { data: garden, isLoading: gardenLoading } = useCurrentGarden();
+    useWeatherNow(!weatherDisabled && !weather);
+    const isLoading = gardenLoading;
+
+    const loadingContext = useGameLoading();
+    useEffect(() => {
+        loadingContext?.setIsReady(!isLoading);
+        return () => {
+            loadingContext?.setIsReady(false);
+        };
+    }, [isLoading, loadingContext]);
+
     if (isLoading) {
-        return <GardenLoadingIndicator />;
+        return loadingContext ? null : <GardenLoadingIndicator />;
     }
 
     return (
@@ -90,39 +103,61 @@ export function GameScene({
             className={cx('animate-in duration-1000 fade-in', className)}
             {...rest}
         >
-            <Scene
-                position={cameraPosition}
-                zoom={zoom === 'far' ? 75 : 100}
-                className="!absolute"
-            >
-                <ParticleSystemProvider>
-                    <EditModeGrid />
-                    <Environment
-                        noBackground={noBackground}
-                        noWeather={noWeather}
-                        noSound={noSound}
-                    />
-                    <group>
-                        {garden?.stacks.map((stack) =>
-                            stack.blocks?.map((block, i) => (
-                                <EntityFactory
-                                    key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`}
-                                    name={block.name}
-                                    stack={stack}
-                                    block={block}
-                                    rotation={block.rotation}
-                                    variant={block.variant}
-                                    noRenderInView={noRenderInViewDefault}
+            <GameSceneDetailContext.Provider value={{ renderDetails }}>
+                <Scene
+                    position={defaultGameCameraPosition}
+                    quality={qualityProfile}
+                    zoom={
+                        zoom === 'far'
+                            ? farGameCameraZoom
+                            : defaultGameCameraZoom
+                    }
+                    className="!absolute"
+                >
+                    <ParticleSystemProvider>
+                        <EditModeGrid />
+                        <Environment
+                            noBackground={noBackground}
+                            noWeather={weatherDisabled}
+                            noSound={noSound}
+                            quality={qualityProfile}
+                            weather={weather}
+                        />
+                        <group>
+                            {garden?.stacks.map((stack) =>
+                                stack.blocks?.map((block, i) => (
+                                    <EntityFactory
+                                        // biome-ignore lint/suspicious/noArrayIndexKey: Using array index as key is acceptable here because block IDs are unique within a stack, and the order of blocks within a stack is unlikely to change. Using block.id alone is not sufficient as it may not be unique across different stacks.
+                                        key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`}
+                                        name={block.name}
+                                        stack={stack}
+                                        block={block}
+                                        rotation={block.rotation}
+                                        variant={block.variant}
+                                        noRenderInView={instancedBlockNames}
+                                        noControl={noControls}
+                                    />
+                                )),
+                            )}
+                            {renderDetails && zoom !== 'far' && (
+                                <RaisedBedMulchOverlays
+                                    quality={qualityProfile}
                                 />
-                            )),
-                        )}
-                        <EntityInstances stacks={garden?.stacks} />
-                    </group>
-                    {!noControls && <Controls />}
-                    {/* {!hideHud && <Perf position="bottom-right" />} */}
-                </ParticleSystemProvider>
-            </Scene>
-            {!hideHud && <GameHud flags={flags} />}
+                            )}
+                            <EntityInstances
+                                quality={qualityProfile}
+                                renderGroundDecorations={
+                                    renderDetails && zoom !== 'far'
+                                }
+                                stacks={garden?.stacks}
+                                renderDetails={renderDetails}
+                            />
+                        </group>
+                        {!noControls && <Controls />}
+                    </ParticleSystemProvider>
+                </Scene>
+            </GameSceneDetailContext.Provider>
+            {!hideHud && <GameHud flags={flags} noWeather={noWeather} />}
         </div>
     );
 }

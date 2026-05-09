@@ -1,4 +1,6 @@
+import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
+import { Markdown } from '@gredice/ui/Markdown';
 import { Alert } from '@signalco/ui/Alert';
 import { Check } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
@@ -8,8 +10,12 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import type { Route } from 'next';
 import Image from 'next/image';
-import { Markdown } from '../content/Markdown';
+import { useRouter } from 'next/navigation';
+import { useMemo } from 'react';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useNotifications } from '../hooks/useNotifications';
 import { useSetNotificationRead } from '../hooks/useSetNotificationRead';
@@ -30,14 +36,48 @@ type NotificationListItemProps = {
         imageUrl: string | null;
         readAt: Date | null;
         timestamp: Date;
+        raisedBedId: number | null;
     };
 };
 
 function NotificationListItem({ notification }: NotificationListItemProps) {
-    const { id, header, content, linkUrl, readAt, timestamp } = notification;
+    const router = useRouter();
+    const { id, header, content, linkUrl, readAt, timestamp, raisedBedId } =
+        notification;
+    const { track } = useGameAnalytics();
     const setNotificationRead = useSetNotificationRead();
+    const { data: currentGarden } = useCurrentGarden();
+
+    // TODO: Remove this backward compatibility code after December 9, 2026
+    // This generates the raised bed closeup URL from raisedBedId if linkUrl is not present
+    // After all notifications have been migrated to include linkUrl, this can be removed
+    const computedLinkUrl = useMemo(() => {
+        if (linkUrl) {
+            return linkUrl;
+        }
+
+        // Backward compatibility: generate URL from raisedBedId if linkUrl is missing
+        if (raisedBedId && currentGarden) {
+            const raisedBed = currentGarden.raisedBeds.find(
+                (bed) => bed.id === raisedBedId,
+            );
+            if (raisedBed?.name) {
+                return getRaisedBedCloseupUrl(raisedBed.name);
+            }
+        }
+
+        return '#';
+    }, [linkUrl, raisedBedId, currentGarden]);
+
+    const isRead = Boolean(readAt);
 
     function handleSetNotificationRead() {
+        track('game_notification_read_toggled', {
+            has_link: computedLinkUrl !== '#',
+            notification_id: id,
+            raised_bed_id: raisedBedId,
+            read: !isRead,
+        });
         setNotificationRead.mutate({
             id,
             read: !readAt,
@@ -45,12 +85,32 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
         });
     }
 
-    const isRead = Boolean(readAt);
+    function handleNotificationSelected() {
+        track('game_notification_opened', {
+            has_link: computedLinkUrl !== '#',
+            notification_id: id,
+            raised_bed_id: raisedBedId,
+            was_read: isRead,
+        });
+
+        if (!readAt) {
+            setNotificationRead.mutate({
+                id,
+                read: true,
+                readWhere: 'game',
+            });
+        }
+
+        if (computedLinkUrl !== '#') {
+            router.push(computedLinkUrl as Route);
+        }
+    }
 
     return (
         <div className="relative">
             <ListItem
-                href={linkUrl ?? '#'}
+                nodeId={id}
+                onSelected={handleNotificationSelected}
                 className="rounded-none p-4"
                 label={
                     <Row spacing={2}>
@@ -69,6 +129,7 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
                                     alt={header}
                                     previewWidth={80}
                                     previewHeight={80}
+                                    previewAs="div"
                                 />
                             )
                         )}
@@ -76,7 +137,9 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
                             <Typography level="body2" bold className="mr-3">
                                 {header}
                             </Typography>
-                            <Markdown>{content}</Markdown>
+                            <div className="font-normal -my-1">
+                                <Markdown>{content}</Markdown>
+                            </div>
                             <Typography
                                 level="body3"
                                 className="text-gray-500 mr-3s"

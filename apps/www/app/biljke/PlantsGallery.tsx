@@ -7,11 +7,18 @@ import { Gallery } from '@signalco/ui/Gallery';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { PlantsGalleryItem } from './PlantsGalleryItem';
 
-export function PlantsGallery({ plants }: { plants: PlantData[] | undefined }) {
+export function PlantsGallery({
+    plants,
+}: {
+    plants: (PlantData & { isRecommended?: boolean })[] | undefined;
+}) {
     const [search] = useSearchParam('pretraga');
+    const [seedTimeFilter] = useSearchParam('vrijemeZaSijanje');
+    const onlySeedTimePlants = seedTimeFilter === '1';
     const filteredPlants = orderBy(plants ?? [], (a, b) =>
         a.information.name.localeCompare(b.information.name),
     )
+        .filter((plant) => !onlySeedTimePlants || plant.isRecommended)
         .filter(
             (plant) =>
                 !search ||

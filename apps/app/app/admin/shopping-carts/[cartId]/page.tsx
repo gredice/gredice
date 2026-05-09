@@ -1,14 +1,23 @@
-import { getEntitiesFormatted, getShoppingCart } from '@gredice/storage';
+import {
+    getEntitiesFormatted,
+    getInventory,
+    getRaisedBed,
+    getShoppingCart,
+} from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
+import { Field } from '../../../../components/shared/fields/Field';
+import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
 import { auth } from '../../../../lib/auth/auth';
@@ -18,15 +27,25 @@ export const dynamic = 'force-dynamic';
 
 export default async function ShoppingCartDetailsPage({
     params,
-}: {
-    params: { cartId: number };
-}) {
-    const { cartId } = params;
+}: PageProps<'/admin/shopping-carts/[cartId]'>) {
+    const { cartId } = await params;
+    const cartIdNumber = Number(cartId);
+    if (Number.isNaN(cartIdNumber)) {
+        notFound();
+    }
     await auth(['admin']);
-    const cart = await getShoppingCart(cartId);
+    const cart = await getShoppingCart(cartIdNumber);
     if (!cart) {
         notFound();
     }
+
+    const inventory = cart.accountId ? await getInventory(cart.accountId) : [];
+    const inventoryLookup = new Map(
+        inventory.map((item) => [
+            `${item.entityTypeName}-${item.entityId}`,
+            item.amount,
+        ]),
+    );
 
     // Get unique entity types from cart items
     const entityTypes = [
@@ -47,18 +66,62 @@ export default async function ShoppingCartDetailsPage({
         entitiesLookup[entityTypeName] = entities as EntityStandardized[];
     });
 
+    const raisedBedIds = [
+        ...new Set(
+            cart.items
+                .map((item) => item.raisedBedId)
+                .filter(
+                    (raisedBedId): raisedBedId is number =>
+                        typeof raisedBedId === 'number',
+                ),
+        ),
+    ];
+    const raisedBeds = await Promise.all(
+        raisedBedIds.map(async (raisedBedId) => ({
+            raisedBedId,
+            raisedBed: await getRaisedBed(raisedBedId),
+        })),
+    );
+    const raisedBedPhysicalIdLookup = new Map(
+        raisedBeds.map(({ raisedBedId, raisedBed }) => [
+            raisedBedId,
+            raisedBed?.physicalId,
+        ]),
+    );
+
     // Enhance cart items with entity names
     const enhancedItems = cart.items.map((item) => {
         const entities = entitiesLookup[item.entityTypeName] || [];
         const entity = entities.find((e) => e.id?.toString() === item.entityId);
 
+        const usesInventory = item.currency === 'inventory';
+        const inventoryAvailable = usesInventory
+            ? (inventoryLookup.get(`${item.entityTypeName}-${item.entityId}`) ??
+              0)
+            : 0;
+
         // Calculate price based on entity type and amount
-        const unitPrice =
-            entity?.prices?.perPlant || entity?.prices?.perOperation || 0;
-        const totalPrice = unitPrice * item.amount;
+        let unitPrice =
+            entity?.prices?.perPlant ||
+            entity?.prices?.perOperation ||
+            entity?.information?.plant?.prices?.perPlant ||
+            0;
+        let totalPrice = unitPrice * item.amount;
+
+        if (item.currency === 'sunflower') {
+            unitPrice = unitPrice * 1000;
+            totalPrice = totalPrice * 1000;
+        }
+
+        if (usesInventory) {
+            unitPrice = 0;
+            totalPrice = 0;
+        }
 
         return {
             ...item,
+            usesInventory,
+            inventoryAvailable,
             entityName:
                 entity?.information?.label ||
                 entity?.information?.name ||
@@ -70,6 +133,10 @@ export default async function ShoppingCartDetailsPage({
 
     // Helper function to format currency
     const formatCurrency = (amount: number, currency: string) => {
+        if (currency.toLowerCase() === 'inventory') {
+            return 'Ruksak';
+        }
+
         const currencyMap: Record<string, { symbol: string; code?: string }> = {
             eur: { symbol: '€', code: 'EUR' },
             usd: { symbol: '$', code: 'USD' },
@@ -78,7 +145,7 @@ export default async function ShoppingCartDetailsPage({
 
         const currencyInfo = currencyMap[currency.toLowerCase()];
         if (!currencyInfo?.code) {
-            return `${amount} ${currencyInfo.symbol}`; // Fallback if currency is unknown
+            return `${amount} ${currencyInfo?.symbol ?? ''}`; // Fallback if currency is unknown
         }
 
         return new Intl.NumberFormat('hr-HR', {
@@ -101,104 +168,82 @@ export default async function ShoppingCartDetailsPage({
         {} as Record<string, number>,
     );
 
+    const inventoryItems = enhancedItems.filter((item) => item.usesInventory);
+
     return (
         <Stack spacing={4}>
+            <AdminPageTitle title={`Košarica ${cartIdNumber}`} />
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.ShoppingCarts,
+                            },
+                            { label: `Košarica ${cartIdNumber}` },
+                        ]}
+                    />
+                }
+                heading="Detalji košarice"
+            />
             <Stack spacing={2}>
-                <Breadcrumbs
-                    items={[
-                        { label: 'Košarice', href: KnownPages.ShoppingCarts },
-                        { label: `Košarica ${cartId}` },
-                    ]}
-                />
                 <Typography level="h1" className="text-2xl" semiBold>
                     Detalji košarice
                 </Typography>
             </Stack>
 
             {/* Cart Information */}
-            <Card>
-                <CardOverflow>
-                    <div className="p-6">
-                        <Stack spacing={3}>
-                            <Row spacing={4}>
-                                <Stack spacing={1}>
-                                    <Typography level="body2">
-                                        Status košarice
-                                    </Typography>
-                                    <Chip
-                                        className="w-fit"
-                                        color={
-                                            cart.status === 'paid'
-                                                ? 'success'
-                                                : 'neutral'
-                                        }
-                                    >
-                                        {cart.status === 'paid'
-                                            ? 'Plaćena'
-                                            : cart.status === 'new'
-                                              ? 'Nova'
-                                              : cart.status}
-                                    </Chip>
-                                </Stack>
-                                <Stack spacing={1}>
-                                    <Typography level="body2">
-                                        Account ID
-                                    </Typography>
-                                    <Link
-                                        href={`/admin/accounts/${cart.accountId}`}
-                                    >
-                                        <Typography>
-                                            {cart.accountId}
-                                        </Typography>
-                                    </Link>
-                                </Stack>
-                                <Stack spacing={1}>
-                                    <Typography level="body2">
-                                        Datum kreiranja
-                                    </Typography>
-                                    <Typography>
-                                        <LocalDateTime>
-                                            {cart.createdAt}
-                                        </LocalDateTime>
-                                    </Typography>
-                                </Stack>
-                            </Row>
-                            {Object.keys(currencyTotals).length > 0 && (
-                                <Row spacing={4}>
-                                    <Stack spacing={1}>
-                                        <Typography level="body2">
-                                            Broj stavki
-                                        </Typography>
-                                        <Typography>
-                                            {cart.items?.length || 0}
-                                        </Typography>
-                                    </Stack>
-                                    {Object.entries(currencyTotals).map(
-                                        ([currency, total]) => (
-                                            <Stack key={currency} spacing={1}>
-                                                <Typography level="body2">
-                                                    {currency === 'eur'
-                                                        ? 'Ukupno (€)'
-                                                        : currency ===
-                                                            'sunflower'
-                                                          ? 'Ukupno (🌻)'
-                                                          : `Ukupno (${currency.toUpperCase()})`}
-                                                </Typography>
-                                                <Typography level="h5" semiBold>
-                                                    {formatCurrency(
-                                                        total,
-                                                        currency,
-                                                    )}
-                                                </Typography>
-                                            </Stack>
-                                        ),
-                                    )}
-                                </Row>
-                            )}
-                        </Stack>
-                    </div>
-                </CardOverflow>
-            </Card>
+            <FieldSet>
+                <Field
+                    name="Status"
+                    value={
+                        <Chip
+                            className="w-fit"
+                            color={
+                                cart.status === 'paid' ? 'success' : 'neutral'
+                            }
+                        >
+                            {cart.status === 'paid'
+                                ? 'Plaćena'
+                                : cart.status === 'new'
+                                  ? 'Nova'
+                                  : cart.status}
+                        </Chip>
+                    }
+                />
+                <Field name="Account ID" value={cart.accountId} />
+                <Field name="Datum kreiranja" value={cart.createdAt} />
+                {Object.keys(currencyTotals).length > 0 && (
+                    <>
+                        <Field
+                            name="Broj stavki"
+                            value={cart.items?.length || 0}
+                        />
+                        {inventoryItems.length > 0 && (
+                            <Field
+                                name="Stacke ruksaka"
+                                value={inventoryItems.length}
+                            />
+                        )}
+                        {Object.entries(currencyTotals).map(
+                            ([currency, total]) => (
+                                <Field
+                                    key={currency}
+                                    name={
+                                        currency === 'eur'
+                                            ? 'Ukupno (€)'
+                                            : currency === 'sunflower'
+                                              ? 'Ukupno (🌻)'
+                                              : `Ukupno (${currency.toUpperCase()})`
+                                    }
+                                    value={formatCurrency(total, currency)}
+                                />
+                            ),
+                        )}
+                    </>
+                )}
+            </FieldSet>
 
             {/* Cart Items */}
             <Card>
@@ -210,6 +255,7 @@ export default async function ShoppingCartDetailsPage({
                                 <Table.Head>Količina</Table.Head>
                                 <Table.Head>Cijena/kom</Table.Head>
                                 <Table.Head>Ukupno</Table.Head>
+                                <Table.Head>Ruksak</Table.Head>
                                 <Table.Head>Status</Table.Head>
                                 <Table.Head>
                                     Vrt | Gredica | Pozicija
@@ -221,7 +267,7 @@ export default async function ShoppingCartDetailsPage({
                         <Table.Body>
                             {enhancedItems.length === 0 && (
                                 <Table.Row>
-                                    <Table.Cell colSpan={8}>
+                                    <Table.Cell colSpan={9}>
                                         <NoDataPlaceholder>
                                             Nema stavki u košarici
                                         </NoDataPlaceholder>
@@ -267,6 +313,28 @@ export default async function ShoppingCartDetailsPage({
                                         )}
                                     </Table.Cell>
                                     <Table.Cell>
+                                        {item.usesInventory ? (
+                                            <Chip
+                                                className="w-fit"
+                                                color={
+                                                    item.inventoryAvailable >=
+                                                    item.amount
+                                                        ? 'success'
+                                                        : 'warning'
+                                                }
+                                            >
+                                                {`Ruksak (${item.inventoryAvailable}/${item.amount})`}
+                                            </Chip>
+                                        ) : (
+                                            <Typography
+                                                level="body2"
+                                                className="text-gray-500"
+                                            >
+                                                Nije
+                                            </Typography>
+                                        )}
+                                    </Table.Cell>
+                                    <Table.Cell>
                                         <Chip
                                             className="w-fit"
                                             color={
@@ -301,7 +369,10 @@ export default async function ShoppingCartDetailsPage({
                                                         item.raisedBedId,
                                                     )}
                                                 >
-                                                    Gr {item.raisedBedId}
+                                                    Gr{' '}
+                                                    {raisedBedPhysicalIdLookup.get(
+                                                        item.raisedBedId,
+                                                    ) ?? item.raisedBedId}
                                                 </Link>
                                             </>
                                         ) : (

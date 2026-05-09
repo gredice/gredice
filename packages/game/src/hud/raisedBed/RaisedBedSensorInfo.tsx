@@ -34,7 +34,20 @@ import { useRaisedBedSensors } from '../../hooks/useRaisedBedSensors';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
-import { useNeighboringRaisedBeds } from './RaisedBedField';
+import { useNeighboringRaisedBeds } from './useNeighboringRaisedBeds';
+
+interface TooltipPayload {
+    value?: number | string;
+}
+
+interface CustomTooltipProps {
+    active?: boolean;
+    payload?: TooltipPayload[];
+    header: string;
+    textColor?: string;
+    label?: string;
+    unit?: string;
+}
 
 function CustomTooltip({
     active,
@@ -43,24 +56,27 @@ function CustomTooltip({
     textColor,
     label,
     unit,
-}: any) {
-    if (active && payload && payload.length) {
-        const payloadFormatted =
-            new Date(label).toLocaleDateString('hr-HR', {
-                month: 'short',
-                day: 'numeric',
-            }) +
-            ' ' +
-            new Date(label).toLocaleTimeString('hr-HR', {
-                hour: '2-digit',
-                minute: '2-digit',
-            });
+}: CustomTooltipProps) {
+    if (active && payload?.length) {
+        const payloadFormatted = label
+            ? new Date(String(label)).toLocaleDateString('hr-HR', {
+                  month: 'short',
+                  day: 'numeric',
+              }) +
+              ' ' +
+              new Date(String(label)).toLocaleTimeString('hr-HR', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+              })
+            : undefined;
         return (
             <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-                <p className="text-sm font-medium text-gray-900">{`${payloadFormatted}`}</p>
+                {payloadFormatted && (
+                    <p className="text-sm font-medium text-gray-900">{`${payloadFormatted}`}</p>
+                )}
                 <p
                     className={cx('text-sm', textColor)}
-                >{`${header}: ${payload[0].value}${unit}`}</p>
+                >{`${header}: ${payload[0]?.value ?? ''}${unit}`}</p>
             </div>
         );
     }
@@ -147,7 +163,7 @@ function SensorInfoModal({
     const processedData = sensorDetails?.values
         .map((item) => ({
             timestamp: item.timeStamp,
-            value: Number.parseFloat(item.valueSerialized),
+            value: Number.parseFloat(item.valueSerialized ?? '0'),
         }))
         .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
@@ -532,7 +548,7 @@ function SensorInfoModal({
                                     }
                                     onClick={handleBuySensor}
                                 >
-                                    Postavi senzor
+                                    Postavi
                                 </Button>
                             </div>
                         )}
@@ -559,28 +575,21 @@ function SensorInfoModal({
                                 <Typography level="body1">
                                     Senzor je već u tvojoj košarici.
                                 </Typography>
-                                <Stack>
-                                    <Typography
-                                        level="body2"
-                                        className="max-w-md text-balance"
-                                        center
-                                    >
-                                        Senzor za praćenje vlažnosti i
-                                        temperature tla je već dodan u tvoju
-                                        košaricu.
-                                    </Typography>
-                                </Stack>
-                                <div className="relative flex flex-col gap-2 items-center justify-center">
+                                <Typography
+                                    level="body2"
+                                    className="max-w-md text-balance"
+                                    center
+                                >
+                                    Senzor za praćenje vlažnosti i temperature
+                                    tla te čekaju u košarici. Dovrši kupovinu i
+                                    uskoro možeš početi pratiti uvjete u tlu
+                                    svoje gredice!
+                                </Typography>
+                                <div className="relative flex flex-col items-center justify-center">
                                     <Row spacing={1}>
-                                        <Check className="size-7 shrink-0 rounded-full bg-green-500" />
+                                        <Check className="absolute -right-1 -top-1 size-5 shrink-0 rounded-full bg-green-500" />
                                         <ShoppingCart className="size-8 shrink-0" />
                                     </Row>
-                                    <Typography
-                                        level="body2"
-                                        className="text-green-500 font-semibold"
-                                    >
-                                        Senzor je u košarici
-                                    </Typography>
                                 </div>
                             </div>
                         )}
@@ -589,6 +598,14 @@ function SensorInfoModal({
             </div>
         </Modal>
     );
+}
+
+const STALE_THRESHOLD_MS = 48 * 60 * 60 * 1000; // 48 hours
+
+function isSensorDataStale(updatedAt: string | null | undefined): boolean {
+    if (!updatedAt) return true;
+    const updatedTime = new Date(updatedAt).getTime();
+    return Date.now() - updatedTime > STALE_THRESHOLD_MS;
 }
 
 export function RaisedBedSensorInfo({
@@ -603,126 +620,341 @@ export function RaisedBedSensorInfo({
         isLoading,
         error,
     } = useRaisedBedSensors(gardenId, raisedBedId);
-    const soilMoisture = sensors?.find(
-        (sensor) => sensor.type === 'soil_moisture',
-    );
-    const soilTemperature = sensors?.find(
-        (sensor) => sensor.type === 'soil_temperature',
-    );
+
+    type SensorReading = {
+        id: number;
+        status: string;
+        type: 'soil_moisture' | 'soil_temperature';
+        value: string | null;
+        updatedAt: string | null;
+    };
+
+    type SensorGroup = {
+        id: number;
+        status: string;
+        soilMoisture?: SensorReading;
+        soilTemperature?: SensorReading;
+    };
+
+    const sensorGroups: SensorGroup[] = Array.isArray(sensors)
+        ? (() => {
+              const groups = (sensors as SensorReading[]).reduce(
+                  (acc: Map<number, SensorGroup>, sensor: SensorReading) => {
+                      const existing = acc.get(sensor.id) ?? {
+                          id: sensor.id,
+                          status: sensor.status,
+                      };
+                      if (sensor.type === 'soil_moisture') {
+                          existing.soilMoisture = sensor;
+                      } else if (sensor.type === 'soil_temperature') {
+                          existing.soilTemperature = sensor;
+                      }
+                      existing.status = sensor.status;
+                      acc.set(sensor.id, existing);
+                      return acc;
+                  },
+                  new Map<number, SensorGroup>(),
+              );
+              return Array.from(groups.values()).sort(
+                  (a: SensorGroup, b: SensorGroup) => a.id - b.id,
+              );
+          })()
+        : [];
+
+    if (sensorGroups.length === 0) {
+        return (
+            <div className="flex flex-col w-full md:flex-row gap-2 md:gap-1">
+                <SensorInfoModal
+                    icon={
+                        <Droplets className="size-7 shrink-0 stroke-blue-500" />
+                    }
+                    header="Vlažnost tla"
+                    unit="%"
+                    yDomain={[0, 100]}
+                    colors={{
+                        text: 'text-blue-500',
+                        area: '#93c5fd',
+                        areaGradientStart: '#bfdbfe',
+                        areaGradientEnd: '#60a5fa',
+                    }}
+                    positiveTrend
+                    references={[
+                        {
+                            value: 61,
+                            label: 'Visoka (61-100%)',
+                            color: 'text-blue-500',
+                            bgColor: 'bg-blue-500',
+                            strokeColor: 'stroke-blue-500',
+                            refStrokeColor: '#60a5fa',
+                        },
+                        {
+                            value: 41,
+                            label: 'Dobro (41-60%)',
+                            color: 'text-green-600',
+                            bgColor: 'bg-green-600',
+                            strokeColor: 'stroke-green-600',
+                            refStrokeColor: '#34d399',
+                        },
+                        {
+                            value: 21,
+                            label: 'Srednje (21-40%)',
+                            color: 'text-orange-600',
+                            bgColor: 'bg-orange-600',
+                            strokeColor: 'stroke-orange-600',
+                            refStrokeColor: '#f97316',
+                        },
+                        {
+                            value: 0,
+                            label: 'Nisko (0-20%)',
+                            color: 'text-red-600',
+                            bgColor: 'bg-red-600',
+                            strokeColor: 'stroke-red-600',
+                            refStrokeColor: '#ef4444',
+                        },
+                    ]}
+                    trigger={
+                        <ButtonGreen
+                            size="sm"
+                            className="rounded-full px-2"
+                            fullWidth
+                        >
+                            <Row spacing={0.5}>
+                                <Droplet
+                                    className={cx(
+                                        'size-5 shrink-0 stroke-blue-400',
+                                        Number(0) >= 20 && 'fill-blue-300',
+                                    )}
+                                />
+                                {isLoading && <Skeleton className="w-6 h-4" />}
+                                {!isLoading && error && (
+                                    <Warning className="size-5 shrink-0 text-red-500" />
+                                )}
+                                {!isLoading && !error && (
+                                    <span className="whitespace-nowrap">
+                                        -%
+                                    </span>
+                                )}
+                            </Row>
+                        </ButtonGreen>
+                    }
+                    gardenId={gardenId}
+                    raisedBedId={raisedBedId}
+                    status={undefined}
+                    sensorId={undefined}
+                    type="soil_moisture"
+                />
+                <SensorInfoModal
+                    icon={
+                        <Thermometer className="size-7 shrink-0 stroke-red-500" />
+                    }
+                    header="Temperatura tla"
+                    unit="°C"
+                    yDomain={[-5, 40]}
+                    colors={{
+                        text: 'text-red-500',
+                        area: '#fca5a5',
+                        areaGradientStart: '#f87171',
+                        areaGradientEnd: '#fca5a5',
+                    }}
+                    trigger={
+                        <ButtonGreen
+                            size="sm"
+                            className="rounded-full px-2"
+                            fullWidth
+                        >
+                            <Row spacing={0.5}>
+                                <Thermometer
+                                    className={cx(
+                                        'size-5 shrink-0 stroke-red-400',
+                                        Number(0) >= 20 && 'fill-red-300',
+                                    )}
+                                />
+                                {isLoading && <Skeleton className="w-6 h-4" />}
+                                {!isLoading && error && (
+                                    <Warning className="size-5 shrink-0 text-red-500" />
+                                )}
+                                {!isLoading && !error && (
+                                    <span className="whitespace-nowrap">
+                                        -°C
+                                    </span>
+                                )}
+                            </Row>
+                        </ButtonGreen>
+                    }
+                    gardenId={gardenId}
+                    raisedBedId={raisedBedId}
+                    status={undefined}
+                    sensorId={undefined}
+                    type="soil_temperature"
+                />
+            </div>
+        );
+    }
 
     return (
-        <Row spacing={0.5}>
-            <SensorInfoModal
-                icon={<Droplets className="size-7 shrink-0 stroke-blue-500" />}
-                header="Vlažnost tla"
-                unit="%"
-                yDomain={[0, 100]}
-                colors={{
-                    text: 'text-blue-500',
-                    area: '#93c5fd',
-                    areaGradientStart: '#bfdbfe',
-                    areaGradientEnd: '#60a5fa',
-                }}
-                positiveTrend
-                references={[
-                    {
-                        value: 61,
-                        label: 'Visoka (61-100%)',
-                        color: 'text-blue-500',
-                        bgColor: 'bg-blue-500',
-                        strokeColor: 'stroke-blue-500',
-                        refStrokeColor: '#60a5fa',
-                    },
-                    {
-                        value: 41,
-                        label: 'Dobro (41-60%)',
-                        color: 'text-green-600',
-                        bgColor: 'bg-green-600',
-                        strokeColor: 'stroke-green-600',
-                        refStrokeColor: '#34d399',
-                    },
-                    {
-                        value: 21,
-                        label: 'Srednje (21-40%)',
-                        color: 'text-orange-600',
-                        bgColor: 'bg-orange-600',
-                        strokeColor: 'stroke-orange-600',
-                        refStrokeColor: '#f97316',
-                    },
-                    {
-                        value: 0,
-                        label: 'Nisko (0-20%)',
-                        color: 'text-red-600',
-                        bgColor: 'bg-red-600',
-                        strokeColor: 'stroke-red-600',
-                        refStrokeColor: '#ef4444',
-                    },
-                ]}
-                trigger={
-                    <ButtonGreen size="sm" className="rounded-full">
-                        <Row spacing={0.5}>
-                            <Droplet
-                                className={cx(
-                                    'size-5 shrink-0 stroke-blue-400',
-                                    Number(soilMoisture?.value ?? '0') >= 20 &&
-                                        'fill-blue-300',
-                                )}
-                            />
-                            {isLoading && <Skeleton className="w-6 h-4" />}
-                            {!isLoading && error && (
-                                <Warning className="size-5 shrink-0 text-red-500" />
-                            )}
-                            {!isLoading && !error && (
-                                <span>{soilMoisture?.value ?? '-'}%</span>
-                            )}
-                        </Row>
-                    </ButtonGreen>
-                }
-                gardenId={gardenId}
-                raisedBedId={raisedBedId}
-                status={soilMoisture?.status}
-                sensorId={soilMoisture?.id}
-                type="soil_moisture"
-            />
-            <SensorInfoModal
-                icon={
-                    <Thermometer className="size-7 shrink-0 stroke-red-500" />
-                }
-                header="Temperatura tla"
-                unit="°C"
-                yDomain={[-5, 40]} // Adjusted for soil temperature range
-                colors={{
-                    text: 'text-red-500',
-                    area: '#fca5a5',
-                    areaGradientStart: '#f87171',
-                    areaGradientEnd: '#fca5a5',
-                }}
-                trigger={
-                    <ButtonGreen size="sm" className="rounded-full">
-                        <Row spacing={0.5}>
-                            <Thermometer
-                                className={cx(
-                                    'size-5 shrink-0 stroke-red-400',
-                                    Number(soilTemperature?.value ?? '0') >=
-                                        20 && 'fill-red-300',
-                                )}
-                            />
-                            {isLoading && <Skeleton className="w-6 h-4" />}
-                            {!isLoading && error && (
-                                <Warning className="size-5 shrink-0 text-red-500" />
-                            )}
-                            {!isLoading && !error && (
-                                <span>{soilTemperature?.value ?? '-'}°C</span>
-                            )}
-                        </Row>
-                    </ButtonGreen>
-                }
-                gardenId={gardenId}
-                raisedBedId={raisedBedId}
-                status={soilTemperature?.status}
-                sensorId={soilTemperature?.id}
-                type="soil_temperature"
-            />
-        </Row>
+        <Stack spacing={0.5}>
+            {sensorGroups.map((group) => {
+                const moistureStatus =
+                    group.soilMoisture?.status ?? group.status;
+                const temperatureStatus =
+                    group.soilTemperature?.status ?? group.status;
+                return (
+                    <div
+                        className="flex flex-col md:flex-row gap-2 md:gap-0.5"
+                        key={`sensor-${group.id}`}
+                    >
+                        <SensorInfoModal
+                            icon={
+                                <Droplets className="size-7 shrink-0 stroke-blue-500" />
+                            }
+                            header="Vlažnost tla"
+                            unit="%"
+                            yDomain={[0, 100]}
+                            colors={{
+                                text: 'text-blue-500',
+                                area: '#93c5fd',
+                                areaGradientStart: '#bfdbfe',
+                                areaGradientEnd: '#60a5fa',
+                            }}
+                            positiveTrend
+                            references={[
+                                {
+                                    value: 61,
+                                    label: 'Visoka (61-100%)',
+                                    color: 'text-blue-500',
+                                    bgColor: 'bg-blue-500',
+                                    strokeColor: 'stroke-blue-500',
+                                    refStrokeColor: '#60a5fa',
+                                },
+                                {
+                                    value: 41,
+                                    label: 'Dobro (41-60%)',
+                                    color: 'text-green-600',
+                                    bgColor: 'bg-green-600',
+                                    strokeColor: 'stroke-green-600',
+                                    refStrokeColor: '#34d399',
+                                },
+                                {
+                                    value: 21,
+                                    label: 'Srednje (21-40%)',
+                                    color: 'text-orange-600',
+                                    bgColor: 'bg-orange-600',
+                                    strokeColor: 'stroke-orange-600',
+                                    refStrokeColor: '#f97316',
+                                },
+                                {
+                                    value: 0,
+                                    label: 'Nisko (0-20%)',
+                                    color: 'text-red-600',
+                                    bgColor: 'bg-red-600',
+                                    strokeColor: 'stroke-red-600',
+                                    refStrokeColor: '#ef4444',
+                                },
+                            ]}
+                            trigger={
+                                <ButtonGreen size="sm" className="rounded-full">
+                                    <Row spacing={0.5}>
+                                        <Droplet
+                                            className={cx(
+                                                'size-5 shrink-0 stroke-blue-400',
+                                                !isSensorDataStale(
+                                                    group.soilMoisture
+                                                        ?.updatedAt,
+                                                ) &&
+                                                    Number(
+                                                        group.soilMoisture
+                                                            ?.value ?? '0',
+                                                    ) >= 20 &&
+                                                    'fill-blue-300',
+                                            )}
+                                        />
+                                        {isLoading && (
+                                            <Skeleton className="w-6 h-4" />
+                                        )}
+                                        {!isLoading && error && (
+                                            <Warning className="size-5 shrink-0 text-red-500" />
+                                        )}
+                                        {!isLoading && !error && (
+                                            <span>
+                                                {isSensorDataStale(
+                                                    group.soilMoisture
+                                                        ?.updatedAt,
+                                                )
+                                                    ? '-'
+                                                    : (group.soilMoisture
+                                                          ?.value ?? '-')}
+                                                %
+                                            </span>
+                                        )}
+                                    </Row>
+                                </ButtonGreen>
+                            }
+                            gardenId={gardenId}
+                            raisedBedId={raisedBedId}
+                            status={moistureStatus}
+                            sensorId={group.soilMoisture?.id ?? group.id}
+                            type="soil_moisture"
+                        />
+                        <SensorInfoModal
+                            icon={
+                                <Thermometer className="size-7 shrink-0 stroke-red-500" />
+                            }
+                            header="Temperatura tla"
+                            unit="°C"
+                            yDomain={[-5, 40]} // Adjusted for soil temperature range
+                            colors={{
+                                text: 'text-red-500',
+                                area: '#fca5a5',
+                                areaGradientStart: '#f87171',
+                                areaGradientEnd: '#fca5a5',
+                            }}
+                            trigger={
+                                <ButtonGreen size="sm" className="rounded-full">
+                                    <Row spacing={0.5}>
+                                        <Thermometer
+                                            className={cx(
+                                                'size-5 shrink-0 stroke-red-400',
+                                                !isSensorDataStale(
+                                                    group.soilTemperature
+                                                        ?.updatedAt,
+                                                ) &&
+                                                    Number(
+                                                        group.soilTemperature
+                                                            ?.value ?? '0',
+                                                    ) >= 20 &&
+                                                    'fill-red-300',
+                                            )}
+                                        />
+                                        {isLoading && (
+                                            <Skeleton className="w-6 h-4" />
+                                        )}
+                                        {!isLoading && error && (
+                                            <Warning className="size-5 shrink-0 text-red-500" />
+                                        )}
+                                        {!isLoading && !error && (
+                                            <span>
+                                                {isSensorDataStale(
+                                                    group.soilTemperature
+                                                        ?.updatedAt,
+                                                )
+                                                    ? '-'
+                                                    : (group.soilTemperature
+                                                          ?.value ?? '-')}
+                                                °C
+                                            </span>
+                                        )}
+                                    </Row>
+                                </ButtonGreen>
+                            }
+                            gardenId={gardenId}
+                            raisedBedId={raisedBedId}
+                            status={temperatureStatus}
+                            sensorId={group.soilTemperature?.id ?? group.id}
+                            type="soil_temperature"
+                        />
+                    </div>
+                );
+            })}
+        </Stack>
     );
 }

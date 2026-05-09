@@ -1,12 +1,16 @@
 import { relations } from 'drizzle-orm';
 import {
     index,
+    integer,
+    pgEnum,
     pgTable,
     serial,
     smallint,
     text,
     timestamp,
+    uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import { farms } from './farmsSchema';
 import { raisedBeds } from './gardenSchema';
 
 export const accounts = pgTable('accounts', {
@@ -16,6 +20,7 @@ export const accounts = pgTable('accounts', {
     addressStreet2: text('address_street2'),
     addressCity: text('address_city'),
     addressZip: text('address_zip'),
+    timeZone: text('time_zone').notNull().default('Europe/Paris'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at')
         .notNull()
@@ -28,6 +33,9 @@ export const accountsRelations = relations(accounts, ({ many }) => ({
     }),
     raisedBeds: many(raisedBeds, {
         relationName: 'raisedBedsAccount',
+    }),
+    accountInvitations: many(accountInvitations, {
+        relationName: 'accountInvitations',
     }),
 }));
 
@@ -65,6 +73,42 @@ export const accountUsersRelations = relations(accountUsers, ({ one }) => ({
     }),
 }));
 
+export const farmUsers = pgTable(
+    'farm_users',
+    {
+        id: serial('id').primaryKey(),
+        farmId: integer('farm_id')
+            .notNull()
+            .references(() => farms.id),
+        userId: text('user_id')
+            .notNull()
+            .references(() => users.id),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .$onUpdate(() => new Date()),
+    },
+    (table) => [
+        index('farm_users_farm_id_idx').on(table.farmId),
+        index('farm_users_user_id_idx').on(table.userId),
+        uniqueIndex('farm_users_farm_user_unique').on(
+            table.farmId,
+            table.userId,
+        ),
+    ],
+);
+
+export const farmUsersRelations = relations(farmUsers, ({ one }) => ({
+    farm: one(farms, {
+        fields: [farmUsers.farmId],
+        references: [farms.id],
+    }),
+    user: one(users, {
+        fields: [farmUsers.userId],
+        references: [users.id],
+    }),
+}));
+
 export const users = pgTable(
     'users',
     {
@@ -73,6 +117,10 @@ export const users = pgTable(
         avatarUrl: text('avatar_url'),
         displayName: text('display_name'),
         role: text('role').notNull(),
+        birthdayDay: smallint('birthday_day'),
+        birthdayMonth: smallint('birthday_month'),
+        birthdayYear: smallint('birthday_year'),
+        birthdayLastUpdatedAt: timestamp('birthday_last_updated_at'),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
@@ -87,6 +135,9 @@ export const usersRelations = relations(users, ({ many }) => ({
     }),
     accounts: many(accountUsers, {
         relationName: 'userAccountUsers',
+    }),
+    invitations: many(accountInvitations, {
+        relationName: 'userInvitations',
     }),
 }));
 
@@ -133,3 +184,56 @@ export const userLoginsRelations = relations(userLogins, ({ one }) => ({
 
 export type InsertUserLogin = typeof userLogins.$inferInsert;
 export type SelectUserLogin = typeof userLogins.$inferSelect;
+
+export const accountInvitationStatusEnum = pgEnum('account_invitation_status', [
+    'pending',
+    'accepted',
+    'cancelled',
+]);
+
+export const accountInvitations = pgTable(
+    'account_invitations',
+    {
+        id: serial('id').primaryKey(),
+        accountId: text('account_id')
+            .notNull()
+            .references(() => accounts.id),
+        email: text('email').notNull(),
+        token: text('token').notNull(),
+        status: accountInvitationStatusEnum('status')
+            .notNull()
+            .default('pending'),
+        invitedByUserId: text('invited_by_user_id')
+            .notNull()
+            .references(() => users.id),
+        expiresAt: timestamp('expires_at').notNull(),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .$onUpdate(() => new Date()),
+    },
+    (table) => [
+        index('account_invitations_account_id_idx').on(table.accountId),
+        index('account_invitations_email_idx').on(table.email),
+        index('account_invitations_token_idx').on(table.token),
+    ],
+);
+
+export const accountInvitationsRelations = relations(
+    accountInvitations,
+    ({ one }) => ({
+        account: one(accounts, {
+            fields: [accountInvitations.accountId],
+            references: [accounts.id],
+            relationName: 'accountInvitations',
+        }),
+        invitedByUser: one(users, {
+            fields: [accountInvitations.invitedByUserId],
+            references: [users.id],
+            relationName: 'userInvitations',
+        }),
+    }),
+);
+
+export type InsertAccountInvitation = typeof accountInvitations.$inferInsert;
+export type SelectAccountInvitation = typeof accountInvitations.$inferSelect;

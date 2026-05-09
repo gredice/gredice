@@ -1,7 +1,11 @@
 import { TZDate } from '@date-fns/tz';
-import { grediceCached, grediceCacheKeys } from '@gredice/storage';
+import { getFarms, grediceCached, grediceCacheKeys } from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute } from 'hono-openapi';
+import {
+    cacheControlPresets,
+    setCacheControl,
+} from '../../../../lib/http/cacheControl';
 import { getBjelovarForecast } from '../../../../lib/weather/forecast';
 import { populateWeatherFromSymbol } from '../../../../lib/weather/populateWeatherFromSymbol';
 
@@ -19,6 +23,7 @@ const app = new Hono()
                 getBjelovarForecast,
                 60 * 60,
             );
+            setCacheControl(context, cacheControlPresets.weatherShortTerm);
             return context.json(forecast ?? []);
         },
     )
@@ -82,6 +87,11 @@ const app = new Hono()
                     { status: 500 },
                 );
             }
+            setCacheControl(context, cacheControlPresets.weatherShortTerm);
+
+            // Get farm data to include snow accumulation
+            const farms = await getFarms();
+            const farm = farms[0]; // Get the first farm (assuming single farm for now)
 
             const weather = {
                 symbol: closestEntry.symbol,
@@ -90,6 +100,7 @@ const app = new Hono()
                 rain: closestEntry.rain,
                 windDirection: closestEntry.windDirection,
                 windSpeed: closestEntry.windStrength,
+                snowAccumulation: farm?.snowAccumulation ?? 0, // Snow accumulation in cm
                 ...populateWeatherFromSymbol(closestEntry.symbol),
             };
 

@@ -1,5 +1,4 @@
 import { ApiReference } from './ApiReference';
-import '@scalar/api-reference-react/style.css';
 
 export default async function DirectoriesApiPage({
     params,

@@ -1,4 +1,5 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
+import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { FilterInput } from '@gredice/ui/FilterInput';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Left, ShoppingCart } from '@signalco/ui-icons';
@@ -9,9 +10,14 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { type ReactElement, useState } from 'react';
+import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { SegmentedProgress } from '../../controls/components/SegmentedProgress';
+import { useInventory } from '../../hooks/useInventory';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
-import { useShoppingCart } from '../../hooks/useShoppingCart';
+import {
+    type ShoppingCartItemData,
+    useShoppingCart,
+} from '../../hooks/useShoppingCart';
 import { PlantsList } from './PlantsList';
 import { PlantsSortList } from './PlantsSortList';
 
@@ -46,6 +52,7 @@ export function PlantPicker({
     selectedPlantOptions: preselectedPlantOptions,
 }: PlantPickerProps) {
     const [open, setOpen] = useState(false);
+    const { track } = useGameAnalytics();
     const [, setSearch] = useSearchParam('pretraga', '');
     const steps = [
         {
@@ -59,6 +66,7 @@ export function PlantPicker({
     ];
     const { data: cart } = useShoppingCart();
     const setCartItem = useSetShoppingCartItem();
+    const { data: inventory } = useInventory();
     const [selectedPlantId, setSelectedPlantId] = useState<number | null>(
         preselectedPlantId ?? null,
     );
@@ -69,6 +77,7 @@ export function PlantPicker({
         scheduledDate: Date | null | undefined;
     } | null>(preselectedPlantOptions ?? null);
     const [flyToShoppingCart, setFlyToShoppingCart] = useState(false);
+    const [useInventoryItem, setUseInventoryItem] = useState(false);
 
     let currentStep = 0;
     if (selectedPlantId) {
@@ -86,31 +95,41 @@ export function PlantPicker({
         setSearch(undefined);
     }
 
-    async function removeFromCart() {
+    async function removeFromCart(existingItem?: ShoppingCartItemData) {
         // Remove existing item if it exists in cart already
-        const existingItem = cart?.items.find(
-            (item) =>
-                item.entityTypeName === 'plantSort' &&
-                item.gardenId === gardenId &&
-                item.raisedBedId === raisedBedId &&
-                item.positionIndex === positionIndex,
-        );
-        if (existingItem) {
+        const itemToRemove =
+            existingItem ??
+            cart?.items.find(
+                (item) =>
+                    item.entityTypeName === 'plantSort' &&
+                    item.gardenId === gardenId &&
+                    item.raisedBedId === raisedBedId &&
+                    item.positionIndex === positionIndex,
+            );
+        if (itemToRemove) {
             await setCartItem.mutateAsync({
-                ...existingItem,
-                gardenId: existingItem.gardenId ?? undefined,
-                raisedBedId: existingItem.raisedBedId ?? undefined,
-                positionIndex: existingItem.positionIndex ?? undefined,
+                ...itemToRemove,
+                gardenId: itemToRemove.gardenId ?? undefined,
+                raisedBedId: itemToRemove.raisedBedId ?? undefined,
+                positionIndex: itemToRemove.positionIndex ?? undefined,
                 amount: 0,
             });
         }
     }
 
     async function handleRemove() {
+        track('game_planting_removed', {
+            garden_id: gardenId,
+            in_shopping_cart: inShoppingCart,
+            position_index: positionIndex,
+            raised_bed_id: raisedBedId,
+            sort_id: selectedSortId,
+        });
         setOpen(false);
         setSelectedPlantId(null);
         setSelectedSortId(null);
         setPlantOptions(null);
+        setUseInventoryItem(false);
         setSearch(undefined);
         await removeFromCart();
     }
@@ -120,7 +139,32 @@ export function PlantPicker({
             return;
         }
 
+        const existingItem = cart?.items.find(
+            (item) =>
+                item.entityTypeName === 'plantSort' &&
+                item.gardenId === gardenId &&
+                item.raisedBedId === raisedBedId &&
+                item.positionIndex === positionIndex,
+        );
+
+        if (
+            existingItem &&
+            existingItem.entityId !== selectedSortId.toString()
+        ) {
+            await removeFromCart(existingItem);
+        }
+
         // Add new item to cart
+        track('game_planting_confirmed', {
+            garden_id: gardenId,
+            in_shopping_cart: inShoppingCart,
+            plant_id: selectedPlantId,
+            position_index: positionIndex,
+            raised_bed_id: raisedBedId,
+            scheduled_date: plantOptions?.scheduledDate?.toISOString(),
+            sort_id: selectedSortId,
+            use_inventory: useInventoryItem,
+        });
         setFlyToShoppingCart(true);
         await setCartItem.mutateAsync({
             entityTypeName: 'plantSort',
@@ -132,6 +176,7 @@ export function PlantPicker({
             additionalData: JSON.stringify({
                 scheduledDate: plantOptions?.scheduledDate?.toISOString(),
             }),
+            currency: useInventoryItem ? 'inventory' : 'eur',
         });
         await new Promise((resolve) => setTimeout(resolve, 800)); // Wait for animation to finish
         setOpen(false);
@@ -139,10 +184,26 @@ export function PlantPicker({
     }
 
     function handleOpenChange(open: boolean) {
+        if (open) {
+            track('game_plant_picker_opened', {
+                garden_id: gardenId,
+                in_shopping_cart: inShoppingCart,
+                position_index: positionIndex,
+                raised_bed_id: raisedBedId,
+            });
+        }
         setOpen(open);
         setSelectedPlantId(preselectedPlantId ?? null);
         setSelectedSortId(preselectedSortId ?? null);
         setPlantOptions(preselectedPlantOptions ?? null);
+        const existingItem = cart?.items.find(
+            (item) =>
+                item.entityTypeName === 'plantSort' &&
+                item.gardenId === gardenId &&
+                item.raisedBedId === raisedBedId &&
+                item.positionIndex === positionIndex,
+        );
+        setUseInventoryItem(existingItem?.currency === 'inventory');
     }
 
     // Plant options
@@ -166,6 +227,12 @@ export function PlantPicker({
 
     const min = formatLocalDate(tomorrow);
     const max = formatLocalDate(threeMonthsFromTomorrow);
+
+    const availableFromInventory = inventory?.items?.find(
+        (item) =>
+            item.entityTypeName === 'plantSort' &&
+            item.entityId === selectedSortId?.toString(),
+    )?.amount;
 
     return (
         <Modal
@@ -210,23 +277,11 @@ export function PlantPicker({
                     <FilterInput
                         searchParamName={'pretraga'}
                         fieldName={'search'}
+                        instant
                     />
                 )}
                 {currentStep === 0 && (
-                    <>
-                        <PlantsList onChange={handlePlantSelect} />
-                        <Row>
-                            <Button
-                                variant="plain"
-                                onClick={() => {
-                                    setOpen(false);
-                                }}
-                                startDecorator={<Left className="size-5" />}
-                            >
-                                Odustani
-                            </Button>
-                        </Row>
-                    </>
+                    <PlantsList onChange={handlePlantSelect} />
                 )}
                 {currentStep === 1 && selectedPlantId && (
                     <>
@@ -240,6 +295,35 @@ export function PlantPicker({
                                 }}
                                 flyToShoppingCart={flyToShoppingCart}
                             />
+                            <Row spacing={1} className="flex-wrap">
+                                <Button
+                                    variant={
+                                        availableFromInventory &&
+                                        useInventoryItem
+                                            ? 'solid'
+                                            : 'outlined'
+                                    }
+                                    size="sm"
+                                    disabled={!availableFromInventory}
+                                    startDecorator={
+                                        <BackpackIcon className="size-5 shrink-0" />
+                                    }
+                                    onClick={() => {
+                                        track('game_plant_inventory_toggled', {
+                                            garden_id: gardenId,
+                                            position_index: positionIndex,
+                                            raised_bed_id: raisedBedId,
+                                            sort_id: selectedSortId,
+                                            use_inventory: !useInventoryItem,
+                                        });
+                                        setUseInventoryItem(
+                                            (previous) => !previous,
+                                        );
+                                    }}
+                                >
+                                    {`U ruksaku (${availableFromInventory ?? 0})`}
+                                </Button>
+                            </Row>
                             <Input
                                 type="date"
                                 label="Datum sijanja"
@@ -288,7 +372,7 @@ export function PlantPicker({
                                         <ShoppingCart className="shrink-0 size-5" />
                                     }
                                 >
-                                    Potvrdi sijanje
+                                    Dodaj u košaricu
                                 </Button>
                             </Row>
                         </Row>

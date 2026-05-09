@@ -1,5 +1,5 @@
-import { DsaKeyValue } from "./DsaKeyValue";
-import { RsaKeyValue } from "./RsaKeyValue";
+import type { DsaKeyValue } from './DsaKeyValue';
+import type { RsaKeyValue } from './RsaKeyValue';
 
 /**
  * KeyValue

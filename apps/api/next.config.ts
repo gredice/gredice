@@ -1,10 +1,15 @@
 import type { NextConfig } from 'next';
-import { withAxiom } from 'next-axiom';
+import { getAppByName } from '../../scripts/app-registry.ts';
 
+const app = getAppByName('api');
 const nextConfig: NextConfig = {
     reactStrictMode: true,
+    logging: {
+        browserToTerminal: true,
+    },
     experimental: {
         typedEnv: true,
+        turbopackFileSystemCacheForDev: true,
     },
     images: {
         remotePatterns: [
@@ -17,8 +22,11 @@ const nextConfig: NextConfig = {
                 protocol: 'https',
             },
         ],
+        qualities: [80, 100],
     },
-    productionBrowserSourceMaps: true,
+    productionBrowserSourceMaps: !process.env.CI,
+    allowedDevOrigins: [app.localDomain],
+    skipTrailingSlashRedirect: true,
 };
 
-export default withAxiom(nextConfig);
+export default nextConfig;

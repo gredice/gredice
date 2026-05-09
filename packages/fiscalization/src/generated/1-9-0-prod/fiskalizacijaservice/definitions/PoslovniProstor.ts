@@ -1,5 +1,5 @@
-import { RadnoVrijeme } from "./RadnoVrijeme";
-import { BrisanjeRadnogVremena } from "./BrisanjeRadnogVremena";
+import type { BrisanjeRadnogVremena } from './BrisanjeRadnogVremena';
+import type { RadnoVrijeme } from './RadnoVrijeme';
 
 /**
  * PoslovniProstor

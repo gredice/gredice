@@ -131,7 +131,6 @@ export function WelcomeMessage() {
             title={title}
             open={open}
             className="max-w-screen-md border-tertiary border-b-4"
-            hideClose
             dismissible={false}
         >
             <div className="grid md:grid-cols-2 [grid-template-areas:'sunflower'_'content'] md:[grid-template-areas:'content_sunflower'] md:p-4 gap-4">
@@ -206,6 +205,7 @@ export function WelcomeMessage() {
                             alt="Suncokret"
                             width={160}
                             height={160}
+                            loading="eager"
                         />
                     </div>
                 </div>

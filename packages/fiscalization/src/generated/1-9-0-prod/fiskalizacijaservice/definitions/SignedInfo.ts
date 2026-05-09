@@ -1,6 +1,6 @@
-import { CanonicalizationMethod } from "./CanonicalizationMethod";
-import { SignatureMethod } from "./SignatureMethod";
-import { Reference } from "./Reference";
+import type { CanonicalizationMethod } from './CanonicalizationMethod';
+import type { Reference } from './Reference';
+import type { SignatureMethod } from './SignatureMethod';
 
 /**
  * SignedInfo

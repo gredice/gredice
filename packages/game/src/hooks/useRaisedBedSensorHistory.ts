@@ -1,5 +1,19 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
+
+interface SensorHistoryApiValue extends Record<string, unknown> {
+    timeStamp: string;
+    valueSerialized?: string;
+}
+
+interface SensorHistoryApiResponse extends Record<string, unknown> {
+    values: SensorHistoryApiValue[];
+}
+
+interface SensorHistoryValue {
+    timeStamp: Date;
+    valueSerialized?: string;
+}
 
 export function useRaisedBedSensorHistory(
     gardenId: number,
@@ -23,19 +37,21 @@ export function useRaisedBedSensorHistory(
                 return null;
             }
 
-            const response = await client().api.gardens[':gardenId'][
-                'raised-beds'
-            ][':raisedBedId'].sensors[':sensorId'][':type'].$get({
-                param: {
-                    gardenId: gardenId.toString(),
-                    raisedBedId: raisedBedId.toString(),
-                    sensorId: sensorId.toString(),
-                    type: type,
+            const response = await clientAuthenticated().api.gardens[
+                ':gardenId'
+            ]['raised-beds'][':raisedBedId'].sensors[':sensorId'][':type'].$get(
+                {
+                    param: {
+                        gardenId: gardenId.toString(),
+                        raisedBedId: raisedBedId.toString(),
+                        sensorId: sensorId.toString(),
+                        type: type,
+                    },
+                    query: {
+                        duration: duration?.toString(), // Duration in days, formatted as "X.00:00"
+                    },
                 },
-                query: {
-                    duration: duration?.toString(), // Duration in days, formatted as "X.00:00"
-                },
-            });
+            );
             if (response.status === 400) {
                 console.error(
                     'Failed to fetch sensor data - bad request',
@@ -50,13 +66,14 @@ export function useRaisedBedSensorHistory(
                 );
                 return null;
             }
-            const data = await response.json();
+            const data = (await response.json()) as SensorHistoryApiResponse;
+            const values: SensorHistoryValue[] = data.values.map((item) => ({
+                ...item,
+                timeStamp: new Date(item.timeStamp),
+            }));
             return {
                 ...data,
-                values: data.values.map((item: any) => ({
-                    ...item,
-                    timeStamp: new Date(item.timeStamp),
-                })),
+                values,
             };
         },
         staleTime: 5 * 60 * 1000, // 5 minutes

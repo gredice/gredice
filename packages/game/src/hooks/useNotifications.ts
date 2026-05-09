@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
 export const notificationsQueryKey = ['notifications'];
@@ -12,18 +12,20 @@ export function useNotifications(
     return useQuery({
         queryKey:
             read || page || limit
-                ? [...notificationsQueryKey, { read, page, limit }]
+                ? [...notificationsQueryKey, { read, page, limit, userId }]
                 : notificationsQueryKey,
         queryFn: async () => {
             if (!userId) return [];
-            const response = await client().api.notifications.$get({
-                query: {
-                    userId,
-                    read: read ? 'true' : undefined,
-                    page: page?.toString(),
-                    limit: limit?.toString(),
+            const response = await clientAuthenticated().api.notifications.$get(
+                {
+                    query: {
+                        userId,
+                        read: read ? 'true' : undefined,
+                        page: page?.toString(),
+                        limit: limit?.toString(),
+                    },
                 },
-            });
+            );
             if (!response.ok) {
                 throw new Error('Failed to fetch notifications');
             }
@@ -36,6 +38,7 @@ export function useNotifications(
                     : null,
             }));
         },
+        staleTime: 1000 * 60 * 5, // 5 minutes
         enabled: Boolean(userId),
     });
 }

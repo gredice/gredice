@@ -11,7 +11,7 @@ export default function NotFound() {
                 <Image
                     src="https://cdn.gredice.com/sunflower-sad-500x500.png"
                     alt="Tužan suncokret"
-                    className="rounded-xl bg-white shadow-xl"
+                    className="rounded-xl bg-card shadow-xl"
                     width={200}
                     height={200}
                 />

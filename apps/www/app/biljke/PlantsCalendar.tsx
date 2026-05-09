@@ -1,13 +1,13 @@
 'use client';
 
 import type { PlantData } from '@gredice/client';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { orderBy } from '@signalco/js';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { type CSSProperties, Fragment } from 'react';
-import { PlantImage } from '../../components/plants/PlantImage';
 import { KnownPages } from '../../src/KnownPages';
 
 const calendarMonths = [
@@ -51,12 +51,15 @@ const calendarActivityTypes = {
 export function PlantsCalendar({
     plants,
 }: {
-    plants: PlantData[] | undefined;
+    plants: (PlantData & { isRecommended?: boolean })[] | undefined;
 }) {
     const [search] = useSearchParam('pretraga');
+    const [seedTimeFilter] = useSearchParam('vrijemeZaSijanje');
+    const onlySeedTimePlants = seedTimeFilter === '1';
     const filteredPlants = orderBy(plants ?? [], (a, b) =>
         a.information.name.localeCompare(b.information.name),
     )
+        .filter((plant) => !onlySeedTimePlants || plant.isRecommended)
         .filter(
             (plant) =>
                 !search ||
@@ -123,7 +126,7 @@ export function PlantsCalendar({
                                         className="mx-2"
                                     >
                                         <Row spacing={1}>
-                                            <PlantImage
+                                            <PlantOrSortImage
                                                 plant={plant}
                                                 width={20}
                                                 height={20}

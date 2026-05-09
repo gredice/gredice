@@ -1,5 +1,6 @@
 import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
+import { ShovelIcon } from '@gredice/ui/ShovelIcon';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -9,7 +10,10 @@ import type { ReactNode } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useRaisedBedFieldRemove } from '../../hooks/useRaisedBedFieldRemove';
-import { ShovelIcon } from '../../icons/Shovel';
+import { findRaisedBedOccupiedField } from '../../utils/raisedBedFields';
+import type { PlantFieldStatus } from './featuredOperations';
+import { PlantStageSection } from './PlantStageSection';
+import { RecommendationsCard } from './RecommendationsCard';
 
 // TODO: Move to a separate file
 export function useRaisedBedFieldLifecycleData(
@@ -29,9 +33,7 @@ export function useRaisedBedFieldLifecycleData(
     };
     const { data: garden } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
-    const field = raisedBed?.fields.find(
-        (field) => field.positionIndex === positionIndex && field.active,
-    );
+    const field = findRaisedBedOccupiedField(raisedBed?.fields, positionIndex);
     const plantSortId = field?.plantSortId;
     const { data: plantSort } = usePlantSort(plantSortId);
     if (!raisedBed || !field || !plantSort) {
@@ -141,44 +143,16 @@ export function useRaisedBedFieldLifecycleData(
     return result;
 }
 
-function useRaisedBedField(raisedBedId: number, positionIndex: number) {
-    const { data: garden } = useCurrentGarden();
-    const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
-    if (!raisedBed) {
-        return null;
-    }
-
-    const field = raisedBed.fields.find(
-        (field) => field.positionIndex === positionIndex && field.active,
-    );
-    if (!field || !field.plantSortId) {
-        return null;
-    }
-
-    return field;
-}
-
-function useRaisedBedFieldPlantSort(
-    raisedBedId: number,
-    positionIndex: number,
-) {
-    const field = useRaisedBedField(raisedBedId, positionIndex);
-    const plantSortId = field?.plantSortId;
-    const { data: plantSort } = usePlantSort(plantSortId);
-    if (!plantSort) {
-        return null;
-    }
-
-    return plantSort;
-}
-
 export function RaisedBedFieldLifecycleTab({
     raisedBedId,
     positionIndex,
+    onShowOperations,
 }: {
     raisedBedId: number;
     positionIndex: number;
+    onShowOperations?: () => void;
 }) {
+    const { data: garden } = useCurrentGarden();
     const {
         germinationValue,
         germinationPercentage,
@@ -190,11 +164,13 @@ export function RaisedBedFieldLifecycleTab({
         harvestPercentage,
         readyDays,
     } = useRaisedBedFieldLifecycleData(raisedBedId, positionIndex);
-    const field = useRaisedBedField(raisedBedId, positionIndex);
-    const plantSort = useRaisedBedFieldPlantSort(raisedBedId, positionIndex);
     const removeFieldMutation = useRaisedBedFieldRemove();
 
-    if (!plantSort || !field) {
+    const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
+    const field = findRaisedBedOccupiedField(raisedBed?.fields, positionIndex);
+    const { data: plantSort } = usePlantSort(field?.plantSortId);
+
+    if (!garden || !plantSort || !field) {
         return null;
     }
 
@@ -236,6 +212,12 @@ export function RaisedBedFieldLifecycleTab({
         case 'sprouted':
             icon = <span className="mr-0.5">{'🌱'}</span>;
             break;
+        case 'firstFlowers':
+            icon = <span className="mr-0.5">{'🌸'}</span>;
+            break;
+        case 'firstFruitSet':
+            icon = <span className="mr-0.5">{'🍅'}</span>;
+            break;
         case 'ready':
             icon = <span className="mr-0.5">{'🌿'}</span>;
             break;
@@ -251,38 +233,45 @@ export function RaisedBedFieldLifecycleTab({
     const growingDaysDayPlural = growingDays === 1 ? 'dan' : 'dana';
     const readyDaysDayPlural = readyDays === 1 ? 'dan' : 'dana';
 
-    const segments = field.toBeRemoved
-        ? [
-              {
-                  value: 100,
-                  percentage: 100,
-                  color: 'stroke-red-500',
-                  trackColor: 'stroke-red-50 dark:stroke-red-50/80',
-              },
-          ]
-        : [
-              {
-                  value: germinationValue,
-                  percentage: germinationPercentage,
-                  color: 'stroke-yellow-500',
-                  trackColor: 'stroke-yellow-200 dark:stroke-yellow-50',
-                  pulse: !field.plantGrowthDate,
-              },
-              {
-                  value: growthValue,
-                  percentage: growthPercentage,
-                  color: 'stroke-green-500',
-                  trackColor: 'stroke-green-200 dark:stroke-green-50',
-                  pulse: !field.plantReadyDate,
-              },
-              {
-                  value: harvestValue,
-                  percentage: harvestPercentage,
-                  color: 'stroke-blue-500',
-                  trackColor: 'stroke-blue-200 dark:stroke-blue-50',
-                  pulse: Boolean(harvestValue),
-              },
-          ];
+    const segments =
+        field.toBeRemoved || field.plantDeadDate
+            ? [
+                  {
+                      value: 100,
+                      percentage: 100,
+                      color: 'stroke-red-500',
+                      trackColor: 'stroke-red-50 dark:stroke-red-50/80',
+                      borderColor: 'stroke-red-500',
+                  },
+              ]
+            : [
+                  {
+                      value: germinationValue,
+                      percentage: germinationPercentage,
+                      color: 'stroke-yellow-500',
+                      trackColor: 'stroke-yellow-200 dark:stroke-yellow-50',
+                      pulse: !field.plantGrowthDate,
+                      borderColor: 'stroke-yellow-500',
+                  },
+                  {
+                      value: growthValue,
+                      percentage: growthPercentage,
+                      color: 'stroke-green-500',
+                      trackColor: 'stroke-green-200 dark:stroke-green-50',
+                      pulse: !field.plantReadyDate,
+                      borderColor: 'stroke-green-500',
+                  },
+                  {
+                      value: harvestValue,
+                      percentage: harvestPercentage,
+                      color: 'stroke-blue-500',
+                      trackColor: 'stroke-blue-200 dark:stroke-blue-50',
+                      pulse: Boolean(harvestValue),
+                      borderColor: 'stroke-blue-500',
+                  },
+              ];
+
+    const plantAttributes = plantSort.information.plant.attributes;
 
     return (
         <Stack spacing={2}>
@@ -318,124 +307,98 @@ export function RaisedBedFieldLifecycleTab({
                     </Stack>
                 </SegmentedCircularProgress>
                 <Stack spacing={1}>
-                    <Stack>
-                        <Typography level="body2" secondary>
-                            Klijanje (
-                            {
-                                plantSort.information.plant.attributes
-                                    ?.germinationWindowMin
-                            }
-                            -
-                            {
-                                plantSort.information.plant.attributes
-                                    ?.germinationWindowMax
-                            }{' '}
-                            dana)
-                        </Typography>
-                        <div className="grid gap-x-2 items-center grid-cols-[auto_auto_auto] md:grid-cols-[repeat(4,auto)]">
-                            <Typography>
-                                {field.plantSowDate
-                                    ? new Date(
-                                          field.plantSowDate,
-                                      ).toLocaleDateString('hr-HR')
-                                    : 'Nije posijano'}
-                            </Typography>
-                            {field.plantSowDate && (
-                                <>
-                                    <span>-</span>
-                                    <Typography noWrap>
-                                        {field.plantGrowthDate
-                                            ? new Date(
-                                                  field.plantGrowthDate,
-                                              ).toLocaleDateString('hr-HR')
-                                            : field.stoppedDate
-                                              ? new Date(
-                                                    field.stoppedDate,
-                                                ).toLocaleDateString('hr-HR')
-                                              : 'U tijeku...'}
-                                    </Typography>
-                                    <Typography>
-                                        ({germinatingDays}{' '}
-                                        {germinatingDaysDayPlural})
-                                    </Typography>
-                                </>
-                            )}
-                        </div>
-                    </Stack>
-                    <Stack>
-                        <Typography level="body2" secondary>
-                            Rast (
-                            {
-                                plantSort.information.plant.attributes
-                                    ?.growthWindowMin
-                            }
-                            -
-                            {
-                                plantSort.information.plant.attributes
-                                    ?.growthWindowMax
-                            }{' '}
-                            dana)
-                        </Typography>
-                        <div className="grid gap-x-2 items-center grid-cols-[auto_auto_auto] md:grid-cols-[repeat(4,auto)]">
-                            <Typography>
-                                {field.plantGrowthDate
-                                    ? new Date(
-                                          field.plantGrowthDate,
-                                      ).toLocaleDateString('hr-HR')
-                                    : 'Nije u fazi rasta'}
-                            </Typography>
-                            {field.plantGrowthDate && (
-                                <>
-                                    <span>-</span>
-                                    <Typography noWrap>
-                                        {field.plantReadyDate
-                                            ? new Date(
-                                                  field.plantReadyDate,
-                                              ).toLocaleDateString('hr-HR')
-                                            : field.stoppedDate
-                                              ? new Date(
-                                                    field.stoppedDate,
-                                                ).toLocaleDateString('hr-HR')
-                                              : 'U tijeku...'}
-                                    </Typography>
-                                    <Typography>
-                                        ({growingDays} {growingDaysDayPlural})
-                                    </Typography>
-                                </>
-                            )}
-                        </div>
-                    </Stack>
-                    <Stack>
-                        <Typography level="body2" secondary>
-                            Berba (
-                            {
-                                plantSort.information.plant.attributes
-                                    ?.harvestWindowMin
-                            }
-                            -
-                            {
-                                plantSort.information.plant.attributes
-                                    ?.harvestWindowMax
-                            }{' '}
-                            dana)
-                        </Typography>
-                        <Row spacing={0.5}>
-                            <Typography>
-                                {field.plantReadyDate
-                                    ? new Date(
-                                          field.plantReadyDate,
-                                      ).toLocaleDateString('hr-HR')
-                                    : 'Nije u fazi berbe'}
-                            </Typography>
-                            {field.plantReadyDate && (
-                                <Typography>
-                                    ({readyDays} {readyDaysDayPlural})
-                                </Typography>
-                            )}
-                        </Row>
-                    </Stack>
+                    <PlantStageSection
+                        label="Klijanje"
+                        legendColorClass="bg-yellow-500"
+                        legendBorderColorClass="border-yellow-500"
+                        legendPulse={
+                            Boolean(field.plantSowDate) &&
+                            !field.plantGrowthDate
+                        }
+                        legendFilled={Boolean(field.plantGrowthDate)}
+                        windowMin={plantAttributes?.germinationWindowMin}
+                        windowMax={plantAttributes?.germinationWindowMax}
+                        startDate={
+                            field.plantSowDate
+                                ? new Date(field.plantSowDate)
+                                : null
+                        }
+                        endDate={
+                            field.plantGrowthDate
+                                ? new Date(field.plantGrowthDate)
+                                : field.stoppedDate
+                                  ? new Date(field.stoppedDate)
+                                  : null
+                        }
+                        daysCount={germinatingDays}
+                        dayPlural={germinatingDaysDayPlural}
+                        fallbackText="Nije posijano"
+                    />
+                    <PlantStageSection
+                        label="Rast"
+                        legendColorClass="bg-green-500"
+                        legendBorderColorClass="border-green-500"
+                        legendPulse={
+                            Boolean(field.plantGrowthDate) &&
+                            !field.plantReadyDate
+                        }
+                        legendFilled={Boolean(field.plantReadyDate)}
+                        windowMin={plantAttributes?.growthWindowMin}
+                        windowMax={plantAttributes?.growthWindowMax}
+                        startDate={
+                            field.plantGrowthDate
+                                ? new Date(field.plantGrowthDate)
+                                : null
+                        }
+                        endDate={
+                            field.plantReadyDate
+                                ? new Date(field.plantReadyDate)
+                                : field.stoppedDate
+                                  ? new Date(field.stoppedDate)
+                                  : null
+                        }
+                        daysCount={growingDays}
+                        dayPlural={growingDaysDayPlural}
+                        fallbackText="Nije u fazi rasta"
+                    />
+                    <PlantStageSection
+                        label="Berba"
+                        legendColorClass="bg-blue-500"
+                        legendBorderColorClass="border-blue-500"
+                        legendPulse={
+                            Boolean(field.plantReadyDate) &&
+                            harvestValue > 0 &&
+                            harvestValue < 100
+                        }
+                        legendFilled={Boolean(
+                            field.plantStatus === 'harvested' ||
+                                harvestValue >= 100,
+                        )}
+                        windowMin={plantAttributes?.harvestWindowMin}
+                        windowMax={plantAttributes?.harvestWindowMax}
+                        startDate={
+                            field.plantReadyDate
+                                ? new Date(field.plantReadyDate)
+                                : null
+                        }
+                        // In 'single' mode, startDate represents the known date to display
+                        daysCount={readyDays}
+                        dayPlural={readyDaysDayPlural}
+                        fallbackText="Nije u fazi berbe"
+                        variant="single"
+                    />
                 </Stack>
             </Row>
+
+            <RecommendationsCard
+                onShowOperations={onShowOperations}
+                gardenId={garden.id}
+                raisedBedId={raisedBedId}
+                positionIndex={positionIndex}
+                plantStatus={field.plantStatus as PlantFieldStatus}
+                plantSortId={field.plantSortId}
+            />
+
             {field.toBeRemoved && (
                 <Row>
                     <Button

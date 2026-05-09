@@ -1,4 +1,5 @@
 import { pbkdf2Sync, randomUUID } from 'node:crypto';
+import { notifyNewUserRegistered } from '@gredice/notifications';
 import {
     blockLogin,
     changePassword,
@@ -6,6 +7,7 @@ import {
     createOrUpdateUserWithOauth,
     createUserPasswordLogin,
     createUserWithPassword,
+    doUseRefreshToken,
     getLastUserLogin,
     getUser,
     getUserWithLogins,
@@ -13,7 +15,12 @@ import {
     loginSuccessful,
     updateLoginData,
 } from '@gredice/storage';
-import { Hono } from 'hono';
+import { type Context, Hono } from 'hono';
+import {
+    deleteCookie as deleteContextCookie,
+    getCookie,
+    setCookie as setContextCookie,
+} from 'hono/cookie';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import {
@@ -31,11 +38,332 @@ import {
     fetchUserInfo,
     generateAuthUrl,
 } from '../../../lib/auth/oauth';
+import {
+    clearRefreshCookie,
+    setRefreshCookie,
+} from '../../../lib/auth/refreshCookies';
+import {
+    accessTokenExpiry,
+    refreshTokenCookieName,
+    sessionCookieName,
+} from '../../../lib/auth/sessionConfig';
+import {
+    issueSessionTokens,
+    revokeSessionToken,
+} from '../../../lib/auth/sessionTokens';
 import { sendWelcome } from '../../../lib/email/transactional';
+import { getPostHogClient } from '../../../lib/posthog-server';
 
 const failedAttemptClearTime = 1000 * 60; // 1 minute
 const failedAttemptsBlock = 5;
 const failedAttemptsBlockTime = 1000 * 60 * 60; // 1 hour
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function isStringArray(value: unknown): value is string[] {
+    return (
+        Array.isArray(value) &&
+        value.every((item) => typeof item === 'string')
+    );
+}
+
+type CurrentClaims = {
+    id: string;
+    userName: string;
+    role: string;
+    accountIds: string[];
+};
+
+function currentClaimsFromPayload(payload: unknown): CurrentClaims | null {
+    if (!isRecord(payload) || typeof payload.sub !== 'string') {
+        return null;
+    }
+
+    const claims = payload.gredice;
+    if (!isRecord(claims)) {
+        return null;
+    }
+
+    const accountIds = claims.accountIds;
+    if (
+        typeof claims.userName !== 'string' ||
+        typeof claims.role !== 'string' ||
+        !isStringArray(accountIds)
+    ) {
+        return null;
+    }
+
+    return {
+        id: payload.sub,
+        userName: claims.userName,
+        role: claims.role,
+        accountIds,
+    };
+}
+
+function currentClaimsFromUser(
+    user: NonNullable<Awaited<ReturnType<typeof getUser>>>,
+): CurrentClaims {
+    return {
+        id: user.id,
+        userName: user.userName,
+        role: user.role,
+        accountIds: user.accounts.map((account) => account.accountId),
+    };
+}
+
+async function currentClaimsFromSessionCookie(context: Context) {
+    const sessionCookie = getCookie(context, sessionCookieName);
+    if (!sessionCookie) {
+        return null;
+    }
+
+    try {
+        const { result, error } = await verifyJwt(sessionCookie);
+        if (error) {
+            return null;
+        }
+
+        return currentClaimsFromPayload(result?.payload);
+    } catch {
+        return null;
+    }
+}
+
+async function currentClaimsFromRefreshToken(context: Context) {
+    const refreshToken = getCookie(context, refreshTokenCookieName);
+    if (!refreshToken) {
+        return null;
+    }
+
+    const refreshed = await doUseRefreshToken(refreshToken);
+    if (!refreshed) {
+        clearRefreshCookie(context);
+        return null;
+    }
+
+    const user = await getUser(refreshed.userId);
+    if (!user) {
+        clearRefreshCookie(context);
+        return null;
+    }
+
+    const accessToken = await createJwt(user.id, accessTokenExpiry);
+    await Promise.all([
+        setCookie(context, accessToken),
+        setRefreshCookie(context, refreshToken),
+    ]);
+
+    return currentClaimsFromUser(user);
+}
+
+async function getCurrentClaims(context: Context) {
+    return (
+        (await currentClaimsFromSessionCookie(context)) ??
+        (await currentClaimsFromRefreshToken(context))
+    );
+}
+
+/**
+ * Reads the session cookie and, if valid, creates a short-lived JWT
+ * to use as the OAuth state so the callback can link the provider
+ * to the current user.
+ */
+async function createOAuthStateFromSession(context: Context): Promise<string> {
+    const sessionCookie = getCookie(context, sessionCookieName);
+    if (sessionCookie) {
+        try {
+            const { result, error } = await verifyJwt(sessionCookie);
+            if (!error && result?.payload.sub) {
+                return createJwt(result.payload.sub, '10m');
+            }
+        } catch {
+            // Not authenticated – fall through to random UUID
+        }
+    }
+    return randomUUID().toString().replace('-', '');
+}
+
+const defaultWebAppOrigin = 'https://vrt.gredice.com';
+const oauthRedirectCookieName = 'oauth_redirect';
+const oauthTimeZoneCookieName = 'oauth_timezone';
+const allowedLocalRedirectHosts = new Set([
+    'localhost',
+    '127.0.0.1',
+    'app.gredice.test',
+    'vrt.gredice.test',
+    'farma.gredice.test',
+]);
+
+function sanitizeRedirectUrl(redirectUrl?: string) {
+    if (!redirectUrl) {
+        return undefined;
+    }
+
+    try {
+        const parsed = new URL(redirectUrl);
+        const hostname = parsed.hostname.toLowerCase();
+        const isSecureProtocol =
+            parsed.protocol === 'https:' ||
+            (parsed.protocol === 'http:' &&
+                allowedLocalRedirectHosts.has(hostname));
+        if (!isSecureProtocol) {
+            return undefined;
+        }
+
+        if (
+            hostname === 'gredice.com' ||
+            hostname.endsWith('.gredice.com') ||
+            allowedLocalRedirectHosts.has(hostname)
+        ) {
+            return parsed.toString();
+        }
+    } catch {
+        return undefined;
+    }
+
+    return undefined;
+}
+
+function storeRedirectCookie(context: Context, redirectUrl?: string) {
+    const sanitized = sanitizeRedirectUrl(redirectUrl);
+    if (!sanitized) {
+        deleteContextCookie(context, oauthRedirectCookieName);
+        return;
+    }
+
+    setContextCookie(context, oauthRedirectCookieName, sanitized, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Lax',
+        maxAge: 600,
+    });
+}
+
+function storeTimeZoneCookie(context: Context, timeZone?: string) {
+    if (!timeZone) {
+        deleteContextCookie(context, oauthTimeZoneCookieName);
+        return;
+    }
+    // Basic validation: timezone should be a reasonable IANA timezone string
+    if (!/^[A-Za-z_]+\/[A-Za-z_]+/.test(timeZone)) {
+        deleteContextCookie(context, oauthTimeZoneCookieName);
+        return;
+    }
+    setContextCookie(context, oauthTimeZoneCookieName, timeZone, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Lax',
+        maxAge: 600,
+    });
+}
+
+function getTimeZoneCookie(context: Context): string | undefined {
+    const timeZone = getCookie(context, oauthTimeZoneCookieName);
+    deleteContextCookie(context, oauthTimeZoneCookieName);
+    return timeZone;
+}
+
+function resolveRedirectUrl(context: Context, fallbackPath: string) {
+    const fallbackUrl = new URL(fallbackPath, defaultWebAppOrigin);
+    const stored = getCookie(context, oauthRedirectCookieName);
+    if (!stored) {
+        return fallbackUrl;
+    }
+
+    deleteContextCookie(context, oauthRedirectCookieName);
+    const sanitized = sanitizeRedirectUrl(stored);
+    if (!sanitized) {
+        return fallbackUrl;
+    }
+
+    try {
+        return new URL(sanitized);
+    } catch {
+        return fallbackUrl;
+    }
+}
+
+type AuthProvider = 'password' | 'google' | 'facebook';
+
+type TrackAuthEventInput = {
+    distinctId: string;
+    event: string;
+    email?: string;
+    provider?: AuthProvider;
+    properties?: Record<string, unknown>;
+    setProperties?: Record<string, unknown>;
+    setOnceProperties?: Record<string, unknown>;
+};
+
+function normalizeEmail(email?: string) {
+    return email?.trim().toLowerCase();
+}
+
+function getEmailDomain(email?: string) {
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail) {
+        return undefined;
+    }
+
+    const atIndex = normalizedEmail.lastIndexOf('@');
+    if (atIndex === -1 || atIndex === normalizedEmail.length - 1) {
+        return undefined;
+    }
+
+    return normalizedEmail.slice(atIndex + 1);
+}
+
+function compactProperties(properties: Record<string, unknown>) {
+    const compacted: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(properties)) {
+        if (value !== undefined) {
+            compacted[key] = value;
+        }
+    }
+    return compacted;
+}
+
+async function trackAuthEvent({
+    distinctId,
+    event,
+    email,
+    provider,
+    properties,
+    setProperties,
+    setOnceProperties,
+}: TrackAuthEventInput) {
+    const normalizedEmail = normalizeEmail(email);
+    const eventProperties = compactProperties({
+        email_domain: getEmailDomain(normalizedEmail),
+        provider,
+        ...properties,
+    });
+    const personProperties = compactProperties({
+        auth_provider: provider,
+        email: normalizedEmail,
+        ...setProperties,
+    });
+    const personPropertiesOnce = compactProperties({
+        ...setOnceProperties,
+    });
+
+    await (await getPostHogClient()).capture({
+        distinctId,
+        event,
+        properties: compactProperties({
+            ...eventProperties,
+            ...(Object.keys(personProperties).length > 0
+                ? { $set: personProperties }
+                : {}),
+            ...(Object.keys(personPropertiesOnce).length > 0
+                ? { $set_once: personPropertiesOnce }
+                : {}),
+        }),
+    });
+}
 
 const app = new Hono()
     .post(
@@ -170,14 +498,25 @@ const app = new Hono()
                 );
             }
 
-            const token = await createJwt(user.id);
+            const { accessToken, refreshToken } = await issueSessionTokens(
+                user.id,
+            );
             await Promise.all([
-                setCookie(context, token),
+                setCookie(context, accessToken),
                 loginSuccessful(login.id),
+                setRefreshCookie(context, refreshToken),
             ]);
 
+            await trackAuthEvent({
+                distinctId: user.id,
+                email: user.userName,
+                event: 'user_logged_in',
+                provider: 'password',
+            });
+
             return context.json({
-                token,
+                token: accessToken,
+                refreshToken,
             });
         },
     )
@@ -189,20 +528,24 @@ const app = new Hono()
         zValidator(
             'query',
             z.object({
-                state: z.string().optional(),
+                redirect: z.string().optional(),
+                timeZone: z.string().optional(),
             }),
         ),
         async (context) => {
-            const state =
-                context.req.valid('query')?.state ??
-                randomUUID().toString().replace('-', '');
+            const query = context.req.valid('query');
+            const state = await createOAuthStateFromSession(context);
+            storeRedirectCookie(context, query?.redirect);
+            storeTimeZoneCookie(context, query?.timeZone);
             const authUrl = generateAuthUrl('google', state);
 
             // Store state in cookie for verification
-            context.header(
-                'Set-Cookie',
-                `oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
-            );
+            setContextCookie(context, 'oauth_state', state, {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'Lax',
+                maxAge: 600,
+            });
 
             return context.redirect(authUrl);
         },
@@ -248,30 +591,79 @@ const app = new Hono()
                     'google',
                     tokenData.access_token,
                 );
-                const { userId, loginId } = await createOrUpdateUserWithOauth(
-                    {
-                        name: userInfo.name,
-                        email: userInfo.email,
-                        providerUserId: userInfo.id,
-                        provider: 'google',
-                    },
-                    currentUserId,
-                );
+                const timeZone = getTimeZoneCookie(context);
+                const { userId, loginId, isNewUser } =
+                    await createOrUpdateUserWithOauth(
+                        {
+                            name: userInfo.name,
+                            email: userInfo.email,
+                            providerUserId: userInfo.id,
+                            provider: 'google',
+                        },
+                        currentUserId,
+                        timeZone,
+                    );
 
-                const token = await createJwt(userId);
+                if (isNewUser) {
+                    await notifyNewUserRegistered(userId);
+                }
+
+                const { accessToken, refreshToken } =
+                    await issueSessionTokens(userId);
                 await Promise.all([
-                    setCookie(context, token),
+                    setCookie(context, accessToken),
                     loginSuccessful(loginId),
+                    setRefreshCookie(context, refreshToken),
                 ]);
 
-                return context.redirect(
-                    `https://vrt.gredice.com/prijava/google-prijava/povratak?session=${token}`,
+                await trackAuthEvent({
+                    distinctId: userId,
+                    email: userInfo.email,
+                    event: isNewUser ? 'user_signed_up' : 'user_logged_in',
+                    provider: 'google',
+                    setProperties: {
+                        name: userInfo.name,
+                    },
+                    setOnceProperties: isNewUser
+                        ? {
+                              signed_up_at: new Date().toISOString(),
+                              signup_provider: 'google',
+                          }
+                        : undefined,
+                });
+
+                if (currentUserId && !isNewUser) {
+                    await trackAuthEvent({
+                        distinctId: userId,
+                        email: userInfo.email,
+                        event: 'user_auth_method_added',
+                        provider: 'google',
+                        properties: {
+                            auth_method: 'google',
+                        },
+                        setProperties: {
+                            name: userInfo.name,
+                        },
+                    });
+                }
+
+                const redirectUrl = resolveRedirectUrl(
+                    context,
+                    '/prijava/google-prijava/povratak',
                 );
+                // Pass tokens to frontend via URL fragment (hash) so they don't appear in logs/referrer
+                redirectUrl.hash = `token=${encodeURIComponent(accessToken)}&refreshToken=${encodeURIComponent(refreshToken)}`;
+
+                return context.redirect(redirectUrl.toString());
             } catch (error) {
                 console.error('Google OAuth error:', error);
-                return context.redirect(
-                    'https://vrt.gredice.com/prijava/google-prijava/povratak?error=oauth_error',
+                const redirectUrl = resolveRedirectUrl(
+                    context,
+                    '/prijava/google-prijava/povratak',
                 );
+                redirectUrl.searchParams.set('error', 'oauth_error');
+
+                return context.redirect(redirectUrl.toString());
             }
         },
     )
@@ -283,20 +675,24 @@ const app = new Hono()
         zValidator(
             'query',
             z.object({
-                state: z.string().optional(),
+                redirect: z.string().optional(),
+                timeZone: z.string().optional(),
             }),
         ),
         async (context) => {
-            const state =
-                context.req.valid('query')?.state ??
-                randomUUID().toString().replace('-', '');
+            const query = context.req.valid('query');
+            const state = await createOAuthStateFromSession(context);
             const authUrl = generateAuthUrl('facebook', state);
 
             // Store state in cookie for verification
-            context.header(
-                'Set-Cookie',
-                `oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
-            );
+            storeRedirectCookie(context, query?.redirect);
+            storeTimeZoneCookie(context, query?.timeZone);
+            setContextCookie(context, 'oauth_state', state, {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'Lax',
+                maxAge: 600,
+            });
 
             return context.redirect(authUrl);
         },
@@ -342,79 +738,117 @@ const app = new Hono()
                     'facebook',
                     tokenData.access_token,
                 );
-                const { userId, loginId } = await createOrUpdateUserWithOauth(
-                    {
-                        name: userInfo.name,
-                        email: userInfo.email,
-                        providerUserId: userInfo.id,
-                        provider: 'facebook',
-                    },
-                    currentUserId,
-                );
+                const timeZone = getTimeZoneCookie(context);
+                const { userId, loginId, isNewUser } =
+                    await createOrUpdateUserWithOauth(
+                        {
+                            name: userInfo.name,
+                            email: userInfo.email,
+                            providerUserId: userInfo.id,
+                            provider: 'facebook',
+                        },
+                        currentUserId,
+                        timeZone,
+                    );
 
-                const token = await createJwt(userId);
+                if (isNewUser) {
+                    await notifyNewUserRegistered(userId);
+                }
+
+                const { accessToken, refreshToken } =
+                    await issueSessionTokens(userId);
                 await Promise.all([
-                    setCookie(context, token),
+                    setCookie(context, accessToken),
                     loginSuccessful(loginId),
+                    setRefreshCookie(context, refreshToken),
                 ]);
 
-                return context.redirect(
-                    `https://vrt.gredice.com/prijava/facebook-prijava/povratak?session=${token}`,
+                await trackAuthEvent({
+                    distinctId: userId,
+                    email: userInfo.email,
+                    event: isNewUser ? 'user_signed_up' : 'user_logged_in',
+                    provider: 'facebook',
+                    setProperties: {
+                        name: userInfo.name,
+                    },
+                    setOnceProperties: isNewUser
+                        ? {
+                              signed_up_at: new Date().toISOString(),
+                              signup_provider: 'facebook',
+                          }
+                        : undefined,
+                });
+
+                if (currentUserId && !isNewUser) {
+                    await trackAuthEvent({
+                        distinctId: userId,
+                        email: userInfo.email,
+                        event: 'user_auth_method_added',
+                        provider: 'facebook',
+                        properties: {
+                            auth_method: 'facebook',
+                        },
+                        setProperties: {
+                            name: userInfo.name,
+                        },
+                    });
+                }
+
+                const redirectUrl = resolveRedirectUrl(
+                    context,
+                    '/prijava/facebook-prijava/povratak',
                 );
+                // Pass tokens to frontend via URL fragment (hash) so they don't appear in logs/referrer
+                redirectUrl.hash = `token=${encodeURIComponent(accessToken)}&refreshToken=${encodeURIComponent(refreshToken)}`;
+
+                return context.redirect(redirectUrl.toString());
             } catch (error) {
                 console.error('Facebook OAuth error:', error);
-                return context.redirect(
-                    'https://vrt.gredice.com/prijava/facebook-prijava/povratak?error=oauth_error',
+                const redirectUrl = resolveRedirectUrl(
+                    context,
+                    '/prijava/facebook-prijava/povratak',
                 );
+                redirectUrl.searchParams.set('error', 'oauth_error');
+
+                return context.redirect(redirectUrl.toString());
             }
+        },
+    )
+    .get(
+        '/current-claims',
+        describeRoute({
+            description:
+                'Get basic current user claims from a verified or refreshed session token.',
+        }),
+        async (context) => {
+            const claims = await getCurrentClaims(context);
+            if (!claims) {
+                return context.json({ error: 'Unauthorized' }, { status: 401 });
+            }
+
+            return context.json(claims);
         },
     )
     .get(
         '/last-login',
         describeRoute({
-            description: 'Get last login for provided token',
+            description: 'Get last login for the current user',
         }),
-        zValidator(
-            'query',
-            z.object({
-                token: z.string(),
-            }),
-        ),
         async (context) => {
-            const { token } = context.req.valid('query');
-
-            const { result } = await verifyJwt(token);
-            let userId = result?.payload.sub as string | undefined;
-            if (!userId) {
-                try {
-                    const payload = JSON.parse(
-                        Buffer.from(
-                            token.split('.')[1],
-                            'base64url',
-                        ).toString(),
-                    );
-                    userId =
-                        typeof payload.sub === 'string'
-                            ? payload.sub
-                            : undefined;
-                } catch {
-                    /* ignore */
-                }
-            }
-            if (!userId) {
-                return context.json(
-                    { error: 'Invalid token' },
-                    { status: 400 },
-                );
+            const refreshToken = getCookie(context, refreshTokenCookieName);
+            if (!refreshToken) {
+                return context.json({ provider: null });
             }
 
-            const login = await getLastUserLogin(userId);
-            if (!login) {
-                return context.json({ provider: null, lastLogin: null });
+            const refreshed = await doUseRefreshToken(refreshToken);
+            if (!refreshed) {
+                await clearRefreshCookie(context);
+                return context.json({ provider: null });
             }
 
+            const login = await getLastUserLogin(refreshed.userId);
             return context.json({
-                provider: login.loginType,
+                provider: login?.loginType ?? null,
             });
         },
     )
@@ -472,6 +906,7 @@ const app = new Hono()
                     login.loginId === emailOrUserId &&
                     login.loginType === 'password',
             );
+            const isAddingPasswordLogin = !userLogin;
             if (!userLogin) {
                 console.debug(
                     'User password login not found',
@@ -492,6 +927,26 @@ const app = new Hono()
                 await changePassword(userLogin.id, password);
             }
 
+            if (isAddingPasswordLogin) {
+                await trackAuthEvent({
+                    distinctId: userWithLogins.id,
+                    email: userWithLogins.userName,
+                    event: 'user_auth_method_added',
+                    provider: 'password',
+                    properties: {
+                        auth_method: 'password',
+                        source: 'change_password',
+                    },
+                });
+            }
+
+            await trackAuthEvent({
+                distinctId: userWithLogins.id,
+                email: userWithLogins.userName,
+                event: 'password_changed',
+                provider: 'password',
+            });
+
             return context.json({
                 message: 'Password changed successfully',
             });
@@ -503,7 +958,28 @@ const app = new Hono()
             description: 'Logout user by clearing the session cookie',
         }),
         async (context) => {
+            const sessionCookie = getCookie(context, sessionCookieName);
+            let userId: string | undefined;
+            if (sessionCookie) {
+                try {
+                    const { result } = await verifyJwt(sessionCookie);
+                    userId = result?.payload.sub ?? undefined;
+                } catch {
+                    // ignore
+                }
+            }
+            const refreshToken = getCookie(context, refreshTokenCookieName);
+            if (refreshToken) {
+                await revokeSessionToken(refreshToken);
+            }
             await clearCookie(context);
+            await clearRefreshCookie(context);
+            if (userId) {
+                await trackAuthEvent({
+                    distinctId: userId,
+                    event: 'user_logged_out',
+                });
+            }
             return context.json({
                 message: 'Logged out successfully',
             });
@@ -526,6 +1002,15 @@ const app = new Hono()
             const user = await getUserWithLogins(email);
             if (user) {
                 console.debug('User already exists', email);
+                await trackAuthEvent({
+                    distinctId: user.id,
+                    email: user.userName,
+                    event: 'user_signup_failed',
+                    provider: 'password',
+                    properties: {
+                        reason: 'already_exists',
+                    },
+                });
                 // TODO: Instead, do login flow (redirect to login url)
                 return context.json(
                     {
@@ -536,9 +1021,32 @@ const app = new Hono()
             }
 
             // Create user with password
-            await createUserWithPassword(email, password);
+            const userId = await createUserWithPassword(email, password);
+
+            await trackAuthEvent({
+                distinctId: userId,
+                email,
+                event: 'user_signed_up',
+                provider: 'password',
+                setOnceProperties: {
+                    signed_up_at: new Date().toISOString(),
+                    signup_provider: 'password',
+                },
+            });
+
+            await notifyNewUserRegistered(userId);
 
             await sendEmailVerification(email);
+
+            await trackAuthEvent({
+                distinctId: userId,
+                email,
+                event: 'user_verification_email_sent',
+                provider: 'password',
+                properties: {
+                    trigger: 'signup',
+                },
+            });
 
             return context.json(
                 {
@@ -575,6 +1083,13 @@ const app = new Hono()
             // Send email
             await sendChangePassword(email);
 
+            await trackAuthEvent({
+                distinctId: user.id,
+                email: user.userName,
+                event: 'password_reset_requested',
+                provider: 'password',
+            });
+
             return context.json({
                 message: 'Change password email sent successfully',
             });
@@ -606,6 +1121,16 @@ const app = new Hono()
 
             // Send email
             await sendEmailVerification(email);
+
+            await trackAuthEvent({
+                distinctId: user.id,
+                email: user.userName,
+                event: 'user_verification_email_sent',
+                provider: 'password',
+                properties: {
+                    trigger: 'manual',
+                },
+            });
 
             return context.json({
                 message: 'Verify email sent successfully',
@@ -676,13 +1201,17 @@ const app = new Hono()
                     throw new Error('User or user login not found');
                 }
 
-                const jwtToken = await createJwt(user.id);
+                const { accessToken, refreshToken } = await issueSessionTokens(
+                    user.id,
+                );
                 await Promise.all([
-                    setCookie(context, jwtToken),
+                    setCookie(context, accessToken),
                     loginSuccessful(userLogin.id),
+                    setRefreshCookie(context, refreshToken),
                 ]);
                 return context.json({
-                    token: jwtToken,
+                    token: accessToken,
+                    refreshToken,
                     ...(alreadyVerified ? { alreadyVerified: true } : {}),
                 });
             }
@@ -694,6 +1223,16 @@ const app = new Hono()
             await updateLoginData(userLogin.id, {
                 ...loginData,
                 isVerified: true,
+            });
+
+            await trackAuthEvent({
+                distinctId: user.id,
+                email: user.userName,
+                event: 'user_email_verified',
+                provider: 'password',
+                properties: {
+                    verification_method: 'email_link',
+                },
             });
 
             // Send welcome message

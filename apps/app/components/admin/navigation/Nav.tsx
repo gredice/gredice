@@ -16,44 +16,86 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { SelectEntityType } from '@gredice/storage';
-import { AuthProtectedSection } from '@signalco/auth-client/components';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import {
-    Add,
+    AI,
     Bank,
-    Book,
     Calendar,
-    Edit,
     Euro,
     Fence,
     File,
     Hammer,
     Home,
     Inbox,
+    Mail,
+    Map as MapIcon,
+    Megaphone,
+    Settings,
     ShoppingCart,
     SmileHappy,
+    Success,
     Tally3,
     Truck,
     User,
 } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { List, ListHeader } from '@signalco/ui-primitives/List';
-import { ListTreeItem } from '@signalco/ui-primitives/ListTreeItem';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import type { CSSProperties } from 'react';
 import { useContext, useState } from 'react';
 import { reorderEntityType } from '../../../app/(actions)/entityActions';
 import { KnownPages } from '../../../src/KnownPages';
+import { EntityTypeIcon } from '../directories/EntityTypeIcon';
+import { adminPages } from './adminPages';
 import { NavContext } from './NavContext';
+import { NavGroup } from './NavGroup';
 import { NavItem } from './NavItem';
+import { NavSection } from './NavSection';
 import { ProfileNavItem } from './ProfileNavItem';
+
+function isSelectedPath(pathname: string, href: string, strictMatch = false) {
+    if (strictMatch) {
+        return pathname === href;
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function includesSelectedPath(pathname: string, hrefs: string[]) {
+    return hrefs.some((href) => isSelectedPath(pathname, href));
+}
+
+function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
+    if (quickAction.icon) {
+        return <EntityTypeIcon icon={quickAction.icon} className="size-5" />;
+    }
+
+    switch (quickAction.href) {
+        case KnownPages.Schedule:
+            return <Calendar className="size-5" />;
+        case KnownPages.RaisedBeds:
+            return <RaisedBedIcon className="size-5" physicalId={null} />;
+        case KnownPages.Operations:
+            return <Hammer className="size-5" />;
+        case KnownPages.DeliveryRequests:
+            return <Truck className="size-5" />;
+        case KnownPages.Transactions:
+            return <Euro className="size-5" />;
+        case KnownPages.Sunflowers:
+            return <Success className="size-5" />;
+        default:
+            return <File className="size-5" />;
+    }
+}
 
 function SortableNavItem({
     entityType,
     onClick,
+    compact,
+    nested,
 }: {
     entityType: SelectEntityType;
     onClick?: () => void;
+    compact?: boolean;
+    nested?: boolean;
 }) {
     const {
         attributes,
@@ -72,20 +114,30 @@ function SortableNavItem({
             <NavItem
                 href={KnownPages.DirectoryEntityType(entityType.name)}
                 label={entityType.label}
-                icon={<File className="size-5" />}
+                icon={
+                    <EntityTypeIcon icon={entityType.icon} className="size-5" />
+                }
                 onClick={onClick}
                 isDragging={isDragging}
+                compact={compact}
+                nested={nested}
             />
         </div>
     );
 }
 
 function EntityTypeList({
+    id,
     items: initialItems,
     onItemClick,
+    compact,
+    nested = true,
 }: {
+    id: string;
     items: SelectEntityType[];
     onItemClick?: () => void;
+    compact?: boolean;
+    nested?: boolean;
 }) {
     const [items, setItems] = useState(initialItems);
     const sensors = useSensors(useSensor(PointerSensor));
@@ -104,6 +156,7 @@ function EntityTypeList({
 
     return (
         <DndContext
+            id={id}
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
@@ -112,239 +165,504 @@ function EntityTypeList({
                 items={items.map((i) => i.id.toString())}
                 strategy={verticalListSortingStrategy}
             >
-                <List>
+                <div className="space-y-1">
                     {items.map((entityType) => (
                         <SortableNavItem
                             key={entityType.id}
                             entityType={entityType}
                             onClick={onItemClick}
+                            compact={compact}
+                            nested={nested}
                         />
                     ))}
-                </List>
+                </div>
             </SortableContext>
         </DndContext>
     );
 }
 
-export function Nav({ onItemClick }: { onItemClick?: () => void } = {}) {
-    const categorizedTypes = useContext(NavContext)?.categorizedTypes || [];
-    const uncategorizedTypes = useContext(NavContext)?.uncategorizedTypes || [];
-    const shadowTypes = useContext(NavContext)?.shadowTypes || [];
+export function Nav({
+    idPrefix = 'admin-nav',
+    onItemClick,
+    compact = false,
+}: {
+    idPrefix?: string;
+    onItemClick?: () => void;
+    compact?: boolean;
+} = {}) {
+    const pathname = usePathname();
+    const navContext = useContext(NavContext);
+    const categorizedTypes = navContext?.categorizedTypes || [];
+    const uncategorizedTypes = navContext?.uncategorizedTypes || [];
+    const shadowTypes = navContext?.shadowTypes || [];
+    const pendingAchievementsCount = navContext?.pendingAchievementsCount ?? 0;
+    const quickActions = navContext?.quickActions || [];
+    const hasDirectoryRecords =
+        categorizedTypes.length > 0 ||
+        shadowTypes.length > 0 ||
+        uncategorizedTypes.length > 0;
+    const navClassName = compact ? 'space-y-1' : 'space-y-3';
+    const sowingStatisticsActive = isSelectedPath(
+        pathname,
+        adminPages.SowingStatistics.href,
+    );
 
     return (
-        <Stack spacing={2}>
-            <List>
-                <ProfileNavItem onItemClick={onItemClick} />
+        <div className={navClassName}>
+            <div className="space-y-1">
+                <ProfileNavItem onItemClick={onItemClick} compact={compact} />
                 <NavItem
-                    href={KnownPages.Dashboard}
-                    label="Početna"
+                    href={adminPages.Dashboard.href}
+                    label={adminPages.Dashboard.label}
                     icon={<Home className="size-5" />}
                     strictMatch
                     onClick={onItemClick}
+                    compact={compact}
                 />
-            </List>
-            <Stack spacing={1}>
-                <ListHeader
-                    header="Zapisi"
-                    actions={[
-                        <Link
-                            key="category-create"
-                            href={KnownPages.DirectoryCategoryCreate}
-                        >
-                            <IconButton
-                                title="Dodaj novu kategoriju"
-                                variant="plain"
-                            >
-                                <div className="size-4 shrink-0 relative">
-                                    <Book className="size-4 shrink-0 opacity-60" />
-                                    <Add className="absolute inset-0 size-3 left-0.5" />
-                                </div>
-                            </IconButton>
-                        </Link>,
-                        <Link
-                            key="entity-type-create"
-                            href={KnownPages.DirectoryEntityTypeCreate}
-                        >
-                            <IconButton
-                                title="Dodaj novi tip zapisa"
-                                variant="plain"
-                            >
-                                <Add className="size-4 shrink-0" />
-                            </IconButton>
-                        </Link>,
-                    ]}
-                />
-                <AuthProtectedSection>
-                    {/* Shadow entity types */}
-                    {shadowTypes.length > 0 && (
-                        <ListTreeItem label="Ostalo">
-                            {shadowTypes.map((entityType) => (
-                                <NavItem
-                                    key={entityType.id}
-                                    href={KnownPages.DirectoryEntityType(
-                                        entityType.name,
-                                    )}
-                                    label={entityType.label}
-                                    icon={<File className="size-5" />}
-                                    onClick={onItemClick}
-                                />
-                            ))}
-                        </ListTreeItem>
-                    )}
-
-                    {/* Entity types without category come first */}
-                    {uncategorizedTypes.length > 0 && (
-                        <EntityTypeList
-                            items={uncategorizedTypes}
-                            onItemClick={onItemClick}
-                        />
-                    )}
-
-                    {/* Categories with their entity types */}
-                    {categorizedTypes.map((category) => (
-                        <Stack key={category.id} spacing={1}>
-                            <ListHeader
-                                header={category.label}
-                                actions={[
-                                    <Link
-                                        key={`edit-${category.id}`}
-                                        href={KnownPages.DirectoryCategoryEdit(
-                                            category.id,
-                                        )}
-                                    >
-                                        <IconButton
-                                            title="Uredi kategoriju"
-                                            variant="plain"
-                                        >
-                                            <Edit className="size-4" />
-                                        </IconButton>
-                                    </Link>,
-                                ]}
-                            />
-                            <EntityTypeList
-                                items={category.entityTypes}
-                                onItemClick={onItemClick}
-                            />
-                        </Stack>
-                    ))}
-                </AuthProtectedSection>
-            </Stack>
-            <Stack spacing={1}>
-                <ListHeader header="Administracija" />
-                <List>
+                {quickActions.map((quickAction) => (
                     <NavItem
-                        href={KnownPages.Accounts}
-                        label="Korisnički računi"
+                        key={quickAction.id}
+                        href={quickAction.href}
+                        label={quickAction.label}
+                        icon={quickActionIcon(quickAction)}
+                        onClick={onItemClick}
+                        compact={compact}
+                    />
+                ))}
+            </div>
+            <NavSection label="Stranice" compact={compact}>
+                <NavItem
+                    href={adminPages.CmsPages.href}
+                    label={adminPages.CmsPages.label}
+                    icon={<File className="size-5" />}
+                    onClick={onItemClick}
+                    compact={compact}
+                />
+            </NavSection>
+            <NavSection label="Zapisi" compact={compact}>
+                {hasDirectoryRecords && (
+                    <>
+                        {/* Categories with their entity types */}
+                        {categorizedTypes.map((category) => (
+                            <NavGroup
+                                key={category.id}
+                                label={category.label}
+                                icon={
+                                    <EntityTypeIcon
+                                        icon={category.icon}
+                                        className="size-5"
+                                    />
+                                }
+                                forceOpen={category.entityTypes.some(
+                                    (entityType) =>
+                                        isSelectedPath(
+                                            pathname,
+                                            KnownPages.DirectoryEntityType(
+                                                entityType.name,
+                                            ),
+                                        ),
+                                )}
+                                compact={compact}
+                            >
+                                <EntityTypeList
+                                    id={`${idPrefix}-category-${category.id}`}
+                                    items={category.entityTypes}
+                                    onItemClick={onItemClick}
+                                    compact={compact}
+                                />
+                            </NavGroup>
+                        ))}
+
+                        {uncategorizedTypes.length > 0 && (
+                            <NavGroup
+                                label="Nekategorizirano"
+                                icon={<File className="size-5" />}
+                                forceOpen={uncategorizedTypes.some(
+                                    (entityType) =>
+                                        isSelectedPath(
+                                            pathname,
+                                            KnownPages.DirectoryEntityType(
+                                                entityType.name,
+                                            ),
+                                        ),
+                                )}
+                                compact={compact}
+                            >
+                                <EntityTypeList
+                                    id={`${idPrefix}-uncategorized`}
+                                    items={uncategorizedTypes}
+                                    onItemClick={onItemClick}
+                                    compact={compact}
+                                />
+                            </NavGroup>
+                        )}
+
+                        {shadowTypes.length > 0 && (
+                            <NavGroup
+                                label="Ostalo"
+                                icon={<File className="size-5" />}
+                                forceOpen={shadowTypes.some((entityType) =>
+                                    isSelectedPath(
+                                        pathname,
+                                        KnownPages.DirectoryEntityType(
+                                            entityType.name,
+                                        ),
+                                    ),
+                                )}
+                                compact={compact}
+                            >
+                                {shadowTypes.map((entityType) => (
+                                    <NavItem
+                                        key={entityType.id}
+                                        href={KnownPages.DirectoryEntityType(
+                                            entityType.name,
+                                        )}
+                                        label={entityType.label}
+                                        icon={
+                                            <EntityTypeIcon
+                                                icon={entityType.icon}
+                                                className="size-5"
+                                            />
+                                        }
+                                        onClick={onItemClick}
+                                        compact={compact}
+                                        nested
+                                    />
+                                ))}
+                            </NavGroup>
+                        )}
+                    </>
+                )}
+            </NavSection>
+            <NavSection label="Administracija" compact={compact}>
+                <NavGroup
+                    label="Korisnici"
+                    icon={<User className="size-5" />}
+                    forceOpen={includesSelectedPath(pathname, [
+                        adminPages.Accounts.href,
+                        adminPages.Users.href,
+                        adminPages.Achievements.href,
+                    ])}
+                    compact={compact}
+                >
+                    <NavItem
+                        href={adminPages.Accounts.href}
+                        label={adminPages.Accounts.label}
                         icon={<Bank className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
+                        nested
                     />
                     <NavItem
-                        href={KnownPages.ShoppingCarts}
-                        label="Košarice"
-                        icon={<ShoppingCart className="size-5" />}
-                        onClick={onItemClick}
-                    />
-                    <NavItem
-                        href={KnownPages.Invoices}
-                        label="Ponude"
-                        icon={<File className="size-5" />}
-                        onClick={onItemClick}
-                    />
-                    <NavItem
-                        href={KnownPages.Transactions}
-                        label="Transakcije"
-                        icon={<Euro className="size-5" />}
-                        onClick={onItemClick}
-                    />
-                    <NavItem
-                        href={KnownPages.Receipts}
-                        label="Fiskalni računi"
-                        icon={<File className="size-5" />}
-                        onClick={onItemClick}
-                    />
-                    <NavItem
-                        href={KnownPages.Users}
-                        label="Korisnici"
+                        href={adminPages.Users.href}
+                        label={adminPages.Users.label}
                         icon={<User className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
+                        nested
                     />
                     <NavItem
-                        href={KnownPages.Gardens}
-                        label="Vrtovi"
+                        href={adminPages.Achievements.href}
+                        label={adminPages.Achievements.label}
+                        icon={<Success className="size-5" />}
+                        onClick={onItemClick}
+                        badge={pendingAchievementsCount}
+                        compact={compact}
+                        nested
+                    />
+                </NavGroup>
+                <NavGroup
+                    label="Financije"
+                    icon={<Euro className="size-5" />}
+                    forceOpen={includesSelectedPath(pathname, [
+                        adminPages.ShoppingCarts.href,
+                        adminPages.Invoices.href,
+                        adminPages.Transactions.href,
+                        adminPages.Sunflowers.href,
+                        adminPages.Receipts.href,
+                    ])}
+                    compact={compact}
+                >
+                    <NavItem
+                        href={adminPages.ShoppingCarts.href}
+                        label={adminPages.ShoppingCarts.label}
+                        icon={<ShoppingCart className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.Invoices.href}
+                        label={adminPages.Invoices.label}
+                        icon={<File className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.Transactions.href}
+                        label={adminPages.Transactions.label}
+                        icon={<Euro className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.Sunflowers.href}
+                        label={adminPages.Sunflowers.label}
+                        icon={<Success className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.Receipts.href}
+                        label={adminPages.Receipts.label}
+                        icon={<File className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                </NavGroup>
+                <NavGroup
+                    label="Vrtovi"
+                    icon={<MapIcon className="size-5" />}
+                    forceOpen={includesSelectedPath(pathname, [
+                        adminPages.Farms.href,
+                        adminPages.Gardens.href,
+                        adminPages.RaisedBeds.href,
+                        adminPages.Operations.href,
+                    ])}
+                    compact={compact}
+                >
+                    <NavItem
+                        href={adminPages.Farms.href}
+                        label={adminPages.Farms.label}
+                        icon={<MapIcon className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.Gardens.href}
+                        label={adminPages.Gardens.label}
                         icon={<Fence className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
+                        nested
                     />
                     <NavItem
-                        href={KnownPages.RaisedBeds}
-                        label="Gredice"
-                        icon={<Tally3 className="size-5 rotate-90 mt-1" />}
+                        href={adminPages.RaisedBeds.href}
+                        label={adminPages.RaisedBeds.label}
+                        icon={
+                            <RaisedBedIcon
+                                className="size-5"
+                                physicalId={null}
+                            />
+                        }
                         onClick={onItemClick}
+                        compact={compact}
+                        nested
                     />
                     <NavItem
-                        href={KnownPages.Operations}
-                        label="Radnje"
+                        href={adminPages.Operations.href}
+                        label={adminPages.Operations.label}
                         icon={<Hammer className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
+                        nested
                     />
-                </List>
-            </Stack>
-            <Stack spacing={1}>
-                <ListHeader header="Upravljanje" />
-                <List>
+                </NavGroup>
+            </NavSection>
+            <NavSection label="Upravljanje" compact={compact}>
+                <NavGroup
+                    label="Inventar"
+                    icon={<Tally3 className="size-5" />}
+                    forceOpen={includesSelectedPath(pathname, [
+                        adminPages.Inventory.href,
+                        adminPages.Occasions.href,
+                    ])}
+                    compact={compact}
+                >
                     <NavItem
-                        href={KnownPages.Schedule}
-                        label="Raspored"
+                        href={adminPages.Inventory.href}
+                        label={adminPages.Inventory.label}
+                        icon={<Tally3 className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.Occasions.href}
+                        label={adminPages.Occasions.label}
                         icon={<Calendar className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                </NavGroup>
+                <NavGroup
+                    label="Logistika"
+                    icon={<Truck className="size-5" />}
+                    forceOpen={includesSelectedPath(pathname, [
+                        adminPages.Schedule.href,
+                        adminPages.DeliverySlots.href,
+                        adminPages.DeliveryRequests.href,
+                    ])}
+                    compact={compact}
+                >
+                    <NavItem
+                        href={adminPages.Schedule.href}
+                        label={adminPages.Schedule.label}
+                        icon={<Calendar className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
                     />
                     <NavItem
-                        href={KnownPages.DeliverySlots}
-                        label="Dostava - Slotovi"
+                        href={adminPages.DeliverySlots.href}
+                        label={adminPages.DeliverySlots.label}
                         icon={<Truck className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
+                        nested
                     />
                     <NavItem
-                        href={KnownPages.DeliveryRequests}
-                        label="Dostava - Zahtjevi"
+                        href={adminPages.DeliveryRequests.href}
+                        label={adminPages.DeliveryRequests.label}
                         icon={<Truck className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
+                        nested
                     />
-                </List>
-            </Stack>
-            <Stack spacing={1}>
-                <ListHeader header="Komunikacija" />
-                <List>
+                </NavGroup>
+                <NavGroup
+                    label="Izvještaji"
+                    icon={<Tally3 className="size-5" />}
+                    forceOpen={sowingStatisticsActive}
+                    compact={compact}
+                >
+                    <NavGroup
+                        label="Statistika"
+                        icon={<Tally3 className="size-5" />}
+                        forceOpen={sowingStatisticsActive}
+                        compact={compact}
+                        depth={1}
+                    >
+                        <NavItem
+                            href={adminPages.SowingStatistics.href}
+                            label={adminPages.SowingStatistics.label}
+                            icon={<Tally3 className="size-5" />}
+                            onClick={onItemClick}
+                            compact={compact}
+                            nested
+                        />
+                    </NavGroup>
+                </NavGroup>
+            </NavSection>
+            <NavSection label="Komunikacija" compact={compact}>
+                <NavGroup
+                    label="Poruke"
+                    icon={<Inbox className="size-5" />}
+                    forceOpen={includesSelectedPath(pathname, [
+                        adminPages.CommunicationInbox.href,
+                        adminPages.CommunicationEmails.href,
+                        adminPages.Notifications.href,
+                        adminPages.Feedback.href,
+                    ])}
+                    compact={compact}
+                >
                     <NavItem
-                        href={KnownPages.CommunicationInbox}
-                        label="Sandučić"
+                        href={adminPages.CommunicationInbox.href}
+                        label={adminPages.CommunicationInbox.label}
                         icon={<Inbox className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
+                        nested
                     />
                     <NavItem
-                        href={KnownPages.Feedback}
-                        label="Povratne informacije"
+                        href={adminPages.CommunicationEmails.href}
+                        label={adminPages.CommunicationEmails.label}
+                        icon={<Mail className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.Notifications.href}
+                        label={adminPages.Notifications.label}
+                        icon={<Megaphone className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.Feedback.href}
+                        label={adminPages.Feedback.label}
                         icon={<SmileHappy className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
+                        nested
                     />
-                </List>
-            </Stack>
-            <Stack spacing={1}>
-                <ListHeader header="Sustavi" />
-                <List>
+                </NavGroup>
+            </NavSection>
+            <NavSection label="Sustavi" compact={compact}>
+                <NavGroup
+                    label="Održavanje"
+                    icon={<File className="size-5" />}
+                    forceOpen={includesSelectedPath(pathname, [
+                        adminPages.Sensors.href,
+                        adminPages.Cache.href,
+                        adminPages.AiAnalytics.href,
+                    ])}
+                    compact={compact}
+                >
                     <NavItem
-                        href={KnownPages.Sensors}
-                        label="Senzori"
+                        href={adminPages.Sensors.href}
+                        label={adminPages.Sensors.label}
                         icon={<File className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
+                        nested
                     />
                     <NavItem
-                        href={KnownPages.Cache}
-                        label="Cache"
+                        href={adminPages.Cache.href}
+                        label={adminPages.Cache.label}
                         icon={<File className="size-5" />}
                         onClick={onItemClick}
+                        compact={compact}
+                        nested
                     />
-                </List>
-            </Stack>
-        </Stack>
+                    <NavItem
+                        href={adminPages.AiAnalytics.href}
+                        label={adminPages.AiAnalytics.label}
+                        icon={<AI className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                </NavGroup>
+            </NavSection>
+            <NavSection label="Postavke" compact={compact}>
+                <NavGroup
+                    label="Aplikacija"
+                    icon={<Settings className="size-5" />}
+                    forceOpen={isSelectedPath(
+                        pathname,
+                        adminPages.Settings.href,
+                    )}
+                    compact={compact}
+                >
+                    <NavItem
+                        href={adminPages.Settings.href}
+                        label={adminPages.Settings.label}
+                        icon={<Settings className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                </NavGroup>
+            </NavSection>
+        </div>
     );
 }

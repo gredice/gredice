@@ -5,68 +5,9 @@ import { SelectableGroup } from '../controls/SelectableGroup';
 import { useIsEditMode } from '../hooks/useIsEditMode';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
-import { BaleHey } from './BaleHey';
-import { BlockGrass } from './BlockGrass';
-import { BlockGrassAngle } from './BlockGrassAngle';
-import { BlockGround } from './BlockGround';
-import { BlockGroundAngle } from './BlockGroundAngle';
-import { BlockSand } from './BlockSand';
-import { BlockSandAngle } from './BlockSandAngle';
-import { Bucket } from './Bucket';
-import { Bush } from './Bush';
-import { Composter } from './Composter';
-import { Fence } from './Fence';
-import { Pine } from './Pine';
-import { RaisedBed } from './RaisedBed';
-import { MulchCoconut } from './raisedBed/MulchCoconut';
-import { MulchHey } from './raisedBed/MulchHey';
-import { MulchWood } from './raisedBed/MulchWood';
-import { Seed } from './raisedBed/Seed';
-import { Stick } from './raisedBed/Stick';
-import { Shade } from './Shade';
-import { ShovelSmall } from './ShovelSmall';
-import { StoneLarge } from './StoneLarge';
-import { StoneMedium } from './StoneMedium';
-import { StoneSmall } from './StoneSmall';
-import { Stool } from './Stool';
-import { Tree } from './Tree';
-import { Tulip } from './Tulip';
+import { entityNameMap } from './entityNameMap';
 
-export const entityNameMap: Record<
-    string,
-    React.ComponentType<EntityInstanceProps>
-> = {
-    Block_Ground: BlockGround,
-    Block_Grass: BlockGrass,
-    Block_Sand: BlockSand,
-    Block_Ground_Angle: BlockGroundAngle,
-    Block_Grass_Angle: BlockGrassAngle,
-    Block_Sand_Angle: BlockSandAngle,
-    Composter: Composter,
-    Raised_Bed: RaisedBed,
-    Shade: Shade,
-    Fence: Fence,
-    Stool: Stool,
-    Bucket: Bucket,
-    Bush: Bush,
-    Tree: Tree,
-    Pine: Pine,
-    StoneSmall: StoneSmall,
-    StoneMedium: StoneMedium,
-    StoneLarge: StoneLarge,
-    ShovelSmall: ShovelSmall,
-    Tulip: Tulip,
-    BaleHey: BaleHey,
-
-    // Raised bed items
-    MulchHey: MulchHey,
-    MulchCoconut: MulchCoconut,
-    MulchWood: MulchWood,
-    Stick: Stick,
-    Seed: Seed,
-};
-
-type EntityFactoryProps = {
+export type EntityFactoryProps = {
     name: string;
     noControl?: boolean;
     noRenderInView?: string[];
@@ -92,15 +33,19 @@ export function EntityFactory({
         return null;
     }
 
-    const SelectableGroupWrapper =
-        view !== 'closeup'
-            ? SelectableGroup
-            : (props: PropsWithChildren) => <>{props.children}</>;
-
     if (!isEditMode) {
         if (noRenderInView?.includes(name)) {
             return null;
         }
+
+        if (noControl) {
+            return <EntityComponent stack={stack} block={block} {...rest} />;
+        }
+
+        const SelectableGroupWrapper =
+            view !== 'closeup'
+                ? SelectableGroup
+                : (props: PropsWithChildren) => <>{props.children}</>;
 
         return (
             <SelectableGroupWrapper block={block}>
@@ -109,6 +54,7 @@ export function EntityFactory({
         );
     }
 
+    // Non-top blocks are not pickable
     const isTopBlock = stack.blocks.indexOf(block) === stack.blocks.length - 1;
     if (!isTopBlock) {
         return (

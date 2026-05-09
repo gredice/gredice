@@ -1,13 +1,12 @@
 import type { PlantData } from '@gredice/client';
-import { AiWatermark } from '@gredice/ui/AiWatermark';
 import {
+    PlantOrSortImage,
     PlantYieldTooltip,
     SeedTimeInformationBadge,
 } from '@gredice/ui/plants';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { PlantImage } from '../../components/plants/PlantImage';
 import { ItemCard } from '../../components/shared/ItemCard';
 import { KnownPages } from '../../src/KnownPages';
 
@@ -45,20 +44,14 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
             }
             href={KnownPages.Plant(information.name)}
         >
-            <AiWatermark
-                reason="Primjer ploda biljke visoke rezolucije bez nedostataka."
-                aiPrompt={`Realistic and not perfect image of requested plant on white background. No Text Or Banners. Square image. ${information.name}`}
-                aiModel="ChatGPT-4o"
-            >
-                <PlantImage
-                    plant={props}
-                    fill
-                    priority
-                    sizes="(max-width: 768px) 50vw, (min-width: 768px) 33vw, (min-width: 1200px) 9vw"
-                />
-            </AiWatermark>
+            <PlantOrSortImage
+                plant={props}
+                fill
+                preload
+                sizes="(max-width: 768px) 50vw, (min-width: 768px) 33vw, (min-width: 1200px) 9vw"
+            />
             {isRecommended && (
-                <div className="absolute top-1 right-1 -m-2 md:-m-6">
+                <div className="absolute top-1 right-1">
                     <SeedTimeInformationBadge size="sm" />
                 </div>
             )}

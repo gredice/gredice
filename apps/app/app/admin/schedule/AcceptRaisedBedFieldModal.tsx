@@ -2,6 +2,7 @@
 
 import { Check } from '@signalco/ui-icons';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { useState } from 'react';
 import { acceptRaisedBedFieldAction } from '../../(actions)/raisedBedFieldsActions';
 import { AcceptRequestModal } from './AcceptRequestModal';
 
@@ -9,18 +10,24 @@ interface AcceptRaisedBedFieldModalProps {
     raisedBedId: number;
     positionIndex: number;
     label: string;
+    disabled?: boolean;
 }
 
 export function AcceptRaisedBedFieldModal({
     raisedBedId,
     positionIndex,
     label,
+    disabled = false,
 }: AcceptRaisedBedFieldModalProps) {
+    const [loading, setLoading] = useState(false);
     const handleConfirm = async () => {
         try {
+            setLoading(true);
             await acceptRaisedBedFieldAction(raisedBedId, positionIndex);
         } catch (error) {
             console.error('Error accepting field request:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -29,7 +36,12 @@ export function AcceptRaisedBedFieldModal({
             label={label}
             onConfirm={handleConfirm}
             trigger={
-                <IconButton variant="plain" title="Potvrdi sijanje">
+                <IconButton
+                    variant="plain"
+                    title="Potvrdi sijanje"
+                    loading={loading}
+                    disabled={disabled}
+                >
                     <Check className="size-4 shrink-0" />
                 </IconButton>
             }

@@ -1,4 +1,4 @@
-import { Porez1 } from "./Porez1";
+import type { Porez1 } from './Porez1';
 
 /**
  * OstaliPor

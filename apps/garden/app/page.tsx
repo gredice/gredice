@@ -1,35 +1,37 @@
-import { GameScene } from '@gredice/game';
-import { SignedOut } from '@signalco/auth-client/components';
+import { SignedIn, SignedOut } from '@signalco/auth-client/components';
 import type { ComponentProps } from 'react';
 import LoginModal from '../components/auth/LoginModal';
+import { GameSceneWithAnalytics } from '../components/game/GameSceneWithAnalytics';
 import {
     enableDebugHudFlag,
-    enableRaisedBedDiaryFlag,
-    enableRaisedBedFieldDiaryFlag,
-    enableRaisedBedFieldOperationsFlag,
-    enableRaisedBedFieldWateringFlag,
-    enableRaisedBedOperationsFlag,
-    enableRaisedBedWateringFlag,
+    lsystemPlantsFlag,
+    raisedBedImageAIFlag,
 } from './flags';
 
 export default async function Home() {
-    const flags: ComponentProps<typeof GameScene>['flags'] = {
+    const flags: ComponentProps<typeof GameSceneWithAnalytics>['flags'] = {
         enableDebugHudFlag: await enableDebugHudFlag(),
-        enableRaisedBedWateringFlag: await enableRaisedBedWateringFlag(),
-        enableRaisedBedDiaryFlag: await enableRaisedBedDiaryFlag(),
-        enableRaisedBedOperationsFlag: await enableRaisedBedOperationsFlag(),
-        enableRaisedBedFieldOperationsFlag:
-            await enableRaisedBedFieldOperationsFlag(),
-        enableRaisedBedFieldWateringFlag:
-            await enableRaisedBedFieldWateringFlag(),
-        enableRaisedBedFieldDiaryFlag: await enableRaisedBedFieldDiaryFlag(),
+        enablePlantGeneratorFlag: await lsystemPlantsFlag(),
+        raisedBedImageAI: await raisedBedImageAIFlag(),
     };
 
     return (
         <div className="grid grid-cols-1 h-[100dvh] relative overflow-hidden">
-            <GameScene flags={flags} />
+            <SignedIn>
+                <GameSceneWithAnalytics flags={flags} deferDetails />
+            </SignedIn>
             <SignedOut>
-                <LoginModal />
+                <GameSceneWithAnalytics
+                    flags={flags}
+                    mockGarden
+                    hideHud
+                    deferDetails
+                />
+            </SignedOut>
+            <SignedOut>
+                <div className="relative h-full">
+                    <LoginModal />
+                </div>
             </SignedOut>
         </div>
     );

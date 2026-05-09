@@ -1,17 +1,20 @@
 import { directoriesClient } from '@gredice/client';
-import { unstable_cache } from 'next/cache';
+import { cache } from 'react';
 
-export const getOperationsData = unstable_cache(
-    async () => {
-        return (await directoriesClient().GET('/entities/operation')).data;
-    },
-    ['operationsData'],
-    {
-        revalidate: 60 * 60, // 1 hour
-        tags: ['operationsData'],
-    },
-);
+export const getOperationsData = cache(async () => {
+    try {
+        const { data, error } = await directoriesClient().GET(
+            '/entities/operation',
+        );
 
-export type OperationData = NonNullable<
-    Awaited<ReturnType<typeof getOperationsData>>
->[number];
+        if (error) {
+            console.error('Failed to fetch operations data', error);
+            return [];
+        }
+
+        return data ?? [];
+    } catch (error) {
+        console.error('Failed to fetch operations data', error);
+        return [];
+    }
+});
