@@ -36,6 +36,7 @@ function CountingNumber({
     ...props
 }: CountingNumberProps) {
     const localRef = React.useRef<HTMLSpanElement>(null);
+    const hasStartedInitialAnimationRef = React.useRef(false);
     React.useImperativeHandle(ref, () => localRef.current as HTMLSpanElement);
     const numberStr = number.toString();
     const decimals =
@@ -53,11 +54,13 @@ function CountingNumber({
     const isInView = !inView || inViewResult;
     React.useEffect(() => {
         if (!isInView) return;
-        if (fromNumber === number) {
+        if (hasStartedInitialAnimationRef.current || fromNumber === number) {
+            hasStartedInitialAnimationRef.current = true;
             motionVal.set(number);
             return;
         }
 
+        hasStartedInitialAnimationRef.current = true;
         motionVal.set(fromNumber);
         const animationFrame = requestAnimationFrame(() => {
             motionVal.set(number);
