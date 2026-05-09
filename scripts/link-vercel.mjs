@@ -3,6 +3,7 @@
 // Links every app to its Vercel project in one go.
 
 import { spawn } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { appRegistry } from './app-registry.ts';
@@ -66,6 +67,24 @@ async function hasVercelCli() {
     return result.code === 0;
 }
 
+function readLinkedProjectName(cwd) {
+    const projectJsonPath = resolve(cwd, '.vercel', 'project.json');
+    if (!existsSync(projectJsonPath)) {
+        return undefined;
+    }
+
+    try {
+        const link = JSON.parse(readFileSync(projectJsonPath, 'utf8'));
+        if (typeof link === 'object' && link !== null && typeof link.projectName === 'string') {
+            return link.projectName;
+        }
+    } catch {
+        return undefined;
+    }
+
+    return undefined;
+}
+
 function explainFailure(output, appName, projectName) {
     const combinedOutput = output.toLowerCase();
 
@@ -106,6 +125,13 @@ async function main() {
 
     for (const app of vercelApps) {
         const cwd = resolve(repoRoot, app.packagePath);
+
+        const linkedProjectName = readLinkedProjectName(cwd);
+        if (linkedProjectName === app.vercelProjectName) {
+            console.log(`\nSkipping ${app.name}; already linked to Vercel project ${app.vercelProjectName}.`);
+            continue;
+        }
+
         console.log(`\nLinking ${app.name} to Vercel project ${app.vercelProjectName}...`);
 
         const result = await run(

@@ -9,6 +9,7 @@ import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Delete, Edit, ExternalLink, Megaphone } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
+import { Divider } from '@signalco/ui-primitives/Divider';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
@@ -29,6 +30,46 @@ import {
 import { CmsPageStateChip } from '../CmsPageStateChip';
 
 export const dynamic = 'force-dynamic';
+
+function keyedCmsPageSection(
+    section: { component: string },
+    occurrence: number,
+) {
+    return {
+        key: `${section.component}-${occurrence}`,
+        section,
+    };
+}
+
+function parseCmsPageSections(content: string | null) {
+    if (!content) {
+        return [];
+    }
+
+    try {
+        const parsed: unknown = JSON.parse(content);
+        if (!Array.isArray(parsed)) {
+            return [];
+        }
+
+        const sectionCounts = new Map<string, number>();
+        return parsed
+            .filter(
+                (section): section is { component: string } =>
+                    Boolean(section) &&
+                    typeof section === 'object' &&
+                    'component' in section &&
+                    typeof section.component === 'string',
+            )
+            .map((section) => {
+                const occurrence = sectionCounts.get(section.component) ?? 0;
+                sectionCounts.set(section.component, occurrence + 1);
+                return keyedCmsPageSection(section, occurrence);
+            });
+    } catch {
+        return [];
+    }
+}
 
 function publishedAtValue(page: SelectCmsPage) {
     if (!page.publishedAt) {
@@ -62,6 +103,7 @@ export default async function CmsPageDetailsPage({
         notFound();
     }
 
+    const pageSections = parseCmsPageSections(page.content);
     const publishAction = publishCmsPageAction.bind(null, id);
     const unpublishAction = unpublishCmsPageAction.bind(null, id);
     const deleteAction = deleteCmsPageAction.bind(null, id);
@@ -162,13 +204,27 @@ export default async function CmsPageDetailsPage({
                     <Field name="Meta slika" value={page.metaImageUrl ?? '-'} />
                 </FieldSet>
             </Stack>
-            {page.content && (
-                <Card className="max-w-4xl">
-                    <div className="whitespace-pre-wrap p-6 text-sm leading-6">
-                        {page.content}
-                    </div>
-                </Card>
-            )}
+            <Card className="max-w-4xl p-6">
+                <Stack spacing={2}>
+                    <Typography level="h3" semiBold>
+                        Sekcije stranice
+                    </Typography>
+                    {pageSections.length === 0 ? (
+                        <Typography level="body2" secondary>
+                            Nema konfiguriranih sekcija.
+                        </Typography>
+                    ) : (
+                        pageSections.map(({ key, section }, index) => (
+                            <Stack spacing={1} key={key}>
+                                <Typography level="body2">
+                                    {index + 1}. {section.component}
+                                </Typography>
+                                <Divider />
+                            </Stack>
+                        ))
+                    )}
+                </Stack>
+            </Card>
             <FieldSet>
                 {revisions.length === 0 ? (
                     <Field name="Historija" value="Nema promjena" />

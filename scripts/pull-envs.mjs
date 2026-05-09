@@ -3,6 +3,7 @@
 // Pulls Vercel environment variables for every app in one go.
 
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { appRegistry } from './app-registry.ts';
@@ -108,6 +109,11 @@ async function main() {
         const cwd = resolve(repoRoot, app.packagePath);
         console.log(`\nPulling environment variables for ${app.name} (${app.vercelProjectName})...`);
 
+        if (!existsSync(resolve(cwd, '.vercel', 'project.json'))) {
+            console.error(`${app.name}: Vercel project link is missing. Run \`pnpm vercel:link\` and retry.`);
+            process.exit(1);
+        }
+
         const result = await run(
             vercelCommand,
             [
@@ -118,8 +124,6 @@ async function main() {
                 '--environment=development',
                 '--scope',
                 vercelScope,
-                '--project',
-                app.vercelProjectName,
             ],
             {
                 cwd,

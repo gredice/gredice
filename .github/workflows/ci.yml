@@ -49,6 +49,7 @@ jobs:
               - apps/farm/**
               - packages/client/**
               - packages/js/**
+              - packages/label-printer/**
               - packages/storage/**
               - packages/ui/**
               - .github/workflows/**
