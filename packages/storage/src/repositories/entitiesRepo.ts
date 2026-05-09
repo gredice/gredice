@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, count, desc, eq, inArray, like } from 'drizzle-orm';
+import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import {
     attributeDefinitions,
     attributeValues,
@@ -51,12 +51,8 @@ function isRangeValue(value: unknown): value is { min: number; max: number } {
     );
 }
 
-function parseEntityRefId(value: unknown) {
-    if (typeof value === 'number' && Number.isInteger(value)) {
-        return value;
-    }
-
-    if (typeof value !== 'string') {
+function parseEntityRefId(value: string | null | undefined) {
+    if (!value) {
         return null;
     }
 
@@ -66,32 +62,6 @@ function parseEntityRefId(value: unknown) {
     }
 
     return Number.parseInt(trimmedValue, 10);
-}
-
-function parseEntityRefIds(
-    value: string | null | undefined,
-    multiple: boolean,
-) {
-    if (!value) {
-        return [];
-    }
-
-    if (multiple) {
-        try {
-            const parsedValue: unknown = JSON.parse(value);
-            if (Array.isArray(parsedValue)) {
-                return parsedValue.flatMap((item) => {
-                    const parsedId = parseEntityRefId(item);
-                    return typeof parsedId === 'number' ? [parsedId] : [];
-                });
-            }
-        } catch {
-            // Values created by the CMS are stored as plain strings.
-        }
-    }
-
-    const parsedId = parseEntityRefId(value);
-    return typeof parsedId === 'number' ? [parsedId] : [];
 }
 
 function populateMissingAttributes(
@@ -271,7 +241,6 @@ async function expandEntityAttributes<T extends Record<string, unknown>>(
             attribute.attributeDefinition.category
         ] as Record<string, unknown>;
         if (attribute.attributeDefinition.multiple) {
-            // Create array if it doesn't exist
             if (category[attribute.attributeDefinition.name] === undefined) {
                 category[attribute.attributeDefinition.name] = [];
             }
@@ -283,9 +252,7 @@ async function expandEntityAttributes<T extends Record<string, unknown>>(
                 attribute.attributeDefinition,
                 cache,
             );
-
-            // When expanding to array, ignore the null values
-            if (typeof result !== 'undefined' && result !== null) {
+            if (result !== undefined && result !== null) {
                 if (Array.isArray(result)) {
                     array.push(...result);
                 } else {
@@ -356,19 +323,17 @@ async function expandValue(
     }
 }
 
-// Update resolveRef to use the cache and correct types
 async function resolveRef(
     value: string | null,
     attributeDefinition: SelectAttributeDefinition,
     cache: EntityTypeCache = {},
 ) {
-    const refEntityTypeName = attributeDefinition.dataType.split(':')[1];
-    const refIds = parseEntityRefIds(value, attributeDefinition.multiple);
-    if (!refIds.length) {
-        return;
+    const refId = parseEntityRefId(value);
+    if (refId === null) {
+        return null;
     }
 
-    // Use cache key based on entity type and state
+    const refEntityTypeName = attributeDefinition.dataType.split(':')[1];
     const cacheKey = `${refEntityTypeName}:published`;
     if (!cache[cacheKey]) {
         cache[cacheKey] = getEntitiesRaw(
@@ -377,34 +342,16 @@ async function resolveRef(
         ) as Promise<EntityWithAttributesAndType[]>;
     }
     const refEntitiesByType = await cache[cacheKey];
-    const refIdSet = new Set(refIds);
-    const refEntities = refEntitiesByType.filter(
-        (e: EntityWithAttributesAndType) => refIdSet.has(e.id),
-    );
-
-    if (attributeDefinition.multiple) {
-        return await Promise.all(
-            refEntities.map((ref) =>
-                expandEntityAttributes(
-                    {
-                        id: ref.id,
-                    },
-                    ref.attributes,
-                    cache,
-                ),
-            ),
-        );
-    } else {
-        return refEntities[0]
-            ? await expandEntityAttributes(
-                {
-                    id: refEntities[0].id,
-                },
-                refEntities[0].attributes,
-                cache,
-            )
-            : null;
+    const refEntity = refEntitiesByType.find((e) => e.id === refId);
+    if (!refEntity) {
+        return null;
     }
+
+    return await expandEntityAttributes(
+        { id: refEntity.id },
+        refEntity.attributes,
+        cache,
+    );
 }
 
 export async function getEntitiesFormatted<T>(entityTypeName: string) {
@@ -463,10 +410,6 @@ export async function getEntityRaw(id: number) {
     return populateMissingAttributes(entity);
 }
 
-function escapeForLike(value: string) {
-    return value.replace(/[\\%_]/g, '\\$&');
-}
-
 function entityNameFromAttributes(
     entity: SelectEntity & {
         attributes: (SelectAttributeValue & {
@@ -500,14 +443,6 @@ function entityDisplayNameFromAttributes(
     return label ?? name ?? `${entity.entityType.label} ${entity.id}`;
 }
 
-function attributeValueContainsEntityId(
-    value: string | null,
-    entityId: number,
-    multiple: boolean,
-) {
-    return parseEntityRefIds(value, multiple).includes(entityId);
-}
-
 export async function getEntityIncomingLinks(
     entityId: number,
     sourceEntity?: NonNullable<Awaited<ReturnType<typeof getEntityRaw>>>,
@@ -529,7 +464,7 @@ export async function getEntityIncomingLinks(
 
     const definitionById = new Map(refDefinitions.map((d) => [d.id, d]));
     const definitionIds = refDefinitions.map((d) => d.id);
-    const exactValueMatches = await storage().query.attributeValues.findMany({
+    const linkAttributeValues = await storage().query.attributeValues.findMany({
         where: and(
             inArray(attributeValues.attributeDefinitionId, definitionIds),
             eq(attributeValues.isDeleted, false),
@@ -537,36 +472,6 @@ export async function getEntityIncomingLinks(
         ),
     });
 
-    const multipleDefinitionIds = refDefinitions
-        .filter((definition) => definition.multiple)
-        .map((definition) => definition.id);
-    const linkAttributeValues = [...exactValueMatches];
-    if (multipleDefinitionIds.length > 0) {
-        const escapedEntityId = escapeForLike(String(entityId));
-        const legacyJsonArrayMatches =
-            await storage().query.attributeValues.findMany({
-                where: and(
-                    inArray(
-                        attributeValues.attributeDefinitionId,
-                        multipleDefinitionIds,
-                    ),
-                    eq(attributeValues.isDeleted, false),
-                    like(attributeValues.value, `%${escapedEntityId}%`),
-                ),
-            });
-
-        const seenAttributeValueIds = new Set(
-            linkAttributeValues.map((v) => v.id),
-        );
-        for (const legacyJsonArrayMatch of legacyJsonArrayMatches) {
-            if (seenAttributeValueIds.has(legacyJsonArrayMatch.id)) {
-                continue;
-            }
-
-            linkAttributeValues.push(legacyJsonArrayMatch);
-            seenAttributeValueIds.add(legacyJsonArrayMatch.id);
-        }
-    }
     const entityToDefinitionIds = new Map<number, Set<number>>();
     for (const attributeValue of linkAttributeValues) {
         if (attributeValue.entityId === entityId) {
@@ -576,15 +481,6 @@ export async function getEntityIncomingLinks(
             attributeValue.attributeDefinitionId,
         );
         if (!definition) {
-            continue;
-        }
-        if (
-            !attributeValueContainsEntityId(
-                attributeValue.value,
-                entityId,
-                definition.multiple,
-            )
-        ) {
             continue;
         }
 

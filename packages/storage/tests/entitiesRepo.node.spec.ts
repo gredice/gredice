@@ -122,7 +122,7 @@ test('CMS entity references are resolved by entity ID', async () => {
 
     assert.equal(formattedSort?.information.plant?.id, plantId);
     assert.equal(formattedSort?.information.plant?.information?.name, 'Tomato');
-    assert.equal(nameValueSort?.information.plant, undefined);
+    assert.equal(nameValueSort?.information.plant, null);
 
     const incomingLinks = await getEntityIncomingLinks(plantId);
     assert.deepEqual(incomingLinks, [
