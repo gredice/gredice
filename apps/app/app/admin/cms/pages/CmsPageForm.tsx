@@ -204,35 +204,50 @@ export function CmsPageForm({ page, action, submitLabel, autosaveAction }: CmsPa
     : preserveFallbackContent && sections.length === 0
       ? page?.content ?? ""
       : builderContent;
+  const formRef = useRef<HTMLFormElement>(null);
+  const [formRevision, setFormRevision] = useState(0);
+  const autosaveSnapshot = useMemo(
+    () => JSON.stringify({ content: serializedContent, formRevision }),
+    [serializedContent, formRevision],
+  );
+  const latestAutosaveSnapshot = useRef(autosaveSnapshot);
   const [autosaveStatus, setAutosaveStatus] = useState("saved");
   const [autosaveMessage, setAutosaveMessage] = useState<string | null>(null);
-  const [lastSavedSnapshot, setLastSavedSnapshot] = useState(serializedContent);
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState(autosaveSnapshot);
   const [previewSections, setPreviewSections] = useState<CmsPageSectionData[]>([]);
+
+  useEffect(() => {
+    latestAutosaveSnapshot.current = autosaveSnapshot;
+  }, [autosaveSnapshot]);
 
   useEffect(() => {
     if (!autosaveAction) {
       return;
     }
 
-    if (serializedContent === lastSavedSnapshot) {
+    if (autosaveSnapshot === lastSavedSnapshot) {
       setAutosaveStatus("saved");
       return;
     }
 
     setAutosaveStatus("unsaved");
     const timer = setTimeout(async () => {
+      const form = formRef.current;
+      if (!form) {
+        return;
+      }
+
+      const snapshotToSave = autosaveSnapshot;
       setAutosaveStatus("saving");
-      const formData = new FormData();
-      formData.set("title", page?.title ?? "");
-      formData.set("slug", page?.slug ?? "");
+      const formData = new FormData(form);
       formData.set("state", "draft");
       formData.set("content", serializedContent);
-      formData.set("metaTitle", page?.metaTitle ?? "");
-      formData.set("metaDescription", page?.metaDescription ?? "");
-      formData.set("metaImageUrl", page?.metaImageUrl ?? "");
-      formData.set("canonicalPath", page?.canonicalPath ?? "");
 
       const result = await autosaveAction(formData);
+      if (latestAutosaveSnapshot.current !== snapshotToSave) {
+        return;
+      }
+
       if (!result.success) {
         setAutosaveStatus("failed");
         setAutosaveMessage(result.message);
@@ -241,11 +256,11 @@ export function CmsPageForm({ page, action, submitLabel, autosaveAction }: CmsPa
 
       setAutosaveStatus("saved");
       setAutosaveMessage(result.message);
-      setLastSavedSnapshot(serializedContent);
+      setLastSavedSnapshot(snapshotToSave);
     }, 600);
 
     return () => clearTimeout(timer);
-  }, [autosaveAction, serializedContent, lastSavedSnapshot, page]);
+  }, [autosaveAction, autosaveSnapshot, serializedContent, lastSavedSnapshot]);
 
   useEffect(() => {
     setPreviewSections(parseSections(serializedContent).sections);
@@ -255,7 +270,9 @@ export function CmsPageForm({ page, action, submitLabel, autosaveAction }: CmsPa
     <Card className="max-w-3xl">
       <Stack spacing={4} className="p-6">
         <form
+          ref={formRef}
           action={formAction}
+          onChange={() => setFormRevision((current) => current + 1)}
           onSubmit={(event) => {
             if (!rawMode) {
               return;
