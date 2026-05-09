@@ -14,6 +14,7 @@ import {
     cacheKeys,
     directoriesCached,
 } from '../cache/directoriesCached';
+import { supportedCmsPageSectionComponents } from '../cmsPageSections';
 
 export type CmsPageState = 'draft' | 'published';
 
@@ -38,13 +39,6 @@ export type GetCmsPagesOptions = {
     state?: CmsPageState;
     includeDeleted?: boolean;
 };
-
-const supportedCmsPageSectionComponents = new Set([
-    'Heading1',
-    'Faq1',
-    'Feature1',
-    'Footer1',
-]);
 
 export function isCmsPageState(value: string): value is CmsPageState {
     return value === 'draft' || value === 'published';
