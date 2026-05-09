@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-    transformEntityToSectionData,
     type EntitySectionTransformInput,
+    transformEntityToSectionData,
 } from '@gredice/storage/entityPageSections';
 
 test('transformEntityToSectionData maps supported entity type to deterministic sections', () => {

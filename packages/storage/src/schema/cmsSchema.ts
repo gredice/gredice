@@ -1,5 +1,6 @@
 import { relations, sql } from 'drizzle-orm';
 import {
+    type AnyPgColumn,
     boolean,
     index,
     integer,
@@ -218,7 +219,9 @@ export const entityTypes = pgTable(
             () => entityTypeCategories.id,
         ),
         order: text('order'),
-        parentId: integer('parent_id').references(() => entityTypes.id),
+        parentId: integer('parent_id').references(
+            (): AnyPgColumn => entityTypes.id,
+        ),
         hierarchyOrder: integer('hierarchy_order').notNull().default(0),
         isRoot: boolean('is_root').notNull().default(true),
         createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -271,7 +274,9 @@ export const entities = pgTable(
     {
         id: serial('id').primaryKey(),
         entityTypeName: text('entity_type').notNull(),
-        parentId: integer('parent_id').references(() => entities.id),
+        parentId: integer('parent_id').references(
+            (): AnyPgColumn => entities.id,
+        ),
         hierarchyOrder: integer('hierarchy_order').notNull().default(0),
         state: text('state').notNull().default('draft'),
         publishedAt: timestamp('published_at'),

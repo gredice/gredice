@@ -282,7 +282,6 @@ test('CMS page cache keys include normalized page and list variants', () => {
     ]);
 });
 
-
 test('CMS page metadata is preserved when updating only content', async () => {
     createTestDb();
     const pageId = await createCmsPage({
