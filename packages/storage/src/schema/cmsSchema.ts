@@ -1,5 +1,6 @@
 import { relations, sql } from 'drizzle-orm';
 import {
+    type AnyPgColumn,
     boolean,
     index,
     integer,
@@ -218,6 +219,10 @@ export const entityTypes = pgTable(
             () => entityTypeCategories.id,
         ),
         order: text('order'),
+        parentId: integer('parent_id').references(
+            (): AnyPgColumn => entityTypes.id,
+        ),
+        hierarchyOrder: integer('hierarchy_order').notNull().default(0),
         isRoot: boolean('is_root').notNull().default(true),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
@@ -228,6 +233,8 @@ export const entityTypes = pgTable(
     (table) => [
         index('cms_et_category_id_idx').on(table.categoryId),
         index('cms_et_order_idx').on(table.order),
+        index('cms_et_parent_id_idx').on(table.parentId),
+        index('cms_et_hierarchy_order_idx').on(table.hierarchyOrder),
         index('cms_et_is_deleted_idx').on(table.isDeleted),
         index('cms_et_is_root_idx').on(table.isRoot),
     ],
@@ -242,6 +249,14 @@ export const entityTypesRelation = relations(entityTypes, ({ one, many }) => ({
     attributeDefinitions: many(attributeDefinitions),
     attributeDefinitionCategories: many(attributeDefinitionCategories),
     entities: many(entities),
+    parent: one(entityTypes, {
+        fields: [entityTypes.parentId],
+        references: [entityTypes.id],
+        relationName: 'entityTypeHierarchy',
+    }),
+    children: many(entityTypes, {
+        relationName: 'entityTypeHierarchy',
+    }),
 }));
 
 export type InsertEntityType = typeof entityTypes.$inferInsert;
@@ -259,6 +274,10 @@ export const entities = pgTable(
     {
         id: serial('id').primaryKey(),
         entityTypeName: text('entity_type').notNull(),
+        parentId: integer('parent_id').references(
+            (): AnyPgColumn => entities.id,
+        ),
+        hierarchyOrder: integer('hierarchy_order').notNull().default(0),
         state: text('state').notNull().default('draft'),
         publishedAt: timestamp('published_at'),
         createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -269,6 +288,8 @@ export const entities = pgTable(
     },
     (table) => [
         index('cms_e_entity_type_name_idx').on(table.entityTypeName),
+        index('cms_e_parent_id_idx').on(table.parentId),
+        index('cms_e_hierarchy_order_idx').on(table.hierarchyOrder),
         index('cms_e_state_idx').on(table.state),
         index('cms_e_is_deleted_idx').on(table.isDeleted),
     ],
@@ -280,6 +301,14 @@ export const entityRelation = relations(entities, ({ one, many }) => ({
         fields: [entities.entityTypeName],
         references: [entityTypes.name],
         relationName: 'entityType',
+    }),
+    parent: one(entities, {
+        fields: [entities.parentId],
+        references: [entities.id],
+        relationName: 'entityHierarchy',
+    }),
+    children: many(entities, {
+        relationName: 'entityHierarchy',
     }),
 }));
 

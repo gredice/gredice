@@ -114,14 +114,14 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
     const rawEntities = await storage().query.entities.findMany({
         where: state
             ? and(
-                eq(entities.entityTypeName, entityTypeName),
-                eq(entities.state, state),
-                eq(entities.isDeleted, false),
-            )
+                  eq(entities.entityTypeName, entityTypeName),
+                  eq(entities.state, state),
+                  eq(entities.isDeleted, false),
+              )
             : and(
-                eq(entities.entityTypeName, entityTypeName),
-                eq(entities.isDeleted, false),
-            ),
+                  eq(entities.entityTypeName, entityTypeName),
+                  eq(entities.isDeleted, false),
+              ),
         orderBy: desc(entities.updatedAt),
         with: {
             attributes: {
@@ -150,14 +150,14 @@ export async function getEntitiesCount(entityTypeName: string, state?: string) {
         .where(
             state
                 ? and(
-                    eq(entities.entityTypeName, entityTypeName),
-                    eq(entities.state, state),
-                    eq(entities.isDeleted, false),
-                )
+                      eq(entities.entityTypeName, entityTypeName),
+                      eq(entities.state, state),
+                      eq(entities.isDeleted, false),
+                  )
                 : and(
-                    eq(entities.entityTypeName, entityTypeName),
-                    eq(entities.isDeleted, false),
-                ),
+                      eq(entities.entityTypeName, entityTypeName),
+                      eq(entities.isDeleted, false),
+                  ),
         );
     return result[0]?.count ?? 0;
 }
@@ -610,6 +610,60 @@ export async function updateEntity(
     const previousEntity = await storage().query.entities.findFirst({
         where: eq(entities.id, entity.id),
     });
+    if (!previousEntity) {
+        throw new Error(`Entity with id ${entity.id} not found`);
+    }
+
+    const nextParentId =
+        typeof entity.parentId === 'undefined'
+            ? previousEntity.parentId
+            : entity.parentId;
+    const nextEntityTypeName =
+        entity.entityTypeName ?? previousEntity.entityTypeName;
+
+    if (
+        typeof entity.parentId !== 'undefined' ||
+        typeof entity.entityTypeName !== 'undefined'
+    ) {
+        if (nextParentId === entity.id) {
+            throw new Error('Entity cannot be its own parent.');
+        }
+        if (nextParentId !== null) {
+            const parentEntity = await storage().query.entities.findFirst({
+                where: and(
+                    eq(entities.id, nextParentId),
+                    eq(entities.isDeleted, false),
+                ),
+            });
+            if (!parentEntity) {
+                throw new Error(`Parent entity ${nextParentId} was not found.`);
+            }
+            if (parentEntity.entityTypeName !== nextEntityTypeName) {
+                throw new Error(
+                    'Parent entity must have the same entity type as the child.',
+                );
+            }
+
+            let cursor = parentEntity;
+            const visited = new Set<number>([entity.id]);
+            while (cursor.parentId !== null) {
+                if (visited.has(cursor.id)) {
+                    throw new Error('Cycle detected in entity hierarchy.');
+                }
+                visited.add(cursor.id);
+                const nextParent = await storage().query.entities.findFirst({
+                    where: and(
+                        eq(entities.id, cursor.parentId),
+                        eq(entities.isDeleted, false),
+                    ),
+                });
+                if (!nextParent) {
+                    break;
+                }
+                cursor = nextParent;
+            }
+        }
+    }
 
     const updateData = {
         ...entity,
@@ -617,7 +671,10 @@ export async function updateEntity(
 
     if (updateData.state === 'published') {
         const entityForValidation = await storage().query.entities.findFirst({
-            where: and(eq(entities.id, entity.id), eq(entities.isDeleted, false)),
+            where: and(
+                eq(entities.id, entity.id),
+                eq(entities.isDeleted, false),
+            ),
             with: {
                 attributes: {
                     where: eq(attributeValues.isDeleted, false),
@@ -678,25 +735,25 @@ export async function updateEntity(
         bustCached(cacheKeys.entity(entity.id)),
         entity.id
             ? storage()
-                .select()
-                .from(entities)
-                .where(eq(entities.id, entity.id))
-                .then((entityToUpdate) => {
-                    return Promise.all([
-                        entityToUpdate?.[0].id
-                            ? bustCached(
-                                cacheKeys.entity(entityToUpdate?.[0]?.id),
-                            )
-                            : undefined,
-                        entityToUpdate?.[0].entityTypeName
-                            ? bustCached(
-                                cacheKeys.entityTypeName(
-                                    entityToUpdate?.[0].entityTypeName,
-                                ),
-                            )
-                            : undefined,
-                    ]);
-                })
+                  .select()
+                  .from(entities)
+                  .where(eq(entities.id, entity.id))
+                  .then((entityToUpdate) => {
+                      return Promise.all([
+                          entityToUpdate?.[0].id
+                              ? bustCached(
+                                    cacheKeys.entity(entityToUpdate?.[0]?.id),
+                                )
+                              : undefined,
+                          entityToUpdate?.[0].entityTypeName
+                              ? bustCached(
+                                    cacheKeys.entityTypeName(
+                                        entityToUpdate?.[0].entityTypeName,
+                                    ),
+                                )
+                              : undefined,
+                      ]);
+                  })
             : undefined,
         entity.entityTypeName
             ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))
