@@ -114,14 +114,14 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
     const rawEntities = await storage().query.entities.findMany({
         where: state
             ? and(
-                eq(entities.entityTypeName, entityTypeName),
-                eq(entities.state, state),
-                eq(entities.isDeleted, false),
-            )
+                  eq(entities.entityTypeName, entityTypeName),
+                  eq(entities.state, state),
+                  eq(entities.isDeleted, false),
+              )
             : and(
-                eq(entities.entityTypeName, entityTypeName),
-                eq(entities.isDeleted, false),
-            ),
+                  eq(entities.entityTypeName, entityTypeName),
+                  eq(entities.isDeleted, false),
+              ),
         orderBy: desc(entities.updatedAt),
         with: {
             attributes: {
@@ -150,14 +150,14 @@ export async function getEntitiesCount(entityTypeName: string, state?: string) {
         .where(
             state
                 ? and(
-                    eq(entities.entityTypeName, entityTypeName),
-                    eq(entities.state, state),
-                    eq(entities.isDeleted, false),
-                )
+                      eq(entities.entityTypeName, entityTypeName),
+                      eq(entities.state, state),
+                      eq(entities.isDeleted, false),
+                  )
                 : and(
-                    eq(entities.entityTypeName, entityTypeName),
-                    eq(entities.isDeleted, false),
-                ),
+                      eq(entities.entityTypeName, entityTypeName),
+                      eq(entities.isDeleted, false),
+                  ),
         );
     return result[0]?.count ?? 0;
 }
@@ -681,25 +681,25 @@ export async function updateEntity(
         bustCached(cacheKeys.entity(entity.id)),
         entity.id
             ? storage()
-                .select()
-                .from(entities)
-                .where(eq(entities.id, entity.id))
-                .then((entityToUpdate) => {
-                    return Promise.all([
-                        entityToUpdate?.[0].id
-                            ? bustCached(
-                                cacheKeys.entity(entityToUpdate?.[0]?.id),
-                            )
-                            : undefined,
-                        entityToUpdate?.[0].entityTypeName
-                            ? bustCached(
-                                cacheKeys.entityTypeName(
-                                    entityToUpdate?.[0].entityTypeName,
-                                ),
-                            )
-                            : undefined,
-                    ]);
-                })
+                  .select()
+                  .from(entities)
+                  .where(eq(entities.id, entity.id))
+                  .then((entityToUpdate) => {
+                      return Promise.all([
+                          entityToUpdate?.[0].id
+                              ? bustCached(
+                                    cacheKeys.entity(entityToUpdate?.[0]?.id),
+                                )
+                              : undefined,
+                          entityToUpdate?.[0].entityTypeName
+                              ? bustCached(
+                                    cacheKeys.entityTypeName(
+                                        entityToUpdate?.[0].entityTypeName,
+                                    ),
+                                )
+                              : undefined,
+                      ]);
+                  })
             : undefined,
         entity.entityTypeName
             ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))
