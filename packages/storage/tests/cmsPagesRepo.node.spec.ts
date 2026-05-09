@@ -281,3 +281,26 @@ test('CMS page cache keys include normalized page and list variants', () => {
         'cms:pages:list:published:v1',
     ]);
 });
+
+
+test('CMS page metadata is preserved when updating only content', async () => {
+    createTestDb();
+    const pageId = await createCmsPage({
+        slug: `meta-preserve-${randomUUID()}`,
+        title: 'Metadata preserve page',
+        content: JSON.stringify([{ component: 'Feature1', header: 'Initial' }]),
+        metaTitle: 'Meta title',
+        metaDescription: 'Meta description',
+        metaImageUrl: 'https://www.gredice.com/meta.png',
+    });
+
+    await updateCmsPage({
+        id: pageId,
+        content: JSON.stringify([{ component: 'Heading1', header: 'Updated' }]),
+    });
+
+    const page = await getCmsPage(pageId);
+    assert.equal(page?.metaTitle, 'Meta title');
+    assert.equal(page?.metaDescription, 'Meta description');
+    assert.equal(page?.metaImageUrl, 'https://www.gredice.com/meta.png');
+});
