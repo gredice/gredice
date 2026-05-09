@@ -196,7 +196,11 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
   const [rawContent, setRawContent] = useState(page?.content ?? "");
   const [rawError, setRawError] = useState<string | null>(null);
   const builderContent = useMemo(() => stringifySections(sections), [sections]);
-  const serializedContent = rawMode ? rawContent : builderContent;
+  const serializedContent = rawMode
+    ? rawContent
+    : preserveFallbackContent && sections.length === 0
+      ? page?.content ?? ""
+      : builderContent;
 
   return (
     <Card className="max-w-3xl">
@@ -302,6 +306,18 @@ export function CmsPageForm({ page, action, submitLabel }: CmsPageFormProps) {
                       <Typography level="body2" className="text-red-600">
                         {rawError}
                       </Typography>
+                    )}
+                    {preserveFallbackContent && (
+                      <Button
+                        type="button"
+                        variant="plain"
+                        onClick={() => {
+                          setRawContent(page?.content ?? "");
+                          setRawError(null);
+                        }}
+                      >
+                        Vrati spremljeni sadržaj
+                      </Button>
                     )}
                   </label>
                 ) : sections.length === 0 ? (
