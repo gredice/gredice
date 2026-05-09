@@ -768,7 +768,7 @@ export function DebugHud() {
                                         }
                                     }}
                                 />
-                                <div className="flex flex-wrap gap-1">
+                                <div className="flex flex-wrap gap-2">
                                     {SNOW_ACCUMULATION_PRESETS.map((preset) => (
                                         <Button
                                             key={preset.label}
