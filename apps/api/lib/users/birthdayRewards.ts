@@ -6,6 +6,7 @@ import {
     type SelectUser,
 } from '@gredice/storage';
 import { sendBirthdayGreeting } from '../email/transactional';
+import { webPushNotificationsFlag } from '../flags';
 import { differenceInCalendarDays, startOfUtcDay } from './birthdayUtils';
 
 export const BIRTHDAY_REWARD_AMOUNT = 9999;
@@ -58,14 +59,17 @@ export async function grantBirthdayReward({
         'Hvala ti što si dio Gredica - uživaj u slavlju! 🌼',
     ].join('\n\n');
 
-    await createNotification({
-        accountId: primaryAccount.accountId,
-        userId: user.id,
-        header,
-        content,
-        iconUrl: 'https://cdn.gredice.com/sunflower-large.svg',
-        timestamp: new Date(),
-    });
+    await createNotification(
+        {
+            accountId: primaryAccount.accountId,
+            userId: user.id,
+            header,
+            content,
+            iconUrl: 'https://cdn.gredice.com/sunflower-large.svg',
+            timestamp: new Date(),
+        },
+        { webPushNotificationsEnabled: await webPushNotificationsFlag() },
+    );
 
     const userEmail = user.userName.includes('@') ? user.userName : null;
     if (userEmail) {

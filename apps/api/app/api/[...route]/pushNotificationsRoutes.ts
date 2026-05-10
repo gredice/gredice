@@ -6,6 +6,7 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { webPushNotificationsFlag } from '../../flags';
 
 const pushSubscriptionSchema = z.object({
     endpoint: z.string().url(),
@@ -30,7 +31,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
             description:
                 'Returns the VAPID public key used for configuring web push subscriptions.',
         }),
-        (context) => {
+        async (context) => {
+            if (!(await webPushNotificationsFlag())) {
+                return context.json(
+                    { error: 'Push notifications are disabled.' },
+                    404,
+                );
+            }
+
             const publicKey = process.env.WEB_PUSH_PUBLIC_KEY;
             if (!publicKey) {
                 return context.json(
@@ -57,6 +65,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }),
         ),
         async (context) => {
+            if (!(await webPushNotificationsFlag())) {
+                return context.json(
+                    { error: 'Push notifications are disabled.' },
+                    404,
+                );
+            }
+
             const { accountId, userId } = context.get('authContext');
             const { subscription, metadata } = context.req.valid('json');
 

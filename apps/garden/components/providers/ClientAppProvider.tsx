@@ -33,7 +33,14 @@ async function currentUserFactory() {
 
 const queryClient = new QueryClient();
 
-export function ClientAppProvider({ children }: PropsWithChildren) {
+type ClientAppProviderProps = PropsWithChildren<{
+    webPushNotificationsEnabled: boolean;
+}>;
+
+export function ClientAppProvider({
+    children,
+    webPushNotificationsEnabled,
+}: ClientAppProviderProps) {
     return (
         <NuqsAdapter>
             <QueryClientProvider client={queryClient}>
@@ -42,7 +49,9 @@ export function ClientAppProvider({ children }: PropsWithChildren) {
                     <AuthProvider currentUserFactory={currentUserFactory}>
                         {children}
                         <NotificationsContainer />
-                        <PushNotificationManager />
+                        <PushNotificationManager
+                            enabled={webPushNotificationsEnabled}
+                        />
                     </AuthProvider>
                 </ThemeProvider>
             </QueryClientProvider>

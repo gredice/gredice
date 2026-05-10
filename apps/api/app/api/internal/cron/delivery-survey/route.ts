@@ -8,6 +8,7 @@ import {
 } from '@gredice/storage';
 import type { NextRequest } from 'next/server';
 import { sendDeliverySurvey } from '../../../../../lib/email/transactional';
+import { webPushNotificationsFlag } from '../../../../flags';
 
 const SURVEY_URL = 'https://form.typeform.com/to/X727vyBk';
 const LOOKBACK_DAYS = 45;
@@ -154,13 +155,19 @@ export async function GET(request: NextRequest) {
         let notificationSuccess = false;
 
         try {
-            await createNotification({
-                accountId: group.accountId,
-                header: `📣 Kako su ti se svidjele dostave u ${formattedMonth}?`,
-                content: `U ${formattedMonth} imali smo ${deliveryCountText}. Podijeli svoje dojmove i ispuni kratku anketu 📋⭐️⭐️⭐️⭐️⭐️`,
-                linkUrl: SURVEY_URL,
-                timestamp: new Date(),
-            });
+            await createNotification(
+                {
+                    accountId: group.accountId,
+                    header: `📣 Kako su ti se svidjele dostave u ${formattedMonth}?`,
+                    content: `U ${formattedMonth} imali smo ${deliveryCountText}. Podijeli svoje dojmove i ispuni kratku anketu 📋⭐️⭐️⭐️⭐️⭐️`,
+                    linkUrl: SURVEY_URL,
+                    timestamp: new Date(),
+                },
+                {
+                    webPushNotificationsEnabled:
+                        await webPushNotificationsFlag(),
+                },
+            );
             notificationSuccess = true;
             notificationsCreated += 1;
         } catch (error) {

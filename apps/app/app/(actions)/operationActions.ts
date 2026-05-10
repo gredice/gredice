@@ -21,6 +21,7 @@ import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+import { webPushNotificationsFlag } from '../flags';
 
 export async function createOperationAction(formData: FormData) {
     await auth(['admin']);
@@ -378,22 +379,26 @@ async function notifyVerifiedOperationCompletion(
     if (!operation.completedBy) {
         throw new Error('Completed operation is missing a completion actor.');
     }
+    const webPushNotificationsEnabled = await webPushNotificationsFlag();
 
     await Promise.all([
         notifyOperationUpdate(operation.id, 'completed', {
             completedBy: operation.completedBy,
         }),
         operation.accountId
-            ? createNotification({
-                  accountId: operation.accountId,
-                  gardenId: operation.gardenId,
-                  raisedBedId: operation.raisedBedId,
-                  header,
-                  content,
-                  imageUrl: operation.imageUrls?.[0],
-                  linkUrl,
-                  timestamp: new Date(),
-              })
+            ? createNotification(
+                  {
+                      accountId: operation.accountId,
+                      gardenId: operation.gardenId,
+                      raisedBedId: operation.raisedBedId,
+                      header,
+                      content,
+                      imageUrl: operation.imageUrls?.[0],
+                      linkUrl,
+                      timestamp: new Date(),
+                  },
+                  { webPushNotificationsEnabled },
+              )
             : undefined,
     ]);
 }
@@ -610,6 +615,8 @@ export async function cancelOperationAction(formData: FormData) {
         }),
     );
 
+    const webPushNotificationsEnabled = await webPushNotificationsFlag();
+
     await Promise.all([
         notifyOperationUpdate(operationId, 'canceled', {
             reason,
@@ -623,14 +630,17 @@ export async function cancelOperationAction(formData: FormData) {
               )
             : Promise.resolve(),
         shouldNotify && operation.accountId
-            ? createNotification({
-                  accountId: operation.accountId,
-                  gardenId: operation.gardenId,
-                  raisedBedId: operation.raisedBedId,
-                  header,
-                  content,
-                  timestamp: new Date(),
-              })
+            ? createNotification(
+                  {
+                      accountId: operation.accountId,
+                      gardenId: operation.gardenId,
+                      raisedBedId: operation.raisedBedId,
+                      header,
+                      content,
+                      timestamp: new Date(),
+                  },
+                  { webPushNotificationsEnabled },
+              )
             : undefined,
     ]);
 

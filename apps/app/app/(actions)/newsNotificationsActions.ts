@@ -4,6 +4,7 @@ import { createNotification, getAccounts } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+import { webPushNotificationsFlag } from '../flags';
 
 type TargetMode = 'all' | 'selected';
 
@@ -46,24 +47,28 @@ export async function sendNewsNotificationAction(
         newsType === 'new-operation' ? 'Nova radnja dostupna' : 'Novost';
 
     const timestamp = new Date();
+    const webPushNotificationsEnabled = await webPushNotificationsFlag();
 
     await Promise.all(
         accountIds.map((accountId) =>
-            createNotification({
-                header,
-                content,
-                iconUrl: undefined,
-                imageUrl: undefined,
-                linkUrl: KnownPages.GrediceOperations,
-                accountId,
-                userId: undefined,
-                gardenId: undefined,
-                raisedBedId: undefined,
-                blockId: undefined,
-                timestamp,
-                readAt: null,
-                readWhere: undefined,
-            }),
+            createNotification(
+                {
+                    header,
+                    content,
+                    iconUrl: undefined,
+                    imageUrl: undefined,
+                    linkUrl: KnownPages.GrediceOperations,
+                    accountId,
+                    userId: undefined,
+                    gardenId: undefined,
+                    raisedBedId: undefined,
+                    blockId: undefined,
+                    timestamp,
+                    readAt: null,
+                    readWhere: undefined,
+                },
+                { webPushNotificationsEnabled },
+            ),
         ),
     );
 

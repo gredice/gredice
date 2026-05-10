@@ -40,7 +40,7 @@ function hasIsLoggedInProperty(
     return 'isLoggedIn' in value;
 }
 
-export function PushNotificationManager() {
+export function PushNotificationManager({ enabled }: { enabled: boolean }) {
     const { data } = useCurrentUser<User>();
     const isLoggedIn = Boolean(
         data &&
@@ -52,6 +52,11 @@ export function PushNotificationManager() {
     const [attempted, setAttempted] = useState(false);
 
     useEffect(() => {
+        if (!enabled) {
+            setAttempted(false);
+            return;
+        }
+
         if (!isLoggedIn) {
             setAttempted(false);
 
@@ -91,10 +96,10 @@ export function PushNotificationManager() {
                 }
             })();
         }
-    }, [isLoggedIn]);
+    }, [enabled, isLoggedIn]);
 
     useEffect(() => {
-        if (!isLoggedIn || attempted) {
+        if (!enabled || !isLoggedIn || attempted) {
             return;
         }
         setAttempted(true);
@@ -196,7 +201,7 @@ export function PushNotificationManager() {
         };
 
         void registerPush();
-    }, [attempted, isLoggedIn]);
+    }, [attempted, enabled, isLoggedIn]);
 
     return null;
 }

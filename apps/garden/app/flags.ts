@@ -28,6 +28,13 @@ export const raisedBedImageAIFlag = flag<boolean>({
     options: booleanOptions,
 });
 
+export const webPushNotificationsFlag = flag<boolean>({
+    key: 'webPushNotifications',
+    description: 'Enable browser push notification registration.',
+    decide: () => false,
+    options: booleanOptions,
+});
+
 export const lsystemPlantsFlag = flag<boolean>({
     key: 'lsystemPlants',
     description: 'Display L-System plants instead of only seeds.',

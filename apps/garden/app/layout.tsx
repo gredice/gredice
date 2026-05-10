@@ -7,6 +7,7 @@ import Head from 'next/head';
 import type { ReactNode } from 'react';
 import { ImpersonationBanner } from '../components/ImpersonationBanner';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
+import { webPushNotificationsFlag } from './flags';
 
 export function generateMetadata(): Metadata {
     return {
@@ -22,11 +23,12 @@ export const viewport: Viewport = {
     width: 'device-width',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
     children,
 }: Readonly<{
     children: ReactNode;
 }>) {
+    const webPushNotificationsEnabled = await webPushNotificationsFlag();
     const shouldInjectToolbar = process.env.NODE_ENV === 'development';
     const postHogApiKey =
         process.env.NEXT_PUBLIC_POSTHOG_KEY ??
@@ -37,7 +39,9 @@ export default function RootLayout({
         process.env.NEXT_PUBLIC_POSTHOG_HOST;
     const content = (
         <>
-            <ClientAppProvider>
+            <ClientAppProvider
+                webPushNotificationsEnabled={webPushNotificationsEnabled}
+            >
                 <ImpersonationBanner />
                 {children}
             </ClientAppProvider>

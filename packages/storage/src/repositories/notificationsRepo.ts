@@ -26,7 +26,14 @@ export async function getNotification(
     return result;
 }
 
-export async function createNotification(notification: InsertNotification) {
+type CreateNotificationOptions = {
+    webPushNotificationsEnabled?: boolean;
+};
+
+export async function createNotification(
+    notification: InsertNotification,
+    options?: CreateNotificationOptions,
+) {
     const result = await storage()
         .insert(notifications)
         .values({
@@ -35,7 +42,9 @@ export async function createNotification(notification: InsertNotification) {
         })
         .returning({ id: notifications.id });
     const id = result[0].id;
-    await notifyPushSubscribers({ ...notification, id });
+    if (options?.webPushNotificationsEnabled === true) {
+        await notifyPushSubscribers({ ...notification, id });
+    }
     return id;
 }
 

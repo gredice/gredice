@@ -4,6 +4,7 @@ import { createNotification, type InsertNotification } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+import { webPushNotificationsFlag } from '../flags';
 
 export async function createNotificationAction(
     _prevState: unknown,
@@ -32,7 +33,9 @@ export async function createNotificationAction(
         readAt: null,
         readWhere: undefined,
     };
-    await createNotification(notification);
+    await createNotification(notification, {
+        webPushNotificationsEnabled: await webPushNotificationsFlag(),
+    });
     if (notification.userId)
         revalidatePath(KnownPages.User(notification.userId));
     if (notification.gardenId)

@@ -21,6 +21,7 @@ import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+import { webPushNotificationsFlag } from '../flags';
 
 async function revalidateRaisedBedPaths(
     raisedBed: NonNullable<Awaited<ReturnType<typeof getRaisedBed>>>,
@@ -122,17 +123,23 @@ async function applyRaisedBedFieldPlantUpdate({
             }
 
             if (header && content && raisedBed.accountId) {
-                await createNotification({
-                    accountId: raisedBed.accountId,
-                    gardenId: raisedBed.gardenId,
-                    raisedBedId: raisedBed.id,
-                    header,
-                    content,
-                    linkUrl: raisedBed.name
-                        ? getRaisedBedCloseupUrl(raisedBed.name)
-                        : undefined,
-                    timestamp: new Date(),
-                });
+                await createNotification(
+                    {
+                        accountId: raisedBed.accountId,
+                        gardenId: raisedBed.gardenId,
+                        raisedBedId: raisedBed.id,
+                        header,
+                        content,
+                        linkUrl: raisedBed.name
+                            ? getRaisedBedCloseupUrl(raisedBed.name)
+                            : undefined,
+                        timestamp: new Date(),
+                    },
+                    {
+                        webPushNotificationsEnabled:
+                            await webPushNotificationsFlag(),
+                    },
+                );
             }
         } else {
             console.warn(
@@ -458,6 +465,8 @@ export async function cancelRaisedBedFieldAction(formData: FormData) {
     if (refundAmount > 0)
         content += `\nSredstva su ti vraćena u iznosu od ${refundAmount} 🌻.`;
 
+    const webPushNotificationsEnabled = await webPushNotificationsFlag();
+
     await Promise.all([
         createEvent(
             knownEvents.raisedBedFields.deletedV1(
@@ -473,14 +482,17 @@ export async function cancelRaisedBedFieldAction(formData: FormData) {
               )
             : Promise.resolve(),
         raisedBed.accountId
-            ? createNotification({
-                  accountId: raisedBed.accountId,
-                  gardenId: raisedBed.gardenId,
-                  raisedBedId: raisedBed.id,
-                  header,
-                  content,
-                  timestamp: new Date(),
-              })
+            ? createNotification(
+                  {
+                      accountId: raisedBed.accountId,
+                      gardenId: raisedBed.gardenId,
+                      raisedBedId: raisedBed.id,
+                      header,
+                      content,
+                      timestamp: new Date(),
+                  },
+                  { webPushNotificationsEnabled },
+              )
             : undefined,
     ]);
 

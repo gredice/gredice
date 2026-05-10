@@ -15,6 +15,7 @@ import {
 import { revalidatePath } from 'next/cache';
 import { notifyDeliveryCancelled } from '../../../../../api/lib/delivery/emailNotifications';
 import { auth } from '../../../../lib/auth/auth';
+import { webPushNotificationsFlag } from '../../../flags';
 
 export async function updateDeliveryRequestStatusAction(
     _prevState: unknown,
@@ -124,12 +125,18 @@ export async function changeDeliveryRequestSlotAction(
         if (updatedRequest?.accountId && updatedRequest.slot) {
             const formatted =
                 updatedRequest.slot.startAt.toLocaleString('hr-HR');
-            await createNotification({
-                accountId: updatedRequest.accountId,
-                header: 'Termin dostave promijenjen',
-                content: `Tvoj termin dostave je promijenjen na ${formatted}.`,
-                timestamp: new Date(),
-            });
+            await createNotification(
+                {
+                    accountId: updatedRequest.accountId,
+                    header: 'Termin dostave promijenjen',
+                    content: `Tvoj termin dostave je promijenjen na ${formatted}.`,
+                    timestamp: new Date(),
+                },
+                {
+                    webPushNotificationsEnabled:
+                        await webPushNotificationsFlag(),
+                },
+            );
         }
 
         await notifyDeliveryRequestEvent(requestId, 'updated', {
