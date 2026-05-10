@@ -47,16 +47,17 @@ export function EntityActions({
         setState(newState);
         setPublishError(null);
         try {
-            const result = await trackSave(() =>
-                updateEntityStateAction({
+            await trackSave(async () => {
+                const result = await updateEntityStateAction({
                     id: entity.id,
                     state: newState,
-                }),
-            );
-            if (!result.success) {
-                setState(previousState);
-                setPublishError(result.message);
-            }
+                });
+                if (!result.success) {
+                    throw new Error(
+                        result.message ?? 'Promjena statusa nije uspjela.',
+                    );
+                }
+            });
         } catch (error) {
             setState(previousState);
             setPublishError(
