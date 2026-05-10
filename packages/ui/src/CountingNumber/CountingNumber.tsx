@@ -60,9 +60,9 @@ function CountingNumber({
             return;
         }
 
-        hasStartedInitialAnimationRef.current = true;
         motionVal.set(fromNumber);
         const animationFrame = requestAnimationFrame(() => {
+            hasStartedInitialAnimationRef.current = true;
             motionVal.set(number);
         });
 
