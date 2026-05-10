@@ -7,7 +7,11 @@ import {
 } from '../../../../lib/http/cacheControl';
 import { getBjelovarForecast } from '../../../../lib/weather/forecast';
 import { populateWeatherFromSymbol } from '../../../../lib/weather/populateWeatherFromSymbol';
-import { fallbackWeatherNow, findClosestForecastEntry, pickFarmSnowAccumulation } from '../../../../lib/weather/weatherNowContract';
+import {
+    fallbackWeatherNow,
+    findClosestForecastEntry,
+    pickFarmSnowAccumulation,
+} from '../../../../lib/weather/weatherNowContract';
 
 // import { signalcoClient } from '@gredice/signalco';
 
@@ -60,13 +64,19 @@ const app = new Hono()
 
             if (!forecast || forecast.length === 0) {
                 setCacheControl(context, cacheControlPresets.weatherShortTerm);
-                return context.json({ ...fallbackWeatherNow, snowAccumulation });
+                return context.json({
+                    ...fallbackWeatherNow,
+                    snowAccumulation,
+                });
             }
 
             const closestEntry = findClosestForecastEntry(forecast, Date.now());
             if (!closestEntry) {
                 setCacheControl(context, cacheControlPresets.weatherShortTerm);
-                return context.json({ ...fallbackWeatherNow, snowAccumulation });
+                return context.json({
+                    ...fallbackWeatherNow,
+                    snowAccumulation,
+                });
             }
             setCacheControl(context, cacheControlPresets.weatherShortTerm);
 
