@@ -66,7 +66,7 @@ export async function generateStaticParams() {
     ]);
     const plantsById = new Map(plants?.map((plant) => [plant.id, plant]));
     return (
-        sorts?.map((entity, index) => {
+        sorts?.flatMap((entity, index) => {
             const sortName = entity?.information?.name;
             const plantId = entity?.information?.plant?.id;
             const plant = plantId ? plantsById.get(plantId) : null;
@@ -84,15 +84,15 @@ export async function generateStaticParams() {
                     },
                 );
 
-                throw new Error(
-                    'Invalid plant sort data while generating static params for /biljke/[alias]/sorte/[sortAlias]',
-                );
+                return [];
             }
 
-            return {
-                alias: toPageAlias(String(plantName)),
-                sortAlias: toPageAlias(String(sortName)),
-            };
+            return [
+                {
+                    alias: toPageAlias(String(plantName)),
+                    sortAlias: toPageAlias(String(sortName)),
+                },
+            ];
         }) ?? []
     );
 }
