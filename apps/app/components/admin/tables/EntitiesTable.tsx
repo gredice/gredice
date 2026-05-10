@@ -60,6 +60,7 @@ type EntitiesTableProps = {
     completionFilter?: string;
     stateFilter?: string;
     onDuplicate: (entityId: number) => Promise<void>;
+    refLabelsByDefinitionId?: Record<number, Record<string, string>>;
 };
 
 export function EntitiesTable({
@@ -71,6 +72,7 @@ export function EntitiesTable({
     completionFilter = '',
     stateFilter = '',
     onDuplicate,
+    refLabelsByDefinitionId = {},
 }: EntitiesTableProps) {
     const { filter } = useFilter();
     const [sort, setSort] = useState<SortState>(defaultSort);
@@ -217,6 +219,9 @@ export function EntitiesTable({
                                     <EntityAttributeValueCell
                                         entity={entity}
                                         definition={d}
+                                        refLabelsByDefinitionId={
+                                            refLabelsByDefinitionId
+                                        }
                                     />
                                 </Table.Cell>
                             ))}
@@ -270,6 +275,7 @@ function EntityAttributeValueCell({
 }: {
     entity: Entities[number];
     definition: SelectAttributeDefinition;
+    refLabelsByDefinitionId: Record<number, Record<string, string>>;
 }) {
     const value = entityAttributeValueByDefinitionId(entity, definition.id);
     if (!value) {
@@ -307,6 +313,12 @@ function EntityAttributeValueCell({
 
     if (definition.dataType === 'barcode') {
         return <BarcodeValue value={value} />;
+    }
+
+    if (definition.dataType.startsWith('ref:')) {
+        const resolvedLabel =
+            refLabelsByDefinitionId[definition.id]?.[value] ?? value;
+        return <Typography secondary>{resolvedLabel}</Typography>;
     }
 
     return (
