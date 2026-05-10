@@ -23,7 +23,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import Link from 'next/link';
 import { startTransition, useState } from 'react';
 import { KnownPages } from '../../../../../src/KnownPages';
-import { updateEntity } from '../../../../(actions)/entityActions';
+import { updateEntityStateAction } from '../../../../(actions)/entityActions';
 import { useEntityDetailsSave } from './EntityDetailsSaveContext';
 
 export function EntityActions({
@@ -47,12 +47,16 @@ export function EntityActions({
         setState(newState);
         setPublishError(null);
         try {
-            await trackSave(() =>
-                updateEntity({
+            const result = await trackSave(() =>
+                updateEntityStateAction({
                     id: entity.id,
                     state: newState,
                 }),
             );
+            if (!result.success) {
+                setState(previousState);
+                setPublishError(result.message);
+            }
         } catch (error) {
             setState(previousState);
             setPublishError(

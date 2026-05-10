@@ -201,6 +201,42 @@ export async function updateEntity(entity: UpdateEntity) {
     revalidatePath(KnownPages.DirectoryEntityPath, 'layout');
 }
 
+function entityActionErrorMessage(error: unknown) {
+    if (error instanceof Error) {
+        return error.message;
+    }
+    return 'Promjena statusa nije uspjela.';
+}
+
+export async function updateEntityStateAction(entity: UpdateEntity) {
+    await auth(['admin']);
+
+    const authData = await auth(['admin']);
+
+    try {
+        await storageUpdateEntity(entity, {
+            id: authData.userId,
+            name: authData.user.userName,
+        });
+    } catch (error) {
+        return {
+            success: false,
+            message: entityActionErrorMessage(error),
+        };
+    }
+
+    revalidatePath(KnownPages.Directories);
+    revalidatePath(KnownPages.DirectoryEntityTypePath, 'page');
+    revalidatePath(KnownPages.DirectoryEntityTypePath, 'layout');
+    revalidatePath(KnownPages.DirectoryEntityPath, 'page');
+    revalidatePath(KnownPages.DirectoryEntityPath, 'layout');
+
+    return {
+        success: true,
+        message: null,
+    };
+}
+
 export async function duplicateEntity(
     entityTypeName: string,
     entityId: number,
