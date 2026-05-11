@@ -24,6 +24,10 @@ function formatAction(action: string): string {
     );
 }
 
+function isDeleteAction(action: string): boolean {
+    return (action.split('.').at(-1) ?? action) === 'deleted';
+}
+
 function formatDateTime(value: Date): string {
     return new Intl.DateTimeFormat('hr-HR', {
         dateStyle: 'medium',
@@ -44,40 +48,54 @@ export default async function DirectoryActivityPage() {
                 {revisions.length === 0 ? (
                     <Typography level="body2">Nema aktivnosti.</Typography>
                 ) : (
-                    revisions.map((revision) => (
-                        <div
-                            key={revision.id}
-                            className="rounded-md border p-3"
-                        >
-                            <Row
-                                className="items-center justify-between"
-                                spacing={2}
+                    revisions.map((revision) => {
+                        const isDeleted = isDeleteAction(revision.action);
+
+                        return (
+                            <div
+                                key={revision.id}
+                                className="rounded-md border p-3"
                             >
-                                <Stack spacing={0.5}>
-                                    <Typography level="body2" semiBold>
-                                        {formatAction(revision.action)}
-                                    </Typography>
-                                    <Typography
-                                        level="label"
-                                        className="text-muted-foreground"
-                                    >
-                                        {formatDateTime(revision.createdAt)} •{' '}
-                                        {revision.actorName ??
-                                            'Nepoznat korisnik'}
-                                    </Typography>
-                                </Stack>
-                                <Link
-                                    href={KnownPages.DirectoryEntity(
-                                        revision.entityTypeName,
-                                        revision.entityId,
-                                    )}
-                                    className="text-sm underline"
+                                <Row
+                                    className="items-center justify-between"
+                                    spacing={2}
                                 >
-                                    Otvori zapis #{revision.entityId}
-                                </Link>
-                            </Row>
-                        </div>
-                    ))
+                                    <Stack spacing={0.5}>
+                                        <Typography level="body2" semiBold>
+                                            {formatAction(revision.action)}
+                                        </Typography>
+                                        <Typography
+                                            level="label"
+                                            className="text-muted-foreground"
+                                        >
+                                            {formatDateTime(revision.createdAt)}{' '}
+                                            •{' '}
+                                            {revision.actorName ??
+                                                'Nepoznat korisnik'}
+                                        </Typography>
+                                    </Stack>
+                                    {isDeleted ? (
+                                        <Typography
+                                            level="label"
+                                            className="text-muted-foreground"
+                                        >
+                                            Obrisani zapis #{revision.entityId}
+                                        </Typography>
+                                    ) : (
+                                        <Link
+                                            href={KnownPages.DirectoryEntity(
+                                                revision.entityTypeName,
+                                                revision.entityId,
+                                            )}
+                                            className="text-sm underline"
+                                        >
+                                            Otvori zapis #{revision.entityId}
+                                        </Link>
+                                    )}
+                                </Row>
+                            </div>
+                        );
+                    })
                 )}
             </Stack>
         </Stack>
