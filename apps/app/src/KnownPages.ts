@@ -5,6 +5,7 @@ export const KnownPages = {
     Dashboard: '/admin',
     Settings: '/admin/settings',
     Directories: '/admin/directories',
+    DirectoriesActivity: '/admin/directories/activity',
     CmsPages: '/admin/cms/pages',
     CmsPageCreate: '/admin/cms/pages/create',
     CmsPage: (pageId: number) => `/admin/cms/pages/${pageId}` as Route,

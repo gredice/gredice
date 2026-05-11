@@ -20,7 +20,13 @@ export async function sendDeleteAccountEmail(accountId: string) {
     }
     // TODO: Validate username is valid email
 
-    const token = await createJwt(user.id, '72h');
+    const token = await createJwt(
+        {
+            sub: user.id,
+            accountId,
+        },
+        '72h',
+    );
     const confirmLink = `https://vrt.gredice.com/racun/brisanje?token=${token}`;
     await sendEmail({
         from: 'suncokret@obavijesti.gredice.com',

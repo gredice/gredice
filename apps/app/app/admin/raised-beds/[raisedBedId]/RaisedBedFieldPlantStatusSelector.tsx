@@ -34,6 +34,8 @@ export function RaisedBedFieldPlantStatusSelector({
                 },
                 { value: 'sowed', label: 'Sijano', icon: '🫘' },
                 { value: 'sprouted', label: 'Proklijalo', icon: '🌱' },
+                { value: 'firstFlowers', label: 'Prvi cvjetovi', icon: '🌸' },
+                { value: 'firstFruitSet', label: 'Prvi plodovi', icon: '🍅' },
                 { value: 'notSprouted', label: 'Nije proklijalo', icon: '❌' },
                 { value: 'died', label: 'Uginulo', icon: '💀' },
                 { value: 'ready', label: 'Spremno', icon: '🥕' },

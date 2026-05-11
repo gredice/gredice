@@ -7,6 +7,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { CompleteOperationModal } from './CompleteOperationModal';
+import { HarvestOperationPrintModal } from './HarvestOperationPrintModal';
 import type { FarmScheduleDayData } from './scheduleData';
 import {
     formatMinutes,
@@ -51,6 +52,49 @@ function buildOperationLabel(
         operationData?.attributes?.application === 'raisedBedFull';
 
     return `${isFullRaisedBed || !physicalPositionIndex ? '' : `${physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${sort ? `: ${sort.information?.name ?? 'Nepoznato'}` : ''}`;
+}
+
+function shouldPrintHarvestLabel(
+    operationData: EntityStandardized | undefined,
+) {
+    return (
+        (operationData as { attributes?: { printLabel?: unknown } } | undefined)
+            ?.attributes?.printLabel === true
+    );
+}
+
+function buildHarvestLabelData(
+    operation: FarmOperation,
+    raisedBeds: FarmRaisedBed[],
+    plantSortById: Map<number, EntityStandardized>,
+) {
+    if (!operation.raisedBedFieldId || operation.raisedBedId === null) {
+        return null;
+    }
+
+    const raisedBed = raisedBeds.find(
+        (candidate) => candidate.id === operation.raisedBedId,
+    );
+    const field = raisedBed?.fields.find(
+        (candidate) => candidate.id === operation.raisedBedFieldId,
+    );
+    const plantSortName = field?.plantSortId
+        ? plantSortById.get(field.plantSortId)?.information?.name
+        : undefined;
+
+    if (!raisedBed?.physicalId || field?.positionIndex === undefined) {
+        return null;
+    }
+
+    if (!plantSortName) {
+        return null;
+    }
+
+    return {
+        raisedBedPhysicalId: raisedBed.physicalId,
+        fieldIndex: field.positionIndex + 1,
+        plantSortName,
+    };
 }
 
 export function FarmScheduleOperationsSection({
@@ -164,11 +208,23 @@ export function FarmScheduleOperationsSection({
                                     const completed = isOperationCompleted(
                                         operation.status,
                                     );
+                                    const operationData = operationDataById.get(
+                                        operation.entityId,
+                                    );
                                     const canComplete =
                                         !completed &&
                                         (!operation.assignedUserId ||
                                             operation.assignedUserId ===
                                                 userId);
+                                    const harvestLabelData =
+                                        !completed &&
+                                        shouldPrintHarvestLabel(operationData)
+                                            ? buildHarvestLabelData(
+                                                  operation,
+                                                  groupedRaisedBeds,
+                                                  plantSortById,
+                                              )
+                                            : null;
 
                                     return (
                                         <div
@@ -272,6 +328,16 @@ export function FarmScheduleOperationsSection({
                                                                     'Danas'
                                                                 )}
                                                             </Typography>
+                                                            {harvestLabelData && (
+                                                                <HarvestOperationPrintModal
+                                                                    operationLabel={
+                                                                        operation.label
+                                                                    }
+                                                                    labelData={
+                                                                        harvestLabelData
+                                                                    }
+                                                                />
+                                                            )}
                                                         </Row>
                                                     </Stack>
                                                 </Row>

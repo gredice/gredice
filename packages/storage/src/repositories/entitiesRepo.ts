@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, count, desc, eq, inArray, like } from 'drizzle-orm';
+import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import {
     attributeDefinitions,
     attributeValues,
@@ -8,6 +8,7 @@ import {
     type SelectAttributeDefinition,
     type SelectAttributeValue,
     type SelectEntity,
+    type SelectEntityRevision,
     type SelectEntityType,
     storage,
     type UpdateEntity,
@@ -21,6 +22,28 @@ import {
 import { getEntityCompleteness } from '../helpers/entityCompleteness';
 
 const entityCacheTtl = 60 * 60; // 1 hour
+
+type EntityAttribute = SelectAttributeValue & {
+    attributeDefinition: SelectAttributeDefinition;
+};
+
+type EntityWithAttributesAndDefinitions = SelectEntity & {
+    attributes: EntityAttribute[];
+    entityType: SelectEntityType & {
+        attributeDefinitions: SelectAttributeDefinition[];
+    };
+};
+
+export type LatestEntityRevision = Pick<
+    SelectEntityRevision,
+    | 'id'
+    | 'entityId'
+    | 'entityTypeName'
+    | 'action'
+    | 'actorId'
+    | 'actorName'
+    | 'createdAt'
+>;
 
 function tryParseAttributeJson(
     value: string,
@@ -51,16 +74,79 @@ function isRangeValue(value: unknown): value is { min: number; max: number } {
     );
 }
 
+function parseEntityRefId(value: string | null | undefined) {
+    if (!value) {
+        return null;
+    }
+
+    const trimmedValue = value.trim();
+    if (!/^\d+$/.test(trimmedValue)) {
+        return null;
+    }
+
+    return Number.parseInt(trimmedValue, 10);
+}
+
+async function buildEffectiveEntity(
+    entity: EntityWithAttributesAndDefinitions,
+    visited = new Set<number>(),
+): Promise<EntityWithAttributesAndDefinitions> {
+    if (visited.has(entity.id)) {
+        throw new Error('Cycle detected in entity hierarchy.');
+    }
+    visited.add(entity.id);
+
+    if (!entity.parentId) {
+        return populateMissingAttributes(entity);
+    }
+
+    const parent = await storage().query.entities.findFirst({
+        where: and(
+            eq(entities.id, entity.parentId),
+            eq(entities.isDeleted, false),
+        ),
+        with: {
+            attributes: {
+                where: eq(attributeValues.isDeleted, false),
+                with: {
+                    attributeDefinition: true,
+                },
+            },
+            entityType: {
+                with: {
+                    attributeDefinitions: {
+                        where: eq(attributeDefinitions.isDeleted, false),
+                    },
+                },
+            },
+        },
+    });
+
+    if (!parent || parent.entityTypeName !== entity.entityTypeName) {
+        return populateMissingAttributes(entity);
+    }
+
+    const parentEffective = await buildEffectiveEntity(parent, visited);
+    const childByDefinitionId = new Map(
+        entity.attributes.map((attribute) => [
+            attribute.attributeDefinitionId,
+            attribute,
+        ]),
+    );
+
+    const inheritedAttributes = parentEffective.attributes.filter(
+        (attribute) =>
+            !childByDefinitionId.has(attribute.attributeDefinitionId),
+    );
+
+    return populateMissingAttributes({
+        ...entity,
+        attributes: [...entity.attributes, ...inheritedAttributes],
+    });
+}
 function populateMissingAttributes(
-    entity: SelectEntity & {
-        attributes: (SelectAttributeValue & {
-            attributeDefinition: SelectAttributeDefinition;
-        })[];
-        entityType: SelectEntityType & {
-            attributeDefinitions: SelectAttributeDefinition[];
-        };
-    },
-) {
+    entity: EntityWithAttributesAndDefinitions,
+): EntityWithAttributesAndDefinitions {
     // Create missing attributes that have default value based on entity type definitions
     for (const definition of entity.entityType.attributeDefinitions) {
         const hasAtleastOneAttributeValue = entity.attributes.some(
@@ -127,7 +213,9 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
         },
     });
 
-    return rawEntities.map(populateMissingAttributes);
+    return Promise.all(
+        rawEntities.map((entity) => buildEffectiveEntity(entity)),
+    );
 }
 
 export async function getEntitiesCount(entityTypeName: string, state?: string) {
@@ -151,9 +239,7 @@ export async function getEntitiesCount(entityTypeName: string, state?: string) {
 
 // Add a type for the cache, ensuring attributes and entityType are included
 interface EntityWithAttributesAndType extends SelectEntity {
-    attributes: (SelectAttributeValue & {
-        attributeDefinition: SelectAttributeDefinition;
-    })[];
+    attributes: EntityAttribute[];
     entityType: SelectEntityType;
 }
 interface EntityTypeCache {
@@ -228,7 +314,6 @@ async function expandEntityAttributes<T extends Record<string, unknown>>(
             attribute.attributeDefinition.category
         ] as Record<string, unknown>;
         if (attribute.attributeDefinition.multiple) {
-            // Create array if it doesn't exist
             if (category[attribute.attributeDefinition.name] === undefined) {
                 category[attribute.attributeDefinition.name] = [];
             }
@@ -240,9 +325,7 @@ async function expandEntityAttributes<T extends Record<string, unknown>>(
                 attribute.attributeDefinition,
                 cache,
             );
-
-            // When expanding to array, ignore the null values
-            if (typeof result !== 'undefined' && result !== null) {
+            if (result !== undefined && result !== null) {
                 if (Array.isArray(result)) {
                     array.push(...result);
                 } else {
@@ -313,39 +396,17 @@ async function expandValue(
     }
 }
 
-// Update resolveRef to use the cache and correct types
 async function resolveRef(
     value: string | null,
     attributeDefinition: SelectAttributeDefinition,
     cache: EntityTypeCache = {},
 ) {
-    const refEntityTypeName = attributeDefinition.dataType.split(':')[1];
-    if (!value) {
-        return;
-    }
-    const refNames: string[] = [];
-    if (attributeDefinition.multiple) {
-        try {
-            const parsedValue = JSON.parse(value);
-            if (!Array.isArray(parsedValue)) {
-                refNames.push(value);
-            } else {
-                for (const item of parsedValue) {
-                    if (typeof item === 'string') {
-                        refNames.push(item);
-                    } else {
-                        refNames.push(JSON.stringify(item));
-                    }
-                }
-            }
-        } catch {
-            refNames.push(value);
-        }
-    } else {
-        refNames.push(value);
+    const refId = parseEntityRefId(value);
+    if (refId === null) {
+        return null;
     }
 
-    // Use cache key based on entity type and state
+    const refEntityTypeName = attributeDefinition.dataType.split(':')[1];
     const cacheKey = `${refEntityTypeName}:published`;
     if (!cache[cacheKey]) {
         cache[cacheKey] = getEntitiesRaw(
@@ -354,45 +415,16 @@ async function resolveRef(
         ) as Promise<EntityWithAttributesAndType[]>;
     }
     const refEntitiesByType = await cache[cacheKey];
-    const refNameSet = new Set(refNames);
-    const refEntities = refEntitiesByType.filter(
-        (e: EntityWithAttributesAndType) =>
-            e.attributes.some(
-                (
-                    a: SelectAttributeValue & {
-                        attributeDefinition: SelectAttributeDefinition;
-                    },
-                ) =>
-                    a.value != null &&
-                    a.attributeDefinition.category === 'information' &&
-                    a.attributeDefinition.name === 'name' &&
-                    refNameSet.has(a.value),
-            ),
-    );
-
-    if (attributeDefinition.multiple) {
-        return await Promise.all(
-            refEntities.map((ref) =>
-                expandEntityAttributes(
-                    {
-                        id: ref.id,
-                    },
-                    ref.attributes,
-                    cache,
-                ),
-            ),
-        );
-    } else {
-        return refEntities[0]
-            ? await expandEntityAttributes(
-                  {
-                      id: refEntities[0].id,
-                  },
-                  refEntities[0].attributes,
-                  cache,
-              )
-            : null;
+    const refEntity = refEntitiesByType.find((e) => e.id === refId);
+    if (!refEntity) {
+        return null;
     }
+
+    return await expandEntityAttributes(
+        { id: refEntity.id },
+        refEntity.attributes,
+        cache,
+    );
 }
 
 export async function getEntitiesFormatted<T>(entityTypeName: string) {
@@ -451,10 +483,6 @@ export async function getEntityRaw(id: number) {
     return populateMissingAttributes(entity);
 }
 
-function escapeForLike(value: string) {
-    return value.replace(/[\\%_]/g, '\\$&');
-}
-
 function entityNameFromAttributes(
     entity: SelectEntity & {
         attributes: (SelectAttributeValue & {
@@ -488,45 +516,12 @@ function entityDisplayNameFromAttributes(
     return label ?? name ?? `${entity.entityType.label} ${entity.id}`;
 }
 
-function attributeValueContainsEntityName(
-    value: string | null,
-    entityName: string,
-    multiple: boolean,
-) {
-    if (!value) {
-        return false;
-    }
-    if (!multiple) {
-        return value === entityName;
-    }
-
-    try {
-        const parsed = JSON.parse(value);
-        if (!Array.isArray(parsed)) {
-            return value === entityName;
-        }
-
-        return parsed.some((item) =>
-            typeof item === 'string'
-                ? item === entityName
-                : JSON.stringify(item) === entityName,
-        );
-    } catch {
-        return value === entityName;
-    }
-}
-
 export async function getEntityIncomingLinks(
     entityId: number,
     sourceEntity?: NonNullable<Awaited<ReturnType<typeof getEntityRaw>>>,
 ): Promise<IncomingEntityLinkGroup[]> {
     const entity = sourceEntity ?? (await getEntityRaw(entityId));
     if (!entity) {
-        return [];
-    }
-
-    const entityName = entityNameFromAttributes(entity);
-    if (!entityName) {
         return [];
     }
 
@@ -542,44 +537,14 @@ export async function getEntityIncomingLinks(
 
     const definitionById = new Map(refDefinitions.map((d) => [d.id, d]));
     const definitionIds = refDefinitions.map((d) => d.id);
-    const exactValueMatches = await storage().query.attributeValues.findMany({
+    const linkAttributeValues = await storage().query.attributeValues.findMany({
         where: and(
             inArray(attributeValues.attributeDefinitionId, definitionIds),
             eq(attributeValues.isDeleted, false),
-            eq(attributeValues.value, entityName),
+            eq(attributeValues.value, String(entityId)),
         ),
     });
 
-    const multipleDefinitionIds = refDefinitions
-        .filter((definition) => definition.multiple)
-        .map((definition) => definition.id);
-    const linkAttributeValues = [...exactValueMatches];
-    if (multipleDefinitionIds.length > 0) {
-        const escapedJsonEntityName = escapeForLike(JSON.stringify(entityName));
-        const legacyJsonArrayMatches =
-            await storage().query.attributeValues.findMany({
-                where: and(
-                    inArray(
-                        attributeValues.attributeDefinitionId,
-                        multipleDefinitionIds,
-                    ),
-                    eq(attributeValues.isDeleted, false),
-                    like(attributeValues.value, `%${escapedJsonEntityName}%`),
-                ),
-            });
-
-        const seenAttributeValueIds = new Set(
-            linkAttributeValues.map((v) => v.id),
-        );
-        for (const legacyJsonArrayMatch of legacyJsonArrayMatches) {
-            if (seenAttributeValueIds.has(legacyJsonArrayMatch.id)) {
-                continue;
-            }
-
-            linkAttributeValues.push(legacyJsonArrayMatch);
-            seenAttributeValueIds.add(legacyJsonArrayMatch.id);
-        }
-    }
     const entityToDefinitionIds = new Map<number, Set<number>>();
     for (const attributeValue of linkAttributeValues) {
         if (attributeValue.entityId === entityId) {
@@ -589,15 +554,6 @@ export async function getEntityIncomingLinks(
             attributeValue.attributeDefinitionId,
         );
         if (!definition) {
-            continue;
-        }
-        if (
-            !attributeValueContainsEntityName(
-                attributeValue.value,
-                entityName,
-                definition.multiple,
-            )
-        ) {
             continue;
         }
 
@@ -727,6 +683,60 @@ export async function updateEntity(
     const previousEntity = await storage().query.entities.findFirst({
         where: eq(entities.id, entity.id),
     });
+    if (!previousEntity) {
+        throw new Error(`Entity with id ${entity.id} not found`);
+    }
+
+    const nextParentId =
+        typeof entity.parentId === 'undefined'
+            ? previousEntity.parentId
+            : entity.parentId;
+    const nextEntityTypeName =
+        entity.entityTypeName ?? previousEntity.entityTypeName;
+
+    if (
+        typeof entity.parentId !== 'undefined' ||
+        typeof entity.entityTypeName !== 'undefined'
+    ) {
+        if (nextParentId === entity.id) {
+            throw new Error('Entity cannot be its own parent.');
+        }
+        if (nextParentId !== null) {
+            const parentEntity = await storage().query.entities.findFirst({
+                where: and(
+                    eq(entities.id, nextParentId),
+                    eq(entities.isDeleted, false),
+                ),
+            });
+            if (!parentEntity) {
+                throw new Error(`Parent entity ${nextParentId} was not found.`);
+            }
+            if (parentEntity.entityTypeName !== nextEntityTypeName) {
+                throw new Error(
+                    'Parent entity must have the same entity type as the child.',
+                );
+            }
+
+            let cursor = parentEntity;
+            const visited = new Set<number>([entity.id]);
+            while (cursor.parentId !== null) {
+                if (visited.has(cursor.id)) {
+                    throw new Error('Cycle detected in entity hierarchy.');
+                }
+                visited.add(cursor.id);
+                const nextParent = await storage().query.entities.findFirst({
+                    where: and(
+                        eq(entities.id, cursor.parentId),
+                        eq(entities.isDeleted, false),
+                    ),
+                });
+                if (!nextParent) {
+                    break;
+                }
+                cursor = nextParent;
+            }
+        }
+    }
 
     const updateData = {
         ...entity,
@@ -734,7 +744,10 @@ export async function updateEntity(
 
     if (updateData.state === 'published') {
         const entityForValidation = await storage().query.entities.findFirst({
-            where: and(eq(entities.id, entity.id), eq(entities.isDeleted, false)),
+            where: and(
+                eq(entities.id, entity.id),
+                eq(entities.isDeleted, false),
+            ),
             with: {
                 attributes: {
                     where: eq(attributeValues.isDeleted, false),
@@ -860,5 +873,26 @@ export async function getEntityRevisions(entityId: number) {
             desc(revisions.createdAt),
             desc(revisions.id),
         ],
+    });
+}
+
+export async function getLatestEntityRevisions(
+    limit = 100,
+): Promise<LatestEntityRevision[]> {
+    return storage().query.entityRevisions.findMany({
+        columns: {
+            id: true,
+            entityId: true,
+            entityTypeName: true,
+            action: true,
+            actorId: true,
+            actorName: true,
+            createdAt: true,
+        },
+        orderBy: (revisions, { desc }) => [
+            desc(revisions.createdAt),
+            desc(revisions.id),
+        ],
+        limit,
     });
 }

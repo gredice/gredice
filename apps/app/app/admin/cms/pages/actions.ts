@@ -3,6 +3,7 @@
 import {
     type CreateCmsPageInput,
     createCmsPage,
+    getCmsPage,
     isCmsPageState,
     restoreCmsPageRevision,
     softDeleteCmsPage,
@@ -18,6 +19,12 @@ export type CmsPageFormState = {
     success: false;
     message: string;
 } | null;
+
+export type CmsPageAutosaveState = {
+    success: boolean;
+    message: string;
+    savedAt?: string;
+};
 
 function formText(formData: FormData, key: string) {
     const value = formData.get(key);
@@ -65,6 +72,12 @@ function revalidateCmsPagePaths(pageId: number) {
     revalidatePath(KnownPages.CmsPageEdit(pageId));
 }
 
+function revalidatePublicCmsPagePaths(slug: string) {
+    revalidatePath(`/${slug}`);
+    revalidatePath('/api/directories/pages');
+    revalidatePath(`/api/directories/pages/${slug}`);
+}
+
 export async function createCmsPageAction(
     _previousState: CmsPageFormState,
     formData: FormData,
@@ -95,11 +108,13 @@ export async function updateCmsPageAction(
 ): Promise<CmsPageFormState> {
     const authContext = await auth(['admin']);
 
+    const payload = cmsPageInputFromForm(formData);
+
     try {
         await updateCmsPage(
             {
                 id: pageId,
-                ...cmsPageInputFromForm(formData),
+                ...payload,
             },
             {
                 id: authContext.user.id,
@@ -114,13 +129,55 @@ export async function updateCmsPageAction(
     }
 
     revalidateCmsPagePaths(pageId);
+    if (payload.state === 'published') {
+        revalidatePublicCmsPagePaths(payload.slug);
+    }
     redirect(KnownPages.CmsPage(pageId));
+}
+
+export async function autosaveCmsPageAction(
+    pageId: number,
+    formData: FormData,
+): Promise<CmsPageAutosaveState> {
+    const authContext = await auth(['admin']);
+
+    const payload = cmsPageInputFromForm(formData);
+    payload.state = 'draft';
+
+    try {
+        await updateCmsPage(
+            {
+                id: pageId,
+                ...payload,
+            },
+            {
+                id: authContext.user.id,
+                name: authContext.user.userName,
+            },
+        );
+    } catch (error) {
+        return {
+            success: false,
+            message: cmsPageErrorMessage(error),
+        };
+    }
+
+    revalidateCmsPagePaths(pageId);
+    return {
+        success: true,
+        message: 'Skica spremljena.',
+        savedAt: new Date().toISOString(),
+    };
 }
 
 export async function publishCmsPageAction(pageId: number) {
     const authContext = await auth(['admin']);
 
+    let slug = '';
+
     try {
+        const page = await getCmsPage(pageId);
+        slug = page?.slug ?? '';
         await updateCmsPageState(pageId, 'published', {
             id: authContext.user.id,
             name: authContext.user.userName,
@@ -130,6 +187,9 @@ export async function publishCmsPageAction(pageId: number) {
         redirect(`${KnownPages.CmsPage(pageId)}?publishError=${message}`);
     }
     revalidateCmsPagePaths(pageId);
+    if (slug) {
+        revalidatePublicCmsPagePaths(slug);
+    }
 }
 
 export async function unpublishCmsPageAction(pageId: number) {

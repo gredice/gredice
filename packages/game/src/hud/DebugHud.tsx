@@ -1,7 +1,9 @@
 'use client';
 
 import { DebugPanel, DebugPanelSection } from '@gredice/ui/DebugControls';
+import { Button } from '@signalco/ui-primitives/Button';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Slider } from '@signalco/ui-primitives/Slider';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
@@ -155,6 +157,13 @@ function useProfileHudSnapshot() {
 
     return snapshot;
 }
+
+const SNOW_ACCUMULATION_PRESETS = [
+    { label: '0 cm', value: 0 },
+    { label: 'Light 5 cm', value: 5 },
+    { label: 'Medium 15 cm', value: 15 },
+    { label: 'Heavy 30 cm', value: 30 },
+] as const;
 
 const PANEL_MARGIN_PX = 16;
 const PANEL_STORAGE_KEY = 'gredice.debugPanel.position';
@@ -760,6 +769,28 @@ export function DebugHud() {
                                         }
                                     }}
                                 />
+                                <Row spacing={1} className="flex-wrap">
+                                    {SNOW_ACCUMULATION_PRESETS.map((preset) => (
+                                        <Button
+                                            key={preset.label}
+                                            size="sm"
+                                            disabled={weatherControlsDisabled}
+                                            onClick={() =>
+                                                setSnowAccumulation(
+                                                    preset.value,
+                                                )
+                                            }
+                                            variant={
+                                                snowAccumulation ===
+                                                preset.value
+                                                    ? 'solid'
+                                                    : 'outlined'
+                                            }
+                                        >
+                                            {preset.label}
+                                        </Button>
+                                    ))}
+                                </Row>
                             </Stack>
                         </DebugPanelSection>
                     </Stack>
