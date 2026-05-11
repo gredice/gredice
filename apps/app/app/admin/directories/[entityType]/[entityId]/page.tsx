@@ -43,6 +43,7 @@ import { EntityDetailsSaveProvider } from './EntityDetailsSaveProvider';
 import { EntityDetailsStickyHeader } from './EntityDetailsStickyHeader';
 import { EntityInventoryCard } from './EntityInventoryCard';
 import { EntityLinksPanel } from './EntityLinksPanel';
+import { HistoryRevisionListClient } from './HistoryRevisionListClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -258,7 +259,7 @@ export default async function EntityDetailsPage(props: {
                         <TabsList>
                             {[
                                 ...attributeCategories,
-                                { name: 'history', label: 'Historija' },
+                                { name: 'history', label: 'Povijest' },
                             ].map((category) => (
                                 <TabsTrigger
                                     key={category.name}
@@ -364,7 +365,7 @@ export default async function EntityDetailsPage(props: {
                     </Stack>
                     {[
                         ...attributeCategories,
-                        { name: 'history', label: 'Historija' },
+                        { name: 'history', label: 'Povijest' },
                     ].map((category) => (
                         <TabsContent value={category.name} key={category.name}>
                             <AttributeCategoryDetails
@@ -378,15 +379,12 @@ export default async function EntityDetailsPage(props: {
                     <TabsContent value="history" key="history">
                         <FieldSet>
                             {revisions.length === 0 ? (
-                                <Field name="Historija" value="Nema promjena" />
+                                <Field name="Povijest" value="Nema promjena" />
                             ) : (
-                                revisions.map((revision) => (
-                                    <Field
-                                        key={revision.id}
-                                        name={`${revision.action} • ${revision.actorName ?? 'Nepoznat korisnik'}`}
-                                        value={`${revision.createdAt.toISOString()} | ${revision.previousValue ?? revision.previousState ?? '-'} → ${revision.nextValue ?? revision.nextState ?? '-'}`}
-                                    />
-                                ))
+                                <HistoryRevisionListClient
+                                    revisions={revisions}
+                                    attributeDefinitions={attributeDefinitions}
+                                />
                             )}
                         </FieldSet>
                     </TabsContent>
