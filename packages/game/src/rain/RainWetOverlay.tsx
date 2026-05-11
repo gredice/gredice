@@ -8,6 +8,7 @@ import {
     UniformsUtils,
     Vector3,
 } from 'three';
+import { useGameFlags } from '../GameFlagsContext';
 import { useGameState } from '../useGameState';
 
 type RainWetOverlayProps = {
@@ -74,7 +75,17 @@ void main() {
 }
 `;
 
-export function RainWetOverlay({
+export function RainWetOverlay(props: RainWetOverlayProps) {
+    const flags = useGameFlags();
+
+    if (!flags.enableRainWetOverlayFlag) {
+        return null;
+    }
+
+    return <RainWetOverlayEffect {...props} />;
+}
+
+function RainWetOverlayEffect({
     geometry,
     minRain = 0.35,
     intensityMultiplier = 1,
