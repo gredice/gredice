@@ -1,5 +1,6 @@
 import { animated } from '@react-spring/three';
 import { useHoveredBlockStore } from '../../controls/useHoveredBlockStore';
+import { RainWetOverlay } from '../../rain/RainWetOverlay';
 import { SnowOverlay } from '../../snow/SnowOverlay';
 import { snowPresets } from '../../snow/snowPresets';
 import type { EntityInstanceProps } from '../../types/runtime/EntityInstanceProps';
