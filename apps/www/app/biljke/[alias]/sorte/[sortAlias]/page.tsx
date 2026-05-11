@@ -176,7 +176,7 @@ export default async function PlantSortPage(
             alias,
             plantId: basePlantData.id,
             plantName: basePlantData.information.name,
-            sortAlias,
+            sortAlias: sort,
             sortId: sortData.id,
             sortName: sortData.information.name,
             sortUrl,
