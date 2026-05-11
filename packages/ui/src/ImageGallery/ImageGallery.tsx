@@ -53,6 +53,9 @@ export function ImageGallery({
         : 0;
     const activeImage = images[safeIndex];
 
+    const resolveAlt = (imageAlt: string | null | undefined, index: number) =>
+        imageAlt?.trim() || `Slika ${index + 1}`;
+
     const stackedImages = useMemo(() => images.slice(0, 4), [images]);
 
     const resetTransform = useCallback(() => {
@@ -88,7 +91,7 @@ export function ImageGallery({
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = activeImage.alt || 'image';
+            link.download = resolveAlt(activeImage.alt, safeIndex) || 'image';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -305,7 +308,7 @@ export function ImageGallery({
                         >
                             <Image
                                 src={image.src}
-                                alt={image.alt}
+                                alt={resolveAlt(image.alt, index)}
                                 fill
                                 sizes={`${previewWidth}px`}
                                 className="h-full w-full object-cover"
@@ -363,7 +366,7 @@ export function ImageGallery({
                                 >
                                     <Image
                                         src={image.src}
-                                        alt={image.alt}
+                                        alt={resolveAlt(image.alt, index)}
                                         fill
                                         sizes={`${previewWidth}px`}
                                         className="h-full w-full object-cover"
@@ -471,7 +474,7 @@ export function ImageGallery({
                                 {/** biome-ignore lint/performance/noImgElement: Using raw <img> intentionally for fallback display */}
                                 <img
                                     src={activeImage.src}
-                                    alt={activeImage.alt}
+                                    alt={resolveAlt(activeImage?.alt, safeIndex)}
                                     className="max-h-full max-w-full select-none object-contain"
                                     draggable={false}
                                 />
@@ -513,7 +516,7 @@ export function ImageGallery({
                                 >
                                     <Image
                                         src={image.src}
-                                        alt={image.alt}
+                                        alt={resolveAlt(image.alt, index)}
                                         fill
                                         sizes="80px"
                                         className="h-full w-full object-cover"
