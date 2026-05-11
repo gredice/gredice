@@ -24,7 +24,6 @@ export const metadata: Metadata = {
     description: 'Sve informacije o dostavi povrća iz tvojih gredica.',
 };
 
-const baseDeliveryPrice = 4.99;
 const distanceSurchargePerKm = 0.2;
 
 const deliveryLocations = [
@@ -63,46 +62,30 @@ export default function DeliveryPage() {
                     </Typography>
                     <h2 id="besplatna-dostava">🆓 Besplatna dostava</h2>
                     <p>
-                        Ukoliko tvoja dostava sadrži povrće od biljke za koju se
-                        radi prva dostava, ostvaruješ pravo na{' '}
-                        <strong>besplatnu dostavu</strong> za područje Zagreba,
-                        bez obzira na količinu povrća koju želiš primiti u toj
-                        dostavi.
+                        Za adrese na području Zagreba dostava je uvijek{' '}
+                        <strong>besplatna</strong>, bez obzira na broj biljaka
+                        ili količinu povrća u narudžbi.
                     </p>
                     <Alert startDecorator={'ℹ️'} color="info">
-                        Za više besplatnih dostava, u berbu uključi barem jednu
-                        biljku koja se prvi put dostavlja.
-                        <br />
-                        Na taj način možeš ostvariti pravo na{' '}
-                        <strong>18 besplatnih</strong> dostava za gredicu sa 18
-                        posađenih biljaka.
+                        Dostava za adrese izvan Zagreba računa se prema
+                        udaljenosti:
+                        <strong>
+                            {' '}
+                            {formatPrice(distanceSurchargePerKm)} po kilometru
+                        </strong>
+                        .
                     </Alert>
-                    <p>
-                        <small>
-                            <em>
-                                Pravo na besplatnu dostavu možeš iskoristiti
-                                najviše jednom tjedno. Ako želiš dodatne dostave
-                                u istom tjednu možeš ih naručiti po standardnoj
-                                cijeni.
-                            </em>
-                        </small>
-                    </p>
                     <h2 id="cijena-dostave">🫰 Cijena dostave</h2>
                     <p>
-                        Standardna cijena za dostavu je{' '}
-                        <strong>{formatPrice(baseDeliveryPrice)}</strong> po
-                        dostavi - neovisno o količini povrća.
-                    </p>
-                    <p>
-                        Za dostavu izvan Zagreba, cijeni dostave dodaje se
-                        dodatak za udaljenost -{' '}
-                        <strong>
-                            {formatPrice(distanceSurchargePerKm)} po kilometru
-                        </strong>{' '}
-                        od naše najbliže{' '}
+                        Za dostavu izvan Zagreba cijena se računa prema
+                        udaljenosti od naše najbliže{' '}
                         <a href="#osobno-preuzimanje">
                             lokacije za osobno preuzimanje
                         </a>
+                        :{' '}
+                        <strong>
+                            {formatPrice(distanceSurchargePerKm)} po kilometru
+                        </strong>
                         .
                     </p>
                     <p>Vidi mapu zona dostave i tablicu s cijenama ispod:</p>
@@ -160,7 +143,7 @@ export default function DeliveryPage() {
                                         backgroundColor: '#faf4e3',
                                     }}
                                 >
-                                    Prva dostava biljke
+                                    Cijena dostave
                                 </th>
                                 <th
                                     style={{
@@ -170,7 +153,7 @@ export default function DeliveryPage() {
                                         borderTopRightRadius: '12px',
                                     }}
                                 >
-                                    Ostale dostave
+                                    Formula
                                 </th>
                             </tr>
                         </thead>
@@ -198,16 +181,12 @@ export default function DeliveryPage() {
                                         padding: '8px',
                                     }}
                                 >
-                                    <strong>
-                                        {formatPrice(baseDeliveryPrice)}
-                                    </strong>
+                                    <strong>0 €</strong>
                                 </td>
                             </tr>
                             {deliveryLocations.map((location) => {
                                 const distanceFee =
                                     location.distance * distanceSurchargePerKm;
-                                const totalFee =
-                                    baseDeliveryPrice + distanceFee;
                                 return (
                                     <tr key={location.name}>
                                         <td
@@ -236,7 +215,11 @@ export default function DeliveryPage() {
                                             }}
                                         >
                                             <strong>
-                                                {formatPrice(totalFee)}
+                                                {location.distance} km ×{' '}
+                                                {formatPrice(
+                                                    distanceSurchargePerKm,
+                                                )}
+                                                /km = {formatPrice(distanceFee)}
                                             </strong>
                                         </td>
                                     </tr>
@@ -275,10 +258,7 @@ export default function DeliveryPage() {
                                     }}
                                 >
                                     <strong>
-                                        {formatPrice(baseDeliveryPrice)}
-                                    </strong>{' '}
-                                    +{' '}
-                                    <strong>
+                                        udaljenost ×{' '}
                                         {formatPrice(distanceSurchargePerKm)}
                                         /km
                                     </strong>
