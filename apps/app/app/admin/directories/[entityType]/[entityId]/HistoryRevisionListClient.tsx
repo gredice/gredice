@@ -23,8 +23,7 @@ const actionLabels: Record<string, string> = {
 function formatAction(action: string): string {
     const normalizedAction = action.split('.').at(-1) ?? action;
     return (
-        actionLabels[normalizedAction] ??
-        normalizedAction.replace(/[._-]/g, ' ')
+        actionLabels[normalizedAction] ?? normalizedAction.replace(/[_-]/g, ' ')
     );
 }
 
