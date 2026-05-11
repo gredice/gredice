@@ -25,6 +25,18 @@ export async function OperationApplicationsList({
         );
     }
 
+    if (operation.attributes.internal === true) {
+        return (
+            <div className="py-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                <Card className="border-tertiary border-b-4">
+                    <CardContent noHeader>
+                        <Typography>Za OPG partnere</Typography>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
     if (operation.attributes.application === 'garden') {
         return (
             <div className="py-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
