@@ -48,6 +48,7 @@ uniform float uWetness;
 uniform float uTopSurfaceBias;
 uniform float uDarkness;
 uniform float uGlossiness;
+uniform float uPuddleStrength;
 uniform vec3 uBoundsMin;
 uniform vec3 uBoundsMax;
 
@@ -67,9 +68,15 @@ void main() {
     float alpha = wet * 0.4;
     vec3 color = vec3(0.02) * uDarkness;
 
+    // Persistent puddle pockets emerge mainly during heavy rain on flatter surfaces.
+    float puddleMask = smoothstep(0.6, 1.0, wet) * topness;
+    float puddleNoise = noise(local * 23.0 + vec3(3.1, 7.9, 1.4));
+    float puddle = smoothstep(0.78, 0.98, puddleNoise) * puddleMask * uPuddleStrength;
+
     // Subtle fake glint for pooled highlights on horizontal surfaces
     float glint = pow(max(vWorldNormal.y, 0.0), 20.0) * wet * uGlossiness;
-    color += vec3(glint * 0.18);
+    color += vec3(glint * 0.18 + puddle * 0.12);
+    alpha = max(alpha, puddle * 0.5);
 
     gl_FragColor = vec4(color, alpha);
 }
@@ -87,7 +94,7 @@ export function RainWetOverlay(props: RainWetOverlayProps) {
 
 function RainWetOverlayEffect({
     geometry,
-    minRain = 0.35,
+    minRain = 0.08,
     intensityMultiplier = 1,
     drySpeed = 1.8,
     wetSpeed = 5,
@@ -126,6 +133,7 @@ function RainWetOverlayEffect({
                     uTopSurfaceBias: { value: topSurfaceBias },
                     uDarkness: { value: darkness },
                     uGlossiness: { value: glossiness },
+                    uPuddleStrength: { value: 0 },
                     uBoundsMin: { value: new Vector3(...resolvedBounds.min) },
                     uBoundsMax: { value: new Vector3(...resolvedBounds.max) },
                 },
@@ -149,7 +157,8 @@ function RainWetOverlayEffect({
         material.uniforms.uTopSurfaceBias.value = topSurfaceBias;
         material.uniforms.uDarkness.value = darkness;
         material.uniforms.uGlossiness.value = glossiness;
-    }, [darkness, glossiness, material, topSurfaceBias]);
+        material.uniforms.uPuddleStrength.value = Math.max(0, rainAmount - 0.66) / 0.34;
+    }, [darkness, glossiness, material, rainAmount, topSurfaceBias]);
 
     useEffect(() => {
         material.uniforms.uBoundsMin.value.set(...resolvedBounds.min);
