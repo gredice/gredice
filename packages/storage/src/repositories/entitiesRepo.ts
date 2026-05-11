@@ -8,6 +8,7 @@ import {
     type SelectAttributeDefinition,
     type SelectAttributeValue,
     type SelectEntity,
+    type SelectEntityRevision,
     type SelectEntityType,
     storage,
     type UpdateEntity,
@@ -32,6 +33,17 @@ type EntityWithAttributesAndDefinitions = SelectEntity & {
         attributeDefinitions: SelectAttributeDefinition[];
     };
 };
+
+export type LatestEntityRevision = Pick<
+    SelectEntityRevision,
+    | 'id'
+    | 'entityId'
+    | 'entityTypeName'
+    | 'action'
+    | 'actorId'
+    | 'actorName'
+    | 'createdAt'
+>;
 
 function tryParseAttributeJson(
     value: string,
@@ -861,5 +873,26 @@ export async function getEntityRevisions(entityId: number) {
             desc(revisions.createdAt),
             desc(revisions.id),
         ],
+    });
+}
+
+export async function getLatestEntityRevisions(
+    limit = 100,
+): Promise<LatestEntityRevision[]> {
+    return storage().query.entityRevisions.findMany({
+        columns: {
+            id: true,
+            entityId: true,
+            entityTypeName: true,
+            action: true,
+            actorId: true,
+            actorName: true,
+            createdAt: true,
+        },
+        orderBy: (revisions, { desc }) => [
+            desc(revisions.createdAt),
+            desc(revisions.id),
+        ],
+        limit,
     });
 }
