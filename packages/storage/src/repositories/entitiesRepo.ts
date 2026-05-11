@@ -863,3 +863,13 @@ export async function getEntityRevisions(entityId: number) {
         ],
     });
 }
+
+export async function getLatestEntityRevisions(limit = 100) {
+    return storage().query.entityRevisions.findMany({
+        orderBy: (revisions, { desc }) => [
+            desc(revisions.createdAt),
+            desc(revisions.id),
+        ],
+        limit,
+    });
+}
