@@ -57,7 +57,7 @@ export async function PlantsShowcase() {
                             >
                                 <PlantOrSortImage
                                     plant={plant}
-                                    alt=""
+                                    alt={plant.information.name ?? 'Biljka'}
                                     fill
                                     className="object-contain"
                                     sizes="60px"
