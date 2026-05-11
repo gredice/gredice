@@ -1,3 +1,4 @@
+import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
 import { decodeRouteParam } from '@gredice/js/uri';
 import { Markdown } from '@gredice/ui/Markdown';
 import { OperationImage } from '@gredice/ui/OperationImage';
@@ -7,12 +8,15 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../../components/shared/PageHeader';
+import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { KnownPages } from '../../../src/KnownPages';
+import { merchantReturnPolicy } from '../../../src/merchantReturnPolicy';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
 import { OperationApplicationsList } from './OperationApplicationsList';
 import { OperationAttributesCards } from './OperationAttributesCards';
@@ -61,9 +65,39 @@ export default async function OperationPage(
     if (!operation) {
         notFound();
     }
+    const isHarvestOperation =
+        operation.attributes.stage.information?.name === 'harvest';
+    const harvestPlantRemovalDescription = isHarvestOperation
+        ? getHarvestOperationRemovalDisclaimer(operation.actions?.removePlant)
+        : null;
 
     return (
         <div className="operation-page py-8">
+            <StructuredDataScript
+                data={{
+                    '@context': 'https://schema.org',
+                    '@type': 'Product',
+                    name: operation.information.label,
+                    description:
+                        operation.information.shortDescription ??
+                        operation.information.description,
+                    category: 'Radnja',
+                    image: operation.image?.cover?.url,
+                    brand: {
+                        '@type': 'Brand',
+                        name: 'Gredice',
+                    },
+                    url: `https://www.gredice.com${KnownPages.Operation(operation.information.label)}`,
+                    offers: {
+                        '@type': 'Offer',
+                        price: operation.prices.perOperation.toFixed(2),
+                        priceCurrency: 'EUR',
+                        availability: 'https://schema.org/InStock',
+                        url: `https://www.gredice.com${KnownPages.Operation(operation.information.label)}`,
+                        hasMerchantReturnPolicy: merchantReturnPolicy,
+                    },
+                }}
+            />
             <Stack spacing={4}>
                 <Breadcrumbs
                     items={[
@@ -96,6 +130,21 @@ export default async function OperationPage(
                                 }}
                                 className="self-end group-hover:opacity-100 opacity-0 transition-opacity"
                             />
+                            <Typography level="body2" secondary>
+                                Nisi zadovoljan uslugom? Dostupan je{' '}
+                                <Link
+                                    className="underline"
+                                    href={KnownPages.Refunds}
+                                >
+                                    povrat novca do 30 dana
+                                </Link>
+                                .
+                            </Typography>
+                            {harvestPlantRemovalDescription && (
+                                <Typography level="body2" secondary>
+                                    {harvestPlantRemovalDescription}
+                                </Typography>
+                            )}
                         </Stack>
                         <Typography level="h5" component="h2" gutterBottom>
                             Svojstva

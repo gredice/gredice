@@ -13,10 +13,7 @@ import {
     readyDeliveryRequest,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
-import {
-    notifyDeliveryCancelled,
-    notifyDeliveryReady,
-} from '../../../../../api/lib/delivery/emailNotifications';
+import { notifyDeliveryCancelled } from '../../../../../api/lib/delivery/emailNotifications';
 import { auth } from '../../../../lib/auth/auth';
 
 export async function updateDeliveryRequestStatusAction(
@@ -68,7 +65,6 @@ export async function updateDeliveryRequestStatusAction(
                 status,
                 note: notes,
             });
-            await notifyDeliveryReady(requestId);
         } else if (status === DeliveryRequestStates.FULFILLED) {
             await fulfillDeliveryRequest(requestId, notes);
             await notifyDeliveryRequestEvent(requestId, 'updated', {

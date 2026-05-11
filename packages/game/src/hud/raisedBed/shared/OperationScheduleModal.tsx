@@ -1,5 +1,6 @@
 import type { OperationData } from '@gredice/client';
 import { formatPrice } from '@gredice/js/currency';
+import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Calendar } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
@@ -51,6 +52,14 @@ export function OperationScheduleModal({
     const operationDefaultDate = formatLocalDate(tomorrow);
     const min = formatLocalDate(tomorrow);
     const max = formatLocalDate(threeMonthsFromTomorrow);
+    const isHarvestOperation =
+        operation.attributes.stage.information?.name === 'harvest';
+    const harvestPlantRemovalDescription = isHarvestOperation
+        ? getHarvestOperationRemovalDisclaimer(
+              operation.actions?.removePlant,
+              true,
+          )
+        : null;
 
     return (
         <Modal
@@ -82,6 +91,14 @@ export function OperationScheduleModal({
                                     <Typography level="body2">
                                         {operation.information.shortDescription}
                                     </Typography>
+                                    {harvestPlantRemovalDescription && (
+                                        <Typography
+                                            level="body2"
+                                            className="text-muted-foreground"
+                                        >
+                                            {harvestPlantRemovalDescription}
+                                        </Typography>
+                                    )}
                                     <Typography level="body2" semiBold>
                                         {formatPrice(
                                             operation.prices?.perOperation,

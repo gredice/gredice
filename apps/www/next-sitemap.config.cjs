@@ -24,6 +24,9 @@ function normalizeSitemapPath(path) {
 module.exports = {
     siteUrl: process.env.SITE_URL || 'https://www.gredice.com',
     generateRobotsTxt: true,
+    robotsTxtOptions: {
+        includeHost: false,
+    },
     transform: async (config, path) => ({
         loc: normalizeSitemapPath(path),
         changefreq: config.changefreq,
@@ -31,4 +34,40 @@ module.exports = {
         lastmod: config.autoLastmod ? new Date().toISOString() : undefined,
         alternateRefs: config.alternateRefs ?? [],
     }),
+    additionalPaths: async (config) => {
+        const baseUrl = process.env.API_URL || 'https://api.gredice.com';
+        let response;
+        try {
+            response = await fetch(`${baseUrl}/api/directories/pages`);
+        } catch {
+            return [];
+        }
+
+        if (!response.ok) {
+            return [];
+        }
+
+        /** @type {Array<{ slug: string; noIndex?: boolean; state: string; publishedAt?: string | null }>} */
+        const pages = await response.json();
+        const seen = new Set();
+        const sitemapPaths = await Promise.all(
+            pages
+                .filter(
+                    (page) =>
+                        page.state === 'published' &&
+                        page.publishedAt &&
+                        !page.noIndex,
+                )
+                .map((page) => `/${page.slug}`)
+                .filter((path) => {
+                    if (seen.has(path)) {
+                        return false;
+                    }
+                    seen.add(path);
+                    return true;
+                })
+                .map((path) => config.transform(config, path)),
+        );
+        return sitemapPaths.filter(Boolean);
+    },
 };

@@ -164,7 +164,7 @@ function withJsonExtension(outputPngPath: string): string {
 }
 
 function stripKnownExtension(filePath: string) {
-    return filePath.replace(/\.(png|json)$/u, '');
+    return filePath.replace(/\.(png|webp|json)$/u, '');
 }
 
 function getPageBasePath(outputPngPath: string, pageIndex: number) {
@@ -174,6 +174,14 @@ function getPageBasePath(outputPngPath: string, pageIndex: number) {
 
 function getPagePngPath(outputPngPath: string, pageIndex: number) {
     return `${getPageBasePath(outputPngPath, pageIndex)}.png`;
+}
+
+function withWebpExtension(outputPngPath: string): string {
+    return outputPngPath.replace(/\.[^.]+$/u, '.webp');
+}
+
+function getPageWebpPath(outputWebpPath: string, pageIndex: number) {
+    return `${getPageBasePath(outputWebpPath, pageIndex)}.webp`;
 }
 
 function buildSpriteName(inputDirectory: string, inputFile: string): string {
@@ -717,12 +725,14 @@ function createStableAssignments(options: {
     return assignments;
 }
 
-async function removeStalePagePngs(options: {
+async function removeStalePageImages(options: {
     outputPngPath: string;
+    outputWebpPath: string;
     pageCount: number;
     previousManifest: AtlasManifest | null;
 }) {
-    const { outputPngPath, pageCount, previousManifest } = options;
+    const { outputPngPath, outputWebpPath, pageCount, previousManifest } =
+        options;
     const previousPageCount =
         previousManifest?.pages.length ?? (previousManifest?.atlas ? 1 : 0);
 
@@ -730,9 +740,14 @@ async function removeStalePagePngs(options: {
         Array.from(
             { length: Math.max(previousPageCount - pageCount, 0) },
             (_, index) =>
-                rm(getPagePngPath(outputPngPath, pageCount + index), {
-                    force: true,
-                }),
+                Promise.all([
+                    rm(getPagePngPath(outputPngPath, pageCount + index), {
+                        force: true,
+                    }),
+                    rm(getPageWebpPath(outputWebpPath, pageCount + index), {
+                        force: true,
+                    }),
+                ]),
         ),
     );
 }
@@ -744,6 +759,13 @@ async function main() {
     );
     const outputPngPath = resolveFromRepositoryRoot(
         getStringArg(parsedArgs, 'output-png'),
+    );
+    const outputWebpPath = resolveFromRepositoryRoot(
+        getStringArg(
+            parsedArgs,
+            'output-webp',
+            withWebpExtension(outputPngPath),
+        ),
     );
     const outputJsonPath = resolveFromRepositoryRoot(
         getStringArg(
@@ -760,6 +782,7 @@ async function main() {
     const padding = getNumberArg(parsedArgs, 'padding', 8);
     const columns = getOptionalNumberArg(parsedArgs, 'columns');
     const rows = getOptionalNumberArg(parsedArgs, 'rows');
+    const webpQuality = getNumberArg(parsedArgs, 'webp-quality', 80);
     const previousManifest = await loadPreviousManifest(outputJsonPath);
 
     const allInputFiles = await collectInputFiles(inputDirectory);
@@ -915,23 +938,34 @@ async function main() {
     await Promise.all(
         manifest.pages.map(async (page) => {
             const outputPagePath = getPagePngPath(outputPngPath, page.index);
+            const outputPageWebpPath = getPageWebpPath(
+                outputWebpPath,
+                page.index,
+            );
             await mkdir(path.dirname(outputPagePath), { recursive: true });
-            await sharp({
+            await mkdir(path.dirname(outputPageWebpPath), { recursive: true });
+            const atlasImage = sharp({
                 create: {
                     background: { alpha: 0, b: 0, g: 0, r: 0 },
                     channels: 4,
                     height: pageAtlas.height,
                     width: pageAtlas.width,
                 },
-            })
-                .composite(pageComposites[page.index] ?? [])
-                .png()
-                .toFile(outputPagePath);
+            }).composite(pageComposites[page.index] ?? []);
+
+            await Promise.all([
+                atlasImage.clone().png().toFile(outputPagePath),
+                atlasImage
+                    .clone()
+                    .webp({ quality: webpQuality })
+                    .toFile(outputPageWebpPath),
+            ]);
         }),
     );
 
-    await removeStalePagePngs({
+    await removeStalePageImages({
         outputPngPath,
+        outputWebpPath,
         pageCount,
         previousManifest,
     });
@@ -943,6 +977,9 @@ async function main() {
     for (const page of manifest.pages) {
         console.info(
             `  PNG:  ${path.relative(repositoryRoot, getPagePngPath(outputPngPath, page.index))} (${page.spriteCount} sprites)`,
+        );
+        console.info(
+            `  WEBP: ${path.relative(repositoryRoot, getPageWebpPath(outputWebpPath, page.index))} (${page.spriteCount} sprites)`,
         );
     }
     console.info(`  JSON: ${path.relative(repositoryRoot, outputJsonPath)}`);

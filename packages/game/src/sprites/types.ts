@@ -14,6 +14,7 @@ export type SpriteAtlasAssetPaths = {
     basePath: string;
     manifestUrl: string;
     pngUrl: string;
+    webpUrl: string;
 };
 
 export type SpriteAtlasSprite = {

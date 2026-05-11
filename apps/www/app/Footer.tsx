@@ -37,7 +37,7 @@ export function CompanyWhatsApp(props: React.SVGProps<SVGSVGElement>) {
 const sectionsData: SectionData[] = [
     {
         component: 'Footer1',
-        tagline: 'Gredice',
+        tagline: 'Gredice d.o.o',
         asset: <Logotype className="w-[320px] h-[87px]" />,
         features: [
             {
@@ -58,6 +58,7 @@ const sectionsData: SectionData[] = [
                 header: 'Aplikacija',
                 ctas: [
                     { label: 'Podignuta gredica', href: KnownPages.RaisedBeds },
+                    { label: 'Sjetva biljaka', href: KnownPages.Sowing },
                     { label: 'Biljke', href: KnownPages.Plants },
                     { label: 'Radnje', href: KnownPages.Operations },
                     { label: 'Blokovi', href: KnownPages.Blocks },
@@ -101,7 +102,7 @@ const sectionsData: SectionData[] = [
                     },
                     {
                         label: 'Status sustava',
-                        href: 'https://status.gredice.com/',
+                        href: KnownPages.Status,
                     },
                     {
                         label: 'Licenca izvornog koda',

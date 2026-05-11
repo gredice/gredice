@@ -84,7 +84,10 @@ function sunflowerReasonToDescription(reason: string) {
             label: 'Plaćanje',
         };
     }
-    if (reason.startsWith('shoppingCartItem')) {
+    if (
+        reason.startsWith('shoppingCart:') ||
+        reason.startsWith('shoppingCartItem:')
+    ) {
         return {
             icon: <span className="text-4xl text-center size-10">🛒</span>,
             label: 'Kupnja',
@@ -96,6 +99,14 @@ function sunflowerReasonToDescription(reason: string) {
             label: 'Povrat sredstava za radnju',
         };
     }
+
+    if (reason.startsWith('referral')) {
+        return {
+            icon: <span className="text-4xl text-center size-10">💮</span>,
+            label: 'Referral nagrada',
+        };
+    }
+
     if (reason.startsWith('birthday')) {
         return {
             icon: <span className="text-4xl text-center size-10">🎂</span>,

@@ -2,12 +2,18 @@ import { KnownPages } from '../../../src/KnownPages';
 
 export const adminPages = {
     Dashboard: { href: KnownPages.Dashboard, label: 'Početna' },
-    Directories: { href: KnownPages.Directories, label: 'Direktoriji' },
+    Directories: { href: KnownPages.Directories, label: 'Zapisi' },
+    DirectoriesActivity: {
+        href: KnownPages.DirectoriesActivity,
+        label: 'Aktivnosti',
+    },
+    CmsPages: { href: KnownPages.CmsPages, label: 'Stranice' },
     Accounts: { href: KnownPages.Accounts, label: 'Korisnički računi' },
     Achievements: { href: KnownPages.Achievements, label: 'Postignuća' },
     ShoppingCarts: { href: KnownPages.ShoppingCarts, label: 'Košarice' },
     Invoices: { href: KnownPages.Invoices, label: 'Ponude' },
     Transactions: { href: KnownPages.Transactions, label: 'Transakcije' },
+    Sunflowers: { href: KnownPages.Sunflowers, label: 'Suncokreti' },
     Receipts: { href: KnownPages.Receipts, label: 'Fiskalni računi' },
     Users: { href: KnownPages.Users, label: 'Korisnici' },
     Farms: { href: KnownPages.Farms, label: 'Farme' },
@@ -17,6 +23,10 @@ export const adminPages = {
     Inventory: { href: KnownPages.Inventory, label: 'Zalihe' },
     Occasions: { href: KnownPages.Occasions, label: 'Prigode' },
     Schedule: { href: KnownPages.Schedule, label: 'Raspored' },
+    SowingStatistics: {
+        href: KnownPages.SowingStatistics,
+        label: 'Statistika sijanja',
+    },
     DeliverySlots: {
         href: KnownPages.DeliverySlots,
         label: 'Dostava - Slotovi',
@@ -45,11 +55,14 @@ export const adminPages = {
 export const adminBreadcrumbPages = [
     adminPages.Dashboard,
     adminPages.Directories,
+    adminPages.DirectoriesActivity,
+    adminPages.CmsPages,
     adminPages.Accounts,
     adminPages.Achievements,
     adminPages.ShoppingCarts,
     adminPages.Invoices,
     adminPages.Transactions,
+    adminPages.Sunflowers,
     adminPages.Receipts,
     adminPages.Users,
     adminPages.Farms,
@@ -59,6 +72,7 @@ export const adminBreadcrumbPages = [
     adminPages.Inventory,
     adminPages.Occasions,
     adminPages.Schedule,
+    adminPages.SowingStatistics,
     adminPages.DeliverySlots,
     adminPages.DeliveryRequests,
     adminPages.CommunicationInbox,

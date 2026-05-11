@@ -116,7 +116,6 @@ export default async function AchievementsPage({
                     </Typography>
                 </CardContent>
                 <CardOverflow>
-                    <Divider />
                     <div className="overflow-auto">
                         <Table>
                             <Table.Header>

@@ -46,19 +46,14 @@ export function BulkRescheduleRaisedBedButton({
     const disabled = totalItems === 0 || isSubmitting;
 
     const today = new Date();
-    const tomorrow = new Date(
+    const threeMonthsFromToday = new Date(
         today.getFullYear(),
-        today.getMonth(),
-        today.getDate() + 1,
-    );
-    const threeMonthsFromTomorrow = new Date(
-        tomorrow.getFullYear(),
-        tomorrow.getMonth() + 3,
-        tomorrow.getDate(),
+        today.getMonth() + 3,
+        today.getDate(),
     );
 
-    const min = formatLocalDate(tomorrow);
-    const max = formatLocalDate(threeMonthsFromTomorrow);
+    const min = formatLocalDate(today);
+    const max = formatLocalDate(threeMonthsFromToday);
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();

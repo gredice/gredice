@@ -4,6 +4,7 @@ import { Fragment, type ReactNode } from 'react';
 
 interface DailyScheduleProps {
     days?: number;
+    startDate?: Date;
     renderDay: (options: {
         date: Date;
         isToday: boolean;
@@ -11,10 +12,19 @@ interface DailyScheduleProps {
     }) => ReactNode;
 }
 
-export function DailySchedule({ days = 7, renderDay }: DailyScheduleProps) {
+export function DailySchedule({
+    days = 7,
+    startDate,
+    renderDay,
+}: DailyScheduleProps) {
+    const normalizedStartDate = startDate ? new Date(startDate) : new Date();
+    normalizedStartDate.setHours(0, 0, 0, 0);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const dates = Array.from({ length: days }, (_, index) => {
-        const date = new Date();
-        date.setHours(0, 0, 0, 0);
+        const date = new Date(normalizedStartDate);
         date.setDate(date.getDate() + index);
         return date;
     });
@@ -25,7 +35,7 @@ export function DailySchedule({ days = 7, renderDay }: DailyScheduleProps) {
                 <Fragment key={date.toISOString()}>
                     {renderDay({
                         date,
-                        isToday: index === 0,
+                        isToday: date.toDateString() === today.toDateString(),
                         index,
                     })}
                     {index < dates.length - 1 && <Divider />}

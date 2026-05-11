@@ -56,13 +56,22 @@ function pickSpriteName(rng: SeededRNG, surface: GroundDecorationSurface) {
 
 export function getBlockSurfaceDecorations(options: {
     block: Block;
+    density?: number;
     gardenId: number | null | undefined;
     surface: GroundDecorationSurface;
 }) {
-    const { block, gardenId, surface } = options;
+    const { block, density = 1, gardenId, surface } = options;
+    if (density <= 0) {
+        return [] as BlockSurfaceDecorationPlacement[];
+    }
+
     const decorationOptions = groundDecorationOptions[surface];
     const rng = new SeededRNG(`${gardenId ?? 'garden'}:${block.id}:${surface}`);
-    const count = getDecorationCount(rng, decorationOptions);
+    const baseCount = getDecorationCount(rng, decorationOptions);
+    const count =
+        baseCount > 0
+            ? Math.max(1, Math.min(baseCount, Math.floor(baseCount * density)))
+            : 0;
 
     if (count < 1) {
         return [] as BlockSurfaceDecorationPlacement[];

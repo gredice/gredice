@@ -5,6 +5,14 @@ export const KnownPages = {
     Dashboard: '/admin',
     Settings: '/admin/settings',
     Directories: '/admin/directories',
+    DirectoriesActivity: '/admin/directories/activity',
+    CmsPages: '/admin/cms/pages',
+    CmsPageCreate: '/admin/cms/pages/create',
+    CmsPage: (pageId: number) => `/admin/cms/pages/${pageId}` as Route,
+    CmsPageEdit: (pageId: number) => `/admin/cms/pages/${pageId}/edit` as Route,
+    CmsPagePreview: (pageId: number) =>
+        `/admin/cms/pages/${pageId}/preview` as Route,
+    DirectoryEntityTypePath: '/admin/directories/[entityType]',
     DirectoryEntityType: (entityTypeName: string) =>
         `/admin/directories/${entityTypeName}` as Route,
     DirectoryEntityTypeEdit: (entityTypeName: string) =>
@@ -24,8 +32,8 @@ export const KnownPages = {
         `/admin/directories/${entityTypeName}/attribute-definitions/${id}` as Route,
     DirectoryEntity: (entityTypeName: string, entityId: number) =>
         `/admin/directories/${entityTypeName}/${entityId}` as Route,
-    DirectoryEntityLinks: (entityTypeName: string, entityId: number) =>
-        `/admin/directories/${entityTypeName}/${entityId}/links` as Route,
+    DirectoryEntityPreview: (entityTypeName: string, entityId: number) =>
+        `/admin/directories/${entityTypeName}/${entityId}/preview` as Route,
     DirectoryEntityPath: '/admin/directories/[entityType]/[entityId]',
     DirectoryCategoryCreate: '/admin/directories/categories/create',
     DirectoryCategoryEdit: (categoryId: number) =>
@@ -33,6 +41,7 @@ export const KnownPages = {
     Users: '/admin/users',
     User: (userId: string) => `/admin/users/${userId}` as Route,
     Schedule: '/admin/schedule',
+    SowingStatistics: '/admin/statistics/sowing',
     Accounts: '/admin/accounts',
     Account: (accountId: string) => `/admin/accounts/${accountId}` as Route,
     Farms: '/admin/farms',
@@ -54,6 +63,7 @@ export const KnownPages = {
     Transactions: '/admin/transactions',
     Transaction: (transactionId: number) =>
         `/admin/transactions/${transactionId}` as Route,
+    Sunflowers: '/admin/sunflowers',
     Invoices: '/admin/invoices',
     CreateInvoice: '/admin/invoices/create',
     Invoice: (invoiceId: number) => `/admin/invoices/${invoiceId}` as Route,

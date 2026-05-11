@@ -8,9 +8,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { RecipeList } from '../../../components/recipes/RecipeList';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
 import { getRecipesData } from '../../../lib/recipes/getRecipesData';
 import { KnownPages } from '../../../src/KnownPages';
+import { merchantReturnPolicy } from '../../../src/merchantReturnPolicy';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
 import { recipesFlag } from '../../flags';
 import { GrowthAttributeCards } from './GrowthAttributeCards';
@@ -93,6 +95,35 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
 
     return (
         <div className="py-8">
+            <StructuredDataScript
+                data={{
+                    '@context': 'https://schema.org',
+                    '@type': 'Product',
+                    name: plant.information.name,
+                    description: plant.information.description,
+                    category: 'Biljka',
+                    image: plant.image?.cover?.url,
+                    brand: {
+                        '@type': 'Brand',
+                        name: 'Gredice',
+                    },
+                    url: `https://www.gredice.com${KnownPages.Plant(alias)}`,
+                    offers:
+                        typeof plant.prices?.perPlant === 'number'
+                            ? {
+                                  '@type': 'Offer',
+                                  price: plant.prices.perPlant.toFixed(2),
+                                  priceCurrency: 'EUR',
+                                  availability:
+                                      plant.store?.availableInStore === false
+                                          ? 'https://schema.org/OutOfStock'
+                                          : 'https://schema.org/InStock',
+                                  url: `https://www.gredice.com${KnownPages.Plant(alias)}`,
+                                  hasMerchantReturnPolicy: merchantReturnPolicy,
+                              }
+                            : undefined,
+                }}
+            />
             <Stack spacing={4}>
                 <Breadcrumbs
                     items={[
@@ -119,7 +150,10 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                 {(plant.information.tip?.length ?? 0) > 0 && (
                     <PlantTips plant={plant} />
                 )}
-                <PlantSortsList basePlantName={plant.information.name} />
+                <PlantSortsList
+                    basePlantName={plant.information.name}
+                    basePlantId={plant.id}
+                />
                 {recipes.length > 0 && (
                     <Stack spacing={2}>
                         <Typography level="h2">

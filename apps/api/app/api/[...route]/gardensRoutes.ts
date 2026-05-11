@@ -1,5 +1,6 @@
 import { signalcoClient } from '@gredice/signalco';
 import {
+    buildRaisedBedFieldPlantUpdatePayload,
     countEventsSince,
     createDefaultGardenForAccount,
     createEvent,
@@ -13,6 +14,7 @@ import {
     getGardenBlocks,
     getGardenStack,
     getOperations,
+    getOperationsPage,
     getRaisedBed,
     getRaisedBedDiaryEntries,
     getRaisedBedFieldDiaryEntries,
@@ -52,6 +54,7 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { queryBooleanSchema } from '../../../lib/http/queryBoolean';
 import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
 
@@ -121,6 +124,95 @@ function serializeAppliedRaisedBedOperation(
     };
 }
 
+function serializeGardenOperation(
+    operation: Awaited<ReturnType<typeof getOperations>>[number],
+    targetsByRaisedBedFieldId: Map<number, string>,
+    targetsByRaisedBedId: Map<number, string>,
+) {
+    const hasAssignedUser = (operation.assignedUserIds?.length ?? 0) > 0;
+    const isAssigned = operation.status === 'planned' && hasAssignedUser;
+    const isConfirmed = isAssigned && operation.isAccepted;
+    const timelineStatus = isConfirmed
+        ? 'confirmed'
+        : isAssigned
+          ? 'assigned'
+          : operation.status;
+
+    const statusHistory = [
+        {
+            status: 'new',
+            changedAt: operation.createdAt.toISOString(),
+        },
+        operation.scheduledDate
+            ? {
+                  status: 'planned',
+                  changedAt:
+                      operation.scheduledAt?.toISOString() ??
+                      operation.scheduledDate.toISOString(),
+              }
+            : null,
+        isAssigned
+            ? {
+                  status: 'assigned',
+                  changedAt:
+                      operation.assignedAt?.toISOString() ??
+                      operation.scheduledAt?.toISOString() ??
+                      operation.createdAt.toISOString(),
+              }
+            : null,
+        isConfirmed
+            ? {
+                  status: 'confirmed',
+                  changedAt:
+                      operation.assignedAt?.toISOString() ??
+                      operation.scheduledAt?.toISOString() ??
+                      operation.createdAt.toISOString(),
+              }
+            : null,
+        operation.completedAt
+            ? {
+                  status: 'pendingVerification',
+                  changedAt: operation.completedAt.toISOString(),
+              }
+            : null,
+        operation.verifiedAt
+            ? {
+                  status: 'completed',
+                  changedAt: operation.verifiedAt.toISOString(),
+              }
+            : null,
+        operation.canceledAt
+            ? {
+                  status: 'canceled',
+                  changedAt: operation.canceledAt.toISOString(),
+              }
+            : null,
+    ].filter(Boolean);
+
+    return {
+        id: operation.id,
+        entityId: operation.entityId,
+        raisedBedId: operation.raisedBedId,
+        raisedBedFieldId: operation.raisedBedFieldId,
+        status: timelineStatus,
+        createdAt: operation.createdAt.toISOString(),
+        scheduledDate: operation.scheduledDate?.toISOString() ?? null,
+        scheduledAt: operation.scheduledAt?.toISOString() ?? null,
+        completedAt: operation.completedAt?.toISOString() ?? null,
+        verifiedAt: operation.verifiedAt?.toISOString() ?? null,
+        canceledAt: operation.canceledAt?.toISOString() ?? null,
+        targetLabel:
+            (operation.raisedBedFieldId
+                ? targetsByRaisedBedFieldId.get(operation.raisedBedFieldId)
+                : null) ??
+            (operation.raisedBedId
+                ? targetsByRaisedBedId.get(operation.raisedBedId)
+                : null) ??
+            'Vrt',
+        statusHistory,
+    };
+}
+
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
         '/',
@@ -163,27 +255,78 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json({ id: gardenId }, 201);
         },
     )
-    .post(
-        '/',
+    .get(
+        '/:gardenId/operations',
         describeRoute({
-            description: 'Create a new garden for current account',
+            description:
+                'Get garden operations for timeline and history with cursor pagination',
         }),
         zValidator(
-            'json',
+            'param',
             z.object({
-                name: z.string().trim().min(1).optional(),
+                gardenId: z.string(),
+            }),
+        ),
+        zValidator(
+            'query',
+            z.object({
+                cursor: z.coerce.number().int().min(0).optional(),
+                limit: z.coerce.number().int().min(1).max(50).optional(),
+                includeCompleted: queryBooleanSchema.optional(),
             }),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
-            const { accountId, userId } = context.get('authContext');
-            const { name } = context.req.valid('json');
-            const gardenId = await createDefaultGardenForAccount({
+            const { gardenId } = context.req.valid('param');
+            const { cursor, limit, includeCompleted } =
+                context.req.valid('query');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            const operationsPage = await getOperationsPage({
                 accountId,
-                name,
+                gardenId: gardenIdNumber,
+                cursor,
+                limit,
+                includeCompleted,
             });
-            await trackGardenCreated({ accountId, gardenId, name, userId });
-            return context.json({ id: gardenId }, 201);
+
+            const targetsByRaisedBedId = new Map(
+                garden.raisedBeds.map((raisedBed) => [
+                    raisedBed.id,
+                    `Gredica: ${raisedBed.name}`,
+                ]),
+            );
+            const targetsByRaisedBedFieldId = new Map(
+                garden.raisedBeds.flatMap((raisedBed) =>
+                    raisedBed.fields.map((field) => [
+                        field.id,
+                        `Polje ${field.positionIndex + 1} • ${raisedBed.name}`,
+                    ]),
+                ),
+            );
+
+            return context.json({
+                items: operationsPage.items.map((operation) =>
+                    serializeGardenOperation(
+                        operation,
+                        targetsByRaisedBedFieldId,
+                        targetsByRaisedBedId,
+                    ),
+                ),
+                nextCursor: operationsPage.nextCursor,
+                total: operationsPage.total,
+            });
         },
     )
     .get(
@@ -1792,7 +1935,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 await createEvent(
                     knownEvents.raisedBedFields.plantUpdateV1(
                         `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
-                        { status: status },
+                        buildRaisedBedFieldPlantUpdatePayload(
+                            status,
+                            field.assignedUserIds,
+                        ),
                     ),
                 );
 

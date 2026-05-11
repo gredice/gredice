@@ -1,12 +1,14 @@
 'use server';
 
 import {
+    buildRaisedBedFieldPlantUpdatePayload,
     createEvent,
     getFarmUserAcceptedOperationById,
     getFarmUserRaisedBeds,
     getOperationById,
     getRaisedBed,
     knownEvents,
+    queueSeasonalSowingOfferOperations,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
@@ -45,7 +47,13 @@ async function assertFarmerCanCompletePlanting(
         throw new Error('Nemaš dozvolu za označavanje ovog sijanja.');
     }
 
-    if (field.assignedUserId && field.assignedUserId !== userId) {
+    const assignedUserIds = field.assignedUserIds ?? [];
+    const isAssignedToAnotherUser =
+        assignedUserIds.length > 0
+            ? !assignedUserIds.includes(userId)
+            : !!field.assignedUserId && field.assignedUserId !== userId;
+
+    if (isAssignedToAnotherUser) {
         throw new Error('Ovo sijanje je dodijeljeno drugom korisniku.');
     }
 
@@ -154,14 +162,26 @@ export async function completeFarmPlanting(
         throw new Error('Sijanje mora biti potvrđeno prije završetka.');
     }
 
+    const nextStatus = role === 'admin' ? 'sowed' : 'pendingVerification';
+
     await createEvent(
         knownEvents.raisedBedFields.plantUpdateV1(
             `${raisedBedId}|${positionIndex}`,
-            {
-                status: role === 'admin' ? 'sowed' : 'pendingVerification',
-            },
+            buildRaisedBedFieldPlantUpdatePayload(
+                nextStatus,
+                field.assignedUserIds,
+            ),
         ),
     );
+
+    if (nextStatus === 'sowed' && raisedBed.accountId) {
+        const gardenId = raisedBed.gardenId;
+        await queueSeasonalSowingOfferOperations({
+            accountId: raisedBed.accountId,
+            ...(gardenId ? { gardenId } : {}),
+            raisedBedId,
+        });
+    }
 
     revalidateSchedule();
 

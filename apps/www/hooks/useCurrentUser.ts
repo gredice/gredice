@@ -11,7 +11,7 @@ export type CurrentUser = {
 
 async function fetchCurrentUser(): Promise<CurrentUser | null> {
     try {
-        const response = await fetch('/api/gredice/api/users/current', {
+        const response = await fetch('/api/gredice/api/auth/current-claims', {
             cache: 'no-store',
         });
         if (response.ok) {

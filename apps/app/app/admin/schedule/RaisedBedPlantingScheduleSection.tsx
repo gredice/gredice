@@ -6,6 +6,7 @@ import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Calendar, Close } from '@signalco/ui-icons';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { Chip } from '@signalco/ui-primitives/Chip';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -248,10 +249,18 @@ export function RaisedBedPlantingScheduleSection({
                             : 'text-muted-foreground';
                     const fieldLocked =
                         fieldCompleted || fieldPendingVerification;
+                    const fieldApprovedActive = fieldApproved && !fieldLocked;
 
                     return (
                         <div key={field.id}>
-                            <Row spacing={1} className="hover:bg-muted rounded">
+                            <Row
+                                spacing={1}
+                                className={
+                                    fieldApprovedActive
+                                        ? 'rounded bg-muted/60 text-foreground hover:bg-muted/80'
+                                        : 'rounded hover:bg-muted'
+                                }
+                            >
                                 <Row spacing={1} className="grow">
                                     {fieldCompleted ? (
                                         <Checkbox
@@ -302,7 +311,13 @@ export function RaisedBedPlantingScheduleSection({
                                                 {field.plantScheduledDate}
                                             </LocalDateTime>
                                         ) : (
-                                            <span>Danas</span>
+                                            <Chip
+                                                size="sm"
+                                                color="warning"
+                                                className="w-fit"
+                                            >
+                                                Nije planirano
+                                            </Chip>
                                         )}
                                     </Typography>
                                 </Row>

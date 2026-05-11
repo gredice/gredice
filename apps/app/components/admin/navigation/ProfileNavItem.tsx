@@ -2,7 +2,6 @@
 
 import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { Bank, LogOut, User } from '@signalco/ui-icons';
-import { ListItem } from '@signalco/ui-primitives/ListItem';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -30,8 +29,12 @@ function resolveAccountId(currentUser: CurrentUser | null): string | null {
 
 export function ProfileNavItem({
     onItemClick,
+    compact = false,
+    nested = false,
 }: {
     onItemClick?: () => void;
+    compact?: boolean;
+    nested?: boolean;
 } = {}) {
     const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
@@ -39,7 +42,7 @@ export function ProfileNavItem({
         let cancelled = false;
 
         const loadCurrentUser = async () => {
-            const response = await fetch('/api/users/current', {
+            const response = await fetch('/api/users/current-claims', {
                 cache: 'no-store',
             });
             if (!response.ok || cancelled) {
@@ -71,20 +74,41 @@ export function ProfileNavItem({
         const accountId = resolveAccountId(currentUser);
         return accountId ? KnownPages.Account(accountId) : KnownPages.Accounts;
     }, [currentUser]);
+    const listItemAccessibilityProps = compact
+        ? { 'aria-label': userName }
+        : {};
+    const guideLineClassName =
+        compact || !nested
+            ? ''
+            : "before:absolute before:-left-3 before:top-1/2 before:h-px before:w-3 before:bg-border/55 before:content-['']";
+    const triggerClassName = [
+        'group/nav-item relative flex w-full items-center gap-2 rounded-md text-foreground text-sm outline-none transition-colors hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        compact ? 'h-9 justify-center px-0' : 'h-8 px-2',
+        guideLineClassName,
+    ]
+        .filter(Boolean)
+        .join(' ');
 
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <ListItem
-                    startDecorator={
-                        <UserAvatar
-                            displayName={userName}
-                            avatarUrl={currentUser?.avatarUrl}
-                            size="sm"
-                        />
-                    }
-                    label={userName}
-                />
+                <button
+                    type="button"
+                    {...listItemAccessibilityProps}
+                    title={userName}
+                    className={triggerClassName}
+                >
+                    <UserAvatar
+                        displayName={userName}
+                        avatarUrl={currentUser?.avatarUrl}
+                        size="sm"
+                    />
+                    {!compact && (
+                        <span className="min-w-0 flex-1 truncate text-left">
+                            {userName}
+                        </span>
+                    )}
+                </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
                 <DropdownMenuItem

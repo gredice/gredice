@@ -9,15 +9,17 @@ interface ThornsProps {
     seed: string;
     matrices: THREE.Matrix4[];
     color: string;
+    animate?: boolean;
 }
 
 const thornGeometry = new THREE.ConeGeometry(0.14, 1, 6);
 thornGeometry.translate(0, 0.5, 0);
 
-export function Thorns({ seed, matrices, color }: ThornsProps) {
+export function Thorns({ seed, matrices, color, animate = true }: ThornsProps) {
     const ref = useRef<THREE.InstancedMesh | null>(null);
     const swayUniforms = usePlantSway(`${seed}-thorns`, {
         amplitude: 0.045,
+        enabled: animate,
         speed: 1.1,
     });
 

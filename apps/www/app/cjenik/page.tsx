@@ -8,12 +8,14 @@ import { Container } from '@signalco/ui-primitives/Container';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { formatPrice } from '../../lib/formatPrice';
 import { getHqLocationsData } from '../../lib/getHqLocationsData';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
+import { KnownPages } from '../../src/KnownPages';
 
 export const metadata: Metadata = {
     title: 'Cjenik',
@@ -52,7 +54,7 @@ export default async function PricingPage() {
                 <PageHeader
                     padded
                     header="💶 Cjenik"
-                    subHeader="Sve cijene na jednom mjestu: biljke, radnje i dostava"
+                    subHeader="Sve cijene na jednom mjestu: biljke, sorte, radnje i dostava"
                 />
 
                 <Card>
@@ -92,6 +94,16 @@ export default async function PricingPage() {
                                 </tbody>
                             </table>
                         </div>
+                        <Typography level="body2" secondary className="mt-3">
+                            Za biljke i sorte vrijedi{' '}
+                            <Link
+                                className="underline"
+                                href={KnownPages.Refunds}
+                            >
+                                30-dnevna politika povrata novca
+                            </Link>
+                            .
+                        </Typography>
                     </CardContent>
                 </Card>
 
@@ -133,6 +145,16 @@ export default async function PricingPage() {
                                 </tbody>
                             </table>
                         </div>
+                        <Typography level="body2" secondary className="mt-3">
+                            Za radnje vrijedi{' '}
+                            <Link
+                                className="underline"
+                                href={KnownPages.Refunds}
+                            >
+                                30-dnevna politika povrata novca
+                            </Link>
+                            .
+                        </Typography>
                     </CardContent>
                 </Card>
 

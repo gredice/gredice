@@ -2,8 +2,6 @@
 
 import {
     archiveTimeSlot,
-    type BulkSlotCreationParams,
-    bulkGenerateTimeSlots,
     closeTimeSlot,
     createTimeSlot,
     getTimeSlot,
@@ -12,6 +10,145 @@ import {
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../../../lib/auth/auth';
+
+const DEFAULT_TIME_ZONE = 'Europe/Zagreb';
+const SLOT_DURATION_MS = 2 * 60 * 60 * 1000;
+const SLOT_DURATION_MINUTES = 120;
+
+type DateInputParts = {
+    year: number;
+    month: number;
+    day: number;
+};
+
+function getStringValue(formData: FormData, key: string) {
+    const value = formData.get(key);
+
+    return typeof value === 'string' ? value : '';
+}
+
+function getTimeZone(formData: FormData) {
+    const timeZone = getStringValue(formData, 'timeZone');
+
+    try {
+        Intl.DateTimeFormat(undefined, {
+            timeZone: timeZone || DEFAULT_TIME_ZONE,
+        }).format(new Date());
+        return timeZone || DEFAULT_TIME_ZONE;
+    } catch {
+        return DEFAULT_TIME_ZONE;
+    }
+}
+
+function parseDateInput(dateString: string): DateInputParts {
+    const [year, month, day] = dateString.split('-').map(Number);
+
+    if (
+        !year ||
+        !month ||
+        !day ||
+        month < 1 ||
+        month > 12 ||
+        day < 1 ||
+        day > 31
+    ) {
+        throw new Error('Unesite ispravan datum');
+    }
+
+    return { year, month, day };
+}
+
+function parseTimeInput(timeString: string) {
+    const [hours, minutes = 0] = timeString.split(':').map(Number);
+
+    if (
+        Number.isNaN(hours) ||
+        Number.isNaN(minutes) ||
+        hours < 0 ||
+        hours > 23 ||
+        minutes < 0 ||
+        minutes > 59
+    ) {
+        throw new Error('Unesite ispravno vrijeme');
+    }
+
+    return { hours, minutes };
+}
+
+function getTimeZoneOffsetMs(date: Date, timeZone: string) {
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        hourCycle: 'h23',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+    }).formatToParts(date);
+    const values = new Map(parts.map((part) => [part.type, part.value]));
+    const year = Number(values.get('year'));
+    const month = Number(values.get('month'));
+    const day = Number(values.get('day'));
+    const hour = Number(values.get('hour'));
+    const minute = Number(values.get('minute'));
+    const second = Number(values.get('second'));
+
+    return (
+        Date.UTC(year, month - 1, day, hour, minute, second) - date.getTime()
+    );
+}
+
+function zonedDateTimeToUtc(
+    dateParts: DateInputParts,
+    timeString: string,
+    timeZone: string,
+) {
+    const { hours, minutes } = parseTimeInput(timeString);
+    const utcGuess = new Date(
+        Date.UTC(
+            dateParts.year,
+            dateParts.month - 1,
+            dateParts.day,
+            hours,
+            minutes,
+            0,
+            0,
+        ),
+    );
+    const offset = getTimeZoneOffsetMs(utcGuess, timeZone);
+    const adjusted = new Date(utcGuess.getTime() - offset);
+    const adjustedOffset = getTimeZoneOffsetMs(adjusted, timeZone);
+
+    if (adjustedOffset !== offset) {
+        return new Date(utcGuess.getTime() - adjustedOffset);
+    }
+
+    return adjusted;
+}
+
+function getCalendarDay(dateParts: DateInputParts) {
+    return new Date(
+        Date.UTC(dateParts.year, dateParts.month - 1, dateParts.day),
+    ).getUTCDay();
+}
+
+function addDays(dateParts: DateInputParts, days: number): DateInputParts {
+    const date = new Date(
+        Date.UTC(dateParts.year, dateParts.month - 1, dateParts.day),
+    );
+    date.setUTCDate(date.getUTCDate() + days);
+
+    return {
+        year: date.getUTCFullYear(),
+        month: date.getUTCMonth() + 1,
+        day: date.getUTCDate(),
+    };
+}
+
+function getDateInputTime(dateParts: DateInputParts) {
+    return Date.UTC(dateParts.year, dateParts.month - 1, dateParts.day);
+}
 
 export async function createTimeSlotAction(
     _prevState: unknown,
@@ -22,22 +159,11 @@ export async function createTimeSlotAction(
 
         const locationId = parseInt(formData.get('locationId') as string, 10);
         const type = formData.get('type') as 'delivery' | 'pickup';
-        const startDateString = formData.get('startDate') as string;
-        const startTime = formData.get('startTime') as string;
-
-        // Parse date in local timezone to avoid UTC offset issues
-        const [year, month, day] = startDateString.split('-').map(Number);
-        const [hours, minutes] = startTime.split(':').map(Number);
-        const startAt = new Date(
-            year,
-            month - 1,
-            day,
-            hours,
-            minutes || 0,
-            0,
-            0,
-        ); // Month is 0-indexed
-        const endAt = new Date(startAt.getTime() + 2 * 60 * 60 * 1000); // +2 hours
+        const startDate = parseDateInput(getStringValue(formData, 'startDate'));
+        const startTime = getStringValue(formData, 'startTime');
+        const timeZone = getTimeZone(formData);
+        const startAt = zonedDateTimeToUtc(startDate, startTime, timeZone);
+        const endAt = new Date(startAt.getTime() + SLOT_DURATION_MS);
 
         await createTimeSlot({
             locationId,
@@ -70,32 +196,23 @@ export async function bulkGenerateSlotsAction(
 
         const locationId = parseInt(formData.get('locationId') as string, 10);
         const type = formData.get('type') as 'delivery' | 'pickup';
-        const startDateString = formData.get('startDate') as string;
-        const endDateString = formData.get('endDate') as string;
-
-        // Parse dates in local timezone to avoid UTC offset issues
-        const [startYear, startMonth, startDay] = startDateString
-            .split('-')
-            .map(Number);
-        const [endYear, endMonth, endDay] = endDateString
-            .split('-')
-            .map(Number);
-        const startDate = new Date(startYear, startMonth - 1, startDay); // Month is 0-indexed
-        const endDate = new Date(endYear, endMonth - 1, endDay);
-
-        const startTime = formData.get('startTime') as string;
-        const endTime = formData.get('endTime') as string;
-        const slotDurationMinutes = 120; // Fixed 2-hour duration
+        const startDate = parseDateInput(getStringValue(formData, 'startDate'));
+        const endDate = parseDateInput(getStringValue(formData, 'endDate'));
+        const startTime = getStringValue(formData, 'startTime');
+        const endTime = getStringValue(formData, 'endTime');
+        const timeZone = getTimeZone(formData);
         const daysOfWeek = formData
             .getAll('daysOfWeek')
             .map((day) => parseInt(day as string, 10));
+        const startDateTime = getDateInputTime(startDate);
+        const endDateTime = getDateInputTime(endDate);
 
         // Validate required fields and date validity
         if (
             !locationId ||
             !type ||
-            Number.isNaN(startDate.getTime()) ||
-            Number.isNaN(endDate.getTime()) ||
+            Number.isNaN(startDateTime) ||
+            Number.isNaN(endDateTime) ||
             !startTime ||
             !endTime ||
             daysOfWeek.length === 0
@@ -108,7 +225,7 @@ export async function bulkGenerateSlotsAction(
         }
 
         // Validate date range
-        if (endDate < startDate) {
+        if (endDateTime < startDateTime) {
             return {
                 success: false,
                 message: 'Datum završetka mora biti nakon datuma početka',
@@ -117,16 +234,18 @@ export async function bulkGenerateSlotsAction(
 
         // Generate time windows based on start time, end time, and slot duration
         const windows: string[] = [];
-        const [startHours, startMinutes] = startTime.split(':').map(Number);
-        const [endHours, endMinutes] = endTime.split(':').map(Number);
+        const { hours: startHours, minutes: startMinutes } =
+            parseTimeInput(startTime);
+        const { hours: endHours, minutes: endMinutes } =
+            parseTimeInput(endTime);
 
         const startTotalMinutes = startHours * 60 + startMinutes;
         const endTotalMinutes = endHours * 60 + endMinutes;
 
         for (
             let minutes = startTotalMinutes;
-            minutes + slotDurationMinutes <= endTotalMinutes;
-            minutes += slotDurationMinutes
+            minutes + SLOT_DURATION_MINUTES <= endTotalMinutes;
+            minutes += SLOT_DURATION_MINUTES
         ) {
             const hours = Math.floor(minutes / 60);
             const mins = minutes % 60;
@@ -144,7 +263,7 @@ export async function bulkGenerateSlotsAction(
         }
 
         // Calculate total days between start and end date
-        const timeDiff = endDate.getTime() - startDate.getTime();
+        const timeDiff = endDateTime - startDateTime;
         const totalDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 to include the end date
 
         // Filter dates by selected days of week and generate slots
@@ -152,27 +271,42 @@ export async function bulkGenerateSlotsAction(
         let skippedExisting = 0;
 
         for (let dayOffset = 0; dayOffset < totalDays; dayOffset++) {
-            const currentDate = new Date(startDate);
-            currentDate.setDate(currentDate.getDate() + dayOffset);
+            const currentDate = addDays(startDate, dayOffset);
 
             // Check if this day of week is selected (0 = Sunday, 1 = Monday, etc.)
-            const dayOfWeek = currentDate.getDay();
+            const dayOfWeek = getCalendarDay(currentDate);
             if (!daysOfWeek.includes(dayOfWeek)) {
                 continue;
             }
 
-            // Generate slots for this day using the existing bulk function
-            const params: BulkSlotCreationParams = {
-                startDate: currentDate,
-                daysAhead: 1, // Just this one day
-                windows,
-                type,
-                locationId,
-            };
+            for (const window of windows) {
+                const startAt = zonedDateTimeToUtc(
+                    currentDate,
+                    window,
+                    timeZone,
+                );
+                const endAt = new Date(startAt.getTime() + SLOT_DURATION_MS);
 
-            const result = await bulkGenerateTimeSlots(params);
-            created += result.created;
-            skippedExisting += result.skippedExisting;
+                try {
+                    await createTimeSlot({
+                        locationId,
+                        type,
+                        startAt,
+                        endAt,
+                        status: TimeSlotStatuses.SCHEDULED,
+                    });
+                    created++;
+                } catch (error) {
+                    if (
+                        error instanceof Error &&
+                        error.message.includes('already exists')
+                    ) {
+                        skippedExisting++;
+                    } else {
+                        throw error;
+                    }
+                }
+            }
         }
 
         revalidatePath('/admin/delivery/slots');

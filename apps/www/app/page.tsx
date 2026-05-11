@@ -280,7 +280,7 @@ export default function Home() {
                         <Card className="w-fit border-tertiary border-b-4">
                             <CardContent noHeader className="p-6 lg:pr-10">
                                 <Stack spacing={2}>
-                                    <Typography level="h2">
+                                    <Typography level="h2" component="h1">
                                         Vrt po tvom 🌱
                                     </Typography>
                                     <Typography level="body1">

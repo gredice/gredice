@@ -1,5 +1,6 @@
 // Types
 
+export { buildRaisedBedFieldPlantUpdatePayload } from './buildRaisedBedFieldPlantUpdatePayload';
 export { knownEvents } from './knownEvents';
 
 // Constants

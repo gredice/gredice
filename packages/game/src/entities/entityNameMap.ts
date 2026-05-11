@@ -13,6 +13,7 @@ import { Bucket } from './Bucket';
 import { Bush } from './Bush';
 import { Composter } from './Composter';
 import { Fence } from './Fence';
+import { GardenBox } from './GardenBox';
 import { GiftBoxBlueWhite } from './GiftBoxBlueWhite';
 import { GiftBoxGoldRed } from './GiftBoxGoldRed';
 import { GiftBoxGreenGold } from './GiftBoxGreenGold';
@@ -54,6 +55,7 @@ export const entityNameMap: Record<
     Raised_Bed: RaisedBed,
     Shade: Shade,
     Fence: Fence,
+    GardenBox: GardenBox,
     Stool: Stool,
     Bucket: Bucket,
     GiftBox_RedWhite: GiftBoxRedWhite,

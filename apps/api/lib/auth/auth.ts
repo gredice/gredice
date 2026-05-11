@@ -1,4 +1,5 @@
 import 'server-only';
+import { createHmac } from 'node:crypto';
 import { getUser as storageGetUser } from '@gredice/storage';
 import { initAuth, initRbac } from '@signalco/auth-server';
 import type { Context } from 'hono';
@@ -19,8 +20,14 @@ export function jwtSecretFactory() {
 
 type User = {
     id: string;
+    userName: string;
     accountIds: string[];
     role: string;
+};
+
+type AccountBoundJwtPayload = {
+    sub: string;
+    accountId: string;
 };
 
 async function getUser(id: string): Promise<User | null> {
@@ -31,6 +38,7 @@ async function getUser(id: string): Promise<User | null> {
 
     return {
         id: user.id,
+        userName: user.userName,
         accountIds: user.accounts.map((accountUsers) => accountUsers.accountId),
         role: user.role,
     };
@@ -57,7 +65,7 @@ export async function clearCookie(context: Context) {
     });
 }
 
-export const { withAuth, createJwt, verifyJwt, auth } = initRbac(
+const rbac = initRbac(
     initAuth({
         security: {
             expiry: accessTokenExpiryMs,
@@ -74,3 +82,95 @@ export const { withAuth, createJwt, verifyJwt, auth } = initRbac(
         getUser,
     }),
 );
+
+export const { withAuth, verifyJwt, auth } = rbac;
+
+type CreateJwtExpiration = Parameters<typeof rbac.createJwt>[1];
+type CreateJwtOverride = Parameters<typeof rbac.createJwt>[2];
+type AccountBoundJwtExpiration = '72h' | number | Date;
+
+function isAccountBoundJwtPayload(
+    value: string | AccountBoundJwtPayload,
+): value is AccountBoundJwtPayload {
+    return typeof value !== 'string';
+}
+
+function resolveAccountBoundExpiration(
+    expirationTime: CreateJwtExpiration | AccountBoundJwtExpiration | undefined,
+): AccountBoundJwtExpiration {
+    if (expirationTime === undefined || expirationTime === '72h') {
+        return '72h';
+    }
+
+    if (typeof expirationTime === 'number' || expirationTime instanceof Date) {
+        return expirationTime;
+    }
+
+    throw new Error('Unsupported account-bound JWT expiration.');
+}
+
+function resolveExpirationTime(
+    expirationTime: AccountBoundJwtExpiration,
+    issuedAt: number,
+) {
+    if (expirationTime instanceof Date) {
+        return Math.floor(expirationTime.getTime() / 1000);
+    }
+
+    if (typeof expirationTime === 'number') {
+        return issuedAt + Math.floor(expirationTime / 1000);
+    }
+
+    return issuedAt + 72 * 60 * 60;
+}
+
+function encodeJwtPart(value: Record<string, unknown>) {
+    return Buffer.from(JSON.stringify(value)).toString('base64url');
+}
+
+async function createAccountBoundJwt(
+    payload: AccountBoundJwtPayload,
+    expirationTime: AccountBoundJwtExpiration,
+) {
+    const issuedAt = Math.floor(Date.now() / 1000);
+    const signingInput = [
+        encodeJwtPart({ alg: 'HS256' }),
+        encodeJwtPart({
+            accountId: payload.accountId,
+            aud: 'urn:gredice:audience:web',
+            exp: resolveExpirationTime(expirationTime, issuedAt),
+            iat: issuedAt,
+            iss: 'urn:gredice:issuer:api',
+            sub: payload.sub,
+        }),
+    ].join('.');
+    const signature = createHmac('sha256', await jwtSecretFactory())
+        .update(signingInput)
+        .digest('base64url');
+
+    return `${signingInput}.${signature}`;
+}
+
+export function createJwt(
+    userId: string,
+    expirationTime?: CreateJwtExpiration,
+    overrideConfig?: CreateJwtOverride,
+): Promise<string>;
+export function createJwt(
+    payload: AccountBoundJwtPayload,
+    expirationTime?: AccountBoundJwtExpiration,
+): Promise<string>;
+export function createJwt(
+    payload: string | AccountBoundJwtPayload,
+    expirationTime?: CreateJwtExpiration | AccountBoundJwtExpiration,
+    overrideConfig?: CreateJwtOverride,
+) {
+    if (isAccountBoundJwtPayload(payload)) {
+        return createAccountBoundJwt(
+            payload,
+            resolveAccountBoundExpiration(expirationTime),
+        );
+    }
+
+    return rbac.createJwt(payload, expirationTime, overrideConfig);
+}

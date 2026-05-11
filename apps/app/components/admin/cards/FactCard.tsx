@@ -8,6 +8,7 @@ import {
     TooltipTrigger,
 } from '@signalco/ui-primitives/Tooltip';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import type { ReactNode } from 'react';
 
 export function FactCard({
     header,
@@ -16,21 +17,31 @@ export function FactCard({
     beforeValue,
 }: {
     header: string;
-    value: string | number;
+    value: ReactNode;
     href?: string;
     beforeValue?: string | number;
 }) {
-    const hasChange = typeof beforeValue !== 'undefined';
+    const numericValue =
+        typeof value === 'number'
+            ? value
+            : typeof value === 'string'
+              ? Number(value)
+              : Number.NaN;
+    const hasComparableValue = Number.isFinite(numericValue);
+    const hasChange =
+        typeof beforeValue !== 'undefined' &&
+        hasComparableValue &&
+        Number.isFinite(Number(beforeValue));
     const change = hasChange
         ? Number(beforeValue) > 0
-            ? ((Number(value) - Number(beforeValue)) / Number(beforeValue)) *
+            ? ((numericValue - Number(beforeValue)) / Number(beforeValue)) *
               100
-            : Number(value) * 100
+            : numericValue * 100
         : 0;
     const changeText = hasChange
         ? `${change > 0 ? '+' : ''}${change.toFixed(1)}%`
         : '';
-    const changeCount = hasChange ? Number(value) - Number(beforeValue) : 0;
+    const changeCount = hasChange ? numericValue - Number(beforeValue) : 0;
     const changeCountText = changeCount > 0 ? `+${changeCount}` : changeCount;
 
     return (

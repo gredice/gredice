@@ -1,8 +1,6 @@
 import { getUsers } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Table } from '@signalco/ui-primitives/Table';
 import Link from 'next/link';
@@ -52,10 +50,6 @@ export default async function UsersPage({
 
     return (
         <Stack spacing={2}>
-            <Row spacing={1}>
-                <Chip color="primary">{filteredUsers.length}</Chip>
-            </Row>
-
             <UsersFilters />
 
             <Card>

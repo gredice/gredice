@@ -4,7 +4,9 @@ import type { OperationAssignableFarmUser } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Calendar, Close } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { Chip } from '@signalco/ui-primitives/Chip';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -261,6 +263,10 @@ export function RaisedBedOperationsScheduleSection({
                     const operationTextInactive =
                         isOperationCancelled(operation.status) ||
                         isOperationCompleted(operation.status);
+                    const operationApproved =
+                        operation.isAccepted &&
+                        !operationLocked &&
+                        !operationTextInactive;
 
                     const operationStatusText = isOperationCancelled(
                         operation.status,
@@ -297,7 +303,14 @@ export function RaisedBedOperationsScheduleSection({
 
                     return (
                         <div key={operation.id}>
-                            <Row spacing={1} className="hover:bg-muted rounded">
+                            <Row
+                                spacing={1}
+                                className={
+                                    operationApproved
+                                        ? 'rounded bg-muted/60 text-foreground hover:bg-muted/80'
+                                        : 'rounded hover:bg-muted'
+                                }
+                            >
                                 <Row spacing={1} className="grow">
                                     {isOperationCompleted(operation.status) ? (
                                         <Checkbox
@@ -309,6 +322,27 @@ export function RaisedBedOperationsScheduleSection({
                                         <VerifyOperationModal
                                             operationId={operation.id}
                                             label={operationLabel}
+                                            renderTrigger={({
+                                                isSubmitting,
+                                                openModal,
+                                                defaultTrigger,
+                                            }) => (
+                                                <Row
+                                                    spacing={0.5}
+                                                    className="items-center"
+                                                >
+                                                    {defaultTrigger}
+                                                    <Button
+                                                        variant="solid"
+                                                        size="sm"
+                                                        className="bg-green-600 hover:bg-green-700 text-white"
+                                                        onClick={openModal}
+                                                        disabled={isSubmitting}
+                                                    >
+                                                        Potvrdi
+                                                    </Button>
+                                                </Row>
+                                            )}
                                         />
                                     ) : operationLocked ? (
                                         <Checkbox
@@ -379,7 +413,13 @@ export function RaisedBedOperationsScheduleSection({
                                                 {operation.scheduledDate}
                                             </LocalDateTime>
                                         ) : (
-                                            <span>Danas</span>
+                                            <Chip
+                                                size="sm"
+                                                color="warning"
+                                                className="w-fit"
+                                            >
+                                                Nije planirano
+                                            </Chip>
                                         )}
                                     </Typography>
                                 </Row>

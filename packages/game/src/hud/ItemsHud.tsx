@@ -46,6 +46,7 @@ const items: HudItem[] = [
         items: [
             { type: 'entity', name: 'Bucket' },
             { type: 'entity', name: 'Composter' },
+            { type: 'entity', name: 'GardenBox' },
         ],
     },
     {

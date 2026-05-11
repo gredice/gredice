@@ -1,3 +1,4 @@
+import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
@@ -21,7 +22,6 @@ import { useCurrentGarden } from '../../../hooks/useCurrentGarden';
 import { useInventory } from '../../../hooks/useInventory';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
 import type { ShoppingCartItemData } from '../../../hooks/useShoppingCart';
-import { BackpackIcon } from '../../../icons/Backpack';
 import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
 
 export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
@@ -109,13 +109,23 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     // Hide delete button for paid items
     const isProcessed = item.status === 'paid';
 
+    const plantSort =
+        item.entityTypeName === 'plantSort' ? item.entityData : null;
     const hasShopImage = Boolean(item.shopData.image);
     const shouldShowOperationFallback =
         item.entityTypeName === 'operation' && !hasShopImage;
 
     return (
         <Row spacing={2} alignItems="start">
-            {shouldShowOperationFallback ? (
+            {plantSort ? (
+                <PlantOrSortImage
+                    className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0"
+                    width={56}
+                    height={56}
+                    alt={item.shopData.name ?? 'Nepoznato'}
+                    plantSort={plantSort}
+                />
+            ) : shouldShowOperationFallback ? (
                 <div className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0 flex items-center justify-center">
                     <Hammer
                         role="img"
@@ -135,7 +145,6 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                     height={56}
                     alt={item.shopData.name ?? 'Nepoznato'}
                     coverUrl={item.shopData.image}
-                    baseUrl="https://www.gredice.com"
                 />
             )}
             <Stack className="grow">

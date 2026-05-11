@@ -1,0 +1,18 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Overview/Welcome" />
+
+# Gredice Storybook
+
+This public Storybook documents UI building blocks used across the Gredice monorepo. It is organized by source package so contributors can quickly understand where a component lives before reusing or changing it.
+
+## Contents
+
+- `packages/ui` contains shared components intended for reuse across multiple Gredice applications.
+- `apps/app` contains internal operations and admin-facing components.
+- `apps/garden` contains customer garden experience components.
+- `apps/www` contains public website and content components.
+
+## Contribution Notes
+
+Add stories in English and keep story titles grouped by source, for example `packages/ui/Forms/FilterInput` or `apps/www/Layout/PageHeader`. Prefer small, deterministic examples with mock data instead of stories that depend on live services, authentication, database state, or environment variables.

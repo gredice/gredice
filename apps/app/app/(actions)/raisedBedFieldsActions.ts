@@ -2,6 +2,7 @@
 
 import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
 import {
+    buildRaisedBedFieldPlantUpdatePayload,
     createEvent,
     createNotification,
     deleteRaisedBedField,
@@ -14,6 +15,7 @@ import {
     getRaisedBedFieldsWithEvents,
     knownEvents,
     moveRaisedBedFieldPlantHistory,
+    queueSeasonalSowingOfferOperations,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
@@ -56,10 +58,28 @@ async function applyRaisedBedFieldPlantUpdate({
 
     if (status) {
         await createEvent(
-            knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
-                status,
-            }),
+            knownEvents.raisedBedFields.plantUpdateV1(
+                aggregateId,
+                buildRaisedBedFieldPlantUpdatePayload(
+                    status,
+                    existingField?.assignedUserIds,
+                ),
+            ),
         );
+
+        if (
+            status === 'sowed' &&
+            existingField &&
+            existingField.plantStatus !== 'sowed' &&
+            raisedBed.accountId
+        ) {
+            const gardenId = raisedBed.gardenId;
+            await queueSeasonalSowingOfferOperations({
+                accountId: raisedBed.accountId,
+                ...(gardenId ? { gardenId } : {}),
+                raisedBedId: raisedBed.id,
+            });
+        }
     }
 
     const sortIdToUse = plantSortId ?? existingField?.plantSortId;
@@ -84,6 +104,12 @@ async function applyRaisedBedFieldPlantUpdate({
             } else if (status === 'died') {
                 header = `😢 Biljka ${sortData.information?.name} nije uspjela!`;
                 content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** biljka **${sortData.information?.name}** nije uspjela. Veselimo se novim biljkama koje će rasti na ovom mestu.`;
+            } else if (status === 'firstFlowers') {
+                header = `🌸 Biljka ${sortData.information?.name} je procvjetala!`;
+                content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** biljka **${sortData.information?.name}** je razvila prve cvjetove.`;
+            } else if (status === 'firstFruitSet') {
+                header = `🍅 Biljka ${sortData.information?.name} ima prve plodove!`;
+                content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** biljka **${sortData.information?.name}** je razvila prve plodove.`;
             } else if (status === 'ready') {
                 header = `🌿 Biljka ${sortData.information?.name} je spremna za berbu!`;
                 content = `U gredici **${raisedBed.name}** na poziciji **${positionIndex + 1}** biljka **${sortData.information?.name}** je spremna za berbu.`;

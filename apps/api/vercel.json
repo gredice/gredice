@@ -18,6 +18,10 @@
             "schedule": "0 * 1,2 * *"
         },
         {
+            "path": "/api/internal/cron/delivery-ready-emails",
+            "schedule": "*/5 * * * *"
+        },
+        {
             "path": "/api/internal/cron/update-farm-weather",
             "schedule": "0 * * * *"
         },

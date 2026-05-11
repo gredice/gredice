@@ -6,8 +6,9 @@ import { Input } from '@signalco/ui-primitives/Input';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../lib/auth/auth';
-import { KnownPages } from '../../../../src/KnownPages';
 import { createInventoryConfigAction } from '../../../(actions)/inventoryActions';
 
 export const dynamic = 'force-dynamic';
@@ -23,11 +24,18 @@ export default async function CreateInventoryPage() {
 
     return (
         <Stack spacing={4}>
-            <Breadcrumbs
-                items={[
-                    { label: 'Zalihe', href: KnownPages.Inventory },
-                    { label: 'Nova zaliha' },
-                ]}
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                            },
+                            { label: 'Nova zaliha' },
+                        ]}
+                    />
+                }
+                heading="Nova zaliha"
             />
 
             <Stack spacing={2}>
@@ -68,24 +76,6 @@ export default async function CreateInventoryPage() {
                                         },
                                     ]}
                                     defaultValue="pieces"
-                                />
-                                <Input
-                                    name="statusAttributeName"
-                                    label="Atribut statusa (opcionalno)"
-                                    placeholder="npr. openState"
-                                    helperText="Naziv atributa entiteta koji definira status stavke"
-                                />
-                                <Input
-                                    name="emptyStatusValue"
-                                    label="Vrijednost praznog statusa (opcionalno)"
-                                    placeholder="npr. empty"
-                                    helperText="Vrijednost atributa koja označava praznu stavku i automatski smanjuje zalihu"
-                                />
-                                <Input
-                                    name="amountAttributeName"
-                                    label="Atribut količine (opcionalno)"
-                                    placeholder="npr. packSize"
-                                    helperText="Naziv atributa entiteta koji definira količinu stavke"
                                 />
                             </Stack>
                             <Button
