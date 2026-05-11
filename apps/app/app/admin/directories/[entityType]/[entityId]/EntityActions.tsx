@@ -23,7 +23,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import Link from 'next/link';
 import { startTransition, useState } from 'react';
 import { KnownPages } from '../../../../../src/KnownPages';
-import { updateEntity } from '../../../../(actions)/entityActions';
+import { updateEntityStateAction } from '../../../../(actions)/entityActions';
 import { useEntityDetailsSave } from './EntityDetailsSaveContext';
 
 export function EntityActions({
@@ -47,12 +47,17 @@ export function EntityActions({
         setState(newState);
         setPublishError(null);
         try {
-            await trackSave(() =>
-                updateEntity({
+            await trackSave(async () => {
+                const result = await updateEntityStateAction({
                     id: entity.id,
                     state: newState,
-                }),
-            );
+                });
+                if (!result.success) {
+                    throw new Error(
+                        result.message ?? 'Promjena statusa nije uspjela.',
+                    );
+                }
+            });
         } catch (error) {
             setState(previousState);
             setPublishError(
