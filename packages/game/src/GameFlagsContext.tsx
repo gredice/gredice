@@ -12,6 +12,7 @@ export interface GameFeatureFlags {
     enableRaisedBedFieldWateringFlag?: boolean;
     enableRaisedBedFieldDiaryFlag?: boolean;
     raisedBedImageAI?: boolean;
+    enablePlantHistoryFlag?: boolean;
 }
 
 export const GameFlagsContext = createContext<GameFeatureFlags>({});

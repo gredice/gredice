@@ -1,3 +1,4 @@
+import { useGameFlags } from '../../GameFlagsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import {
     findRaisedBedFieldWithPlant,
@@ -19,6 +20,7 @@ export function RaisedBedFieldItem({
     isDragging?: boolean;
 }) {
     const { data: garden, isLoading: isGardenLoading } = useCurrentGarden();
+    const { enablePlantHistoryFlag } = useGameFlags();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
     if (!raisedBed) {
         return null;
@@ -41,7 +43,7 @@ export function RaisedBedFieldItem({
     }
 
     if (!hasField) {
-        if (historicalField) {
+        if (enablePlantHistoryFlag && historicalField) {
             return (
                 <RaisedBedFieldItemPlanted
                     raisedBedId={raisedBedId}

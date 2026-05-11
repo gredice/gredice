@@ -5,6 +5,7 @@ import { GameSceneWithAnalytics } from '../components/game/GameSceneWithAnalytic
 import {
     enableDebugHudFlag,
     lsystemPlantsFlag,
+    plantHistoryFlag,
     raisedBedImageAIFlag,
 } from './flags';
 
@@ -13,6 +14,7 @@ export default async function Home() {
         enableDebugHudFlag: await enableDebugHudFlag(),
         enablePlantGeneratorFlag: await lsystemPlantsFlag(),
         raisedBedImageAI: await raisedBedImageAIFlag(),
+        enablePlantHistoryFlag: await plantHistoryFlag(),
     };
 
     return (
