@@ -272,6 +272,7 @@ export function EntitiesTable({
 function EntityAttributeValueCell({
     entity,
     definition,
+    refLabelsByDefinitionId,
 }: {
     entity: Entities[number];
     definition: SelectAttributeDefinition;
