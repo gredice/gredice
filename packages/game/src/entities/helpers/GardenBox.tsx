@@ -1,5 +1,6 @@
 import { animated } from '@react-spring/three';
 import { useHoveredBlockStore } from '../../controls/useHoveredBlockStore';
+import { RainWetOverlay } from '../../rain/RainWetOverlay';
 import { SnowOverlay } from '../../snow/SnowOverlay';
 import { snowPresets } from '../../snow/snowPresets';
 import type { EntityInstanceProps } from '../../types/runtime/EntityInstanceProps';
@@ -66,10 +67,12 @@ export function GardenBox({
                 geometry={nodes.GiftBox_Box.geometry}
                 {...snowPresets.giftBox}
             />
+            <RainWetOverlay geometry={nodes.GiftBox_Box.geometry} />
             <SnowOverlay
                 geometry={nodes.GiftBox_Strip.geometry}
                 {...snowPresets.giftBox}
             />
+            <RainWetOverlay geometry={nodes.GiftBox_Strip.geometry} />
         </animated.group>
     );
 }
