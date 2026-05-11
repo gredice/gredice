@@ -4,7 +4,6 @@ import { spawn } from 'node:child_process';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import { dirname, resolve } from 'node:path';
-import { exit } from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { appRegistry, getAppDevPort, getWorktreeId } from './app-registry.ts';
 
@@ -191,7 +190,10 @@ async function ensureHostsEntries() {
         await import('node:fs/promises').then((fs) =>
             fs.writeFile(hostsFilePath, updatedContents, { encoding: 'utf8' }),
         );
-        exit(0);
+        console.log(
+            `Added hosts file entries for: ${missingHosts.join(', ')}.`,
+        );
+        console.log('Continuing development startup.');
     } catch (error) {
         if (error?.code === 'EACCES' || error?.code === 'EPERM') {
             throw createHostsPermissionError(hostsFilePath, error);
