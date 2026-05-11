@@ -66,10 +66,12 @@ export function GardenBox({
                 geometry={nodes.GiftBox_Box.geometry}
                 {...snowPresets.giftBox}
             />
+            <RainWetOverlay geometry={nodes.GiftBox_Box.geometry} />
             <SnowOverlay
                 geometry={nodes.GiftBox_Strip.geometry}
                 {...snowPresets.giftBox}
             />
+            <RainWetOverlay geometry={nodes.GiftBox_Strip.geometry} />
         </animated.group>
     );
 }

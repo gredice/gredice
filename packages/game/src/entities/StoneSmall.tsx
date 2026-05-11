@@ -1,4 +1,5 @@
 import { animated } from '@react-spring/three';
+import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -27,6 +28,7 @@ export function StoneSmall({ stack, block, rotation }: EntityInstanceProps) {
                     geometry={nodes.Stone_Small.geometry}
                     {...snowPresets.stone}
                 />
+                <RainWetOverlay geometry={nodes.Stone_Small.geometry} />
             </mesh>
         </animated.group>
     );
