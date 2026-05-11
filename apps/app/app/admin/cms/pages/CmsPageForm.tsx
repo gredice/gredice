@@ -1,7 +1,10 @@
 'use client';
 
 import type { SelectCmsPage } from '@gredice/storage';
-import { cmsPageSectionComponents } from '@gredice/storage/cmsPageSections';
+import {
+    type CmsPageSectionComponent,
+    cmsPageSectionComponents,
+} from '@gredice/storage/cmsPageSections';
 import { SectionsView } from '@signalco/cms-core/SectionsView';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
@@ -54,7 +57,7 @@ const cmsPageSectionItems = cmsPageSectionComponents.map((component) => ({
     label: component.label,
 }));
 
-const cmsPageSectionComponentsByName = new Map(
+const cmsPageSectionComponentsByName = new Map<string, CmsPageSectionComponent>(
     cmsPageSectionComponents.map((component) => [
         component.component,
         component,
@@ -791,7 +794,7 @@ export function CmsPageForm({
                                                 >
                                                     <SectionsView
                                                         sectionsData={[
-                                                            previewSection,
+                                                            section.data,
                                                         ]}
                                                         componentsRegistry={
                                                             sectionsComponentRegistry
