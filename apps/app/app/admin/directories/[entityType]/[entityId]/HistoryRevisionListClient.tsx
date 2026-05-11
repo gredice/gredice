@@ -21,7 +21,8 @@ const actionLabels: Record<string, string> = {
 };
 
 function formatAction(action: string): string {
-    return actionLabels[action] ?? action.replace(/[-_]/g, ' ');
+    const normalizedAction = action.split('.').at(-1) ?? action;
+    return actionLabels[normalizedAction] ?? action.replace(/[._-]/g, ' ');
 }
 
 function formatDateTime(value: Date): string {
