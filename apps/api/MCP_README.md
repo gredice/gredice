@@ -47,7 +47,7 @@ Model Context Protocol (MCP) is a standardized way for AI assistants to interact
 ### Core Components
 
 1. **StreamableHTTPTransport**: Handles HTTP-based MCP communication
-2. **Authentication Middleware**: JWT validation with role-based access
+2. **Authentication Middleware**: shared API JWT validation, account scoping, and MCP scope checks
 3. **Logging**: Comprehensive request/response logging via Axiom
 4. **Error Handling**: Standardized error responses with correlation IDs
 
@@ -55,7 +55,7 @@ Model Context Protocol (MCP) is a standardized way for AI assistants to interact
 
 ### JWT Integration
 
-All MCP endpoints require valid JWT authentication:
+All MCP endpoints require standard Gredice API bearer JWTs (`GREDICE_JWT_SIGN_SECRET`) on every HTTP request:
 
 ```typescript
 Authorization: Bearer <jwt_token>
@@ -286,7 +286,8 @@ try {
 
    ```bash
    # .env
-   GREDICE_MCP_JWT_SECRET=your_jwt_secret
+   GREDICE_JWT_SIGN_SECRET=your_existing_api_jwt_secret
+   MCP_ALLOWED_ORIGINS=https://app.gredice.com,https://vrt.gredice.com
    ```
 
 3. **Start Development Server**:
