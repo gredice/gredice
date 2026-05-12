@@ -58,7 +58,7 @@ async function main() {
   if (aliasPrefix && !prefixSlug)
     throw new Error(`Alias prefix ${aliasPrefix} results in empty slug`);
 
-  const maxBranchSlugLength = prefixSlug ? 62 - prefixSlug.length : 63;
+  const maxBranchSlugLength = prefixSlug ? 63 - prefixSlug.length - 1 : 63;
   if (maxBranchSlugLength < 1)
     throw new Error(`Alias prefix ${aliasPrefix} is too long`);
 
