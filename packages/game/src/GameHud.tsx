@@ -6,6 +6,7 @@ import { AccountHud } from './hud/AccountHud';
 import { AdventHud } from './hud/AdventHud';
 import { AudioHud } from './hud/AudioHud';
 import { CameraHud } from './hud/CameraHud';
+import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
 import { DebugHud } from './hud/DebugHud';
 import { GameModeHud } from './hud/GameModeHud';
 import { InventoryHud } from './hud/InventoryHud';
@@ -59,7 +60,7 @@ export function GameHud({
                     <AudioHud />
                 </div>
                 <ItemsHud />
-                <div className="hidden md:block" />
+                <ControlsTooltipHud />
             </div>
             <RaisedBedFieldHud flags={flags} />
             <OverviewModal />
