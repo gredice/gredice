@@ -921,18 +921,16 @@ export function CmsPageForm({
                                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
                                     <Card className="p-4">
                                         <Stack spacing={2}>
-                                            {sections.map((section, index) => (
+                                            {sections.map((section) => (
                                                 <Stack
                                                     key={section.id}
                                                     spacing={2}
                                                 >
                                                     <Card
-                                                        className={`p-3 cursor-pointer ${sections[index]?.id === selectedSectionId ? 'border-primary' : ''}`}
+                                                        className={`p-3 cursor-pointer ${section.id === selectedSectionId ? 'border-primary' : ''}`}
                                                         onClick={() =>
                                                             selectSection(
-                                                                sections[index]
-                                                                    ?.id ??
-                                                                    section.id,
+                                                                section.id,
                                                             )
                                                         }
                                                     >
