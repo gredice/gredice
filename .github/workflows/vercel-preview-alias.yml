@@ -27,7 +27,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Vercel creates preview deployments asynchronously, so wait up to 10 minutes.
+          # Vercel creates preview deployments asynchronously; tune MAX_ATTEMPTS and SLEEP_SECONDS to control the wait.
           max_attempts="${MAX_ATTEMPTS}"
           sleep_seconds="${SLEEP_SECONDS}"
           deployment_url=""
