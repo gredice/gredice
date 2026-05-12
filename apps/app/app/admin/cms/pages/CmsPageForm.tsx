@@ -328,6 +328,7 @@ export function CmsPageForm({
             return;
         }
 
+        // Preserve explicit append mode instead of auto-selecting the first section.
         if (insertAtEnd && selectedSectionId === null) {
             return;
         }
