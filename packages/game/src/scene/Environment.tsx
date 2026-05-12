@@ -1,7 +1,7 @@
 'use client';
 
 import chroma from 'chroma-js';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getPosition } from 'suncalc';
 import { Color, Quaternion, Vector3 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
@@ -134,6 +134,7 @@ type EnvironmentWeather = {
     rainy?: number;
     snowAccumulation?: number;
     snowy?: number;
+    thundery?: number;
     windDirection?: string | null;
     windSpeed?: number;
 };
@@ -144,6 +145,7 @@ const fallbackWeather = {
     rainy: 0,
     snowAccumulation: 0,
     snowy: 0,
+    thundery: 0,
     windDirection: 'N',
     windSpeed: 0,
 };
@@ -566,6 +568,79 @@ export function Environment({
             ? (compassToDirection[actualWeather.windDirection] ?? 0)
             : 0;
 
+    const [lightningFlash, setLightningFlash] = useState(0);
+    const lightningScheduleTimeout = useRef<number | null>(null);
+    const lightningClearTimeout = useRef<number | null>(null);
+
+    useEffect(() => {
+        const thunderLevel = actualWeather?.thundery ?? 0;
+        if (weatherDisabled || thunderLevel <= 0) {
+            setLightningFlash(0);
+            if (lightningScheduleTimeout.current !== null) {
+                window.clearTimeout(lightningScheduleTimeout.current);
+                lightningScheduleTimeout.current = null;
+            }
+            if (lightningClearTimeout.current !== null) {
+                window.clearTimeout(lightningClearTimeout.current);
+                lightningClearTimeout.current = null;
+            }
+            return;
+        }
+
+        const stormStrength = Math.min(
+            1,
+            thunderLevel * 0.6 +
+                (actualWeather?.rainy ?? 0) * 0.3 +
+                (actualWeather?.cloudy ?? 0) * 0.2,
+        );
+        const nightFactor =
+            0.2 + Math.max(dawnVisibility, duskVisibility) * 0.6;
+        const flashStrength = Math.min(
+            1,
+            0.35 + stormStrength * 0.45 + nightFactor,
+        );
+
+        const scheduleNextFlash = () => {
+            const minimumDelayMs = 8000;
+            const maximumDelayMs = 22000;
+            const chanceWindowMs =
+                maximumDelayMs -
+                (maximumDelayMs - minimumDelayMs) * Math.min(1, stormStrength);
+            const delayMs =
+                minimumDelayMs + Math.random() * Math.max(2000, chanceWindowMs);
+
+            lightningScheduleTimeout.current = window.setTimeout(() => {
+                setLightningFlash(flashStrength);
+                lightningClearTimeout.current = window.setTimeout(() => {
+                    setLightningFlash(0);
+                    lightningClearTimeout.current = null;
+                }, 120);
+                scheduleNextFlash();
+            }, delayMs);
+        };
+
+        scheduleNextFlash();
+
+        return () => {
+            if (lightningScheduleTimeout.current !== null) {
+                window.clearTimeout(lightningScheduleTimeout.current);
+                lightningScheduleTimeout.current = null;
+            }
+            if (lightningClearTimeout.current !== null) {
+                window.clearTimeout(lightningClearTimeout.current);
+                lightningClearTimeout.current = null;
+                setLightningFlash(0);
+            }
+        };
+    }, [
+        actualWeather?.cloudy,
+        actualWeather?.rainy,
+        actualWeather?.thundery,
+        dawnVisibility,
+        duskVisibility,
+        weatherDisabled,
+    ]);
+
     return (
         <>
             {!noBackground && (
@@ -575,6 +650,12 @@ export function Environment({
                 />
             )}
             <ambientLight intensity={ambient.intensity} />
+            {lightningFlash > 0 && (
+                <ambientLight
+                    color={0xf8fbff}
+                    intensity={lightningFlash * 1.2}
+                />
+            )}
             <hemisphereLight
                 position={[0, 1, 0]}
                 color={hemisphere.color}
@@ -632,6 +713,16 @@ export function Environment({
                     count={snowParticleCount}
                     windSpeed={windSpeed}
                     windDirection={windDirection}
+                />
+            )}
+            {lightningFlash > 0 && (
+                <fog
+                    attach="fog"
+                    args={[
+                        new Color(0xdde9ff),
+                        Math.max(80, fogNear - 20),
+                        220,
+                    ]}
                 />
             )}
         </>

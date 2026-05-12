@@ -1,7 +1,6 @@
 import { getEntitiesFormatted } from '@gredice/storage';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { Logger } from 'next-axiom';
 import { z } from 'zod';
 import { negotiateMcpProtocolVersion } from '../protocol';
 
@@ -30,7 +29,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-    const logger = new Logger();
+    const logger = console;
 
     try {
         const body = await request.json();

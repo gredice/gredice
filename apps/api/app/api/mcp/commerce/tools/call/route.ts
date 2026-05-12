@@ -5,7 +5,6 @@ import {
 } from '@gredice/storage';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { Logger } from 'next-axiom';
 import { z } from 'zod';
 import {
     checkMCPPermission,
@@ -109,7 +108,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-    const logger = new Logger();
+    const logger = console;
     const startTime = Date.now();
     const correlationId = crypto.randomUUID();
 

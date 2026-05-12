@@ -1,6 +1,5 @@
 import { getEntitiesFormatted } from '@gredice/storage';
 import { type NextRequest, NextResponse } from 'next/server';
-import { Logger } from 'next-axiom';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -88,7 +87,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-    const logger = new Logger();
+    const logger = console;
     const startTime = Date.now();
     const correlationId = crypto.randomUUID();
 
@@ -143,8 +142,6 @@ export async function POST(request: NextRequest) {
                     timestamp: new Date().toISOString(),
                 });
 
-                await logger.flush();
-
                 return NextResponse.json(
                     {
                         jsonrpc: '2.0',
@@ -165,8 +162,6 @@ export async function POST(request: NextRequest) {
             timestamp: new Date().toISOString(),
         });
 
-        await logger.flush();
-
         return NextResponse.json({
             jsonrpc: '2.0',
             result,
@@ -179,8 +174,6 @@ export async function POST(request: NextRequest) {
             error: error instanceof Error ? error.message : 'Unknown error',
             timestamp: new Date().toISOString(),
         });
-
-        await logger.flush();
 
         const statusCode = error instanceof z.ZodError ? 400 : 500;
 

@@ -6,7 +6,6 @@ import {
 } from '@gredice/storage';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { Logger } from 'next-axiom';
 import { z } from 'zod';
 import {
     checkMCPPermission,
@@ -141,7 +140,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-    const logger = new Logger();
+    const logger = console;
     const startTime = Date.now();
     const correlationId = crypto.randomUUID();
 
@@ -453,18 +452,27 @@ async function handleGetGarden(
             ) || [];
 
         // Get recent activities if requested
-        const activities = input.includeActivities
-            ? [
-                  {
-                      id: 'activity-recent',
-                      type: 'maintenance',
-                      description: 'Održavanje vrtnih gredica',
-                      date: new Date().toISOString(),
-                      duration: 30,
-                      notes: 'Redovna njega biljaka u vrtu',
-                  },
-              ]
-            : undefined;
+        let activities: Array<{
+            id: string;
+            type: string;
+            description: string;
+            date: string;
+            duration: number;
+            notes: string;
+        }> = [];
+        if (input.includeActivities) {
+            // TODO: Implement actual activity fetching from events/operations
+            activities = [
+                {
+                    id: 'activity-recent',
+                    type: 'maintenance',
+                    description: 'Održavanje vrtnih gredica',
+                    date: new Date().toISOString(),
+                    duration: 30,
+                    notes: 'Redovna njega biljaka u vrtu',
+                },
+            ];
+        }
 
         return {
             id: garden.id.toString(),
@@ -593,7 +601,7 @@ async function handleAddPlantToGarden(
 
 async function handleGetGardenActivities(
     input: z.infer<typeof GetGardenActivitiesSchema>,
-    auth: MCPAuth,
+    _auth: MCPAuth,
 ) {
     // TODO: Implement with actual database query with filtering
     const mockActivities = [
@@ -683,7 +691,7 @@ async function handleGetGardenActivities(
 
 async function handleLogGardenActivity(
     input: z.infer<typeof LogGardenActivitySchema>,
-    auth: MCPAuth,
+    _auth: MCPAuth,
 ) {
     // TODO: Implement with actual database insert
     const newActivity = {
