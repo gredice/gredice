@@ -10,14 +10,14 @@ function required(name) {
 }
 
 function sanitizeLabel(value, maxLength = 63) {
-  return value
+  const sanitized = value
     .toLowerCase()
     .replace(/^refs\/heads\//, "")
     .replace(/[^a-z0-9-]/g, "-")
     .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, maxLength)
-    .replace(/-$/g, "");
+    .replace(/^-|-$/g, "");
+
+  return sanitized.slice(0, maxLength).replace(/-+$/g, "");
 }
 
 function writeGithubOutput(key, value) {
@@ -56,11 +56,15 @@ async function main() {
 
   const prefixSlug = aliasPrefix ? sanitizeLabel(aliasPrefix) : "";
   if (aliasPrefix && !prefixSlug)
-    throw new Error(`Alias prefix ${aliasPrefix} results in empty slug`);
+    throw new Error(
+      `Alias prefix ${aliasPrefix} contains no valid DNS label characters after sanitization`,
+    );
 
   const maxBranchSlugLength = prefixSlug ? 63 - prefixSlug.length - 1 : 63;
   if (maxBranchSlugLength < 1)
-    throw new Error(`Alias prefix ${aliasPrefix} is too long`);
+    throw new Error(
+      `Alias prefix ${aliasPrefix} (length ${prefixSlug.length}) exceeds maximum allowed length of 62 characters`,
+    );
 
   const branchSlug = sanitizeLabel(branch, maxBranchSlugLength);
   if (!branchSlug)
