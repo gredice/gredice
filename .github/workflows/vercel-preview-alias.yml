@@ -1,0 +1,53 @@
+name: Vercel preview alias
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  alias_app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Resolve latest preview deployment URL (app)
+        id: app_deployment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_APP }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_ORG_ID }}
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          deployment_url=$(curl -fsSL -G \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            --data-urlencode "projectId=${VERCEL_PROJECT_ID}" \
+            --data-urlencode "target=preview" \
+            --data-urlencode "state=READY" \
+            --data-urlencode "meta-githubCommitRef=${BRANCH_NAME}" \
+            --data-urlencode "limit=1" \
+            "https://api.vercel.com/v6/deployments?teamId=${VERCEL_TEAM_ID}" | \
+            jq -r '.deployments[0].url // empty')
+
+          if [ -z "${deployment_url}" ]; then
+            echo "No ready app preview deployment found for branch ${BRANCH_NAME}."
+            exit 1
+          fi
+
+          echo "url=${deployment_url}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version: "24.15.0"
+
+      - name: Install Vercel CLI
+        run: npm i --global vercel@latest
+
+      - name: Alias app preview to branch domain
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_SCOPE: gredice
+          VERCEL_DEPLOYMENT_URL: ${{ steps.app_deployment.outputs.url }}
+          GREDICE_PREVIEW_DOMAIN: preview.gredice.com
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
+        run: node ./scripts/alias-preview.mjs
