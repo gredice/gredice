@@ -396,3 +396,8 @@ Access monitoring dashboards at:
 
 - **Axiom**: Application logs and metrics
 - **Vercel**: Deployment and performance metrics
+
+
+## Endpoint decision
+
+Gredice now uses a single Streamable HTTP endpoint at `/api/mcp` with namespaced tool names (for example `directories/get-plants`). This keeps protocol negotiation, lifecycle handling, and capability listing in one server implementation while preserving domain boundaries in tool naming.
