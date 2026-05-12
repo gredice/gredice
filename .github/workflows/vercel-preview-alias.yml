@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   alias_app:
     runs-on: ubuntu-latest
@@ -44,6 +48,7 @@ jobs:
         run: npm i --global vercel@latest
 
       - name: Alias app preview to branch domain
+        id: alias_app
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_SCOPE: gredice
@@ -51,3 +56,19 @@ jobs:
           GREDICE_PREVIEW_DOMAIN: preview.gredice.com
           GITHUB_HEAD_REF: ${{ github.head_ref }}
         run: node ./scripts/alias-preview.mjs
+
+      - name: Sticky PR comment with preview alias
+        uses: marocchino/sticky-pull-request-comment@v2.9.4
+        with:
+          header: vercel-preview-alias
+          message: |
+            ✅ Preview alias updated for this PR.
+
+            - Branch: `${{ github.head_ref }}`
+            - Alias: `https://${{ steps.alias_app.outputs.alias_domain }}`
+            - Deployment: `https://${{ steps.app_deployment.outputs.url }}`
+
+            Cloudflare + Vercel requirements for `*.preview.gredice.com`:
+            - In Cloudflare DNS, create `CNAME  *.preview  cname.vercel-dns.com` (DNS only / gray cloud).
+            - Ensure there is no conflicting `A`, `AAAA`, or `CNAME` for the same host.
+            - In Vercel project settings, add `preview.gredice.com` (or `*.preview.gredice.com`) as a domain and verify it.

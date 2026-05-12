@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { spawn } from 'node:child_process';
+import { spawn } from "node:child_process";
+import { appendFileSync } from "node:fs";
 
 function required(name) {
   const value = process.env[name]?.trim();
@@ -11,46 +12,62 @@ function required(name) {
 function sanitizeBranch(branch) {
   return branch
     .toLowerCase()
-    .replace(/^refs\/heads\//, '')
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
+    .replace(/^refs\/heads\//, "")
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
     .slice(0, 63);
+}
+
+function writeGithubOutput(key, value) {
+  const outputFile = process.env.GITHUB_OUTPUT;
+  if (!outputFile) return;
+  appendFileSync(outputFile, `${key}=${value}\n`);
 }
 
 function run(command, args) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: 'pipe', env: process.env });
-    let stdout = '';
-    let stderr = '';
-    child.stdout.on('data', (c) => { const t = c.toString(); stdout += t; process.stdout.write(t); });
-    child.stderr.on('data', (c) => { const t = c.toString(); stderr += t; process.stderr.write(t); });
-    child.on('error', reject);
-    child.on('close', (code) => resolve({ code: code ?? 1, stdout, stderr }));
+    const child = spawn(command, args, { stdio: "pipe", env: process.env });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (c) => {
+      const t = c.toString();
+      stdout += t;
+      process.stdout.write(t);
+    });
+    child.stderr.on("data", (c) => {
+      const t = c.toString();
+      stderr += t;
+      process.stderr.write(t);
+    });
+    child.on("error", reject);
+    child.on("close", (code) => resolve({ code: code ?? 1, stdout, stderr }));
   });
 }
 
 async function main() {
-  const token = required('VERCEL_TOKEN');
-  const scope = required('VERCEL_SCOPE');
-  const deploymentUrl = required('VERCEL_DEPLOYMENT_URL');
-  const previewDomain = required('GREDICE_PREVIEW_DOMAIN');
-  const branch = required('GITHUB_HEAD_REF');
+  const token = required("VERCEL_TOKEN");
+  const scope = required("VERCEL_SCOPE");
+  const deploymentUrl = required("VERCEL_DEPLOYMENT_URL");
+  const previewDomain = required("GREDICE_PREVIEW_DOMAIN");
+  const branch = required("GITHUB_HEAD_REF");
 
   const branchSlug = sanitizeBranch(branch);
-  if (!branchSlug) throw new Error(`Branch name ${branch} results in empty slug`);
+  if (!branchSlug)
+    throw new Error(`Branch name ${branch} results in empty slug`);
 
   const aliasDomain = `${branchSlug}.${previewDomain}`;
   console.log(`Aliasing ${deploymentUrl} to ${aliasDomain}`);
+  writeGithubOutput("alias_domain", aliasDomain);
 
-  const result = await run('vercel', [
-    'alias',
-    'set',
+  const result = await run("vercel", [
+    "alias",
+    "set",
     deploymentUrl,
     aliasDomain,
-    '--scope',
+    "--scope",
     scope,
-    '--token',
+    "--token",
     token,
   ]);
 
