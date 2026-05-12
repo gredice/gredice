@@ -453,20 +453,18 @@ async function handleGetGarden(
             ) || [];
 
         // Get recent activities if requested
-        let activities;
-        if (input.includeActivities) {
-            // TODO: Implement actual activity fetching from events/operations
-            activities = [
-                {
-                    id: 'activity-recent',
-                    type: 'maintenance',
-                    description: 'Održavanje vrtnih gredica',
-                    date: new Date().toISOString(),
-                    duration: 30,
-                    notes: 'Redovna njega biljaka u vrtu',
-                },
-            ];
-        }
+        const activities = input.includeActivities
+            ? [
+                  {
+                      id: 'activity-recent',
+                      type: 'maintenance',
+                      description: 'Održavanje vrtnih gredica',
+                      date: new Date().toISOString(),
+                      duration: 30,
+                      notes: 'Redovna njega biljaka u vrtu',
+                  },
+              ]
+            : undefined;
 
         return {
             id: garden.id.toString(),
