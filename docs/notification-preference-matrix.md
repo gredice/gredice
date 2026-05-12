@@ -54,7 +54,7 @@ Per eventType, each channel gets one of:
 | `garden` | `garden_health_alert`, `weather_risk_alert` | high | ❌ | ✅ | ❌ | ❌ | default_on | default_on | default_on | never | never |
 | `garden` | `harvest_ready`, `harvest_window_ending` | normal | ❌ | ✅ | ✅ | ✅ | default_on | default_on | default_on | default_on | never |
 | `reminders` | `task_reminder`, `cart_abandonment_reminder`, `subscription_renewal_reminder` | normal | ❌ | ✅ | ✅ | ✅ | default_on | default_on | default_off | default_on | never |
-| `digests` | `daily_digest`, `weekly_digest`, `monthly_digest` | low | ❌ | ✅ | n/a | ✅ | default_on | default_on | never | required | never |
+| `digests` | `daily_digest`, `weekly_digest`, `monthly_digest` | low | ❌ | ✅ | ❌ | ✅ | default_on | default_on | never | required | never |
 | `admin_campaigns` | `service_announcement`, `feature_release_note`, `maintenance_window` | normal | ❌* | ✅* | ✅ | ✅ | default_on | default_on | default_off | default_on | default_on |
 | `promotional` | `upsell_offer`, `seasonal_campaign`, `reengagement_campaign` | low | ❌ | ✅ | ✅ | ✅ | default_on | default_off | default_off | default_on | default_on |
 
