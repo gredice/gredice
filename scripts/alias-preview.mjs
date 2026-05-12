@@ -15,14 +15,17 @@ function required(name) {
   return value;
 }
 
-function sanitizeLabel(value, maxLength = MAX_DNS_LABEL_LENGTH) {
-  const sanitized = value
+function sanitizeLabelValue(value) {
+  return value
     .toLowerCase()
     .replace(/^refs\/heads\//, "")
     .replace(/[^a-z0-9-]/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
+}
 
+function sanitizeLabel(value, maxLength = MAX_DNS_LABEL_LENGTH) {
+  const sanitized = sanitizeLabelValue(value);
   return sanitized.slice(0, maxLength).replace(/-+$/g, "");
 }
 
@@ -60,7 +63,7 @@ async function main() {
   const branch = required("GITHUB_HEAD_REF");
   const aliasPrefix = process.env.GREDICE_PREVIEW_ALIAS_PREFIX?.trim();
 
-  const prefixSlug = aliasPrefix ? sanitizeLabel(aliasPrefix) : "";
+  const prefixSlug = aliasPrefix ? sanitizeLabelValue(aliasPrefix) : "";
   if (aliasPrefix && !prefixSlug)
     throw new Error(
       `Alias prefix ${aliasPrefix} contains no valid DNS label characters after sanitization`,
@@ -68,7 +71,7 @@ async function main() {
 
   if (prefixSlug.length > MAX_ALIAS_PREFIX_LENGTH)
     throw new Error(
-      `Alias prefix ${aliasPrefix} (length ${prefixSlug.length}) exceeds maximum allowed length of ${MAX_ALIAS_PREFIX_LENGTH} characters, which leaves room for the hyphen and branch name`,
+      `Alias prefix ${aliasPrefix} sanitizes to ${prefixSlug} (length ${prefixSlug.length}), exceeding the maximum allowed length of ${MAX_ALIAS_PREFIX_LENGTH} characters`,
     );
 
   const maxBranchSlugLength = prefixSlug
