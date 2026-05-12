@@ -3,14 +3,16 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { Logger } from 'next-axiom';
 import { z } from 'zod';
+import { negotiateMcpProtocolVersion } from '../protocol';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+    const protocolVersion = negotiateMcpProtocolVersion(request);
     return NextResponse.json({
         jsonrpc: '2.0',
         result: {
-            protocolVersion: '2024-11-05',
+            protocolVersion,
             capabilities: {
                 tools: {
                     listChanged: false,
@@ -33,6 +35,7 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
         const { method } = body;
+        const protocolVersion = negotiateMcpProtocolVersion(request);
 
         logger.info('mcp.directories.request', {
             method,
@@ -44,7 +47,7 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json({
                     jsonrpc: '2.0',
                     result: {
-                        protocolVersion: '2024-11-05',
+                        protocolVersion,
                         capabilities: {
                             tools: {
                                 listChanged: false,
