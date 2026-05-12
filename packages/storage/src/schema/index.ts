@@ -16,5 +16,6 @@ export * from './operationsSchema';
 export * from './refreshTokensSchema';
 export * from './settingsSchema';
 export * from './shoppingCartSchema';
+export * from './socialPostsSchema';
 export * from './transactionSchema';
 export * from './usersSchema';
