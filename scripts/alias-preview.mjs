@@ -9,14 +9,15 @@ function required(name) {
   return value;
 }
 
-function sanitizeBranch(branch) {
-  return branch
+function sanitizeLabel(value, maxLength = 63) {
+  return value
     .toLowerCase()
     .replace(/^refs\/heads\//, "")
     .replace(/[^a-z0-9-]/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
-    .slice(0, 63);
+    .slice(0, maxLength)
+    .replace(/-$/g, "");
 }
 
 function writeGithubOutput(key, value) {
@@ -51,12 +52,22 @@ async function main() {
   const deploymentUrl = required("VERCEL_DEPLOYMENT_URL");
   const previewDomain = required("GREDICE_PREVIEW_DOMAIN");
   const branch = required("GITHUB_HEAD_REF");
+  const aliasPrefix = process.env.GREDICE_PREVIEW_ALIAS_PREFIX?.trim();
 
-  const branchSlug = sanitizeBranch(branch);
+  const prefixSlug = aliasPrefix ? sanitizeLabel(aliasPrefix) : "";
+  if (aliasPrefix && !prefixSlug)
+    throw new Error(`Alias prefix ${aliasPrefix} results in empty slug`);
+
+  const maxBranchSlugLength = prefixSlug ? 62 - prefixSlug.length : 63;
+  if (maxBranchSlugLength < 1)
+    throw new Error(`Alias prefix ${aliasPrefix} is too long`);
+
+  const branchSlug = sanitizeLabel(branch, maxBranchSlugLength);
   if (!branchSlug)
     throw new Error(`Branch name ${branch} results in empty slug`);
 
-  const aliasDomain = `${branchSlug}.${previewDomain}`;
+  const aliasName = prefixSlug ? `${prefixSlug}-${branchSlug}` : branchSlug;
+  const aliasDomain = `${aliasName}.${previewDomain}`;
   console.log(`Aliasing ${deploymentUrl} to ${aliasDomain}`);
   writeGithubOutput("alias_domain", aliasDomain);
 

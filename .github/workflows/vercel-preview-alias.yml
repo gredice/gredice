@@ -85,6 +85,7 @@ jobs:
           VERCEL_SCOPE: gredice
           VERCEL_DEPLOYMENT_URL: ${{ steps.app_deployment.outputs.url }}
           GREDICE_PREVIEW_DOMAIN: preview.gredice.com
+          GREDICE_PREVIEW_ALIAS_PREFIX: app
           GITHUB_HEAD_REF: ${{ github.head_ref }}
         run: node ./scripts/alias-preview.mjs
 
@@ -95,6 +96,7 @@ jobs:
           message: |
             ✅ Preview alias updated for this PR.
 
+            - App: `app`
             - Branch: `${{ github.head_ref }}`
             - Alias: `https://${{ steps.alias_app.outputs.alias_domain }}`
             - Deployment: `https://${{ steps.app_deployment.outputs.url }}`
