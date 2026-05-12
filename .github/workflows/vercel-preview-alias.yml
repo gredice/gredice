@@ -22,12 +22,14 @@ jobs:
           VERCEL_TEAM_ID: ${{ secrets.VERCEL_ORG_ID }}
           BRANCH_NAME: ${{ github.head_ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MAX_ATTEMPTS: 30
+          SLEEP_SECONDS: 20
         run: |
           set -euo pipefail
 
           # Vercel creates preview deployments asynchronously, so wait up to 10 minutes.
-          max_attempts=30
-          sleep_seconds=20
+          max_attempts="${MAX_ATTEMPTS}"
+          sleep_seconds="${SLEEP_SECONDS}"
           deployment_url=""
 
           for attempt in $(seq 1 "${max_attempts}"); do
