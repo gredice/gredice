@@ -254,7 +254,18 @@ export function CmsPageForm({
     const [selectedSectionId, setSelectedSectionId] = useState<string | null>(
         null,
     );
+    const [insertAtEnd, setInsertAtEnd] = useState(false);
     const [sectionSearch, setSectionSearch] = useState('');
+
+    const selectSection = (sectionId: string) => {
+        setInsertAtEnd(false);
+        setSelectedSectionId(sectionId);
+    };
+
+    const selectAppendTarget = () => {
+        setInsertAtEnd(true);
+        setSelectedSectionId(null);
+    };
 
     useEffect(() => {
         latestAutosaveSnapshot.current = autosaveSnapshot;
@@ -317,6 +328,10 @@ export function CmsPageForm({
             return;
         }
 
+        if (insertAtEnd && selectedSectionId === null) {
+            return;
+        }
+
         if (
             selectedSectionId &&
             sections.some((section) => section.id === selectedSectionId)
@@ -324,8 +339,9 @@ export function CmsPageForm({
             return;
         }
 
+        setInsertAtEnd(false);
         setSelectedSectionId(sections[0]?.id ?? null);
-    }, [sections, selectedSectionId]);
+    }, [insertAtEnd, sections, selectedSectionId]);
 
     const selectedSection = sections.find(
         (section) => section.id === selectedSectionId,
@@ -333,6 +349,10 @@ export function CmsPageForm({
     const selectedSectionIndex = selectedSectionId
         ? sections.findIndex((section) => section.id === selectedSectionId)
         : -1;
+    const insertionIndex =
+        insertAtEnd || selectedSectionIndex < 0
+            ? undefined
+            : selectedSectionIndex + 1;
     const filteredSectionItems = useMemo(() => {
         const query = sectionSearch.trim().toLowerCase();
         if (!query) {
@@ -373,6 +393,7 @@ export function CmsPageForm({
 
             return [...current, entry];
         });
+        setInsertAtEnd(false);
         setSelectedSectionId(id);
     };
 
@@ -567,7 +588,7 @@ export function CmsPageForm({
                                                     key={section.id}
                                                     className={`p-4 cursor-pointer ${selectedSectionId === section.id ? 'border-primary' : ''}`}
                                                     onClick={() =>
-                                                        setSelectedSectionId(
+                                                        selectSection(
                                                             section.id,
                                                         )
                                                     }
@@ -872,11 +893,7 @@ export function CmsPageForm({
                                                                         onClick={() =>
                                                                             insertSection(
                                                                                 item.value,
-                                                                                selectedSectionIndex >=
-                                                                                    0
-                                                                                    ? selectedSectionIndex +
-                                                                                          1
-                                                                                    : undefined,
+                                                                                insertionIndex,
                                                                             )
                                                                         }
                                                                     >
@@ -911,10 +928,10 @@ export function CmsPageForm({
                                                     <Card
                                                         className={`p-3 cursor-pointer ${sections[index]?.id === selectedSectionId ? 'border-primary' : ''}`}
                                                         onClick={() =>
-                                                            setSelectedSectionId(
+                                                            selectSection(
                                                                 sections[index]
                                                                     ?.id ??
-                                                                    null,
+                                                                    section.id,
                                                             )
                                                         }
                                                     >
@@ -970,7 +987,7 @@ export function CmsPageForm({
                                                                 }
                                                                 className="justify-start"
                                                                 onClick={() =>
-                                                                    setSelectedSectionId(
+                                                                    selectSection(
                                                                         section.id,
                                                                     )
                                                                 }
@@ -987,11 +1004,13 @@ export function CmsPageForm({
                                                 <Row spacing={2}>
                                                     <Button
                                                         type="button"
-                                                        variant="outlined"
-                                                        onClick={() =>
-                                                            setSelectedSectionId(
-                                                                null,
-                                                            )
+                                                        variant={
+                                                            insertAtEnd
+                                                                ? 'solid'
+                                                                : 'outlined'
+                                                        }
+                                                        onClick={
+                                                            selectAppendTarget
                                                         }
                                                     >
                                                         Dodaj na kraj
@@ -1004,11 +1023,7 @@ export function CmsPageForm({
                                                                 cmsPageSectionItems[0]
                                                                     ?.value ??
                                                                     'Heading1',
-                                                                selectedSectionIndex >=
-                                                                    0
-                                                                    ? selectedSectionIndex +
-                                                                          1
-                                                                    : undefined,
+                                                                insertionIndex,
                                                             )
                                                         }
                                                     >
