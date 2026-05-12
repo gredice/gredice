@@ -3,13 +3,16 @@
 import { spawn } from "node:child_process";
 import { appendFileSync } from "node:fs";
 
+const MAX_DNS_LABEL_LENGTH = 63;
+const MAX_ALIAS_PREFIX_LENGTH = MAX_DNS_LABEL_LENGTH - 2;
+
 function required(name) {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`Missing required env var: ${name}`);
   return value;
 }
 
-function sanitizeLabel(value, maxLength = 63) {
+function sanitizeLabel(value, maxLength = MAX_DNS_LABEL_LENGTH) {
   const sanitized = value
     .toLowerCase()
     .replace(/^refs\/heads\//, "")
@@ -60,10 +63,12 @@ async function main() {
       `Alias prefix ${aliasPrefix} contains no valid DNS label characters after sanitization`,
     );
 
-  const maxBranchSlugLength = prefixSlug ? 63 - prefixSlug.length - 1 : 63;
+  const maxBranchSlugLength = prefixSlug
+    ? MAX_DNS_LABEL_LENGTH - prefixSlug.length - 1
+    : MAX_DNS_LABEL_LENGTH;
   if (maxBranchSlugLength < 1)
     throw new Error(
-      `Alias prefix ${aliasPrefix} (length ${prefixSlug.length}) exceeds maximum allowed length of 62 characters`,
+      `Alias prefix ${aliasPrefix} (length ${prefixSlug.length}) exceeds maximum allowed length of ${MAX_ALIAS_PREFIX_LENGTH} characters, which leaves room for the hyphen and branch name`,
     );
 
   const branchSlug = sanitizeLabel(branch, maxBranchSlugLength);
