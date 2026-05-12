@@ -18,7 +18,7 @@ Use this guide for repo layout, setup, commands, package boundaries, and local d
 ## Tooling
 
 - Runtime: Node.js `>=24`.
-- Package manager: pnpm `10.33.2`.
+- Package manager: pnpm, pinned by the root `packageManager` field.
 - Task runner: Turborepo.
 - Formatting and linting: Biome per app/package.
 - Framework: Next.js 16 with React 19 and TypeScript 6.
@@ -139,7 +139,7 @@ pnpm env:pull
 
 ### Codex environment setup
 
-Use a lean Codex environment for routine code tasks. Pin Node.js to `24.15.0` when the environment UI asks for an exact version, and use pnpm `10.33.2`.
+Use a lean Codex environment for routine code tasks. Pin Node.js to `24.15.0` when the environment UI asks for an exact version, and use Corepack to install the pnpm version pinned by `packageManager`.
 
 Recommended Codex setup script:
 
@@ -147,7 +147,7 @@ Recommended Codex setup script:
 set -euo pipefail
 
 corepack enable
-corepack prepare pnpm@10.33.2 --activate
+corepack install
 
 pnpm install --frozen-lockfile
 
@@ -166,7 +166,7 @@ Recommended Codex maintenance script:
 set -euo pipefail
 
 corepack enable
-corepack prepare pnpm@10.33.2 --activate
+corepack install
 pnpm install --frozen-lockfile --prefer-offline
 ```
 
