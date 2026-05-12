@@ -613,6 +613,7 @@ export function Environment({
                 setLightningFlash(flashStrength);
                 lightningClearTimeout.current = window.setTimeout(() => {
                     setLightningFlash(0);
+                    lightningClearTimeout.current = null;
                 }, 120);
                 scheduleNextFlash();
             }, delayMs);
@@ -628,6 +629,7 @@ export function Environment({
             if (lightningClearTimeout.current !== null) {
                 window.clearTimeout(lightningClearTimeout.current);
                 lightningClearTimeout.current = null;
+                setLightningFlash(0);
             }
         };
     }, [
