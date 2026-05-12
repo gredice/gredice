@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { Logger } from './logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,7 @@ export const MCPPermissions = {
 export async function extractMCPAuth(
     request: NextRequest,
 ): Promise<MCPAuth | null> {
-    const logger = console;
+    const logger = new Logger();
 
     try {
         // Check Authorization header
@@ -163,7 +164,7 @@ export function createMCPAuthError(
     errorType: 'unauthorized' | 'forbidden' | 'invalid_token',
     correlationId?: string,
 ) {
-    const logger = console;
+    const logger = new Logger();
 
     logger.warn('mcp.auth.access_denied', {
         errorType,

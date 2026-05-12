@@ -13,6 +13,7 @@ import {
     extractMCPAuth,
     type MCPAuth,
 } from '../../../auth';
+import { Logger } from '../../../logger';
 export const dynamic = 'force-dynamic';
 
 // Input schemas for gardens tools
@@ -140,7 +141,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-    const logger = console;
+    const logger = new Logger();
     const startTime = Date.now();
     const correlationId = crypto.randomUUID();
 
@@ -451,28 +452,19 @@ async function handleGetGarden(
                         })) || [],
             ) || [];
 
-        // Get recent activities if requested
-        let activities: Array<{
-            id: string;
-            type: string;
-            description: string;
-            date: string;
-            duration: number;
-            notes: string;
-        }> = [];
-        if (input.includeActivities) {
-            // TODO: Implement actual activity fetching from events/operations
-            activities = [
-                {
-                    id: 'activity-recent',
-                    type: 'maintenance',
-                    description: 'Održavanje vrtnih gredica',
-                    date: new Date().toISOString(),
-                    duration: 30,
-                    notes: 'Redovna njega biljaka u vrtu',
-                },
-            ];
-        }
+        // TODO: Implement actual activity fetching from events/operations
+        const activities = input.includeActivities
+            ? [
+                  {
+                      id: 'activity-recent',
+                      type: 'maintenance',
+                      description: 'Održavanje vrtnih gredica',
+                      date: new Date().toISOString(),
+                      duration: 30,
+                      notes: 'Redovna njega biljaka u vrtu',
+                  },
+              ]
+            : undefined;
 
         return {
             id: garden.id.toString(),
@@ -573,7 +565,7 @@ async function handleCreateGarden(
 
 async function handleAddPlantToGarden(
     input: z.infer<typeof AddPlantToGardenSchema>,
-    auth: MCPAuth,
+    _auth: MCPAuth,
 ) {
     // TODO: Implement with actual database insert
     const plantInstance = {

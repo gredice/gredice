@@ -6,6 +6,7 @@ import { verifyJwt } from '../../../lib/auth/auth';
 import { accountCookieName } from '../../../lib/auth/sessionConfig';
 
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-03-26', '2024-11-05'] as const;
+type SupportedProtocolVersion = (typeof SUPPORTED_PROTOCOL_VERSIONS)[number];
 const DEFAULT_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0];
 const PROTECTED_RESOURCE_PATH = '/.well-known/oauth-protected-resource/api/mcp';
 
@@ -19,6 +20,14 @@ const roleToScopes: Record<string, string[]> = {
     user: [MCP_SCOPES.read, MCP_SCOPES.write],
     admin: [MCP_SCOPES.read, MCP_SCOPES.write, MCP_SCOPES.admin],
 };
+
+function isSupportedProtocolVersion(
+    version: string | undefined,
+): version is SupportedProtocolVersion {
+    return SUPPORTED_PROTOCOL_VERSIONS.some(
+        (supportedVersion) => supportedVersion === version,
+    );
+}
 
 const GetPlantsSchema = z.object({
     limit: z.number().min(1).max(1000).default(100),
@@ -160,11 +169,9 @@ export async function handleMcpRequest(request: NextRequest) {
         const clientVersion = body?.params?.protocolVersion as
             | string
             | undefined;
-        const protocolVersion =
-            clientVersion &&
-            SUPPORTED_PROTOCOL_VERSIONS.includes(clientVersion as never)
-                ? clientVersion
-                : DEFAULT_PROTOCOL_VERSION;
+        const protocolVersion = isSupportedProtocolVersion(clientVersion)
+            ? clientVersion
+            : DEFAULT_PROTOCOL_VERSION;
 
         return NextResponse.json(
             {

@@ -1,6 +1,7 @@
 import { getEntitiesFormatted } from '@gredice/storage';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { Logger } from '../../../logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,7 +88,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-    const logger = console;
+    const logger = new Logger();
     const startTime = Date.now();
     const correlationId = crypto.randomUUID();
 
@@ -142,6 +143,8 @@ export async function POST(request: NextRequest) {
                     timestamp: new Date().toISOString(),
                 });
 
+                await logger.flush();
+
                 return NextResponse.json(
                     {
                         jsonrpc: '2.0',
@@ -162,6 +165,8 @@ export async function POST(request: NextRequest) {
             timestamp: new Date().toISOString(),
         });
 
+        await logger.flush();
+
         return NextResponse.json({
             jsonrpc: '2.0',
             result,
@@ -174,6 +179,8 @@ export async function POST(request: NextRequest) {
             error: error instanceof Error ? error.message : 'Unknown error',
             timestamp: new Date().toISOString(),
         });
+
+        await logger.flush();
 
         const statusCode = error instanceof z.ZodError ? 400 : 500;
 
@@ -199,10 +206,22 @@ export async function POST(request: NextRequest) {
 }
 
 // Tool handlers (placeholder implementations - ready for @gredice/storage integration)
+async function getDirectoryEntities<T>(entityTypeName: string): Promise<T[]> {
+    try {
+        return (await getEntitiesFormatted<T>(entityTypeName)) || [];
+    } catch (error) {
+        const message =
+            error instanceof Error ? error.message : 'Unknown error';
+        console.warn(
+            `Directory ${entityTypeName} data not available: ${message}`,
+        );
+        return [];
+    }
+}
+
 async function handleGetPlants(input: z.infer<typeof GetPlantsSchema>) {
     // Get real plants data from database
-    const allPlants =
-        (await getEntitiesFormatted<EntityStandardized>('plant')) || [];
+    const allPlants = await getDirectoryEntities<EntityStandardized>('plant');
 
     // Filter by category if specified
     let filteredPlants = allPlants;
@@ -252,8 +271,7 @@ async function handleGetPlant(input: z.infer<typeof GetPlantSchema>) {
     let plant: EntityStandardized | null = null;
 
     // Get all plants and search by name
-    const allPlants =
-        (await getEntitiesFormatted<EntityStandardized>('plant')) || [];
+    const allPlants = await getDirectoryEntities<EntityStandardized>('plant');
 
     // Search for plant by name (case-insensitive, partial match)
     const searchName = input.plantName.toLowerCase();
@@ -284,9 +302,7 @@ async function handleGetPlant(input: z.infer<typeof GetPlantSchema>) {
     if (input.includeSorts) {
         try {
             const allSorts =
-                (await getEntitiesFormatted<EntityStandardized>(
-                    'plant-sort',
-                )) || [];
+                await getDirectoryEntities<EntityStandardized>('plant-sort');
             const plantSorts = allSorts.filter(
                 (sort) =>
                     sort.information?.plant?.id === plant.id ||
@@ -358,9 +374,7 @@ async function handleSearchEntities(
             type: 'plant',
             name: 'Rajčica',
             nameLatin: 'Solanum lycopersicum',
-            description:
-                'Popularna biljka za uzgoj - pronađeno po upitu: ' +
-                input.query,
+            description: `Popularna biljka za uzgoj - pronađeno po upitu: ${input.query}`,
             category: 'vegetables',
             relevance: query.includes('rajč') ? 0.9 : 0.3,
         },
@@ -368,8 +382,7 @@ async function handleSearchEntities(
             id: '2',
             type: 'plant_sort',
             name: 'Cherry rajčica',
-            description:
-                'Mala, slatka rajčica - pronađeno po upitu: ' + input.query,
+            description: `Mala, slatka rajčica - pronađeno po upitu: ${input.query}`,
             plant: { name: 'Rajčica', nameLatin: 'Solanum lycopersicum' },
             relevance:
                 query.includes('cherry') || query.includes('rajč') ? 0.8 : 0.2,
@@ -378,9 +391,7 @@ async function handleSearchEntities(
             id: '1',
             type: 'operation',
             name: 'Zalijevanje',
-            description:
-                'Redovito zalijevanje biljaka - pronađeno po upitu: ' +
-                input.query,
+            description: `Redovito zalijevanje biljaka - pronađeno po upitu: ${input.query}`,
             category: 'watering',
             relevance:
                 query.includes('zalij') || query.includes('voda') ? 0.9 : 0.1,
