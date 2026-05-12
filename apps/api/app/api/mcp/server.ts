@@ -160,7 +160,7 @@ export async function handleMcpRequest(request: NextRequest) {
         const clientVersion = body?.params?.protocolVersion as
             | string
             | undefined;
-        const protocolVersion: string =
+        const protocolVersion =
             clientVersion &&
             SUPPORTED_PROTOCOL_VERSIONS.includes(clientVersion as never)
                 ? clientVersion
