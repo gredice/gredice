@@ -25,6 +25,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Vercel creates preview deployments asynchronously, so wait up to 10 minutes.
           max_attempts=30
           sleep_seconds=20
           deployment_url=""
@@ -57,7 +58,7 @@ jobs:
               echo "No app preview deployment found for branch ${BRANCH_NAME} at ${HEAD_SHA} yet."
             fi
 
-            if [ "${attempt}" = "${max_attempts}" ]; then
+            if [ "${attempt}" -eq "${max_attempts}" ]; then
               echo "Timed out waiting for ready app preview deployment for branch ${BRANCH_NAME} at ${HEAD_SHA}."
               exit 1
             fi
