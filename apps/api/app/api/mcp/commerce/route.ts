@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { Logger } from 'next-axiom';
+import { Logger } from '../logger';
 import { negotiateMcpProtocolVersion } from '../protocol';
 
 export const dynamic = 'force-dynamic';

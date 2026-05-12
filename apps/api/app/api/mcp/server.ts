@@ -4,7 +4,16 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-03-26', '2024-11-05'] as const;
+type SupportedProtocolVersion = (typeof SUPPORTED_PROTOCOL_VERSIONS)[number];
 const DEFAULT_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0];
+
+function isSupportedProtocolVersion(
+    version: string | undefined,
+): version is SupportedProtocolVersion {
+    return SUPPORTED_PROTOCOL_VERSIONS.some(
+        (supportedVersion) => supportedVersion === version,
+    );
+}
 
 const GetPlantsSchema = z.object({
     limit: z.number().min(1).max(1000).default(100),
@@ -21,9 +30,7 @@ export async function handleMcpRequest(request: NextRequest) {
         const clientVersion = body?.params?.protocolVersion as
             | string
             | undefined;
-        const protocolVersion = SUPPORTED_PROTOCOL_VERSIONS.includes(
-            clientVersion as never,
-        )
+        const protocolVersion = isSupportedProtocolVersion(clientVersion)
             ? clientVersion
             : DEFAULT_PROTOCOL_VERSION;
 
