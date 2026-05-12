@@ -21,22 +21,50 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_APP }}
           VERCEL_TEAM_ID: ${{ secrets.VERCEL_ORG_ID }}
           BRANCH_NAME: ${{ github.head_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          deployment_url=$(curl -fsSL -G \
-            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
-            --data-urlencode "projectId=${VERCEL_PROJECT_ID}" \
-            --data-urlencode "target=preview" \
-            --data-urlencode "state=READY" \
-            --data-urlencode "meta-githubCommitRef=${BRANCH_NAME}" \
-            --data-urlencode "limit=1" \
-            "https://api.vercel.com/v6/deployments?teamId=${VERCEL_TEAM_ID}" | \
-            jq -r '.deployments[0].url // empty')
 
-          if [ -z "${deployment_url}" ]; then
-            echo "No ready app preview deployment found for branch ${BRANCH_NAME}."
-            exit 1
-          fi
+          max_attempts=30
+          sleep_seconds=20
+          deployment_url=""
+
+          for attempt in $(seq 1 "${max_attempts}"); do
+            deployment=$(curl -fsSL -G \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+              --data-urlencode "projectId=${VERCEL_PROJECT_ID}" \
+              --data-urlencode "target=preview" \
+              --data-urlencode "meta-githubCommitRef=${BRANCH_NAME}" \
+              --data-urlencode "meta-githubCommitSha=${HEAD_SHA}" \
+              --data-urlencode "limit=1" \
+              "https://api.vercel.com/v6/deployments?teamId=${VERCEL_TEAM_ID}" | \
+              jq -r '.deployments[0] // empty | [.url, .state] | @tsv')
+
+            if [ -n "${deployment}" ]; then
+              deployment_url=$(cut -f1 <<< "${deployment}")
+              deployment_state=$(cut -f2 <<< "${deployment}")
+              echo "Found app preview deployment ${deployment_url} with state ${deployment_state} for ${HEAD_SHA}."
+
+              if [ "${deployment_state}" = "READY" ]; then
+                break
+              fi
+
+              if [ "${deployment_state}" = "ERROR" ] || [ "${deployment_state}" = "CANCELED" ]; then
+                echo "App preview deployment for ${HEAD_SHA} finished with state ${deployment_state}."
+                exit 1
+              fi
+            else
+              echo "No app preview deployment found for branch ${BRANCH_NAME} at ${HEAD_SHA} yet."
+            fi
+
+            if [ "${attempt}" = "${max_attempts}" ]; then
+              echo "Timed out waiting for ready app preview deployment for branch ${BRANCH_NAME} at ${HEAD_SHA}."
+              exit 1
+            fi
+
+            echo "Waiting ${sleep_seconds}s before retry ${attempt}/${max_attempts}."
+            sleep "${sleep_seconds}"
+          done
 
           echo "url=${deployment_url}" >> "$GITHUB_OUTPUT"
 
