@@ -157,7 +157,8 @@ function RainWetOverlayEffect({
         material.uniforms.uTopSurfaceBias.value = topSurfaceBias;
         material.uniforms.uDarkness.value = darkness;
         material.uniforms.uGlossiness.value = glossiness;
-        material.uniforms.uPuddleStrength.value = Math.max(0, rainAmount - 0.66) / 0.34;
+        material.uniforms.uPuddleStrength.value =
+            Math.max(0, rainAmount - 0.66) / 0.34;
     }, [darkness, glossiness, material, rainAmount, topSurfaceBias]);
 
     useEffect(() => {
