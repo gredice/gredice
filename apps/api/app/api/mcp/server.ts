@@ -7,7 +7,7 @@ import { accountCookieName } from '../../../lib/auth/sessionConfig';
 
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-03-26', '2024-11-05'] as const;
 const DEFAULT_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0];
-const PROTECTED_RESOURCE_PATH = '/api/mcp/.well-known/oauth-protected-resource';
+const PROTECTED_RESOURCE_PATH = '/.well-known/oauth-protected-resource/api/mcp';
 
 const MCP_SCOPES = {
     read: 'mcp:read',

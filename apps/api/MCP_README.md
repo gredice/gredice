@@ -61,6 +61,8 @@ All MCP endpoints require standard Gredice API bearer JWTs (`GREDICE_JWT_SIGN_SE
 Authorization: Bearer <jwt_token>
 ```
 
+OAuth protected resource metadata is served at `/.well-known/oauth-protected-resource/api/mcp`.
+
 ### Scopes
 
 - `mcp:read`: Read access to resources and tools
