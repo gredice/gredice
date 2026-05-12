@@ -66,12 +66,12 @@ async function main() {
   const prefixSlug = aliasPrefix ? sanitizeLabelValue(aliasPrefix) : "";
   if (aliasPrefix && !prefixSlug)
     throw new Error(
-      `Alias prefix ${aliasPrefix} contains no valid DNS label characters after sanitization`,
+      `Alias prefix ${aliasPrefix} results in empty slug after sanitization`,
     );
 
   if (prefixSlug.length > MAX_ALIAS_PREFIX_LENGTH)
     throw new Error(
-      `Alias prefix ${aliasPrefix} sanitizes to ${prefixSlug} (length ${prefixSlug.length}), exceeding the maximum allowed length of ${MAX_ALIAS_PREFIX_LENGTH} characters`,
+      `Alias prefix ${aliasPrefix} exceeds maximum length of ${MAX_ALIAS_PREFIX_LENGTH} characters after sanitization`,
     );
 
   const maxBranchSlugLength = prefixSlug
