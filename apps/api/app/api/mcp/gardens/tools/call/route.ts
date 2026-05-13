@@ -241,14 +241,16 @@ export async function POST(request: NextRequest) {
     const statusCode = isInvalidParams
       ? 400
       : (toolError?.statusCode ?? 500);
+    const errorCode = isInvalidParams ? -32602 : (toolError?.code ?? -32603);
+    const errorMessage = isInvalidParams
+      ? "Invalid params"
+      : (toolError?.message ?? "Tool execution failed");
     return NextResponse.json(
       {
         jsonrpc: "2.0",
         error: {
-          code: isInvalidParams ? -32602 : (toolError?.code ?? -32603),
-          message: isInvalidParams
-            ? "Invalid params"
-            : (toolError?.message ?? "Tool execution failed"),
+          code: errorCode,
+          message: errorMessage,
           data: isInvalidParams ? error.issues : undefined,
         },
         id: null,
