@@ -34,7 +34,7 @@ pnpm build --filter www
 pnpm test --filter www
 ```
 
-For shared package changes, validate both the changed package and the consuming app(s) that exercise the behavior. Examples:
+For shared package changes, validate both the changed package and the consuming app(s) that exercise the behavior. If a package is used by multiple apps, run checks for each relevant consumer, not only the package itself. For `@gredice/game` updates, always validate `garden` and `www` as consumers. Examples:
 
 ```bash
 pnpm lint --filter @gredice/storage
@@ -42,6 +42,12 @@ pnpm test --filter @gredice/storage
 pnpm build --filter app
 pnpm build --filter api
 pnpm build --filter farm
+
+pnpm lint --filter @gredice/game
+pnpm lint --filter garden
+pnpm lint --filter www
+pnpm build --filter garden
+pnpm build --filter www
 ```
 
 For docs-only changes, at minimum check formatting-sensitive diffs with:

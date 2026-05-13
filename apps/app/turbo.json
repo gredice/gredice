@@ -22,11 +22,14 @@
                 "GREDICE_SILO_KV_REST_API_URL",
                 "GREDICE_SILO_KV_URL",
                 "GREDICE_SILO_REDIS_URL",
+                "GREDICE_WWW_REVALIDATE_SECRET",
+                "GREDICE_WWW_REVALIDATE_URL",
                 "NEXT_PUBLIC_POSTHOG_API_HOST",
                 "NEXT_PUBLIC_POSTHOG_HOST",
                 "NEXT_PUBLIC_POSTHOG_KEY",
                 "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN",
                 "NEXT_PUBLIC_POSTHOG_UI_HOST",
+                "NEXT_PUBLIC_VERCEL_ENV",
                 "PLANTS_SILO_KV_REST_API_READ_ONLY_TOKEN",
                 "PLANTS_SILO_KV_REST_API_TOKEN",
                 "PLANTS_SILO_KV_REST_API_URL",
@@ -43,6 +46,7 @@
                 "POSTHOG_SERVER_HOST",
                 "SIGNALCO_API_KEY",
                 "SLACK_BOT_TOKEN",
+                "VERCEL_ENV",
                 "VERCEL_OIDC_TOKEN"
             ]
         }

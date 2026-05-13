@@ -133,6 +133,19 @@ function sectionLabel(component: string) {
     return cmsPageSectionComponentsByName.get(component)?.label ?? component;
 }
 
+function sectionSummary(section: CmsPageEditableSection) {
+    const fields =
+        cmsPageSectionComponentsByName.get(section.data.component)?.fields ??
+        [];
+    for (const field of fields) {
+        const value = sectionValue(section, field.key).trim();
+        if (value.length > 0) {
+            return value;
+        }
+    }
+    return '';
+}
+
 function moveSection(
     sections: CmsPageEditableSection[],
     sectionId: string,
@@ -182,6 +195,30 @@ function validateSection(section: CmsPageEditableSection) {
         .map((field) => `${field.label} je obavezno polje.`);
 }
 
+function sectionFieldErrors(section: CmsPageEditableSection) {
+    const fields =
+        cmsPageSectionComponentsByName.get(section.data.component)?.fields ??
+        [];
+
+    return new Map(
+        fields
+            .filter((field) => field.required)
+            .filter(
+                (field) => sectionValue(section, field.key).trim().length === 0,
+            )
+            .map((field) => [field.key, `${field.label} je obavezno polje.`]),
+    );
+}
+
+function formatLastSavedAt(value: number | null) {
+    if (!value) return null;
+    return new Intl.DateTimeFormat('hr-HR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+    }).format(new Date(value));
+}
+
 function updateSectionField(
     sectionId: string,
     key: string,
@@ -228,6 +265,10 @@ export function CmsPageForm({
     const [rawMode, setRawMode] = useState(preserveFallbackContent);
     const [rawContent, setRawContent] = useState(page?.content ?? '');
     const [rawError, setRawError] = useState<string | null>(null);
+    const [metaTitle, setMetaTitle] = useState(page?.metaTitle ?? '');
+    const [metaDescription, setMetaDescription] = useState(
+        page?.metaDescription ?? '',
+    );
     const builderContent = useMemo(
         () => stringifySections(sections),
         [sections],
@@ -246,6 +287,7 @@ export function CmsPageForm({
     const latestAutosaveSnapshot = useRef(autosaveSnapshot);
     const [autosaveStatus, setAutosaveStatus] = useState('saved');
     const [autosaveMessage, setAutosaveMessage] = useState<string | null>(null);
+    const [lastSavedAt, setLastSavedAt] = useState<number | null>(Date.now());
     const [lastSavedSnapshot, setLastSavedSnapshot] =
         useState(autosaveSnapshot);
     const [previewSections, setPreviewSections] = useState<
@@ -256,6 +298,31 @@ export function CmsPageForm({
     );
     const [insertAtEnd, setInsertAtEnd] = useState(false);
     const [sectionSearch, setSectionSearch] = useState('');
+    const [previewMode, setPreviewMode] = useState<'inline' | 'focused'>(
+        'inline',
+    );
+    const [previewViewport, setPreviewViewport] = useState<
+        'mobile' | 'tablet' | 'desktop'
+    >('desktop');
+    const rawReadinessContent = useMemo(
+        () => parseSections(rawContent),
+        [rawContent],
+    );
+    const readinessSections = useMemo(() => {
+        if (!rawMode) {
+            return sections;
+        }
+
+        return rawReadinessContent.isStructured
+            ? editableSections(rawReadinessContent.sections)
+            : [];
+    }, [rawMode, rawReadinessContent, sections]);
+    const contentReadinessWarning =
+        rawMode &&
+        rawContent.trim().length > 0 &&
+        !rawReadinessContent.isStructured
+            ? 'JSON fallback mora biti JSON niz sekcija za provjeru obaveznih polja.'
+            : null;
 
     const selectSection = (sectionId: string) => {
         setInsertAtEnd(false);
@@ -308,6 +375,7 @@ export function CmsPageForm({
             setAutosaveStatus('saved');
             setAutosaveMessage(result.message);
             setLastSavedSnapshot(snapshotToSave);
+            setLastSavedAt(Date.now());
         }, 600);
 
         return () => clearTimeout(timer);
@@ -347,6 +415,9 @@ export function CmsPageForm({
     const selectedSection = sections.find(
         (section) => section.id === selectedSectionId,
     );
+    const selectedSectionErrors = selectedSection
+        ? sectionFieldErrors(selectedSection)
+        : new Map<string, string>();
     const selectedSectionIndex = selectedSectionId
         ? sections.findIndex((section) => section.id === selectedSectionId)
         : -1;
@@ -376,6 +447,37 @@ export function CmsPageForm({
         }
         return grouped;
     }, [filteredSectionItems]);
+    const missingSectionFields = readinessSections
+        .map((section, index) => ({
+            section,
+            index,
+            errors: validateSection(section),
+        }))
+        .filter((entry) => entry.errors.length > 0);
+    const metadataWarnings = [
+        {
+            label: 'Meta naslov',
+            value: metaTitle,
+        },
+        {
+            label: 'Meta opis',
+            value: metaDescription,
+        },
+    ].filter((entry) => entry.value.trim().length === 0);
+    const autosaveBadgeClassName =
+        autosaveStatus === 'saved'
+            ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+            : autosaveStatus === 'saving'
+              ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+              : autosaveStatus === 'failed'
+                ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                : 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+    const previewViewportClassName =
+        previewViewport === 'mobile'
+            ? 'max-w-sm'
+            : previewViewport === 'tablet'
+              ? 'max-w-2xl'
+              : 'max-w-none';
 
     const insertSection = (component: string, index?: number) => {
         const sectionId = nextSectionId.current;
@@ -412,20 +514,32 @@ export function CmsPageForm({
                         <Typography level="body3" secondary>
                             /{page?.slug?.trim() || 'slug'} •{' '}
                             {page?.state ?? 'draft'}
-                            {autosaveAction
-                                ? ` • Autosave: ${autosaveStatus}${autosaveMessage ? ` • ${autosaveMessage}` : ''}`
-                                : ''}
                         </Typography>
                     </Stack>
-                    <Button
-                        variant="solid"
-                        type="submit"
-                        form={reactId}
-                        className="w-fit"
-                        loading={pending}
-                    >
-                        {submitLabel}
-                    </Button>
+                    <Row spacing={2} className="items-center">
+                        {autosaveAction && (
+                            <span
+                                className={`rounded-full border px-2 py-1 text-xs font-medium ${autosaveBadgeClassName}`}
+                            >
+                                {autosaveStatus === 'failed'
+                                    ? 'Greška autosavea'
+                                    : autosaveStatus === 'saving'
+                                      ? 'Spremanje...'
+                                      : autosaveStatus === 'unsaved'
+                                        ? 'Nespremljene promjene'
+                                        : 'Spremljeno'}
+                            </span>
+                        )}
+                        <Button
+                            variant="solid"
+                            type="submit"
+                            form={reactId}
+                            className="w-fit"
+                            loading={pending}
+                        >
+                            {submitLabel}
+                        </Button>
+                    </Row>
                 </Row>
             </Card>
             <Card className="w-full">
@@ -456,12 +570,31 @@ export function CmsPageForm({
                         <Stack spacing={4}>
                             <Stack spacing={3}>
                                 {autosaveAction && (
-                                    <Typography level="body3" secondary>
-                                        Autosave: {autosaveStatus}
-                                        {autosaveMessage
-                                            ? ` • ${autosaveMessage}`
-                                            : ''}
-                                    </Typography>
+                                    <Card className="border-border/60 bg-muted/20 p-3">
+                                        <Stack spacing={1}>
+                                            <Typography level="body3" semiBold>
+                                                Autosave status
+                                            </Typography>
+                                            <Typography level="body3" secondary>
+                                                {autosaveMessage ??
+                                                    (autosaveStatus === 'failed'
+                                                        ? 'Spremanje nije uspjelo. Provjeri polja i pokušaj ponovno.'
+                                                        : autosaveStatus ===
+                                                            'unsaved'
+                                                          ? 'Imaš nespremljene promjene.'
+                                                          : autosaveStatus ===
+                                                              'saving'
+                                                            ? 'Promjene se spremaju...'
+                                                            : 'Sve promjene su spremljene.')}
+                                            </Typography>
+                                            <Typography level="body3" secondary>
+                                                Zadnje spremanje:{' '}
+                                                {formatLastSavedAt(
+                                                    lastSavedAt,
+                                                ) ?? 'Nije dostupno'}
+                                            </Typography>
+                                        </Stack>
+                                    </Card>
                                 )}
                                 <Input
                                     name="title"
@@ -491,25 +624,33 @@ export function CmsPageForm({
                                         Vizualni editor je zadani način rada, a
                                         JSON editor je dostupan kao fallback.
                                     </Typography>
-                                    <label className="flex items-center gap-2 text-sm">
-                                        <input
-                                            type="checkbox"
-                                            checked={rawMode}
-                                            onChange={(event) => {
-                                                const enabled =
-                                                    event.target.checked;
-                                                setRawMode(enabled);
-                                                setRawError(null);
-                                                if (enabled) {
-                                                    setRawContent(
-                                                        builderContent,
-                                                    );
+                                    <Row spacing={2}>
+                                        <Button
+                                            type="button"
+                                            variant={
+                                                !rawMode ? 'solid' : 'outlined'
+                                            }
+                                            onClick={() => setRawMode(false)}
+                                        >
+                                            Vizualni editor
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant={
+                                                rawMode ? 'solid' : 'outlined'
+                                            }
+                                            onClick={() => {
+                                                if (rawMode) {
+                                                    return;
                                                 }
+                                                setRawMode(true);
+                                                setRawError(null);
+                                                setRawContent(builderContent);
                                             }}
-                                        />
-                                        Uredi sadržaj kroz JSON editor
-                                        (fallback)
-                                    </label>
+                                        >
+                                            JSON fallback
+                                        </Button>
+                                    </Row>
                                     {preserveFallbackContent && (
                                         <Card className="p-3 text-sm text-amber-700">
                                             Postojeći sadržaj nije moguće
@@ -604,10 +745,10 @@ export function CmsPageForm({
                                                                 semiBold
                                                             >
                                                                 {index + 1}.{' '}
-                                                                {
+                                                                {sectionLabel(
                                                                     section.data
-                                                                        .component
-                                                                }
+                                                                        .component,
+                                                                )}
                                                             </Typography>
                                                             <Row spacing={1}>
                                                                 <Button
@@ -630,7 +771,7 @@ export function CmsPageForm({
                                                                         )
                                                                     }
                                                                 >
-                                                                    Gore
+                                                                    ↑ Gore
                                                                 </Button>
                                                                 <Button
                                                                     type="button"
@@ -653,7 +794,7 @@ export function CmsPageForm({
                                                                         )
                                                                     }
                                                                 >
-                                                                    Dolje
+                                                                    ↓ Dolje
                                                                 </Button>
                                                                 <Button
                                                                     type="button"
@@ -726,110 +867,6 @@ export function CmsPageForm({
                                                                 </Button>
                                                             </Row>
                                                         </Row>
-                                                        {(
-                                                            cmsPageSectionComponentsByName.get(
-                                                                section.data
-                                                                    .component,
-                                                            )?.fields ?? []
-                                                        ).map((field) =>
-                                                            field.type ===
-                                                            'textarea' ? (
-                                                                <label
-                                                                    key={
-                                                                        field.key
-                                                                    }
-                                                                    className="space-y-1"
-                                                                >
-                                                                    <span className="block text-sm font-medium">
-                                                                        {
-                                                                            field.label
-                                                                        }
-                                                                    </span>
-                                                                    <textarea
-                                                                        value={sectionValue(
-                                                                            section,
-                                                                            field.key,
-                                                                        )}
-                                                                        rows={
-                                                                            field.rows ??
-                                                                            4
-                                                                        }
-                                                                        className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                                                        onChange={(
-                                                                            event,
-                                                                        ) => {
-                                                                            const value =
-                                                                                event
-                                                                                    .target
-                                                                                    .value;
-                                                                            setSections(
-                                                                                (
-                                                                                    current,
-                                                                                ) =>
-                                                                                    current.map(
-                                                                                        (
-                                                                                            currentSection,
-                                                                                        ) =>
-                                                                                            currentSection.id ===
-                                                                                            section.id
-                                                                                                ? {
-                                                                                                      ...currentSection,
-                                                                                                      data: {
-                                                                                                          ...currentSection.data,
-                                                                                                          [field.key]:
-                                                                                                              value,
-                                                                                                      },
-                                                                                                  }
-                                                                                                : currentSection,
-                                                                                    ),
-                                                                            );
-                                                                        }}
-                                                                    />
-                                                                </label>
-                                                            ) : (
-                                                                <Input
-                                                                    key={
-                                                                        field.key
-                                                                    }
-                                                                    label={
-                                                                        field.label
-                                                                    }
-                                                                    value={sectionValue(
-                                                                        section,
-                                                                        field.key,
-                                                                    )}
-                                                                    onChange={(
-                                                                        event,
-                                                                    ) => {
-                                                                        const value =
-                                                                            event
-                                                                                .target
-                                                                                .value;
-                                                                        setSections(
-                                                                            (
-                                                                                current,
-                                                                            ) =>
-                                                                                current.map(
-                                                                                    (
-                                                                                        currentSection,
-                                                                                    ) =>
-                                                                                        currentSection.id ===
-                                                                                        section.id
-                                                                                            ? {
-                                                                                                  ...currentSection,
-                                                                                                  data: {
-                                                                                                      ...currentSection.data,
-                                                                                                      [field.key]:
-                                                                                                          value,
-                                                                                                  },
-                                                                                              }
-                                                                                            : currentSection,
-                                                                                ),
-                                                                        );
-                                                                    }}
-                                                                />
-                                                            ),
-                                                        )}
                                                         {validateSection(
                                                             section,
                                                         ).map((error) => (
@@ -841,6 +878,19 @@ export function CmsPageForm({
                                                                 {error}
                                                             </Typography>
                                                         ))}
+                                                        {!sectionSummary(
+                                                            section,
+                                                        ) && (
+                                                            <Typography
+                                                                level="body3"
+                                                                secondary
+                                                            >
+                                                                Prazna sekcija —
+                                                                sadržaj dodaj
+                                                                kroz postavke
+                                                                polja.
+                                                            </Typography>
+                                                        )}
                                                     </Stack>
                                                 </Card>
                                             ))}
@@ -918,13 +968,83 @@ export function CmsPageForm({
                                 <Typography level="h3" semiBold>
                                     Live preview
                                 </Typography>
+                                <Row spacing={2} className="flex-wrap">
+                                    <Button
+                                        type="button"
+                                        variant={
+                                            previewMode === 'inline'
+                                                ? 'solid'
+                                                : 'outlined'
+                                        }
+                                        onClick={() => setPreviewMode('inline')}
+                                    >
+                                        Inline preview
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={
+                                            previewMode === 'focused'
+                                                ? 'solid'
+                                                : 'outlined'
+                                        }
+                                        onClick={() =>
+                                            setPreviewMode('focused')
+                                        }
+                                    >
+                                        Fokusirani preview
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={
+                                            previewViewport === 'mobile'
+                                                ? 'solid'
+                                                : 'outlined'
+                                        }
+                                        onClick={() =>
+                                            setPreviewViewport('mobile')
+                                        }
+                                    >
+                                        Mobile
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={
+                                            previewViewport === 'tablet'
+                                                ? 'solid'
+                                                : 'outlined'
+                                        }
+                                        onClick={() =>
+                                            setPreviewViewport('tablet')
+                                        }
+                                    >
+                                        Tablet
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={
+                                            previewViewport === 'desktop'
+                                                ? 'solid'
+                                                : 'outlined'
+                                        }
+                                        onClick={() =>
+                                            setPreviewViewport('desktop')
+                                        }
+                                    >
+                                        Desktop
+                                    </Button>
+                                </Row>
                                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-                                    <Card className="p-4">
+                                    <Card
+                                        className={`p-4 ${previewMode === 'focused' ? 'lg:col-span-2' : ''}`}
+                                    >
                                         <Stack spacing={2}>
                                             {sections.map((section) => (
                                                 <Stack
                                                     key={section.id}
                                                     spacing={2}
+                                                    className={
+                                                        previewViewportClassName
+                                                    }
                                                 >
                                                     <Card
                                                         className={`p-3 cursor-pointer ${section.id === selectedSectionId ? 'border-primary' : ''}`}
@@ -955,221 +1075,361 @@ export function CmsPageForm({
                                             )}
                                         </Stack>
                                     </Card>
-                                    <Stack
-                                        spacing={3}
-                                        className="h-fit lg:sticky lg:top-24"
-                                    >
-                                        <Card className="p-4">
-                                            <Stack spacing={2}>
-                                                <Typography level="h4" semiBold>
-                                                    Navigator sekcija
-                                                </Typography>
-                                                {sections.length === 0 ? (
+                                    {previewMode === 'inline' && (
+                                        <Stack
+                                            spacing={3}
+                                            className="h-fit lg:sticky lg:top-24"
+                                        >
+                                            <Card className="p-4">
+                                                <Stack spacing={2}>
                                                     <Typography
-                                                        level="body3"
-                                                        secondary
+                                                        level="h4"
+                                                        semiBold
                                                     >
-                                                        Dodaj prvu sekciju iz
-                                                        palete komponenti.
+                                                        Navigator sekcija
                                                     </Typography>
-                                                ) : (
-                                                    sections.map(
-                                                        (section, index) => (
-                                                            <Button
-                                                                key={`navigator-${section.id}`}
-                                                                type="button"
-                                                                variant={
-                                                                    selectedSectionId ===
-                                                                    section.id
-                                                                        ? 'solid'
-                                                                        : 'plain'
-                                                                }
-                                                                className="justify-start"
-                                                                onClick={() =>
-                                                                    selectSection(
-                                                                        section.id,
-                                                                    )
-                                                                }
-                                                            >
-                                                                {index + 1}.{' '}
-                                                                {sectionLabel(
-                                                                    section.data
-                                                                        .component,
-                                                                )}
-                                                            </Button>
-                                                        ),
-                                                    )
-                                                )}
-                                                <Row spacing={2}>
-                                                    <Button
-                                                        type="button"
-                                                        variant={
-                                                            insertAtEnd
-                                                                ? 'solid'
-                                                                : 'outlined'
-                                                        }
-                                                        onClick={
-                                                            selectAppendTarget
-                                                        }
-                                                    >
-                                                        Dodaj na kraj
-                                                    </Button>
-                                                    <Button
-                                                        type="button"
-                                                        variant="outlined"
-                                                        onClick={() =>
-                                                            insertSection(
-                                                                cmsPageSectionItems[0]
-                                                                    ?.value ??
-                                                                    'Heading1',
-                                                                insertionIndex,
-                                                            )
-                                                        }
-                                                    >
-                                                        Brzo dodaj sekciju
-                                                    </Button>
-                                                </Row>
-                                            </Stack>
-                                        </Card>
-                                        <Card className="p-4">
-                                            <Stack spacing={2}>
-                                                <Typography level="h4" semiBold>
-                                                    Postavke sekcije
-                                                </Typography>
-                                                {!selectedSection ? (
-                                                    <Typography
-                                                        level="body3"
-                                                        secondary
-                                                    >
-                                                        Klikni sekciju u preview
-                                                        prikazu za uređivanje
-                                                        atributa.
-                                                    </Typography>
-                                                ) : (
-                                                    <>
+                                                    {sections.length === 0 ? (
                                                         <Typography
-                                                            level="body2"
-                                                            semiBold
+                                                            level="body3"
+                                                            secondary
                                                         >
-                                                            {
-                                                                selectedSection
-                                                                    .data
-                                                                    .component
-                                                            }
+                                                            Dodaj prvu sekciju
+                                                            iz palete
+                                                            komponenti.
                                                         </Typography>
-                                                        {(
-                                                            cmsPageSectionComponentsByName.get(
-                                                                selectedSection
-                                                                    .data
-                                                                    .component,
-                                                            )?.fields ?? []
-                                                        ).map((field) =>
-                                                            field.type ===
-                                                            'textarea' ? (
-                                                                <label
-                                                                    key={
-                                                                        field.key
+                                                    ) : (
+                                                        sections.map(
+                                                            (
+                                                                section,
+                                                                index,
+                                                            ) => (
+                                                                <Button
+                                                                    key={`navigator-${section.id}`}
+                                                                    type="button"
+                                                                    variant={
+                                                                        selectedSectionId ===
+                                                                        section.id
+                                                                            ? 'solid'
+                                                                            : 'plain'
                                                                     }
-                                                                    className="space-y-1"
-                                                                >
-                                                                    <span className="block text-sm font-medium">
-                                                                        {
-                                                                            field.label
-                                                                        }
-                                                                    </span>
-                                                                    <textarea
-                                                                        value={sectionValue(
-                                                                            selectedSection,
-                                                                            field.key,
-                                                                        )}
-                                                                        rows={
-                                                                            field.rows ??
-                                                                            4
-                                                                        }
-                                                                        className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                                                        onChange={(
-                                                                            event,
-                                                                        ) =>
-                                                                            updateSectionField(
-                                                                                selectedSection.id,
-                                                                                field.key,
-                                                                                event
-                                                                                    .target
-                                                                                    .value,
-                                                                                setSections,
-                                                                            )
-                                                                        }
-                                                                    />
-                                                                </label>
-                                                            ) : (
-                                                                <Input
-                                                                    key={
-                                                                        field.key
-                                                                    }
-                                                                    label={
-                                                                        field.label
-                                                                    }
-                                                                    value={sectionValue(
-                                                                        selectedSection,
-                                                                        field.key,
-                                                                    )}
-                                                                    onChange={(
-                                                                        event,
-                                                                    ) =>
-                                                                        updateSectionField(
-                                                                            selectedSection.id,
-                                                                            field.key,
-                                                                            event
-                                                                                .target
-                                                                                .value,
-                                                                            setSections,
+                                                                    className="justify-start"
+                                                                    onClick={() =>
+                                                                        selectSection(
+                                                                            section.id,
                                                                         )
                                                                     }
-                                                                />
+                                                                >
+                                                                    {index + 1}.{' '}
+                                                                    {sectionLabel(
+                                                                        section
+                                                                            .data
+                                                                            .component,
+                                                                    )}
+                                                                </Button>
                                                             ),
-                                                        )}
-                                                    </>
-                                                )}
-                                            </Stack>
-                                        </Card>
-                                    </Stack>
+                                                        )
+                                                    )}
+                                                    <Row spacing={2}>
+                                                        <Button
+                                                            type="button"
+                                                            variant={
+                                                                insertAtEnd
+                                                                    ? 'solid'
+                                                                    : 'outlined'
+                                                            }
+                                                            onClick={
+                                                                selectAppendTarget
+                                                            }
+                                                        >
+                                                            Dodaj na kraj
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="outlined"
+                                                            onClick={() =>
+                                                                insertSection(
+                                                                    cmsPageSectionItems[0]
+                                                                        ?.value ??
+                                                                        'Heading1',
+                                                                    insertionIndex,
+                                                                )
+                                                            }
+                                                        >
+                                                            Brzo dodaj sekciju
+                                                        </Button>
+                                                    </Row>
+                                                </Stack>
+                                            </Card>
+                                            <Card className="p-4">
+                                                <Stack spacing={2}>
+                                                    <Typography
+                                                        level="h4"
+                                                        semiBold
+                                                    >
+                                                        Postavke sekcije
+                                                    </Typography>
+                                                    {!selectedSection ? (
+                                                        <Typography
+                                                            level="body3"
+                                                            secondary
+                                                        >
+                                                            Klikni sekciju u
+                                                            preview prikazu za
+                                                            uređivanje atributa.
+                                                        </Typography>
+                                                    ) : (
+                                                        <>
+                                                            <Typography
+                                                                level="body2"
+                                                                semiBold
+                                                            >
+                                                                {
+                                                                    selectedSection
+                                                                        .data
+                                                                        .component
+                                                                }
+                                                            </Typography>
+                                                            {(
+                                                                cmsPageSectionComponentsByName.get(
+                                                                    selectedSection
+                                                                        .data
+                                                                        .component,
+                                                                )?.fields ?? []
+                                                            ).map((field) =>
+                                                                field.type ===
+                                                                'textarea' ? (
+                                                                    <label
+                                                                        key={
+                                                                            field.key
+                                                                        }
+                                                                        className="space-y-1"
+                                                                    >
+                                                                        <span className="block text-sm font-medium">
+                                                                            {
+                                                                                field.label
+                                                                            }
+                                                                            {field.required && (
+                                                                                <span className="text-red-600">
+                                                                                    {' '}
+                                                                                    *
+                                                                                </span>
+                                                                            )}
+                                                                        </span>
+                                                                        <textarea
+                                                                            value={sectionValue(
+                                                                                selectedSection,
+                                                                                field.key,
+                                                                            )}
+                                                                            rows={
+                                                                                field.rows ??
+                                                                                4
+                                                                            }
+                                                                            className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                                                            onChange={(
+                                                                                event,
+                                                                            ) =>
+                                                                                updateSectionField(
+                                                                                    selectedSection.id,
+                                                                                    field.key,
+                                                                                    event
+                                                                                        .target
+                                                                                        .value,
+                                                                                    setSections,
+                                                                                )
+                                                                            }
+                                                                        />
+                                                                        {selectedSectionErrors.has(
+                                                                            field.key,
+                                                                        ) && (
+                                                                            <Typography
+                                                                                level="body3"
+                                                                                className="text-red-600"
+                                                                            >
+                                                                                {selectedSectionErrors.get(
+                                                                                    field.key,
+                                                                                )}
+                                                                            </Typography>
+                                                                        )}
+                                                                    </label>
+                                                                ) : (
+                                                                    <Stack
+                                                                        key={
+                                                                            field.key
+                                                                        }
+                                                                        spacing={
+                                                                            1
+                                                                        }
+                                                                    >
+                                                                        <Input
+                                                                            label={`${field.label}${field.required ? ' *' : ''}`}
+                                                                            value={sectionValue(
+                                                                                selectedSection,
+                                                                                field.key,
+                                                                            )}
+                                                                            onChange={(
+                                                                                event,
+                                                                            ) =>
+                                                                                updateSectionField(
+                                                                                    selectedSection.id,
+                                                                                    field.key,
+                                                                                    event
+                                                                                        .target
+                                                                                        .value,
+                                                                                    setSections,
+                                                                                )
+                                                                            }
+                                                                        />
+                                                                        {selectedSectionErrors.has(
+                                                                            field.key,
+                                                                        ) && (
+                                                                            <Typography
+                                                                                level="body3"
+                                                                                className="text-red-600"
+                                                                            >
+                                                                                {selectedSectionErrors.get(
+                                                                                    field.key,
+                                                                                )}
+                                                                            </Typography>
+                                                                        )}
+                                                                    </Stack>
+                                                                ),
+                                                            )}
+                                                            {selectedSectionErrors.size >
+                                                                0 && (
+                                                                <Typography
+                                                                    level="body3"
+                                                                    className="text-red-600"
+                                                                >
+                                                                    Sekcija ima
+                                                                    nepopunjena
+                                                                    obavezna
+                                                                    polja.
+                                                                </Typography>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </Stack>
+                                            </Card>
+                                        </Stack>
+                                    )}
                                 </div>
                             </Stack>
 
                             <Stack spacing={3}>
-                                <Typography level="h3" semiBold>
-                                    Metadata
-                                </Typography>
-                                <Input
-                                    name="metaTitle"
-                                    label="Meta naslov"
-                                    defaultValue={page?.metaTitle ?? ''}
-                                />
-                                <Input
-                                    name="metaDescription"
-                                    label="Meta opis"
-                                    defaultValue={page?.metaDescription ?? ''}
-                                />
-                                <Input
-                                    name="metaImageUrl"
-                                    label="Meta slika URL"
-                                    type="url"
-                                    defaultValue={page?.metaImageUrl ?? ''}
-                                />
-                                <Input
-                                    name="canonicalPath"
-                                    label="Canonical putanja"
-                                    defaultValue={page?.canonicalPath ?? ''}
-                                    placeholder="/primjer-stranice"
-                                />
-                                <label className="flex items-center gap-2 text-sm">
-                                    <input
-                                        type="checkbox"
-                                        name="noIndex"
-                                        defaultChecked={page?.noIndex ?? false}
-                                    />
-                                    Isključi iz indeksiranja (noindex)
-                                </label>
+                                <Card className="p-4">
+                                    <Stack spacing={2}>
+                                        <Typography level="h3" semiBold>
+                                            Publish readiness
+                                        </Typography>
+                                        {missingSectionFields.length === 0 &&
+                                        metadataWarnings.length === 0 &&
+                                        !contentReadinessWarning ? (
+                                            <Typography
+                                                level="body3"
+                                                className="text-emerald-500"
+                                            >
+                                                Stranica je spremna za objavu.
+                                            </Typography>
+                                        ) : (
+                                            <Stack spacing={1}>
+                                                {contentReadinessWarning && (
+                                                    <Typography
+                                                        level="body3"
+                                                        className="text-amber-500"
+                                                    >
+                                                        {
+                                                            contentReadinessWarning
+                                                        }
+                                                    </Typography>
+                                                )}
+                                                {missingSectionFields.map(
+                                                    (entry) => (
+                                                        <Typography
+                                                            key={
+                                                                entry.section.id
+                                                            }
+                                                            level="body3"
+                                                            className="text-amber-500"
+                                                        >
+                                                            Sekcija{' '}
+                                                            {entry.index + 1} (
+                                                            {sectionLabel(
+                                                                entry.section
+                                                                    .data
+                                                                    .component,
+                                                            )}
+                                                            ) ima obavezna
+                                                            prazna polja.
+                                                        </Typography>
+                                                    ),
+                                                )}
+                                                {metadataWarnings.map(
+                                                    (warning) => (
+                                                        <Typography
+                                                            key={warning.label}
+                                                            level="body3"
+                                                            className="text-amber-500"
+                                                        >
+                                                            Nedostaje:{' '}
+                                                            {warning.label}.
+                                                        </Typography>
+                                                    ),
+                                                )}
+                                            </Stack>
+                                        )}
+                                    </Stack>
+                                </Card>
+                                <Card className="p-4">
+                                    <Stack spacing={2}>
+                                        <Typography level="h3" semiBold>
+                                            Metadata
+                                        </Typography>
+                                        <Input
+                                            name="metaTitle"
+                                            label="Meta naslov"
+                                            value={metaTitle}
+                                            onChange={(event) =>
+                                                setMetaTitle(event.target.value)
+                                            }
+                                        />
+                                        <Input
+                                            name="metaDescription"
+                                            label="Meta opis"
+                                            value={metaDescription}
+                                            onChange={(event) =>
+                                                setMetaDescription(
+                                                    event.target.value,
+                                                )
+                                            }
+                                        />
+                                        <Input
+                                            name="metaImageUrl"
+                                            label="Meta slika URL"
+                                            type="url"
+                                            defaultValue={
+                                                page?.metaImageUrl ?? ''
+                                            }
+                                        />
+                                        <Input
+                                            name="canonicalPath"
+                                            label="Canonical putanja"
+                                            defaultValue={
+                                                page?.canonicalPath ?? ''
+                                            }
+                                            placeholder="/primjer-stranice"
+                                        />
+                                        <label className="flex items-center gap-2 text-sm">
+                                            <input
+                                                type="checkbox"
+                                                name="noIndex"
+                                                defaultChecked={
+                                                    page?.noIndex ?? false
+                                                }
+                                            />
+                                            Isključi iz indeksiranja (noindex)
+                                        </label>
+                                    </Stack>
+                                </Card>
                             </Stack>
 
                             {state?.message && (
