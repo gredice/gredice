@@ -27,7 +27,9 @@ import {
 import { useShoppingCartOpenParam } from '../useUrlState';
 import { calculateSunflowerAmountFromPrices } from '../utils/sunflowerPricing';
 import { HudCard } from './components/HudCard';
+import { ButtonConfirmPayment } from './components/shopping-cart/ButtonConfirmPayment';
 import { ShoppingCartItem } from './components/shopping-cart/ShoppingCartItem';
+import { SunflowerCheckoutBalance } from './components/shopping-cart/SunflowerCheckoutBalance';
 
 export function ShoppingCart() {
     const { data: account } = useCurrentAccount();
@@ -178,6 +180,7 @@ export function ShoppingCart() {
                             ))}
                     </Stack>
                     <Stack className="border-t mt-4 pt-2" spacing={1}>
+                        <SunflowerCheckoutBalance cart={cart} />
                         <Row
                             justifyContent="space-between"
                             alignItems="start"
@@ -276,68 +279,6 @@ export function ShoppingCart() {
                 </Stack>
             </Stack>
         </Stack>
-    );
-}
-
-function ButtonConfirmPayment({
-    cart,
-    checkout,
-    onConfirm,
-}: {
-    cart: ReturnType<typeof useShoppingCart>['data'];
-    checkout: ReturnType<typeof useCheckout>;
-    onConfirm: () => void;
-}) {
-    return (
-        <>
-            {cart?.totalSunflowers ? (
-                <ModalConfirm
-                    title="Potvrdi plaćanje"
-                    header={`Potvrđuješ plaćanje ${cart?.totalSunflowers ?? 0} 🌻 i ${cart?.total.toFixed(2) ?? 0} €?`}
-                    onConfirm={onConfirm}
-                    trigger={
-                        <Button
-                            variant="solid"
-                            disabled={
-                                !cart?.items.length ||
-                                checkout.isPending ||
-                                !cart.allowPurchase
-                            }
-                            loading={checkout.isPending}
-                            startDecorator={
-                                !cart?.allowPurchase ? (
-                                    <Info className="size-5 shrink-0" />
-                                ) : undefined
-                            }
-                            endDecorator={
-                                <Navigate className="size-5 shrink-0" />
-                            }
-                        >
-                            Potvrdi i plati
-                        </Button>
-                    }
-                />
-            ) : (
-                <Button
-                    variant="solid"
-                    onClick={onConfirm}
-                    disabled={
-                        !cart?.items.length ||
-                        checkout.isPending ||
-                        !cart.allowPurchase
-                    }
-                    loading={checkout.isPending}
-                    startDecorator={
-                        !cart?.allowPurchase ? (
-                            <Info className="size-5 shrink-0" />
-                        ) : undefined
-                    }
-                    endDecorator={<Navigate className="size-5 shrink-0" />}
-                >
-                    Plati
-                </Button>
-            )}
-        </>
     );
 }
 
