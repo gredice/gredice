@@ -85,7 +85,7 @@ async function main() {
 
   if (maxAliasNameLength < MIN_BRANCH_SLUG_LENGTH)
     throw new Error(
-      `Preview domain ${previewDomain} is too long to create a certificate-safe alias`,
+      `Preview domain ${previewDomain} is too long: preview domain length plus separator must leave at least ${MIN_BRANCH_SLUG_LENGTH} character within the ${MAX_CERT_COMMON_NAME_LENGTH}-character certificate common-name limit`,
     );
 
   const prefixSlug = aliasPrefix ? sanitizeLabelValue(aliasPrefix) : "";
@@ -94,12 +94,10 @@ async function main() {
       `Alias prefix ${aliasPrefix} results in empty slug after sanitization`,
     );
 
-  if (aliasPrefix) {
-    if (prefixSlug.length > maxAliasPrefixLength)
-      throw new Error(
-        `Alias prefix ${aliasPrefix} exceeds maximum length of ${maxAliasPrefixLength} characters after sanitization for preview domain ${previewDomain}`,
-      );
-  }
+  if (aliasPrefix && prefixSlug.length > maxAliasPrefixLength)
+    throw new Error(
+      `Alias prefix ${aliasPrefix} exceeds maximum length of ${maxAliasPrefixLength} characters after sanitization for preview domain ${previewDomain}`,
+    );
 
   const maxBranchSlugLength = prefixSlug
     ? maxAliasNameLength - prefixSlug.length - ALIAS_SEPARATOR_LENGTH
