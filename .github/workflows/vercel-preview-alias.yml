@@ -65,13 +65,16 @@ jobs:
               node ./scripts/alias-preview.mjs
 
             alias_domain=$(sed -n 's/^alias_domain=//p' "${alias_output}")
+            # Validate the generated alias as a DNS subdomain before adding it to the PR comment.
             alias_domain_pattern='^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$'
             if ! [[ "${alias_domain}" =~ ${alias_domain_pattern} ]]; then
               echo "Failed to read alias domain for ${app_name}."
               exit 1
             fi
 
-            aliases_table+=$'\n'"| [${app_name}](https://vercel.com/${VERCEL_SCOPE}/${app_name}) | [Preview](https://${alias_domain}) |"
+            app_link="[${app_name}](https://vercel.com/${VERCEL_SCOPE}/${app_name})"
+            preview_link="[Preview](https://${alias_domain})"
+            aliases_table+=$'\n'"| ${app_link} | ${preview_link} |"
             alias_count=$((alias_count + 1))
           }
 
