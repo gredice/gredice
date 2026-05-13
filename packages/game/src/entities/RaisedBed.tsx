@@ -1,6 +1,7 @@
 import { animated } from '@react-spring/three';
 import { Vector3 } from 'three';
 import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
+import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
@@ -121,6 +122,7 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                     noiseScale={3}
                     coverageMultiplier={0.9}
                 />
+                <RainWetOverlay geometry={nodes[shape1].geometry} />
                 <mesh
                     castShadow
                     receiveShadow
@@ -142,6 +144,7 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                     noiseScale={3}
                     coverageMultiplier={0.9}
                 />
+                <RainWetOverlay geometry={nodes[shape2].geometry} />
             </animated.group>
             <group position={raisedBedPosition}>
                 <RaisedBedFields blockId={block.id} />

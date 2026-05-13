@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
+    cmsPageCacheKeysForSlug,
     cmsPages,
     createCmsPage,
     getCmsPage,
@@ -268,4 +269,37 @@ test('CMS page revisions are recorded and can be restored', async () => {
     assert.equal(restored?.content, firstContent);
     assert.equal(restored?.canonicalPath, '/history-v1');
     assert.equal(restored?.noIndex, true);
+});
+
+test('CMS page cache keys include normalized page and list variants', () => {
+    const keys = cmsPageCacheKeysForSlug(' /Vodiči/Cesta pitanja/ ');
+
+    assert.deepEqual(keys, [
+        'cms:page:slug:vodici/cesta-pitanja:v1',
+        'cms:pages:list:all:v1',
+        'cms:pages:list:draft:v1',
+        'cms:pages:list:published:v1',
+    ]);
+});
+
+test('CMS page metadata is preserved when updating only content', async () => {
+    createTestDb();
+    const pageId = await createCmsPage({
+        slug: `meta-preserve-${randomUUID()}`,
+        title: 'Metadata preserve page',
+        content: JSON.stringify([{ component: 'Feature1', header: 'Initial' }]),
+        metaTitle: 'Meta title',
+        metaDescription: 'Meta description',
+        metaImageUrl: 'https://www.gredice.com/meta.png',
+    });
+
+    await updateCmsPage({
+        id: pageId,
+        content: JSON.stringify([{ component: 'Heading1', header: 'Updated' }]),
+    });
+
+    const page = await getCmsPage(pageId);
+    assert.equal(page?.metaTitle, 'Meta title');
+    assert.equal(page?.metaDescription, 'Meta description');
+    assert.equal(page?.metaImageUrl, 'https://www.gredice.com/meta.png');
 });

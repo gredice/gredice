@@ -101,10 +101,7 @@ export function filterEntitiesByCompletionAndState<
 
 export function getIncompleteEntityCountsByState<
     TEntity extends EntityCompletenessEntity,
->(
-    entities: TEntity[],
-    definitions: EntityCompletenessAttributeDefinition[],
-) {
+>(entities: TEntity[], definitions: EntityCompletenessAttributeDefinition[]) {
     return {
         draft: filterEntitiesByCompletionAndState(entities, definitions, {
             completion: 'incomplete',

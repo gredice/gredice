@@ -9,6 +9,7 @@ CONTAINER_NAME="${GREDICE_TEST_DB_CONTAINER:-}"
 DB_PROVIDER="${GREDICE_TEST_DB_PROVIDER:-}"
 FALLBACK_DB_NAME="${GREDICE_TEST_DB_NAME:-}"
 FALLBACK_ADMIN_URL="${GREDICE_TEST_DB_ADMIN_URL:-}"
+PGLITE_DIR="${GREDICE_TEST_DB_PGLITE_DIR:-}"
 if [[ -z "$CONTAINER_NAME" && -f "$ENV_FILE" ]]; then
     CONTAINER_NAME="$(awk -F= '$1 == "GREDICE_TEST_DB_CONTAINER" { value = substr($0, index($0, "=") + 1) } END { print value }' "$ENV_FILE")"
 fi
@@ -20,6 +21,24 @@ if [[ -z "$FALLBACK_DB_NAME" && -f "$ENV_FILE" ]]; then
 fi
 if [[ -z "$FALLBACK_ADMIN_URL" && -f "$ENV_FILE" ]]; then
     FALLBACK_ADMIN_URL="$(awk -F= '$1 == "GREDICE_TEST_DB_ADMIN_URL" { value = substr($0, index($0, "=") + 1) } END { print value }' "$ENV_FILE")"
+fi
+if [[ -z "$PGLITE_DIR" && -f "$ENV_FILE" ]]; then
+    PGLITE_DIR="$(awk -F= '$1 == "GREDICE_TEST_DB_PGLITE_DIR" { value = substr($0, index($0, "=") + 1) } END { print value }' "$ENV_FILE")"
+fi
+
+if [[ "$DB_PROVIDER" == "pglite" ]]; then
+    if [[ -z "$PGLITE_DIR" ]]; then
+        echo "PGlite storage test database details are missing in $ENV_FILE; nothing to stop."
+        exit 0
+    fi
+
+    if [[ -f "$PGLITE_DIR/.gredice-storage-test-db" ]]; then
+        echo "Removing PGlite storage test database: $PGLITE_DIR"
+        rm -rf "$PGLITE_DIR"
+    else
+        echo "PGlite storage test database marker is missing at $PGLITE_DIR; nothing to remove."
+    fi
+    exit 0
 fi
 
 if [[ "$DB_PROVIDER" == "fallback" ]]; then

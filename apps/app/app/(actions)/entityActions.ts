@@ -3,6 +3,7 @@
 import { randomUUID } from 'node:crypto';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { lexinsert } from '@gredice/js/lexorder';
+import { slugify } from '@gredice/js/slug';
 import {
     deleteAttributeValue,
     deleteEntity,
@@ -21,6 +22,61 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+
+const imageContentTypeExtensions: Record<string, string> = {
+    'image/avif': 'avif',
+    'image/bmp': 'bmp',
+    'image/gif': 'gif',
+    'image/heic': 'heic',
+    'image/heif': 'heif',
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/svg+xml': 'svg',
+    'image/tiff': 'tiff',
+    'image/webp': 'webp',
+};
+
+const safeImageExtensions = new Set([
+    'avif',
+    'bmp',
+    'gif',
+    'heic',
+    'heif',
+    'jpeg',
+    'jpg',
+    'png',
+    'svg',
+    'tif',
+    'tiff',
+    'webp',
+]);
+
+function sanitizeUploadedImageFileName(file: File) {
+    const trimmedName = file.name.trim();
+    const extensionSeparatorIndex = trimmedName.lastIndexOf('.');
+    const hasExtension =
+        extensionSeparatorIndex > 0 &&
+        extensionSeparatorIndex < trimmedName.length - 1;
+    const rawName = hasExtension
+        ? trimmedName.slice(0, extensionSeparatorIndex)
+        : trimmedName;
+    const rawExtension = hasExtension
+        ? trimmedName.slice(extensionSeparatorIndex + 1)
+        : '';
+
+    const readableName =
+        slugify(rawName).slice(0, 80).replace(/-+$/u, '') || 'image';
+    const fileExtension = rawExtension
+        .toLowerCase()
+        .replace(/[^a-z0-9]/gu, '')
+        .slice(0, 12);
+    const contentTypeExtension = imageContentTypeExtensions[file.type];
+    const extension = safeImageExtensions.has(fileExtension)
+        ? fileExtension
+        : contentTypeExtension;
+
+    return extension ? `${readableName}.${extension}` : readableName;
+}
 
 export async function createEntityType(
     entityTypeName: string,
@@ -145,6 +201,42 @@ export async function updateEntity(entity: UpdateEntity) {
     revalidatePath(KnownPages.DirectoryEntityPath, 'layout');
 }
 
+function entityActionErrorMessage(error: unknown) {
+    if (error instanceof Error) {
+        return error.message;
+    }
+    return 'Promjena statusa nije uspjela.';
+}
+
+export async function updateEntityStateAction(entity: UpdateEntity) {
+    await auth(['admin']);
+
+    const authData = await auth(['admin']);
+
+    try {
+        await storageUpdateEntity(entity, {
+            id: authData.userId,
+            name: authData.user.userName,
+        });
+    } catch (error) {
+        return {
+            success: false,
+            message: entityActionErrorMessage(error),
+        };
+    }
+
+    revalidatePath(KnownPages.Directories);
+    revalidatePath(KnownPages.DirectoryEntityTypePath, 'page');
+    revalidatePath(KnownPages.DirectoryEntityTypePath, 'layout');
+    revalidatePath(KnownPages.DirectoryEntityPath, 'page');
+    revalidatePath(KnownPages.DirectoryEntityPath, 'layout');
+
+    return {
+        success: true,
+        message: null,
+    };
+}
+
 export async function duplicateEntity(
     entityTypeName: string,
     entityId: number,
@@ -206,7 +298,8 @@ export async function uploadAttributeImage(formData: FormData) {
     if (!(file instanceof File)) {
         throw new Error('Image file is required');
     }
-    const fileName = `entity-attributes/${randomUUID()}-${file.name}`;
+    const safeFileName = sanitizeUploadedImageFileName(file);
+    const fileName = `entity-attributes/${randomUUID()}-${safeFileName}`;
     const buffer = Buffer.from(await file.arrayBuffer());
     const {
         CDN_R2_ACCESS_KEY_ID,

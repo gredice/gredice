@@ -44,12 +44,16 @@ export function transformEntityToSectionData(
 ): EntitySectionData[] {
     const entityTypeName = entity.entityType?.name;
     if (!entityTypeName) {
-        throw new Error('Entity is missing entityType.name required for transformation.');
+        throw new Error(
+            'Entity is missing entityType.name required for transformation.',
+        );
     }
 
     const templates = sectionTemplatesByEntityType[entityTypeName];
     if (!templates) {
-        throw new Error(`Unsupported entity type for page transformation: ${entityTypeName}.`);
+        throw new Error(
+            `Unsupported entity type for page transformation: ${entityTypeName}.`,
+        );
     }
 
     return templates.map((template) => {
@@ -80,7 +84,9 @@ function getValue(entity: EntitySectionTransformInput, path: string): unknown {
 }
 
 function readObjectProperty(value: object, key: string): unknown {
-    const property = Object.entries(value).find(([entryKey]) => entryKey === key);
+    const property = Object.entries(value).find(
+        ([entryKey]) => entryKey === key,
+    );
     return property?.[1];
 }
 

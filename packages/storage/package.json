@@ -8,7 +8,8 @@
     "exports": {
         ".": "./src/index.ts",
         "./entityCompleteness": "./src/helpers/entityCompleteness.ts",
-        "./entityPageSections": "./src/helpers/entityPageSections.ts"
+        "./entityPageSections": "./src/helpers/entityPageSections.ts",
+        "./cmsPageSections": "./src/cmsPageSections.ts"
     },
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
@@ -24,7 +25,8 @@
         "test:node": "bash ./tests/runNodeTests.sh"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.14",
+        "@biomejs/biome": "2.4.15",
+        "@electric-sql/pglite": "0.4.5",
         "@gredice/directory-types": "workspace:*",
         "@gredice/js": "workspace:*",
         "@neondatabase/serverless": "1.1.0",

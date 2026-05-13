@@ -4,8 +4,8 @@ import {
     type EntityCompletenessAttributeDefinition,
     type EntityCompletenessEntity,
     filterEntitiesByCompletionAndState,
-    getIncompleteEntityCountsByState,
     getEntityCompleteness,
+    getIncompleteEntityCountsByState,
 } from '@gredice/storage/entityCompleteness';
 
 const requiredLabelDefinition: EntityCompletenessAttributeDefinition = {

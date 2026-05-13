@@ -33,7 +33,7 @@ export function SelectEntity({
     const items = [
         { value: '-', label: '-' },
         ...(entities?.map((entity) => ({
-            value: entity.name,
+            value: entity.id.toString(),
             label:
                 entity.state === 'draft'
                     ? `${entity.label} (Draft)`
@@ -46,7 +46,9 @@ export function SelectEntity({
             return null;
         }
 
-        return entities?.find((entity) => entity.name === value) ?? null;
+        return (
+            entities?.find((entity) => entity.id.toString() === value) ?? null
+        );
     }, [entities, value]);
 
     const handleOnChange = (newValue: string) => {
@@ -58,7 +60,7 @@ export function SelectEntity({
             <div className="flex-1">
                 <SelectItems
                     items={items}
-                    value={selectedEntity?.name ?? '-'}
+                    value={selectedEntity?.id.toString() ?? '-'}
                     onValueChange={handleOnChange}
                 />
             </div>

@@ -18,7 +18,7 @@ Use this guide for repo layout, setup, commands, package boundaries, and local d
 ## Tooling
 
 - Runtime: Node.js `>=24`.
-- Package manager: pnpm `10.33.2`.
+- Package manager: pnpm, pinned by the root `packageManager` field.
 - Task runner: Turborepo.
 - Formatting and linting: Biome per app/package.
 - Framework: Next.js 16 with React 19 and TypeScript 6.
@@ -137,14 +137,71 @@ pnpm env:pull
 
 `pnpm env:pull` runs `vercel env pull .env` in `apps/www`, `apps/garden`, `apps/farm`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
 
-## Storage test database (Docker and Dockerless)
+### Codex environment setup
+
+Use a lean Codex environment for routine code tasks. Pin Node.js to `24.15.0` when the environment UI asks for an exact version, and use Corepack to install the pnpm version pinned by `packageManager`.
+
+Recommended Codex setup script:
+
+```bash
+set -euo pipefail
+
+corepack enable
+corepack install
+
+pnpm install --frozen-lockfile
+
+for f in apps/*/.env.example packages/*/.env.example; do
+  target="${f%.example}"
+  [ -f "$target" ] || cp "$f" "$target"
+done
+
+pnpm --filter www exec playwright install --with-deps chromium
+pnpm lint:ci-filters
+```
+
+Recommended Codex maintenance script:
+
+```bash
+set -euo pipefail
+
+corepack enable
+corepack install
+pnpm install --frozen-lockfile --prefer-offline
+```
+
+Recommended Codex environment variables:
+
+```bash
+CI=true
+NEXT_TELEMETRY_DISABLED=1
+TURBO_TELEMETRY_DISABLED=1
+PLAYWRIGHT_HTML_OPEN=never
+```
+
+Keep agent internet access off by default. Setup scripts already have internet access for dependency installation. If a task truly needs runtime internet access, prefer the common dependency allowlist and read-only HTTP methods.
+
+Do not use `pnpm dev` as the default Codex validation path. It starts the local HTTPS proxy and expects Docker, host entries, and Caddy certificate setup. Use targeted `pnpm lint --filter <workspace>`, `pnpm test --filter <workspace>`, and `pnpm build --filter <workspace>` commands instead.
+
+Avoid `pnpm bootstrap` in Codex unless Vercel auth and project access are configured. It links projects and pulls real environment variables. For most Codex tasks, the checked-in `.env.example` files provide enough safe smoke-test configuration.
+
+For secret-backed integration or visual tests, create a separate Codex environment with the required Vercel credentials, then run:
+
+```bash
+npm i -g vercel@latest
+pnpm vercel:link
+pnpm env:pull
+```
+
+## Storage test database (Docker, local Postgres, and PGlite)
 
 `@gredice/storage` tests start a disposable Postgres database automatically through `pnpm --filter @gredice/storage test`.
 
 - **Default path (Docker available):** uses a disposable Docker Postgres container.
-- **Dockerless fallback:** set `GREDICE_STORAGE_TEST_DB_ADMIN_URL` to a local Postgres admin connection URL (for example `postgres://postgres:postgres@127.0.0.1:5432/postgres`). The test scripts will create a unique per-run database, run migrations/tests, and drop that database during cleanup.
+- **Local Postgres fallback:** set `GREDICE_STORAGE_TEST_DB_ADMIN_URL` to a local Postgres admin connection URL (for example `postgres://postgres:postgres@127.0.0.1:5432/postgres`). The test scripts will create a unique per-run database, run migrations/tests, and drop that database during cleanup.
+- **Embedded fallback:** when Docker is unavailable and no local Postgres admin URL is configured, the scripts use a temporary PGlite database so limited environments such as Codex can still run storage repository tests.
 
-If Docker is unavailable and `GREDICE_STORAGE_TEST_DB_ADMIN_URL` is not set, storage tests fail with an actionable setup message.
+Use Docker or local Postgres when validating behavior that depends on exact Postgres server semantics. The embedded fallback is intended for routine repository tests in service-limited environments.
 
 ### Local and test environment examples
 

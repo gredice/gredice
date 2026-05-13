@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gredice Public Docs SEO"
+  short_description: "Protect public content and SEO quality"
+  default_prompt: "Use $gredice-public-docs-seo to update a public Gredice content page with accurate metadata and structured data."

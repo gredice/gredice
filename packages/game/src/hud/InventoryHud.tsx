@@ -154,7 +154,7 @@ function InventoryItemModal({
                                     odaberi ovu sortu
                                 </Typography>
                                 <Typography level="body3">
-                                    3. U košarici označi &quot;Koristi iz
+                                    3. U košari označi &quot;Koristi iz
                                     ruksaka&quot;
                                 </Typography>
                             </>
@@ -164,10 +164,10 @@ function InventoryItemModal({
                                     1. Odaberi gredicu u vrtu
                                 </Typography>
                                 <Typography level="body3">
-                                    2. Dodaj radnju u košaricu
+                                    2. Dodaj radnju u košaru
                                 </Typography>
                                 <Typography level="body3">
-                                    3. U košarici označi &quot;Koristi iz
+                                    3. U košari označi &quot;Koristi iz
                                     ruksaka&quot;
                                 </Typography>
                             </>
