@@ -195,6 +195,21 @@ function validateSection(section: CmsPageEditableSection) {
         .map((field) => `${field.label} je obavezno polje.`);
 }
 
+function sectionFieldErrors(section: CmsPageEditableSection) {
+    const fields =
+        cmsPageSectionComponentsByName.get(section.data.component)?.fields ??
+        [];
+
+    return new Map(
+        fields
+            .filter((field) => field.required)
+            .filter(
+                (field) => sectionValue(section, field.key).trim().length === 0,
+            )
+            .map((field) => [field.key, `${field.label} je obavezno polje.`]),
+    );
+}
+
 function updateSectionField(
     sectionId: string,
     key: string,
@@ -360,6 +375,9 @@ export function CmsPageForm({
     const selectedSection = sections.find(
         (section) => section.id === selectedSectionId,
     );
+    const selectedSectionErrors = selectedSection
+        ? sectionFieldErrors(selectedSection)
+        : new Map<string, string>();
     const selectedSectionIndex = selectedSectionId
         ? sections.findIndex((section) => section.id === selectedSectionId)
         : -1;
@@ -504,25 +522,33 @@ export function CmsPageForm({
                                         Vizualni editor je zadani način rada, a
                                         JSON editor je dostupan kao fallback.
                                     </Typography>
-                                    <label className="flex items-center gap-2 text-sm">
-                                        <input
-                                            type="checkbox"
-                                            checked={rawMode}
-                                            onChange={(event) => {
-                                                const enabled =
-                                                    event.target.checked;
-                                                setRawMode(enabled);
-                                                setRawError(null);
-                                                if (enabled) {
-                                                    setRawContent(
-                                                        builderContent,
-                                                    );
+                                    <Row spacing={2}>
+                                        <Button
+                                            type="button"
+                                            variant={
+                                                !rawMode ? 'solid' : 'outlined'
+                                            }
+                                            onClick={() => setRawMode(false)}
+                                        >
+                                            Vizualni editor
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant={
+                                                rawMode ? 'solid' : 'outlined'
+                                            }
+                                            onClick={() => {
+                                                if (rawMode) {
+                                                    return;
                                                 }
+                                                setRawMode(true);
+                                                setRawError(null);
+                                                setRawContent(builderContent);
                                             }}
-                                        />
-                                        Uredi sadržaj kroz JSON editor
-                                        (fallback)
-                                    </label>
+                                        >
+                                            JSON fallback
+                                        </Button>
+                                    </Row>
                                     {preserveFallbackContent && (
                                         <Card className="p-3 text-sm text-amber-700">
                                             Postojeći sadržaj nije moguće
@@ -739,110 +765,6 @@ export function CmsPageForm({
                                                                 </Button>
                                                             </Row>
                                                         </Row>
-                                                        {(
-                                                            cmsPageSectionComponentsByName.get(
-                                                                section.data
-                                                                    .component,
-                                                            )?.fields ?? []
-                                                        ).map((field) =>
-                                                            field.type ===
-                                                            'textarea' ? (
-                                                                <label
-                                                                    key={
-                                                                        field.key
-                                                                    }
-                                                                    className="space-y-1"
-                                                                >
-                                                                    <span className="block text-sm font-medium">
-                                                                        {
-                                                                            field.label
-                                                                        }
-                                                                    </span>
-                                                                    <textarea
-                                                                        value={sectionValue(
-                                                                            section,
-                                                                            field.key,
-                                                                        )}
-                                                                        rows={
-                                                                            field.rows ??
-                                                                            4
-                                                                        }
-                                                                        className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                                                        onChange={(
-                                                                            event,
-                                                                        ) => {
-                                                                            const value =
-                                                                                event
-                                                                                    .target
-                                                                                    .value;
-                                                                            setSections(
-                                                                                (
-                                                                                    current,
-                                                                                ) =>
-                                                                                    current.map(
-                                                                                        (
-                                                                                            currentSection,
-                                                                                        ) =>
-                                                                                            currentSection.id ===
-                                                                                            section.id
-                                                                                                ? {
-                                                                                                      ...currentSection,
-                                                                                                      data: {
-                                                                                                          ...currentSection.data,
-                                                                                                          [field.key]:
-                                                                                                              value,
-                                                                                                      },
-                                                                                                  }
-                                                                                                : currentSection,
-                                                                                    ),
-                                                                            );
-                                                                        }}
-                                                                    />
-                                                                </label>
-                                                            ) : (
-                                                                <Input
-                                                                    key={
-                                                                        field.key
-                                                                    }
-                                                                    label={
-                                                                        field.label
-                                                                    }
-                                                                    value={sectionValue(
-                                                                        section,
-                                                                        field.key,
-                                                                    )}
-                                                                    onChange={(
-                                                                        event,
-                                                                    ) => {
-                                                                        const value =
-                                                                            event
-                                                                                .target
-                                                                                .value;
-                                                                        setSections(
-                                                                            (
-                                                                                current,
-                                                                            ) =>
-                                                                                current.map(
-                                                                                    (
-                                                                                        currentSection,
-                                                                                    ) =>
-                                                                                        currentSection.id ===
-                                                                                        section.id
-                                                                                            ? {
-                                                                                                  ...currentSection,
-                                                                                                  data: {
-                                                                                                      ...currentSection.data,
-                                                                                                      [field.key]:
-                                                                                                          value,
-                                                                                                  },
-                                                                                              }
-                                                                                            : currentSection,
-                                                                                ),
-                                                                        );
-                                                                    }}
-                                                                />
-                                                            ),
-                                                        )}
                                                         {validateSection(
                                                             section,
                                                         ).map((error) => (
@@ -1102,6 +1024,12 @@ export function CmsPageForm({
                                                                         {
                                                                             field.label
                                                                         }
+                                                                        {field.required && (
+                                                                            <span className="text-red-600">
+                                                                                {' '}
+                                                                                *
+                                                                            </span>
+                                                                        )}
                                                                     </span>
                                                                     <textarea
                                                                         value={sectionValue(
@@ -1126,33 +1054,70 @@ export function CmsPageForm({
                                                                             )
                                                                         }
                                                                     />
+                                                                    {selectedSectionErrors.has(
+                                                                        field.key,
+                                                                    ) && (
+                                                                        <Typography
+                                                                            level="body3"
+                                                                            className="text-red-600"
+                                                                        >
+                                                                            {selectedSectionErrors.get(
+                                                                                field.key,
+                                                                            )}
+                                                                        </Typography>
+                                                                    )}
                                                                 </label>
                                                             ) : (
-                                                                <Input
+                                                                <Stack
                                                                     key={
                                                                         field.key
                                                                     }
-                                                                    label={
-                                                                        field.label
-                                                                    }
-                                                                    value={sectionValue(
-                                                                        selectedSection,
-                                                                        field.key,
-                                                                    )}
-                                                                    onChange={(
-                                                                        event,
-                                                                    ) =>
-                                                                        updateSectionField(
-                                                                            selectedSection.id,
+                                                                    spacing={1}
+                                                                >
+                                                                    <Input
+                                                                        label={`${field.label}${field.required ? ' *' : ''}`}
+                                                                        value={sectionValue(
+                                                                            selectedSection,
                                                                             field.key,
-                                                                            event
-                                                                                .target
-                                                                                .value,
-                                                                            setSections,
-                                                                        )
-                                                                    }
-                                                                />
+                                                                        )}
+                                                                        onChange={(
+                                                                            event,
+                                                                        ) =>
+                                                                            updateSectionField(
+                                                                                selectedSection.id,
+                                                                                field.key,
+                                                                                event
+                                                                                    .target
+                                                                                    .value,
+                                                                                setSections,
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                    {selectedSectionErrors.has(
+                                                                        field.key,
+                                                                    ) && (
+                                                                        <Typography
+                                                                            level="body3"
+                                                                            className="text-red-600"
+                                                                        >
+                                                                            {selectedSectionErrors.get(
+                                                                                field.key,
+                                                                            )}
+                                                                        </Typography>
+                                                                    )}
+                                                                </Stack>
                                                             ),
+                                                        )}
+                                                        {selectedSectionErrors.size >
+                                                            0 && (
+                                                            <Typography
+                                                                level="body3"
+                                                                className="text-red-600"
+                                                            >
+                                                                Sekcija ima
+                                                                nepopunjena
+                                                                obavezna polja.
+                                                            </Typography>
                                                         )}
                                                     </>
                                                 )}
@@ -1163,39 +1128,51 @@ export function CmsPageForm({
                             </Stack>
 
                             <Stack spacing={3}>
-                                <Typography level="h3" semiBold>
-                                    Metadata
-                                </Typography>
-                                <Input
-                                    name="metaTitle"
-                                    label="Meta naslov"
-                                    defaultValue={page?.metaTitle ?? ''}
-                                />
-                                <Input
-                                    name="metaDescription"
-                                    label="Meta opis"
-                                    defaultValue={page?.metaDescription ?? ''}
-                                />
-                                <Input
-                                    name="metaImageUrl"
-                                    label="Meta slika URL"
-                                    type="url"
-                                    defaultValue={page?.metaImageUrl ?? ''}
-                                />
-                                <Input
-                                    name="canonicalPath"
-                                    label="Canonical putanja"
-                                    defaultValue={page?.canonicalPath ?? ''}
-                                    placeholder="/primjer-stranice"
-                                />
-                                <label className="flex items-center gap-2 text-sm">
-                                    <input
-                                        type="checkbox"
-                                        name="noIndex"
-                                        defaultChecked={page?.noIndex ?? false}
-                                    />
-                                    Isključi iz indeksiranja (noindex)
-                                </label>
+                                <Card className="p-4">
+                                    <Stack spacing={2}>
+                                        <Typography level="h3" semiBold>
+                                            Metadata
+                                        </Typography>
+                                        <Input
+                                            name="metaTitle"
+                                            label="Meta naslov"
+                                            defaultValue={page?.metaTitle ?? ''}
+                                        />
+                                        <Input
+                                            name="metaDescription"
+                                            label="Meta opis"
+                                            defaultValue={
+                                                page?.metaDescription ?? ''
+                                            }
+                                        />
+                                        <Input
+                                            name="metaImageUrl"
+                                            label="Meta slika URL"
+                                            type="url"
+                                            defaultValue={
+                                                page?.metaImageUrl ?? ''
+                                            }
+                                        />
+                                        <Input
+                                            name="canonicalPath"
+                                            label="Canonical putanja"
+                                            defaultValue={
+                                                page?.canonicalPath ?? ''
+                                            }
+                                            placeholder="/primjer-stranice"
+                                        />
+                                        <label className="flex items-center gap-2 text-sm">
+                                            <input
+                                                type="checkbox"
+                                                name="noIndex"
+                                                defaultChecked={
+                                                    page?.noIndex ?? false
+                                                }
+                                            />
+                                            Isključi iz indeksiranja (noindex)
+                                        </label>
+                                    </Stack>
+                                </Card>
                             </Stack>
 
                             {state?.message && (
