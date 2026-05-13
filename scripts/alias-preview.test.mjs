@@ -82,6 +82,6 @@ test("fails when the preview domain leaves no room for an alias", async () => {
   assert.equal(result.code, 1);
   assert.match(
     result.stderr,
-    /Preview domain .* is too long: preview domain length plus separator must leave room for a branch slug within the 64-character certificate common-name limit/,
+    /Preview domain .* \(\d+ characters\) is too long: with separator, it must leave at least 1 character\(s\) for branch slug within the 64-character certificate common-name limit/,
   );
 });
