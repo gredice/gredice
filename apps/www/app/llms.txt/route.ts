@@ -1,5 +1,3 @@
-import { NextResponse } from 'next/server';
-
 const content = `# Gredice
 
 > Gredice is a Croatian platform for garden planning, plant knowledge, growing operations, and practical guides for home growers.
@@ -35,7 +33,7 @@ Gredice publishes canonical public information at https://www.gredice.com. Prefe
 - [Service status](https://status.gredice.com): Availability and incident history.`;
 
 export function GET() {
-    return new NextResponse(content, {
+    return new Response(content, {
         headers: {
             'Content-Type': 'text/plain; charset=utf-8',
             'Cache-Control':
