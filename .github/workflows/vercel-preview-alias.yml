@@ -66,6 +66,7 @@ jobs:
             local project_name="${vercel_project_names[$app_name]}"
             local alias_output
             local alias_domain
+            local alias_domain_newline_count
 
             alias_output=$(mktemp)
             if ! GITHUB_OUTPUT="${alias_output}" \
@@ -78,7 +79,8 @@ jobs:
             fi
 
             alias_domain=$(sed -n 's/^alias_domain=//p' "${alias_output}")
-            if [ -z "${alias_domain}" ] || [[ "${alias_domain}" == *$'\n'* ]]; then
+            alias_domain_newline_count=$(printf '%s' "${alias_domain}" | wc -l | tr -d ' ')
+            if [ -z "${alias_domain}" ] || [ "${alias_domain_newline_count}" -gt 0 ]; then
               echo "Failed to read alias domain for ${app_name}."
               exit 1
             fi
@@ -155,7 +157,7 @@ jobs:
             if [ "${attempt}" -eq "${max_attempts}" ]; then
               for app_name in "${apps[@]}"; do
                 if [[ -v pending_project_ids[$app_name] ]]; then
-                  echo "::warning title=Vercel preview alias timeout::Timed out waiting for ready ${app_name} preview deployment for branch ${BRANCH_NAME} at ${HEAD_SHA}."
+                  echo "::warning title=Vercel preview alias timeout::Timed out waiting for ready ${app_name} preview deployment."
                 fi
               done
               break
