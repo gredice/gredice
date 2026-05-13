@@ -1,6 +1,5 @@
 import type { PlantSortData } from '@gredice/client';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Alert } from '@signalco/ui/Alert';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
 import { Check } from '@signalco/ui-icons';
@@ -24,6 +23,7 @@ type PlantsSortListProps = {
     plantId: number;
     selectedSortId: number | null;
     onChange: (plant: PlantSortData) => void;
+    search: string;
     flyToShoppingCart?: boolean;
 };
 
@@ -125,19 +125,20 @@ export function PlantsSortList({
     plantId,
     selectedSortId,
     onChange,
+    search,
     flyToShoppingCart,
 }: PlantsSortListProps) {
     const { data: plantSorts, isLoading, isError } = usePlantSorts(plantId);
-    const [search] = useSearchParam('pretraga', '');
+    const normalizedSearch = search.trim().toLowerCase();
     const storePlants = plantSorts?.filter(
         (sort) => sort.store.availableInStore,
     );
     const filteredPlantSorts =
-        search.length > 0
+        normalizedSearch.length > 0
             ? storePlants?.filter((sort) =>
                   sort.information.name
                       .toLowerCase()
-                      .includes(search.toLowerCase()),
+                      .includes(normalizedSearch),
               )
             : storePlants;
 
