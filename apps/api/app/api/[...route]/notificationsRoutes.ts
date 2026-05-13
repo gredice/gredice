@@ -5,6 +5,7 @@ import {
     notificationUserChannelPreferences,
     setAllNotificationsRead,
     setNotificationRead,
+    sql,
     storage,
     webPushSubscriptions,
 } from '@gredice/storage';
@@ -290,6 +291,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                       notificationUserChannelPreferences.category,
                                       notificationUserChannelPreferences.channel,
                                   ],
+                        targetWhere:
+                            preference.scope === 'account'
+                                ? sql`"scope" = 'account'`
+                                : sql`"scope" = 'global'`,
                         set: {
                             enabled: preference.enabled,
                             quietHoursStartMinute:
@@ -432,15 +437,23 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             eq(subscription.accountId, accountId),
                         ),
                 });
-            const active = subscriptions.find(
-                (subscription) =>
-                    subscription.enabled && !subscription.revokedAt,
+            const hasNonRevokedSubscription = subscriptions.some(
+                (subscription) => !subscription.revokedAt,
             );
-            const status = !active
+            const hasDeniedSubscription = subscriptions.some(
+                (subscription) =>
+                    !subscription.revokedAt &&
+                    subscription.permissionState === 'denied',
+            );
+            const hasEnabledSubscription = subscriptions.some(
+                (subscription) =>
+                    !subscription.revokedAt && subscription.enabled,
+            );
+            const status = !hasNonRevokedSubscription
                 ? 'unsubscribed'
-                : active.permissionState === 'denied'
+                : hasDeniedSubscription
                   ? 'denied'
-                  : active.enabled
+                  : hasEnabledSubscription
                     ? 'subscribed'
                     : 'disabled';
             return context.json(
