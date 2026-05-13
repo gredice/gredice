@@ -12,30 +12,46 @@ import { Logger } from "../../../logger";
 
 export const dynamic = "force-dynamic";
 
+const GardenIdSchema = z
+  .string()
+  .regex(/^[1-9]\d*$/, "gardenId must be a positive integer string");
+
 const ListGardensSchema = z.object({
   limit: z.number().min(1).max(100).default(20),
   offset: z.number().min(0).default(0),
 });
 
 const GetRaisedBedsSchema = z.object({
-  gardenId: z.string(),
+  gardenId: GardenIdSchema,
 });
 
 const GetRaisedBedFieldsSchema = z.object({
-  gardenId: z.string(),
+  gardenId: GardenIdSchema,
   raisedBedId: z.number(),
 });
 
 const GetGardenOperationsSchema = z.object({
-  gardenId: z.string(),
+  gardenId: GardenIdSchema,
   raisedBedId: z.number().optional(),
   limit: z.number().min(1).max(100).default(20),
   offset: z.number().min(0).default(0),
 });
 
 const GetGardenLifecycleSchema = z.object({
-  gardenId: z.string(),
+  gardenId: GardenIdSchema,
 });
+
+class MCPToolError extends Error {
+  readonly statusCode: number;
+  readonly code: number;
+
+  constructor(message: string, statusCode: number, code: number) {
+    super(message);
+    this.name = "MCPToolError";
+    this.statusCode = statusCode;
+    this.code = code;
+  }
+}
 
 export async function GET() {
   return NextResponse.json({
@@ -54,14 +70,18 @@ export async function GET() {
 }
 
 async function getOwnedGardenOrThrow(auth: MCPAuth, gardenId: string) {
-  const parsedGardenId = Number.parseInt(gardenId, 10);
-  if (Number.isNaN(parsedGardenId)) {
-    throw new Error("Invalid gardenId");
+  const parsedGardenId = Number(gardenId);
+  if (!Number.isSafeInteger(parsedGardenId)) {
+    throw new MCPToolError("Invalid gardenId", 400, -32602);
   }
 
   const garden = await getGarden(parsedGardenId);
   if (!garden || garden.accountId !== auth.accountId) {
-    throw new Error("Garden not found for authenticated account");
+    throw new MCPToolError(
+      "Garden not found for authenticated account",
+      403,
+      -32001,
+    );
   }
 
   return garden;
@@ -130,7 +150,13 @@ export async function POST(request: NextRequest) {
         const raisedBed = garden.raisedBeds.find(
           (bed) => bed.id === input.raisedBedId,
         );
-        if (!raisedBed) throw new Error("Raised bed not found in garden");
+        if (!raisedBed) {
+          throw new MCPToolError(
+            "Raised bed not found in garden",
+            400,
+            -32602,
+          );
+        }
         result = {
           gardenId: garden.id,
           raisedBedId: raisedBed.id,
@@ -163,7 +189,7 @@ export async function POST(request: NextRequest) {
             status: operation.status,
             createdAt: operation.createdAt,
             entityTypeName: operation.entityTypeName,
-            entityName: operation.entityName,
+            entityId: operation.entityId,
             raisedBedId: operation.raisedBedId,
           })),
           total: operations.length,
@@ -209,14 +235,20 @@ export async function POST(request: NextRequest) {
       duration: Date.now() - startTime,
       error: error instanceof Error ? error.message : "Unknown error",
     });
-    const statusCode = error instanceof z.ZodError ? 400 : 403;
+    const isInvalidParams = error instanceof z.ZodError;
+    const toolError = error instanceof MCPToolError ? error : undefined;
+    const statusCode = isInvalidParams
+      ? 400
+      : (toolError?.statusCode ?? 500);
     return NextResponse.json(
       {
         jsonrpc: "2.0",
         error: {
-          code: error instanceof z.ZodError ? -32602 : -32001,
-          message:
-            error instanceof Error ? error.message : "Tool execution failed",
+          code: isInvalidParams ? -32602 : (toolError?.code ?? -32603),
+          message: isInvalidParams
+            ? "Invalid params"
+            : (toolError?.message ?? "Tool execution failed"),
+          data: isInvalidParams ? error.issues : undefined,
         },
         id: null,
       },

@@ -98,7 +98,9 @@ export async function POST(request: NextRequest) {
                   "List raised beds for one authenticated-account garden (gardens:read)",
                 inputSchema: {
                   type: "object",
-                  properties: { gardenId: { type: "string" } },
+                  properties: {
+                    gardenId: { type: "string", pattern: "^[1-9]\\d*$" },
+                  },
                   required: ["gardenId"],
                 },
               },
@@ -108,7 +110,7 @@ export async function POST(request: NextRequest) {
                 inputSchema: {
                   type: "object",
                   properties: {
-                    gardenId: { type: "string" },
+                    gardenId: { type: "string", pattern: "^[1-9]\\d*$" },
                     raisedBedId: { type: "number" },
                   },
                   required: ["gardenId", "raisedBedId"],
@@ -121,7 +123,7 @@ export async function POST(request: NextRequest) {
                 inputSchema: {
                   type: "object",
                   properties: {
-                    gardenId: { type: "string" },
+                    gardenId: { type: "string", pattern: "^[1-9]\\d*$" },
                     raisedBedId: { type: "number" },
                     limit: {
                       type: "number",
@@ -140,7 +142,9 @@ export async function POST(request: NextRequest) {
                   "Get compact lifecycle context summary for one garden (gardens:read)",
                 inputSchema: {
                   type: "object",
-                  properties: { gardenId: { type: "string" } },
+                  properties: {
+                    gardenId: { type: "string", pattern: "^[1-9]\\d*$" },
+                  },
                   required: ["gardenId"],
                 },
               },
