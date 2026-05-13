@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { expect, test } from '@playwright/test';
 
 import { RedditProviderAdapter, readRedditEnv } from './redditAdapter';
 
@@ -20,9 +19,9 @@ test('readRedditEnv builds allowlist and default destination', () => {
         SOCIAL_PROVIDER_REDDIT_ALLOWED_DESTINATIONS: 'gardening, gredice',
     });
 
-    assert.equal(env.enabled, true);
-    assert.equal(env.allowedDestinations.has('gredice'), true);
-    assert.equal(env.allowedDestinations.has('gardening'), true);
+    expect(env.enabled).toBe(true);
+    expect(env.allowedDestinations.has('gredice')).toBe(true);
+    expect(env.allowedDestinations.has('gardening')).toBe(true);
 });
 
 test('publishPost returns operational error when missing credentials', async () => {
@@ -39,8 +38,8 @@ test('publishPost returns operational error when missing credentials', async () 
     );
 
     const result = await adapter.publishPost({ title: 'Hello' });
-    assert.equal(result.ok, false);
-    if (!result.ok) assert.equal(result.code, 'missing_credentials');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe('missing_credentials');
 });
 
 test('publishPost submits text post and normalizes success', async () => {
@@ -73,15 +72,14 @@ test('publishPost submits text post and normalizes success', async () => {
     );
 
     const result = await adapter.publishPost({ title: 'Hi', body: 'body' });
-    assert.equal(result.ok, true);
+    expect(result.ok).toBe(true);
     if (result.ok) {
-        assert.equal(result.providerPostId, 'abc123');
-        assert.equal(
-            result.permalink,
+        expect(result.providerPostId).toBe('abc123');
+        expect(result.permalink).toBe(
             'https://reddit.com/r/gredice/comments/abc123/test',
         );
     }
-    assert.equal(calls.length, 2);
+    expect(calls).toHaveLength(2);
 });
 
 test('publishPost maps subreddit failure into sanitized invalid_destination', async () => {
@@ -106,9 +104,61 @@ test('publishPost maps subreddit failure into sanitized invalid_destination', as
     );
 
     const result = await adapter.publishPost({ title: 'Hi' });
-    assert.equal(result.ok, false);
+    expect(result.ok).toBe(false);
     if (!result.ok) {
-        assert.equal(result.code, 'invalid_destination');
-        assert.equal(result.message.includes('credentials'), false);
+        expect(result.code).toBe('invalid_destination');
+        expect(result.message.includes('credentials')).toBe(false);
+    }
+});
+
+test('publishPost maps submit transport failures into retriable provider_unavailable', async () => {
+    const adapter = new RedditProviderAdapter(
+        {
+            enabled: true,
+            clientId: 'id',
+            clientSecret: 'secret',
+            userAgent: 'ua',
+            defaultDestination: 'gredice',
+            allowedDestinations: new Set(['gredice']),
+        },
+        async (url) => {
+            if (url.toString().includes('access_token')) {
+                return response({ access_token: 'token' });
+            }
+            throw new Error('network failed');
+        },
+    );
+
+    const result = await adapter.publishPost({ title: 'Hi' });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+        expect(result.code).toBe('provider_unavailable');
+        expect(result.retriable).toBe(true);
+    }
+});
+
+test('publishPost maps non-JSON submit responses into retriable provider_unavailable', async () => {
+    const adapter = new RedditProviderAdapter(
+        {
+            enabled: true,
+            clientId: 'id',
+            clientSecret: 'secret',
+            userAgent: 'ua',
+            defaultDestination: 'gredice',
+            allowedDestinations: new Set(['gredice']),
+        },
+        async (url) => {
+            if (url.toString().includes('access_token')) {
+                return response({ access_token: 'token' });
+            }
+            return new Response('not json', { status: 502 });
+        },
+    );
+
+    const result = await adapter.publishPost({ title: 'Hi' });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+        expect(result.code).toBe('provider_unavailable');
+        expect(result.retriable).toBe(true);
     }
 });

@@ -1,5 +1,3 @@
-import 'server-only';
-
 import type {
     SocialPostInput,
     SocialProviderAdapter,
@@ -17,6 +15,17 @@ type RedditEnv = {
 };
 
 type FetchLike = typeof fetch;
+
+type RedditSubmitResponse = {
+    json?: {
+        errors?: unknown[][];
+        data?: { id?: string; name?: string; url?: string };
+    };
+};
+
+type RedditTokenResponse = {
+    access_token?: string;
+};
 
 function parseCsvList(value: string): Set<string> {
     return new Set(
@@ -124,25 +133,32 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
             ...(input.url ? { url: input.url } : { text: input.body ?? '' }),
         });
 
-        const response = await this.fetchImpl(
-            'https://oauth.reddit.com/api/submit',
-            {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token.accessToken}`,
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'User-Agent': this.config.userAgent,
+        let response: Response;
+        try {
+            response = await this.fetchImpl(
+                'https://oauth.reddit.com/api/submit',
+                {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${token.accessToken}`,
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'User-Agent': this.config.userAgent,
+                    },
+                    body,
                 },
-                body,
-            },
-        );
+            );
+        } catch {
+            return providerUnavailable('Reddit publish request failed.');
+        }
 
-        const data = (await response.json()) as {
-            json?: {
-                errors?: unknown[][];
-                data?: { id?: string; name?: string; url?: string };
-            };
-        };
+        let data: RedditSubmitResponse;
+        try {
+            data = (await response.json()) as RedditSubmitResponse;
+        } catch {
+            return providerUnavailable(
+                'Reddit publish returned an unreadable response.',
+            );
+        }
         const apiErrors = data.json?.errors ?? [];
         if (!response.ok || apiErrors.length > 0) {
             return this.mapSubmitError(response.status, apiErrors);
@@ -179,18 +195,25 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
         const credentials = Buffer.from(
             `${this.config.clientId}:${this.config.clientSecret}`,
         ).toString('base64');
-        const response = await this.fetchImpl(
-            'https://www.reddit.com/api/v1/access_token',
-            {
-                method: 'POST',
-                headers: {
-                    Authorization: `Basic ${credentials}`,
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'User-Agent': this.config.userAgent,
+        let response: Response;
+        try {
+            response = await this.fetchImpl(
+                'https://www.reddit.com/api/v1/access_token',
+                {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Basic ${credentials}`,
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'User-Agent': this.config.userAgent,
+                    },
+                    body: new URLSearchParams({
+                        grant_type: 'client_credentials',
+                    }),
                 },
-                body: new URLSearchParams({ grant_type: 'client_credentials' }),
-            },
-        );
+            );
+        } catch {
+            return providerUnavailable('Reddit authentication request failed.');
+        }
 
         if (!response.ok) {
             return response.status === 401 || response.status === 403
@@ -208,7 +231,14 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
                   };
         }
 
-        const payload = (await response.json()) as { access_token?: string };
+        let payload: RedditTokenResponse;
+        try {
+            payload = (await response.json()) as RedditTokenResponse;
+        } catch {
+            return providerUnavailable(
+                'Reddit authentication returned an unreadable response.',
+            );
+        }
         if (!payload.access_token) {
             return {
                 ok: false,
@@ -265,4 +295,13 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
             retriable: false,
         };
     }
+}
+
+function providerUnavailable(message: string): SocialPublishError {
+    return {
+        ok: false,
+        code: 'provider_unavailable',
+        message,
+        retriable: true,
+    };
 }
