@@ -5,6 +5,7 @@ import { appendFileSync } from "node:fs";
 
 const MAX_DNS_LABEL_LENGTH = 63;
 const MAX_CERT_COMMON_NAME_LENGTH = 64;
+const DOMAIN_SEPARATOR_LENGTH = 1;
 const ALIAS_SEPARATOR_LENGTH = 1;
 const MIN_BRANCH_SLUG_LENGTH = 1;
 
@@ -75,7 +76,9 @@ async function main() {
   const aliasPrefix = process.env.GREDICE_PREVIEW_ALIAS_PREFIX?.trim();
   const maxAliasNameLength = Math.min(
     MAX_DNS_LABEL_LENGTH,
-    MAX_CERT_COMMON_NAME_LENGTH - previewDomain.length - ALIAS_SEPARATOR_LENGTH,
+    MAX_CERT_COMMON_NAME_LENGTH -
+      previewDomain.length -
+      DOMAIN_SEPARATOR_LENGTH,
   );
   const maxAliasPrefixLength =
     maxAliasNameLength - ALIAS_SEPARATOR_LENGTH - MIN_BRANCH_SLUG_LENGTH;
@@ -93,7 +96,7 @@ async function main() {
 
   if (prefixSlug && prefixSlug.length > maxAliasPrefixLength)
     throw new Error(
-      `Alias prefix ${aliasPrefix} exceeds maximum length of ${Math.max(maxAliasPrefixLength, 0)} characters after sanitization`,
+      `Alias prefix ${aliasPrefix} exceeds maximum length of ${maxAliasPrefixLength} characters after sanitization for preview domain ${previewDomain}`,
     );
 
   const maxBranchSlugLength = prefixSlug
