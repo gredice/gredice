@@ -85,7 +85,7 @@ async function main() {
 
   if (maxAliasNameLength < MIN_BRANCH_SLUG_LENGTH)
     throw new Error(
-      `Preview domain ${previewDomain} is too long: preview domain length plus separator must leave at least ${MIN_BRANCH_SLUG_LENGTH} characters within the ${MAX_CERT_COMMON_NAME_LENGTH}-character certificate common-name limit`,
+      `Preview domain ${previewDomain} is too long: preview domain length plus separator must leave room for a branch slug within the ${MAX_CERT_COMMON_NAME_LENGTH}-character certificate common-name limit`,
     );
 
   const prefixSlug = aliasPrefix ? sanitizeLabelValue(aliasPrefix) : "";
