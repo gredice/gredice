@@ -133,6 +133,19 @@ function sectionLabel(component: string) {
     return cmsPageSectionComponentsByName.get(component)?.label ?? component;
 }
 
+function sectionSummary(section: CmsPageEditableSection) {
+    const fields =
+        cmsPageSectionComponentsByName.get(section.data.component)?.fields ??
+        [];
+    for (const field of fields) {
+        const value = sectionValue(section, field.key).trim();
+        if (value.length > 0) {
+            return value;
+        }
+    }
+    return '';
+}
+
 function moveSection(
     sections: CmsPageEditableSection[],
     sectionId: string,
@@ -604,10 +617,10 @@ export function CmsPageForm({
                                                                 semiBold
                                                             >
                                                                 {index + 1}.{' '}
-                                                                {
+                                                                {sectionLabel(
                                                                     section.data
-                                                                        .component
-                                                                }
+                                                                        .component,
+                                                                )}
                                                             </Typography>
                                                             <Row spacing={1}>
                                                                 <Button
@@ -630,7 +643,7 @@ export function CmsPageForm({
                                                                         )
                                                                     }
                                                                 >
-                                                                    Gore
+                                                                    ↑ Gore
                                                                 </Button>
                                                                 <Button
                                                                     type="button"
@@ -653,7 +666,7 @@ export function CmsPageForm({
                                                                         )
                                                                     }
                                                                 >
-                                                                    Dolje
+                                                                    ↓ Dolje
                                                                 </Button>
                                                                 <Button
                                                                     type="button"
@@ -841,6 +854,19 @@ export function CmsPageForm({
                                                                 {error}
                                                             </Typography>
                                                         ))}
+                                                        {!sectionSummary(
+                                                            section,
+                                                        ) && (
+                                                            <Typography
+                                                                level="body3"
+                                                                secondary
+                                                            >
+                                                                Prazna sekcija —
+                                                                sadržaj dodaj
+                                                                kroz postavke
+                                                                polja.
+                                                            </Typography>
+                                                        )}
                                                     </Stack>
                                                 </Card>
                                             ))}
