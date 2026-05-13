@@ -362,6 +362,8 @@ async function handleGetPlantSorts(input: z.infer<typeof GetPlantSortsSchema>) {
         );
     }
 
+    const total = filteredSorts.length;
+
     // Apply pagination
     filteredSorts = filteredSorts.slice(
         input.offset,
@@ -370,7 +372,7 @@ async function handleGetPlantSorts(input: z.infer<typeof GetPlantSortsSchema>) {
 
     return {
         sorts: filteredSorts,
-        total: mockSorts.length,
+        total,
         limit: input.limit,
         offset: input.offset,
     };
@@ -432,6 +434,8 @@ async function handleGetOperations(input: z.infer<typeof GetOperationsSchema>) {
         );
     }
 
+    const total = filteredOperations.length;
+
     // Apply pagination
     filteredOperations = filteredOperations.slice(
         input.offset,
@@ -440,7 +444,7 @@ async function handleGetOperations(input: z.infer<typeof GetOperationsSchema>) {
 
     return {
         operations: filteredOperations,
-        total: mockOperations.length,
+        total,
         limit: input.limit,
         offset: input.offset,
     };
@@ -524,6 +528,8 @@ async function handleGetSeeds(input: z.infer<typeof GetSeedsSchema>) {
         );
     }
 
+    const total = filteredSeeds.length;
+
     // Apply pagination
     filteredSeeds = filteredSeeds.slice(
         input.offset,
@@ -532,7 +538,7 @@ async function handleGetSeeds(input: z.infer<typeof GetSeedsSchema>) {
 
     return {
         seeds: filteredSeeds,
-        total: mockSeeds.length,
+        total,
         limit: input.limit,
         offset: input.offset,
     };
