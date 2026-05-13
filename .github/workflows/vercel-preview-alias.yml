@@ -65,7 +65,8 @@ jobs:
               node ./scripts/alias-preview.mjs
 
             alias_domain=$(sed -n 's/^alias_domain=//p' "${alias_output}")
-            if [ -z "${alias_domain}" ] || [[ "${alias_domain}" == *$'\n'* ]]; then
+            alias_domain_pattern='^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$'
+            if ! [[ "${alias_domain}" =~ ${alias_domain_pattern} ]]; then
               echo "Failed to read alias domain for ${app_name}."
               exit 1
             fi
@@ -151,7 +152,7 @@ jobs:
           done
 
           if [ "${alias_count}" -eq 0 ]; then
-            aliases_table+=$'\n| — | No preview aliases available yet. |'
+            aliases_table+=$'\n| - | No preview aliases available yet. |'
           fi
 
           {
