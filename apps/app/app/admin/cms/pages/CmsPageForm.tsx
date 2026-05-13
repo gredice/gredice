@@ -265,6 +265,10 @@ export function CmsPageForm({
     const [rawMode, setRawMode] = useState(preserveFallbackContent);
     const [rawContent, setRawContent] = useState(page?.content ?? '');
     const [rawError, setRawError] = useState<string | null>(null);
+    const [metaTitle, setMetaTitle] = useState(page?.metaTitle ?? '');
+    const [metaDescription, setMetaDescription] = useState(
+        page?.metaDescription ?? '',
+    );
     const builderContent = useMemo(
         () => stringifySections(sections),
         [sections],
@@ -300,6 +304,21 @@ export function CmsPageForm({
     const [previewViewport, setPreviewViewport] = useState<
         'mobile' | 'tablet' | 'desktop'
     >('desktop');
+    const rawReadinessContent = useMemo(
+        () => parseSections(rawContent),
+        [rawContent],
+    );
+    const readinessSections = useMemo(
+        () =>
+            rawMode ? editableSections(rawReadinessContent.sections) : sections,
+        [rawMode, rawReadinessContent.sections, sections],
+    );
+    const contentReadinessWarning =
+        rawMode &&
+        rawContent.trim().length > 0 &&
+        !rawReadinessContent.isStructured
+            ? 'JSON fallback mora biti JSON niz sekcija za provjeru obaveznih polja.'
+            : null;
 
     const selectSection = (sectionId: string) => {
         setInsertAtEnd(false);
@@ -424,7 +443,7 @@ export function CmsPageForm({
         }
         return grouped;
     }, [filteredSectionItems]);
-    const missingSectionFields = sections
+    const missingSectionFields = readinessSections
         .map((section, index) => ({
             section,
             index,
@@ -434,11 +453,11 @@ export function CmsPageForm({
     const metadataWarnings = [
         {
             label: 'Meta naslov',
-            value: page?.metaTitle ?? '',
+            value: metaTitle,
         },
         {
             label: 'Meta opis',
-            value: page?.metaDescription ?? '',
+            value: metaDescription,
         },
     ].filter((entry) => entry.value.trim().length === 0);
     const autosaveBadgeClassName =
@@ -1299,7 +1318,8 @@ export function CmsPageForm({
                                             Publish readiness
                                         </Typography>
                                         {missingSectionFields.length === 0 &&
-                                        metadataWarnings.length === 0 ? (
+                                        metadataWarnings.length === 0 &&
+                                        !contentReadinessWarning ? (
                                             <Typography
                                                 level="body3"
                                                 className="text-emerald-500"
@@ -1308,6 +1328,16 @@ export function CmsPageForm({
                                             </Typography>
                                         ) : (
                                             <Stack spacing={1}>
+                                                {contentReadinessWarning && (
+                                                    <Typography
+                                                        level="body3"
+                                                        className="text-amber-500"
+                                                    >
+                                                        {
+                                                            contentReadinessWarning
+                                                        }
+                                                    </Typography>
+                                                )}
                                                 {missingSectionFields.map(
                                                     (entry) => (
                                                         <Typography
@@ -1353,13 +1383,19 @@ export function CmsPageForm({
                                         <Input
                                             name="metaTitle"
                                             label="Meta naslov"
-                                            defaultValue={page?.metaTitle ?? ''}
+                                            value={metaTitle}
+                                            onChange={(event) =>
+                                                setMetaTitle(event.target.value)
+                                            }
                                         />
                                         <Input
                                             name="metaDescription"
                                             label="Meta opis"
-                                            defaultValue={
-                                                page?.metaDescription ?? ''
+                                            value={metaDescription}
+                                            onChange={(event) =>
+                                                setMetaDescription(
+                                                    event.target.value,
+                                                )
                                             }
                                         />
                                         <Input
