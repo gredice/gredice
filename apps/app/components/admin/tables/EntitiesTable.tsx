@@ -23,7 +23,6 @@ import { formatAttributeValueWithUnit } from '../../shared/attributes/formatAttr
 import { InventoryQuantityValue } from '../../shared/inventory/InventoryQuantityValue';
 import { NoDataPlaceholder } from '../../shared/placeholders/NoDataPlaceholder';
 import { ServerActionIconButton } from '../../shared/ServerActionIconButton';
-import { EntityAttributeProgress } from '../directories/EntityAttributeProgress';
 import { useFilter } from '../providers';
 import { EntityTableStateChip } from './EntityTableStateChip';
 
@@ -35,12 +34,7 @@ type InventoryItem = {
 };
 type InventoryItemWithEntityId = InventoryItem & { entityId: number };
 type SortDirection = 'asc' | 'desc';
-type SortKey =
-    | 'name'
-    | 'inventory'
-    | 'progress'
-    | 'updatedAt'
-    | `attribute:${number}`;
+type SortKey = 'name' | 'inventory' | 'updatedAt' | `attribute:${number}`;
 type SortState = {
     key: SortKey;
     direction: SortDirection;
@@ -60,6 +54,7 @@ type EntitiesTableProps = {
     completionFilter?: string;
     stateFilter?: string;
     onDuplicate: (entityId: number) => Promise<void>;
+    refLabelsByDefinitionId?: Record<number, Record<string, string>>;
 };
 
 export function EntitiesTable({
@@ -71,6 +66,7 @@ export function EntitiesTable({
     completionFilter = '',
     stateFilter = '',
     onDuplicate,
+    refLabelsByDefinitionId = {},
 }: EntitiesTableProps) {
     const { filter } = useFilter();
     const [sort, setSort] = useState<SortState>(defaultSort);
@@ -165,7 +161,6 @@ export function EntitiesTable({
                         sortableHead(`attribute:${d.id}`, d.label, d.id),
                     )}
                     {hasInventory && sortableHead('inventory', 'Zalihe')}
-                    {sortableHead('progress', 'Ispunjeno')}
                     {sortableHead('updatedAt', 'Izmjene')}
                     <Table.Head></Table.Head>
                 </Table.Row>
@@ -193,6 +188,10 @@ export function EntitiesTable({
                                 <div className="flex items-center gap-2">
                                     <EntityTableStateChip
                                         initialState={entity.state}
+                                        completeness={getEntityCompleteness(
+                                            entity,
+                                            attributeDefinitions,
+                                        )}
                                         onPublish={() =>
                                             updateEntity({
                                                 id: entity.id,
@@ -217,6 +216,9 @@ export function EntitiesTable({
                                     <EntityAttributeValueCell
                                         entity={entity}
                                         definition={d}
+                                        refLabelsByDefinitionId={
+                                            refLabelsByDefinitionId
+                                        }
                                     />
                                 </Table.Cell>
                             ))}
@@ -231,14 +233,6 @@ export function EntitiesTable({
                                     />
                                 </Table.Cell>
                             )}
-                            <Table.Cell>
-                                <div className="w-20">
-                                    <EntityAttributeProgress
-                                        entity={entity}
-                                        definitions={attributeDefinitions}
-                                    />
-                                </div>
-                            </Table.Cell>
                             <Table.Cell>
                                 <Typography secondary>
                                     <LocalDateTime time={false}>
@@ -267,9 +261,11 @@ export function EntitiesTable({
 function EntityAttributeValueCell({
     entity,
     definition,
+    refLabelsByDefinitionId,
 }: {
     entity: Entities[number];
     definition: SelectAttributeDefinition;
+    refLabelsByDefinitionId: Record<number, Record<string, string>>;
 }) {
     const value = entityAttributeValueByDefinitionId(entity, definition.id);
     if (!value) {
@@ -307,6 +303,12 @@ function EntityAttributeValueCell({
 
     if (definition.dataType === 'barcode') {
         return <BarcodeValue value={value} />;
+    }
+
+    if (definition.dataType.startsWith('ref:')) {
+        const resolvedLabel =
+            refLabelsByDefinitionId[definition.id]?.[value] ?? value;
+        return <Typography secondary>{resolvedLabel}</Typography>;
     }
 
     return (
@@ -370,10 +372,6 @@ function entitySortValue(
         return inventoryByEntityId.get(entity.id)?.quantity ?? null;
     }
 
-    if (key === 'progress') {
-        return getEntityCompleteness(entity, definitions).progress;
-    }
-
     if (key === 'updatedAt') {
         return entity.updatedAt.getTime();
     }
@@ -403,9 +401,7 @@ function compareSortValues(
 }
 
 function defaultSortDirection(key: SortKey): SortDirection {
-    return key === 'updatedAt' || key === 'inventory' || key === 'progress'
-        ? 'desc'
-        : 'asc';
+    return key === 'updatedAt' || key === 'inventory' ? 'desc' : 'asc';
 }
 
 function attributeSortValue(

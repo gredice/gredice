@@ -23,7 +23,8 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
     // TODO: Add error message
     // TODO: Show night icons when it's night for weather
 
-    const WeatherIcon = weatherData ? weatherIcons[weatherData.symbol] : null;
+    const WeatherIcon =
+        weatherData?.symbol != null ? weatherIcons[weatherData.symbol] : null;
     const formattedTime = currentTime?.toLocaleTimeString('hr-HR', {
         hour: '2-digit',
         minute: '2-digit',
@@ -53,7 +54,9 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
                                     >
                                         {weatherData.measuredTemperature?.toFixed(
                                             1,
-                                        ) ?? weatherData.temperature}
+                                        ) ??
+                                            weatherData.temperature ??
+                                            '—'}
                                         °C
                                     </Typography>
                                 </Row>

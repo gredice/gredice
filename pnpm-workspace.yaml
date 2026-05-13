@@ -1,3 +1,15 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+allowBuilds:
+  '@ffmpeg-installer/darwin-arm64': true
+  '@ffmpeg-installer/linux-x64': true
+  '@parcel/watcher': true
+  core-js: true
+  esbuild: true
+  protobufjs: true
+  sharp: true
+  vue-demi: true
+overrides:
+  '@types/react': 19.2.14
+  '@types/react-dom': 19.2.3

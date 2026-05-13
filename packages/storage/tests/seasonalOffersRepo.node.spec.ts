@@ -138,7 +138,7 @@ test('queueSeasonalSowingOfferOperations skips dates without a seasonal offer', 
     );
 });
 
-test('queueSeasonalSowingOfferOperations extends after active scheduled free waterings', async () => {
+test('queueSeasonalSowingOfferOperations skips days with existing scheduled free waterings', async () => {
     createTestDb();
     const { accountId, gardenId, raisedBedId } =
         await createSeasonalOfferTestContext();
@@ -166,12 +166,44 @@ test('queueSeasonalSowingOfferOperations extends after active scheduled free wat
     assert.deepStrictEqual(
         await getScheduledFreeWateringDates(accountId, gardenId, raisedBedId),
         [
+            '2026-06-15T08:00:00.000Z',
+            '2026-06-16T08:00:00.000Z',
+            '2026-06-17T08:00:00.000Z',
+            '2026-06-18T08:00:00.000Z',
+            '2026-06-19T08:00:00.000Z',
             '2026-06-20T08:00:00.000Z',
-            '2026-06-21T08:00:00.000Z',
-            '2026-06-22T08:00:00.000Z',
-            '2026-06-23T08:00:00.000Z',
-            '2026-06-24T08:00:00.000Z',
-            '2026-06-25T08:00:00.000Z',
+        ],
+    );
+});
+
+
+test('queueSeasonalSowingOfferOperations does not duplicate existing offer days on repeated sowing', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createSeasonalOfferTestContext();
+
+    const firstRun = await queueSeasonalSowingOfferOperations({
+        accountId,
+        gardenId,
+        raisedBedId,
+        referenceDate: new Date('2026-03-10T08:00:00.000Z'),
+    });
+
+    const secondRun = await queueSeasonalSowingOfferOperations({
+        accountId,
+        gardenId,
+        raisedBedId,
+        referenceDate: new Date('2026-03-10T12:00:00.000Z'),
+    });
+
+    assert.strictEqual(firstRun.length, 3);
+    assert.strictEqual(secondRun.length, 0);
+    assert.deepStrictEqual(
+        await getScheduledFreeWateringDates(accountId, gardenId, raisedBedId),
+        [
+            '2026-03-10T08:00:00.000Z',
+            '2026-03-12T08:00:00.000Z',
+            '2026-03-14T08:00:00.000Z',
         ],
     );
 });

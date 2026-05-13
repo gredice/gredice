@@ -29,6 +29,26 @@ import { EntitiesFilters } from './EntitiesFilters';
 
 export const dynamic = 'force-dynamic';
 
+function getEntityLabel(
+    attributes: {
+        attributeDefinition: { category: string; name: string };
+        value: string | null;
+    }[],
+) {
+    return (
+        attributes.find(
+            (attribute) =>
+                attribute.attributeDefinition.category === 'information' &&
+                attribute.attributeDefinition.name === 'label',
+        )?.value ??
+        attributes.find(
+            (attribute) =>
+                attribute.attributeDefinition.category === 'information' &&
+                attribute.attributeDefinition.name === 'name',
+        )?.value
+    );
+}
+
 export default async function EntitiesPage({
     params,
     searchParams,
@@ -56,6 +76,41 @@ export default async function EntitiesPage({
     const inventoryItems = inventoryConfig
         ? await getInventoryItemsByConfig(inventoryConfig.id)
         : [];
+    const refDefinitions = attributeDefinitions.filter((definition) =>
+        definition.dataType.startsWith('ref:'),
+    );
+    const refEntityTypes = Array.from(
+        new Set(
+            refDefinitions.map(
+                (definition) => definition.dataType.split(':')[1],
+            ),
+        ),
+    );
+    const refEntitiesByType = await Promise.all(
+        refEntityTypes.map(async (refEntityTypeName) => ({
+            refEntityTypeName,
+            entities: await getEntitiesRaw(refEntityTypeName, 'published'),
+        })),
+    );
+    const refLabelsByDefinitionId = Object.fromEntries(
+        refDefinitions.map((definition) => {
+            const refEntityTypeName = definition.dataType.split(':')[1];
+            const refEntities =
+                refEntitiesByType.find(
+                    (entry) => entry.refEntityTypeName === refEntityTypeName,
+                )?.entities ?? [];
+            return [
+                definition.id,
+                Object.fromEntries(
+                    refEntities.map((entity) => [
+                        entity.id.toString(),
+                        getEntityLabel(entity.attributes) ??
+                            `${entity.entityType.label} ${entity.id}`,
+                    ]),
+                ),
+            ];
+        }),
+    );
 
     return (
         <FilterProvider>
@@ -115,6 +170,7 @@ export default async function EntitiesPage({
                             completionFilter={completionFilter}
                             stateFilter={stateFilter}
                             onDuplicate={duplicateEntityBound}
+                            refLabelsByDefinitionId={refLabelsByDefinitionId}
                         />
                     </CardOverflow>
                 </Card>

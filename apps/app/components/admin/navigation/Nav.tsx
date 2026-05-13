@@ -240,6 +240,13 @@ export function Nav({
                 />
             </NavSection>
             <NavSection label="Zapisi" compact={compact}>
+                <NavItem
+                    href={adminPages.DirectoriesActivity.href}
+                    label={adminPages.DirectoriesActivity.label}
+                    icon={<File className="size-5" />}
+                    onClick={onItemClick}
+                    compact={compact}
+                />
                 {hasDirectoryRecords && (
                     <>
                         {/* Categories with their entity types */}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gredice CMS Authoring"
+  short_description: "Author CMS pages that publish cleanly"
+  default_prompt: "Use $gredice-cms-page-authoring to draft or review a Gredice CMS page with valid sections and publish metadata."

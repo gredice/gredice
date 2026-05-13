@@ -17,7 +17,7 @@
         "regenerate:cms-types": "node ./scripts/generateCmsTypeAliases.mjs && biome check --write ./src/cms.ts"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.14",
+        "@biomejs/biome": "2.4.15",
         "openapi-typescript": "7.13.0",
         "typescript": "6.0.3"
     }

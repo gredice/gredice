@@ -14,7 +14,7 @@ Please also follow the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
 ## Local setup
 
-Use Node.js `>=24`, pnpm `10.33.2`, Docker, and the Vercel CLI.
+Use Node.js `>=24`, the pnpm version pinned by `packageManager`, Docker, and the Vercel CLI.
 
 ```bash
 pnpm install
