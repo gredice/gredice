@@ -316,12 +316,7 @@ export function CmsPageForm({
         return rawReadinessContent.isStructured
             ? editableSections(rawReadinessContent.sections)
             : [];
-    }, [
-        rawMode,
-        rawReadinessContent.isStructured,
-        rawReadinessContent.sections,
-        sections,
-    ]);
+    }, [rawMode, rawReadinessContent, sections]);
     const contentReadinessWarning =
         rawMode &&
         rawContent.trim().length > 0 &&
