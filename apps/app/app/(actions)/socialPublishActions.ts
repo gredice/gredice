@@ -64,6 +64,15 @@ function sanitizeProviderErrorDetails(
     return Object.keys(sanitized).length ? sanitized : null;
 }
 
+function sanitizeUnexpectedErrorDetails(
+    error: unknown,
+): Record<string, unknown> {
+    return {
+        reason: 'unexpected_publish_error',
+        errorType: error instanceof Error ? error.name : typeof error,
+    };
+}
+
 export async function publishSocialPostAction(
     _prevState: PublishSocialPostState | null,
     formData: FormData,
@@ -244,7 +253,7 @@ export async function publishSocialPostAction(
             status: finalStatus,
             providerPermalink: providerResult.permalink,
         };
-    } catch {
+    } catch (error) {
         if (!providerSubmissionAttempted) {
             duplicateSubmissionKeys.delete(submissionToken);
         }
@@ -256,14 +265,12 @@ export async function publishSocialPostAction(
                     status: 'failed',
                     failureCode: 'unexpected_publish_error',
                     failureMessage: 'Neočekivana greška tijekom slanja objave.',
-                    failureMetadata: { reason: 'unexpected_publish_error' },
+                    failureMetadata: sanitizeUnexpectedErrorDetails(error),
                 });
             } catch {
                 // Keep returning a controlled action state even if persistence fails.
             }
-        }
 
-        if (socialPostId) {
             return {
                 ok: false,
                 errorCode: 'internal_error',
