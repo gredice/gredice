@@ -1,6 +1,7 @@
 import { getEntitiesFormatted } from '@gredice/storage';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { getMcpToolNamesByDomain } from '../../../catalog';
 import { Logger } from '../../../logger';
 
 export const dynamic = 'force-dynamic';
@@ -76,14 +77,7 @@ export async function GET() {
         status: 'ok',
         timestamp: new Date().toISOString(),
         server: 'gredice-mcp-directories',
-        availableTools: [
-            'directories/get-plants',
-            'directories/get-plant',
-            'directories/get-plant-sorts',
-            'directories/search-entities',
-            'directories/get-operations',
-            'directories/get-seeds',
-        ],
+        availableTools: getMcpToolNamesByDomain('directories'),
     });
 }
 

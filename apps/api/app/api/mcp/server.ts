@@ -4,6 +4,11 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifyJwt } from '../../../lib/auth/auth';
 import { accountCookieName } from '../../../lib/auth/sessionConfig';
+import {
+    getMcpResources,
+    getMcpResourceTemplates,
+    getMcpTools,
+} from './catalog';
 
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-03-26', '2024-11-05'] as const;
 type SupportedProtocolVersion = (typeof SUPPORTED_PROTOCOL_VERSIONS)[number];
@@ -196,21 +201,7 @@ export async function handleMcpRequest(request: NextRequest) {
             jsonrpc: '2.0',
             id,
             result: {
-                tools: [
-                    {
-                        name: 'directories/get-plants',
-                        description:
-                            'Get Croatian plant catalog with attributes and calendar data',
-                        inputSchema: {
-                            type: 'object',
-                            properties: {
-                                limit: { type: 'number' },
-                                offset: { type: 'number' },
-                                category: { type: 'string' },
-                            },
-                        },
-                    },
-                ],
+                tools: getMcpTools(),
             },
         });
     }
@@ -219,15 +210,22 @@ export async function handleMcpRequest(request: NextRequest) {
         return NextResponse.json({
             jsonrpc: '2.0',
             id,
-            result: { resources: [] },
+            result: {
+                resources: await getMcpResources(),
+            },
         });
     }
 
     if (method === 'resources/templates/list') {
+        const resources = await getMcpResourceTemplates();
         return NextResponse.json({
             jsonrpc: '2.0',
             id,
-            result: { resourceTemplates: [] },
+            result: {
+                resourceTemplates: resources.filter(
+                    (resource) => 'uriTemplate' in resource,
+                ),
+            },
         });
     }
 
