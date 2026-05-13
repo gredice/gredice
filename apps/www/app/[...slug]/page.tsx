@@ -1,7 +1,7 @@
 import { clientPublic } from '@gredice/client';
 import { SectionsView } from '@signalco/cms-core/SectionsView';
-import { draftMode } from 'next/headers';
 import type { Metadata } from 'next';
+import { draftMode } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { sectionsComponentRegistry } from '../../components/shared/sectionsComponentRegistry';
 import {
@@ -66,7 +66,9 @@ export async function generateMetadata({
         return {};
     }
 
-    const response = await clientPublic().api.directories.pages[':slug{.+}'].$get({
+    const response = await clientPublic().api.directories.pages[
+        ':slug{.+}'
+    ].$get({
         param: { slug: normalizedSlug },
         query: {},
     });
