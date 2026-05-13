@@ -1,7 +1,6 @@
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { useCurrentAccount } from '../../../hooks/useCurrentAccount';
 import type { useShoppingCart } from '../../../hooks/useShoppingCart';
 
 export function SunflowerCheckoutBalance({
@@ -9,13 +8,7 @@ export function SunflowerCheckoutBalance({
 }: {
     cart: ReturnType<typeof useShoppingCart>['data'];
 }) {
-    const { data: account, isLoading } = useCurrentAccount();
-    const currentSunflowers = account?.sunflowers.amount;
     const pendingSunflowers = cart?.totalSunflowers ?? 0;
-    const remainingSunflowers =
-        typeof currentSunflowers === 'number'
-            ? currentSunflowers - pendingSunflowers
-            : undefined;
 
     return (
         <div
@@ -25,57 +18,21 @@ export function SunflowerCheckoutBalance({
             <Stack spacing={1}>
                 <Row justifyContent="space-between" spacing={2}>
                     <Typography level="body2" semiBold>
-                        Suncokreti
+                        Za plaćanje
                     </Typography>
                     <Typography
-                        level="body2"
+                        level="body1"
+                        semiBold
                         className="text-yellow-700 dark:text-yellow-200"
                     >
-                        🌻
+                        {formatSunflowers(pendingSunflowers)} 🌻
                     </Typography>
                 </Row>
-                <div className="grid gap-2 sm:grid-cols-3">
-                    <SunflowerBalanceValue
-                        label="Trenutno"
-                        value={
-                            isLoading
-                                ? 'Učitavanje...'
-                                : formatSunflowers(currentSunflowers)
-                        }
-                    />
-                    <SunflowerBalanceValue
-                        label="Za plaćanje"
-                        value={`-${formatSunflowers(pendingSunflowers)}`}
-                    />
-                    <SunflowerBalanceValue
-                        label="Nakon kupnje"
-                        value={formatSunflowers(remainingSunflowers)}
-                    />
-                </div>
             </Stack>
         </div>
     );
 }
 
-function SunflowerBalanceValue({
-    label,
-    value,
-}: {
-    label: string;
-    value: string;
-}) {
-    return (
-        <Stack spacing={0.25} className="min-w-0">
-            <Typography level="body3" secondary>
-                {label}
-            </Typography>
-            <Typography level="body1" semiBold noWrap>
-                {value} 🌻
-            </Typography>
-        </Stack>
-    );
-}
-
-function formatSunflowers(value: number | undefined) {
-    return typeof value === 'number' ? value.toLocaleString('hr-HR') : '—';
+function formatSunflowers(value: number) {
+    return value.toLocaleString('hr-HR');
 }
