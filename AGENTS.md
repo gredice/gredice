@@ -50,7 +50,7 @@ pnpm test --filter garden
 pnpm build --filter garden
 ```
 
-For shared package changes, also validate the consuming app(s) that exercise the changed behavior. For storage changes, run `pnpm test --filter @gredice/storage` and build affected consumers such as `app`, `api`, or `farm`.
+For shared package changes, also validate the consuming app(s) that exercise the changed behavior. For storage changes, run `pnpm test --filter @gredice/storage` and build affected consumers such as `app`, `api`, or `farm`. For `@gredice/game` changes specifically, validate and build both `garden` and `www` because both apps consume game package codepaths.
 
 If validation cannot run because of missing secrets, unavailable services, or time constraints, state exactly which command was skipped and why.
 
