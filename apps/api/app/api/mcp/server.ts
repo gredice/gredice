@@ -1,4 +1,4 @@
-import { getEntitiesFormatted, getUser } from '@gredice/storage';
+import { getUser } from '@gredice/storage';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -7,8 +7,10 @@ import { accountCookieName } from '../../../lib/auth/sessionConfig';
 import {
     getMcpResources,
     getMcpResourceTemplates,
+    getMcpToolNamesByDomain,
     getMcpTools,
 } from './catalog';
+import { executeDirectoryTool } from './directories/tools/call/execute';
 
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-03-26', '2024-11-05'] as const;
 type SupportedProtocolVersion = (typeof SUPPORTED_PROTOCOL_VERSIONS)[number];
@@ -33,12 +35,6 @@ function isSupportedProtocolVersion(
         (supportedVersion) => supportedVersion === version,
     );
 }
-
-const GetPlantsSchema = z.object({
-    limit: z.number().min(1).max(1000).default(100),
-    offset: z.number().min(0).default(0),
-    category: z.string().optional(),
-});
 
 function baseUrlFromRequest(request: NextRequest) {
     return new URL(request.url).origin;
@@ -238,8 +234,11 @@ export async function handleMcpRequest(request: NextRequest) {
     }
 
     if (method === 'tools/call') {
-        const name = body?.params?.name as string;
-        if (name !== 'directories/get-plants') {
+        const name = body?.params?.name;
+        if (
+            typeof name !== 'string' ||
+            !getMcpToolNamesByDomain('directories').includes(name)
+        ) {
             return NextResponse.json(
                 {
                     jsonrpc: '2.0',
@@ -252,21 +251,36 @@ export async function handleMcpRequest(request: NextRequest) {
                 { status: 404 },
             );
         }
-        const input = GetPlantsSchema.parse(body?.params?.arguments ?? {});
-        const allPlants =
-            (await getEntitiesFormatted<Record<string, unknown>>('plant')) ||
-            [];
-        return NextResponse.json({
-            jsonrpc: '2.0',
-            id,
-            result: {
-                plants: allPlants.slice(
-                    input.offset,
-                    input.offset + input.limit,
-                ),
-                total: allPlants.length,
-            },
-        });
+
+        try {
+            const result = await executeDirectoryTool(
+                name,
+                body?.params?.arguments ?? {},
+            );
+            return NextResponse.json({
+                jsonrpc: '2.0',
+                id,
+                result,
+            });
+        } catch (error) {
+            const isInvalidParams = error instanceof z.ZodError;
+            return NextResponse.json(
+                {
+                    jsonrpc: '2.0',
+                    id,
+                    error: {
+                        code: isInvalidParams ? -32602 : -32603,
+                        message: isInvalidParams
+                            ? 'Invalid params'
+                            : error instanceof Error
+                              ? error.message
+                              : 'Tool execution failed',
+                        data: isInvalidParams ? error.issues : undefined,
+                    },
+                },
+                { status: isInvalidParams ? 400 : 500 },
+            );
+        }
     }
 
     return NextResponse.json(
