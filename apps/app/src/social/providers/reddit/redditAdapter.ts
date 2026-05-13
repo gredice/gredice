@@ -147,16 +147,17 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
                     body,
                 },
             );
-        } catch {
-            return providerUnavailable('Reddit publish request failed.');
+        } catch (error) {
+            return providerUnavailable('Reddit publish request failed.', error);
         }
 
         let data: RedditSubmitResponse;
         try {
             data = (await response.json()) as RedditSubmitResponse;
-        } catch {
+        } catch (error) {
             return providerUnavailable(
                 'Reddit publish returned an unreadable response.',
+                error,
             );
         }
         const apiErrors = data.json?.errors ?? [];
@@ -211,8 +212,11 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
                     }),
                 },
             );
-        } catch {
-            return providerUnavailable('Reddit authentication request failed.');
+        } catch (error) {
+            return providerUnavailable(
+                'Reddit authentication request failed.',
+                error,
+            );
         }
 
         if (!response.ok) {
@@ -234,9 +238,10 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
         let payload: RedditTokenResponse;
         try {
             payload = (await response.json()) as RedditTokenResponse;
-        } catch {
+        } catch (error) {
             return providerUnavailable(
                 'Reddit authentication returned an unreadable response.',
+                error,
             );
         }
         if (!payload.access_token) {
@@ -297,7 +302,13 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
     }
 }
 
-function providerUnavailable(message: string): SocialPublishError {
+function providerUnavailable(
+    message: string,
+    error?: unknown,
+): SocialPublishError {
+    if (error) {
+        console.warn(message, error);
+    }
     return {
         ok: false,
         code: 'provider_unavailable',

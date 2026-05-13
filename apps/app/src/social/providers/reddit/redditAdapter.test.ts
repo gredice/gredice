@@ -9,6 +9,21 @@ function response(body: unknown, status = 200): Response {
     });
 }
 
+async function captureWarnings<T>(
+    callback: () => Promise<T>,
+): Promise<{ result: T; warnings: unknown[][] }> {
+    const originalWarn = console.warn;
+    const warnings: unknown[][] = [];
+    console.warn = (...args: unknown[]) => {
+        warnings.push(args);
+    };
+    try {
+        return { result: await callback(), warnings };
+    } finally {
+        console.warn = originalWarn;
+    }
+}
+
 test('readRedditEnv builds allowlist and default destination', () => {
     const env = readRedditEnv({
         SOCIAL_PROVIDER_REDDIT_ENABLED: 'true',
@@ -129,12 +144,15 @@ test('publishPost maps submit transport failures into retriable provider_unavail
         },
     );
 
-    const result = await adapter.publishPost({ title: 'Hi' });
+    const { result, warnings } = await captureWarnings(() =>
+        adapter.publishPost({ title: 'Hi' }),
+    );
     expect(result.ok).toBe(false);
     if (!result.ok) {
         expect(result.code).toBe('provider_unavailable');
         expect(result.retriable).toBe(true);
     }
+    expect(warnings).toHaveLength(1);
 });
 
 test('publishPost maps non-JSON submit responses into retriable provider_unavailable', async () => {
@@ -155,10 +173,13 @@ test('publishPost maps non-JSON submit responses into retriable provider_unavail
         },
     );
 
-    const result = await adapter.publishPost({ title: 'Hi' });
+    const { result, warnings } = await captureWarnings(() =>
+        adapter.publishPost({ title: 'Hi' }),
+    );
     expect(result.ok).toBe(false);
     if (!result.ok) {
         expect(result.code).toBe('provider_unavailable');
         expect(result.retriable).toBe(true);
     }
+    expect(warnings).toHaveLength(1);
 });
