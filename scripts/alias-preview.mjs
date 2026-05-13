@@ -29,6 +29,18 @@ function sanitizeLabel(value, maxLength = MAX_DNS_LABEL_LENGTH) {
   return sanitized.slice(0, maxLength).replace(/-+$/g, "");
 }
 
+function isDnsLabel(value) {
+  return (
+    value.length >= 1 &&
+    value.length <= MAX_DNS_LABEL_LENGTH &&
+    /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(value)
+  );
+}
+
+function isDnsSubdomain(value) {
+  return value.split(".").every(isDnsLabel);
+}
+
 function writeGithubOutput(key, value) {
   const outputFile = process.env.GITHUB_OUTPUT;
   if (!outputFile) return;
@@ -84,6 +96,9 @@ async function main() {
 
   const aliasName = prefixSlug ? `${prefixSlug}-${branchSlug}` : branchSlug;
   const aliasDomain = `${aliasName}.${previewDomain}`;
+  if (!isDnsSubdomain(aliasDomain))
+    throw new Error(`Alias domain ${aliasDomain} is not DNS-safe`);
+
   console.log(`Aliasing ${deploymentUrl} to ${aliasDomain}`);
   writeGithubOutput("alias_domain", aliasDomain);
 
