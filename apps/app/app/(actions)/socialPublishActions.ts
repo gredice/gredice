@@ -156,6 +156,16 @@ export async function publishSocialPostAction(
         };
     }
 
+    const adapter = createSocialProviderAdapter(provider);
+    const configError = adapter.validateConfig();
+    if (configError) {
+        return {
+            ok: false,
+            errorCode: 'provider_error',
+            message: configError.message,
+        };
+    }
+
     const now = Date.now();
     cleanupSubmissionKeyCache(now);
     if (duplicateSubmissionKeys.has(submissionToken)) {
@@ -168,72 +178,106 @@ export async function publishSocialPostAction(
     }
     duplicateSubmissionKeys.set(submissionToken, now + 5 * 60_000);
 
-    const adapter = createSocialProviderAdapter(provider);
-    const configError = adapter.validateConfig();
-    if (configError) {
-        return {
-            ok: false,
-            errorCode: 'provider_error',
-            message: configError.message,
-        };
-    }
+    let socialPostId: number | undefined;
+    let providerSubmissionAttempted = false;
 
-    const created = await createSocialPost({
-        provider,
-        providerAccountKey,
-        destination,
-        postType,
-        title,
-        body: body || null,
-        url: url || null,
-        providerMetadata: {
-            requestedBy: 'admin-action',
-        },
-    });
+    try {
+        const created = await createSocialPost({
+            provider,
+            providerAccountKey,
+            destination,
+            postType,
+            title,
+            body: body || null,
+            url: url || null,
+            providerMetadata: {
+                requestedBy: 'admin-action',
+            },
+        });
 
-    await updateSocialPostStatus({ id: created.id, status: 'submitting' });
+        socialPostId = created.id;
+        await updateSocialPostStatus({ id: created.id, status: 'submitting' });
 
-    const providerResult = await adapter.publishPost({
-        title,
-        body: body || undefined,
-        url: url || undefined,
-        destination,
-    });
+        providerSubmissionAttempted = true;
+        const providerResult = await adapter.publishPost({
+            title,
+            body: body || undefined,
+            url: url || undefined,
+            destination,
+        });
 
-    if (!providerResult.ok) {
+        if (!providerResult.ok) {
+            await updateSocialPostStatus({
+                id: created.id,
+                status: 'failed',
+                failureCode: providerResult.code,
+                failureMessage: providerResult.message,
+                failureMetadata: sanitizeProviderErrorDetails(
+                    providerResult.details,
+                ),
+            });
+
+            return {
+                ok: false,
+                errorCode: 'provider_error',
+                message: providerResult.message,
+                socialPostId: created.id,
+                status: 'failed',
+            };
+        }
+
+        const finalStatus = providerResult.permalink
+            ? 'published'
+            : 'submitted';
         await updateSocialPostStatus({
             id: created.id,
-            status: 'failed',
-            failureCode: providerResult.code,
-            failureMessage: providerResult.message,
-            failureMetadata: sanitizeProviderErrorDetails(
-                providerResult.details,
-            ),
+            status: finalStatus,
+            providerSubmissionId: providerResult.providerPostId,
+            providerPermalink: providerResult.permalink,
+            providerMetadata: providerResult.metadata ?? null,
         });
 
         return {
-            ok: false,
-            errorCode: 'provider_error',
-            message: providerResult.message,
+            ok: true,
+            message: 'Objava je uspješno poslana.',
             socialPostId: created.id,
-            status: 'failed',
+            status: finalStatus,
+            providerPermalink: providerResult.permalink,
+        };
+    } catch {
+        if (!providerSubmissionAttempted) {
+            duplicateSubmissionKeys.delete(submissionToken);
+        }
+
+        if (socialPostId) {
+            try {
+                await updateSocialPostStatus({
+                    id: socialPostId,
+                    status: 'failed',
+                    failureCode: 'unexpected_publish_error',
+                    failureMessage: 'Neočekivana greška tijekom slanja objave.',
+                    failureMetadata: { reason: 'unexpected_publish_error' },
+                });
+            } catch {
+                // Keep returning a controlled action state even if persistence fails.
+            }
+        }
+
+        if (socialPostId) {
+            return {
+                ok: false,
+                errorCode: 'internal_error',
+                message:
+                    'Objava nije uspješno poslana zbog neočekivane greške.',
+                socialPostId,
+                status: 'failed',
+            };
+        }
+
+        return {
+            ok: false,
+            errorCode: 'internal_error',
+            message: 'Objava nije uspješno poslana zbog neočekivane greške.',
         };
     }
-
-    const finalStatus = providerResult.permalink ? 'published' : 'submitted';
-    await updateSocialPostStatus({
-        id: created.id,
-        status: finalStatus,
-        providerSubmissionId: providerResult.providerPostId,
-        providerPermalink: providerResult.permalink,
-        providerMetadata: providerResult.metadata ?? null,
-    });
-
-    return {
-        ok: true,
-        message: 'Objava je uspješno poslana.',
-        socialPostId: created.id,
-        status: finalStatus,
-        providerPermalink: providerResult.permalink,
-    };
 }
