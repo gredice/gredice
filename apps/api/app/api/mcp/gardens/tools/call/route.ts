@@ -12,9 +12,10 @@ import { Logger } from "../../../logger";
 
 export const dynamic = "force-dynamic";
 
+const GardenIdPattern = /^[1-9]\d*$/;
 const GardenIdSchema = z
   .string()
-  .regex(/^[1-9]\d*$/, "gardenId must be a positive integer string");
+  .regex(GardenIdPattern, "gardenId must be a positive integer string");
 
 const ListGardensSchema = z.object({
   limit: z.number().min(1).max(100).default(20),
@@ -71,7 +72,7 @@ export async function GET() {
 
 async function getOwnedGardenOrThrow(auth: MCPAuth, gardenId: string) {
   const parsedGardenId = Number(gardenId);
-  if (!Number.isSafeInteger(parsedGardenId)) {
+  if (!GardenIdPattern.test(gardenId) || !Number.isSafeInteger(parsedGardenId)) {
     throw new MCPToolError("Invalid gardenId", 400, -32602);
   }
 
