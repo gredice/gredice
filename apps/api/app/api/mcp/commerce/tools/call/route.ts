@@ -1,11 +1,11 @@
 import {
+    type EntityStandardized,
     getEntitiesFormatted,
     getOrCreateShoppingCart,
     upsertOrRemoveCartItem,
 } from '@gredice/storage';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { Logger } from 'next-axiom';
 import { z } from 'zod';
 import {
     checkMCPPermission,
@@ -13,6 +13,7 @@ import {
     extractMCPAuth,
     type MCPAuth,
 } from '../../../auth';
+import { Logger } from '../../../logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,6 +90,58 @@ const GetOrdersSchema = z.object({
     offset: z.number().min(0).default(0),
     locale: z.enum(['hr', 'en']).default('hr'),
 });
+
+type CommerceEntity = EntityStandardized & {
+    category?: { name?: string };
+    description?: string;
+    information?: EntityStandardized['information'] & {
+        plant?: CommerceEntity;
+    };
+    name?: string;
+};
+
+type ShoppingCart = NonNullable<
+    Awaited<ReturnType<typeof getOrCreateShoppingCart>>
+>;
+type ShoppingCartItem = ShoppingCart['items'][number];
+
+type FormattedCartItem = {
+    id: number;
+    productId: string;
+    productName: string;
+    productImage: string;
+    price: {
+        amount: number;
+        currency: 'EUR';
+    };
+    quantity: number;
+    totalPrice: {
+        amount: number;
+        currency: 'EUR';
+    };
+    addedAt: string;
+};
+
+function formatCartItem(item: ShoppingCartItem): FormattedCartItem {
+    const priceAmount = 0;
+
+    return {
+        id: item.id,
+        productId: item.entityId,
+        productName: item.entityId,
+        productImage: 'https://images.gredice.com/products/default.jpg',
+        price: {
+            amount: priceAmount,
+            currency: 'EUR',
+        },
+        quantity: item.amount,
+        totalPrice: {
+            amount: priceAmount * item.amount,
+            currency: 'EUR',
+        },
+        addedAt: item.createdAt.toISOString(),
+    };
+}
 
 export async function GET() {
     return NextResponse.json({
@@ -255,18 +308,19 @@ export async function POST(request: NextRequest) {
 // Tool handlers with real database integration
 async function handleGetProducts(
     input: z.infer<typeof GetProductsSchema>,
-    auth: MCPAuth,
+    _auth: MCPAuth,
 ) {
     try {
         // Get real plant sort data from database as products
-        const plantSorts = await getEntitiesFormatted('plantSort');
+        const plantSorts =
+            await getEntitiesFormatted<CommerceEntity>('plantSort');
 
         if (!plantSorts) {
             throw new Error('Failed to fetch plant sorts');
         }
 
         // Transform plant sorts to commerce product format
-        const products = plantSorts.map((plantSort: any) => {
+        const products = plantSorts.map((plantSort) => {
             const plantInfo = plantSort.information?.plant;
             const name = plantInfo?.information?.name || plantSort.name;
             const description =
@@ -392,7 +446,7 @@ async function handleGetProducts(
 
 async function handleGetProduct(
     input: z.infer<typeof GetProductSchema>,
-    auth: MCPAuth,
+    _auth: MCPAuth,
 ) {
     // TODO: Implement with actual getEntityFormatted('products', input.productId)
     const mockProduct = {
@@ -477,7 +531,7 @@ async function handleGetProduct(
 
 async function handleSearchProducts(
     input: z.infer<typeof SearchProductsSchema>,
-    auth: MCPAuth,
+    _auth: MCPAuth,
 ) {
     // TODO: Implement with actual search functionality
     const query = input.query.toLowerCase();
@@ -557,32 +611,11 @@ async function handleGetCart(
         const formattedCart = {
             id: cart.id,
             userId: auth.userId,
-            items:
-                (cart as any).items?.map((item: any) => ({
-                    id: item.id,
-                    productId: item.productId || item.entityId,
-                    productName:
-                        item.productName || item.name || 'Unknown Product',
-                    productImage:
-                        item.productImage ||
-                        'https://images.gredice.com/products/default.jpg',
-                    price: {
-                        amount: parseFloat(item.price || item.unitPrice) || 0,
-                        currency: 'EUR',
-                    },
-                    quantity: item.quantity || 0,
-                    totalPrice: {
-                        amount:
-                            parseFloat(item.price || item.unitPrice) *
-                                item.quantity || 0,
-                        currency: 'EUR',
-                    },
-                    addedAt: item.createdAt || new Date().toISOString(),
-                })) || [],
+            items: cart.items.map(formatCartItem),
         };
 
         const totalAmount = formattedCart.items.reduce(
-            (sum: number, item: any) => sum + item.totalPrice.amount,
+            (sum, item) => sum + item.totalPrice.amount,
             0,
         );
 
@@ -591,7 +624,7 @@ async function handleGetCart(
                 ...formattedCart,
                 totalAmount: { amount: totalAmount, currency: 'EUR' },
                 totalItems: formattedCart.items.reduce(
-                    (sum: number, item: any) => sum + item.quantity,
+                    (sum, item) => sum + item.quantity,
                     0,
                 ),
             },
@@ -680,7 +713,7 @@ async function handleAddToCart(
 
 async function handleUpdateCartItem(
     input: z.infer<typeof UpdateCartItemSchema>,
-    auth: MCPAuth,
+    _auth: MCPAuth,
 ) {
     // TODO: Implement with actual database update
     const action = input.quantity === 0 ? 'removed' : 'updated';
@@ -703,7 +736,7 @@ async function handleUpdateCartItem(
 
 async function handleCreateOrder(
     input: z.infer<typeof CreateOrderSchema>,
-    auth: MCPAuth,
+    _auth: MCPAuth,
 ) {
     // TODO: Implement with actual order creation and payment processing
     const orderId = `order-${Date.now()}`;
@@ -733,7 +766,7 @@ async function handleCreateOrder(
 
 async function handleGetOrders(
     input: z.infer<typeof GetOrdersSchema>,
-    auth: MCPAuth,
+    _auth: MCPAuth,
 ) {
     // TODO: Implement with actual database query
     const mockOrders = [

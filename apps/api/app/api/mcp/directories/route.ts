@@ -1,8 +1,8 @@
 import { getEntitiesFormatted } from '@gredice/storage';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { Logger } from 'next-axiom';
 import { z } from 'zod';
+import { Logger } from '../logger';
 import { negotiateMcpProtocolVersion } from '../protocol';
 
 export const dynamic = 'force-dynamic';
@@ -381,9 +381,21 @@ const SearchEntitiesSchema = z.object({
 });
 
 // Handlers (adapted from tools/call subroute)
+async function getDirectoryEntities<T>(entityTypeName: string): Promise<T[]> {
+    try {
+        return (await getEntitiesFormatted<T>(entityTypeName)) || [];
+    } catch (error) {
+        const message =
+            error instanceof Error ? error.message : 'Unknown error';
+        console.warn(
+            `Directory ${entityTypeName} data not available: ${message}`,
+        );
+        return [];
+    }
+}
+
 async function handleGetPlants(input: z.infer<typeof GetPlantsSchema>) {
-    const allPlants =
-        (await getEntitiesFormatted<EntityStandardized>('plant')) || [];
+    const allPlants = await getDirectoryEntities<EntityStandardized>('plant');
 
     // Filter by category if specified
     let filteredPlants = allPlants;
@@ -432,8 +444,7 @@ async function handleGetPlant(input: z.infer<typeof GetPlantSchema>) {
     // Get real plant data from database by searching by name
     let plant: EntityStandardized | null = null;
 
-    const allPlants =
-        (await getEntitiesFormatted<EntityStandardized>('plant')) || [];
+    const allPlants = await getDirectoryEntities<EntityStandardized>('plant');
 
     // Search for plant by name (case-insensitive, partial match)
     const searchName = input.plantName.toLowerCase();
@@ -464,15 +475,13 @@ async function handleGetPlant(input: z.infer<typeof GetPlantSchema>) {
     if (input.includeSorts) {
         try {
             const allSorts =
-                (await getEntitiesFormatted<EntityStandardized>(
-                    'plant-sort',
-                )) || [];
+                await getDirectoryEntities<EntityStandardized>('plant-sort');
             const plantId = plant.id;
             const plantName = plant.information?.name;
             const plantSorts = allSorts.filter((sort) => {
                 const attrPlantId =
-                    typeof sort.attributes?.['plantId'] === 'number'
-                        ? (sort.attributes?.['plantId'] as number)
+                    typeof sort.attributes?.plantId === 'number'
+                        ? sort.attributes.plantId
                         : undefined;
                 return (
                     sort.information?.plant?.id === plantId ||
@@ -544,9 +553,7 @@ async function handleSearchEntities(
             type: 'plant',
             name: 'Rajčica',
             nameLatin: 'Solanum lycopersicum',
-            description:
-                'Popularna biljka za uzgoj - pronađeno po upitu: ' +
-                input.query,
+            description: `Popularna biljka za uzgoj - pronađeno po upitu: ${input.query}`,
             category: 'vegetables',
             relevance: query.includes('rajč') ? 0.9 : 0.3,
         },
@@ -554,8 +561,7 @@ async function handleSearchEntities(
             id: '2',
             type: 'plant_sort',
             name: 'Cherry rajčica',
-            description:
-                'Mala, slatka rajčica - pronađeno po upitu: ' + input.query,
+            description: `Mala, slatka rajčica - pronađeno po upitu: ${input.query}`,
             plant: { name: 'Rajčica', nameLatin: 'Solanum lycopersicum' },
             relevance:
                 query.includes('cherry') || query.includes('rajč') ? 0.8 : 0.2,
@@ -564,9 +570,7 @@ async function handleSearchEntities(
             id: '1',
             type: 'operation',
             name: 'Zalijevanje',
-            description:
-                'Redovito zalijevanje biljaka - pronađeno po upitu: ' +
-                input.query,
+            description: `Redovito zalijevanje biljaka - pronađeno po upitu: ${input.query}`,
             category: 'watering',
             relevance:
                 query.includes('zalij') || query.includes('voda') ? 0.9 : 0.1,
