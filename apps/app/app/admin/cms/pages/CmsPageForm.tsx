@@ -538,6 +538,9 @@ export function CmsPageForm({
                                                 rawMode ? 'solid' : 'outlined'
                                             }
                                             onClick={() => {
+                                                if (rawMode) {
+                                                    return;
+                                                }
                                                 setRawMode(true);
                                                 setRawError(null);
                                                 setRawContent(builderContent);
