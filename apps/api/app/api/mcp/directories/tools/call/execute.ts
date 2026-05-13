@@ -68,6 +68,25 @@ function entityName(entity: EntityStandardized): string {
     return entity.information?.name || entity.information?.label || `Entity ${entity.id}`;
 }
 
+function extractPlantName(entity: EntityStandardized): string {
+    const info = entity.information;
+    if (!info) return '';
+    if (typeof info.plant === 'object' && info.plant) {
+        return entityName(info.plant);
+    }
+    const nestedPlantName = (info as Record<string, unknown>).plant;
+    if (typeof nestedPlantName === 'object' && nestedPlantName) {
+        const nestedInfo = (nestedPlantName as { information?: { name?: string } }).information;
+        return nestedInfo?.name ?? '';
+    }
+    return '';
+}
+
+function extractSeedSortName(seed: EntityStandardized): string {
+    const plantSort = (seed.information as { plantSort?: { information?: { name?: string } } } | undefined)?.plantSort;
+    return plantSort?.information?.name ?? '';
+}
+
 function paginate<T>(values: T[], limit: number, offset: number) {
     return values.slice(offset, offset + limit);
 }
@@ -197,11 +216,7 @@ async function handleSearchEntities(input: z.infer<typeof SearchEntitiesSchema>)
 async function handleGetPlantSorts(input: z.infer<typeof GetPlantSortsSchema>) {
     const allSorts = await getDirectoryEntities(DIRECTORY_ENTITY_TYPES.sort);
     const filtered = input.plant_type
-        ? allSorts.filter((sort) =>
-              `${sort.attributes?.plant_type ?? sort.attributes?.plantType ?? ''}`
-                  .toLowerCase()
-                  .includes((input.plant_type ?? '').toLowerCase()),
-          )
+        ? allSorts.filter((sort) => extractPlantName(sort).toLowerCase().includes((input.plant_type ?? '').toLowerCase()))
         : allSorts;
 
     return {
@@ -219,14 +234,17 @@ async function handleGetPlantSorts(input: z.infer<typeof GetPlantSortsSchema>) {
 async function handleGetOperations(input: z.infer<typeof GetOperationsSchema>) {
     const allOperations = await getDirectoryEntities(DIRECTORY_ENTITY_TYPES.operation);
     const filtered = input.category
-        ? allOperations.filter((op) => `${op.attributes?.category ?? ''}`.toLowerCase() === (input.category ?? '').toLowerCase())
+        ? allOperations.filter((op) =>
+              `${op.attributes?.application ?? op.attributes?.frequency ?? ''}`.toLowerCase() ===
+              (input.category ?? '').toLowerCase(),
+          )
         : allOperations;
 
     return {
         operations: paginate(filtered, input.limit, input.offset).map((operation) => ({
             id: operation.id.toString(),
             name: entityName(operation),
-            category: operation.attributes?.category ?? null,
+            category: operation.attributes?.application ?? operation.attributes?.frequency ?? null,
             description: operation.information?.description || '',
             steps: operation.attributes?.steps ?? [],
             tools: operation.attributes?.tools ?? [],
@@ -241,18 +259,18 @@ async function handleGetSeeds(input: z.infer<typeof GetSeedsSchema>) {
     const allSeeds = await getDirectoryEntities(DIRECTORY_ENTITY_TYPES.seed);
     let filtered = allSeeds;
     if (input.plant_type) {
-        filtered = filtered.filter((seed) => `${seed.attributes?.plant_type ?? seed.attributes?.plantType ?? ''}`.toLowerCase().includes((input.plant_type ?? '').toLowerCase()));
+        filtered = filtered.filter((seed) => extractPlantName(seed).toLowerCase().includes((input.plant_type ?? '').toLowerCase()));
     }
     if (input.variety) {
-        filtered = filtered.filter((seed) => `${seed.attributes?.variety ?? ''}`.toLowerCase().includes((input.variety ?? '').toLowerCase()));
+        filtered = filtered.filter((seed) => extractSeedSortName(seed).toLowerCase().includes((input.variety ?? '').toLowerCase()));
     }
 
     return {
         seeds: paginate(filtered, input.limit, input.offset).map((seed) => ({
             id: seed.id.toString(),
             name: entityName(seed),
-            plant_type: seed.attributes?.plant_type ?? seed.attributes?.plantType ?? null,
-            variety: seed.attributes?.variety ?? null,
+            plant_type: extractPlantName(seed) || null,
+            variety: extractSeedSortName(seed) || null,
             description: seed.information?.description || '',
         })),
         total: filtered.length,
