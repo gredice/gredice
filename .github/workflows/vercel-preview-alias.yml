@@ -63,6 +63,7 @@ jobs:
           alias_deployment() {
             local app_name="$1"
             local deployment_url="$2"
+            local allow_failure="${3:-false}"
             local project_name="${vercel_project_names[$app_name]}"
             local alias_output
             local alias_domain
@@ -74,6 +75,12 @@ jobs:
               GREDICE_PREVIEW_ALIAS_PREFIX="${app_name}" \
               GITHUB_HEAD_REF="${BRANCH_NAME}" \
               node ./scripts/alias-preview.mjs; then
+              if [ "${allow_failure}" = "true" ]; then
+                echo "Could not alias ${app_name} preview deployment yet; will retry if it remains pending."
+                rm -f "${alias_output}"
+                return 1
+              fi
+
               echo "Failed to alias ${app_name} preview deployment."
               exit 1
             fi
@@ -136,15 +143,19 @@ jobs:
               deployment_state=$(cut -f2 <<< "${deployment}")
               echo "Found ${app_name} preview deployment ${deployment_url} with state ${deployment_state} for ${HEAD_SHA}."
 
-              if [ "${deployment_state}" = "READY" ]; then
-                alias_deployment "${app_name}" "${deployment_url}"
+              if [ "${deployment_state}" = "ERROR" ] || [ "${deployment_state}" = "CANCELED" ]; then
+                echo "Skipping ${app_name}; preview deployment for ${HEAD_SHA} finished with state ${deployment_state}."
                 unset "pending_project_ids[${app_name}]"
                 pending_count=$((pending_count - 1))
                 continue
               fi
 
-              if [ "${deployment_state}" = "ERROR" ] || [ "${deployment_state}" = "CANCELED" ]; then
-                echo "Skipping ${app_name}; preview deployment for ${HEAD_SHA} finished with state ${deployment_state}."
+              allow_alias_failure=false
+              if [ "${deployment_state}" != "READY" ]; then
+                allow_alias_failure=true
+              fi
+
+              if alias_deployment "${app_name}" "${deployment_url}" "${allow_alias_failure}"; then
                 unset "pending_project_ids[${app_name}]"
                 pending_count=$((pending_count - 1))
               fi
@@ -157,7 +168,7 @@ jobs:
             if [ "${attempt}" -eq "${max_attempts}" ]; then
               for app_name in "${apps[@]}"; do
                 if [[ -v pending_project_ids[$app_name] ]]; then
-                  echo "::warning title=Vercel preview alias timeout::Timed out waiting for ready ${app_name} preview deployment."
+                  echo "::warning title=Vercel preview alias timeout::Timed out waiting to alias ${app_name} preview deployment."
                 fi
               done
               break
