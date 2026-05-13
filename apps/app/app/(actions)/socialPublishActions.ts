@@ -68,7 +68,6 @@ function sanitizeUnexpectedErrorDetails(
     error: unknown,
 ): Record<string, unknown> {
     return {
-        reason: 'unexpected_publish_error',
         errorType: error instanceof Error ? error.name : typeof error,
     };
 }
@@ -188,7 +187,7 @@ export async function publishSocialPostAction(
     duplicateSubmissionKeys.set(submissionToken, now + 5 * 60_000);
 
     let socialPostId: number | undefined;
-    let providerSubmissionAttempted = false;
+    let providerSubmissionMayHaveStarted = false;
 
     try {
         const created = await createSocialPost({
@@ -207,7 +206,7 @@ export async function publishSocialPostAction(
         socialPostId = created.id;
         await updateSocialPostStatus({ id: created.id, status: 'submitting' });
 
-        providerSubmissionAttempted = true;
+        providerSubmissionMayHaveStarted = true;
         const providerResult = await adapter.publishPost({
             title,
             body: body || undefined,
@@ -254,7 +253,7 @@ export async function publishSocialPostAction(
             providerPermalink: providerResult.permalink,
         };
     } catch (error) {
-        if (!providerSubmissionAttempted) {
+        if (!providerSubmissionMayHaveStarted) {
             duplicateSubmissionKeys.delete(submissionToken);
         }
 
