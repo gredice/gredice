@@ -1,3 +1,5 @@
+import 'server-only';
+
 import type {
     SocialPostInput,
     SocialProviderAdapter,
@@ -59,11 +61,13 @@ export function readRedditEnv(env = process.env): RedditEnv {
 
 export class RedditProviderAdapter implements SocialProviderAdapter {
     readonly name = 'reddit' as const;
+    private readonly config: RedditEnv;
+    private readonly fetchImpl: FetchLike;
 
-    constructor(
-        private readonly config = readRedditEnv(),
-        private readonly fetchImpl: FetchLike = fetch,
-    ) {}
+    constructor(config = readRedditEnv(), fetchImpl: FetchLike = fetch) {
+        this.config = config;
+        this.fetchImpl = fetchImpl;
+    }
 
     validateConfig(): SocialPublishError | null {
         if (!this.config.enabled) {

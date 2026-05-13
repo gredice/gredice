@@ -1,6 +1,7 @@
-import { expect, test } from '@playwright/test';
+import assert from 'node:assert/strict';
+import test from 'node:test';
 
-import { RedditProviderAdapter, readRedditEnv } from './redditAdapter';
+import { RedditProviderAdapter, readRedditEnv } from './redditAdapter.ts';
 
 function response(body: unknown, status = 200): Response {
     return new Response(JSON.stringify(body), {
@@ -34,9 +35,9 @@ test('readRedditEnv builds allowlist and default destination', () => {
         SOCIAL_PROVIDER_REDDIT_ALLOWED_DESTINATIONS: 'gardening, gredice',
     });
 
-    expect(env.enabled).toBe(true);
-    expect(env.allowedDestinations.has('gredice')).toBe(true);
-    expect(env.allowedDestinations.has('gardening')).toBe(true);
+    assert.equal(env.enabled, true);
+    assert.equal(env.allowedDestinations.has('gredice'), true);
+    assert.equal(env.allowedDestinations.has('gardening'), true);
 });
 
 test('publishPost returns operational error when missing credentials', async () => {
@@ -53,8 +54,8 @@ test('publishPost returns operational error when missing credentials', async () 
     );
 
     const result = await adapter.publishPost({ title: 'Hello' });
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe('missing_credentials');
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, 'missing_credentials');
 });
 
 test('publishPost submits text post and normalizes success', async () => {
@@ -87,14 +88,15 @@ test('publishPost submits text post and normalizes success', async () => {
     );
 
     const result = await adapter.publishPost({ title: 'Hi', body: 'body' });
-    expect(result.ok).toBe(true);
+    assert.equal(result.ok, true);
     if (result.ok) {
-        expect(result.providerPostId).toBe('abc123');
-        expect(result.permalink).toBe(
+        assert.equal(result.providerPostId, 'abc123');
+        assert.equal(
+            result.permalink,
             'https://reddit.com/r/gredice/comments/abc123/test',
         );
     }
-    expect(calls).toHaveLength(2);
+    assert.equal(calls.length, 2);
 });
 
 test('publishPost maps subreddit failure into sanitized invalid_destination', async () => {
@@ -119,10 +121,10 @@ test('publishPost maps subreddit failure into sanitized invalid_destination', as
     );
 
     const result = await adapter.publishPost({ title: 'Hi' });
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
     if (!result.ok) {
-        expect(result.code).toBe('invalid_destination');
-        expect(result.message.includes('credentials')).toBe(false);
+        assert.equal(result.code, 'invalid_destination');
+        assert.equal(result.message.includes('credentials'), false);
     }
 });
 
@@ -147,12 +149,12 @@ test('publishPost maps submit transport failures into retriable provider_unavail
     const { result, warnings } = await captureWarnings(() =>
         adapter.publishPost({ title: 'Hi' }),
     );
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
     if (!result.ok) {
-        expect(result.code).toBe('provider_unavailable');
-        expect(result.retriable).toBe(true);
+        assert.equal(result.code, 'provider_unavailable');
+        assert.equal(result.retriable, true);
     }
-    expect(warnings).toHaveLength(1);
+    assert.equal(warnings.length, 1);
 });
 
 test('publishPost maps non-JSON submit responses into retriable provider_unavailable', async () => {
@@ -176,10 +178,10 @@ test('publishPost maps non-JSON submit responses into retriable provider_unavail
     const { result, warnings } = await captureWarnings(() =>
         adapter.publishPost({ title: 'Hi' }),
     );
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
     if (!result.ok) {
-        expect(result.code).toBe('provider_unavailable');
-        expect(result.retriable).toBe(true);
+        assert.equal(result.code, 'provider_unavailable');
+        assert.equal(result.retriable, true);
     }
-    expect(warnings).toHaveLength(1);
+    assert.equal(warnings.length, 1);
 });
