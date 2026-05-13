@@ -18,6 +18,7 @@
                 "GREDICE_GOOGLE_MAPS_API_KEY",
                 "GREDICE_GOOGLE_MAPS_URL_SIGNING_SECRET",
                 "GREDICE_JWT_SIGN_SECRET",
+                "GREDICE_WWW_REVALIDATE_SECRET",
                 "NEXT_PUBLIC_POSTHOG_API_HOST",
                 "NEXT_PUBLIC_POSTHOG_HOST",
                 "NEXT_PUBLIC_POSTHOG_KEY",
@@ -33,6 +34,7 @@
                 "POSTGRES_URL_NO_SSL",
                 "POSTGRES_USER",
                 "POSTHOG_SERVER_HOST",
+                "VERCEL_ENV",
                 "VERCEL_OIDC_TOKEN",
                 "VIZZLY_TOKEN"
             ]
