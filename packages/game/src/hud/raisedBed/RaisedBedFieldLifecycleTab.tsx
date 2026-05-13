@@ -218,6 +218,7 @@ export function RaisedBedFieldLifecycleTab({
             icon = <span className="mr-0.5">{'⌛'}</span>;
             break;
         case 'sowed':
+        case 'pendingVerification':
             icon = <span className="mr-0.5">{'𓇢'}</span>;
             break;
         case 'notSprouted':
@@ -240,6 +241,9 @@ export function RaisedBedFieldLifecycleTab({
             break;
         case 'died':
             icon = <span className="mr-0.5">{'😢'}</span>;
+            break;
+        case 'removed':
+            icon = <span className="mr-0.5">{'🗑️'}</span>;
             break;
     }
 
