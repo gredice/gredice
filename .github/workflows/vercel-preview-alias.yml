@@ -44,8 +44,8 @@ jobs:
 
           max_attempts="${MAX_ATTEMPTS}"
           sleep_seconds="${SLEEP_SECONDS}"
-          aliases_table="| App | Preview |
-          | --- | --- |"
+          aliases_table="| App | Preview |"
+          aliases_table+=$'\n| --- | --- |'
           alias_count=0
           apps=(www garden farm app storybook api status)
           declare -A pending_project_ids
@@ -64,14 +64,13 @@ jobs:
               GITHUB_HEAD_REF="${BRANCH_NAME}" \
               node ./scripts/alias-preview.mjs
 
-            alias_domain=$(sed -n 's/^alias_domain=//p' "${alias_output}" | tail -n 1)
-            if [ -z "${alias_domain}" ]; then
+            alias_domain=$(sed -n 's/^alias_domain=//p' "${alias_output}")
+            if [ -z "${alias_domain}" ] || [[ "${alias_domain}" == *$'\n'* ]]; then
               echo "Failed to read alias domain for ${app_name}."
               exit 1
             fi
 
-            aliases_table="${aliases_table}
-          | [${app_name}](https://vercel.com/${VERCEL_SCOPE}/${app_name}) | [Preview](https://${alias_domain}) |"
+            aliases_table+=$'\n'"| [${app_name}](https://vercel.com/${VERCEL_SCOPE}/${app_name}) | [Preview](https://${alias_domain}) |"
             alias_count=$((alias_count + 1))
           }
 
@@ -96,7 +95,7 @@ jobs:
             fi
 
             for app_name in "${apps[@]}"; do
-              if [ -z "${pending_project_ids[${app_name}]+set}" ]; then
+              if ! [[ -v pending_project_ids[$app_name] ]]; then
                 continue
               fi
 
@@ -140,7 +139,7 @@ jobs:
 
             if [ "${attempt}" -eq "${max_attempts}" ]; then
               for app_name in "${apps[@]}"; do
-                if [ -n "${pending_project_ids[${app_name}]+set}" ]; then
+                if [[ -v pending_project_ids[$app_name] ]]; then
                   echo "Timed out waiting for ready ${app_name} preview deployment for branch ${BRANCH_NAME} at ${HEAD_SHA}."
                 fi
               done
@@ -152,8 +151,7 @@ jobs:
           done
 
           if [ "${alias_count}" -eq 0 ]; then
-            aliases_table="${aliases_table}
-          | — | No preview aliases available yet. |"
+            aliases_table+=$'\n| — | No preview aliases available yet. |'
           fi
 
           {
