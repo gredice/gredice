@@ -1,0 +1,222 @@
+name: Vercel preview alias
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pull_request_number:
+        description: "Pull request number to update"
+        required: true
+        type: string
+      branch_name:
+        description: "PR head branch name"
+        required: true
+        type: string
+      head_sha:
+        description: "PR head commit SHA"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  comment_placeholder:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sticky PR comment with alias placeholder
+        uses: marocchino/sticky-pull-request-comment@v2.9.4
+        with:
+          header: vercel-preview-alias
+          number: ${{ github.event.pull_request.number }}
+          message: |
+            | App | Preview |
+            | --- | --- |
+            | - | No preview aliases requested. |
+
+            [![Run alias workflow](https://img.shields.io/badge/Request%20preview%20aliases-Run%20workflow-6f42c1?style=for-the-badge)](https://github.com/${{ github.repository }}/actions/workflows/vercel-preview-alias.yml)
+
+            If you need aliases for testing, run this workflow manually and provide:
+            - `pull_request_number`: `${{ github.event.pull_request.number }}`
+            - `branch_name`: `${{ github.head_ref }}`
+            - `head_sha`: `${{ github.event.pull_request.head.sha }}`
+
+  alias_previews:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version: "24.15.0"
+
+      - name: Install Vercel CLI
+        run: npm i --global vercel@latest
+
+      - name: Alias preview deployments
+        id: alias_previews
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_SCOPE: gredice
+          GREDICE_PREVIEW_DOMAIN: preview.gredice.com
+          VERCEL_PROJECT_ID_WWW: ${{ secrets.VERCEL_PROJECT_ID_WWW }}
+          VERCEL_PROJECT_ID_GARDEN: ${{ secrets.VERCEL_PROJECT_ID_GARDEN }}
+          VERCEL_PROJECT_ID_FARM: ${{ secrets.VERCEL_PROJECT_ID_FARM }}
+          VERCEL_PROJECT_ID_APP: ${{ secrets.VERCEL_PROJECT_ID_APP }}
+          VERCEL_PROJECT_ID_STORYBOOK: ${{ secrets.VERCEL_PROJECT_ID_STORYBOOK }}
+          VERCEL_PROJECT_ID_API: ${{ secrets.VERCEL_PROJECT_ID_API }}
+          VERCEL_PROJECT_ID_STATUS: ${{ secrets.VERCEL_PROJECT_ID_STATUS }}
+          BRANCH_NAME: ${{ inputs.branch_name }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+          MAX_ATTEMPTS: 30
+          SLEEP_SECONDS: 20
+        run: |
+          set -euo pipefail
+
+          max_attempts="${MAX_ATTEMPTS}"
+          sleep_seconds="${SLEEP_SECONDS}"
+          aliases_table="| App | Preview |"
+          aliases_table+=$'\n| --- | --- |'
+          alias_count=0
+          apps=(www garden farm app storybook api status)
+          declare -A pending_project_ids
+          declare -A vercel_project_names=(
+            [www]=www
+            [garden]=garden
+            [farm]=farm
+            [app]=app
+            [storybook]=storybook
+            [api]=api
+            [status]=status
+          )
+          pending_count=0
+
+          alias_deployment() {
+            local app_name="$1"
+            local deployment_url="$2"
+            local project_name="${vercel_project_names[$app_name]}"
+            local alias_output
+            local alias_domain
+            local alias_domain_newline_count
+
+            alias_output=$(mktemp)
+            if ! GITHUB_OUTPUT="${alias_output}" \
+              VERCEL_DEPLOYMENT_URL="${deployment_url}" \
+              GREDICE_PREVIEW_ALIAS_PREFIX="${app_name}" \
+              GITHUB_HEAD_REF="${BRANCH_NAME}" \
+              node ./scripts/alias-preview.mjs; then
+              echo "Failed to alias ${app_name} preview deployment."
+              exit 1
+            fi
+
+            alias_domain=$(sed -n 's/^alias_domain=//p' "${alias_output}")
+            alias_domain_newline_count=$(printf '%s' "${alias_domain}" | wc -l | tr -d ' ')
+            if [ -z "${alias_domain}" ] || [ "${alias_domain_newline_count}" -gt 0 ]; then
+              echo "Failed to read alias domain for ${app_name}."
+              exit 1
+            fi
+
+            app_link="[${app_name}](https://vercel.com/${VERCEL_SCOPE}/${project_name})"
+            preview_link="[Preview](https://${alias_domain})"
+            aliases_table+=$'\n'"| ${app_link} | ${preview_link} |"
+            alias_count=$((alias_count + 1))
+          }
+
+          for app_name in "${apps[@]}"; do
+            app_key="${app_name^^}"
+            project_id_var="VERCEL_PROJECT_ID_${app_key}"
+            project_id="${!project_id_var:-}"
+
+            if [ -z "${project_id}" ]; then
+              echo "Skipping ${app_name}; ${project_id_var} is not configured."
+              continue
+            fi
+
+            pending_project_ids["${app_name}"]="${project_id}"
+            pending_count=$((pending_count + 1))
+          done
+
+          # Vercel creates preview deployments asynchronously; tune MAX_ATTEMPTS and SLEEP_SECONDS to control the wait.
+          for attempt in $(seq 1 "${max_attempts}"); do
+            if [ "${pending_count}" -eq 0 ]; then
+              break
+            fi
+
+            for app_name in "${apps[@]}"; do
+              if ! [[ -v pending_project_ids[$app_name] ]]; then
+                continue
+              fi
+
+              project_id="${pending_project_ids[${app_name}]}"
+              deployment=$(curl -fsSL -G \
+                -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+                --data-urlencode "projectId=${project_id}" \
+                --data-urlencode "target=preview" \
+                --data-urlencode "meta-githubCommitRef=${BRANCH_NAME}" \
+                --data-urlencode "meta-githubCommitSha=${HEAD_SHA}" \
+                --data-urlencode "limit=1" \
+                "https://api.vercel.com/v6/deployments?teamId=${VERCEL_TEAM_ID}" | \
+                jq -r '.deployments[0] // empty | [.url, .state] | @tsv')
+
+              if [ -z "${deployment}" ]; then
+                echo "No ${app_name} preview deployment found for branch ${BRANCH_NAME} at ${HEAD_SHA} yet."
+                continue
+              fi
+
+              deployment_url=$(cut -f1 <<< "${deployment}")
+              deployment_state=$(cut -f2 <<< "${deployment}")
+              echo "Found ${app_name} preview deployment ${deployment_url} with state ${deployment_state} for ${HEAD_SHA}."
+
+              if [ "${deployment_state}" = "READY" ]; then
+                alias_deployment "${app_name}" "${deployment_url}"
+                unset "pending_project_ids[${app_name}]"
+                pending_count=$((pending_count - 1))
+                continue
+              fi
+
+              if [ "${deployment_state}" = "ERROR" ] || [ "${deployment_state}" = "CANCELED" ]; then
+                echo "Skipping ${app_name}; preview deployment for ${HEAD_SHA} finished with state ${deployment_state}."
+                unset "pending_project_ids[${app_name}]"
+                pending_count=$((pending_count - 1))
+              fi
+            done
+
+            if [ "${pending_count}" -eq 0 ]; then
+              break
+            fi
+
+            if [ "${attempt}" -eq "${max_attempts}" ]; then
+              for app_name in "${apps[@]}"; do
+                if [[ -v pending_project_ids[$app_name] ]]; then
+                  echo "::warning title=Vercel preview alias timeout::Timed out waiting for ready ${app_name} preview deployment."
+                fi
+              done
+              break
+            fi
+
+            echo "Waiting ${sleep_seconds}s before retry ${attempt}/${max_attempts}."
+            sleep "${sleep_seconds}"
+          done
+
+          if [ "${alias_count}" -eq 0 ]; then
+            aliases_table+=$'\n| - | No preview aliases available yet. |'
+          fi
+
+          {
+            echo "aliases_table<<ALIASES"
+            echo "${aliases_table}"
+            echo "ALIASES"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Sticky PR comment with preview aliases
+        uses: marocchino/sticky-pull-request-comment@v2.9.4
+        with:
+          header: vercel-preview-alias
+          number: ${{ inputs.pull_request_number }}
+          message: |
+            ${{ steps.alias_previews.outputs.aliases_table }}

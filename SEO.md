@@ -27,6 +27,13 @@ SEO usually does not apply to authenticated `garden`, `farm`, `app`, or API rout
 - Use stable slugs and aliases already present in directory/API data.
 - Redirect outdated paths rather than rendering duplicate content when the app already has redirect/proxy conventions.
 
+## llms.txt and llms-full.txt
+
+- Keep `llms.txt` and `llms-full.txt` on the same canonical public domain as other SEO metadata (`https://www.gredice.com`).
+- If `/.well-known/llms.txt` is provided for discovery, redirect it to the canonical `/llms.txt` path.
+- Include only public, canonical, indexable resources; exclude private app routes, staging domains, and internal documentation.
+- See `docs/llms-txt-policy.md` for ownership and inclusion decisions (GRE-335).
+
 ## Structured data
 
 - Use structured data only when it accurately represents rendered page content.

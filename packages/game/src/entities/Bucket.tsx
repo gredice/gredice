@@ -1,5 +1,6 @@
 import { animated } from '@react-spring/three';
 import { MeshDistortMaterial } from '@react-three/drei';
+import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
@@ -42,6 +43,11 @@ export function Bucket({ stack, block, rotation }: EntityInstanceProps) {
                     noiseScale={3.5}
                     coverageMultiplier={0.5}
                 />
+                <RainWetOverlay
+                    geometry={nodes.Bucket_2.geometry}
+                    topSurfaceBias={2.6}
+                    glossiness={0.9}
+                />
             </mesh>
             <mesh
                 castShadow
@@ -55,6 +61,7 @@ export function Bucket({ stack, block, rotation }: EntityInstanceProps) {
                     slopeExponent={2.8}
                     noiseScale={3.2}
                 />
+                <RainWetOverlay geometry={nodes.Bucket_3.geometry} />
             </mesh>
             <mesh
                 castShadow
@@ -69,6 +76,12 @@ export function Bucket({ stack, block, rotation }: EntityInstanceProps) {
                     slopeExponent={4.5}
                     noiseScale={5}
                     coverageMultiplier={0.4}
+                />
+                <RainWetOverlay
+                    geometry={nodes['Bucket_-_Handle'].geometry}
+                    topSurfaceBias={3}
+                    darkness={0.7}
+                    glossiness={0.85}
                 />
             </mesh>
         </animated.group>

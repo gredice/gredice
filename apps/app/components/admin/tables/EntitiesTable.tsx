@@ -23,7 +23,6 @@ import { formatAttributeValueWithUnit } from '../../shared/attributes/formatAttr
 import { InventoryQuantityValue } from '../../shared/inventory/InventoryQuantityValue';
 import { NoDataPlaceholder } from '../../shared/placeholders/NoDataPlaceholder';
 import { ServerActionIconButton } from '../../shared/ServerActionIconButton';
-import { EntityAttributeProgress } from '../directories/EntityAttributeProgress';
 import { useFilter } from '../providers';
 import { EntityTableStateChip } from './EntityTableStateChip';
 
@@ -35,12 +34,7 @@ type InventoryItem = {
 };
 type InventoryItemWithEntityId = InventoryItem & { entityId: number };
 type SortDirection = 'asc' | 'desc';
-type SortKey =
-    | 'name'
-    | 'inventory'
-    | 'progress'
-    | 'updatedAt'
-    | `attribute:${number}`;
+type SortKey = 'name' | 'inventory' | 'updatedAt' | `attribute:${number}`;
 type SortState = {
     key: SortKey;
     direction: SortDirection;
@@ -167,7 +161,6 @@ export function EntitiesTable({
                         sortableHead(`attribute:${d.id}`, d.label, d.id),
                     )}
                     {hasInventory && sortableHead('inventory', 'Zalihe')}
-                    {sortableHead('progress', 'Ispunjeno')}
                     {sortableHead('updatedAt', 'Izmjene')}
                     <Table.Head></Table.Head>
                 </Table.Row>
@@ -195,6 +188,10 @@ export function EntitiesTable({
                                 <div className="flex items-center gap-2">
                                     <EntityTableStateChip
                                         initialState={entity.state}
+                                        completeness={getEntityCompleteness(
+                                            entity,
+                                            attributeDefinitions,
+                                        )}
                                         onPublish={() =>
                                             updateEntity({
                                                 id: entity.id,
@@ -236,14 +233,6 @@ export function EntitiesTable({
                                     />
                                 </Table.Cell>
                             )}
-                            <Table.Cell>
-                                <div className="w-20">
-                                    <EntityAttributeProgress
-                                        entity={entity}
-                                        definitions={attributeDefinitions}
-                                    />
-                                </div>
-                            </Table.Cell>
                             <Table.Cell>
                                 <Typography secondary>
                                     <LocalDateTime time={false}>
@@ -383,10 +372,6 @@ function entitySortValue(
         return inventoryByEntityId.get(entity.id)?.quantity ?? null;
     }
 
-    if (key === 'progress') {
-        return getEntityCompleteness(entity, definitions).progress;
-    }
-
     if (key === 'updatedAt') {
         return entity.updatedAt.getTime();
     }
@@ -416,9 +401,7 @@ function compareSortValues(
 }
 
 function defaultSortDirection(key: SortKey): SortDirection {
-    return key === 'updatedAt' || key === 'inventory' || key === 'progress'
-        ? 'desc'
-        : 'asc';
+    return key === 'updatedAt' || key === 'inventory' ? 'desc' : 'asc';
 }
 
 function attributeSortValue(

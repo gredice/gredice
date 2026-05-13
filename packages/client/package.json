@@ -19,7 +19,7 @@
         "openapi-fetch": "0.17.0"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.14",
+        "@biomejs/biome": "2.4.15",
         "@types/node": "24.12.2",
         "api": "workspace:*",
         "hono": "4.12.18",

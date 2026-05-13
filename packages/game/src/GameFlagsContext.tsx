@@ -11,6 +11,7 @@ export interface GameFeatureFlags {
     enableRaisedBedFieldOperationsFlag?: boolean;
     enableRaisedBedFieldWateringFlag?: boolean;
     enableRaisedBedFieldDiaryFlag?: boolean;
+    enableRainWetOverlayFlag?: boolean;
     raisedBedImageAI?: boolean;
     enablePlantHistoryFlag?: boolean;
 }

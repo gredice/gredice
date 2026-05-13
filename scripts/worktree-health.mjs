@@ -17,6 +17,21 @@ const checks = [];
 function addCheck(name, required, ok, detail, next) { checks.push({ name, required, ok, detail, next }); }
 function run(cmd, args, options = {}) { return spawnSync(cmd, args, { encoding: 'utf8', ...options }); }
 function hasFailedRequiredChecks() { return checks.some((c) => c.required && !c.ok); }
+function readConfiguredPnpm() {
+  const packageJsonPath = resolve(rootDir, 'package.json');
+  try {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+    const packageManager = typeof packageJson.packageManager === 'string' ? packageJson.packageManager : '';
+    const versionMatch = /^pnpm@([^+\s]+)(?:\+.+)?$/.exec(packageManager);
+    if (!versionMatch) {
+      return { ok: false, detail: packageManager ? `Unsupported packageManager: ${packageManager}.` : 'Missing packageManager in package.json.' };
+    }
+    return { ok: true, packageManager, version: versionMatch[1] };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { ok: false, detail: `Could not read ${packageJsonPath}: ${message}.` };
+  }
+}
 
 function checkNode() {
   const major = Number(process.versions.node.split('.')[0]);
@@ -24,9 +39,15 @@ function checkNode() {
 }
 
 function checkPnpm() {
+  const configured = readConfiguredPnpm();
+  if (!configured.ok) {
+    addCheck('pnpm packageManager', true, false, configured.detail, 'Set the root packageManager field to pnpm@<version>.');
+    return;
+  }
+
   const r = run('pnpm', ['--version']);
   const v = (r.stdout || '').trim();
-  addCheck('pnpm 10.33.2', true, r.status === 0 && v === '10.33.2', `Detected ${v || 'not found'}.`, 'Use corepack and pin pnpm 10.33.2.');
+  addCheck(`pnpm ${configured.version}`, true, r.status === 0 && v === configured.version, `Detected ${v || 'not found'}; expected ${configured.packageManager}.`, 'Run `corepack install` from the repo root and retry.');
 }
 
 function checkDependencies() {

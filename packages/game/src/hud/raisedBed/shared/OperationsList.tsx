@@ -197,14 +197,14 @@ export function OperationsList({
                     className="px-1"
                 >
                     <Alert color="warning" className="py-1">
-                        Radnje u košarici (nisu kupljene) su na vrhu popisa.
+                        Radnje u košari (nisu kupljene) su na vrhu popisa.
                     </Alert>
                     <Button
                         size="sm"
                         variant="link"
                         onClick={() => setShoppingCartOpen(true)}
                     >
-                        Otvori košaricu
+                        Otvori košaru
                     </Button>
                 </Row>
             )}
