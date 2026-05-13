@@ -3,13 +3,49 @@ name: Vercel preview alias
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pull_request_number:
+        description: "Pull request number to update"
+        required: true
+        type: string
+      branch_name:
+        description: "PR head branch name"
+        required: true
+        type: string
+      head_sha:
+        description: "PR head commit SHA"
+        required: true
+        type: string
 
 permissions:
   contents: read
   pull-requests: write
 
 jobs:
+  comment_placeholder:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sticky PR comment with alias placeholder
+        uses: marocchino/sticky-pull-request-comment@v2.9.4
+        with:
+          header: vercel-preview-alias
+          number: ${{ github.event.pull_request.number }}
+          message: |
+            | App | Preview |
+            | --- | --- |
+            | - | No preview aliases requested. |
+
+            [![Run alias workflow](https://img.shields.io/badge/Request%20preview%20aliases-Run%20workflow-6f42c1?style=for-the-badge)](https://github.com/${{ github.repository }}/actions/workflows/vercel-preview-alias.yml)
+
+            If you need aliases for testing, run this workflow manually and provide:
+            - `pull_request_number`: `${{ github.event.pull_request.number }}`
+            - `branch_name`: `${{ github.head_ref }}`
+            - `head_sha`: `${{ github.event.pull_request.head.sha }}`
+
   alias_previews:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
@@ -35,8 +71,8 @@ jobs:
           VERCEL_PROJECT_ID_STORYBOOK: ${{ secrets.VERCEL_PROJECT_ID_STORYBOOK }}
           VERCEL_PROJECT_ID_API: ${{ secrets.VERCEL_PROJECT_ID_API }}
           VERCEL_PROJECT_ID_STATUS: ${{ secrets.VERCEL_PROJECT_ID_STATUS }}
-          BRANCH_NAME: ${{ github.head_ref }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BRANCH_NAME: ${{ inputs.branch_name }}
+          HEAD_SHA: ${{ inputs.head_sha }}
           MAX_ATTEMPTS: 30
           SLEEP_SECONDS: 20
         run: |
@@ -181,5 +217,6 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@v2.9.4
         with:
           header: vercel-preview-alias
+          number: ${{ inputs.pull_request_number }}
           message: |
             ${{ steps.alias_previews.outputs.aliases_table }}
