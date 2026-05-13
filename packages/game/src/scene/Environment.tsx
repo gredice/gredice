@@ -66,6 +66,7 @@ const DEFAULT_WEATHER_BLEND_CONFIG: WeatherBlendConfig = {
 const DEBUG_WEATHER_BLEND_CONFIG: WeatherBlendConfig = {
     transitionSeconds: 0.35,
 };
+const WEATHER_BLEND_EPSILON = 0.0005;
 
 function dampNumber(
     current: number,
@@ -76,6 +77,13 @@ function dampNumber(
     if (!Number.isFinite(current)) return target;
     const t = 1 - Math.exp(-Math.max(0.0001, smoothing) * delta);
     return current + (target - current) * t;
+}
+
+function isWithinBlendEpsilon(
+    current: number | null | undefined,
+    target: number | null | undefined,
+) {
+    return Math.abs((current ?? 0) - (target ?? 0)) <= WEATHER_BLEND_EPSILON;
 }
 
 function useBlendedWeather(
@@ -107,7 +115,7 @@ function useBlendedWeather(
             }
 
             const smoothing = 1 / blendConfig.transitionSeconds;
-            return {
+            const next = {
                 ...target,
                 cloudy: dampNumber(
                     current.cloudy ?? 0,
@@ -150,6 +158,20 @@ function useBlendedWeather(
                 windDirection: target.windDirection,
                 thundery: target.thundery,
             };
+            const changed =
+                !isWithinBlendEpsilon(current.cloudy, next.cloudy) ||
+                !isWithinBlendEpsilon(current.foggy, next.foggy) ||
+                !isWithinBlendEpsilon(current.rainy, next.rainy) ||
+                !isWithinBlendEpsilon(current.snowy, next.snowy) ||
+                !isWithinBlendEpsilon(current.windSpeed, next.windSpeed) ||
+                !isWithinBlendEpsilon(
+                    current.snowAccumulation,
+                    next.snowAccumulation,
+                ) ||
+                current.windDirection !== next.windDirection ||
+                current.thundery !== next.thundery;
+
+            return changed ? next : current;
         });
     });
 
@@ -676,7 +698,7 @@ export function Environment({
     };
     const windDirection =
         typeof blendedWeather?.windDirection === 'string'
-            ? (compassToDirection[actualWeather.windDirection] ?? 0)
+            ? (compassToDirection[blendedWeather.windDirection] ?? 0)
             : 0;
 
     const [lightningFlash, setLightningFlash] = useState(0);
@@ -798,7 +820,7 @@ export function Environment({
                     ]}
                 />
             </directionalLight>
-            {!weatherDisabled && actualWeather && (
+            {!weatherDisabled && blendedWeather && (
                 <CloudLayer
                     cloudy={blendedWeather.cloudy ?? 0}
                     foggy={blendedWeather.foggy ?? 0}
