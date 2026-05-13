@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import type { NextRequest } from 'next/server';
-import { Logger } from 'next-axiom';
 import { z } from 'zod';
+import { Logger } from './logger';
 
 export const dynamic = 'force-dynamic';
 

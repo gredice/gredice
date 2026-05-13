@@ -4,7 +4,7 @@ This repository is the **Gredice** monorepo. It hosts multiple Next.js applicati
 
 ## First steps
 
-- Use Node.js `>=24` and pnpm `10.33.2`.
+- Use Node.js `>=24` and the pnpm version pinned by the root `packageManager` field.
 - Install dependencies from the repo root with `pnpm install`.
 - Before editing code, look for additional `AGENTS.md` files inside the path you plan to touch. Nested instructions override this file.
 - Keep the worktree clean. Commit only intentional source changes and never commit `node_modules`, build output, `.next`, coverage, or generated artifacts unless explicitly requested.
