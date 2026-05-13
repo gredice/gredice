@@ -2,6 +2,7 @@ import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import { relations, sql } from 'drizzle-orm';
 import {
     boolean,
+    check,
     index,
     integer,
     jsonb,
@@ -152,13 +153,16 @@ export const notificationUserChannelPreferences = pgTable(
             .$onUpdate(() => new Date()),
     },
     (table) => [
-        uniqueIndex('notification_user_channel_preferences_unique_idx').on(
-            table.userId,
-            table.accountId,
-            table.scope,
-            table.category,
-            table.channel,
+        check(
+            'notification_user_channel_preferences_scope_account_id_check',
+            sql`(scope = 'global' and account_id is null) or (scope = 'account' and account_id is not null)`,
         ),
+        uniqueIndex('notification_user_channel_preferences_global_unique_idx')
+            .on(table.userId, table.category, table.channel)
+            .where(sql`${table.scope} = 'global'`),
+        uniqueIndex('notification_user_channel_preferences_account_unique_idx')
+            .on(table.userId, table.accountId, table.category, table.channel)
+            .where(sql`${table.scope} = 'account'`),
     ],
 );
 

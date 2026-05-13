@@ -52,7 +52,8 @@ CREATE TABLE "notification_user_channel_preferences" (
 	"locale" text,
 	"digest_frequency" "notification_digest_frequency" DEFAULT 'off' NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "notification_user_channel_preferences_scope_account_id_check" CHECK (("scope" = 'global' and "account_id" is null) or ("scope" = 'account' and "account_id" is not null))
 );
 --> statement-breakpoint
 CREATE TABLE "web_push_subscriptions" (
@@ -112,7 +113,8 @@ ALTER TABLE "web_push_subscriptions" ADD CONSTRAINT "web_push_subscriptions_user
 CREATE INDEX "notification_delivery_attempts_notification_id_idx" ON "notification_delivery_attempts" USING btree ("notification_id");--> statement-breakpoint
 CREATE INDEX "notification_delivery_attempts_status_idx" ON "notification_delivery_attempts" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "notification_delivery_events_attempt_id_idx" ON "notification_delivery_events" USING btree ("delivery_attempt_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "notification_user_channel_preferences_unique_idx" ON "notification_user_channel_preferences" USING btree ("user_id","account_id","scope","category","channel");--> statement-breakpoint
+CREATE UNIQUE INDEX "notification_user_channel_preferences_global_unique_idx" ON "notification_user_channel_preferences" USING btree ("user_id","category","channel") WHERE "notification_user_channel_preferences"."scope" = 'global';--> statement-breakpoint
+CREATE UNIQUE INDEX "notification_user_channel_preferences_account_unique_idx" ON "notification_user_channel_preferences" USING btree ("user_id","account_id","category","channel") WHERE "notification_user_channel_preferences"."scope" = 'account';--> statement-breakpoint
 CREATE UNIQUE INDEX "web_push_subscriptions_endpoint_unique_idx" ON "web_push_subscriptions" USING btree ("endpoint");--> statement-breakpoint
 CREATE INDEX "web_push_subscriptions_user_id_idx" ON "web_push_subscriptions" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "web_push_subscriptions_account_id_idx" ON "web_push_subscriptions" USING btree ("account_id");--> statement-breakpoint

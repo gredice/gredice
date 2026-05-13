@@ -5495,23 +5495,11 @@
         }
       },
       "indexes": {
-        "notification_user_channel_preferences_unique_idx": {
-          "name": "notification_user_channel_preferences_unique_idx",
+        "notification_user_channel_preferences_global_unique_idx": {
+          "name": "notification_user_channel_preferences_global_unique_idx",
           "columns": [
             {
               "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "account_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "scope",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5530,6 +5518,41 @@
             }
           ],
           "isUnique": true,
+          "where": "\"notification_user_channel_preferences\".\"scope\" = 'global'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "notification_user_channel_preferences_account_unique_idx": {
+          "name": "notification_user_channel_preferences_account_unique_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "category",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "channel",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"notification_user_channel_preferences\".\"scope\" = 'account'",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -5566,7 +5589,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "notification_user_channel_preferences_scope_account_id_check": {
+          "name": "notification_user_channel_preferences_scope_account_id_check",
+          "value": "(scope = 'global' and account_id is null) or (scope = 'account' and account_id is not null)"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.notifications": {
