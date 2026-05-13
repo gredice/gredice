@@ -4,10 +4,9 @@ import { spawn } from "node:child_process";
 import { appendFileSync } from "node:fs";
 
 const MAX_DNS_LABEL_LENGTH = 63;
+const MAX_CERT_COMMON_NAME_LENGTH = 64;
 const ALIAS_SEPARATOR_LENGTH = 1;
 const MIN_BRANCH_SLUG_LENGTH = 1;
-const MAX_ALIAS_PREFIX_LENGTH =
-  MAX_DNS_LABEL_LENGTH - ALIAS_SEPARATOR_LENGTH - MIN_BRANCH_SLUG_LENGTH;
 
 function required(name) {
   const value = process.env[name]?.trim();
@@ -74,6 +73,17 @@ async function main() {
   const previewDomain = required("GREDICE_PREVIEW_DOMAIN");
   const branch = required("GITHUB_HEAD_REF");
   const aliasPrefix = process.env.GREDICE_PREVIEW_ALIAS_PREFIX?.trim();
+  const maxAliasNameLength = Math.min(
+    MAX_DNS_LABEL_LENGTH,
+    MAX_CERT_COMMON_NAME_LENGTH - previewDomain.length - ALIAS_SEPARATOR_LENGTH,
+  );
+  const maxAliasPrefixLength =
+    maxAliasNameLength - ALIAS_SEPARATOR_LENGTH - MIN_BRANCH_SLUG_LENGTH;
+
+  if (maxAliasNameLength < MIN_BRANCH_SLUG_LENGTH)
+    throw new Error(
+      `Preview domain ${previewDomain} is too long to create a certificate-safe alias`,
+    );
 
   const prefixSlug = aliasPrefix ? sanitizeLabelValue(aliasPrefix) : "";
   if (aliasPrefix && !prefixSlug)
@@ -81,14 +91,14 @@ async function main() {
       `Alias prefix ${aliasPrefix} results in empty slug after sanitization`,
     );
 
-  if (prefixSlug.length > MAX_ALIAS_PREFIX_LENGTH)
+  if (prefixSlug && prefixSlug.length > maxAliasPrefixLength)
     throw new Error(
-      `Alias prefix ${aliasPrefix} exceeds maximum length of ${MAX_ALIAS_PREFIX_LENGTH} characters after sanitization`,
+      `Alias prefix ${aliasPrefix} exceeds maximum length of ${Math.max(maxAliasPrefixLength, 0)} characters after sanitization`,
     );
 
   const maxBranchSlugLength = prefixSlug
-    ? MAX_DNS_LABEL_LENGTH - prefixSlug.length - ALIAS_SEPARATOR_LENGTH
-    : MAX_DNS_LABEL_LENGTH;
+    ? maxAliasNameLength - prefixSlug.length - ALIAS_SEPARATOR_LENGTH
+    : maxAliasNameLength;
 
   const branchSlug = sanitizeLabel(branch, maxBranchSlugLength);
   if (!branchSlug)
