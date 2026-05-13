@@ -11,6 +11,7 @@ import { auth } from '../../../lib/auth/auth';
 import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
 import { BulkOperationCreateModal } from './BulkOperationCreateModal';
 import { OperationsFilters } from './OperationsFilters';
+import { SingleOperationCreateModal } from './SingleOperationCreateModal';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,11 +44,18 @@ export default async function OperationsPage({
         <Stack spacing={2}>
             <AdminPageHeader
                 actions={
-                    <BulkOperationCreateModal
-                        gardens={gardens}
-                        raisedBeds={raisedBeds}
-                        assignableUsers={assignableUsers}
-                    />
+                    <div className="flex gap-2">
+                        <SingleOperationCreateModal
+                            gardens={gardens}
+                            raisedBeds={raisedBeds}
+                            assignableUsers={assignableUsers}
+                        />
+                        <BulkOperationCreateModal
+                            gardens={gardens}
+                            raisedBeds={raisedBeds}
+                            assignableUsers={assignableUsers}
+                        />
+                    </div>
                 }
             />
             <OperationsFilters />
