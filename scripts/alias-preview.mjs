@@ -94,10 +94,12 @@ async function main() {
       `Alias prefix ${aliasPrefix} results in empty slug after sanitization`,
     );
 
-  if (prefixSlug && prefixSlug.length > maxAliasPrefixLength)
-    throw new Error(
-      `Alias prefix ${aliasPrefix} exceeds maximum length of ${maxAliasPrefixLength} characters after sanitization for preview domain ${previewDomain}`,
-    );
+  if (aliasPrefix) {
+    if (prefixSlug.length > maxAliasPrefixLength)
+      throw new Error(
+        `Alias prefix ${aliasPrefix} exceeds maximum length of ${maxAliasPrefixLength} characters after sanitization for preview domain ${previewDomain}`,
+      );
+  }
 
   const maxBranchSlugLength = prefixSlug
     ? maxAliasNameLength - prefixSlug.length - ALIAS_SEPARATOR_LENGTH
