@@ -288,7 +288,7 @@ async function handleSearchEntities(
                 query.includes('cherry') || query.includes('rajč') ? 0.8 : 0.2,
         },
         {
-            id: '1',
+            id: 'operation-zalijevanje',
             type: 'operation',
             name: 'Zalijevanje',
             description: `Redovito zalijevanje biljaka - pronađeno po upitu: ${input.query}`,
@@ -362,15 +362,17 @@ async function handleGetPlantSorts(input: z.infer<typeof GetPlantSortsSchema>) {
         );
     }
 
-    // Apply limit
-    if (input.limit) {
-        filteredSorts = filteredSorts.slice(0, input.limit);
-    }
+    // Apply pagination
+    filteredSorts = filteredSorts.slice(
+        input.offset,
+        input.offset + input.limit,
+    );
 
     return {
         sorts: filteredSorts,
         total: mockSorts.length,
         limit: input.limit,
+        offset: input.offset,
     };
 }
 
@@ -430,15 +432,17 @@ async function handleGetOperations(input: z.infer<typeof GetOperationsSchema>) {
         );
     }
 
-    // Apply limit
-    if (input.limit) {
-        filteredOperations = filteredOperations.slice(0, input.limit);
-    }
+    // Apply pagination
+    filteredOperations = filteredOperations.slice(
+        input.offset,
+        input.offset + input.limit,
+    );
 
     return {
         operations: filteredOperations,
         total: mockOperations.length,
         limit: input.limit,
+        offset: input.offset,
     };
 }
 
@@ -520,14 +524,16 @@ async function handleGetSeeds(input: z.infer<typeof GetSeedsSchema>) {
         );
     }
 
-    // Apply limit
-    if (input.limit) {
-        filteredSeeds = filteredSeeds.slice(0, input.limit);
-    }
+    // Apply pagination
+    filteredSeeds = filteredSeeds.slice(
+        input.offset,
+        input.offset + input.limit,
+    );
 
     return {
         seeds: filteredSeeds,
         total: mockSeeds.length,
         limit: input.limit,
+        offset: input.offset,
     };
 }
