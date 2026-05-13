@@ -168,7 +168,7 @@ jobs:
             if [ "${attempt}" -eq "${max_attempts}" ]; then
               for app_name in "${apps[@]}"; do
                 if [[ -v pending_project_ids[$app_name] ]]; then
-                  echo "::warning title=Vercel preview alias timeout::Timed out before ${app_name} preview deployment became aliasable or accepted an alias."
+                  echo "::warning title=Vercel preview alias timeout::Timed out waiting for ${app_name} preview deployment to accept an alias."
                 fi
               done
               break
