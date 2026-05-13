@@ -1,9 +1,9 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
-import { FilterInput } from '@gredice/ui/FilterInput';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
-import { Left, ShoppingCart } from '@signalco/ui-icons';
+import { Close, Left, Search, ShoppingCart } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -78,6 +78,7 @@ export function PlantPicker({
     } | null>(preselectedPlantOptions ?? null);
     const [flyToShoppingCart, setFlyToShoppingCart] = useState(false);
     const [useInventoryItem, setUseInventoryItem] = useState(false);
+    const [searchValue, setSearchValue] = useState('');
 
     let currentStep = 0;
     if (selectedPlantId) {
@@ -196,6 +197,7 @@ export function PlantPicker({
         setSelectedPlantId(preselectedPlantId ?? null);
         setSelectedSortId(preselectedSortId ?? null);
         setPlantOptions(preselectedPlantOptions ?? null);
+        setSearchValue('');
         const existingItem = cart?.items.find(
             (item) =>
                 item.entityTypeName === 'plantSort' &&
@@ -274,14 +276,34 @@ export function PlantPicker({
                     </Typography>
                 </Stack>
                 {currentStep < 1 && (
-                    <FilterInput
-                        searchParamName={'pretraga'}
-                        fieldName={'search'}
-                        instant
+                    <Input
+                        name="search"
+                        value={searchValue}
+                        onChange={(event) => setSearchValue(event.target.value)}
+                        placeholder="Pretraži..."
+                        startDecorator={
+                            <Search className="size-5 shrink-0 ml-3" />
+                        }
+                        endDecorator={
+                            <IconButton
+                                className="hover:bg-neutral-300 mr-1 rounded-full aspect-square"
+                                title="Očisti pretragu"
+                                onClick={() => setSearchValue('')}
+                                size="sm"
+                                variant="plain"
+                            >
+                                <Close className="size-5" />
+                            </IconButton>
+                        }
+                        className="min-w-60"
+                        variant="soft"
                     />
                 )}
                 {currentStep === 0 && (
-                    <PlantsList onChange={handlePlantSelect} />
+                    <PlantsList
+                        onChange={handlePlantSelect}
+                        search={searchValue}
+                    />
                 )}
                 {currentStep === 1 && selectedPlantId && (
                     <>

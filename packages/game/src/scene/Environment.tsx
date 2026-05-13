@@ -1,5 +1,6 @@
 'use client';
 
+import { useFrame } from '@react-three/fiber';
 import chroma from 'chroma-js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getPosition } from 'suncalc';
@@ -53,6 +54,129 @@ const hemisphereSkyColorScale = chroma
         chroma.temperature(20000),
     ])
     .domain([0.2, 0.25, 0.3, 0.75, 0.8, 0.85]);
+
+type WeatherBlendConfig = {
+    transitionSeconds: number;
+};
+
+const DEFAULT_WEATHER_BLEND_CONFIG: WeatherBlendConfig = {
+    transitionSeconds: 1.2,
+};
+
+const DEBUG_WEATHER_BLEND_CONFIG: WeatherBlendConfig = {
+    transitionSeconds: 0.35,
+};
+const WEATHER_BLEND_EPSILON = 0.0005;
+
+function dampNumber(
+    current: number,
+    target: number,
+    smoothing: number,
+    delta: number,
+) {
+    if (!Number.isFinite(current)) return target;
+    const t = 1 - Math.exp(-Math.max(0.0001, smoothing) * delta);
+    return current + (target - current) * t;
+}
+
+function isWithinBlendEpsilon(
+    current: number | null | undefined,
+    target: number | null | undefined,
+) {
+    return Math.abs((current ?? 0) - (target ?? 0)) <= WEATHER_BLEND_EPSILON;
+}
+
+function useBlendedWeather(
+    weather: EnvironmentWeather | undefined,
+    enabled: boolean,
+    blendConfig: WeatherBlendConfig,
+) {
+    const [blendedWeather, setBlendedWeather] = useState<
+        EnvironmentWeather | undefined
+    >(weather);
+    const targetRef = useRef<EnvironmentWeather | undefined>(weather);
+
+    useEffect(() => {
+        targetRef.current = weather;
+        if (!enabled || !weather) {
+            setBlendedWeather(weather);
+        }
+    }, [enabled, weather]);
+
+    useFrame((_, delta) => {
+        if (!enabled || !targetRef.current) {
+            return;
+        }
+
+        const target = targetRef.current;
+        setBlendedWeather((current) => {
+            if (!current) {
+                return target;
+            }
+
+            const smoothing = 1 / blendConfig.transitionSeconds;
+            const next = {
+                ...target,
+                cloudy: dampNumber(
+                    current.cloudy ?? 0,
+                    target.cloudy ?? 0,
+                    smoothing,
+                    delta,
+                ),
+                foggy: dampNumber(
+                    current.foggy ?? 0,
+                    target.foggy ?? 0,
+                    smoothing,
+                    delta,
+                ),
+                rainy: dampNumber(
+                    current.rainy ?? 0,
+                    target.rainy ?? 0,
+                    smoothing,
+                    delta,
+                ),
+                snowy: dampNumber(
+                    current.snowy ?? 0,
+                    target.snowy ?? 0,
+                    smoothing,
+                    delta,
+                ),
+                windSpeed: dampNumber(
+                    current.windSpeed ?? 0,
+                    target.windSpeed ?? 0,
+                    smoothing,
+                    delta,
+                ),
+                snowAccumulation: dampNumber(
+                    current.snowAccumulation ?? 0,
+                    target.snowAccumulation ?? 0,
+                    smoothing,
+                    delta,
+                ),
+                // Keep direction and thunder discrete to preserve deterministic storm timing
+                // and prevent jitter around cardinal boundaries.
+                windDirection: target.windDirection,
+                thundery: target.thundery,
+            };
+            const changed =
+                !isWithinBlendEpsilon(current.cloudy, next.cloudy) ||
+                !isWithinBlendEpsilon(current.foggy, next.foggy) ||
+                !isWithinBlendEpsilon(current.rainy, next.rainy) ||
+                !isWithinBlendEpsilon(current.snowy, next.snowy) ||
+                !isWithinBlendEpsilon(current.windSpeed, next.windSpeed) ||
+                !isWithinBlendEpsilon(
+                    current.snowAccumulation,
+                    next.snowAccumulation,
+                ) ||
+                current.windDirection !== next.windDirection ||
+                current.thundery !== next.thundery;
+
+            return changed ? next : current;
+        });
+    });
+
+    return blendedWeather;
+}
 
 const STAR_NIGHT_VISIBILITY = {
     dawnFadeStart: 0.2,
@@ -440,16 +564,25 @@ export function Environment({
         rainMediumModAmbient.stop,
     ]);
 
+    const blendConfig = hasWeatherOverride
+        ? DEBUG_WEATHER_BLEND_CONFIG
+        : DEFAULT_WEATHER_BLEND_CONFIG;
+    const blendedWeather = useBlendedWeather(
+        actualWeather,
+        !weatherDisabled,
+        blendConfig,
+    );
+
     const { background, ambient, hemisphere, directionalLight } =
         useEnvironmentElements({
             location,
             currentTime,
             timeOfDay,
-            weather: actualWeather,
+            weather: blendedWeather,
         });
 
     // Handle fog
-    const fog = actualWeather?.foggy ?? 0;
+    const fog = blendedWeather?.foggy ?? 0;
     const fogNear = 170 - fog * 30;
     const fogColor =
         timeOfDay > 0.2 && timeOfDay < 0.8
@@ -457,14 +590,14 @@ export function Environment({
             : new Color(0x55556a);
 
     // Handle rain
-    const rain = actualWeather?.rainy ?? 0;
+    const rain = blendedWeather?.rainy ?? 0;
     const baseRainParticleCount = rain < 0.4 ? 200 : rain > 0.9 ? 2000 : 600;
     const rainParticleCount = Math.round(
         baseRainParticleCount * qualityProfile.rainParticleMultiplier,
     );
 
     // Handle snow particles - based on current weather (snowy intensity 0-1)
-    const snowParticles = actualWeather?.snowy ?? 0;
+    const snowParticles = blendedWeather?.snowy ?? 0;
     const snowParticleCount = Math.round(
         snowParticles * 5000 * qualityProfile.snowParticleMultiplier,
     );
@@ -510,8 +643,8 @@ export function Environment({
 
     // Light clouds keep only a few faint bright stars visible, but only at
     // night or during twilight transitions.
-    const cloudCover = actualWeather?.cloudy ?? 1;
-    const fogCover = actualWeather?.foggy ?? 0;
+    const cloudCover = blendedWeather?.cloudy ?? 1;
+    const fogCover = blendedWeather?.foggy ?? 0;
     const effectiveCloudCover = Math.min(1, cloudCover + fogCover * 0.35);
     const starVisibility = weatherDisabled
         ? 0
@@ -543,7 +676,7 @@ export function Environment({
           (1 - smoothstep(0.5, 0.9, effectiveCloudCover));
 
     // Handle ground snow coverage - based on accumulated snow in cm
-    const snowAccumulationCm = actualWeather?.snowAccumulation ?? 0;
+    const snowAccumulationCm = blendedWeather?.snowAccumulation ?? 0;
     const snowCoverage = Math.min(1, snowAccumulationCm / 30); // Scale: 0cm=0, 30cm=1
 
     useEffect(() => {
@@ -551,7 +684,7 @@ export function Environment({
     }, [setSnowCoverage, snowCoverage]);
 
     // Handle wind
-    const windSpeed = actualWeather?.windSpeed ?? 0;
+    const windSpeed = blendedWeather?.windSpeed ?? 0;
     // Convert compass direction string to degrees
     const compassToDirection: Record<string, number> = {
         N: 0,
@@ -564,8 +697,8 @@ export function Environment({
         NW: 315,
     };
     const windDirection =
-        typeof actualWeather?.windDirection === 'string'
-            ? (compassToDirection[actualWeather.windDirection] ?? 0)
+        typeof blendedWeather?.windDirection === 'string'
+            ? (compassToDirection[blendedWeather.windDirection] ?? 0)
             : 0;
 
     const [lightningFlash, setLightningFlash] = useState(0);
@@ -590,8 +723,8 @@ export function Environment({
         const stormStrength = Math.min(
             1,
             thunderLevel * 0.6 +
-                (actualWeather?.rainy ?? 0) * 0.3 +
-                (actualWeather?.cloudy ?? 0) * 0.2,
+                (blendedWeather?.rainy ?? 0) * 0.3 +
+                (blendedWeather?.cloudy ?? 0) * 0.2,
         );
         const nightFactor =
             0.2 + Math.max(dawnVisibility, duskVisibility) * 0.6;
@@ -633,8 +766,8 @@ export function Environment({
             }
         };
     }, [
-        actualWeather?.cloudy,
-        actualWeather?.rainy,
+        blendedWeather?.cloudy,
+        blendedWeather?.rainy,
         actualWeather?.thundery,
         dawnVisibility,
         duskVisibility,
@@ -687,10 +820,10 @@ export function Environment({
                     ]}
                 />
             </directionalLight>
-            {!weatherDisabled && actualWeather && (
+            {!weatherDisabled && blendedWeather && (
                 <CloudLayer
-                    cloudy={actualWeather.cloudy ?? 0}
-                    foggy={actualWeather.foggy ?? 0}
+                    cloudy={blendedWeather.cloudy ?? 0}
+                    foggy={blendedWeather.foggy ?? 0}
                     shadowStrength={
                         qualityProfile.shadows ? cloudShadowStrength : 0
                     }

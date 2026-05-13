@@ -1,33 +1,34 @@
 {
-    "name": "gredice-monorepo",
-    "private": true,
-    "type": "module",
-    "scripts": {
-        "build": "turbo build",
-        "clean": "turbo clean",
-        "dev": "node ./scripts/dev-with-proxy.mjs",
-        "env:pull": "node ./scripts/pull-envs.mjs",
-        "vercel:link": "node ./scripts/link-vercel.mjs",
-        "lint": "turbo lint",
-        "lint:migrate": "turbo lint:migrate",
-        "lint:ci-filters": "node ./scripts/check-ci-filters.mjs",
-        "db-generate": "turbo db-generate",
-        "db-push": "turbo db-push",
-        "regenerate": "turbo regenerate",
-        "test": "turbo test",
-        "generate:models-types": "turbo generate:models-types",
-        "generate:game-assets": "node ./scripts/generate-game-assets.mjs",
-        "doctor": "node ./scripts/worktree-health.mjs doctor",
-        "bootstrap": "node ./scripts/worktree-health.mjs setup",
-        "dev:all": "node ./scripts/dev-with-proxy.mjs --all-apps"
-    },
-    "devDependencies": {
-        "rimraf": "6.1.3",
-        "turbo": "2.9.12",
-        "typescript": "6.0.3"
-    },
-    "packageManager": "pnpm@11.1.0+sha512.0c44e842e5686b2c061a81adda8b2258bd8818e9704b2cf2c63d56b931a7b2e910092e085027003b96ca3911ab56a07f6df5abaed2be9925034cdd686a535b14",
-    "engines": {
-        "node": ">=24"
-    }
+  "name": "gredice-monorepo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "turbo build",
+    "clean": "turbo clean",
+    "dev": "node ./scripts/dev-with-proxy.mjs",
+    "env:pull": "node ./scripts/pull-envs.mjs",
+    "vercel:link": "node ./scripts/link-vercel.mjs",
+    "lint": "turbo lint",
+    "lint:migrate": "turbo lint:migrate",
+    "lint:ci-filters": "node ./scripts/check-ci-filters.mjs",
+    "db-generate": "turbo db-generate",
+    "db-push": "turbo db-push",
+    "regenerate": "turbo regenerate",
+    "test": "turbo test",
+    "generate:models-types": "turbo generate:models-types",
+    "generate:game-assets": "node ./scripts/generate-game-assets.mjs",
+    "doctor": "node ./scripts/worktree-health.mjs doctor",
+    "bootstrap": "node ./scripts/worktree-health.mjs setup",
+    "dev:all": "node ./scripts/dev-with-proxy.mjs --all-apps",
+    "vercel:alias-preview": "node ./scripts/alias-preview.mjs"
+  },
+  "devDependencies": {
+    "rimraf": "6.1.3",
+    "turbo": "2.9.12",
+    "typescript": "6.0.3"
+  },
+  "packageManager": "pnpm@11.1.0+sha512.0c44e842e5686b2c061a81adda8b2258bd8818e9704b2cf2c63d56b931a7b2e910092e085027003b96ca3911ab56a07f6df5abaed2be9925034cdd686a535b14",
+  "engines": {
+    "node": ">=24"
+  }
 }

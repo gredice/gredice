@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { Logger } from '../logger';
 import { negotiateMcpProtocolVersion } from '../protocol';
 
 export const dynamic = 'force-dynamic';
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-    const logger = console;
+    const logger = new Logger();
 
     try {
         const body = await request.json();

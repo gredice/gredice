@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import jwt from 'jsonwebtoken';
 
-const MCP_BASE_URL = 'https://api.gredice.test/api/mcp';
+const MCP_BASE_URL = '/api/mcp';
 
 // Create a test JWT for authenticated endpoints
 function createTestJWT(userId = 'user-123', role = 'gardener') {
