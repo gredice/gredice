@@ -3,33 +3,27 @@ import { PlantOrSortImage } from '@gredice/ui/plants';
 import { ShoppingCart } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
-import { useShoppingCart } from '../../hooks/useShoppingCart';
+import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import { PlantPicker } from './RaisedBedPlantPicker';
 
 export function RaisedBedFieldItemEmpty({
+    cartPlantItem,
     gardenId,
+    isCartPending,
     raisedBedId,
     positionIndex,
     isDragging,
 }: {
     raisedBedId: number;
     gardenId: number;
+    cartPlantItem: ShoppingCartItemData | null;
+    isCartPending: boolean;
     positionIndex: number;
     isDragging?: boolean;
 }) {
-    const { data: cart, isLoading: isCartPending } = useShoppingCart();
     const { data: garden, isLoading: isGardenPending } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
-    const cartItems = cart?.items.filter(
-        (item) =>
-            item.gardenId === gardenId &&
-            item.raisedBedId === raisedBedId &&
-            item.positionIndex === positionIndex,
-    );
-    const cartPlantItem = cartItems?.find(
-        (item) => item.entityTypeName === 'plantSort' && item.status === 'new',
-    );
     const cartPlantSortId = cartPlantItem
         ? Number(cartPlantItem.entityId)
         : null;

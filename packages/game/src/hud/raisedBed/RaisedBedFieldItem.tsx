@@ -1,17 +1,22 @@
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
+import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';
 import { findRaisedBedOccupiedField } from '../../utils/raisedBedFields';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import { RaisedBedFieldItemEmpty } from './RaisedBedFieldItemEmpty';
 import { RaisedBedFieldItemPlanted } from './RaisedBedFieldItemPlanted';
 
 export function RaisedBedFieldItem({
+    cartPlantItem,
     gardenId,
+    isCartPending,
     raisedBedId,
     positionIndex,
     isDragging,
 }: {
     raisedBedId: number;
     gardenId: number;
+    cartPlantItem: ShoppingCartItemData | null;
+    isCartPending: boolean;
     positionIndex: number;
     isDragging?: boolean;
 }) {
@@ -36,7 +41,9 @@ export function RaisedBedFieldItem({
     if (!hasField) {
         return (
             <RaisedBedFieldItemEmpty
+                cartPlantItem={cartPlantItem}
                 gardenId={gardenId}
+                isCartPending={isCartPending}
                 raisedBedId={raisedBedId}
                 positionIndex={positionIndex}
                 isDragging={isDragging}

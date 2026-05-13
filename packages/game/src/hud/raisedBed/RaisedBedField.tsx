@@ -9,9 +9,13 @@ import {
     useSensors,
 } from '@dnd-kit/core';
 import { rectSwappingStrategy, SortableContext } from '@dnd-kit/sortable';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
-import { useShoppingCart } from '../../hooks/useShoppingCart';
+import {
+    type ShoppingCartItemData,
+    useShoppingCart,
+} from '../../hooks/useShoppingCart';
 import { useSwapShoppingCartPositions } from '../../hooks/useSwapShoppingCartPositions';
 import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
@@ -19,6 +23,28 @@ import { getPositionIndexFromGrid } from '../../utils/raisedBedOrientation';
 import { RaisedBedFieldInvalidShape } from './RaisedBedFieldInvalidShape';
 import { RaisedBedFieldItem } from './RaisedBedFieldItem';
 import { SortableFieldItem } from './SortableFieldItem';
+
+type PendingFieldMove = {
+    fromPositionIndex: number;
+    itemA: ShoppingCartItemData;
+    itemB?: ShoppingCartItemData;
+    sequence: number;
+    toPositionIndex: number;
+};
+
+function isRaisedBedCartPlantItem(
+    item: ShoppingCartItemData,
+    gardenId: number,
+    raisedBedId: number,
+): item is ShoppingCartItemData & { positionIndex: number } {
+    return (
+        item.gardenId === gardenId &&
+        item.raisedBedId === raisedBedId &&
+        item.entityTypeName === 'plantSort' &&
+        item.status === 'new' &&
+        typeof item.positionIndex === 'number'
+    );
+}
 
 export function RaisedBedField({
     gardenId,
@@ -28,9 +54,14 @@ export function RaisedBedField({
     raisedBedId: number;
 }) {
     const { data: garden } = useCurrentGarden();
-    const { data: cart } = useShoppingCart();
+    const { data: cart, isLoading: isCartLoading } = useShoppingCart();
     const { track } = useGameAnalytics();
     const swapPositions = useSwapShoppingCartPositions();
+    const [pendingMove, setPendingMove] = useState<PendingFieldMove | null>(
+        null,
+    );
+    const moveSequenceRef = useRef(0);
+    const [dropAnimationDisabled, setDropAnimationDisabled] = useState(false);
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
 
     const sensors = useSensors(
@@ -47,6 +78,76 @@ export function RaisedBedField({
         }),
         useSensor(KeyboardSensor),
     );
+
+    useEffect(() => {
+        if (!dropAnimationDisabled) {
+            return;
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            setDropAnimationDisabled(false);
+        }, 250);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [dropAnimationDisabled]);
+
+    // Determine which positions have cart items (draggable)
+    const baseCartItemsByPosition = useMemo(() => {
+        const itemsByPosition = new Map<number, ShoppingCartItemData>();
+
+        for (const item of cart?.items ?? []) {
+            if (isRaisedBedCartPlantItem(item, gardenId, raisedBedId)) {
+                itemsByPosition.set(item.positionIndex, item);
+            }
+        }
+
+        return itemsByPosition;
+    }, [cart?.items, gardenId, raisedBedId]);
+
+    // Keep a valid drop visually settled while the cart mutation catches up.
+    const cartItemsByPosition = useMemo(() => {
+        const itemsByPosition = new Map(baseCartItemsByPosition);
+
+        if (!pendingMove) {
+            return itemsByPosition;
+        }
+
+        itemsByPosition.set(pendingMove.toPositionIndex, {
+            ...pendingMove.itemA,
+            positionIndex: pendingMove.toPositionIndex,
+        });
+
+        if (pendingMove.itemB) {
+            itemsByPosition.set(pendingMove.fromPositionIndex, {
+                ...pendingMove.itemB,
+                positionIndex: pendingMove.fromPositionIndex,
+            });
+        } else {
+            itemsByPosition.delete(pendingMove.fromPositionIndex);
+        }
+
+        return itemsByPosition;
+    }, [baseCartItemsByPosition, pendingMove]);
+
+    useEffect(() => {
+        if (!pendingMove) {
+            return;
+        }
+
+        const targetItem = baseCartItemsByPosition.get(
+            pendingMove.toPositionIndex,
+        );
+        const sourceItem = baseCartItemsByPosition.get(
+            pendingMove.fromPositionIndex,
+        );
+        const sourceMatches = pendingMove.itemB
+            ? sourceItem?.id === pendingMove.itemB.id
+            : !sourceItem;
+
+        if (targetItem?.id === pendingMove.itemA.id && sourceMatches) {
+            setPendingMove(null);
+        }
+    }, [baseCartItemsByPosition, pendingMove]);
 
     if (!raisedBed?.isValid) {
         return <RaisedBedFieldInvalidShape />;
@@ -87,21 +188,6 @@ export function RaisedBedField({
         }
     }
 
-    // Determine which positions have cart items (draggable)
-    const cartItemsByPosition = new Map(
-        cart?.items
-            .filter(
-                (item) =>
-                    item.gardenId === gardenId &&
-                    item.raisedBedId === raisedBedId &&
-                    item.entityTypeName === 'plantSort' &&
-                    item.status === 'new' &&
-                    item.positionIndex !== null &&
-                    item.positionIndex !== undefined,
-            )
-            .map((item) => [item.positionIndex as number, item]) ?? [],
-    );
-
     // Determine which positions have planted fields (not draggable)
     const plantedPositions = new Set(
         raisedBed.fields
@@ -125,6 +211,17 @@ export function RaisedBedField({
         // Don't allow moving to a planted position
         if (plantedPositions.has(overPos)) return;
 
+        const moveSequence = moveSequenceRef.current + 1;
+        moveSequenceRef.current = moveSequence;
+
+        setPendingMove({
+            fromPositionIndex: activePos,
+            itemA: activeCartItem,
+            itemB: overCartItem,
+            sequence: moveSequence,
+            toPositionIndex: overPos,
+        });
+        setDropAnimationDisabled(true);
         track('game_raised_bed_field_moved', {
             from_position_index: activePos,
             garden_id: gardenId,
@@ -132,11 +229,22 @@ export function RaisedBedField({
             replaced_existing_cart_item: Boolean(overCartItem),
             to_position_index: overPos,
         });
-        swapPositions.mutate({
-            itemA: activeCartItem,
-            itemB: overCartItem,
-            targetPositionIndex: overPos,
-        });
+        swapPositions.mutate(
+            {
+                itemA: activeCartItem,
+                itemB: overCartItem,
+                targetPositionIndex: overPos,
+            },
+            {
+                onSettled: () => {
+                    setPendingMove((currentMove) =>
+                        currentMove?.sequence === moveSequence
+                            ? null
+                            : currentMove,
+                    );
+                },
+            },
+        );
     }
 
     const sortableItems = allPositionIndices.map((pos) => pos.toString());
@@ -199,11 +307,22 @@ export function RaisedBedField({
                                             <SortableFieldItem
                                                 id={positionIndex.toString()}
                                                 disabled={isDragDisabled}
+                                                dropAnimationDisabled={
+                                                    dropAnimationDisabled
+                                                }
                                                 showHandle={isInCart}
                                             >
                                                 {({ isDragging }) => (
                                                     <RaisedBedFieldItem
+                                                        cartPlantItem={
+                                                            cartItemsByPosition.get(
+                                                                positionIndex,
+                                                            ) ?? null
+                                                        }
                                                         gardenId={gardenId}
+                                                        isCartPending={
+                                                            isCartLoading
+                                                        }
                                                         raisedBedId={
                                                             raisedBedId
                                                         }
