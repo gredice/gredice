@@ -308,11 +308,20 @@ export function CmsPageForm({
         () => parseSections(rawContent),
         [rawContent],
     );
-    const readinessSections = useMemo(
-        () =>
-            rawMode ? editableSections(rawReadinessContent.sections) : sections,
-        [rawMode, rawReadinessContent.sections, sections],
-    );
+    const readinessSections = useMemo(() => {
+        if (!rawMode) {
+            return sections;
+        }
+
+        return rawReadinessContent.isStructured
+            ? editableSections(rawReadinessContent.sections)
+            : [];
+    }, [
+        rawMode,
+        rawReadinessContent.isStructured,
+        rawReadinessContent.sections,
+        sections,
+    ]);
     const contentReadinessWarning =
         rawMode &&
         rawContent.trim().length > 0 &&
