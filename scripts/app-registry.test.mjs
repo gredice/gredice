@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, resolve } from 'node:path';
 import { describe, it } from 'node:test';
@@ -58,7 +58,7 @@ function runAppCommand(command, env = {}) {
     );
     chmodSync(nextPath, 0o755);
 
-    return spawnSync(
+    const result = spawnSync(
         process.execPath,
         ['--experimental-strip-types', '../../scripts/run-app-command.mjs', command],
         {
@@ -67,6 +67,8 @@ function runAppCommand(command, env = {}) {
             encoding: 'utf8',
         },
     );
+    rmSync(binDir, { recursive: true, force: true });
+    return result;
 }
 
 describe('app registry worktree ports', () => {

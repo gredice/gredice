@@ -74,7 +74,7 @@ function run(cmd, args, options = {}) {
   return spawnSync(finalCmd, args, { encoding: 'utf8', ...options, shell });
 }
 function hasFailedRequiredChecks() { return checks.some((c) => c.required && !c.ok); }
-function canFallbackProxyPorts() {
+function canUseFallbackProxyPorts() {
   return !proxyPortsExplicitlyConfigured &&
     (defaultProxyPorts.http !== fallbackProxyPorts.http ||
       defaultProxyPorts.https !== fallbackProxyPorts.https);
@@ -250,7 +250,7 @@ function checkPorts() {
   const defaultProxyPortSet = new Set([defaultProxyPorts.http, defaultProxyPorts.https]);
   const fallbackProxyPortSet = new Set([fallbackProxyPorts.http, fallbackProxyPorts.https]);
   const ports = new Set([...requiredAppPorts, ...defaultProxyPortSet]);
-  if (canFallbackProxyPorts()) {
+  if (canUseFallbackProxyPorts()) {
     for (const port of fallbackProxyPortSet) {
       ports.add(port);
     }
@@ -269,7 +269,7 @@ function checkPorts() {
     const blockedDefaultProxyPorts = [...defaultProxyPortSet].filter((port) => blocked.has(port));
     const blockedFallbackProxyPorts = [...fallbackProxyPortSet].filter((port) => blocked.has(port));
     const canUseFallback =
-      canFallbackProxyPorts() &&
+      canUseFallbackProxyPorts() &&
       blockedDefaultProxyPorts.length > 0 &&
       blockedFallbackProxyPorts.length === 0;
     const ok =
