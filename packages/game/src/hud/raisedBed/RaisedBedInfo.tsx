@@ -18,10 +18,13 @@ import { useState } from 'react';
 import { useAbandonRaisedBed } from '../../hooks/useAbandonRaisedBed';
 import type { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useUpdateRaisedBed } from '../../hooks/useUpdateRaisedBed';
+import { RAISED_BED_ABANDON_FAILED_MESSAGE } from '../../raisedBedMessages';
 import { useGameState } from '../../useGameState';
 import { RaisedBedDiary } from './RaisedBedDiary';
 import { RaisedBedInfoTab } from './RaisedBedInfoTab';
 import { RaisedBedOperationsTab } from './RaisedBedOperationsTab';
+
+type RaisedBedTabValue = 'diary' | 'operations' | 'info' | 'abandon';
 
 export function RaisedBedInfo({
     gardenId,
@@ -35,6 +38,7 @@ export function RaisedBedInfo({
     const updateRaisedBed = useUpdateRaisedBed(gardenId, raisedBed.id);
     const abandonRaisedBed = useAbandonRaisedBed(gardenId, raisedBed.id);
     const setView = useGameState((state) => state.setView);
+    const [activeTab, setActiveTab] = useState<RaisedBedTabValue>('diary');
     const [abandonError, setAbandonError] = useState<string | null>(null);
     const isAbandoned = raisedBed.status === 'abandoned';
 
@@ -57,9 +61,7 @@ export function RaisedBedInfo({
                 if (error instanceof Error) {
                     setAbandonError(error.message);
                 } else {
-                    setAbandonError(
-                        'Došlo je do greške prilikom napuštanja gredice. Pokušaj ponovno.',
-                    );
+                    setAbandonError(RAISED_BED_ABANDON_FAILED_MESSAGE);
                 }
             },
         });
@@ -83,43 +85,85 @@ export function RaisedBedInfo({
                     />
                 </Stack>
             </Row>
-            <Tabs defaultValue="diary" className="flex flex-col">
-                <TabsList className="border w-fit self-center">
-                    <TabsTrigger value="diary">
-                        <Row spacing={1}>
-                            <Book className="size-4 shrink-0" />
-                            <Typography>Dnevnik</Typography>
-                        </Row>
-                    </TabsTrigger>
-                    <TabsTrigger value="operations">
-                        <Row spacing={1}>
-                            <Hammer className="size-4 shrink-0" />
-                            <Typography>Radnje</Typography>
-                        </Row>
-                    </TabsTrigger>
-                    <TabsTrigger value="info">
-                        <Row spacing={1}>
-                            <Info className="size-4 shrink-0" />
-                            <Typography>Informacije</Typography>
-                        </Row>
-                    </TabsTrigger>
-                </TabsList>
+            <Tabs
+                value={activeTab}
+                onValueChange={(value: string) =>
+                    setActiveTab(value as RaisedBedTabValue)
+                }
+                className="flex flex-col"
+            >
+                <div className="relative flex justify-center">
+                    <TabsList className="border w-fit self-center">
+                        <TabsTrigger value="diary">
+                            <Row spacing={1}>
+                                <Book className="size-4 shrink-0" />
+                                <Typography>Dnevnik</Typography>
+                            </Row>
+                        </TabsTrigger>
+                        <TabsTrigger value="operations">
+                            <Row spacing={1}>
+                                <Hammer className="size-4 shrink-0" />
+                                <Typography>Radnje</Typography>
+                            </Row>
+                        </TabsTrigger>
+                        <TabsTrigger value="info">
+                            <Row spacing={1}>
+                                <Info className="size-4 shrink-0" />
+                                <Typography>Informacije</Typography>
+                            </Row>
+                        </TabsTrigger>
+                    </TabsList>
+                    <Button
+                        type="button"
+                        variant="plain"
+                        aria-label="Prikaži dodatne opcije gredice"
+                        className={`absolute right-0 top-0 h-full min-w-10 rounded-full px-3 ${
+                            activeTab === 'abandon'
+                                ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'
+                                : ''
+                        }`}
+                        onClick={() => setActiveTab('abandon')}
+                    >
+                        ...
+                    </Button>
+                </div>
                 <TabsContent value="info">
+                    <RaisedBedInfoTab
+                        gardenId={gardenId}
+                        raisedBedId={raisedBed.id}
+                    />
+                </TabsContent>
+                <TabsContent value="abandon">
                     <Stack spacing={2}>
-                        <RaisedBedInfoTab
-                            gardenId={gardenId}
-                            raisedBedId={raisedBed.id}
-                        />
-                        {!isAbandoned && (
+                        {isAbandoned ? (
+                            <Alert
+                                color="danger"
+                                startDecorator={
+                                    <Warning className="size-4 shrink-0" />
+                                }
+                            >
+                                <Typography level="body2">
+                                    Gredica je označena kao napuštena.
+                                </Typography>
+                            </Alert>
+                        ) : (
                             <Stack
                                 spacing={1.5}
-                                className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900/60 dark:bg-red-950/40"
+                                className="rounded-xl border border-red-200 bg-red-50/90 p-4 shadow-sm dark:border-red-900/60 dark:bg-red-950/40"
                             >
-                                <Row spacing={1} alignItems="center">
-                                    <Warning className="size-5 shrink-0 text-red-700 dark:text-red-300" />
-                                    <Typography level="body1" semiBold>
-                                        Napusti gredicu
-                                    </Typography>
+                                <Row spacing={2} alignItems="center">
+                                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-700 ring-4 ring-red-200/70 dark:bg-red-900/70 dark:text-red-100 dark:ring-red-800/70">
+                                        <Warning className="size-5 shrink-0" />
+                                    </div>
+                                    <Stack spacing={0.5}>
+                                        <Typography level="body1" semiBold>
+                                            Napusti gredicu
+                                        </Typography>
+                                        <Typography level="body2" secondary>
+                                            Ova radnja pokreće napuštanje
+                                            gredice.
+                                        </Typography>
+                                    </Stack>
                                 </Row>
                                 <Typography level="body2">
                                     Napuštanjem gredice uklanjaju se sve biljke,

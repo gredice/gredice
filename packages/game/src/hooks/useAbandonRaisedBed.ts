@@ -1,58 +1,54 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
+import { RAISED_BED_ABANDON_FAILED_MESSAGE } from '../raisedBedMessages';
+import { useGameState } from '../useGameState';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
 const mutationKey = ['gardens', 'current', 'raisedBedAbandon'];
+const LAST_MUTATION_IN_FLIGHT = 1;
 
 export function useAbandonRaisedBed(gardenId: number, raisedBedId: number) {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
+    const winterMode = useGameState((state) => state.winterMode);
+    const gardenQueryKey = currentGardenKeys(winterMode, garden?.id);
 
     return useMutation({
         mutationKey,
         mutationFn: async () => {
-            await client().api.gardens[':gardenId']['raised-beds'][
-                ':raisedBedId'
-            ].$delete({
+            const response = await clientAuthenticated().api.gardens[
+                ':gardenId'
+            ]['raised-beds'][':raisedBedId'].abandon.$post({
                 param: {
                     gardenId: gardenId.toString(),
                     raisedBedId: raisedBedId.toString(),
                 },
             });
+
+            if (response.status !== 201) {
+                throw new Error(RAISED_BED_ABANDON_FAILED_MESSAGE);
+            }
         },
         onMutate: async () => {
             if (!garden) {
                 return;
             }
 
-            const targetRaisedBed = garden.raisedBeds.find(
-                (bed) => bed.id === raisedBedId,
-            );
-            const updatedRaisedBeds = garden.raisedBeds.filter(
-                (bed) => bed.id !== raisedBedId,
-            );
-            const updatedStacks = targetRaisedBed?.blockId
-                ? garden.stacks.map((stack) => {
-                      const blocks = stack.blocks.filter(
-                          (block) => block.id !== targetRaisedBed.blockId,
-                      );
-                      if (blocks.length === stack.blocks.length) {
-                          return stack;
+            const updatedRaisedBeds = garden.raisedBeds.map((bed) =>
+                bed.id === raisedBedId
+                    ? {
+                          ...bed,
+                          status: 'abandoned',
                       }
-                      return {
-                          ...stack,
-                          blocks,
-                      };
-                  })
-                : garden.stacks;
+                    : bed,
+            );
 
             const previousItem = await handleOptimisticUpdate(
                 queryClient,
-                currentGardenKeys,
+                gardenQueryKey,
                 {
                     raisedBeds: updatedRaisedBeds,
-                    stacks: updatedStacks,
                 },
             );
 
@@ -61,16 +57,19 @@ export function useAbandonRaisedBed(gardenId: number, raisedBedId: number) {
         onError: (error, _variables, context) => {
             console.error('Failed to abandon raised bed:', error);
             if (context?.previousItem) {
-                queryClient.setQueryData(
-                    currentGardenKeys,
-                    context.previousItem,
-                );
+                queryClient.setQueryData(gardenQueryKey, context.previousItem);
             }
         },
         onSettled: async () => {
-            if (queryClient.isMutating({ mutationKey }) === 1) {
+            if (
+                queryClient.isMutating({ mutationKey }) ===
+                LAST_MUTATION_IN_FLIGHT
+            ) {
                 await queryClient.invalidateQueries({
-                    queryKey: currentGardenKeys,
+                    queryKey: gardenQueryKey,
+                });
+                await queryClient.invalidateQueries({
+                    queryKey: ['garden-operations', gardenId],
                 });
             }
         },

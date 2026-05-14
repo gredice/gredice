@@ -1635,6 +1635,7 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                 knownEventTypes.raisedBeds.create,
                 knownEventTypes.raisedBeds.aiAnalysis,
                 knownEventTypes.raisedBeds.delete,
+                knownEventTypes.raisedBeds.abandon,
             ],
             [raisedBedId.toString()],
             0,
@@ -1672,6 +1673,10 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                 }
                 case knownEventTypes.raisedBeds.delete: {
                     name = 'Gredica obrisana';
+                    break;
+                }
+                case knownEventTypes.raisedBeds.abandon: {
+                    name = 'Gredica napuštena';
                     break;
                 }
             }
