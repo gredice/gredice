@@ -12,6 +12,20 @@ const currentUser = {
     userName: 'test-user',
 };
 
+const adventCalendar = {
+    calendarId: 'calendar-2025',
+    days: Array.from({ length: 24 }, (_, index) => ({
+        day: index + 1,
+        opened: false,
+    })),
+    description: '',
+    nextDay: 1,
+    openedCount: 0,
+    remaining: 24,
+    totalDays: 24,
+    year: 2025,
+};
+
 const crashPatterns = [
     /Maximum update depth exceeded/u,
     /The result of getSnapshot should be cached/u,
@@ -43,7 +57,7 @@ function collectRuntimeFailures(page: Page) {
 async function mockGardenApi(page: Page, signedIn: boolean) {
     await page.route('**/api/gredice/**', async (route) => {
         const { pathname } = new URL(route.request().url());
-        let body: unknown = {};
+        let body: unknown;
 
         if (pathname.endsWith('/api/auth/current-claims')) {
             body = signedIn ? currentUser : null;
@@ -77,6 +91,8 @@ async function mockGardenApi(page: Page, signedIn: boolean) {
                 current: { amount: 0, day: 1 },
                 next: { amount: 1, day: 2 },
             };
+        } else if (pathname.endsWith('/api/occasions/advent/calendar-2025')) {
+            body = adventCalendar;
         } else if (pathname.endsWith('/api/accounts/current/sunflowers')) {
             body = { amount: 0 };
         } else if (pathname.endsWith('/api/accounts/current')) {
@@ -95,6 +111,10 @@ async function mockGardenApi(page: Page, signedIn: boolean) {
             body = { items: [] };
         } else if (pathname.endsWith('/api/notifications')) {
             body = [];
+        }
+
+        if (body === undefined) {
+            throw new Error(`Unexpected garden API request: ${pathname}`);
         }
 
         await route.fulfill({

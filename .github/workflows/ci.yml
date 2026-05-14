@@ -118,7 +118,11 @@ jobs:
               - pnpm-workspace.yaml
               - turbo.json
             packages_game:
+              - packages/client/**
               - packages/game/**
+              - packages/js/**
+              - packages/stripe/**
+              - packages/ui/**
               - .github/workflows/**
               - package.json
               - pnpm-lock.yaml
