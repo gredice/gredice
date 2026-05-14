@@ -96,13 +96,20 @@ export function RaisedBedFieldIconStack({ children }: { children: ReactNode }) {
     }
 
     function handleClickCapture(event: ReactMouseEvent<HTMLFieldSetElement>) {
-        if (!swallowNextClickRef.current) {
+        if (swallowNextClickRef.current) {
+            clearSwallowedClick();
+            event.preventDefault();
+            event.stopPropagation();
             return;
         }
 
-        clearSwallowedClick();
-        event.preventDefault();
-        event.stopPropagation();
+        // A click that survived the swallow guard is activating a child icon
+        // (typically opening a modal/drawer). Collapse the stack now so the
+        // document-level pointerdown listener detaches before the child's
+        // drawer starts handling swipe-to-dismiss and backdrop-tap gestures.
+        if (isTouchExpanded) {
+            setIsTouchExpanded(false);
+        }
     }
 
     if (items.length === 0) {
