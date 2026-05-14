@@ -1,6 +1,7 @@
 import {
     getAccount,
     getEntitiesFormatted,
+    getFarm,
     getGarden,
     getOperationById,
     getRaisedBed,
@@ -52,20 +53,26 @@ export default async function OperationDetailsPage({
         return notFound();
     }
 
-    if (!operation.accountId) {
+    if (!operation.accountId && !operation.farmId) {
         return notFound();
     }
 
-    const [operationsData, account, garden, raisedBed] = await Promise.all([
-        getEntitiesFormatted<EntityStandardized>('operation'),
-        getAccount(operation.accountId),
-        operation.gardenId
-            ? getGarden(operation.gardenId)
-            : Promise.resolve(undefined),
-        operation.raisedBedId
-            ? getRaisedBed(operation.raisedBedId)
-            : Promise.resolve(undefined),
-    ]);
+    const [operationsData, account, farm, garden, raisedBed] =
+        await Promise.all([
+            getEntitiesFormatted<EntityStandardized>('operation'),
+            operation.accountId
+                ? getAccount(operation.accountId)
+                : Promise.resolve(undefined),
+            operation.farmId
+                ? getFarm(operation.farmId)
+                : Promise.resolve(null),
+            operation.gardenId
+                ? getGarden(operation.gardenId)
+                : Promise.resolve(undefined),
+            operation.raisedBedId
+                ? getRaisedBed(operation.raisedBedId)
+                : Promise.resolve(undefined),
+        ]);
 
     const operationDetails = operationsData?.find(
         (op) => op.id === operation.entityId,
@@ -245,12 +252,17 @@ export default async function OperationDetailsPage({
                             )}
                         </>
                     )}
-                    {accountUsers && (
+                    {accountUsers && operation.accountId && (
                         <Link href={KnownPages.Account(operation.accountId)}>
                             <Field
                                 name="Korisnici računa"
                                 value={accountUsers}
                             />
+                        </Link>
+                    )}
+                    {farm && (
+                        <Link href={KnownPages.Farm(farm.id)}>
+                            <Field name="Farma" value={farm.name} />
                         </Link>
                     )}
                     {gardenName && (

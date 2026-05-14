@@ -1,9 +1,13 @@
-import { getAssignableFarmUsersByOperationIds } from '@gredice/storage';
+import {
+    getAssignableFarmUsersByOperationIds,
+    getFarms,
+} from '@gredice/storage';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
 import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
+import { FarmOperationsScheduleSection } from './FarmOperationsScheduleSection';
 import { RaisedBedOperationsScheduleSection } from './RaisedBedOperationsScheduleSection';
 import {
     getScheduleDayData,
@@ -36,10 +40,12 @@ export async function ScheduleDayOperationsSection({
         return null;
     }
 
-    const assignableFarmUsersByOperationId =
-        await getAssignableFarmUsersByOperationIds(
+    const [assignableFarmUsersByOperationId, farms] = await Promise.all([
+        getAssignableFarmUsersByOperationIds(
             scheduledOperations.map((operation) => operation.id),
-        );
+        ),
+        getFarms(),
+    ]);
 
     const affectedRaisedBedIds = [
         ...new Set(
@@ -52,6 +58,19 @@ export async function ScheduleDayOperationsSection({
         raisedBeds,
         affectedRaisedBedIds,
     );
+    const farmOperations = scheduledOperations.filter(
+        (operation) =>
+            typeof operation.farmId === 'number' &&
+            operation.raisedBedId === null,
+    );
+    const operationFarmIds = new Set(
+        farmOperations
+            .map((operation) => operation.farmId)
+            .filter((farmId): farmId is number => typeof farmId === 'number'),
+    );
+    const operationFarms = farms
+        .filter((farm) => operationFarmIds.has(farm.id))
+        .map((farm) => ({ id: farm.id, name: farm.name }));
 
     const dayOperationsToApprove = scheduledOperations
         .filter(
@@ -63,7 +82,7 @@ export async function ScheduleDayOperationsSection({
         )
         .map((operation) => ({
             id: operation.id,
-            label: operation.entityId,
+            label: operation.entityId.toString(),
         }));
 
     const dayOperationsToAssign = scheduledOperations
@@ -109,6 +128,17 @@ export async function ScheduleDayOperationsSection({
                     />
                 );
             })}
+            {operationFarms.map((farm) => (
+                <FarmOperationsScheduleSection
+                    key={farm.id}
+                    farm={farm}
+                    scheduledOperations={scheduledOperations}
+                    operationsData={operationsData}
+                    assignableFarmUsersByOperationId={
+                        assignableFarmUsersByOperationId
+                    }
+                />
+            ))}
         </Stack>
     );
 }
