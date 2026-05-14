@@ -249,12 +249,11 @@ function checkPorts() {
 
   const defaultProxyPortSet = new Set([defaultProxyPorts.http, defaultProxyPorts.https]);
   const fallbackProxyPortSet = new Set([fallbackProxyPorts.http, fallbackProxyPorts.https]);
-  const ports = new Set([...requiredAppPorts, ...defaultProxyPortSet]);
-  if (canUseFallbackProxyPorts()) {
-    for (const port of fallbackProxyPortSet) {
-      ports.add(port);
-    }
-  }
+  const ports = new Set([
+    ...requiredAppPorts,
+    ...defaultProxyPortSet,
+    ...(canUseFallbackProxyPorts() ? fallbackProxyPortSet : []),
+  ]);
 
   const probes = [...ports].map((port) => new Promise((resolveProbe) => {
     const server = net.createServer();

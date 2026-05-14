@@ -38,7 +38,7 @@ function withEnv(updates, callback) {
     }
 }
 
-function runAppCommand(command, env = {}) {
+function runAppCommandForTest(command, env = {}) {
     const binDir = mkdtempSync(resolve(tmpdir(), 'gredice-app-command-'));
     const nextPath = resolve(binDir, 'next');
     const childEnv = {
@@ -107,7 +107,7 @@ describe('app registry worktree ports', () => {
     });
 
     it('points local API calls at the app dev port for dev commands', () => {
-        const result = runAppCommand('dev', {
+        const result = runAppCommandForTest('dev', {
             GREDICE_PORT_OFFSET: '12',
             GREDICE_API_START_PORT: '13005',
         });
@@ -119,7 +119,7 @@ describe('app registry worktree ports', () => {
     });
 
     it('points local API calls at the API start port for start commands', () => {
-        const result = runAppCommand('start', {
+        const result = runAppCommandForTest('start', {
             GREDICE_PORT_OFFSET: '12',
             GREDICE_API_START_PORT: '13005',
         });
