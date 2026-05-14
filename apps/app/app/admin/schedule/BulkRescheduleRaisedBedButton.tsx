@@ -13,6 +13,7 @@ import { rescheduleOperationAction } from '../../(actions)/operationActions';
 import { rescheduleRaisedBedFieldAction } from '../../(actions)/raisedBedFieldsActions';
 
 type FieldRescheduleTarget = {
+    id?: number;
     raisedBedId: number;
     positionIndex: number;
 };
@@ -25,6 +26,7 @@ interface BulkRescheduleRaisedBedButtonProps {
     physicalId: string;
     fields: FieldRescheduleTarget[];
     operations: OperationRescheduleTarget[];
+    onSubmit?: (scheduledDate: string) => unknown | Promise<unknown>;
 }
 
 function formatLocalDate(date: Date): string {
@@ -38,6 +40,7 @@ export function BulkRescheduleRaisedBedButton({
     physicalId,
     fields,
     operations,
+    onSubmit,
 }: BulkRescheduleRaisedBedButtonProps) {
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,35 +72,40 @@ export function BulkRescheduleRaisedBedButton({
             return;
         }
 
-        setIsSubmitting(true);
-        try {
-            await Promise.all([
-                ...fields.map((field) => {
-                    const targetFormData = new FormData();
-                    targetFormData.set(
-                        'raisedBedId',
-                        field.raisedBedId.toString(),
-                    );
-                    targetFormData.set(
-                        'positionIndex',
-                        field.positionIndex.toString(),
-                    );
-                    targetFormData.set('scheduledDate', scheduledDate);
-                    return rescheduleRaisedBedFieldAction(targetFormData);
-                }),
-                ...operations.map((operation) => {
-                    const targetFormData = new FormData();
-                    targetFormData.set('operationId', operation.id.toString());
-                    targetFormData.set('scheduledDate', scheduledDate);
-                    return rescheduleOperationAction(targetFormData);
-                }),
-            ]);
+        if (onSubmit) {
+            await onSubmit(scheduledDate);
             setOpen(false);
-        } catch (error) {
-            console.error('Failed to reschedule all raised bed items:', error);
-        } finally {
-            setIsSubmitting(false);
+            return;
         }
+
+        setIsSubmitting(true);
+        setOpen(false);
+        void Promise.all([
+            ...fields.map((field) => {
+                const targetFormData = new FormData();
+                targetFormData.set('raisedBedId', field.raisedBedId.toString());
+                targetFormData.set(
+                    'positionIndex',
+                    field.positionIndex.toString(),
+                );
+                targetFormData.set('scheduledDate', scheduledDate);
+                return rescheduleRaisedBedFieldAction(targetFormData);
+            }),
+            ...operations.map((operation) => {
+                const targetFormData = new FormData();
+                targetFormData.set('operationId', operation.id.toString());
+                targetFormData.set('scheduledDate', scheduledDate);
+                return rescheduleOperationAction(targetFormData);
+            }),
+        ])
+            .catch((error: unknown) => {
+                console.error(
+                    'Failed to reschedule all raised bed items:',
+                    error,
+                );
+                alert('Skupno zakazivanje zadataka nije uspjelo.');
+            })
+            .finally(() => setIsSubmitting(false));
     }
 
     return (

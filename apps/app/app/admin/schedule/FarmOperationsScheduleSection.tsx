@@ -13,12 +13,25 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { KnownPages } from '../../../src/KnownPages';
+import {
+    acceptOperationAction,
+    assignOperationUserAction,
+    cancelOperationAction,
+    completeOperation,
+    completeOperationWithImageUrls,
+    rescheduleOperationAction,
+    verifyOperationAction,
+} from '../../(actions)/operationActions';
 import { AcceptOperationModal } from './AcceptOperationModal';
 import { AssignOperationModal } from './AssignOperationModal';
 import { CancelOperationModal } from './CancelOperationModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { OperationCompletionAttachments } from './OperationCompletionAttachments';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
+import {
+    createOperationAssignedUsers,
+    parseScheduledDateInput,
+} from './scheduleOptimisticHelpers';
 import {
     formatMinutes,
     getOperationDurationMinutes,
@@ -27,6 +40,7 @@ import {
     isOperationPendingVerification,
 } from './scheduleShared';
 import type { Operation } from './types';
+import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 import { VerifyOperationModal } from './VerifyOperationModal';
 
 type FarmSummary = {
@@ -62,6 +76,9 @@ export function FarmOperationsScheduleSection({
     operationsData,
     assignableFarmUsersByOperationId,
 }: FarmOperationsScheduleSectionProps) {
+    const { getOperationPatch, runOptimisticAction } =
+        useOptimisticScheduleActions();
+
     const operationDataById = new Map<number, EntityStandardized>();
     if (operationsData) {
         for (const operationData of operationsData) {
@@ -74,6 +91,10 @@ export function FarmOperationsScheduleSection({
             (operation) =>
                 operation.farmId === farm.id && operation.raisedBedId === null,
         )
+        .map((operation) => ({
+            ...operation,
+            ...getOperationPatch(operation.id),
+        }))
         .sort((left, right) =>
             getOperationLabel(left, operationDataById).localeCompare(
                 getOperationLabel(right, operationDataById),
@@ -203,6 +224,26 @@ export function FarmOperationsScheduleSection({
                                     <VerifyOperationModal
                                         operationId={operation.id}
                                         label={operationLabel}
+                                        onConfirm={() =>
+                                            runOptimisticAction({
+                                                operationPatches: [
+                                                    {
+                                                        id: operation.id,
+                                                        patch: {
+                                                            status: 'completed',
+                                                        },
+                                                    },
+                                                ],
+                                                action: () =>
+                                                    verifyOperationAction(
+                                                        operation.id,
+                                                    ),
+                                                errorLogMessage:
+                                                    'Error verifying operation:',
+                                                errorAlertMessage:
+                                                    'Verifikacija radnje nije uspjela. Promjena je vraćena.',
+                                            })
+                                        }
                                         renderTrigger={({
                                             isSubmitting,
                                             openModal,
@@ -235,12 +276,63 @@ export function FarmOperationsScheduleSection({
                                         operationId={operation.id}
                                         label={operationLabel}
                                         conditions={operationData?.conditions}
+                                        onConfirm={(imageUrls, notes) =>
+                                            runOptimisticAction({
+                                                operationPatches: [
+                                                    {
+                                                        id: operation.id,
+                                                        patch: {
+                                                            completionNotes:
+                                                                notes,
+                                                            imageUrls,
+                                                            status: 'completed',
+                                                        },
+                                                    },
+                                                ],
+                                                action: () =>
+                                                    imageUrls
+                                                        ? completeOperationWithImageUrls(
+                                                              operation.id,
+                                                              imageUrls,
+                                                              notes,
+                                                          )
+                                                        : completeOperation(
+                                                              operation.id,
+                                                              undefined,
+                                                              notes,
+                                                          ),
+                                                errorLogMessage:
+                                                    'Error completing operation:',
+                                                errorAlertMessage:
+                                                    'Završetak radnje nije uspio. Promjena je vraćena.',
+                                            })
+                                        }
                                     />
                                 ) : (
                                     <AcceptOperationModal
                                         operationId={operation.id}
                                         label={operationLabel}
                                         disabled={!operation.assignedUserId}
+                                        onConfirm={() =>
+                                            runOptimisticAction({
+                                                operationPatches: [
+                                                    {
+                                                        id: operation.id,
+                                                        patch: {
+                                                            isAccepted: true,
+                                                        },
+                                                    },
+                                                ],
+                                                action: () =>
+                                                    acceptOperationAction(
+                                                        operation.id,
+                                                    ),
+                                                errorLogMessage:
+                                                    'Error accepting operation:',
+                                                errorAlertMessage:
+                                                    'Potvrda radnje nije uspjela. Promjena je vraćena.',
+                                            })
+                                        }
                                     />
                                 )}
                                 <a
@@ -321,6 +413,44 @@ export function FarmOperationsScheduleSection({
                                     }
                                     assignedUsers={operation.assignedUsers}
                                     disabled={operationLocked}
+                                    onSubmit={(assignedUserIds) => {
+                                        const farmUsers =
+                                            assignableFarmUsersByOperationId[
+                                                operation.id
+                                            ] ?? [];
+                                        const assignedUsers =
+                                            createOperationAssignedUsers(
+                                                assignedUserIds,
+                                                farmUsers,
+                                                operation.assignedUsers,
+                                            );
+                                        runOptimisticAction({
+                                            operationPatches: [
+                                                {
+                                                    id: operation.id,
+                                                    patch: {
+                                                        assignedUser:
+                                                            assignedUsers[0] ??
+                                                            null,
+                                                        assignedUserId:
+                                                            assignedUserIds[0] ??
+                                                            null,
+                                                        assignedUserIds,
+                                                        assignedUsers,
+                                                    },
+                                                },
+                                            ],
+                                            action: () =>
+                                                assignOperationUserAction(
+                                                    operation.id,
+                                                    assignedUserIds,
+                                                ),
+                                            errorLogMessage:
+                                                'Error assigning operation user:',
+                                            errorAlertMessage:
+                                                'Dodjela radnje nije uspjela. Promjena je vraćena.',
+                                        });
+                                    }}
                                 />
                                 <RescheduleOperationModal
                                     operation={{
@@ -329,6 +459,34 @@ export function FarmOperationsScheduleSection({
                                         scheduledDate: operation.scheduledDate,
                                     }}
                                     operationLabel={operationLabel}
+                                    onSubmit={(formData) => {
+                                        const scheduledDate =
+                                            formData.get('scheduledDate');
+                                        runOptimisticAction({
+                                            operationPatches: [
+                                                {
+                                                    id: operation.id,
+                                                    patch: {
+                                                        scheduledDate:
+                                                            typeof scheduledDate ===
+                                                            'string'
+                                                                ? parseScheduledDateInput(
+                                                                      scheduledDate,
+                                                                  )
+                                                                : undefined,
+                                                    },
+                                                },
+                                            ],
+                                            action: () =>
+                                                rescheduleOperationAction(
+                                                    formData,
+                                                ),
+                                            errorLogMessage:
+                                                'Error rescheduling operation:',
+                                            errorAlertMessage:
+                                                'Zakazivanje radnje nije uspjelo. Promjena je vraćena.',
+                                        });
+                                    }}
                                     trigger={
                                         <IconButton
                                             variant="plain"
@@ -351,6 +509,24 @@ export function FarmOperationsScheduleSection({
                                         status: operation.status,
                                     }}
                                     operationLabel={operationLabel}
+                                    onSubmit={(formData) =>
+                                        runOptimisticAction({
+                                            operationPatches: [
+                                                {
+                                                    id: operation.id,
+                                                    patch: {
+                                                        status: 'canceled',
+                                                    },
+                                                },
+                                            ],
+                                            action: () =>
+                                                cancelOperationAction(formData),
+                                            errorLogMessage:
+                                                'Error canceling operation:',
+                                            errorAlertMessage:
+                                                'Otkazivanje radnje nije uspjelo. Promjena je vraćena.',
+                                        })
+                                    }
                                     trigger={
                                         <IconButton
                                             variant="plain"
