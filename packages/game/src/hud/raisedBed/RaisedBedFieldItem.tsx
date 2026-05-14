@@ -2,8 +2,8 @@ import { useGameFlags } from '../../GameFlagsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';
 import {
-    findRaisedBedFieldWithPlant,
     findRaisedBedOccupiedField,
+    getRaisedBedFieldPlantHistory,
 } from '../../utils/raisedBedFields';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import { RaisedBedFieldItemEmpty } from './RaisedBedFieldItemEmpty';
@@ -32,7 +32,7 @@ export function RaisedBedFieldItem({
     }
 
     const field = findRaisedBedOccupiedField(raisedBed.fields, positionIndex);
-    const historicalField = findRaisedBedFieldWithPlant(
+    const plantHistory = getRaisedBedFieldPlantHistory(
         raisedBed.fields,
         positionIndex,
     );
@@ -48,20 +48,11 @@ export function RaisedBedFieldItem({
     }
 
     if (!hasField) {
-        if (enablePlantHistoryFlag && historicalField) {
-            return (
-                <RaisedBedFieldItemPlanted
-                    raisedBedId={raisedBedId}
-                    positionIndex={positionIndex}
-                    isHistorical
-                />
-            );
-        }
-
         return (
             <RaisedBedFieldItemEmpty
                 cartPlantItem={cartPlantItem}
                 gardenId={gardenId}
+                plantHistory={enablePlantHistoryFlag ? plantHistory : []}
                 isCartPending={isCartPending}
                 raisedBedId={raisedBedId}
                 positionIndex={positionIndex}
@@ -72,6 +63,7 @@ export function RaisedBedFieldItem({
 
     return (
         <RaisedBedFieldItemPlanted
+            plantHistory={enablePlantHistoryFlag ? plantHistory : []}
             raisedBedId={raisedBedId}
             positionIndex={positionIndex}
         />

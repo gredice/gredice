@@ -13,6 +13,7 @@ import { useRaisedBedFieldRemove } from '../../hooks/useRaisedBedFieldRemove';
 import {
     findRaisedBedFieldWithPlant,
     findRaisedBedOccupiedField,
+    type RaisedBedFieldPlantHistoryEntry,
 } from '../../utils/raisedBedFields';
 import type { PlantFieldStatus } from './featuredOperations';
 import { PlantStageSection } from './PlantStageSection';
@@ -23,6 +24,7 @@ export function useRaisedBedFieldLifecycleData(
     raisedBedId: number,
     positionIndex: number,
     includeInactive = false,
+    fieldOverride?: RaisedBedFieldPlantHistoryEntry,
 ) {
     const result = {
         germinationValue: 0,
@@ -37,9 +39,11 @@ export function useRaisedBedFieldLifecycleData(
     };
     const { data: garden } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
-    const field = includeInactive
-        ? findRaisedBedFieldWithPlant(raisedBed?.fields, positionIndex)
-        : findRaisedBedOccupiedField(raisedBed?.fields, positionIndex);
+    const field =
+        fieldOverride ??
+        (includeInactive
+            ? findRaisedBedFieldWithPlant(raisedBed?.fields, positionIndex)
+            : findRaisedBedOccupiedField(raisedBed?.fields, positionIndex));
     const plantSortId = field?.plantSortId;
     const { data: plantSort } = usePlantSort(plantSortId);
     if (!raisedBed || !field || !plantSort) {
@@ -153,11 +157,13 @@ export function RaisedBedFieldLifecycleTab({
     raisedBedId,
     positionIndex,
     includeInactive = false,
+    fieldOverride,
     onShowOperations,
 }: {
     raisedBedId: number;
     positionIndex: number;
     includeInactive?: boolean;
+    fieldOverride?: RaisedBedFieldPlantHistoryEntry;
     onShowOperations?: () => void;
 }) {
     const { data: garden } = useCurrentGarden();
@@ -175,13 +181,16 @@ export function RaisedBedFieldLifecycleTab({
         raisedBedId,
         positionIndex,
         includeInactive,
+        fieldOverride,
     );
     const removeFieldMutation = useRaisedBedFieldRemove();
 
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
-    const field = includeInactive
-        ? findRaisedBedFieldWithPlant(raisedBed?.fields, positionIndex)
-        : findRaisedBedOccupiedField(raisedBed?.fields, positionIndex);
+    const field =
+        fieldOverride ??
+        (includeInactive
+            ? findRaisedBedFieldWithPlant(raisedBed?.fields, positionIndex)
+            : findRaisedBedOccupiedField(raisedBed?.fields, positionIndex));
     const { data: plantSort } = usePlantSort(field?.plantSortId);
 
     if (!garden || !plantSort || !field) {
@@ -209,7 +218,9 @@ export function RaisedBedFieldLifecycleTab({
         : null;
 
     let icon: ReactNode | null = null;
-    const localizedStatus = plantFieldStatusLabel(field.plantStatus);
+    const localizedStatus = plantFieldStatusLabel(
+        field.plantStatus ?? undefined,
+    );
     switch (field.plantStatus) {
         case 'new':
             icon = <span className="mr-0.5">{'🌟'}</span>;
@@ -408,7 +419,7 @@ export function RaisedBedFieldLifecycleTab({
                 </Stack>
             </Row>
 
-            {field.active && (
+            {field.active && typeof field.plantSortId === 'number' && (
                 <RecommendationsCard
                     onShowOperations={onShowOperations}
                     gardenId={garden.id}

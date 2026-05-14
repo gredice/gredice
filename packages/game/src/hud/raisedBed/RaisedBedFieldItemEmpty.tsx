@@ -1,10 +1,14 @@
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { ShoppingCart } from '@signalco/ui-icons';
+import { MoreHorizontal, ShoppingCart } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';
+import type { RaisedBedFieldPlantHistoryEntry } from '../../utils/raisedBedFields';
+import { RaisedBedFieldIconStack } from './RaisedBedFieldIconStack';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
+import { RaisedBedFieldItemPlanted } from './RaisedBedFieldItemPlanted';
+import { RaisedBedFieldPlantHistoryModal } from './RaisedBedFieldPlantHistoryModal';
 import { PlantPicker } from './RaisedBedPlantPicker';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -48,6 +52,7 @@ export function RaisedBedFieldItemEmpty({
     cartPlantItem,
     gardenId,
     isCartPending,
+    plantHistory = [],
     raisedBedId,
     positionIndex,
     isDragging,
@@ -56,6 +61,7 @@ export function RaisedBedFieldItemEmpty({
     gardenId: number;
     cartPlantItem: ShoppingCartItemData | null;
     isCartPending: boolean;
+    plantHistory?: RaisedBedFieldPlantHistoryEntry[];
     positionIndex: number;
     isDragging?: boolean;
 }) {
@@ -76,9 +82,20 @@ export function RaisedBedFieldItemEmpty({
     const cartPlantOptions = {
         scheduledDate,
     };
+    const plantPickerProps = {
+        gardenId,
+        inShoppingCart: Boolean(cartPlantItem),
+        positionIndex,
+        raisedBedId,
+        selectedPlantId: cartPlantId ?? null,
+        selectedPlantOptions: cartPlantOptions,
+        selectedSortId: cartPlantSortId,
+    };
     const scheduledDateLabel = scheduledDate
         ? formatScheduledSowingDateLabel(scheduledDate, new Date())
         : null;
+    const visiblePlantHistory = plantHistory.slice(-2);
+    const shouldShowAllPlantHistory = plantHistory.length > 2;
 
     const isLoading = isCartPending || isGardenPending;
     if (isLoading) {
@@ -91,53 +108,102 @@ export function RaisedBedFieldItemEmpty({
     }
 
     return (
-        <PlantPicker
-            trigger={
-                <RaisedBedFieldItemButton
-                    isLoading={isLoading}
-                    positionIndex={positionIndex}
-                    className={cx(
-                        isDragging &&
-                            'opacity-50 ring-2 ring-lime-500 scale-105',
-                    )}
-                >
-                    {(isLoading || !cartPlantItem) && (
-                        <PlantingSeedIcon className="size-8 text-green-800" />
-                    )}
-                    {!isLoading && cartPlantItem && (
-                        <>
-                            <PlantOrSortImage
-                                plantSort={cartPlantSort}
-                                alt={cartPlantItem.shopData.name ?? 'Nepoznato'}
-                                width={50}
-                                height={50}
-                            />
-                            <div className="absolute right-0.5 top-0.5">
-                                <div className="rounded-full border-2 p-1 bg-yellow-600 border-white shadow-lg">
-                                    <ShoppingCart className="size-4 stroke-white" />
-                                </div>
-                            </div>
-                            {scheduledDateLabel && (
-                                <div className="absolute left-0.5 bottom-0.5">
-                                    <div className="relative size-6 rounded-lg border-2 bg-stone-200 border-stone-400 text-stone-800 shadow-lg overflow-hidden">
-                                        <div className="absolute inset-x-0 top-0 h-1.5 bg-stone-400" />
-                                        <span className="absolute inset-0 pt-1.5 flex items-center justify-center text-[9px] font-semibold leading-none">
-                                            {scheduledDateLabel}
-                                        </span>
+        <div className="relative size-full">
+            <PlantPicker
+                trigger={
+                    <RaisedBedFieldItemButton
+                        isLoading={isLoading}
+                        positionIndex={positionIndex}
+                        className={cx(
+                            isDragging &&
+                                'opacity-50 ring-2 ring-lime-500 scale-105',
+                        )}
+                    >
+                        {(isLoading || !cartPlantItem) && (
+                            <PlantingSeedIcon className="size-8 text-green-800" />
+                        )}
+                        {!isLoading && cartPlantItem && (
+                            <>
+                                <PlantOrSortImage
+                                    plantSort={cartPlantSort}
+                                    alt={
+                                        cartPlantItem.shopData.name ??
+                                        'Nepoznato'
+                                    }
+                                    width={50}
+                                    height={50}
+                                />
+                                {scheduledDateLabel && (
+                                    <div className="absolute left-0.5 bottom-0.5">
+                                        <div className="relative size-6 rounded-lg border-2 bg-stone-200 border-stone-400 text-stone-800 shadow-lg overflow-hidden">
+                                            <div className="absolute inset-x-0 top-0 h-1.5 bg-stone-400" />
+                                            <span className="absolute inset-0 pt-1.5 flex items-center justify-center text-[9px] font-semibold leading-none">
+                                                {scheduledDateLabel}
+                                            </span>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </RaisedBedFieldItemButton>
-            }
-            gardenId={gardenId}
-            raisedBedId={raisedBedId}
-            positionIndex={positionIndex}
-            inShoppingCart={Boolean(cartPlantItem)}
-            selectedPlantId={cartPlantId ?? null}
-            selectedSortId={cartPlantSortId}
-            selectedPlantOptions={cartPlantOptions}
-        />
+                                )}
+                            </>
+                        )}
+                    </RaisedBedFieldItemButton>
+                }
+                {...plantPickerProps}
+            />
+            <RaisedBedFieldIconStack>
+                {shouldShowAllPlantHistory && (
+                    <RaisedBedFieldPlantHistoryModal
+                        entries={plantHistory}
+                        raisedBedId={raisedBedId}
+                        trigger={
+                            <button
+                                type="button"
+                                className="inline-flex size-8 items-center justify-center rounded-full border-2 hover:bg-gray-100 border-white bg-card p-0 shadow-lg ring-1 ring-black/10 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700"
+                                title={`Povijest biljaka (${plantHistory.length})`}
+                                aria-label={`Prikaži povijest biljaka za polje ${positionIndex + 1}`}
+                                onPointerDown={(event) =>
+                                    event.stopPropagation()
+                                }
+                                onClick={(event) => event.stopPropagation()}
+                                onKeyDown={(event) => event.stopPropagation()}
+                            >
+                                <MoreHorizontal className="size-5" />
+                            </button>
+                        }
+                    />
+                )}
+                {visiblePlantHistory.map((historyEntry) => (
+                    <RaisedBedFieldItemPlanted
+                        key={
+                            historyEntry.plantPlaceEventId ??
+                            `${historyEntry.positionIndex}-${historyEntry.plantSortId}`
+                        }
+                        fieldOverride={historyEntry}
+                        isHistorical
+                        positionIndex={positionIndex}
+                        raisedBedId={raisedBedId}
+                        triggerVariant="avatar"
+                    />
+                ))}
+                {cartPlantItem && (
+                    <PlantPicker
+                        trigger={
+                            <button
+                                type="button"
+                                className="inline-flex size-8 items-center justify-center rounded-full bg-white hover:bg-gray-100 p-1 shadow-lg ring-1 ring-black/10 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700"
+                                title="U košarici"
+                                aria-label="Otvori sadnju u košarici"
+                                onPointerDown={(event) =>
+                                    event.stopPropagation()
+                                }
+                                onKeyDown={(event) => event.stopPropagation()}
+                            >
+                                <ShoppingCart className="size-[18px] stroke-foreground" />
+                            </button>
+                        }
+                        {...plantPickerProps}
+                    />
+                )}
+            </RaisedBedFieldIconStack>
+        </div>
     );
 }

@@ -56,8 +56,7 @@ export const enableDebugHudFlag = flag<boolean>({
 
 export const plantHistoryFlag = flag<boolean>({
     key: 'plantHistory',
-    description:
-        'Show previous plant history on inactive raised-bed fields.',
-    decide: () => false,
+    description: 'Show previous plant history on inactive raised-bed fields.',
+    decide: () => true,
     options: booleanOptions,
 });

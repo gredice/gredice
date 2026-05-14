@@ -1383,8 +1383,12 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
     });
 
     // Retrieve all events in bulk
-    const fieldAggregateIds = fields.map(
-        (field) => `${field.raisedBedId}|${field.positionIndex}`,
+    const fieldAggregateIds = Array.from(
+        new Set(
+            fields.map(
+                (field) => `${field.raisedBedId}|${field.positionIndex}`,
+            ),
+        ),
     );
     const fieldsEvents = await getEvents(
         [
@@ -1399,6 +1403,25 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         0,
         100000,
     );
+    const plantCycleEventsByAggregateId = new Map<
+        string,
+        RaisedBedFieldPlantCycleEvent[]
+    >();
+    const plantCycleEventTypes = new Set<string>(PLANT_CYCLE_EVENT_TYPES);
+    for (const event of fieldsEvents) {
+        if (!plantCycleEventTypes.has(event.type)) {
+            continue;
+        }
+
+        const aggregateEvents = plantCycleEventsByAggregateId.get(
+            event.aggregateId,
+        );
+        if (aggregateEvents) {
+            aggregateEvents.push(event);
+        } else {
+            plantCycleEventsByAggregateId.set(event.aggregateId, [event]);
+        }
+    }
 
     // For each field, fetch and apply events
     return fields.map((field) => {
@@ -1600,6 +1623,11 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
 
         return {
             ...field,
+            plantCycles: summarizePlantCycles(
+                aggregateId,
+                field.positionIndex,
+                plantCycleEventsByAggregateId.get(aggregateId) ?? [],
+            ),
             plantStatus,
             plantSortId,
             plantScheduledDate,

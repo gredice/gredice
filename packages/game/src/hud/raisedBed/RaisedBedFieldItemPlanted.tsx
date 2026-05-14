@@ -6,6 +6,7 @@ import {
     ExternalLink,
     Hammer,
     History,
+    MoreHorizontal,
     Sprout,
     Warning,
 } from '@signalco/ui-icons';
@@ -21,7 +22,7 @@ import {
     TabsTrigger,
 } from '@signalco/ui-primitives/Tabs';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { useState } from 'react';
+import { type ReactElement, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
@@ -29,32 +30,49 @@ import { KnownPages } from '../../knownPages';
 import {
     findRaisedBedFieldWithPlant,
     findRaisedBedOccupiedField,
+    type RaisedBedFieldPlantHistoryEntry,
 } from '../../utils/raisedBedFields';
 import { RaisedBedFieldDiary } from './RaisedBedDiary';
+import { RaisedBedFieldIconStack } from './RaisedBedFieldIconStack';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import {
     RaisedBedFieldLifecycleTab,
     useRaisedBedFieldLifecycleData,
 } from './RaisedBedFieldLifecycleTab';
 import { RaisedBedFieldOperationsTab } from './RaisedBedFieldOperationsTab';
+import { RaisedBedFieldPlantHistoryModal } from './RaisedBedFieldPlantHistoryModal';
 
 type RaisedBedFieldTabValue = 'lifecycle' | 'diary' | 'operations';
 
 export function RaisedBedFieldItemPlanted({
     raisedBedId,
     positionIndex,
+    fieldOverride,
+    onOpenChange,
+    open: openProp,
+    plantHistory = [],
     isHistorical = false,
+    triggerOverride,
+    triggerVariant = 'field',
 }: {
     raisedBedId: number;
     positionIndex: number;
+    fieldOverride?: RaisedBedFieldPlantHistoryEntry;
+    onOpenChange?: (open: boolean) => void;
+    open?: boolean;
+    plantHistory?: RaisedBedFieldPlantHistoryEntry[];
     isHistorical?: boolean;
+    triggerOverride?: ReactElement | null;
+    triggerVariant?: 'field' | 'avatar';
 }) {
     const { data: garden, isLoading: isGardenLoading } = useCurrentGarden();
     const { track } = useGameAnalytics();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
-    const field = isHistorical
-        ? findRaisedBedFieldWithPlant(raisedBed?.fields, positionIndex)
-        : findRaisedBedOccupiedField(raisedBed?.fields, positionIndex);
+    const field =
+        fieldOverride ??
+        (isHistorical
+            ? findRaisedBedFieldWithPlant(raisedBed?.fields, positionIndex)
+            : findRaisedBedOccupiedField(raisedBed?.fields, positionIndex));
     const plantSortId = field?.plantSortId;
     const { data: plantSort, isLoading: isPlantSortLoading } =
         usePlantSort(plantSortId);
@@ -69,11 +87,14 @@ export function RaisedBedFieldItemPlanted({
         raisedBedId,
         positionIndex,
         isHistorical,
+        fieldOverride,
     );
     const isHarvested = field?.plantHarvestedDate;
-    const [open, setOpen] = useState(false);
+    const [internalOpen, setInternalOpen] = useState(false);
     const [activeTab, setActiveTab] =
         useState<RaisedBedFieldTabValue>('lifecycle');
+    const isOpenControlled = openProp !== undefined;
+    const open = openProp ?? internalOpen;
 
     if (!raisedBed) {
         return null;
@@ -90,6 +111,14 @@ export function RaisedBedFieldItemPlanted({
     const isLoading =
         isGardenLoading || (Boolean(plantSortId) && isPlantSortLoading);
     if (isLoading) {
+        if (triggerOverride !== undefined) {
+            return triggerOverride;
+        }
+
+        if (triggerVariant === 'avatar') {
+            return null;
+        }
+
         return (
             <RaisedBedFieldItemButton
                 isLoading={true}
@@ -100,6 +129,14 @@ export function RaisedBedFieldItemPlanted({
 
     // Error state (plant sort unknown)
     if (!plantSort) {
+        if (triggerOverride !== undefined) {
+            return triggerOverride;
+        }
+
+        if (triggerVariant === 'avatar') {
+            return null;
+        }
+
         return (
             <RaisedBedFieldItemButton positionIndex={positionIndex}>
                 <Warning className="size-10" />
@@ -166,6 +203,100 @@ export function RaisedBedFieldItemPlanted({
                   icon: <Check className="size-4 text-white" />,
               }
             : null;
+    const visiblePlantHistory =
+        triggerVariant === 'field' ? plantHistory.slice(-2) : [];
+    const shouldShowAllPlantHistory =
+        triggerVariant === 'field' && plantHistory.length > 2;
+    const shouldShowIndicatorStack =
+        triggerVariant === 'field' &&
+        (Boolean(fieldBadge) || plantHistory.length > 0);
+    const defaultTrigger =
+        triggerVariant === 'avatar' ? (
+            <button
+                type="button"
+                className="inline-flex size-8 items-center justify-center overflow-hidden rounded-full border-2 hover:bg-gray-100 border-white bg-card p-0.5 shadow-lg ring-1 ring-black/10 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700"
+                title={`Povijest biljke: ${plantSort.information.name}`}
+                aria-label={`Povijest biljke ${plantSort.information.name}`}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+            >
+                <PlantOrSortImage
+                    plantSort={plantSort}
+                    width={26}
+                    height={26}
+                    className="size-full rounded-full object-cover"
+                />
+            </button>
+        ) : (
+            <div className="relative size-full">
+                <RaisedBedFieldItemButton positionIndex={positionIndex}>
+                    <SegmentedCircularProgress
+                        size={70}
+                        strokeWidth={4}
+                        segments={segments}
+                    >
+                        <PlantOrSortImage
+                            plantSort={plantSort}
+                            className="absolute top-1/2 start-1/2 transform -translate-y-1/2 -translate-x-1/2"
+                            width={52}
+                            height={52}
+                        />
+                    </SegmentedCircularProgress>
+                </RaisedBedFieldItemButton>
+                {shouldShowIndicatorStack && (
+                    <RaisedBedFieldIconStack>
+                        {shouldShowAllPlantHistory && (
+                            <RaisedBedFieldPlantHistoryModal
+                                entries={plantHistory}
+                                raisedBedId={raisedBedId}
+                                trigger={
+                                    <button
+                                        type="button"
+                                        className="inline-flex size-8 items-center justify-center rounded-full border-2 border-white bg-card p-0 shadow-lg ring-1 ring-black/10 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700"
+                                        title={`Povijest biljaka (${plantHistory.length})`}
+                                        aria-label={`Prikaži povijest biljaka za polje ${positionIndex + 1}`}
+                                        onPointerDown={(event) =>
+                                            event.stopPropagation()
+                                        }
+                                        onClick={(event) =>
+                                            event.stopPropagation()
+                                        }
+                                        onKeyDown={(event) =>
+                                            event.stopPropagation()
+                                        }
+                                    >
+                                        <MoreHorizontal className="size-5" />
+                                    </button>
+                                }
+                            />
+                        )}
+                        {visiblePlantHistory.map((historyEntry) => (
+                            <RaisedBedFieldItemPlanted
+                                key={
+                                    historyEntry.plantPlaceEventId ??
+                                    `${historyEntry.positionIndex}-${historyEntry.plantSortId}`
+                                }
+                                fieldOverride={historyEntry}
+                                isHistorical
+                                positionIndex={positionIndex}
+                                raisedBedId={raisedBedId}
+                                triggerVariant="avatar"
+                            />
+                        ))}
+                        {fieldBadge && (
+                            <span
+                                className={`inline-flex size-8 items-center justify-center p-1 ${fieldBadge.className} rounded-full border-2 border-white shadow-lg ring-1 ring-black/10`}
+                            >
+                                {fieldBadge.icon}
+                            </span>
+                        )}
+                    </RaisedBedFieldIconStack>
+                )}
+            </div>
+        );
+    const trigger =
+        triggerOverride === undefined ? defaultTrigger : triggerOverride;
 
     return (
         <Modal
@@ -180,36 +311,14 @@ export function RaisedBedFieldItemPlanted({
                         raised_bed_id: raisedBedId,
                     });
                 }
-                setOpen(nextOpen);
+                if (!isOpenControlled) {
+                    setInternalOpen(nextOpen);
+                }
+                onOpenChange?.(nextOpen);
             }}
             title={title}
-            modal={false}
             className="md:border-tertiary md:border-b-4 max-w-xl"
-            trigger={
-                <RaisedBedFieldItemButton positionIndex={positionIndex}>
-                    <SegmentedCircularProgress
-                        size={70}
-                        strokeWidth={4}
-                        segments={segments}
-                    >
-                        <PlantOrSortImage
-                            plantSort={plantSort}
-                            className="absolute top-1/2 start-1/2 transform -translate-y-1/2 -translate-x-1/2"
-                            width={52}
-                            height={52}
-                        />
-                        {fieldBadge && (
-                            <div className="absolute -top-1 -end-1">
-                                <span
-                                    className={`inline-flex items-center justify-center p-1 ${fieldBadge.className} rounded-full border-2 border-white shadow-lg`}
-                                >
-                                    {fieldBadge.icon}
-                                </span>
-                            </div>
-                        )}
-                    </SegmentedCircularProgress>
-                </RaisedBedFieldItemButton>
-            }
+            trigger={trigger ?? undefined}
         >
             <Stack spacing={2}>
                 <Row spacing={2}>
@@ -314,6 +423,7 @@ export function RaisedBedFieldItemPlanted({
                         <RaisedBedFieldLifecycleTab
                             raisedBedId={raisedBedId}
                             positionIndex={positionIndex}
+                            fieldOverride={fieldOverride}
                             includeInactive={isHistorical}
                             onShowOperations={() => setActiveTab('operations')}
                         />
