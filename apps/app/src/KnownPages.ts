@@ -93,6 +93,7 @@ export const KnownPages = {
 
     // AI
     AiAnalytics: '/admin/ai-analytics',
+    SocialPublishing: '/admin/social-publishing',
 
     // Delivery management
     DeliverySlots: '/admin/delivery/slots',
