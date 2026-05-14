@@ -300,6 +300,11 @@ const operationTimelineStatusTypes = [
     knownEventTypes.operations.cancel,
 ];
 
+const operationHistoryStatusTypes = [
+    knownEventTypes.operations.assign,
+    ...operationTimelineStatusTypes,
+];
+
 function getLatestOperationStatusTypeExpression() {
     return sql<string | null>`(
         select ${events.type}
@@ -346,6 +351,20 @@ function getOperationTimelineSortExpression() {
     return sql<Date>`coalesce(${scheduledDateExpression}, ${operations.createdAt})`;
 }
 
+function getOperationHistorySortExpression() {
+    return sql<Date>`coalesce((
+        select ${events.createdAt}
+        from ${events}
+        where ${events.aggregateId} = CAST(${operations.id} as text)
+          and ${events.type} in (${sql.join(
+              operationHistoryStatusTypes.map((value) => sql`${value}`),
+              sql`, `,
+          )})
+        order by ${events.createdAt} desc, ${events.id} desc
+        limit 1
+    ), ${operations.createdAt})`;
+}
+
 export async function getOperations(
     accountId: string,
     gardenId?: number,
@@ -373,9 +392,13 @@ export async function getOperationsPage(
     const pageSize = input.limit ?? 20;
     const statusExpression = getOperationStatusExpression();
     const timelineSortExpression = getOperationTimelineSortExpression();
+    const historySortExpression = getOperationHistorySortExpression();
     const includeCompletedWhere = input.includeCompleted
         ? undefined
         : sql`${statusExpression} != 'completed'`;
+    const sortOrder = input.includeCompleted
+        ? [desc(historySortExpression), desc(operations.id)]
+        : [asc(timelineSortExpression), asc(operations.id)];
 
     const [pageRows, totalResult] = await Promise.all([
         storage()
@@ -384,7 +407,7 @@ export async function getOperationsPage(
             })
             .from(operations)
             .where(and(getOperationsWhere(input), includeCompletedWhere))
-            .orderBy(asc(timelineSortExpression), asc(operations.id))
+            .orderBy(...sortOrder)
             .offset(offset)
             .limit(pageSize + 1),
         storage()
