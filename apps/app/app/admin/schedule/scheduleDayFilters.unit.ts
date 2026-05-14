@@ -1,0 +1,112 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {
+    getScheduledFieldsForDay,
+    getScheduledOperationsForDay,
+} from './scheduleDayFilters.ts';
+import type { Operation, RaisedBed, RaisedBedField } from './types.ts';
+
+const today = new Date(2026, 4, 14);
+const yesterdayNoon = new Date(2026, 4, 13, 12);
+
+function buildField(overrides: Partial<RaisedBedField>): RaisedBedField {
+    return {
+        id: 1,
+        raisedBedId: 10,
+        positionIndex: 0,
+        plantStatus: 'planned',
+        plantScheduledDate: yesterdayNoon,
+        plantSortId: 100,
+        plantSowDate: undefined,
+        plantGrowthDate: undefined,
+        plantReadyDate: undefined,
+        assignedUserId: 'farmer-1',
+        assignedUserIds: ['farmer-1'],
+        assignedBy: 'admin-1',
+        assignedAt: yesterdayNoon,
+        createdAt: yesterdayNoon,
+        updatedAt: yesterdayNoon,
+        isDeleted: false,
+        ...overrides,
+    };
+}
+
+function buildRaisedBed(field: RaisedBedField): RaisedBed {
+    return {
+        id: 10,
+        physicalId: 'A1',
+        name: 'Test raised bed',
+        accountId: 'account-1',
+        gardenId: 20,
+        blockId: null,
+        fields: [field],
+    };
+}
+
+function buildOperation(overrides: Partial<Operation>): Operation {
+    return {
+        id: 1,
+        farmId: null,
+        raisedBedId: 10,
+        raisedBedFieldId: null,
+        entityId: 100,
+        entityTypeName: 'operation',
+        accountId: 'account-1',
+        gardenId: 20,
+        status: 'planned',
+        scheduledDate: yesterdayNoon,
+        completedAt: undefined,
+        completedBy: undefined,
+        timestamp: yesterdayNoon,
+        createdAt: yesterdayNoon,
+        isAccepted: true,
+        isDeleted: false,
+        assignedUserId: 'farmer-1',
+        assignedUserIds: ['farmer-1'],
+        assignedBy: 'admin-1',
+        assignedAt: yesterdayNoon,
+        assignedUser: null,
+        assignedUsers: [],
+        ...overrides,
+    };
+}
+
+test('pending verification sowing remains visible today until verified', () => {
+    const pendingField = buildField({
+        plantStatus: 'pendingVerification',
+        plantSowDate: yesterdayNoon,
+    });
+    const verifiedField = buildField({
+        id: 2,
+        plantStatus: 'sowed',
+        plantSowDate: yesterdayNoon,
+    });
+
+    assert.deepEqual(
+        getScheduledFieldsForDay(true, today, [
+            buildRaisedBed(pendingField),
+            buildRaisedBed(verifiedField),
+        ]).map((field) => field.id),
+        [1],
+    );
+});
+
+test('pending verification operation remains visible today until verified', () => {
+    const pendingOperation = buildOperation({
+        status: 'pendingVerification',
+        completedAt: yesterdayNoon,
+    });
+    const verifiedOperation = buildOperation({
+        id: 2,
+        status: 'completed',
+        completedAt: yesterdayNoon,
+    });
+
+    assert.deepEqual(
+        getScheduledOperationsForDay(true, today, [
+            pendingOperation,
+            verifiedOperation,
+        ]).map((operation) => operation.id),
+        [1],
+    );
+});
