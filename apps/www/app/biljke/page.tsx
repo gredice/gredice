@@ -36,11 +36,14 @@ export default async function PlantsPage({
     const params = await searchParams;
     const viewParam = params.pregled;
     const view = Array.isArray(viewParam) ? viewParam[0] : viewParam;
-    const search = params.pretraga;
+    const search = Array.isArray(params.pretraga)
+        ? (params.pretraga[0] ?? '')
+        : (params.pretraga ?? '');
     const seedTimeFilter = params.vrijemeZaSijanje;
-    const isSeedTimeFilterEnabled =
-        (Array.isArray(seedTimeFilter) ? seedTimeFilter[0] : seedTimeFilter) ===
-        '1';
+    const seedTimeFilterValue = Array.isArray(seedTimeFilter)
+        ? (seedTimeFilter[0] ?? '')
+        : (seedTimeFilter ?? '');
+    const isSeedTimeFilterEnabled = seedTimeFilterValue === '1';
     const entities = await getPlantsData();
     const isCanonicalView = !search && !isSeedTimeFilterEnabled;
     const sortedEntities = orderBy(entities ?? [], (a, b) =>
@@ -88,6 +91,7 @@ export default async function PlantsPage({
                     <PageFilterInputNoSSR
                         searchParamName="pretraga"
                         fieldName="plant-search"
+                        initialValue={search}
                         className="lg:flex items-start justify-end"
                     />
                 </Suspense>
@@ -123,16 +127,26 @@ export default async function PlantsPage({
                             </Link>
                         </TabsList>
                         <Suspense>
-                            <PlantsSeedTimeFilterToggle />
+                            <PlantsSeedTimeFilterToggle
+                                initialValue={seedTimeFilterValue}
+                            />
                         </Suspense>
                     </div>
                     <TabsContent value="popis" className="mt-2">
-                        <PlantsGallery plants={entities} />
+                        <PlantsGallery
+                            plants={entities}
+                            initialSearch={search}
+                            initialSeedTimeFilter={seedTimeFilterValue}
+                        />
                     </TabsContent>
                     <TabsContent value="kalendar" className="mt-2">
                         <Card>
                             <CardOverflow>
-                                <PlantsCalendar plants={entities} />
+                                <PlantsCalendar
+                                    plants={entities}
+                                    initialSearch={search}
+                                    initialSeedTimeFilter={seedTimeFilterValue}
+                                />
                             </CardOverflow>
                         </Card>
                     </TabsContent>

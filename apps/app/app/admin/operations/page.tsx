@@ -1,6 +1,8 @@
 import {
     getAllRaisedBeds,
+    getFarms,
     getGardens,
+    getUniqueAssignableFarmUsersByFarmIds,
     getUniqueAssignableFarmUsersByGardenIds,
 } from '@gredice/storage';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
@@ -21,14 +23,29 @@ export default async function OperationsPage({
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
     await auth(['admin']);
-    const [gardens, raisedBeds] = await Promise.all([
+    const [farms, gardens, raisedBeds] = await Promise.all([
+        getFarms(),
         getGardens(),
         getAllRaisedBeds(),
     ]);
-    const assignableUsers = (
-        await getUniqueAssignableFarmUsersByGardenIds(
+    const activeFarms = farms
+        .filter((farm) => !farm.isDeleted)
+        .map((farm) => ({ id: farm.id, name: farm.name }));
+    const [assignableFarmUsers, assignableGardenUsers] = await Promise.all([
+        getUniqueAssignableFarmUsersByFarmIds(
+            activeFarms.map((farm) => farm.id),
+        ),
+        getUniqueAssignableFarmUsersByGardenIds(
             gardens.map((garden) => garden.id),
-        )
+        ),
+    ]);
+    const assignableUsers = Array.from(
+        new Map(
+            [...assignableFarmUsers, ...assignableGardenUsers].map((user) => [
+                user.id,
+                user,
+            ]),
+        ).values(),
     ).map((user) => ({
         id: user.id,
         userName: user.userName,
@@ -46,11 +63,13 @@ export default async function OperationsPage({
                 actions={
                     <div className="flex gap-2">
                         <SingleOperationCreateModal
+                            farms={activeFarms}
                             gardens={gardens}
                             raisedBeds={raisedBeds}
                             assignableUsers={assignableUsers}
                         />
                         <BulkOperationCreateModal
+                            farms={activeFarms}
                             gardens={gardens}
                             raisedBeds={raisedBeds}
                             assignableUsers={assignableUsers}

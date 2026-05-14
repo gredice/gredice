@@ -1,13 +1,20 @@
 'use client';
 
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { ThumbsUp } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
+import { useClientSearchParam } from '../../hooks/useClientSearchParam';
 
 const filterParamName = 'vrijemeZaSijanje';
 
-export function PlantsSeedTimeFilterToggle() {
-    const [seedTimeFilter, setSeedTimeFilter] = useSearchParam(filterParamName);
+export function PlantsSeedTimeFilterToggle({
+    initialValue = '',
+}: {
+    initialValue?: string;
+}) {
+    const [seedTimeFilter, setSeedTimeFilter] = useClientSearchParam(
+        filterParamName,
+        initialValue,
+    );
     const isEnabled = seedTimeFilter === '1';
 
     return (

@@ -1,4 +1,16 @@
-import { and, asc, count, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
+import {
+    and,
+    asc,
+    count,
+    desc,
+    eq,
+    gte,
+    inArray,
+    isNull,
+    lte,
+    or,
+    sql,
+} from 'drizzle-orm';
 import {
     bustScheduleCache,
     cacheScheduleRead,
@@ -53,6 +65,24 @@ type GetOperationsInput = {
     raisedBedId?: number;
     raisedBedFieldIds?: number[];
 };
+
+function operationGardenIdExpression() {
+    return sql<number>`coalesce(${operations.gardenId}, ${raisedBeds.gardenId})`;
+}
+
+function operationFarmIdExpression() {
+    return sql<number>`coalesce(${operations.farmId}, ${gardens.farmId})`;
+}
+
+function operationLocationIntegrityWhere() {
+    return and(
+        or(isNull(operations.raisedBedId), eq(raisedBeds.isDeleted, false)),
+        or(
+            and(isNull(operations.gardenId), isNull(operations.raisedBedId)),
+            eq(gardens.isDeleted, false),
+        ),
+    );
+}
 
 function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
     if (!value || typeof value !== 'object') {
@@ -507,17 +537,16 @@ async function getFarmUserAcceptedOperationsByIds(
     const rows = await storage()
         .select({ operation: operations })
         .from(operations)
-        .innerJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
-        .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
-        .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .innerJoin(farmUsers, eq(farmUsers.farmId, operationFarmIdExpression()))
         .where(
             and(
                 inArray(operations.id, uniqueIds),
                 eq(farmUsers.userId, userId),
                 eq(operations.isAccepted, true),
                 eq(operations.isDeleted, false),
-                eq(raisedBeds.isDeleted, false),
-                eq(gardens.isDeleted, false),
+                operationLocationIntegrityWhere(),
             ),
         )
         .orderBy(desc(operations.timestamp));
@@ -587,16 +616,18 @@ async function getFarmUserAcceptedOperationsUncached(
         const rows = await storage()
             .select({ operation: operations })
             .from(operations)
-            .innerJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
-            .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
-            .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+            .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+            .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+            .innerJoin(
+                farmUsers,
+                eq(farmUsers.farmId, operationFarmIdExpression()),
+            )
             .where(
                 and(
                     eq(farmUsers.userId, userId),
                     eq(operations.isAccepted, true),
                     eq(operations.isDeleted, false),
-                    eq(raisedBeds.isDeleted, false),
-                    eq(gardens.isDeleted, false),
+                    operationLocationIntegrityWhere(),
                     filter?.from
                         ? gte(operations.timestamp, filter.from)
                         : undefined,
@@ -658,16 +689,15 @@ export async function getAssignableFarmUsersByOperationIds(
             avatarUrl: users.avatarUrl,
         })
         .from(operations)
-        .innerJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
-        .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
-        .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .innerJoin(farmUsers, eq(farmUsers.farmId, operationFarmIdExpression()))
         .innerJoin(users, eq(farmUsers.userId, users.id))
         .where(
             and(
                 inArray(operations.id, uniqueOperationIds),
                 eq(operations.isDeleted, false),
-                eq(raisedBeds.isDeleted, false),
-                eq(gardens.isDeleted, false),
+                operationLocationIntegrityWhere(),
             ),
         )
         .orderBy(asc(operations.id), asc(users.userName));
@@ -728,6 +758,7 @@ export async function createOperation({
     entityId,
     entityTypeName,
     accountId,
+    farmId,
     gardenId,
     raisedBedId,
     raisedBedFieldId,
@@ -739,6 +770,7 @@ export async function createOperation({
             entityId,
             entityTypeName,
             accountId,
+            farmId,
             gardenId,
             raisedBedId,
             raisedBedFieldId,

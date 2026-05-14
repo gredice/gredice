@@ -1635,6 +1635,7 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                 knownEventTypes.raisedBeds.create,
                 knownEventTypes.raisedBeds.aiAnalysis,
                 knownEventTypes.raisedBeds.delete,
+                knownEventTypes.raisedBeds.abandon,
             ],
             [raisedBedId.toString()],
             0,
@@ -1672,6 +1673,10 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                 }
                 case knownEventTypes.raisedBeds.delete: {
                     name = 'Gredica obrisana';
+                    break;
+                }
+                case knownEventTypes.raisedBeds.abandon: {
+                    name = 'Gredica napuštena';
                     break;
                 }
             }
@@ -1728,6 +1733,46 @@ export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {
         .set(raisedBed)
         .where(eq(raisedBeds.id, raisedBed.id));
     await bustScheduleCache();
+}
+
+export async function abandonRaisedBed({
+    accountId,
+    gardenId,
+    operationEntityId,
+    operationEntityTypeName,
+    raisedBedId,
+}: {
+    accountId: string;
+    gardenId: number;
+    operationEntityId: number;
+    operationEntityTypeName: string;
+    raisedBedId: number;
+}) {
+    const operation = await storage().transaction(async (tx) => {
+        const [createdOperation] = await tx
+            .insert(operations)
+            .values({
+                accountId,
+                entityId: operationEntityId,
+                entityTypeName: operationEntityTypeName,
+                gardenId,
+                raisedBedId,
+            })
+            .returning({ id: operations.id });
+
+        await tx
+            .update(raisedBeds)
+            .set({ status: 'abandoned' })
+            .where(eq(raisedBeds.id, raisedBedId));
+
+        await tx
+            .insert(events)
+            .values(knownEvents.raisedBeds.abandonV1(raisedBedId.toString()));
+
+        return createdOperation;
+    });
+    await bustScheduleCache();
+    return operation.id;
 }
 
 export async function mergeRaisedBeds(
