@@ -1,4 +1,4 @@
-import { Approved, Bell, Close, Empty } from '@signalco/ui-icons';
+import { Approved, Close, Empty, Megaphone } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -60,7 +60,7 @@ export function NotificationsTab() {
                                 alignItems="start"
                             >
                                 <Row spacing={1}>
-                                    <Bell className="size-5 text-warning" />
+                                    <Megaphone className="size-5 text-warning" />
                                     <Stack spacing={0.5}>
                                         <Typography level="body1" semiBold>
                                             Uključi push obavijesti
@@ -88,7 +88,9 @@ export function NotificationsTab() {
                                 <Button
                                     size="sm"
                                     onClick={handleEnablePush}
-                                    startDecorator={<Bell className="size-4" />}
+                                    startDecorator={
+                                        <Megaphone className="size-4" />
+                                    }
                                 >
                                     Uključi push
                                 </Button>

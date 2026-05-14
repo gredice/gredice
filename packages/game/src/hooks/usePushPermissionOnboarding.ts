@@ -61,10 +61,7 @@ export function usePushPermissionOnboarding() {
         return 'default' as const;
     }, []);
 
-    const canPrompt = useMemo(
-        () => status === 'default' || status === 'prompt-dismissed',
-        [status],
-    );
+    const canPrompt = useMemo(() => status === 'default', [status]);
 
     return {
         status,
