@@ -65,7 +65,6 @@ function addDays(date: Date, days: number) {
     return nextDate;
 }
 
-
 export async function queueSeasonalSowingOfferOperations({
     accountId,
     gardenId,
@@ -88,7 +87,8 @@ export async function queueSeasonalSowingOfferOperations({
         raisedBedId,
     );
 
-    const scheduledWateringDayKeys = getScheduledWateringDayKeys(existingOperations);
+    const scheduledWateringDayKeys =
+        getScheduledWateringDayKeys(existingOperations);
 
     const createdOperationIds: number[] = [];
     for (let index = 0; index < offer.freeWaterings; index += 1) {

@@ -34,6 +34,7 @@ const CLOUD_MIN_COVERAGE_SCALE = 0.62;
 const CLOUD_MAX_COVERAGE_SCALE = 1.14;
 const CLOUD_BASE_DRIFT_SPEED = 0.35;
 const CLOUD_WIND_DRIFT_SPEED = 0.5;
+const CLOUD_RENDER_ORDER = 30;
 
 function smoothstep(edge0: number, edge1: number, value: number) {
     const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
@@ -477,6 +478,7 @@ export function CloudLayer({
                     key={cloud.id}
                     castShadow={index < shadowCasterCount}
                     frustumCulled={false}
+                    renderOrder={CLOUD_RENDER_ORDER}
                     ref={(mesh) => {
                         cloudRefs.current[index] = mesh;
                     }}

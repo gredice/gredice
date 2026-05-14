@@ -197,11 +197,10 @@ export async function deleteAccountWithDependencies(
             .where(eq(accountUsers.accountId, accountId));
 
         // User cleanup (if user is not associated with any other account)
-        const remainingUserAccounts = await storage().query.accountUsers.findMany(
-            {
+        const remainingUserAccounts =
+            await storage().query.accountUsers.findMany({
                 where: eq(accountUsers.userId, userId),
-            },
-        );
+            });
         if (remainingUserAccounts.length === 0) {
             console.info(
                 `[AccountDelete] Deleting notifications and user for userId=${userId}`,
