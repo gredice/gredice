@@ -285,6 +285,7 @@ export function FarmOperationsScheduleSection({
                                     )}
                                 <Typography
                                     level="body2"
+                                    component="div"
                                     className="select-none"
                                 >
                                     {operation.scheduledDate ? (
