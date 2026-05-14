@@ -101,8 +101,8 @@ export function RaisedBedFieldItemEmpty({
                             </div>
                             {scheduledDateLabel && (
                                 <div className="absolute left-0.5 bottom-0.5">
-                                    <div className="relative size-8 rounded-full border-2 bg-stone-200 border-stone-400 text-stone-800 shadow-lg overflow-hidden">
-                                        <div className="absolute inset-x-0 top-0 h-2 bg-stone-300" />
+                                    <div className="relative size-6 rounded-lg border-2 bg-stone-200 border-stone-400 text-stone-800 shadow-lg overflow-hidden">
+                                        <div className="absolute inset-x-0 top-0 h-1.5 bg-stone-400" />
                                         <span className="absolute inset-0 pt-1.5 flex items-center justify-center text-[9px] font-semibold leading-none">
                                             {scheduledDateLabel}
                                         </span>
