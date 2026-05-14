@@ -54,20 +54,28 @@ export const getScheduleOperations = cache(async () => {
     return cacheScheduleRead(
         scheduleCacheKeys.adminActiveOperations(from, completedFrom),
         async () => {
-            const [newOrScheduledOperations, completedOperationsTodayOrLater] =
-                await Promise.all([
-                    getAllOperations({
-                        from,
-                        status: ['new', 'planned'],
-                    }),
-                    getAllOperations({
-                        completedFrom,
-                        status: ['pendingVerification', 'completed'],
-                    }),
-                ]);
+            const [
+                newOrScheduledOperations,
+                pendingVerificationOperations,
+                completedOperationsTodayOrLater,
+            ] = await Promise.all([
+                getAllOperations({
+                    from,
+                    status: ['new', 'planned'],
+                }),
+                getAllOperations({
+                    completedFrom: from,
+                    status: 'pendingVerification',
+                }),
+                getAllOperations({
+                    completedFrom,
+                    status: 'completed',
+                }),
+            ]);
 
             const operations = [
                 ...newOrScheduledOperations,
+                ...pendingVerificationOperations,
                 ...completedOperationsTodayOrLater,
             ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
