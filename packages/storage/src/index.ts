@@ -1,3 +1,4 @@
+export { sql } from 'drizzle-orm';
 export * from './@types/EntityStandardized';
 export * from './cache/directoriesCached';
 export * from './cache/grediceCached';
