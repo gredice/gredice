@@ -55,12 +55,12 @@ export function GameHud({
                 <SunflowersHud />
             </div>
             <div className="absolute bottom-0 flex flex-col left-0 right-0 md:flex-row md:justify-between md:items-end pointer-events-none">
-                <div className="p-2 flex flex-row">
+                <div className="p-2 flex flex-row items-end">
                     <CameraHud />
                     <AudioHud />
+                    <ControlsTooltipHud />
                 </div>
                 <ItemsHud />
-                <ControlsTooltipHud />
             </div>
             <RaisedBedFieldHud flags={flags} />
             <OverviewModal />
