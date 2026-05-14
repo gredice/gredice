@@ -100,7 +100,10 @@ function getScheduledOperationsForDay(
             return false;
         }
 
-        if (operation.raisedBedId === null) {
+        if (
+            operation.raisedBedId === null &&
+            typeof operation.farmId !== 'number'
+        ) {
             return false;
         }
 

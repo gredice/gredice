@@ -3,6 +3,7 @@ import {
     getAllOperations,
     getAllRaisedBeds,
     getEntitiesFormatted,
+    getFarms,
     getGardens,
 } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
@@ -34,11 +35,12 @@ export async function OperationsTable({
     raisedBedFieldId?: number;
     fromDate?: Date;
 } = {}) {
-    const [operationsData, operations, accounts, gardens, raisedBeds] =
+    const [operationsData, operations, accounts, farms, gardens, raisedBeds] =
         await Promise.all([
             getEntitiesFormatted<EntityStandardized>('operation'),
             getAllOperations(fromDate ? { from: fromDate } : undefined),
             getAccounts(),
+            getFarms(),
             getGardens(),
             getAllRaisedBeds(),
         ]);
@@ -179,6 +181,15 @@ export async function OperationsTable({
                                             )
                                             .join(', ')}
                                     </span>
+                                    {operation.farmId && (
+                                        <span>
+                                            {farms.find(
+                                                (farm) =>
+                                                    farm.id ===
+                                                    operation.farmId,
+                                            )?.name ?? 'N/A'}
+                                        </span>
+                                    )}
                                     {operation.gardenId && (
                                         <span>
                                             {gardens.find(

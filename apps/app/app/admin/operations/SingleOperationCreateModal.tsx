@@ -13,11 +13,18 @@ import {
     singleCreateOperationAction,
 } from '../../(actions)/operationActions';
 import { SelectEntity } from '../raised-beds/[raisedBedId]/SelectEntity';
-import { TargetsSelectionList } from './TargetsSelectionList';
+import {
+    type TargetSelectionMode,
+    TargetsSelectionList,
+} from './TargetsSelectionList';
 
 const unassignedValue = '__unassigned__';
 
 export type SingleOperationCreateModalProps = {
+    farms: Array<{
+        id: number;
+        name: string;
+    }>;
     gardens: Array<{
         id: number;
         name?: string | null;
@@ -39,6 +46,7 @@ export type SingleOperationCreateModalProps = {
 };
 
 export function SingleOperationCreateModal({
+    farms,
     gardens,
     raisedBeds,
     assignableUsers,
@@ -64,20 +72,16 @@ export function SingleOperationCreateModal({
             .catch((e) => console.error('Failed to load operations', e));
     }, []);
 
-    const selectionMode = useMemo(() => {
+    const selectionMode = useMemo<TargetSelectionMode | undefined>(() => {
         if (!selectedOperationId) return undefined;
         const application = operations?.find(
             (o) => o.id?.toString() === selectedOperationId,
-        )?.attributes?.application as
-            | 'garden'
-            | 'raisedBedFull'
-            | 'raisedBed1m'
-            | 'plant'
-            | undefined;
+        )?.attributes?.application;
         if (!application) return undefined;
-        if (application === 'garden') return 'garden' as const;
-        if (application === 'plant') return 'plant' as const;
-        return 'raisedBed' as const;
+        if (application === 'farm') return 'farm';
+        if (application === 'garden') return 'garden';
+        if (application === 'plant') return 'plant';
+        return 'raisedBed';
     }, [operations, selectedOperationId]);
 
     useEffect(() => {
@@ -139,6 +143,7 @@ export function SingleOperationCreateModal({
                     />
                     <TargetsSelectionList
                         name="target"
+                        farms={farms}
                         gardens={gardens}
                         raisedBeds={raisedBeds}
                         mode={selectionMode}

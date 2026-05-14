@@ -32,6 +32,7 @@ export type RaisedBed = {
 
 export type Operation = {
     id: number;
+    farmId?: number | null;
     raisedBedId: number | null;
     raisedBedFieldId?: number | null;
     entityId: number;
