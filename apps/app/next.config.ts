@@ -1,12 +1,24 @@
 import type { NextConfig } from 'next';
-import { withAxiom } from 'next-axiom';
+import { getAppByName } from '../../scripts/app-registry.ts';
 
+const app = getAppByName('app');
 const nextConfig: NextConfig = {
     reactStrictMode: true,
     typedRoutes: true,
+    reactCompiler: true,
+    logging: {
+        browserToTerminal: true,
+    },
     experimental: {
         typedEnv: true,
-        reactCompiler: true,
+        turbopackFileSystemCacheForDev: true,
+        optimizePackageImports: [
+            '@signalco/ui-primitives',
+            '@signalco/ui-icons',
+            'three',
+            '@react-three/drei',
+            '@react-three/fiber',
+        ],
         serverActions: {
             bodySizeLimit: '10mb',
         },
@@ -42,7 +54,8 @@ const nextConfig: NextConfig = {
             },
         ],
     },
-    productionBrowserSourceMaps: true,
+    productionBrowserSourceMaps: !process.env.CI,
+    allowedDevOrigins: [app.localDomain],
 };
 
-export default withAxiom(nextConfig);
+export default nextConfig;

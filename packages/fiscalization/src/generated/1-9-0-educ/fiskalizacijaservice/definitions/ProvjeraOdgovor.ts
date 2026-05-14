@@ -1,7 +1,7 @@
-import { Zaglavlje1 } from "./Zaglavlje1";
-import { Racun } from "./Racun";
-import { Greske } from "./Greske";
-import { Signature } from "./Signature";
+import type { Greske } from './Greske';
+import type { Racun } from './Racun';
+import type { Signature } from './Signature';
+import type { Zaglavlje1 } from './Zaglavlje1';
 
 /**
  * ProvjeraOdgovor

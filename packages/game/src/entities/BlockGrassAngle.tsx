@@ -1,7 +1,10 @@
 import { animated } from '@react-spring/three';
+import { SnowOverlay } from '../snow/SnowOverlay';
+import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { BlockSurfaceDecorationSprites } from './groundDecorations/BlockSurfaceDecorationSprites';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function BlockGrassAngle({
@@ -27,6 +30,13 @@ export function BlockGrassAngle({
                 }
                 material={materials[`Material.Grass`]}
             />
+            <SnowOverlay
+                geometry={
+                    nodes[`Block_Grass_Angle_${variantResolved}_2`].geometry
+                }
+                {...snowPresets.grassAngle}
+            />
+            <BlockSurfaceDecorationSprites block={block} surface="grass" />
         </animated.group>
     );
 }

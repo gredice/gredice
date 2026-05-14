@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     try {
         const archivedCount = await archivePastSlots();
 
-        console.log(`Archived ${archivedCount} past time slots`);
+        console.info(`Archived ${archivedCount} past time slots`);
 
         return Response.json({
             success: true,

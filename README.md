@@ -6,143 +6,70 @@
   Tools for growing thriving gardens through collaborative planning, simulation, and automation.
 </p>
 
+<p align="center">
+  <a href="https://linear.app/gredice">
+    <img src="https://img.shields.io/badge/Linear-Gredice-5E6AD2?logo=linear&logoColor=white" alt="Linear project">
+  </a>
+</p>
+
 ---
 
 ## Overview
 
-Gredice is a Turborepo monorepo that powers the entire Gredice platform. It includes multiple Next.js applications (`www`, `garden`, `farm`, `app`, and `api`) plus shared packages and assets that bring the experience together. Clone the repo to explore the user-facing products, APIs, and infrastructure that help modular gardens thrive.
+Gredice is a Turborepo monorepo for the Gredice platform. It includes the public website, customer garden experience, farm back office, internal operations tools, API routes, Storybook, status page, shared packages, and product assets.
 
-## Table of Contents
+## Repository Map
 
-- [Development](#development)
-  - [Prerequisites](#prerequisites)
-  - [Quick start](#quick-start)
-  - [Environment variables](#environment-variables)
-  - [API reference](#api-reference)
-- [Database migrations](#database-migrations)
-- [Assets workflow](#assets-workflow)
-  - [Regenerating the game assets GLB file](#regenerating-the-game-assets-glb-file)
-  - [Adding a new entity](#adding-a-new-entity)
-- [Specification Driven Development](#specification-driven-development)
-  - [Creating a new feature](#creating-a-new-feature)
-  - [What we changed from default Spec Kit behavior](#what-we-changed-from-default-spec-kit-behavior)
-- [Contributing](#contributing)
-- [License](#license)
+- `apps/www`: public marketing and commerce site.
+- `apps/garden`: customer garden experience and game-facing UI.
+- `apps/farm`: farm back-office application.
+- `apps/app`: internal operations and admin application.
+- `apps/api`: API routes and API documentation.
+- `apps/storybook`: public component documentation.
+- `apps/status`: public status page.
+- `packages/*`: shared libraries for UI, client APIs, storage, game behavior, notifications, integrations, and other platform code.
+- `assets`: source brand and game assets.
 
-## Development
+## Getting Started
 
-### Prerequisites
-
-- [Node.js](https://nodejs.org/en/)
-- [pnpm](https://pnpm.io/)
-- [Vercel CLI](https://vercel.com/download)
-
-### Quick start
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/gredice/gredice.git
-   cd gredice
-   ```
-
-2. Install the dependencies:
-
-   ```bash
-   pnpm install
-   ```
-
-3. Pull environment variables for each application (see below).
-
-4. Start the development server from the project root:
-
-   ```bash
-   pnpm dev
-   ```
-
-### Environment variables
-
-Use the Vercel CLI to pull the environment variables for each application by running the following command inside the `apps/<app-name>` directory:
+Use [Node.js](https://nodejs.org/en/) `>=24`, the [pnpm](https://pnpm.io/) version pinned by `packageManager`, [Docker](https://www.docker.com/), and the [Vercel CLI](https://vercel.com/download).
 
 ```bash
-vercel env pull .env.development.local
+pnpm bootstrap
+pnpm doctor
+pnpm dev
 ```
 
-`<app-name>` can be any of `www`, `garden`, `farm`, or `app`.
+The default dev command starts the main apps through local HTTPS domains such as `https://www.gredice.test`, `https://vrt.gredice.test`, and `https://api.gredice.test`. The `status` app is intentionally excluded so normal startup stays fast. Use `pnpm dev:all` when you need to validate every app (including `status`) can start in a fresh worktree, and use `pnpm --filter=status dev` for status-only development.
 
-If you are running the command for the first time on the development machine, make sure you are logged in to the Vercel CLI and that the project is linked:
+`pnpm bootstrap` prepares a fresh worktree as far as local permissions and credentials allow.
+`pnpm doctor` runs the same checks in read-only mode and exits non-zero when required dependencies are missing.
 
-```bash
-vercel login
-vercel link
-```
+For local domains, certificates, environment files, generated assets, and detailed commands, see [WORKSPACE.md](./WORKSPACE.md).
 
-After logging in and linking, you can proceed with pulling the environment variables for the applications you need.
+For fresh worktrees, copy each app's `.env.example` into `.env` before smoke testing. Real external secrets are only needed for explicit integration flows (for example payments, analytics, OAuth, and visual tests).
 
-### API reference
+## Documentation
 
-See the [API Reference](https://api.gredice.com) for the official documentation. You can use the API to interact with the Gredice platform, manage gardens and farms, and integrate Gredice capabilities into your own applications.
+- [AGENTS.md](./AGENTS.md): entry point for AI collaborators.
+- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md): expectations for respectful project participation and reporting concerns.
+- [CONTRIBUTING.md](./CONTRIBUTING.md): setup, development, validation, issue, and pull request guidance.
+- [WORKSPACE.md](./WORKSPACE.md): repo layout, setup, commands, package boundaries, and local development servers.
+- [FRONTEND.md](./FRONTEND.md): Next.js, React, TypeScript, shared UI, Storybook, and app structure rules.
+- [DESIGN.md](./DESIGN.md): visual and interaction design standards.
+- [PRODUCT_SENSE.md](./PRODUCT_SENSE.md): product expectations, user roles, language, and domain behavior.
+- [QUALITY_SCORE.md](./QUALITY_SCORE.md): quality rubric, validation commands, type standards, and review expectations.
+- [RELIABILITY.md](./RELIABILITY.md): data integrity, migrations, background work, observability, and failure handling.
+- [SECURITY.md](./SECURITY.md): auth, secrets, data exposure, validation, payments, and unsafe rendering.
+- [SEO.md](./SEO.md): metadata, structured data, sitemap, canonical URL, and public page rules.
 
-## Database migrations
+## API Reference
 
-Use the workspace scripts to manage migrations during development:
-
-1. Generate new migrations after making schema changes:
-
-   ```bash
-   pnpm db-generate
-   ```
-
-2. Apply migrations to your local database (requires the connection string in your environment):
-
-   ```bash
-   pnpm db-push
-   ```
-
-These commands leverage the monorepo's Turbo tasks to execute the appropriate migration scripts in the relevant packages (typically `packages/storage`).
-
-- Run `pnpm db-generate` whenever you adjust the database schema to create new migration files.
-- Run `pnpm db-push` to apply all pending migrations to your database once the environment variables are configured.
-
-## Assets workflow
-
-Coordinate with teammates before editing the shared game asset files. Only one person should export changes at a time to avoid conflicting updates.
-
-### Regenerating the game assets GLB file
-
-Run the following command in the project `assets/` directory:
-
-```bash
-./export.sh
-```
-
-This generates a new `game-assets.glb` file in `apps/garden/public/assets/models`.
-
-### Adding a new entity
-
-Use [https://gltf.pmnd.rs/](https://gltf.pmnd.rs/) to convert GLTF assets into Three.js compatible components before integrating them into the project.
-
-## Specification Driven Development
-
-We use Specification Driven Development (SDD) to plan and ship new features. The process is automated using Spec Kit, which generates specifications, technical plans, and executable tasks from feature descriptions. Specifications describe the desired behavior, implementation notes capture how we will build it, and executable tasks track the actual work.
-
-### Creating a new feature
-
-Run these commands in Copilot Chat to generate the specification, technical plan, and task list:
-
-```bash
-/specify <FEATURE_DESCRIPTION>
-/plan <TECHNICAL_IMPLEMENTATION_DETAILS>
-/task
-```
-
-### What we changed from default Spec Kit behavior
-
-- We use GitButler for branch management, so the `create-new-feature.sh` script does not create branches.
+See the [API Reference](https://api.gredice.com) for the official API documentation.
 
 ## Contributing
 
-We welcome community contributions—check out the repository activity below and jump into issues or discussions that interest you.
+We welcome community contributions. See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, development, validation, issue, and pull request guidance, and follow the [Code of Conduct](./CODE_OF_CONDUCT.md) in project spaces.
 
 ![Alt](https://repobeats.axiom.co/api/embed/ba847f4d1fae06c8250692c08295602bca8de554.svg "Repobeats analytics image")
 

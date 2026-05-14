@@ -1,9 +1,9 @@
+import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Container } from '@signalco/ui-primitives/Container';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import { PageHeader } from '../../../components/shared/PageHeader';
-import { StyledHtml } from '../../../components/shared/StyledHtml';
 
 export const metadata: Metadata = {
     title: 'Tvrtka',
@@ -48,7 +48,7 @@ export default function UvjetiKoristenjaPage() {
                         Temeljni kapital u iznosu od 2.500,00€ je uplaćen u
                         cijelosti.
                         <br />
-                        <a href="https://sudreg.pravosudje.hr/registar/f?p=150:28:0::NO:28:P28_SBT_MBS:081628528">
+                        <a href="https://sudreg.pravosudje.hr/ords/r/esudreg/public/podaci-o-poslovnom-subjektu?p28_sbt_mbs=081628528">
                             Sudski registar - Podaci o poslovnom subjektu
                         </a>
                     </p>

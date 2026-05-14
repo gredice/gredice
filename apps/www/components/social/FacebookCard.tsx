@@ -14,7 +14,7 @@ export function FacebookCard() {
             <Card
                 className={cx(
                     'h-full flex flex-row rounded-xl items-center justify-between max-w-md shadow hover:shadow-xl transition-all duration-300',
-                    'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200',
+                    'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200 dark:from-blue-200 dark:to-cyan-200 dark:border-blue-700',
                 )}
             >
                 <CardHeader className={cx('flex flex-row gap-4 items-center')}>

@@ -1,11 +1,15 @@
 'use client';
 
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import * as THREE from 'three';
+import CSM from 'three-custom-shader-material';
+import { plantSwayVertexShader, usePlantSway } from '../hooks/usePlantSway';
 
 interface FlowersProps {
+    seed: string;
     matrices: THREE.Matrix4[];
     color: string;
+    animate?: boolean;
 }
 
 const flowerGeometry = (() => {
@@ -22,26 +26,44 @@ const flowerGeometry = (() => {
     return new THREE.ShapeGeometry(shape);
 })();
 
-export function Flowers({ matrices, color }: FlowersProps) {
-    const ref = useRef<THREE.InstancedMesh>(null!);
-    const material = useMemo(
-        () => new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }),
-        [color],
-    );
+export function Flowers({
+    seed,
+    matrices,
+    color,
+    animate = true,
+}: FlowersProps) {
+    const ref = useRef<THREE.InstancedMesh | null>(null);
+    const swayUniforms = usePlantSway(`${seed}-flowers`, {
+        amplitude: 0.14,
+        enabled: animate,
+        speed: 1.6,
+    });
 
     useLayoutEffect(() => {
+        const mesh = ref.current;
+        if (!mesh) {
+            return;
+        }
         matrices.forEach((matrix, i) => {
-            ref.current.setMatrixAt(i, matrix);
+            mesh.setMatrixAt(i, matrix);
         });
-        ref.current.instanceMatrix.needsUpdate = true;
-        ref.current.count = matrices.length;
+        mesh.instanceMatrix.needsUpdate = true;
+        mesh.count = matrices.length;
     }, [matrices]);
 
     return (
         <instancedMesh
             ref={ref}
-            args={[flowerGeometry, material, 5000]}
+            args={[flowerGeometry, undefined, 5000]}
             castShadow
-        />
+        >
+            <CSM
+                baseMaterial={THREE.MeshBasicMaterial}
+                vertexShader={plantSwayVertexShader}
+                uniforms={swayUniforms}
+                color={color}
+                side={THREE.DoubleSide}
+            />
+        </instancedMesh>
     );
 }

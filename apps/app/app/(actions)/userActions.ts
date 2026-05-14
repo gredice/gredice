@@ -2,6 +2,7 @@
 
 import {
     clearLoginFailedAttempts,
+    updateUser as storageUpdateUser,
     updateUserRole as storageUpdateUserRole,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
@@ -19,5 +20,19 @@ export async function unblockUserLogin(loginId: number) {
     await auth(['admin']);
 
     await clearLoginFailedAttempts(loginId);
+    revalidatePath(KnownPages.Users);
+}
+
+export async function updateUserAvatar(
+    userId: string,
+    avatarUrl: string | null,
+) {
+    await auth(['admin']);
+
+    await storageUpdateUser({
+        id: userId,
+        avatarUrl,
+    });
+    revalidatePath(KnownPages.User(userId));
     revalidatePath(KnownPages.Users);
 }

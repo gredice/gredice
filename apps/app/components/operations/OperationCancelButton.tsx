@@ -1,7 +1,7 @@
 'use client';
 
 import { Close } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { CancelOperationModal } from '../../app/admin/schedule/CancelOperationModal';
 
 interface OperationCancelButtonProps {
@@ -21,6 +21,7 @@ export function OperationCancelButton({
     // Only show cancel button for new and planned operations
     if (
         operation.status === 'completed' ||
+        operation.status === 'pendingVerification' ||
         operation.status === 'failed' ||
         operation.status === 'canceled'
     ) {
@@ -32,13 +33,9 @@ export function OperationCancelButton({
             operation={operation}
             operationLabel={operationLabel}
             trigger={
-                <Button
-                    variant="plain"
-                    className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Otkaži operaciju"
-                >
-                    <Close className="size-3" />
-                </Button>
+                <IconButton variant="plain" title="Otkaži operaciju">
+                    <Close className="size-4 shrink-0" />
+                </IconButton>
             }
         />
     );

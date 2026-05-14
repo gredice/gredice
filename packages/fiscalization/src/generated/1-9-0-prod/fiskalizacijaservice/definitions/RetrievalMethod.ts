@@ -1,4 +1,4 @@
-import { Transforms } from "./Transforms";
+import type { Transforms } from './Transforms';
 
 /**
  * RetrievalMethod

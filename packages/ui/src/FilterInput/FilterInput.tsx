@@ -7,14 +7,23 @@ import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Input } from '@signalco/ui-primitives/Input';
 import type { HTMLAttributes } from 'react';
 
-export type FilterInputProps = HTMLAttributes<HTMLFormElement> & {
+export type FilterInputProps = Omit<
+    HTMLAttributes<HTMLFormElement>,
+    'onChange'
+> & {
     searchParamName: string;
     fieldName: string;
+    /**
+     * If true, search updates immediately on input change.
+     * If false (default), search updates on form submit.
+     */
+    instant?: boolean;
 };
 
 export function FilterInput({
     searchParamName,
     fieldName,
+    instant = false,
     ...rest
 }: FilterInputProps) {
     const [search, setSearch] = useSearchParam(searchParamName);
@@ -25,22 +34,34 @@ export function FilterInput({
         }
     };
 
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (instant) {
+            setSearch(e.target.value);
+        }
+    };
+
     return (
         <form action={handleSubmit} {...rest}>
             <Input
                 name={fieldName}
-                defaultValue={search}
+                value={instant ? search : undefined}
+                defaultValue={instant ? undefined : search}
+                onChange={handleChange}
                 placeholder="Pretraži..."
                 startDecorator={
-                    <IconButton
-                        className="hover:bg-neutral-300 ml-1 rounded-full aspect-square"
-                        title="Pretraga"
-                        type="submit"
-                        size="sm"
-                        variant="plain"
-                    >
-                        <Search className="size-5" />
-                    </IconButton>
+                    instant ? (
+                        <Search className="size-5 shrink-0 ml-3" />
+                    ) : (
+                        <IconButton
+                            className="hover:bg-neutral-300 ml-1 rounded-full aspect-square"
+                            title="Pretraga"
+                            type="submit"
+                            size="sm"
+                            variant="plain"
+                        >
+                            <Search className="size-5" />
+                        </IconButton>
+                    )
                 }
                 // Clear search
                 endDecorator={

@@ -1,4 +1,6 @@
 import { animated } from '@react-spring/three';
+import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -19,7 +21,15 @@ export function Stool({ stack, block, rotation }: EntityInstanceProps) {
                 receiveShadow
                 geometry={nodes.Stool.geometry}
                 material={materials['Material.Planks']}
-            />
+            >
+                <SnowOverlay
+                    geometry={nodes.Stool.geometry}
+                    maxThickness={0.11}
+                    slopeExponent={2.9}
+                    noiseScale={3}
+                />
+                <RainWetOverlay geometry={nodes.Stool.geometry} />
+            </mesh>
         </animated.group>
     );
 }

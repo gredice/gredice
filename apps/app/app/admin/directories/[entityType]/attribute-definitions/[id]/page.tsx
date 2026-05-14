@@ -1,13 +1,16 @@
 import { getAttributeDefinition, getEntityTypeByName } from '@gredice/storage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Delete } from '@signalco/ui-icons';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { notFound } from 'next/navigation';
+import {
+    AdminDirectoryBreadcrumbs,
+    AdminPageHeader,
+} from '../../../../../../components/admin/navigation';
 import { ServerActionIconButton } from '../../../../../../components/shared/ServerActionIconButton';
 import { KnownPages } from '../../../../../../src/KnownPages';
 import { deleteAttributeDefinition } from '../../../../../(actions)/definitionActions';
-import { FormCheckbox, FormInput } from './Form';
+import { FormCheckbox, FormDataTypeSelect, FormInput } from './Form';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,9 +36,11 @@ export default async function AttributeDefinitionPage({
         category,
         dataType,
         defaultValue,
+        unit,
         label,
         multiple,
         required,
+        display,
     } = definition;
 
     const deleteAttributeDefinitionBound = deleteAttributeDefinition.bind(
@@ -46,32 +51,33 @@ export default async function AttributeDefinitionPage({
 
     return (
         <Stack spacing={2}>
-            <Row spacing={1} justifyContent="space-between">
-                <Breadcrumbs
-                    items={[
-                        {
-                            label: entityType.label,
-                            href: KnownPages.DirectoryEntityType(
-                                entityTypeName,
-                            ),
-                        },
-                        {
-                            label: 'Atributi',
-                            href: KnownPages.DirectoryEntityTypeAttributeDefinitions(
-                                entityTypeName,
-                            ),
-                        },
-                        { label: label },
-                    ]}
-                />
-                <ServerActionIconButton
-                    title="Obriši"
-                    onClick={deleteAttributeDefinitionBound}
-                    variant="plain"
-                >
-                    <Delete className="size-5" />
-                </ServerActionIconButton>
-            </Row>
+            <AdminPageHeader
+                breadcrumbs={
+                    <AdminDirectoryBreadcrumbs
+                        entityTypeName={entityTypeName}
+                        entityTypeLabel={entityType.label}
+                        items={[
+                            {
+                                label: 'Atributi',
+                                href: KnownPages.DirectoryEntityTypeAttributeDefinitions(
+                                    entityTypeName,
+                                ),
+                            },
+                            { label: label },
+                        ]}
+                    />
+                }
+                actions={
+                    <ServerActionIconButton
+                        title="Obriši"
+                        onClick={deleteAttributeDefinitionBound}
+                        variant="plain"
+                    >
+                        <Delete className="size-5" />
+                    </ServerActionIconButton>
+                }
+                heading={label}
+            />
             <form>
                 <Stack spacing={3}>
                     <FormInput
@@ -103,10 +109,8 @@ export default async function AttributeDefinitionPage({
                     />
                     <Stack spacing={2}>
                         <Row spacing={2}>
-                            <FormInput
+                            <FormDataTypeSelect
                                 definition={definition}
-                                name="dataType"
-                                label="Tip podatka"
                                 value={dataType}
                             />
                             <FormInput
@@ -115,6 +119,13 @@ export default async function AttributeDefinitionPage({
                                 label="Zadana vrijednost"
                                 value={defaultValue || ''}
                                 placeholder="-"
+                            />
+                            <FormInput
+                                definition={definition}
+                                name="unit"
+                                label="Jedinica"
+                                value={unit || ''}
+                                placeholder="°C, €, cm"
                             />
                         </Row>
                         <FormCheckbox
@@ -129,6 +140,12 @@ export default async function AttributeDefinitionPage({
                         name="required"
                         value={required ? 'true' : 'false'}
                         label="Obavezno"
+                    />
+                    <FormCheckbox
+                        definition={definition}
+                        name="display"
+                        value={display ? 'true' : 'false'}
+                        label="Prikaži u tablici"
                     />
                 </Stack>
             </form>

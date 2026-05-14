@@ -1,4 +1,5 @@
 import {
+    deleteRaisedBed,
     earnSunflowers,
     getGarden,
     getGardenBlock,
@@ -8,6 +9,8 @@ import {
     updateGardenStack,
 } from '@gredice/storage';
 import { getBlockData } from '../blocks/blockDataService';
+
+const DEFAULT_RECYCLE_REFUND = 10;
 
 export async function deleteGardenBlock(
     accountId: string,
@@ -45,7 +48,7 @@ export async function deleteGardenBlock(
 
     // Retrieve block data
     const blockData = blocksData.find(
-        (bd) => bd.information.name === block.name,
+        (bd) => bd.information?.name === block.name,
     );
     if (!blockData) {
         console.warn('Block data not found', { blockId });
@@ -55,14 +58,76 @@ export async function deleteGardenBlock(
         };
     }
 
+    let relatedRaisedBed:
+        | Awaited<ReturnType<typeof getRaisedBeds>>[number]
+        | undefined;
+
     // Don't allow deletion of active raised beds
     if (blockData.functions?.raisedBed) {
         const raisedBeds = await getRaisedBeds(gardenId);
-        const raisedBed = raisedBeds.find((rb) => rb.blockId === blockId);
-        if (raisedBed && raisedBed.status !== 'new') {
+        relatedRaisedBed = raisedBeds.find((candidateRaisedBed) => {
+            if (!candidateRaisedBed.blockId) {
+                return false;
+            }
+
+            if (candidateRaisedBed.blockId === blockId) {
+                return true;
+            }
+
+            const primaryStack = stacks.find((candidateStack) =>
+                candidateStack.blocks.includes(
+                    candidateRaisedBed.blockId ?? '',
+                ),
+            );
+            if (!primaryStack) {
+                return false;
+            }
+
+            const primaryIndex = primaryStack.blocks.indexOf(
+                candidateRaisedBed.blockId,
+            );
+            if (primaryIndex < 0) {
+                return false;
+            }
+
+            const attachedBlockId = stacks
+                .map((candidateStack) => ({
+                    candidateStack,
+                    candidateBlockId: candidateStack.blocks[primaryIndex],
+                }))
+                .find(({ candidateStack, candidateBlockId }) => {
+                    if (
+                        !candidateBlockId ||
+                        candidateBlockId === candidateRaisedBed.blockId
+                    ) {
+                        return false;
+                    }
+
+                    const sameX =
+                        candidateStack.positionX === primaryStack.positionX;
+                    const sameY =
+                        candidateStack.positionY === primaryStack.positionY;
+
+                    return (
+                        (sameX &&
+                            Math.abs(
+                                candidateStack.positionY -
+                                    primaryStack.positionY,
+                            ) === 1) ||
+                        (sameY &&
+                            Math.abs(
+                                candidateStack.positionX -
+                                    primaryStack.positionX,
+                            ) === 1)
+                    );
+                })?.candidateBlockId;
+
+            return attachedBlockId === blockId;
+        });
+        if (relatedRaisedBed && relatedRaisedBed.status !== 'new') {
             console.warn('Cannot delete active raised bed', {
                 blockId,
-                raisedBed,
+                raisedBed: relatedRaisedBed,
             });
             return {
                 errorMessage: 'Cannot delete active raised bed',
@@ -72,12 +137,13 @@ export async function deleteGardenBlock(
     }
 
     // Retrieve block price
-    const price = blockData.prices.sunflowers ?? 0;
+    const price = blockData.prices?.sunflowers ?? 0;
+    const refundAmount = price > 0 ? price : DEFAULT_RECYCLE_REFUND;
     if (price <= 0) {
-        console.warn(
-            "Block not for sale so we can't refund. Will continue with removal.",
-            { blockId },
-        );
+        console.info('Block has no sunflower price. Using recycle refund.', {
+            blockId,
+            refundAmount,
+        });
     }
 
     // Prepare stack remove operation
@@ -93,17 +159,15 @@ export async function deleteGardenBlock(
         : Promise.resolve();
 
     // Prepare block refund operation
-    const refundBlockPromise =
-        price > 0
-            ? earnSunflowers(
-                  garden.accountId,
-                  price,
-                  `recycle:${blockData.information.name}`,
-              )
-            : Promise.resolve();
+    const refundBlockPromise = earnSunflowers(
+        garden.accountId,
+        refundAmount,
+        `recycle:${block.name}`,
+    );
 
     await Promise.all([
         storageDeleteGardenBlock(gardenId, blockId),
+        ...(relatedRaisedBed ? [deleteRaisedBed(relatedRaisedBed.id)] : []),
         refundBlockPromise,
         stackRemovePromise,
     ]);

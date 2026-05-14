@@ -5,6 +5,9 @@ import {
     getEntityRaw,
     upsertAttributeValue,
 } from '@gredice/storage';
+import { revalidatePath } from 'next/cache';
+import { revalidatePublicDirectoryPagesForEntityType } from '../../../../lib/revalidation/publicDirectoryPages';
+import { KnownPages } from '../../../../src/KnownPages';
 
 export async function importEntityData(
     entityType: string,
@@ -34,8 +37,8 @@ export async function importEntityData(
     }
 
     const attributeDefinitions = await getAttributeDefinitions(entityType);
-    const nameToId = Object.fromEntries(
-        attributeDefinitions.map((def) => [def.name, def.id]),
+    const definitionByName = new Map(
+        attributeDefinitions.map((def) => [def.name, def]),
     );
 
     // Only support object format: { attributeName: value, ... }
@@ -46,22 +49,39 @@ export async function importEntityData(
     }
 
     for (const [name, value] of Object.entries(data)) {
-        const attributeDefinitionId = nameToId[name];
-        if (!attributeDefinitionId) {
+        const definition = definitionByName.get(name);
+        if (!definition) {
             console.warn(`Attribute definition not found for name: ${name}`);
             continue;
+        }
+        const stringValue = value != null ? String(value) : null;
+        if (
+            stringValue !== null &&
+            definition.dataType.startsWith('ref:') &&
+            !/^\d+$/.test(stringValue.trim())
+        ) {
+            throw new Error(
+                `Attribute "${name}" is a ${definition.dataType} reference and must be a numeric entity ID; received: ${JSON.stringify(value)}.`,
+            );
         }
         await upsertAttributeValue({
             entityId,
             entityTypeName: entityType,
-            attributeDefinitionId,
-            value: value != null ? String(value) : null,
+            attributeDefinitionId: definition.id,
+            value: stringValue,
             order: '0',
         });
         console.debug(
             `Imported attribute: ${name} with value: ${value} for entity: ${entityId}`,
         );
     }
+
+    revalidatePath(KnownPages.DirectoryEntity(entityType, entityId));
+    revalidatePath(KnownPages.DirectoryEntityType(entityType));
+    await revalidatePublicDirectoryPagesForEntityType(
+        entityType,
+        'entity.import',
+    );
 
     return { success: true };
 }

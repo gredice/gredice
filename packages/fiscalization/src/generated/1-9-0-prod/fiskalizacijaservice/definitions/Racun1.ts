@@ -1,8 +1,8 @@
-import { BrRac } from "./BrRac";
-import { Pdv } from "./Pdv";
-import { Pnp } from "./Pnp";
-import { OstaliPor } from "./OstaliPor";
-import { Naknade } from "./Naknade";
+import type { BrRac } from './BrRac';
+import type { Naknade } from './Naknade';
+import type { OstaliPor } from './OstaliPor';
+import type { Pdv } from './Pdv';
+import type { Pnp } from './Pnp';
 
 /**
  * Racun

@@ -1,0 +1,1 @@
+export { BackpackIcon } from './BackpackIcon';

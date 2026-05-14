@@ -1,5 +1,5 @@
-import { Zaglavlje } from "./Zaglavlje";
-import { Signature } from "./Signature";
+import type { Signature } from './Signature';
+import type { Zaglavlje } from './Zaglavlje';
 
 /**
  * DohvatiRadnoVrijemeZahtjev

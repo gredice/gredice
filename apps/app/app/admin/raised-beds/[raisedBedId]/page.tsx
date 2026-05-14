@@ -10,14 +10,20 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { NotificationsTableCard } from '../../../../components/notifications/NotificationsTableCard';
+import { RaisedBedEventsTable } from '../../../../components/raised-beds/RaisedBedEventsTable';
 import { RaisedBedFieldsTable } from '../../../../components/raised-beds/RaisedBedFieldsTable';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { OperationsTableCard } from './OperationsTableCard';
+import { RaisedBedActionsMenu } from './RaisedBedActionsMenu';
 import { RaisedBedPhysicalIdInput } from './RaisedBedPhysicalIdInput';
+import { RaisedBedStatusSelect } from './RaisedBedStatusSelect';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,13 +38,20 @@ export default async function RaisedBedPage({
     if (!raisedBed) {
         notFound();
     }
+    const raisedBedTitle =
+        raisedBed.name || `Gredica ${raisedBed.physicalId ?? raisedBed.id}`;
 
     return (
         <Stack spacing={4}>
-            <Stack spacing={2}>
-                <Stack spacing={2}>
+            <AdminPageTitle title={raisedBedTitle} />
+            <AdminPageHeader
+                breadcrumbs={
                     <Breadcrumbs
                         items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.RaisedBeds,
+                            },
                             { label: 'Računi', href: KnownPages.Accounts },
                             {
                                 label: raisedBed.accountId ?? 'Nepoznato',
@@ -57,6 +70,14 @@ export default async function RaisedBedPage({
                             { label: raisedBed?.id },
                         ]}
                     />
+                }
+                actions={
+                    <RaisedBedActionsMenu targetRaisedBedId={raisedBed.id} />
+                }
+                heading="Gredica"
+            />
+            <Stack spacing={2}>
+                <Stack spacing={2}>
                     <Typography level="h1" semiBold>
                         Gredica
                     </Typography>
@@ -69,6 +90,10 @@ export default async function RaisedBedPage({
                             raisedBedId={raisedBed.id}
                             physicalId={raisedBed.physicalId}
                         />
+                        <RaisedBedStatusSelect
+                            raisedBedId={raisedBed.id}
+                            status={raisedBed.status}
+                        />
                         <Field
                             name="Datum kreiranja"
                             value={raisedBed?.createdAt}
@@ -77,11 +102,11 @@ export default async function RaisedBedPage({
                 </Stack>
             </Stack>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <Card>
+                <Card className="h-fit">
                     <CardHeader>
                         <CardTitle>Polja</CardTitle>
                     </CardHeader>
-                    <CardOverflow>
+                    <CardOverflow className="mt-0">
                         <Suspense>
                             <RaisedBedFieldsTable raisedBedId={raisedBed.id} />
                         </Suspense>
@@ -98,9 +123,20 @@ export default async function RaisedBedPage({
                             accountId={raisedBed.accountId}
                             gardenId={raisedBed.gardenId}
                             raisedBedId={raisedBed.id}
+                            scroll
                         />
                     </>
                 )}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Događaji</CardTitle>
+                    </CardHeader>
+                    <CardOverflow>
+                        <Suspense>
+                            <RaisedBedEventsTable raisedBedId={raisedBed.id} />
+                        </Suspense>
+                    </CardOverflow>
+                </Card>
             </div>
         </Stack>
     );

@@ -1,5 +1,5 @@
-import { Redovno1 } from "./Redovno1";
-import { Iznimke1 } from "./Iznimke1";
+import type { Iznimke1 } from './Iznimke1';
+import type { Redovno1 } from './Redovno1';
 
 /**
  * BrisanjeRadnogVremena

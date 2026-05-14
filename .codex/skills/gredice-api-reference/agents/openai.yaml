@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gredice API Reference"
+  short_description: "Maintain Gredice API docs and contracts"
+  default_prompt: "Use $gredice-api-reference to update Gredice API docs, OpenAPI metadata, and generated client contracts."

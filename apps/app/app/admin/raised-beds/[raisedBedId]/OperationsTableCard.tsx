@@ -1,7 +1,7 @@
 import {
     Card,
-    CardContent,
     CardHeader,
+    CardOverflow,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -23,7 +23,7 @@ export function OperationsTableCard({
         <Card>
             <CardHeader>
                 <Row justifyContent="space-between">
-                    <CardTitle>Operacije</CardTitle>
+                    <CardTitle>Radnje</CardTitle>
                     <OperationCreateModal
                         accountId={accountId}
                         gardenId={gardenId}
@@ -32,14 +32,14 @@ export function OperationsTableCard({
                     />
                 </Row>
             </CardHeader>
-            <CardContent>
+            <CardOverflow className="max-h-96 overflow-auto">
                 <OperationsTable
                     accountId={accountId}
                     gardenId={gardenId}
                     raisedBedId={raisedBedId}
                     raisedBedFieldId={raisedBedFieldId}
                 />
-            </CardContent>
+            </CardOverflow>
         </Card>
     );
 }

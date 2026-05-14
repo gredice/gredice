@@ -2,13 +2,14 @@
 
 import type { BlockData } from '@gredice/client';
 import { BlockImage } from '@gredice/ui/BlockImage';
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { orderBy } from '@signalco/js';
 import { Gallery } from '@signalco/ui/Gallery';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { ItemCard } from '../../components/shared/ItemCard';
+import { useClientSearchParam } from '../../hooks/useClientSearchParam';
+import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { KnownPages } from '../../src/KnownPages';
 
 function BlockGalleryItem(
@@ -23,35 +24,43 @@ function BlockGalleryItem(
                     justifyContent={cx(showPrices ? 'space-between' : 'center')}
                 >
                     <Typography>{entity.information.label}</Typography>
-                    {showPrices && entity.prices && (
-                        <Typography
-                            level="body2"
-                            className="flex flex-row gap-2"
-                        >
-                            <span>🌻</span>
-                            <span>{entity.prices.sunflowers ?? '-'}</span>
-                        </Typography>
-                    )}
+                    {showPrices &&
+                        entity.prices &&
+                        entity.prices.sunflowers > 0 && (
+                            <Typography
+                                level="body2"
+                                className="flex flex-row gap-2"
+                            >
+                                <span>🌻</span>
+                                <span>{entity.prices.sunflowers}</span>
+                            </Typography>
+                        )}
                 </Row>
             }
             href={KnownPages.Block(entity.information.label)}
         >
-            <BlockImage blockName={entity.information.name} fill />
+            <BlockImage
+                blockName={entity.information.name}
+                fill
+                preload
+                sizes="(max-width: 768px) 50vw, (min-width: 768px) 33vw, (min-width: 1200px) 9vw"
+            />
         </ItemCard>
     );
 }
 
 export function BlockGallery({ blocks }: { blocks: BlockData[] | undefined }) {
-    const [search] = useSearchParam('pretraga');
+    const [search] = useClientSearchParam('pretraga');
+    const normalizedSearch = normalizeSearchText(search);
     const filteredBlocks = orderBy(blocks ?? [], (a, b) =>
         a.information.name.localeCompare(b.information.label),
     )
         .filter(
             (blocks) =>
-                !search ||
-                blocks.information.label
-                    .toLowerCase()
-                    .includes(search.toLowerCase()),
+                !normalizedSearch ||
+                normalizeSearchText(blocks.information.label).includes(
+                    normalizedSearch,
+                ),
         )
         .map((blocks) => ({ ...blocks, id: blocks.id.toString() }));
 

@@ -1,68 +1,82 @@
 import type { PlantData } from '@gredice/client';
+import type { PlantStageName } from '@gredice/game';
+import { PLANT_STAGES } from '@gredice/game';
 
 export type InformationSection = {
     header: string;
-    id:
-        | 'sowing'
-        | 'soilPreparation'
-        | 'planting'
-        | 'growth'
-        | 'maintenance'
-        | 'watering'
-        | 'flowering'
-        | 'harvest'
-        | 'storage';
+    id: PlantStageName;
     avaialble: boolean;
 };
+
+function hasValue(value: unknown): boolean {
+    if (value == null) {
+        return false;
+    }
+
+    if (typeof value === 'number') {
+        return !Number.isNaN(value);
+    }
+
+    if (typeof value === 'string') {
+        return value.trim().length > 0;
+    }
+
+    return true;
+}
+
+function hasInformationText(value: unknown): boolean {
+    return typeof value === 'string' ? value.trim().length > 0 : Boolean(value);
+}
+
+function hasSectionAttributes(
+    plant: PlantData,
+    section: PlantStageName,
+): boolean {
+    const attributes = plant.attributes;
+    if (!attributes) {
+        return false;
+    }
+
+    switch (section) {
+        case 'sowing':
+            return [
+                attributes.seedingDistance,
+                attributes.seedingDepth,
+                attributes.germinationType,
+                attributes.gernimationTemperature,
+                attributes.germinationWindowMin,
+                attributes.germinationWindowMax,
+            ].some(hasValue);
+        case 'growth':
+            return [
+                attributes.light,
+                attributes.soil,
+                attributes.nutrients,
+                attributes.growthWindowMin,
+                attributes.growthWindowMax,
+            ].some(hasValue);
+        case 'watering':
+            return hasValue(attributes.water);
+        case 'harvest':
+            return [
+                attributes.harvestWindowMin,
+                attributes.harvestWindowMax,
+                attributes.yieldMin,
+                attributes.yieldMax,
+            ].some(hasValue);
+        default:
+            return false;
+    }
+}
 
 export function getPlantInforationSections(
     plant: PlantData,
 ): InformationSection[] {
-    return [
-        {
-            header: 'Sijanje',
-            id: 'sowing',
-            avaialble: Boolean(plant.information.sowing),
-        },
-        {
-            header: 'Priprema tla',
-            id: 'soilPreparation',
-            avaialble: Boolean(plant.information.soilPreparation),
-        },
-        {
-            header: 'Sadnja',
-            id: 'planting',
-            avaialble: Boolean(plant.information.planting),
-        },
-        {
-            header: 'Rast',
-            id: 'growth',
-            avaialble: Boolean(plant.information.growth),
-        },
-        {
-            header: 'Održavanje',
-            id: 'maintenance',
-            avaialble: Boolean(plant.information.maintenance),
-        },
-        {
-            header: 'Zalijevanje',
-            id: 'watering',
-            avaialble: Boolean(plant.information.watering),
-        },
-        {
-            header: 'Cvjetanje',
-            id: 'flowering',
-            avaialble: Boolean(plant.information.flowering),
-        },
-        {
-            header: 'Berba',
-            id: 'harvest',
-            avaialble: Boolean(plant.information.harvest),
-        },
-        {
-            header: 'Skladištenje',
-            id: 'storage',
-            avaialble: Boolean(plant.information.storage),
-        },
-    ];
+    return PLANT_STAGES.map((stage) => ({
+        header: stage.label,
+        id: stage.name,
+        avaialble:
+            hasInformationText(plant.information[stage.name]) ||
+            hasSectionAttributes(plant, stage.name),
+    }));
 }

@@ -1,4 +1,5 @@
 import { setCookie } from '../../../lib/auth/auth';
+import { setRefreshCookie } from '../../../lib/auth/refreshCookies';
 
 export async function POST(request: Request) {
     const body = await request.json();
@@ -18,6 +19,9 @@ export async function POST(request: Request) {
     });
     const data = await response.json();
 
+    if (data?.refreshToken) {
+        await setRefreshCookie(data.refreshToken);
+    }
     await setCookie(data.token);
 
     return Response.json(data);

@@ -1,3 +1,4 @@
+import { decodeRouteParam } from '@gredice/js/uri';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -5,31 +6,45 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { FeedbackModal } from '../../../../../components/shared/feedback/FeedbackModal';
+import { StructuredDataScript } from '../../../../../components/shared/seo/StructuredDataScript';
 import { getPlantSortsData } from '../../../../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../../../../lib/plants/getPlantsData';
 import { KnownPages } from '../../../../../src/KnownPages';
+import { merchantReturnPolicy } from '../../../../../src/merchantReturnPolicy';
+import { matchesPageAlias, toPageAlias } from '../../../../../src/pageAliases';
+import { GrowthAttributeCards } from '../../GrowthAttributeCards';
 import { getPlantInforationSections } from '../../getPlantInforationSections';
+import { HarvestAttributeCards } from '../../HarvestAttributeCards';
 import { InformationSection } from '../../InformationSection';
 import { PlantPageHeader } from '../../PlantPageHeader';
 import { PlantTips } from '../../PlantTips';
+import { SowingAttributeCards } from '../../SowingAttributeCards';
+import { WateringAttributeCards } from '../../WateringAttributeCards';
 
 export const revalidate = 3600; // 1 hour
+
 export async function generateMetadata(
     props: PageProps<'/biljke/[alias]/sorte/[sortAlias]'>,
 ): Promise<Metadata> {
     const { alias: aliasUnescaped, sortAlias: sortAliasUnescaped } =
         await props.params;
-    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     const sortAlias = sortAliasUnescaped
-        ? decodeURIComponent(sortAliasUnescaped)
+        ? decodeRouteParam(sortAliasUnescaped)
         : null;
-    const sort = (await getPlantSortsData())?.find(
-        (sort) =>
-            sort.information.plant.information?.name.toLowerCase() ===
-                alias?.toLowerCase() &&
-            sort.information.name.toLowerCase() === sortAlias?.toLowerCase(),
+    const [plants, sorts] = await Promise.all([
+        getPlantsData(),
+        getPlantSortsData(),
+    ]);
+    const plant = plants?.find((plant) =>
+        matchesPageAlias(plant.information.name, alias),
     );
-    if (!sort) {
+    const sort = sorts?.find(
+        (sort) =>
+            sort.information.plant?.id === plant?.id &&
+            matchesPageAlias(sort.information.name, sortAlias),
+    );
+    if (!plant || !sort) {
         return {
             title: 'Sorta nije pronađena',
             description: 'Sorta nije pronađena',
@@ -40,17 +55,45 @@ export async function generateMetadata(
         description:
             sort.information.shortDescription ??
             sort.information.description ??
-            sort.information.plant.information?.description,
+            plant.information.description,
     };
 }
 
 export async function generateStaticParams() {
-    const sorts = await getPlantSortsData();
+    const [plants, sorts] = await Promise.all([
+        getPlantsData(),
+        getPlantSortsData(),
+    ]);
+    const plantsById = new Map(plants?.map((plant) => [plant.id, plant]));
     return (
-        sorts?.map((entity) => ({
-            alias: String(entity.information.plant.information?.name),
-            sortAlias: String(entity.information.name),
-        })) ?? []
+        sorts?.flatMap((entity, index) => {
+            const sortName = entity?.information?.name;
+            const plantId = entity?.information?.plant?.id;
+            const plant = plantId ? plantsById.get(plantId) : null;
+            const plantName = plant?.information.name;
+
+            if (!sortName || !plantId || !plantName) {
+                console.error(
+                    'Invalid plant sort while generating static params for plant sort page',
+                    {
+                        index,
+                        sortId: entity?.id ?? null,
+                        sortName: sortName ?? null,
+                        plantId: entity?.information?.plant?.id ?? null,
+                        plantName: plantName ?? null,
+                    },
+                );
+
+                return [];
+            }
+
+            return [
+                {
+                    alias: toPageAlias(String(plantName)),
+                    sortAlias: toPageAlias(String(sortName)),
+                },
+            ];
+        }) ?? []
     );
 }
 
@@ -59,9 +102,9 @@ export default async function PlantSortPage(
 ) {
     const { alias: aliasUnescaped, sortAlias: sortAliasUnescaped } =
         await props.params;
-    const alias = aliasUnescaped ? decodeURIComponent(aliasUnescaped) : null;
+    const alias = aliasUnescaped ? decodeRouteParam(aliasUnescaped) : null;
     const sort = sortAliasUnescaped
-        ? decodeURIComponent(sortAliasUnescaped)
+        ? decodeRouteParam(sortAliasUnescaped)
         : null;
     if (!alias || !sort) {
         console.warn(
@@ -75,14 +118,13 @@ export default async function PlantSortPage(
         getPlantsData(),
         getPlantSortsData(),
     ]);
-    const basePlantData = plants?.find(
-        (p) => p.information.name.toLowerCase() === alias.toLowerCase(),
+    const basePlantData = plants?.find((p) =>
+        matchesPageAlias(p.information.name, alias),
     );
     const sortData = sorts?.find(
         (s) =>
-            s.information.name.toLowerCase() === sort.toLowerCase() &&
-            s.information.plant.information?.name?.toLowerCase() ===
-                alias.toLowerCase(),
+            s.information.plant?.id === basePlantData?.id &&
+            matchesPageAlias(s.information.name, sort),
     );
     if (!basePlantData || !sortData) {
         console.error('Base plant or sort not found:', {
@@ -94,8 +136,113 @@ export default async function PlantSortPage(
 
     const informationSections = getPlantInforationSections(basePlantData);
 
+    // Map section IDs to their corresponding attribute cards
+    const getAttributeCardsForSection = (sectionId: string) => {
+        switch (sectionId) {
+            case 'sowing':
+                return (
+                    <SowingAttributeCards
+                        attributes={basePlantData.attributes}
+                    />
+                );
+            case 'growth':
+                return (
+                    <GrowthAttributeCards
+                        attributes={basePlantData.attributes}
+                    />
+                );
+            case 'watering':
+                return (
+                    <WateringAttributeCards
+                        attributes={basePlantData.attributes}
+                    />
+                );
+            case 'harvest':
+                return (
+                    <HarvestAttributeCards
+                        attributes={basePlantData.attributes}
+                    />
+                );
+            default:
+                return undefined;
+        }
+    };
+
+    const sortUrl = `https://www.gredice.com${KnownPages.PlantSort(alias, sortData.information.name)}`;
+    const hasPerPlantPrice = typeof basePlantData.prices?.perPlant === 'number';
+
+    if (!hasPerPlantPrice) {
+        console.error('Missing per-plant price for plant sort product schema', {
+            alias,
+            plantId: basePlantData.id,
+            plantName: basePlantData.information.name,
+            sortAlias: sort,
+            sortId: sortData.id,
+            sortName: sortData.information.name,
+            sortUrl,
+        });
+    }
+
     return (
         <div className="py-8">
+            <StructuredDataScript
+                data={
+                    hasPerPlantPrice
+                        ? {
+                              '@context': 'https://schema.org',
+                              '@type': 'Product',
+                              name: sortData.information.name,
+                              description:
+                                  sortData.information.shortDescription ??
+                                  sortData.information.description ??
+                                  basePlantData.information.description,
+                              category: 'Sorta biljke',
+                              image:
+                                  sortData.image?.cover?.url ??
+                                  basePlantData.image?.cover?.url,
+                              brand: {
+                                  '@type': 'Brand',
+                                  name: 'Gredice',
+                              },
+                              isVariantOf: {
+                                  '@type': 'Product',
+                                  name: basePlantData.information.name,
+                                  url: `https://www.gredice.com${KnownPages.Plant(alias)}`,
+                              },
+                              url: sortUrl,
+                              offers: {
+                                  '@type': 'Offer',
+                                  price: basePlantData.prices.perPlant.toFixed(
+                                      2,
+                                  ),
+                                  priceCurrency: 'EUR',
+                                  availability:
+                                      sortData.store?.availableInStore === false
+                                          ? 'https://schema.org/OutOfStock'
+                                          : 'https://schema.org/InStock',
+                                  url: sortUrl,
+                                  hasMerchantReturnPolicy: merchantReturnPolicy,
+                              },
+                          }
+                        : {
+                              '@context': 'https://schema.org',
+                              '@type': 'WebPage',
+                              name: sortData.information.name,
+                              description:
+                                  sortData.information.shortDescription ??
+                                  sortData.information.description ??
+                                  basePlantData.information.description,
+                              image:
+                                  sortData.image?.cover?.url ??
+                                  basePlantData.image?.cover?.url,
+                              url: sortUrl,
+                              about: {
+                                  '@type': 'Thing',
+                                  name: basePlantData.information.name,
+                              },
+                          }
+                }
+            />
             <Stack spacing={4}>
                 <Breadcrumbs
                     items={[
@@ -123,6 +270,9 @@ export default async function PlantSortPage(
                             content={basePlantData.information[section.id]}
                             sortContent={sortData.information[section.id]}
                             operations={basePlantData.information.operations}
+                            attributeCards={getAttributeCardsForSection(
+                                section.id,
+                            )}
                         />
                     ))}
                 {(basePlantData.information.tip?.length ?? 0) > 0 && (

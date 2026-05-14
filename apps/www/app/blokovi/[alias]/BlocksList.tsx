@@ -1,6 +1,7 @@
 'use client';
 
 import type { BlockData } from '@gredice/client';
+import { decodeRouteParam } from '@gredice/js/uri';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { orderBy } from '@signalco/js';
 import { useParams } from 'next/navigation';
@@ -13,7 +14,7 @@ export function BlocksList({
     blockData: BlockData[] | undefined;
 }) {
     const { alias: aliasUnescaped } = useParams<{ alias: string }>();
-    const alias = decodeURIComponent(aliasUnescaped);
+    const alias = decodeRouteParam(aliasUnescaped);
 
     const entitiesArray = orderBy(blockData ?? [], (a, b) =>
         a.information.label.localeCompare(b.information.label),

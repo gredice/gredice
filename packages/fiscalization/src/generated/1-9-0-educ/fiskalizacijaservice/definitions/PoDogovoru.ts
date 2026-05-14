@@ -1,4 +1,3 @@
-
 /**
  * PoDogovoru
  * @targetNSAlias `tns`

@@ -1,15 +1,21 @@
+import { spawn } from 'node:child_process';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { mkdir, unlink } from 'node:fs/promises';
+import path from 'node:path';
+import stream from 'node:stream';
+import {
+    GetObjectCommand,
+    ListObjectsV2Command,
+    PutObjectCommand,
+    S3,
+} from '@aws-sdk/client-s3';
 import ffmpegPath from '@ffmpeg-installer/ffmpeg';
-import { S3, ListObjectsV2Command, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { createReadStream, createWriteStream } from 'fs';
-import path from 'path';
-import { mkdir, unlink } from 'fs/promises';
-import stream from 'stream';
-import { spawn } from 'child_process';
 
 console.info('Regenerating sound effects...');
 
 const s3 = new S3({
-    endpoint: 'https://16b6e8d38ba0b62ad0a3a702243b1265.eu.r2.cloudflarestorage.com',
+    endpoint:
+        'https://16b6e8d38ba0b62ad0a3a702243b1265.eu.r2.cloudflarestorage.com',
     region: 'auto',
     credentials: {
         accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
@@ -21,17 +27,20 @@ const s3 = new S3({
 function runFFmpeg(inputPath: string, outputPath: string): Promise<void> {
     return new Promise((resolve, reject) => {
         const args = [
-            '-i', inputPath,
-            '-codec:a', 'libmp3lame',
-            '-qscale:a', '7',
+            '-i',
+            inputPath,
+            '-codec:a',
+            'libmp3lame',
+            '-qscale:a',
+            '7',
             '-y', // Overwrite output file if it exists
-            outputPath
+            outputPath,
         ];
 
         const ffmpegProcess = spawn(ffmpegPath.path, args);
 
         let stderr = '';
-        
+
         ffmpegProcess.stderr.on('data', (data) => {
             stderr += data.toString();
         });
@@ -40,7 +49,11 @@ function runFFmpeg(inputPath: string, outputPath: string): Promise<void> {
             if (code === 0) {
                 resolve();
             } else {
-                reject(new Error(`FFmpeg process exited with code ${code}. Error: ${stderr}`));
+                reject(
+                    new Error(
+                        `FFmpeg process exited with code ${code}. Error: ${stderr}`,
+                    ),
+                );
             }
         });
 
@@ -52,7 +65,9 @@ function runFFmpeg(inputPath: string, outputPath: string): Promise<void> {
 
 // Example function to download, convert, and re-upload WAV files
 async function convertWavToMp3(bucketName: string, prefix: string) {
-    const objects = await s3.send(new ListObjectsV2Command({ Bucket: bucketName, Prefix: prefix }));
+    const objects = await s3.send(
+        new ListObjectsV2Command({ Bucket: bucketName, Prefix: prefix }),
+    );
     if (!objects.Contents) return;
 
     for (const obj of objects.Contents) {
@@ -66,8 +81,12 @@ async function convertWavToMp3(bucketName: string, prefix: string) {
         console.info('Downloading', localWav);
         await mkdir('temp', { recursive: true });
         const wavStream = createWriteStream(localWav);
-        const wavData = await s3.send(new GetObjectCommand({ Bucket: bucketName, Key: obj.Key }));
-        const nodeStream = stream.Readable.from(wavData.Body as any);
+        const wavData = await s3.send(
+            new GetObjectCommand({ Bucket: bucketName, Key: obj.Key }),
+        );
+        const nodeStream = stream.Readable.from(
+            wavData.Body as NodeJS.ReadableStream,
+        );
         nodeStream.pipe(wavStream);
 
         // Wait until download completes
@@ -85,7 +104,7 @@ async function convertWavToMp3(bucketName: string, prefix: string) {
                 Key: obj.Key.replace('.wav', '.mp3'),
                 Body: mp3Stream,
                 ContentType: 'audio/mpeg',
-            })
+            }),
         );
 
         // Cleanup

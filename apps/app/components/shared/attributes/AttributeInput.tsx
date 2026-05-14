@@ -13,12 +13,14 @@ import {
     handleValueDelete,
     handleValueSave,
 } from '../../../app/(actions)/entityActions';
+import { useEntityDetailsSave } from '../../../app/admin/directories/[entityType]/[entityId]/EntityDetailsSaveContext';
 import type { AttributeInputProps } from './AttributeInputProps';
 import { BarcodeInput } from './typed/BarcodeInput';
 import { BooleanInput } from './typed/BooleanInput';
 import { ImageInput } from './typed/ImageInput';
 import { JsonInput } from './typed/JsonInput';
 import { NumberInput } from './typed/NumberInput';
+import { RangeInput } from './typed/RangeInput';
 import { SelectEntity } from './typed/SelectEntity';
 import { TextInput } from './typed/TextInput';
 
@@ -44,6 +46,8 @@ export function AttributeInput({
     attributeDefinition: SelectAttributeDefinition;
     attributeValue: SelectAttributeValue | undefined | null;
 }) {
+    const { trackSave } = useEntityDetailsSave();
+
     const handleChange = async (value: string | null) => {
         console.debug(
             'AttributeInput handleChange',
@@ -62,12 +66,14 @@ export function AttributeInput({
         }
 
         try {
-            await handleValueSave(
-                entityType,
-                entityId,
-                attributeDefinition,
-                attributeValue?.id,
-                value,
+            await trackSave(() =>
+                handleValueSave(
+                    entityType,
+                    entityId,
+                    attributeDefinition,
+                    attributeValue?.id,
+                    value,
+                ),
             );
         } catch (error) {
             console.error('AttributeInput handleChange error', error);
@@ -79,7 +85,13 @@ export function AttributeInput({
         if (!attributeValue) {
             return;
         }
-        await handleValueDelete(attributeValue);
+
+        try {
+            await trackSave(() => handleValueDelete(attributeValue));
+        } catch (error) {
+            console.error('AttributeInput handleDelete error', error);
+            // TODO: Display error notification
+        }
     };
 
     let AttributeInputComponent: ComponentType<AttributeInputProps> = TextInput;
@@ -92,6 +104,11 @@ export function AttributeInput({
         AttributeInputComponent = MarkdownInput;
     } else if (attributeDefinition.dataType === 'number') {
         AttributeInputComponent = NumberInput;
+    } else if (
+        attributeDefinition.dataType === 'range' ||
+        attributeDefinition.dataType.startsWith('range|')
+    ) {
+        AttributeInputComponent = RangeInput;
     } else if (attributeDefinition.dataType === 'barcode') {
         AttributeInputComponent = BarcodeInput;
     } else if (attributeDefinition.dataType === 'image') {

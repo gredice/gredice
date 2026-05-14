@@ -1,254 +1,96 @@
 import type { OperationData } from '@gredice/client';
-import { OperationImage } from '@gredice/ui/OperationImage';
 import { Alert } from '@signalco/ui/Alert';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
-import { Calendar } from '@signalco/ui-icons';
+import { Close, Search } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { List } from '@signalco/ui-primitives/List';
-import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
-import { useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { useOperations } from '../../../hooks/useOperations';
 import { usePlantSort } from '../../../hooks/usePlantSorts';
-import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
 import {
-    AnimateFlyToItem,
-    useAnimateFlyToShoppingCart,
-} from '../../../indicators/AnimateFlyTo';
-import { KnownPages } from '../../../knownPages';
+    type ShoppingCartItemData,
+    useShoppingCart,
+} from '../../../hooks/useShoppingCart';
+import { useShoppingCartOpenParam } from '../../../useUrlState';
 import { OperationListItemSkeleton } from '../OperationListItemSkeleton';
-import { formatLocalDate } from '../RaisedBedPlantPicker';
+import { OperationsListItem } from './OperationsListItem';
 
-function formatPrice(price?: number | null): string {
-    if (price == null || price === undefined) {
-        return 'Nepoznato';
-    }
-    return `${price.toFixed(2)} €`;
-}
+const MemoizedOperationsListItem = memo(OperationsListItem);
 
-function OperationScheduleModal({
-    operation,
-    onConfirm,
-    trigger,
-}: {
-    operation: OperationData;
-    onConfirm: (date: Date) => Promise<void>;
-    trigger: React.ReactElement;
-}) {
-    const [open, setOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-
-    async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-        const date = formData.get('scheduledDate') as string;
-        if (date) {
-            const scheduledDate = new Date(date);
-            setIsLoading(true);
-            await onConfirm(scheduledDate);
-            setOpen(false);
-            setIsLoading(false);
-        }
-    }
-
-    const today = new Date();
-    const tomorrow = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate() + 1,
-    );
-    const threeMonthsFromTomorrow = new Date(
-        tomorrow.getFullYear(),
-        tomorrow.getMonth() + 3,
-        tomorrow.getDate(),
-    );
-    const operationDefaultDate = formatLocalDate(tomorrow);
-    const min = formatLocalDate(tomorrow);
-    const max = formatLocalDate(threeMonthsFromTomorrow);
-
+function isOperationInCurrentContext(
+    {
+        entityTypeName,
+        status,
+        gardenId: itemGardenId,
+        raisedBedId: itemRaisedBedId,
+        positionIndex: itemPositionIndex,
+    }: ShoppingCartItemData,
+    {
+        gardenId,
+        raisedBedId,
+        positionIndex,
+    }: {
+        gardenId: number;
+        raisedBedId?: number;
+        positionIndex?: number;
+    },
+) {
     return (
-        <Modal
-            className="border border-tertiary border-b-4"
-            trigger={trigger}
-            title={`Zakaži radnju: ${operation.information.label}`}
-            open={open}
-            onOpenChange={setOpen}
-        >
-            <form onSubmit={handleSubmit}>
-                <Stack spacing={2}>
-                    <Typography level="h5">Zakazivanje radnje</Typography>
-                    <Typography>
-                        Ova radnja će biti zakazana za odabrani datum.
-                    </Typography>
-                    <Card>
-                        <CardContent noHeader>
-                            <Row spacing={2}>
-                                <div>
-                                    <OperationImage
-                                        operation={operation}
-                                        size={32}
-                                    />
-                                </div>
-                                <Stack>
-                                    <Typography noWrap>
-                                        {operation.information.label}
-                                    </Typography>
-                                    <Typography level="body2">
-                                        {operation.information.shortDescription}
-                                    </Typography>
-                                    <Typography level="body2" semiBold>
-                                        {formatPrice(
-                                            operation.prices?.perOperation,
-                                        )}
-                                    </Typography>
-                                </Stack>
-                            </Row>
-                        </CardContent>
-                    </Card>
-                    <Input
-                        type="date"
-                        label="Željeni datum radnje"
-                        name="scheduledDate"
-                        className="w-full bg-card"
-                        disabled={isLoading}
-                        defaultValue={operationDefaultDate}
-                        min={min}
-                        max={max}
-                        required
-                    />
-                    <Row spacing={1}>
-                        <Button
-                            variant="plain"
-                            onClick={() => setOpen(false)}
-                            disabled={isLoading}
-                        >
-                            Odustani
-                        </Button>
-                        <Button
-                            type="submit"
-                            variant="solid"
-                            disabled={isLoading}
-                            loading={isLoading}
-                            startDecorator={
-                                <Calendar className="size-5 shrink-0" />
-                            }
-                        >
-                            Potvrdi
-                        </Button>
-                    </Row>
-                </Stack>
-            </form>
-        </Modal>
+        entityTypeName === 'operation' &&
+        status === 'new' &&
+        itemGardenId === gardenId &&
+        (itemRaisedBedId ?? undefined) === raisedBedId &&
+        (itemPositionIndex ?? undefined) === positionIndex
     );
 }
 
-function OperationsListItem({
-    operation,
+const OperationsListContent = memo(function OperationsListContent({
+    operations,
+    isLoading,
+    search,
     gardenId,
     raisedBedId,
     positionIndex,
+    shoppingCartOperationIds,
 }: {
+    operations: OperationData[] | undefined;
+    isLoading: boolean;
+    search: string;
     gardenId: number;
     raisedBedId?: number;
     positionIndex?: number;
-    operation: OperationData;
+    shoppingCartOperationIds: Set<number>;
 }) {
-    const setShoppingCartItem = useSetShoppingCartItem();
-    const animateFlyToShoppingCart = useAnimateFlyToShoppingCart();
-
-    const price = formatPrice(operation.prices?.perOperation);
-
-    async function handleOperationPicked(
-        operation: OperationData,
-        scheduledDate?: Date,
-    ) {
-        setShoppingCartItem.mutate({
-            amount: 1,
-            entityId: operation.id.toString(),
-            entityTypeName: operation.entityType.name,
-            gardenId,
-            raisedBedId,
-            positionIndex,
-            additionalData: scheduledDate
-                ? JSON.stringify({
-                      scheduledDate: scheduledDate.toISOString(),
-                  })
-                : null,
-        });
-        animateFlyToShoppingCart.run();
-    }
-
-    const operationButton = (
-        <Button
-            variant="plain"
-            className="justify-start text-start p-0 h-auto py-2 gap-3 px-4 rounded-none font-normal"
-            onClick={() => handleOperationPicked(operation)}
-        >
-            <AnimateFlyToItem {...animateFlyToShoppingCart.props}>
-                <OperationImage operation={operation} size={32} />
-            </AnimateFlyToItem>
-            <Stack className="w-full">
-                <Row spacing={1} justifyContent="space-between">
-                    <Typography level="body1" semiBold>
-                        {operation.information.label}
-                    </Typography>
-                    <Typography level="body1" semiBold>
-                        {price}
-                    </Typography>
-                </Row>
-                {operation.information.shortDescription && (
-                    <Typography
-                        level="body2"
-                        className="line-clamp-2 break-words"
-                    >
-                        {operation.information.shortDescription}
-                    </Typography>
-                )}
-            </Stack>
-        </Button>
-    );
-
     return (
-        <Stack key={operation.id}>
-            {operationButton}
-            <div className="flex flex-wrap gap-y-1 gap-x-2 pr-4 items-center justify-between">
-                <OperationScheduleModal
+        <List variant="outlined" className="bg-card max-h-96 overflow-y-auto">
+            {!isLoading && operations?.length === 0 && (
+                <NoDataPlaceholder className="p-4">
+                    {search.length > 0
+                        ? 'Nema rezultata pretrage'
+                        : 'Nema dostupnih radnji'}
+                </NoDataPlaceholder>
+            )}
+            {isLoading &&
+                Array.from({ length: 3 }).map((_, index) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: Array indexed, skeletons
+                    <OperationListItemSkeleton key={index} />
+                ))}
+            {operations?.map((operation) => (
+                <MemoizedOperationsListItem
+                    inShoppingCart={shoppingCartOperationIds.has(operation.id)}
+                    key={operation.id}
                     operation={operation}
-                    onConfirm={async (date) => {
-                        await handleOperationPicked(operation, date);
-                    }}
-                    trigger={
-                        <Button
-                            title="Zakaži radnju"
-                            variant="plain"
-                            size="sm"
-                            startDecorator={
-                                <Calendar className="size-4 shrink-0" />
-                            }
-                            disabled={setShoppingCartItem.isPending}
-                        >
-                            Zakaži
-                        </Button>
-                    }
+                    gardenId={gardenId}
+                    raisedBedId={raisedBedId}
+                    positionIndex={positionIndex}
                 />
-                <Button
-                    title="Više informacija"
-                    variant="link"
-                    size="sm"
-                    href={KnownPages.GrediceOperation(
-                        operation.information.label,
-                    )}
-                >
-                    Više informacija...
-                </Button>
-            </div>
-        </Stack>
+            ))}
+        </List>
     );
-}
+});
 
 export function OperationsList({
     gardenId,
@@ -270,8 +112,28 @@ export function OperationsList({
     } = useOperations();
     const { data: plantSort, isLoading: isPlantSortLoading } =
         usePlantSort(plantSortId);
+    const { data: cart } = useShoppingCart();
+    const [, setShoppingCartOpen] = useShoppingCartOpenParam();
     const isLoading =
         isLoadingOperations || (Boolean(plantSortId) && isPlantSortLoading);
+    const [search, setSearch] = useState('');
+
+    const shoppingCartOperationIds = useMemo(
+        () =>
+            new Set(
+                (cart?.items ?? [])
+                    .filter((item) =>
+                        isOperationInCurrentContext(item, {
+                            gardenId,
+                            raisedBedId,
+                            positionIndex,
+                        }),
+                    )
+                    .map((item) => Number(item.entityId)),
+            ),
+        [cart?.items, gardenId, raisedBedId, positionIndex],
+    );
+
     const filteredOperations = operations
         ?.filter(filterFunc)
         .filter((op) =>
@@ -280,37 +142,81 @@ export function OperationsList({
                       ?.map((op) => op.information?.name)
                       .includes(op.information.name)
                 : true,
+        )
+        .filter((op) =>
+            search.length > 0
+                ? op.information.label
+                      ?.toLowerCase()
+                      .includes(search.toLowerCase()) ||
+                  op.information.name
+                      ?.toLowerCase()
+                      .includes(search.toLowerCase())
+                : true,
         );
 
+    const cartOperations =
+        filteredOperations?.filter((op) =>
+            shoppingCartOperationIds.has(op.id),
+        ) ?? [];
+    const remainingOperations =
+        filteredOperations?.filter(
+            (op) => !shoppingCartOperationIds.has(op.id),
+        ) ?? [];
+    const sortedOperations = [...cartOperations, ...remainingOperations];
+
     return (
-        <>
+        <Stack spacing={1}>
+            <Row className="relative">
+                <Search className="size-5 shrink-0 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Pretraži..."
+                    className="w-full min-w-60 pl-10 pr-10 py-2 rounded-md border border-input bg-muted/50 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                {search && (
+                    <IconButton
+                        className="absolute right-1 top-1/2 -translate-y-1/2 hover:bg-neutral-300 rounded-full"
+                        title="Očisti pretragu"
+                        onClick={() => setSearch('')}
+                        size="sm"
+                        variant="plain"
+                    >
+                        <Close className="size-5" />
+                    </IconButton>
+                )}
+            </Row>
             {isError && (
                 <Alert color="danger">Greška prilikom učitavanja radnji</Alert>
             )}
-            <List
-                variant="outlined"
-                className="bg-card max-h-96 overflow-y-auto"
-            >
-                {!isLoading && filteredOperations?.length === 0 && (
-                    <NoDataPlaceholder className="p-4">
-                        Nema dostupnih radnji
-                    </NoDataPlaceholder>
-                )}
-                {isLoading &&
-                    Array.from({ length: 3 }).map((_, index) => (
-                        // biome-ignore lint/suspicious/noArrayIndexKey: Array indexed, skeletons
-                        <OperationListItemSkeleton key={index} />
-                    ))}
-                {filteredOperations?.map((operation) => (
-                    <OperationsListItem
-                        key={operation.id}
-                        operation={operation}
-                        gardenId={gardenId}
-                        raisedBedId={raisedBedId}
-                        positionIndex={positionIndex}
-                    />
-                ))}
-            </List>
-        </>
+            {cartOperations.length > 0 && (
+                <Row
+                    justifyContent="space-between"
+                    alignItems="center"
+                    className="px-1"
+                >
+                    <Alert color="warning" className="py-1">
+                        Radnje u košari (nisu kupljene) su na vrhu popisa.
+                    </Alert>
+                    <Button
+                        size="sm"
+                        variant="link"
+                        onClick={() => setShoppingCartOpen(true)}
+                    >
+                        Otvori košaru
+                    </Button>
+                </Row>
+            )}
+            <OperationsListContent
+                operations={sortedOperations}
+                isLoading={isLoading}
+                search={search}
+                gardenId={gardenId}
+                raisedBedId={raisedBedId}
+                positionIndex={positionIndex}
+                shoppingCartOperationIds={shoppingCartOperationIds}
+            />
+        </Stack>
     );
 }

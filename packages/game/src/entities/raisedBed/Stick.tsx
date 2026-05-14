@@ -1,4 +1,6 @@
 import { animated } from '@react-spring/three';
+import { SnowOverlay } from '../../snow/SnowOverlay';
+import { snowPresets } from '../../snow/snowPresets';
 import type { EntityInstanceProps } from '../../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
@@ -19,7 +21,12 @@ export function Stick({ stack, block, rotation }: EntityInstanceProps) {
                 receiveShadow
                 geometry={nodes.Stick.geometry}
                 material={nodes.Stick.material}
-            />
+            >
+                <SnowOverlay
+                    geometry={nodes.Stick.geometry}
+                    {...snowPresets.tool}
+                />
+            </mesh>
         </animated.group>
     );
 }

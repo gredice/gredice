@@ -6,11 +6,13 @@ import { AcceptRequestModal } from './AcceptRequestModal';
 interface AcceptOperationModalProps {
     operationId: number;
     label: string;
+    disabled?: boolean;
 }
 
 export function AcceptOperationModal({
     operationId,
     label,
+    disabled = false,
 }: AcceptOperationModalProps) {
     const handleConfirm = async () => {
         try {
@@ -25,12 +27,16 @@ export function AcceptOperationModal({
             label={label}
             onConfirm={handleConfirm}
             trigger={
-                <IconButton variant="plain" title="Potvrdi operaciju">
+                <IconButton
+                    variant="plain"
+                    title="Potvrdi operaciju"
+                    disabled={disabled}
+                >
                     <Check className="size-4 shrink-0" />
                 </IconButton>
             }
-            title="Potvrda operacije"
-            header="Potvrda operacije"
+            title="Potvrda radnje"
+            header="Potvrda radnje"
         />
     );
 }

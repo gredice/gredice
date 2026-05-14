@@ -1,6 +1,6 @@
 'use client';
 
-import { client } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 import { Send, SmileHappy, SmileMeh, SmileSad } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { cx } from '@signalco/ui-primitives/cx';
@@ -11,6 +11,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
+import { useCurrentUser } from '../../../hooks/useCurrentUser';
 import {
     FeedbackTrigger,
     type FeedbackTriggerProps,
@@ -35,13 +36,19 @@ export function FeedbackModal({
     const [score, setScore] = useState<'like' | 'dislike' | 'neutral' | null>(
         null,
     );
+    const { data: user } = useCurrentUser();
 
     async function handleFeedback(formData: FormData) {
         const comment = formData.get('comment') as string;
-        await client().api.feedback.$post({
+        await clientPublic().api.feedback.$post({
             json: {
                 topic,
-                data,
+                data: user
+                    ? {
+                          ...(data ?? {}),
+                          userId: user.id,
+                      }
+                    : data,
                 score: (score === 'like'
                     ? 1
                     : score === 'dislike'

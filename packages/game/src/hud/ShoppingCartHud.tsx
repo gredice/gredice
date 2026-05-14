@@ -10,12 +10,12 @@ import {
 import { Button } from '@signalco/ui-primitives/Button';
 import { cx } from '@signalco/ui-primitives/cx';
 import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { isCompleteDeliverySelection, useCheckout } from '../hooks/useCheckout';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
 import { useShoppingCart } from '../hooks/useShoppingCart';
@@ -24,12 +24,17 @@ import {
     type DeliverySelectionData,
     DeliveryStep,
 } from '../shared-ui/delivery/DeliveryStep';
+import { useShoppingCartOpenParam } from '../useUrlState';
+import { calculateSunflowerAmountFromPrices } from '../utils/sunflowerPricing';
 import { HudCard } from './components/HudCard';
+import { ButtonConfirmPayment } from './components/shopping-cart/ButtonConfirmPayment';
 import { ShoppingCartItem } from './components/shopping-cart/ShoppingCartItem';
+import { SunflowerCheckoutBalance } from './components/shopping-cart/SunflowerCheckoutBalance';
 
 export function ShoppingCart() {
     const { data: account } = useCurrentAccount();
     const { data: cart, isLoading, isError } = useShoppingCart();
+    const { track } = useGameAnalytics();
     const deleteCart = useShoppingCartDelete();
     const checkout = useCheckout();
 
@@ -42,18 +47,25 @@ export function ShoppingCart() {
         !cart?.items.some((item) => item.currency === 'sunflower') &&
         cart?.items.some(
             (item) =>
-                (account?.sunflowers.amount ?? 0) >
-                (item.shopData.price ?? 0) * 100,
+                (account?.sunflowers.amount ?? 0) >=
+                calculateSunflowerAmountFromPrices({
+                    price: item.shopData.price,
+                    discountPrice: item.shopData.discountPrice,
+                }),
         );
 
     function handleCheckout() {
-        if (!cart || !cart.id) {
+        if (!cart?.id) {
             console.error('No cart available for checkout');
             return;
         }
 
         // If cart contains deliverable items and user hasn't gone through delivery step yet
         if (cart.hasDeliverableItems && !deliverySelection) {
+            track('game_cart_delivery_opened', {
+                item_count: cart.items.length,
+                total: cart.total,
+            });
             setShowDeliveryStep(true);
             return;
         }
@@ -66,10 +78,21 @@ export function ShoppingCart() {
             }),
         };
 
+        track('game_cart_checkout_clicked', {
+            has_delivery_selection:
+                isCompleteDeliverySelection(deliverySelection),
+            item_count: cart.items.length,
+            total: cart.total,
+            total_sunflowers: cart.totalSunflowers,
+        });
         checkout.mutate(checkoutData);
     }
 
     function handleDeleteCart() {
+        track('game_cart_cleared', {
+            item_count: cart?.items.length,
+            total: cart?.total,
+        });
         deleteCart.mutate();
     }
 
@@ -78,6 +101,10 @@ export function ShoppingCart() {
     }
 
     function handleDelivery() {
+        track('game_cart_delivery_opened', {
+            item_count: cart?.items.length,
+            total: cart?.total,
+        });
         setShowDeliveryStep(true);
     }
 
@@ -107,7 +134,7 @@ export function ShoppingCart() {
                 <div className="rounded-full bg-tertiary/40 p-3 flex items-center justify-center">
                     <ShoppingCartIcon className="size-7 shrink-0" />
                 </div>
-                <Typography level="h3">Košarica</Typography>
+                <Typography level="h3">Košara</Typography>
             </Row>
             <Stack>
                 <div
@@ -119,7 +146,7 @@ export function ShoppingCart() {
                     )}
                 >
                     <Alert color="primary">
-                        Dio košarice možeš platiti u{' '}
+                        Dio košare možeš platiti u{' '}
                         <span className="text-yellow-500">🌻</span>. Odaberi
                         željeni način plaćanja desno od cijene.
                     </Alert>
@@ -134,7 +161,7 @@ export function ShoppingCart() {
                         )}
                         {isError && (
                             <Typography level="body1">
-                                Greška prilikom učitavanja košarice
+                                Greška prilikom učitavanja košare
                             </Typography>
                         )}
                         {!isLoading &&
@@ -148,11 +175,12 @@ export function ShoppingCart() {
                                 ))
                             ) : (
                                 <NoDataPlaceholder>
-                                    Košarica je prazna
+                                    Košara je prazna
                                 </NoDataPlaceholder>
                             ))}
                     </Stack>
                     <Stack className="border-t mt-4 pt-2" spacing={1}>
+                        <SunflowerCheckoutBalance cart={cart} />
                         <Row
                             justifyContent="space-between"
                             alignItems="start"
@@ -198,8 +226,8 @@ export function ShoppingCart() {
                             <div className="flex flex-row gap-2 justify-between flex-wrap">
                                 {/* TODO: Localize */}
                                 <ModalConfirm
-                                    title="Potvrdi brisanje košarice"
-                                    header="Brisanje košarice"
+                                    title="Potvrdi brisanje košare"
+                                    header="Brisanje košare"
                                     onConfirm={handleDeleteCart}
                                     trigger={
                                         <Button
@@ -213,13 +241,13 @@ export function ShoppingCart() {
                                                 <Delete className="size-5 shrink-0" />
                                             }
                                         >
-                                            Očisti košaricu
+                                            Očisti košaru
                                         </Button>
                                     }
                                 >
                                     <Typography>
                                         Jeste li sigurni da želite obrisati sve
-                                        stavke iz košarice?
+                                        stavke iz košare?
                                     </Typography>
                                 </ModalConfirm>
                                 {cart?.hasDeliverableItems ? (
@@ -254,71 +282,12 @@ export function ShoppingCart() {
     );
 }
 
-function ButtonConfirmPayment({
-    cart,
-    checkout,
-    onConfirm,
-}: {
-    cart: ReturnType<typeof useShoppingCart>['data'];
-    checkout: ReturnType<typeof useCheckout>;
-    onConfirm: () => void;
-}) {
-    return (
-        <>
-            {cart?.totalSunflowers ? (
-                <ModalConfirm
-                    title="Potvrdi plaćanje"
-                    header={`Potvrđuješ plaćanje ${cart?.totalSunflowers ?? 0} 🌻 i ${cart?.total.toFixed(2) ?? 0} €?`}
-                    onConfirm={onConfirm}
-                    trigger={
-                        <Button
-                            variant="solid"
-                            disabled={
-                                !cart?.items.length ||
-                                checkout.isPending ||
-                                !cart.allowPurchase
-                            }
-                            loading={checkout.isPending}
-                            startDecorator={
-                                !cart?.allowPurchase ? (
-                                    <Info className="size-5 shrink-0" />
-                                ) : undefined
-                            }
-                            endDecorator={
-                                <Navigate className="size-5 shrink-0" />
-                            }
-                        >
-                            Potvrdi i plati
-                        </Button>
-                    }
-                />
-            ) : (
-                <Button
-                    variant="solid"
-                    onClick={onConfirm}
-                    disabled={
-                        !cart?.items.length ||
-                        checkout.isPending ||
-                        !cart.allowPurchase
-                    }
-                    loading={checkout.isPending}
-                    startDecorator={
-                        !cart?.allowPurchase ? (
-                            <Info className="size-5 shrink-0" />
-                        ) : undefined
-                    }
-                    endDecorator={<Navigate className="size-5 shrink-0" />}
-                >
-                    Plati
-                </Button>
-            )}
-        </>
-    );
-}
-
 export function ShoppingCartHud() {
     const { data: cart } = useShoppingCart();
-    if (!cart || !cart.items.length) {
+    const { track } = useGameAnalytics();
+    const [isOpen, setIsOpen] = useShoppingCartOpenParam();
+
+    if (!cart?.items.length) {
         return null;
     }
 
@@ -326,16 +295,32 @@ export function ShoppingCartHud() {
         <HudCard open position="floating" className="static p-0.5">
             <Row spacing={1}>
                 <Modal
-                    title="Košarica"
-                    className="bg-card border-tertiary border-b-4 md:max-w-2xl"
-                    modal={false}
+                    open={isOpen}
+                    onOpenChange={(open) => {
+                        if (open) {
+                            track('game_cart_opened', {
+                                item_count: cart.items.length,
+                                total: cart.total,
+                            });
+                        }
+                        setIsOpen(open);
+                    }}
+                    title="Košara"
+                    className="border-tertiary border-b-4 md:max-w-2xl"
                     trigger={
-                        <IconButton
-                            title="Košarica"
+                        <Button
+                            title="Košara"
                             variant="plain"
-                            className="relative rounded-full size-10"
+                            className="relative rounded-full p-2 gap-2"
                         >
-                            <ShoppingCartIcon className="!stroke-[1.4px] shrink-0" />
+                            <ShoppingCartIcon className="!stroke-[1.4px] shrink-0  size-6" />
+                            <Typography
+                                level="body2"
+                                semiBold
+                                className="text-foreground"
+                            >
+                                {(cart.total ?? 0).toFixed(2)} €
+                            </Typography>
                             {Boolean(cart?.items.length) && (
                                 <div className="absolute -right-2 -top-2">
                                     <DotIndicator
@@ -349,7 +334,7 @@ export function ShoppingCartHud() {
                                     />
                                 </div>
                             )}
-                        </IconButton>
+                        </Button>
                     }
                 >
                     <ShoppingCart />

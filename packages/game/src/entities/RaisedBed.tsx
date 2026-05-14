@@ -1,11 +1,17 @@
 import { animated } from '@react-spring/three';
-import { useHoveredBlockStore } from '../controls/SelectableGroup';
+import { Vector3 } from 'three';
+import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
+import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { HoverOutline } from './helpers/HoverOutline';
 import { useEntityNeighbors } from './helpers/useEntityNeighbors';
-import { RiasedBedFields } from './raisedBed/RaisedBedFields';
+import { RaisedBedFields } from './raisedBed/RaisedBedFields';
+
+const combinedOverlap = 0.1;
+const halfOverlap = combinedOverlap / 2;
 
 export function RaisedBed({ stack, block }: EntityInstanceProps) {
     const { nodes, materials } = useGameGLTF();
@@ -25,7 +31,28 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
         | 'Raised_Bed_I_1'
         | 'Raised_Bed_U_1' = 'Raised_Bed_O_1';
     let shapeRotation = 0;
+
     const neighbors = useEntityNeighbors(stack, block);
+
+    // Handle overlap
+    const overlapOffset = new Vector3(0, 0, 0);
+    if (neighbors.total === 1) {
+        if (neighbors.n) {
+            overlapOffset.x = halfOverlap;
+        } else if (neighbors.e) {
+            overlapOffset.z = -halfOverlap;
+        } else if (neighbors.s) {
+            overlapOffset.x = -halfOverlap;
+        } else if (neighbors.w) {
+            overlapOffset.z = halfOverlap;
+        }
+    }
+
+    const raisedBedPosition = stack.position
+        .clone()
+        .setY(currentStackHeight + 1)
+        .add(overlapOffset);
+
     if (neighbors.total === 1) {
         shape1 = 'Raised_Bed_U_1';
         shape2 = 'Raised_Bed_U_2';
@@ -71,7 +98,7 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
     return (
         <>
             <animated.group
-                position={stack.position.clone().setY(currentStackHeight + 1)}
+                position={raisedBedPosition}
                 rotation={[0, shapeRotation * (Math.PI / 2), 0]}
             >
                 <mesh
@@ -88,6 +115,14 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                 >
                     <HoverOutline hovered={hovered} />
                 </mesh>
+                <SnowOverlay
+                    geometry={nodes[shape1].geometry}
+                    maxThickness={0.16}
+                    slopeExponent={2.8}
+                    noiseScale={3}
+                    coverageMultiplier={0.9}
+                />
+                <RainWetOverlay geometry={nodes[shape1].geometry} />
                 <mesh
                     castShadow
                     receiveShadow
@@ -102,11 +137,17 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
                 >
                     <HoverOutline hovered={hovered} />
                 </mesh>
+                <SnowOverlay
+                    geometry={nodes[shape2].geometry}
+                    maxThickness={0.16}
+                    slopeExponent={2.8}
+                    noiseScale={3}
+                    coverageMultiplier={0.9}
+                />
+                <RainWetOverlay geometry={nodes[shape2].geometry} />
             </animated.group>
-            <group
-                position={stack.position.clone().setY(currentStackHeight + 1)}
-            >
-                <RiasedBedFields blockId={block.id} />
+            <group position={raisedBedPosition}>
+                <RaisedBedFields blockId={block.id} />
             </group>
         </>
     );

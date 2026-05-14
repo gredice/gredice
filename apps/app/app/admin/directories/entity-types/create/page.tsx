@@ -1,13 +1,16 @@
 import { getEntityTypeCategories } from '@gredice/storage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Input } from '@signalco/ui-primitives/Input';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { availableIcons } from '../../../../../components/admin/directories/EntityTypeIcon';
+import {
+    AdminDirectoryBreadcrumbs,
+    AdminPageHeader,
+} from '../../../../../components/admin/navigation';
 import { auth } from '../../../../../lib/auth/auth';
-import { KnownPages } from '../../../../../src/KnownPages';
 import { submitCreateForm } from '../../../../(actions)/entityFormActions';
 
 export const dynamic = 'force-dynamic';
@@ -24,13 +27,23 @@ export default async function CreateEntityTypePage() {
         })),
     ];
 
+    const iconItems = [
+        { value: '', label: 'Zadano (File)' },
+        ...availableIcons.map((name) => ({
+            value: name,
+            label: name,
+        })),
+    ];
+
     return (
         <Stack spacing={4}>
-            <Breadcrumbs
-                items={[
-                    { label: 'Direktoriji', href: KnownPages.Directories },
-                    { label: 'Novi tip zapisa' },
-                ]}
+            <AdminPageHeader
+                breadcrumbs={
+                    <AdminDirectoryBreadcrumbs
+                        items={[{ label: 'Novi tip zapisa' }]}
+                    />
+                }
+                heading="Novi tip zapisa"
             />
 
             <Stack spacing={2}>
@@ -59,6 +72,12 @@ export default async function CreateEntityTypePage() {
                                     label="Labela"
                                     placeholder="npr. Biljka, Alat, Artikl"
                                     required
+                                />
+                                <SelectItems
+                                    name="icon"
+                                    label="Ikona"
+                                    placeholder="Odaberite ikonu"
+                                    items={iconItems}
                                 />
                                 <SelectItems
                                     name="categoryId"

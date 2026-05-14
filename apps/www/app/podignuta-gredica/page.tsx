@@ -1,4 +1,6 @@
+import { FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Container } from '@signalco/ui-primitives/Container';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -7,7 +9,6 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../components/shared/PageHeader';
-import { StyledHtml } from '../../components/shared/StyledHtml';
 import { KnownPages } from '../../src/KnownPages';
 
 export const metadata: Metadata = {
@@ -91,7 +92,7 @@ export default function RaisedBedPage() {
                             />
                         </div>
                     </div>
-                    <div className="grid overflo grid-rows-[auto_1fr] grid-cols-1 sm:grid-rows-1 sm:grid-cols-[1fr_1fr] gap-8 relative">
+                    <div className="grid overflow-hidden grid-rows-[auto_1fr] grid-cols-1 sm:grid-rows-1 sm:grid-cols-[1fr_1fr] gap-8 relative">
                         <div>
                             <h3>Dimenzije i veličina</h3>
                             <p>
@@ -141,19 +142,19 @@ export default function RaisedBedPage() {
                             <h3>Lokacija</h3>
                             <p>
                                 Tvoja podignuta gredica će biti postavljena na
-                                lokaciji jednog od OPGa s kojim surađujemo. OPG
-                                izvršavati radnje na gredici, uključujući
+                                lokaciji jednog od OPG-a s kojim surađujemo. OPG
+                                će izvršavati radnje na gredici, uključujući
                                 sadnju, održavanje i berbu, mi ćemo ti omogućiti
                                 da sve to pratiš putem aplikacije Gredice i
-                                dostaviti svo povrće i plodove tvoje gredice na
-                                tvoju adresu.
+                                dostavit ćemo svo povrće i plodove tvoje gredice
+                                na tvoju adresu.
                             </p>
                             <p>
-                                Trenutno surađujemo sa jednim OPG-om, a
-                                planiramo proširiti suradnju s drugim OPG-ima
-                                kako bismo ti omogućili veći izbor i
-                                fleksibilnost u odabiru lokacije i vrsta biljaka
-                                koje želiš saditi.
+                                Trenutno surađujemo s jednim OPG-om, a planiramo
+                                proširiti suradnju s drugim OPG-ima kako bismo
+                                ti omogućili veći izbor i fleksibilnost u
+                                odabiru lokacije i vrsta biljaka koje želiš
+                                saditi.
                             </p>
                             <p>OPG koji će brinuti o tvojoj gredici:</p>
                             <ul>
@@ -162,7 +163,8 @@ export default function RaisedBedPage() {
                                 </li>
                             </ul>
                             <em>
-                                Uskoro više informacija o OPG-u na stranici OPGa
+                                Uskoro više informacija o OPG-u na stranici
+                                OPG-a
                             </em>
                         </div>
                         <Image
@@ -245,7 +247,8 @@ export default function RaisedBedPage() {
                     </div>
                     <h3>Sadnja biljaka</h3>
                     <p>
-                        Podignuta gredica podijeljena je na polja veličine 30x30
+                        Podignuta gredica podijeljena je na polja veličine{' '}
+                        {FIELD_SIZE_LABEL}
                         cm. Tako podignuta gredica od 2x1 m ima 18 polja za
                         sadnju tvojih biljaka. U svako polje može stati određeni
                         broj biljaka, ovisno o vrsti, odnosno o razmaku
@@ -257,6 +260,12 @@ export default function RaisedBedPage() {
                         <a href={KnownPages.GardenApp}>aplikacije Gredice</a>.
                         Aplikacija će ti pomoći da odabereš prave biljke za
                         svoju gredicu.
+                    </p>
+                    <p>
+                        Detaljan pregled kako funkcionira{' '}
+                        <a href={KnownPages.Sowing}>sjetva biljaka</a>, koja je
+                        cijena i koje pogodnosti dobivaš pronađi na našoj
+                        stranici posvećenoj sjetvi.
                     </p>
                     <p>
                         Kada odabereš biljke koje želiš posaditi, aplikacija će
@@ -302,8 +311,8 @@ export default function RaisedBedPage() {
                         radnjama na njima.
                     </p>
                     <p>
-                        Sve informacije i pojedinim biljkama i biljakama koje su
-                        dostupne možeš pronaći na stranicama{' '}
+                        Sve informacije o pojedinim biljkama koje su dostupne
+                        možeš pronaći na stranicama{' '}
                         <a href={KnownPages.Plants}>biljaka</a> i u{' '}
                         <a href={KnownPages.GardenApp}>aplikaciji Gredice</a>.
                     </p>

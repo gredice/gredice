@@ -1,60 +1,36 @@
-import { type PropsWithChildren, useRef } from 'react';
-import { create } from 'zustand';
+import type { PropsWithChildren } from 'react';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { Block } from '../types/Block';
-import { useGameState } from '../useGameState';
-
-type useHoveredBlockStore = {
-    hoveredBlock: Block | null;
-    setHoveredBlock: (block: Block | null) => void;
-};
-
-export const useHoveredBlockStore = create<useHoveredBlockStore>((set) => ({
-    hoveredBlock: null,
-    setHoveredBlock: (block: Block | null) => set({ hoveredBlock: block }),
-}));
+import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
+import { GiftBoxSelectableGroup } from './GiftBoxSelectableGroup';
+import { RaisedBedSelectableGroup } from './RaisedBedSelectableGroup';
 
 export function SelectableGroup({
     children,
     block,
 }: PropsWithChildren<{ block: Block }>) {
-    const groupRef = useRef(null);
-    const hovered = useHoveredBlockStore();
-    const setView = useGameState((state) => state.setView);
+    const { data: garden } = useCurrentGarden();
+
+    if (block.name.startsWith('GiftBox_')) {
+        return (
+            <GiftBoxSelectableGroup block={block}>
+                {children}
+            </GiftBoxSelectableGroup>
+        );
+    }
 
     if (block.name !== 'Raised_Bed') {
-        return children;
+        return <>{children}</>;
     }
 
-    function handleSelected() {
-        handleOpenChange(true);
-    }
-
-    function handleOpenChange(open: boolean) {
-        if (open) {
-            setView({ view: 'closeup', block });
-            hovered.setHoveredBlock(null);
-        } else {
-            setView({ view: 'normal' });
-        }
+    const raisedBed = findRaisedBedByBlockId(garden, block.id);
+    if (!raisedBed) {
+        return <>{children}</>;
     }
 
     return (
-        // biome-ignore lint/a11y/noStaticElementInteractions: Three.js element is interactive
-        <group
-            ref={groupRef}
-            onPointerEnter={(e) => {
-                e.stopPropagation();
-                hovered.setHoveredBlock(block);
-            }}
-            onPointerLeave={(e) => {
-                if (hovered.hoveredBlock === block) {
-                    e.stopPropagation();
-                    hovered.setHoveredBlock(null);
-                }
-            }}
-            onClick={handleSelected}
-        >
+        <RaisedBedSelectableGroup block={block} raisedBedName={raisedBed.name}>
             {children}
-        </group>
+        </RaisedBedSelectableGroup>
     );
 }

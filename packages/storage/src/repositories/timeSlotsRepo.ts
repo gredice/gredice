@@ -1,5 +1,6 @@
 import 'server-only';
-import { and, asc, desc, eq, gte, lt, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lte } from 'drizzle-orm';
+import { bustDeliveryRequestsCache } from '../cache/scheduleCache';
 import {
     type InsertTimeSlot,
     type SelectTimeSlot,
@@ -9,37 +10,9 @@ import {
 } from '../schema';
 import { storage } from '../storage';
 
-export const AUTO_CLOSE_WINDOW_HOURS = 48;
-export const AUTO_CLOSE_WINDOW_MS = AUTO_CLOSE_WINDOW_HOURS * 60 * 60 * 1000;
-
-function getAutoCloseThreshold(referenceDate: Date) {
-    return new Date(referenceDate.getTime() + AUTO_CLOSE_WINDOW_MS);
-}
-
-async function autoCloseUpcomingSlots(
-    referenceDate = new Date(),
-): Promise<void> {
-    const now = referenceDate;
-    const cutoffTime = getAutoCloseThreshold(now);
-
-    await storage()
-        .update(timeSlots)
-        .set({ status: TimeSlotStatuses.CLOSED })
-        .where(
-            and(
-                eq(timeSlots.type, 'delivery'),
-                eq(timeSlots.status, TimeSlotStatuses.SCHEDULED),
-                gte(timeSlots.startAt, now),
-                lt(timeSlots.startAt, cutoffTime),
-            ),
-        );
-}
-
 export async function getTimeSlot(
     slotId: number,
 ): Promise<SelectTimeSlot | undefined> {
-    await autoCloseUpcomingSlots();
-
     return storage().query.timeSlots.findFirst({
         where: eq(timeSlots.id, slotId),
         with: {
@@ -54,8 +27,6 @@ export async function getAllTimeSlots(
     locationId?: number,
     status?: string,
 ): Promise<SelectTimeSlot[]> {
-    await autoCloseUpcomingSlots();
-
     const conditions = [];
 
     if (type) {
@@ -132,6 +103,7 @@ export async function updateTimeSlot(update: UpdateTimeSlot): Promise<void> {
     if (!result[0]?.id) {
         throw new Error('Failed to update time slot - slot not found');
     }
+    await bustDeliveryRequestsCache();
 }
 
 // Close a time slot (prevents new bookings)
@@ -219,8 +191,6 @@ export async function getTimeSlots(
         status = TimeSlotStatuses.SCHEDULED,
     } = params;
 
-    await autoCloseUpcomingSlots();
-
     const conditions = [eq(timeSlots.status, status)];
 
     if (type) {
@@ -265,5 +235,6 @@ export async function archivePastSlots(): Promise<number> {
         )
         .returning({ id: timeSlots.id });
 
+    await bustDeliveryRequestsCache();
     return result.length;
 }

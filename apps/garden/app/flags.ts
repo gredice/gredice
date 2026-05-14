@@ -1,42 +1,55 @@
-import { createHypertuneAdapter } from '@flags-sdk/hypertune';
 import { flag } from 'flags/next';
-import {
-    type Context,
-    createSource,
-    type FlagValues,
-    vercelFlagDefinitions as flagDefinitions,
-    flagFallbacks,
-} from '../lib/flags/generated/hypertune';
-import { identify } from '../lib/flags/identify';
 
-const hypertuneAdapter = createHypertuneAdapter<FlagValues, Context>({
-    createSource,
-    flagDefinitions,
-    flagFallbacks,
-    identify,
+const booleanOptions = [
+    { label: 'Off', value: false },
+    { label: 'On', value: true },
+];
+
+export const deliveryChargeAtCheckoutFlag = flag<boolean>({
+    key: 'deliveryChargeAtCheckout',
+    description:
+        'Whether to enable charging the delivery while doing checkout.',
+    decide: () => false,
+    options: booleanOptions,
 });
 
-export const enableDebugHudFlag = flag(
-    hypertuneAdapter.declarations.enableDebugHud,
-);
-export const enableDebugCloseupFlag = flag(
-    hypertuneAdapter.declarations.enableDebugCloseup,
-);
-export const enableRaisedBedWateringFlag = flag(
-    hypertuneAdapter.declarations.raisedBedWatering,
-);
-export const enableRaisedBedDiaryFlag = flag(
-    hypertuneAdapter.declarations.raisedBedDiary,
-);
-export const enableRaisedBedOperationsFlag = flag(
-    hypertuneAdapter.declarations.raisedBedOperations,
-);
-export const enableRaisedBedFieldOperationsFlag = flag(
-    hypertuneAdapter.declarations.raisedBedFieldOperations,
-);
-export const enableRaisedBedFieldWateringFlag = flag(
-    hypertuneAdapter.declarations.raisedBedFieldWatering,
-);
-export const enableRaisedBedFieldDiaryFlag = flag(
-    hypertuneAdapter.declarations.raisedBedFieldDiary,
-);
+export const addressDistanceVerificationFlag = flag<boolean>({
+    key: 'addressDistanceVerification',
+    description:
+        'Enable address verification and indicator that the address is outside of delivery location.',
+    decide: () => false,
+    options: booleanOptions,
+});
+
+export const raisedBedImageAIFlag = flag<boolean>({
+    key: 'raisedBedImageAI',
+    description: 'Enable AI analysis of raised-bed images.',
+    decide: () => false,
+    options: booleanOptions,
+});
+
+export const lsystemPlantsFlag = flag<boolean>({
+    key: 'lsystemPlants',
+    description: 'Display L-System plants instead of only seeds.',
+    decide: () => true,
+    options: booleanOptions,
+});
+
+export const rainWetOverlayFlag = flag<boolean>({
+    key: 'rainWetOverlay',
+    description: 'Enable rain wetness overlays on exposed garden entities.',
+    decide: () => false,
+    options: booleanOptions,
+});
+
+export const enableDebugCloseupFlag = flag<boolean>({
+    key: 'enableDebugCloseup',
+    decide: () => false,
+    options: booleanOptions,
+});
+
+export const enableDebugHudFlag = flag<boolean>({
+    key: 'enableDebugHud',
+    decide: () => false,
+    options: booleanOptions,
+});

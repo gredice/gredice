@@ -23,6 +23,30 @@ export type CheckoutItem = {
     quantity: number;
 };
 
+type StripeCheckoutSessionCreateParams = NonNullable<
+    Parameters<
+        ReturnType<typeof getStripe>['checkout']['sessions']['create']
+    >[0]
+>;
+
+function getValidStripeImageUrls(imageUrls?: string[]): string[] | undefined {
+    if (!imageUrls || imageUrls.length === 0) return undefined;
+
+    const validUrls = imageUrls.filter((imageUrl) => {
+        try {
+            const parsedUrl = new URL(imageUrl);
+            return (
+                parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'http:'
+            );
+        } catch {
+            return false;
+        }
+    });
+
+    if (validUrls.length === 0) return undefined;
+    return validUrls;
+}
+
 async function ensureStripeCustomer(account: UserAccount): Promise<string> {
     // Check if the user already has a Stripe customer ID
     // Ensure customer still exists in Stripe and is not deleted
@@ -149,7 +173,7 @@ export async function stripeCheckout(
 ) {
     try {
         const customerId = await ensureStripeCustomer(account);
-        const params: Stripe.Checkout.SessionCreateParams = {
+        const params: StripeCheckoutSessionCreateParams = {
             customer: customerId,
             customer_update: {
                 address: 'auto',
@@ -160,7 +184,9 @@ export async function stripeCheckout(
                     product_data: {
                         name: item.product.name,
                         description: item.product.description,
-                        images: item.product.imageUrls,
+                        images: getValidStripeImageUrls(
+                            item.product.imageUrls,
+                        ),
                         metadata: item.product.metadata,
                     },
                     unit_amount: item.price.valueInCents,

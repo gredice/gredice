@@ -1,6 +1,6 @@
 'use client';
 
-import { client } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Typography } from '@signalco/ui-primitives/Typography';
@@ -20,7 +20,7 @@ export function DeleteAccountCard() {
         }
 
         setLoading(true);
-        const res = await client().api.accounts.$delete({
+        const res = await clientPublic().api.accounts.$delete({
             query: {
                 token,
             },

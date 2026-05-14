@@ -9,18 +9,20 @@
         ".": "./src/index.ts"
     },
     "scripts": {
-        "lint": "biome check",
+        "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
+        "lint": "biome check --write",
+        "lint:migrate": "biome migrate --write",
         "regenerate": "pnpm run /^regenerate:.*/",
         "regenerate:directories-api": "pnpm dlx openapi-typescript https://api.signalco.io/api/swagger.yaml -o ./src/lib/signalco-api/v1.d.ts"
     },
     "dependencies": {
-        "openapi-fetch": "0.14.0"
+        "openapi-fetch": "0.17.0"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.2.4",
-        "@types/node": "22.18.4",
-        "openapi-typescript": "7.9.1",
+        "@biomejs/biome": "2.4.15",
+        "@types/node": "24.12.2",
+        "openapi-typescript": "7.13.0",
         "server-only": "0.0.1",
-        "typescript": "5.9.2"
+        "typescript": "6.0.3"
     }
 }

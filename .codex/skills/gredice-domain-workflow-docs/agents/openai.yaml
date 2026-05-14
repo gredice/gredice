@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gredice Workflow Docs"
+  short_description: "Document cross-app business workflows"
+  default_prompt: "Use $gredice-domain-workflow-docs to document a Gredice workflow across apps, packages, state, and notifications."

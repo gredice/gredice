@@ -1,17 +1,18 @@
 import { directoriesClient } from '@gredice/client';
-import { unstable_cache } from 'next/cache';
+import { cache } from 'react';
 
-export const getFaqData = unstable_cache(
-    async () => {
-        return (await directoriesClient().GET('/entities/faq')).data;
-    },
-    ['faqData'],
-    {
-        revalidate: 60 * 60, // 1 hour
-        tags: ['faqData'],
-    },
-);
+export const getFaqData = cache(async () => {
+    try {
+        const { data, error } = await directoriesClient().GET('/entities/faq');
 
-export type FaqData = NonNullable<
-    Awaited<ReturnType<typeof getFaqData>>
->[number];
+        if (error) {
+            console.error('Failed to fetch faq data', error);
+            return [];
+        }
+
+        return data ?? [];
+    } catch (error) {
+        console.error('Failed to fetch faq data', error);
+        return [];
+    }
+});

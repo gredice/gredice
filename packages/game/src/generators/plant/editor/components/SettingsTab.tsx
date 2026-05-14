@@ -1,27 +1,41 @@
 'use client';
 
 import { Delete, Reset } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Slider } from '@signalco/ui-primitives/Slider';
-import { plantTypeNames, plantTypes } from '../../lib/plant-definitions';
+import {
+    MAX_PLANT_GENERATION,
+    type PlantDefinition,
+    plantTypeNames,
+    plantTypes,
+} from '../../lib/plant-definitions';
 import type { PlantControlsProps } from '../@types/plant-generator';
 import { CreatePlantModal } from './CreatePlantModal';
+import { InfoHint } from './InfoHint';
+import { PlantSlider } from './PlantSlider';
 import { VisibilityControls } from './VisibilityControls';
 
 export function SettingsTab({
     state,
     visibility,
     onStateChange,
+    onPlantTypeChange,
     onVisibilityChange,
     onDefinitionChange,
     onRandomizeSeed,
     onCreateCustomPlant,
     onDeleteCustomPlant,
+    onResetDefinition,
+    canResetDefinition,
 }: PlantControlsProps) {
-    const allPlants = { ...plantTypes, ...state.customPlants };
+    const allPlants: Record<string, PlantDefinition> = {
+        ...plantTypes,
+        ...state.customPlants,
+    };
+    const generationLabel = state.generation.toFixed(1);
     const allPlantNames = [
         ...plantTypeNames,
         ...Object.keys(state.customPlants),
@@ -39,9 +53,7 @@ export function SettingsTab({
                     }))}
                     className="w-full"
                     label="Vrsta biljke"
-                    onValueChange={(value) =>
-                        onStateChange({ plantType: value })
-                    }
+                    onValueChange={onPlantTypeChange}
                     value={state.plantType}
                 />
                 {isCustomPlant && (
@@ -62,6 +74,30 @@ export function SettingsTab({
                 existingNames={allPlantNames.map((name) => name.toLowerCase())}
                 onCreatePlant={onCreateCustomPlant}
             />
+            <Row spacing={1} alignItems="center">
+                <Button
+                    variant="outlined"
+                    onClick={onResetDefinition}
+                    disabled={!canResetDefinition}
+                    className="flex-1"
+                >
+                    <Reset className="h-4 w-4 shrink-0" />
+                    Vrati zadani preset
+                </Button>
+                <InfoHint
+                    label="Kako radi reset"
+                    title="Reset na zadani preset"
+                >
+                    <p>
+                        Vraća L-system pravila, boje i ostale parametre na
+                        originalni ugrađeni preset trenutne biljke.
+                    </p>
+                    <p>
+                        Za prilagođene biljke gumb je isključen jer nemaju
+                        unaprijed zadani izvorni preset.
+                    </p>
+                </InfoHint>
+            </Row>
 
             {/* Plant Name (editable for custom plants) */}
             {isCustomPlant && (
@@ -88,15 +124,15 @@ export function SettingsTab({
                 </IconButton>
             </Row>
 
-            <Slider
-                label={`Generacija: ${state.generation}`}
+            <PlantSlider
+                label={`Generacija: ${generationLabel} (oko ${generationLabel}. tjedan)`}
                 min={0}
-                max={12}
-                step={1}
+                max={MAX_PLANT_GENERATION}
+                step={0.1}
                 value={[state.generation]}
                 onValueChange={(v) => onStateChange({ generation: v[0] })}
             />
-            <Slider
+            <PlantSlider
                 label={`Kut: ${state.definition.angle}°`}
                 value={[state.definition.angle]}
                 onValueChange={(v) => onDefinitionChange('angle', v[0])}
@@ -104,7 +140,7 @@ export function SettingsTab({
                 max={90}
                 step={1}
             />
-            <Slider
+            <PlantSlider
                 label={`Visina: ${state.definition.height.toFixed(2)}`}
                 value={[state.definition.height]}
                 onValueChange={(v) => onDefinitionChange('height', v[0])}
@@ -112,7 +148,7 @@ export function SettingsTab({
                 max={2}
                 step={0.05}
             />
-            <Slider
+            <PlantSlider
                 label={`Grananje: ${state.definition.branching.toFixed(2)}`}
                 value={[state.definition.branching]}
                 onValueChange={(v) => onDefinitionChange('branching', v[0])}
@@ -120,7 +156,7 @@ export function SettingsTab({
                 max={2}
                 step={0.05}
             />
-            <Slider
+            <PlantSlider
                 label={`Nestabilnost: ${state.definition.directionVariability.toFixed(2)}`}
                 value={[state.definition.directionVariability]}
                 onValueChange={(v) =>

@@ -3,7 +3,6 @@ import { SectionsView } from '@signalco/cms-core/SectionsView';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import { Markdown } from '../../components/shared/Markdown';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { sectionsComponentRegistry } from '../../components/shared/sectionsComponentRegistry';
 
@@ -22,22 +21,17 @@ const sectionsData: SectionData[] = [
             {
                 header: 'Što su suncokreti?',
                 description:
-                    'Suncokreti su vrsta bodova na tvom Gredice racunu koje dobiva za razne radnje i pomocu kojih mozes uciniti svoj vrt sto lijepsim i zdravijim.',
+                    'Sakupljaj i koristi suncokrete za uređenje i dekoraciju vrta ili kupnju i brigu o svojim biljkama 🌱',
             },
             {
                 header: 'Kako skupljam suncokrete?',
-                description: (
-                    <Markdown>
-                        {
-                            'Suncokrete dobiješ prilikom registracije, redovnim posjetima svog vrta, te za svaku odrađenu akciju u vrtu. Također, za svaku kupnju od 1€ dobivaš 🌻10.\n\nUjedno, posjeti svoj vrt svaki dan i uvijek će te čekati novi 🌻.'
-                        }
-                    </Markdown>
-                ),
+                description:
+                    'Suncokrete dobiješ prilikom registracije, redovitim posjetima svog vrta te za svaku odrađenu radnju u vrtu. Također, za svaku kupnju od 1 € dobivaš 🌻10. Ujedno, posjeti svoj vrt svaki dan i uvijek će te čekati novi 🌻.',
             },
             {
                 header: 'Za što se mogu koristiti suncokreti?',
                 description:
-                    'Suncokrete možeš koristiti za ukrašavanje svog vrta te brigu o gredicama i biljkama. Suncokrete možeš koristiti umjesto plaćanja pojedinih akcija. 🌻1000 je jednako 1€ prilikom korištenja za akcije ili kupnju biljaka u svom vrtu.',
+                    'Suncokrete možeš koristiti za ukrašavanje svog vrta te brigu o gredicama i biljkama. Suncokrete možeš koristiti umjesto plaćanja pojedinih akcija. 🌻1000 je jednako 1 € prilikom korištenja za akcije ili kupnju biljaka u svom vrtu.',
             },
         ],
     },

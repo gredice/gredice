@@ -9,6 +9,7 @@ import {
     ArrowUpRight,
     Empty,
     Navigate,
+    Snowflake,
     Wind,
 } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
@@ -43,7 +44,7 @@ export function WeatherNowDetails() {
     const [showForecast, setShowForecast] = useState(false);
     if (!data) return null;
 
-    const WeatherIcon = weatherIcons[data.symbol];
+    const WeatherIcon = data.symbol != null ? weatherIcons[data.symbol] : null;
     const WindIcon = data.windDirection
         ? windDirectionIcons[data.windDirection]
         : Empty;
@@ -78,7 +79,7 @@ export function WeatherNowDetails() {
                                     Temperatura (prognoza)
                                 </Typography>
                                 <Typography semiBold>
-                                    {data.temperature}°C
+                                    {data.temperature ?? '—'}°C
                                 </Typography>
                             </Stack>
                             {data.measuredTemperature && (
@@ -100,6 +101,20 @@ export function WeatherNowDetails() {
                                         <RainIcon chance={rainChance} />
                                         <Typography level="body2">
                                             {data.rain} mm
+                                        </Typography>
+                                    </div>
+                                </Stack>
+                            )}
+                            {data.snowAccumulation > 0 && (
+                                <Stack spacing={0.5}>
+                                    <Typography level="body3">
+                                        Snijeg
+                                    </Typography>
+                                    <div className="flex items-center space-x-1">
+                                        <Snowflake className="w-4 h-4 opacity-60" />
+                                        <Typography level="body2">
+                                            {data.snowAccumulation.toFixed(1)}{' '}
+                                            cm
                                         </Typography>
                                     </div>
                                 </Stack>

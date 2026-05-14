@@ -1,12 +1,11 @@
 import {
     assignStripeCustomerId,
+    consumeInventoryItem,
     getAccount,
-    getEntitiesFormatted,
-    getRaisedBed,
     getShoppingCart,
     getUser,
     markCartPaidIfAllItemsPaid,
-    type SelectShoppingCartItem,
+    normalizeShoppingCartInventoryUsage,
     setCartItemPaid,
     spendSunflowers,
 } from '@gredice/storage';
@@ -19,216 +18,14 @@ import {
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import { getCartInfo } from '../../../lib/checkout/cartInfo';
+import { calculateSunflowerAmount } from '../../../lib/checkout/sunflowerCalculations';
 import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { getPostHogClient } from '../../../lib/posthog-server';
 import { processItem } from '../../../lib/stripe/processCheckoutSession';
-
-export type EntityStandardized = {
-    id: number;
-    entityType: {
-        id: number;
-        name: string;
-        label: string;
-    };
-    information?: {
-        name?: string;
-        label?: string;
-        shortDescription?: string;
-        description?: string;
-
-        // Parent items
-        plant?: EntityStandardized;
-    };
-    images?: {
-        cover?: { url?: string };
-    };
-    image?: {
-        cover?: { url?: string };
-    };
-    prices?: {
-        perPlant?: number;
-        perOperation?: number;
-    };
-};
-
-export type ShoppingCartDiscount = {
-    cartItemId: number;
-    discountPrice: number;
-    discountDescription: string;
-};
-
-export type ShoppingCartItemWithShopData = SelectShoppingCartItem & {
-    shopData: {
-        name?: string;
-        description?: string;
-        image?: string;
-        price?: number;
-        discountPrice?: number;
-        discountDescription?: string;
-    };
-};
-
-// TODO: Move to lib
-export async function getCartInfo(items: SelectShoppingCartItem[]) {
-    const entityTypeNames = items.map((item) => item.entityTypeName);
-    const uniqueEntityTypeNames = Array.from(new Set(entityTypeNames));
-    const entitiesData = await Promise.all(
-        uniqueEntityTypeNames.map(getEntitiesFormatted),
-    );
-    const entitiesByTypeName = uniqueEntityTypeNames.reduce(
-        (acc, typeName, index) => {
-            const entities = entitiesData[index] as EntityStandardized[];
-            if (!acc[typeName]) {
-                acc[typeName] = [];
-            }
-            acc[typeName].push(...entities);
-            return acc;
-        },
-        {} as Record<string, EntityStandardized[]>,
-    );
-
-    const discounts: ShoppingCartDiscount[] = [];
-
-    // Process paid discounts for items that are already paid
-    const paidItems = items.filter((item) => item.status === 'paid');
-    if (paidItems.length > 0) {
-        for (const item of paidItems) {
-            discounts.push({
-                cartItemId: item.id,
-                discountPrice: 0,
-                discountDescription: 'Već plaćeno',
-            });
-        }
-    }
-
-    const cartItemsWithShopInfo = items
-        .map((item) => {
-            const entityData = entitiesByTypeName[item.entityTypeName].find(
-                (entity) => entity?.id.toString() === item.entityId,
-            );
-            if (!entityData) {
-                console.warn('Entity not found', {
-                    entityId: item.entityId,
-                    entityTypeName: item.entityTypeName,
-                });
-                return null;
-            }
-
-            return {
-                ...item,
-                shopData: {
-                    name:
-                        entityData.information?.label ??
-                        entityData.information?.name,
-                    description:
-                        entityData.information?.shortDescription ??
-                        entityData.information?.description,
-                    image:
-                        entityData.image?.cover?.url ??
-                        entityData.images?.cover?.url ??
-                        entityData.information?.plant?.image?.cover?.url ??
-                        entityData.information?.plant?.images?.cover?.url,
-                    price:
-                        entityData.prices?.perOperation ??
-                        entityData.prices?.perPlant ??
-                        entityData.information?.plant?.prices?.perOperation ??
-                        entityData.information?.plant?.prices?.perPlant,
-                    discountPrice: discounts.find(
-                        (discount) => discount.cartItemId === item.id,
-                    )?.discountPrice,
-                    discountDescription: discounts.find(
-                        (discount) => discount.cartItemId === item.id,
-                    )?.discountDescription,
-                },
-            };
-        })
-        .filter((i) => Boolean(i))
-        // biome-ignore lint/style/noNonNullAssertion: Applied boolean filter line above
-        .map((i) => i!)
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
-    // --- Notes logic ---
-    const notes: string[] = [];
-    // Group items by raisedBedId, count items per raised bed (excluding paid items)
-    // Find all 'new' raised beds
-    let allowPurchase = true;
-    const raisedBedItemCounts: Record<number, number> = {};
-    cartItemsWithShopInfo.forEach((item) => {
-        if (item.raisedBedId && item.status !== 'paid') {
-            raisedBedItemCounts[item.raisedBedId] =
-                (raisedBedItemCounts[item.raisedBedId] || 0) + 1;
-        }
-    });
-    const mentionedRaisedBedIds = Array.from(
-        new Set(
-            cartItemsWithShopInfo
-                .filter((item) => Boolean(item.raisedBedId))
-                // biome-ignore lint/style/noNonNullAssertion: Applied boolean filter line above
-                .map((item) => item.raisedBedId!),
-        ),
-    );
-    const mentionedRaisedBeds = await Promise.all(
-        mentionedRaisedBedIds.map((id) => getRaisedBed(id)),
-    );
-
-    const newRaisedBeds = mentionedRaisedBeds.filter(
-        (rb) => rb && rb.status === 'new',
-    );
-    const requiredItemsCount = Math.ceil(newRaisedBeds.length / 2) * 9;
-
-    const cartItemsInNewRaisedBeds = cartItemsWithShopInfo.filter(
-        (item) =>
-            item.status !== 'paid' &&
-            item.raisedBedId &&
-            item.entityTypeName === 'plantSort' &&
-            newRaisedBeds.some((rb) => rb?.id === item.raisedBedId),
-    );
-    if (cartItemsInNewRaisedBeds.length < requiredItemsCount) {
-        const missingItemsCount =
-            requiredItemsCount - cartItemsInNewRaisedBeds.length;
-        const neededPlural =
-            missingItemsCount === 1
-                ? 'Potrebna je'
-                : missingItemsCount > 4
-                  ? 'Potrebno je'
-                  : 'Potrebne su';
-        const plantPlural =
-            missingItemsCount === 1
-                ? 'biljka'
-                : missingItemsCount > 4
-                  ? 'biljaka'
-                  : 'biljke';
-        const raisedBedsPlural =
-            newRaisedBeds.length === 1 ? 'nove gredice' : 'novih gredica';
-        notes.push(
-            `${neededPlural} još ${missingItemsCount} ${plantPlural} u ovoj ili susjednoj gredici za postavljanje ${raisedBedsPlural}.`,
-        );
-        allowPurchase = false;
-    }
-
-    // Minimum order (0.5 EUR)
-    const totalCartValue = cartItemsWithShopInfo.reduce((sum, item) => {
-        if (item.status !== 'paid' && item.currency === 'eur') {
-            const price =
-                item.shopData.discountPrice ?? item.shopData.price ?? 0;
-            return sum + price * item.amount;
-        }
-        return sum;
-    }, 0);
-    if (totalCartValue > 0 && totalCartValue < 0.5) {
-        notes.push('Minimalna vrijednost narudžbe je 0,50 €.');
-        allowPurchase = false;
-    }
-    // --- End notes logic ---
-
-    return {
-        notes,
-        allowPurchase,
-        items: cartItemsWithShopInfo,
-    };
-}
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .post(
@@ -257,7 +54,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { cartId, deliveryInfo } = context.req.valid('json');
 
             // Retrieve data
-            const [account, user, cart] = await Promise.all([
+            const [account, user, initialCart] = await Promise.all([
                 getAccount(accountId),
                 getUser(userId),
                 getShoppingCart(cartId),
@@ -268,9 +65,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!user) {
                 return context.json({ error: 'User not found' }, 404);
             }
-            if (!cart) {
+            if (!initialCart) {
                 return context.json({ error: 'Cart not found' }, 404);
             }
+            const cart =
+                (await normalizeShoppingCartInventoryUsage(cartId)) ??
+                initialCart;
             if (cart.accountId !== accountId) {
                 console.warn('Account ID mismatch', {
                     accountId,
@@ -285,48 +85,97 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             // Retrieve entities data
-            const cartInfo = await getCartInfo(cart.items);
+            const cartInfo = await getCartInfo(cart.items, accountId);
             if (!cartInfo.allowPurchase) {
                 return context.json({ error: 'Cart in invalid state' }, 400);
             }
 
-            // Handle sunflower items
-            const sunflowerCartItemsWithShopData = cartInfo.items.filter(
-                (item) =>
-                    item.status !== 'paid' && item.currency === 'sunflower',
+            const requiresStripePayment = cartInfo.items.some(
+                (item) => item.status !== 'paid' && item.currency === 'eur',
             );
-            if (sunflowerCartItemsWithShopData.length > 0) {
-                // Check if there are enough sunflowers in the account
-                for (const item of sunflowerCartItemsWithShopData) {
-                    const sunflowerAmount = Math.round(
-                        (typeof item.shopData.discountPrice === 'number'
-                            ? item.shopData.discountPrice
-                            : (item.shopData.price ?? 0)) * 1000,
-                    );
-                    let didPaySunflowers = false;
-                    try {
-                        await spendSunflowers(
-                            accountId,
-                            sunflowerAmount,
-                            `shoppingCartItem:${item.id}`,
-                        );
-                        didPaySunflowers = true;
-                    } catch (error) {
-                        console.error('Error spending sunflowers', {
-                            error,
-                            accountId,
-                            sunflowerAmount,
-                            item,
-                        });
+
+            // Handle sunflower items
+            if (!requiresStripePayment) {
+                const scheduledDeliveryEmailKeys = new Set<string>();
+                const sunflowerCartItemsWithShopData = cartInfo.items.filter(
+                    (item) =>
+                        item.status !== 'paid' && item.currency === 'sunflower',
+                );
+                if (sunflowerCartItemsWithShopData.length > 0) {
+                    // Check if there are enough sunflowers in the account
+                    for (const item of sunflowerCartItemsWithShopData) {
+                        const sunflowerAmount = calculateSunflowerAmount(item);
+                        let didPaySunflowers = false;
+                        try {
+                            await spendSunflowers(
+                                accountId,
+                                sunflowerAmount,
+                                `shoppingCartItem:${item.id}`,
+                            );
+                            didPaySunflowers = true;
+                        } catch (error) {
+                            console.error('Error spending sunflowers', {
+                                error,
+                                accountId,
+                                sunflowerAmount,
+                                item,
+                            });
+                        }
+
+                        if (didPaySunflowers) {
+                            await Promise.all([
+                                setCartItemPaid(item.id),
+                                processItem({
+                                    accountId,
+                                    ...item,
+                                    amount_total: sunflowerAmount,
+                                    scheduledDeliveryEmailKeys,
+                                    additionalData: {
+                                        ...(item.additionalData
+                                            ? JSON.parse(item.additionalData)
+                                            : {}),
+                                        ...(deliveryInfo
+                                            ? { delivery: deliveryInfo }
+                                            : {}),
+                                    },
+                                }),
+                            ]);
+                        }
                     }
 
-                    if (didPaySunflowers) {
+                    // After processing sunflower items, check if all items are paid
+                    await markCartPaidIfAllItemsPaid(cart.id);
+                }
+
+                // Handle inventory items
+                const inventoryCartItems = cartInfo.items.filter(
+                    (item) =>
+                        item.status !== 'paid' &&
+                        (item.currency === 'inventory' || item.usesInventory),
+                );
+
+                if (inventoryCartItems.length > 0) {
+                    for (const item of inventoryCartItems) {
+                        if ((item.inventoryAvailable ?? 0) < item.amount) {
+                            return context.json(
+                                { error: 'Nema dovoljno predmeta u ruksaku' },
+                                400,
+                            );
+                        }
+
                         await Promise.all([
+                            consumeInventoryItem(accountId, {
+                                entityTypeName: item.entityTypeName,
+                                entityId: item.entityId,
+                                amount: item.amount,
+                                source: `shoppingCartItem:${item.id}`,
+                            }),
                             setCartItemPaid(item.id),
                             processItem({
                                 accountId,
                                 ...item,
-                                amount_total: sunflowerAmount,
+                                amount_total: 0,
+                                scheduledDeliveryEmailKeys,
                                 additionalData: {
                                     ...(item.additionalData
                                         ? JSON.parse(item.additionalData)
@@ -338,10 +187,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             }),
                         ]);
                     }
-                }
 
-                // After processing sunflower items, check if all items are paid
-                await markCartPaidIfAllItemsPaid(cart.id);
+                    await markCartPaidIfAllItemsPaid(cart.id);
+                }
             }
 
             // Generate a stripe checkout items from cart items
@@ -361,7 +209,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 const valueInCents = Math.round((finalPrice ?? 0) * 100);
                 const quantity = item.amount;
                 const imageUrls = item.shopData.image
-                    ? [`https://www.gredice.com${item.shopData.image}`]
+                    ? [
+                          /^https?:\/\//u.test(item.shopData.image)
+                              ? item.shopData.image
+                              : `https://www.gredice.com${item.shopData.image}`,
+                      ]
                     : [];
 
                 // TODO: Validate item data
@@ -437,8 +289,33 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     await assignStripeCustomerId(account.id, customerId);
                 }
 
+                (await getPostHogClient()).capture({
+                    distinctId: accountId,
+                    event: 'checkout_initiated',
+                    properties: {
+                        cart_id: cartId,
+                        payment_method: 'stripe',
+                        item_count: stripeItems.length,
+                    },
+                });
+
                 return context.json({ sessionId, url });
             }
+
+            (await getPostHogClient()).capture({
+                distinctId: accountId,
+                event: 'checkout_initiated',
+                properties: {
+                    cart_id: cartId,
+                    payment_method: cartInfo.items.some(
+                        (i) => i.currency === 'sunflower',
+                    )
+                        ? 'sunflower'
+                        : 'inventory',
+                    item_count: cartInfo.items.length,
+                },
+            });
+
             return context.json({ success: true });
         },
     )
@@ -494,6 +371,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     500,
                 );
             }
+
+            (await getPostHogClient()).capture({
+                distinctId: accountId,
+                event: 'checkout_cancelled',
+                properties: { session_id: sessionId },
+            });
 
             return context.json({ success: true });
         },

@@ -1,21 +1,36 @@
+import { BackpackIcon } from '@gredice/ui/BackpackIcon';
+import { PlantOrSortImage } from '@gredice/ui/plants';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
-import { Delete, Euro, Navigate, Timer } from '@signalco/ui-icons';
+import {
+    Close,
+    Delete,
+    Euro,
+    Hammer,
+    Navigate,
+    Timer,
+} from '@signalco/ui-icons';
 import { Chip } from '@signalco/ui-primitives/Chip';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import Image from 'next/image';
+import type { CSSProperties } from 'react';
+import { useGameAnalytics } from '../../../analytics/GameAnalyticsContext';
+import { useCurrentAccount } from '../../../hooks/useCurrentAccount';
 import { useCurrentGarden } from '../../../hooks/useCurrentGarden';
+import { useInventory } from '../../../hooks/useInventory';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
 import type { ShoppingCartItemData } from '../../../hooks/useShoppingCart';
 import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
 
 export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { data: garden } = useCurrentGarden();
+    const { data: account } = useCurrentAccount();
+    const { data: inventory } = useInventory();
+    const { track } = useGameAnalytics();
 
     const hasDiscount = typeof item.shopData.discountPrice === 'number';
-    const hasGarden = Boolean(item.gardenId && garden);
     const hasRaisedBed = Boolean(item.raisedBedId);
     const hasPosition = typeof item.positionIndex === 'number';
 
@@ -31,17 +46,38 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const changeCurrencyShoppingCartItem = useSetShoppingCartItem();
     const removeShoppingCartItem = useSetShoppingCartItem();
 
+    const usesInventory = item.currency === 'inventory';
+    const availableFromInventory = inventory?.items?.find(
+        (invItem) =>
+            invItem.entityTypeName === item.entityTypeName &&
+            invItem.entityId === item.entityId,
+    )?.amount;
+
     async function handleChangePaymentType(isSunflower: boolean) {
+        track('game_cart_payment_method_changed', {
+            entity_id: item.entityId,
+            entity_type: item.entityTypeName,
+            payment_method: isSunflower ? 'sunflower' : 'eur',
+        });
         await changeCurrencyShoppingCartItem.mutateAsync({
             id: item.id,
             amount: item.amount,
             entityId: item.entityId,
             entityTypeName: item.entityTypeName,
             currency: isSunflower ? 'sunflower' : 'eur',
+            additionalData: item.additionalData,
+            positionIndex: item.positionIndex ?? undefined,
+            gardenId: item.gardenId ?? undefined,
+            raisedBedId: item.raisedBedId ?? undefined,
         });
     }
 
     async function handleRemoveItem() {
+        track('game_cart_item_removed', {
+            entity_id: item.entityId,
+            entity_type: item.entityTypeName,
+            item_id: item.id,
+        });
         await removeShoppingCartItem.mutateAsync({
             id: item.id,
             amount: 0,
@@ -50,33 +86,113 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
         });
     }
 
+    async function handleToggleInventory() {
+        track('game_cart_item_inventory_toggled', {
+            entity_id: item.entityId,
+            entity_type: item.entityTypeName,
+            item_id: item.id,
+            use_inventory: !usesInventory,
+        });
+        await changeCurrencyShoppingCartItem.mutateAsync({
+            id: item.id,
+            amount: item.amount,
+            entityId: item.entityId,
+            entityTypeName: item.entityTypeName,
+            currency: usesInventory ? 'eur' : 'inventory',
+            additionalData: item.additionalData,
+            positionIndex: item.positionIndex ?? undefined,
+            gardenId: item.gardenId ?? undefined,
+            raisedBedId: item.raisedBedId ?? undefined,
+        });
+    }
+
     // Hide delete button for paid items
     const isProcessed = item.status === 'paid';
 
+    const plantSort =
+        item.entityTypeName === 'plantSort' ? item.entityData : null;
+    const hasShopImage = Boolean(item.shopData.image);
+    const shouldShowOperationFallback =
+        item.entityTypeName === 'operation' && !hasShopImage;
+
     return (
         <Row spacing={2} alignItems="start">
-            <Image
-                className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0"
-                width={56}
-                height={56}
-                alt={item.shopData.name ?? 'Nepoznato'}
-                src={
-                    'https://www.gredice.com' +
-                    (item.shopData.image ?? '/assets/plants/placeholder.png')
-                }
-            />
+            {plantSort ? (
+                <PlantOrSortImage
+                    className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0"
+                    width={56}
+                    height={56}
+                    alt={item.shopData.name ?? 'Nepoznato'}
+                    plantSort={plantSort}
+                />
+            ) : shouldShowOperationFallback ? (
+                <div className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0 flex items-center justify-center">
+                    <Hammer
+                        role="img"
+                        aria-label={item.shopData.name ?? 'Nepoznato'}
+                        style={
+                            {
+                                '--imageSize': '32px',
+                            } as CSSProperties
+                        }
+                        className="size-[--imageSize] shrink-0"
+                    />
+                </div>
+            ) : (
+                <PlantOrSortImage
+                    className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0"
+                    width={56}
+                    height={56}
+                    alt={item.shopData.name ?? 'Nepoznato'}
+                    coverUrl={item.shopData.image}
+                />
+            )}
             <Stack className="grow">
-                <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+                <div className="grid grid-cols-[1fr_auto] items-center">
                     <Typography level="body1" noWrap>
                         {item.shopData.name}
                     </Typography>
                     {!hasDiscount && (
-                        <ButtonPricePickPaymentMethod
-                            price={item.shopData.price}
-                            isSunflower={item.currency === 'sunflower'}
-                            onChange={handleChangePaymentType}
-                        />
+                        <Row spacing={1}>
+                            {!usesInventory && availableFromInventory && (
+                                <IconButton
+                                    title="Iskoristi iz ruksaka"
+                                    size="sm"
+                                    variant="solid"
+                                    onClick={handleToggleInventory}
+                                >
+                                    <BackpackIcon className="size-5 shrink-0" />
+                                </IconButton>
+                            )}
+                            <ButtonPricePickPaymentMethod
+                                price={item.shopData.price}
+                                isSunflower={item.currency === 'sunflower'}
+                                onChange={handleChangePaymentType}
+                                availableSunflowers={
+                                    account?.sunflowers.amount ?? 0
+                                }
+                                discountPrice={item.shopData.discountPrice}
+                            />
+                        </Row>
                     )}
+                    <Row spacing={1} className="flex-wrap justify-end">
+                        {usesInventory && (
+                            <Row spacing={0.5}>
+                                <BackpackIcon className="size-4 shrink-0" />
+                                <Typography level="body2">
+                                    Iz ruksaka
+                                </Typography>
+                                <IconButton
+                                    title="Poništi korištenje iz ruksaka"
+                                    variant="plain"
+                                    size="sm"
+                                    onClick={handleToggleInventory}
+                                >
+                                    <Close className="size-4 shrink-0" />
+                                </IconButton>
+                            </Row>
+                        )}
+                    </Row>
                 </div>
                 {hasDiscount &&
                     typeof item.shopData.discountPrice === 'number' &&
@@ -106,19 +222,27 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                     <Stack spacing={0.5}>
                         <Row spacing={1}>
                             <Row spacing={0.5} className="flex-wrap gap-y-0">
-                                {hasGarden && (
-                                    <Typography level="body3" secondary>
-                                        {garden?.name || 'Nepoznati vrt'}
-                                    </Typography>
-                                )}
-                                {hasGarden && hasRaisedBed && (
-                                    <Navigate className="size-3 shrink-0" />
-                                )}
                                 {hasRaisedBed && (
-                                    <Typography level="body3" secondary>
-                                        {item.raisedBedId
-                                            ? `${raisedBed?.name}`
-                                            : 'Nepoznato'}
+                                    <Typography
+                                        level="body3"
+                                        secondary
+                                        component="span"
+                                    >
+                                        {raisedBed?.physicalId ? (
+                                            <Row spacing={1}>
+                                                <RaisedBedIcon
+                                                    physicalId={
+                                                        raisedBed.physicalId
+                                                    }
+                                                    className="size-6"
+                                                />
+                                                <span>
+                                                    {`${raisedBed?.name}`}
+                                                </span>
+                                            </Row>
+                                        ) : (
+                                            'Nova gredica'
+                                        )}
                                     </Typography>
                                 )}
                                 {hasRaisedBed && hasPosition && (
@@ -156,7 +280,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                     {!isProcessed && (
                         <ModalConfirm
                             title="Potvrdi brisanje stavke"
-                            header="Brisanje stavke iz košarice"
+                            header="Brisanje stavke iz košare"
                             onConfirm={handleRemoveItem}
                             trigger={
                                 <IconButton
@@ -172,7 +296,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                         >
                             <Typography>
                                 Jeste li sigurni da želite ukloniti ovu stavku
-                                iz košarice?
+                                iz košare?
                             </Typography>
                         </ModalConfirm>
                     )}

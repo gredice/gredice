@@ -1,6 +1,7 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
+import { useGameState } from '../useGameState';
 import { currentAccountKeys } from './useCurrentAccount';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 import {
@@ -21,7 +22,7 @@ async function removeShoppingCartItems(
     );
     await Promise.all(
         itemsToRemove.map((item) =>
-            client().api['shopping-cart'].$post({
+            clientAuthenticated().api['shopping-cart'].$post({
                 json: {
                     id: item.id,
                     entityTypeName: item.entityTypeName,
@@ -38,23 +39,31 @@ export function useBlockRecycle() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
     const { data: shoppingCart } = useShoppingCart();
+    const winterMode = useGameState((state) => state.winterMode);
+    const gardenQueryKey = currentGardenKeys(winterMode, garden?.id);
+
     return useMutation({
         mutationKey,
         mutationFn: async ({
             position,
             blockIndex,
             raisedBedId,
+            attached,
         }: {
             position: { x: number; z: number };
             blockIndex: number;
             raisedBedId?: number;
+            attached?: {
+                position: { x: number; z: number };
+                blockIndex: number;
+            };
         }) => {
             console.debug('Recycling block', position, blockIndex);
             if (!garden) {
                 throw new Error('No garden selected');
             }
             const gardenId = garden.id;
-            await client().api.gardens[':gardenId'].stacks.$patch({
+            await clientAuthenticated().api.gardens[':gardenId'].stacks.$patch({
                 param: {
                     gardenId: gardenId.toString(),
                 },
@@ -63,6 +72,14 @@ export function useBlockRecycle() {
                         op: 'remove',
                         path: `/${position.x}/${position.z}/${blockIndex}`,
                     },
+                    ...(attached
+                        ? [
+                              {
+                                  op: 'remove' as const,
+                                  path: `/${attached.position.x}/${attached.position.z}/${attached.blockIndex}`,
+                              },
+                          ]
+                        : []),
                 ],
             });
 
@@ -70,32 +87,37 @@ export function useBlockRecycle() {
                 await removeShoppingCartItems(shoppingCart, raisedBedId);
             }
         },
-        onMutate: async ({ position, blockIndex, raisedBedId }) => {
+        onMutate: async ({ position, blockIndex, raisedBedId, attached }) => {
             if (!garden) {
-                return;
-            }
-
-            // Finds the source stack based on position
-            const sourceStack = garden.stacks.find(
-                (stack) =>
-                    stack.position.x === position.x &&
-                    stack.position.z === position.z,
-            );
-            if (!sourceStack) {
                 return;
             }
 
             // Optimistically remove from source stack
             const updatedStacks = garden.stacks.map((stack) => {
-                if (
-                    stack.position.x === sourceStack.position.x &&
-                    stack.position.z === sourceStack.position.z
-                ) {
+                const isSourceStack =
+                    stack.position.x === position.x &&
+                    stack.position.z === position.z;
+                const isAttachedStack =
+                    attached !== undefined &&
+                    stack.position.x === attached.position.x &&
+                    stack.position.z === attached.position.z;
+
+                if (isSourceStack || isAttachedStack) {
                     return {
                         ...stack,
-                        blocks: stack.blocks.filter(
-                            (_, index) => index !== blockIndex,
-                        ),
+                        blocks: stack.blocks.filter((_, index) => {
+                            if (isSourceStack && index === blockIndex) {
+                                return false;
+                            }
+                            if (
+                                isAttachedStack &&
+                                attached &&
+                                index === attached.blockIndex
+                            ) {
+                                return false;
+                            }
+                            return true;
+                        }),
                     };
                 }
                 return stack;
@@ -103,7 +125,7 @@ export function useBlockRecycle() {
 
             const previousItem = await handleOptimisticUpdate(
                 queryClient,
-                currentGardenKeys,
+                gardenQueryKey,
                 {
                     stacks: [...updatedStacks],
                 },
@@ -134,10 +156,7 @@ export function useBlockRecycle() {
         onError: (error, _variables, context) => {
             console.error('Error removing block', error);
             if (context?.previousItem) {
-                queryClient.setQueryData(
-                    currentGardenKeys,
-                    context.previousItem,
-                );
+                queryClient.setQueryData(gardenQueryKey, context.previousItem);
             }
             if (context?.previousShoppingCart) {
                 queryClient.setQueryData(
@@ -150,7 +169,7 @@ export function useBlockRecycle() {
             // Invalidate queries only on last mutation
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({
-                    queryKey: currentGardenKeys,
+                    queryKey: gardenQueryKey,
                 });
                 queryClient.invalidateQueries({ queryKey: currentAccountKeys });
                 if (variables.raisedBedId) {

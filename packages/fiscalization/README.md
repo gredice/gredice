@@ -60,3 +60,11 @@ const { jir, zki } = await receiptRequest(receipt, {
     posUser
 });
 ```
+
+## Generate Typescript client from WSDL
+
+To generate Typescript client from WSDL files, use the following command:
+
+```bash
+wsdl-tsclient ./external/fiscal/1-9-0-prod/wsdl/FiskalizacijaService.wsdl -o ./src/generated/1-9-0-prod
+```

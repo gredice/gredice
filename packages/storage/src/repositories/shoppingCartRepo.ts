@@ -1,6 +1,107 @@
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { shoppingCartItems, shoppingCarts } from '../schema';
 import { storage } from '../storage';
+import { getInventory } from './inventoryRepo';
+
+function startOfUtcDay(date: Date) {
+    return new Date(
+        Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+    );
+}
+
+function getMinimumScheduledDate(baseDate = new Date()) {
+    const tomorrow = startOfUtcDay(baseDate);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    return tomorrow;
+}
+
+function normalizeScheduledDateAdditionalData(additionalData?: string | null) {
+    if (!additionalData) {
+        return additionalData ?? null;
+    }
+
+    try {
+        const parsed = JSON.parse(additionalData);
+        if (
+            !parsed ||
+            typeof parsed !== 'object' ||
+            !('scheduledDate' in parsed)
+        ) {
+            return additionalData;
+        }
+
+        const scheduledDate = parsed.scheduledDate;
+        if (typeof scheduledDate !== 'string') {
+            return additionalData;
+        }
+
+        const minimumScheduledDate = getMinimumScheduledDate();
+        const parsedScheduledDate = new Date(scheduledDate);
+
+        let finalScheduledDate: Date;
+        if (Number.isNaN(parsedScheduledDate.getTime())) {
+            finalScheduledDate = minimumScheduledDate;
+        } else {
+            const normalizedScheduledDate = startOfUtcDay(parsedScheduledDate);
+            finalScheduledDate =
+                normalizedScheduledDate < minimumScheduledDate
+                    ? minimumScheduledDate
+                    : normalizedScheduledDate;
+        }
+
+        const normalizedIso = finalScheduledDate.toISOString();
+        if (normalizedIso === scheduledDate) {
+            return additionalData;
+        }
+
+        return JSON.stringify({
+            ...parsed,
+            scheduledDate: normalizedIso,
+        });
+    } catch {
+        return additionalData;
+    }
+}
+
+export async function normalizeShoppingCartScheduledDates(cartId: number) {
+    const cart = await getShoppingCart(cartId);
+    if (!cart) {
+        return cart;
+    }
+
+    // Only normalize open carts; paid/historical carts should not be mutated.
+    if (cart.status !== 'new') {
+        return cart;
+    }
+
+    const itemUpdates = cart.items
+        .filter((item) => item.status === 'new')
+        .map((item) => ({
+            id: item.id,
+            originalAdditionalData: item.additionalData,
+            additionalData: normalizeScheduledDateAdditionalData(
+                item.additionalData,
+            ),
+        }))
+        .filter((item) => item.additionalData !== item.originalAdditionalData);
+
+    if (itemUpdates.length === 0) {
+        return cart;
+    }
+
+    await Promise.all(
+        itemUpdates.map((item) =>
+            storage()
+                .update(shoppingCartItems)
+                .set({
+                    additionalData: item.additionalData,
+                })
+                .where(eq(shoppingCartItems.id, item.id)),
+        ),
+    );
+
+    return getShoppingCart(cartId);
+}
 
 export async function getOrCreateShoppingCart(
     accountId: string,
@@ -80,6 +181,10 @@ export async function upsertOrRemoveCartItem(
     forceCreate?: boolean,
     forceDelete: boolean = false,
 ) {
+    if (additionalData !== undefined) {
+        additionalData = normalizeScheduledDateAdditionalData(additionalData);
+    }
+
     if (forceCreate && id) {
         throw new Error('Cannot create an item with an existing ID');
     }
@@ -108,6 +213,9 @@ export async function upsertOrRemoveCartItem(
                         : undefined,
                     typeof additionalData === 'string'
                         ? eq(shoppingCartItems.additionalData, additionalData)
+                        : undefined,
+                    currency
+                        ? eq(shoppingCartItems.currency, currency)
                         : undefined,
                     eq(shoppingCartItems.isDeleted, false),
                 ),
@@ -154,6 +262,10 @@ export async function upsertOrRemoveCartItem(
                     amount,
                     additionalData,
                     currency: currency ? currency : undefined, // Update only if provided
+                    positionIndex:
+                        typeof positionIndex === 'number'
+                            ? positionIndex
+                            : undefined,
                 })
                 .where(eq(shoppingCartItems.id, existingItem.id))
                 .returning({
@@ -196,6 +308,87 @@ export async function deleteShoppingCart(accountId: string) {
                 .where(eq(shoppingCartItems.cartId, cart.id)),
         ]);
     }
+}
+
+export async function normalizeShoppingCartInventoryUsage(cartId: number) {
+    const cart = await getShoppingCart(cartId);
+    if (!cart?.accountId) {
+        return cart;
+    }
+
+    const inventory = await getInventory(cart.accountId);
+    const availableInventory = new Map(
+        inventory.map((item) => [
+            `${item.entityTypeName}-${item.entityId}`,
+            item.amount,
+        ]),
+    );
+
+    await storage().transaction(async (tx) => {
+        const inventoryItems = await tx
+            .select()
+            .from(shoppingCartItems)
+            .where(
+                and(
+                    eq(shoppingCartItems.cartId, cartId),
+                    eq(shoppingCartItems.isDeleted, false),
+                    eq(shoppingCartItems.status, 'new'),
+                    eq(shoppingCartItems.currency, 'inventory'),
+                ),
+            )
+            .orderBy(
+                asc(shoppingCartItems.createdAt),
+                asc(shoppingCartItems.id),
+            )
+            .for('update');
+
+        for (const item of inventoryItems) {
+            const inventoryKey = `${item.entityTypeName}-${item.entityId}`;
+            const remainingInventory =
+                availableInventory.get(inventoryKey) ?? 0;
+
+            if (remainingInventory <= 0) {
+                await tx
+                    .update(shoppingCartItems)
+                    .set({ currency: 'eur' })
+                    .where(eq(shoppingCartItems.id, item.id));
+                continue;
+            }
+
+            if (item.amount <= remainingInventory) {
+                availableInventory.set(
+                    inventoryKey,
+                    remainingInventory - item.amount,
+                );
+                continue;
+            }
+
+            const inventoryAmount = remainingInventory;
+            const purchaseAmount = item.amount - inventoryAmount;
+
+            await tx
+                .update(shoppingCartItems)
+                .set({ amount: inventoryAmount })
+                .where(eq(shoppingCartItems.id, item.id));
+
+            await tx.insert(shoppingCartItems).values({
+                cartId: item.cartId,
+                entityId: item.entityId,
+                entityTypeName: item.entityTypeName,
+                gardenId: item.gardenId,
+                raisedBedId: item.raisedBedId,
+                positionIndex: item.positionIndex,
+                additionalData: item.additionalData,
+                amount: purchaseAmount,
+                currency: 'eur',
+                status: item.status,
+            });
+
+            availableInventory.set(inventoryKey, 0);
+        }
+    });
+
+    return getShoppingCart(cartId);
 }
 
 export async function getAllShoppingCarts({

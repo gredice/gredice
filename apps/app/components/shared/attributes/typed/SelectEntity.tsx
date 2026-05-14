@@ -1,7 +1,11 @@
+import { ExternalLink } from '@signalco/ui-icons';
+import { Chip } from '@signalco/ui-primitives/Chip';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { KnownPages } from '../../../../src/KnownPages';
 import type { AttributeInputProps } from '../AttributeInputProps';
-import { getEntities } from '../actions/entitiesActions';
+import { getRefEntities } from '../actions/entitiesActions';
 
 export function SelectEntity({
     value,
@@ -10,14 +14,14 @@ export function SelectEntity({
 }: AttributeInputProps) {
     const entityTypeName = attributeDefinition?.dataType.split(':')[1];
     const [entities, setEntities] =
-        useState<Awaited<ReturnType<typeof getEntities>>>();
+        useState<Awaited<ReturnType<typeof getRefEntities>>>();
 
     useEffect(() => {
         if (!entityTypeName) {
             return;
         }
 
-        getEntities(entityTypeName)
+        getRefEntities(entityTypeName)
             .then((response) => {
                 setEntities(response);
             })
@@ -28,24 +32,56 @@ export function SelectEntity({
 
     const items = [
         { value: '-', label: '-' },
-        ...(entities?.map((entity, entityIndex) => ({
-            value: entity.information?.name ?? entityIndex.toString(),
+        ...(entities?.map((entity) => ({
+            value: entity.id.toString(),
             label:
-                entity.information?.label ??
-                entity.information?.name ??
-                `${entityTypeName} ${entityIndex + 1}`,
+                entity.state === 'draft'
+                    ? `${entity.label} (Draft)`
+                    : entity.label,
         })) ?? []),
     ];
+
+    const selectedEntity = useMemo(() => {
+        if (!value || value === '-') {
+            return null;
+        }
+
+        return (
+            entities?.find((entity) => entity.id.toString() === value) ?? null
+        );
+    }, [entities, value]);
 
     const handleOnChange = (newValue: string) => {
         onChange(newValue !== '-' ? newValue : null);
     };
 
     return (
-        <SelectItems
-            items={items}
-            value={value ?? '-'}
-            onValueChange={handleOnChange}
-        />
+        <div className="flex items-center gap-2">
+            <div className="flex-1">
+                <SelectItems
+                    items={items}
+                    value={selectedEntity?.id.toString() ?? '-'}
+                    onValueChange={handleOnChange}
+                />
+            </div>
+            {selectedEntity?.state === 'draft' ? (
+                <Chip color="neutral" className="w-fit">
+                    Draft
+                </Chip>
+            ) : null}
+            {entityTypeName && selectedEntity && (
+                <Link
+                    href={KnownPages.DirectoryEntity(
+                        entityTypeName,
+                        selectedEntity.id,
+                    )}
+                    title="Otvori detalje povezanog zapisa"
+                    aria-label="Otvori detalje povezanog zapisa"
+                    className="inline-flex text-muted-foreground hover:text-foreground transition-colors"
+                >
+                    <ExternalLink className="size-4" />
+                </Link>
+            )}
+        </div>
     );
 }

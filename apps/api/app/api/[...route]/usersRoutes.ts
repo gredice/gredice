@@ -1,4 +1,12 @@
-import { getUser, getUserWithLogins, updateUser } from '@gredice/storage';
+import { publicIdToUserId, userIdToPublicId } from '@gredice/js/publicId';
+import {
+    getAccountAchievements,
+    getAccountGardens,
+    getLastBirthdayRewardEvent,
+    getUser,
+    getUserWithLogins,
+    updateUser,
+} from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
@@ -6,8 +14,158 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { getPostHogClient } from '../../../lib/posthog-server';
+import {
+    type BirthdayRewardUser,
+    grantBirthdayReward,
+} from '../../../lib/users/birthdayRewards';
+import {
+    differenceInCalendarDays,
+    getLastBirthdayOccurrence,
+    isValidBirthday,
+    MIN_BIRTH_YEAR,
+    startOfUtcDay,
+} from '../../../lib/users/birthdayUtils';
+
+const currentYear = new Date().getUTCFullYear();
+const birthdaySchema = z
+    .object({
+        day: z.number().int().min(1).max(31),
+        month: z.number().int().min(1).max(12),
+        year: z
+            .number()
+            .int()
+            .min(MIN_BIRTH_YEAR)
+            .max(currentYear)
+            .optional()
+            .nullable(),
+    })
+    .strict();
+
+function getUpdatedProfileFields(input: {
+    dbUser: Awaited<ReturnType<typeof getUser>>;
+    userInfo: {
+        userName?: string;
+        displayName?: string;
+        avatarUrl?: string | null;
+        birthday?: {
+            day: number;
+            month: number;
+            year?: number | null;
+        } | null;
+    };
+}) {
+    const updatedFields: string[] = [];
+
+    if (
+        input.userInfo.displayName !== undefined &&
+        input.userInfo.displayName !== input.dbUser?.displayName
+    ) {
+        updatedFields.push('display_name');
+    }
+
+    if (
+        input.userInfo.avatarUrl !== undefined &&
+        input.userInfo.avatarUrl !== input.dbUser?.avatarUrl
+    ) {
+        updatedFields.push('avatar_url');
+    }
+
+    if (
+        input.userInfo.userName !== undefined &&
+        input.userInfo.userName !== input.dbUser?.userName
+    ) {
+        updatedFields.push('user_name');
+    }
+
+    if (Object.hasOwn(input.userInfo, 'birthday')) {
+        const nextBirthday = input.userInfo.birthday;
+
+        if (nextBirthday === undefined) {
+            return updatedFields;
+        }
+
+        const birthdayChanged =
+            nextBirthday === null ||
+            !input.dbUser ||
+            nextBirthday.day !== input.dbUser.birthdayDay ||
+            nextBirthday.month !== input.dbUser.birthdayMonth ||
+            (nextBirthday.year ?? null) !== (input.dbUser.birthdayYear ?? null);
+
+        if (birthdayChanged) {
+            updatedFields.push(
+                nextBirthday === null ? 'birthday_cleared' : 'birthday',
+            );
+        }
+    }
+
+    return updatedFields;
+}
 
 const app = new Hono<{ Variables: AuthVariables }>()
+    .get(
+        '/public/:publicId/profile',
+        describeRoute({
+            description: 'Get public user profile information by public ID.',
+            security: [{}, { bearerAuth: [] }, { cookieAuth: [] }],
+        }),
+        zValidator(
+            'param',
+            z.object({
+                publicId: z.string(),
+            }),
+        ),
+        async (context) => {
+            const { publicId } = context.req.valid('param');
+            const userId = publicIdToUserId(publicId);
+            if (!userId) {
+                return context.json({ error: 'User not found' }, 404);
+            }
+
+            const dbUser = await getUser(userId);
+            if (!dbUser) {
+                return context.json({ error: 'User not found' }, 404);
+            }
+
+            const primaryAccountId = dbUser.accounts[0]?.accountId;
+            if (!primaryAccountId) {
+                return context.json({ error: 'User not found' }, 404);
+            }
+
+            const [gardens, achievements] = await Promise.all([
+                getAccountGardens(primaryAccountId),
+                getAccountAchievements(primaryAccountId),
+            ]);
+
+            return context.json({
+                user: {
+                    id: dbUser.id,
+                    publicId: userIdToPublicId(dbUser.id),
+                    userName: dbUser.userName,
+                    displayName: dbUser.displayName ?? dbUser.userName,
+                    avatarUrl: dbUser.avatarUrl,
+                    createdAt: dbUser.createdAt,
+                },
+                gardens: gardens.map((garden) => ({
+                    id: garden.id,
+                    name: garden.name,
+                    createdAt: garden.createdAt,
+                })),
+                achievements: achievements.map((achievement) => ({
+                    id: achievement.id,
+                    key: achievement.achievementKey,
+                    status: achievement.status,
+                    rewardSunflowers: achievement.rewardSunflowers,
+                    progressValue: achievement.progressValue,
+                    threshold: achievement.threshold,
+                    rewardGrantedAt:
+                        achievement.rewardGrantedAt?.toISOString() ?? null,
+                    createdAt: achievement.createdAt,
+                    updatedAt: achievement.updatedAt,
+                })),
+            });
+        },
+    )
     .get(
         '/current',
         describeRoute({
@@ -24,11 +182,26 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            const lastRewardEvent = await getLastBirthdayRewardEvent(userId);
+            const birthdayLastRewardAt = lastRewardEvent
+                ? new Date(lastRewardEvent.data.rewardDate)
+                : null;
+
             return context.json({
                 id: dbUser.id,
                 userName: dbUser.userName,
                 displayName: dbUser.displayName ?? dbUser.userName,
                 avatarUrl: dbUser.avatarUrl,
+                birthday:
+                    dbUser.birthdayMonth && dbUser.birthdayDay
+                        ? {
+                              day: dbUser.birthdayDay,
+                              month: dbUser.birthdayMonth,
+                              year: dbUser.birthdayYear ?? undefined,
+                          }
+                        : null,
+                birthdayLastUpdatedAt: dbUser.birthdayLastUpdatedAt,
+                birthdayLastRewardAt,
                 createdAt: dbUser.createdAt,
             });
         },
@@ -93,11 +266,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
         ),
         zValidator(
             'json',
-            z.object({
-                userName: z.string().optional(),
-                displayName: z.string().optional(),
-                avatarUrl: z.string().optional().nullable(),
-            }),
+            z
+                .object({
+                    userName: z.string().optional(),
+                    displayName: z.string().optional(),
+                    avatarUrl: z.string().optional().nullable(),
+                    birthday: z.union([birthdaySchema, z.null()]).optional(),
+                })
+                .strict(),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
@@ -114,12 +290,157 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            await updateUser({
-                id: userId,
-                ...userInfo,
+            const dbUser = await getUser(userId);
+            if (!dbUser) {
+                return context.json(
+                    { error: 'User not found' },
+                    { status: 404 },
+                );
+            }
+
+            const updatePayload: Record<string, unknown> = {};
+            if (userInfo.displayName !== undefined) {
+                updatePayload.displayName = userInfo.displayName;
+            }
+            if (userInfo.avatarUrl !== undefined) {
+                updatePayload.avatarUrl = userInfo.avatarUrl;
+            }
+            if (userInfo.userName !== undefined) {
+                updatePayload.userName = userInfo.userName;
+            }
+
+            let rewardDate: Date | undefined;
+            let rewardIsLate = false;
+
+            if (Object.hasOwn(userInfo, 'birthday')) {
+                if (userInfo.birthday === null) {
+                    updatePayload.birthdayDay = null;
+                    updatePayload.birthdayMonth = null;
+                    updatePayload.birthdayYear = null;
+                    updatePayload.birthdayLastUpdatedAt = new Date();
+                } else if (userInfo.birthday) {
+                    const birthday = userInfo.birthday;
+                    if (!isValidBirthday(birthday)) {
+                        return context.json(
+                            { error: 'Neispravan datum rođendana.' },
+                            { status: 400 },
+                        );
+                    }
+
+                    const birthdayChanged =
+                        birthday.day !== dbUser.birthdayDay ||
+                        birthday.month !== dbUser.birthdayMonth ||
+                        (birthday.year ?? null) !==
+                            (dbUser.birthdayYear ?? null);
+
+                    if (birthdayChanged) {
+                        const now = new Date();
+                        if (dbUser.birthdayLastUpdatedAt) {
+                            const nextAllowedChange = new Date(
+                                dbUser.birthdayLastUpdatedAt,
+                            );
+                            nextAllowedChange.setUTCFullYear(
+                                nextAllowedChange.getUTCFullYear() + 1,
+                            );
+                            if (now < nextAllowedChange) {
+                                return context.json(
+                                    {
+                                        error: 'Rođendan je moguće mijenjati jednom godišnje. Kontaktiraj podršku ako trebaš dodatnu pomoć.',
+                                    },
+                                    { status: 400 },
+                                );
+                            }
+                        }
+
+                        updatePayload.birthdayDay = birthday.day;
+                        updatePayload.birthdayMonth = birthday.month;
+                        updatePayload.birthdayYear = birthday.year ?? null;
+                        updatePayload.birthdayLastUpdatedAt = now;
+
+                        const lastOccurrence = getLastBirthdayOccurrence(
+                            birthday.month,
+                            birthday.day,
+                            now,
+                        );
+                        const daysSinceBirthday = differenceInCalendarDays(
+                            now,
+                            lastOccurrence,
+                        );
+                        const lastRewardEvent =
+                            await getLastBirthdayRewardEvent(userId);
+                        const lastRewardAt = lastRewardEvent
+                            ? new Date(lastRewardEvent.data.rewardDate)
+                            : null;
+                        const alreadyRewarded =
+                            lastRewardAt && lastRewardAt >= lastOccurrence;
+
+                        if (
+                            daysSinceBirthday >= 0 &&
+                            daysSinceBirthday <= 30 &&
+                            !alreadyRewarded
+                        ) {
+                            rewardDate = startOfUtcDay(lastOccurrence);
+                            rewardIsLate = daysSinceBirthday > 0;
+                        }
+                    }
+                }
+            }
+
+            if (Object.keys(updatePayload).length > 0) {
+                await updateUser({
+                    id: userId,
+                    ...updatePayload,
+                });
+            }
+
+            // Grant reward if applicable (30 days window after birthday)
+            let rewardResult: Awaited<
+                ReturnType<typeof grantBirthdayReward>
+            > | null = null;
+            if (rewardDate) {
+                const updatedUser: BirthdayRewardUser = {
+                    ...dbUser,
+                    birthdayDay: userInfo.birthday?.day ?? null,
+                    birthdayMonth: userInfo.birthday?.month ?? null,
+                    birthdayYear: userInfo.birthday?.year ?? null,
+                };
+                rewardResult = await grantBirthdayReward({
+                    user: updatedUser,
+                    rewardDate,
+                    isLate: rewardIsLate,
+                });
+            }
+
+            const updatedFields = getUpdatedProfileFields({
+                dbUser,
+                userInfo,
             });
 
-            return context.json({ success: true });
+            if (updatedFields.length > 0) {
+                await (await getPostHogClient()).capture({
+                    distinctId: userId,
+                    event: 'user_profile_updated',
+                    properties: {
+                        updated_fields: updatedFields,
+                        birthday_reward_granted: Boolean(
+                            rewardResult?.rewarded,
+                        ),
+                        birthday_reward_late: rewardIsLate,
+                    },
+                });
+            }
+
+            return context.json({
+                success: true,
+                birthdayReward:
+                    rewardResult?.rewarded && rewardDate
+                        ? {
+                              rewardedAt: rewardDate,
+                              accountId: rewardResult.accountId,
+                              late: rewardIsLate,
+                          }
+                        : null,
+            });
         },
     );
 

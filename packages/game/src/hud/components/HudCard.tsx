@@ -2,7 +2,7 @@
 
 import { animated, useSpring } from '@react-spring/web';
 import { cx } from '@signalco/ui-primitives/cx';
-import type { HTMLAttributes } from 'react';
+import { type HTMLAttributes, useMemo } from 'react';
 
 type HudCardProps = HTMLAttributes<HTMLDivElement> & {
     open?: boolean;
@@ -27,14 +27,23 @@ export function HudCard({
     animateHeight,
     ...rest
 }: HudCardProps) {
+    const atBottom = useMemo(() => {
+        return (
+            position === 'bottom' || (className?.includes('bottom-') ?? false)
+        );
+    }, [position, className]);
+    const opacity = useMemo(() => (open ? 1 : 0), [open]);
+    const transform = useMemo(() => {
+        if (open) return 'translateY(0)';
+        if (atBottom) return 'translateY(100%)';
+        return 'translateY(-100%)';
+    }, [open, atBottom]);
+    const config = useMemo(() => ({ duration: 150 }), []);
+
     const transitions = useSpring({
-        opacity: open ? 1 : 0,
-        transform: open
-            ? 'translateY(0)'
-            : position === 'bottom' || (className?.includes('bottom-') ?? false)
-              ? 'translateY(100%)'
-              : 'translateY(-100%)',
-        config: { duration: 150 },
+        opacity,
+        transform,
+        config,
     });
 
     return (

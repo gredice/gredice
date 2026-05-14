@@ -1,5 +1,7 @@
 import { animated } from '@react-spring/three';
 import { MeshDistortMaterial, MeshWobbleMaterial } from '@react-three/drei';
+import { SnowOverlay } from '../snow/SnowOverlay';
+import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -29,6 +31,11 @@ export function Tree({ stack, block, rotation }: EntityInstanceProps) {
                     speed={2}
                 />
             </mesh>
+            <SnowOverlay
+                geometry={nodes.Tree_1_2.geometry}
+                {...snowPresets.treeCanopyInner}
+                renderOrder={2}
+            />
             <mesh castShadow receiveShadow geometry={nodes.Tree_1_3.geometry}>
                 <MeshWobbleMaterial
                     {...materials['Material.GrassPart']}

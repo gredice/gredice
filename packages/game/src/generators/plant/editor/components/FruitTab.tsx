@@ -2,23 +2,18 @@
 
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Slider } from '@signalco/ui-primitives/Slider';
-import type { VegetableType } from '../../lib/plant-definitions';
+import {
+    MAX_PLANT_GENERATION,
+    vegetableTypeOptions,
+} from '../../lib/plant-definitions';
 import type { PlantControlsProps } from '../@types/plant-generator';
+import { PlantSlider } from './PlantSlider';
 
 export function FruitTab({
     state,
     onStateChange,
     onDefinitionChange,
 }: PlantControlsProps) {
-    const vegetableTypes: { value: VegetableType; label: string }[] = [
-        { value: 'tomato', label: 'Tomato' },
-        { value: 'cucumber', label: 'Cucumber' },
-        { value: 'bellpepper', label: 'Bell Pepper' },
-        { value: 'carrot', label: 'Carrot' },
-        { value: 'onion', label: 'Onion' },
-    ];
-
     return (
         <div className="space-y-4">
             <Checkbox
@@ -33,22 +28,22 @@ export function FruitTab({
             <SelectItems
                 label="Vrsta ploda"
                 value={state.definition.vegetable.type}
-                items={vegetableTypes}
+                items={vegetableTypeOptions}
                 onValueChange={(v) => onDefinitionChange('vegetable.type', v)}
                 disabled={!state.definition.vegetable.enabled}
             />
-            <Slider
-                label={`Početna generacija: ${state.definition.vegetable.ageStart}`}
+            <PlantSlider
+                label={`Početna generacija: ${state.definition.vegetable.ageStart} (oko ${state.definition.vegetable.ageStart}. tjedan)`}
                 value={[state.definition.vegetable.ageStart]}
                 onValueChange={(v) =>
                     onDefinitionChange('vegetable.ageStart', v[0])
                 }
                 min={0}
-                max={10}
+                max={MAX_PLANT_GENERATION}
                 step={1}
                 disabled={!state.definition.vegetable.enabled}
             />
-            <Slider
+            <PlantSlider
                 label={`Rast ploda: ${(state.fruitGrowth * 100).toFixed(0)}%`}
                 min={0}
                 max={1}
@@ -57,7 +52,7 @@ export function FruitTab({
                 onValueChange={(v) => onStateChange({ fruitGrowth: v[0] })}
                 disabled={!state.definition.vegetable.enabled}
             />
-            <Slider
+            <PlantSlider
                 label={`Prinos: ${state.definition.vegetable.yield.toFixed(2)}`}
                 value={[state.definition.vegetable.yield]}
                 onValueChange={(v) =>
@@ -68,7 +63,7 @@ export function FruitTab({
                 step={0.05}
                 disabled={!state.definition.vegetable.enabled}
             />
-            <Slider
+            <PlantSlider
                 label={`Završna veličina: ${state.definition.vegetable.baseSize.toFixed(2)}`}
                 value={[state.definition.vegetable.baseSize]}
                 onValueChange={(v) =>

@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationsQueryKey } from './useNotifications';
 
@@ -14,7 +14,9 @@ export function useSetNotificationRead() {
             read: boolean;
             readWhere: string | undefined;
         }) => {
-            const res = await client().api.notifications[':id'].$patch({
+            const res = await clientAuthenticated().api.notifications[
+                ':id'
+            ].$patch({
                 param: { id: id.toString() },
                 json: {
                     read: read.toString(),
@@ -29,7 +31,7 @@ export function useSetNotificationRead() {
             };
         },
         onMutate: async (variables) => {
-            const previousQueries = new Map<readonly unknown[], any>();
+            const previousQueries = new Map<readonly unknown[], unknown>();
             const queries = queryClient.getQueriesData({});
             queries.forEach(([queryKey, data]) => {
                 if (
@@ -37,19 +39,27 @@ export function useSetNotificationRead() {
                     queryKey[0] === notificationsQueryKey[0]
                 ) {
                     queryClient.cancelQueries({ queryKey });
-                    queryClient.setQueryData(
-                        queryKey,
-                        (data as any[]).map((n) =>
-                            n.id === variables.id
-                                ? {
-                                      ...n,
-                                      readAt: variables.read
-                                          ? new Date()
-                                          : null,
-                                  }
-                                : n,
-                        ),
-                    );
+                    if (Array.isArray(data)) {
+                        const updated = data.map((notification) => {
+                            if (
+                                notification &&
+                                typeof notification === 'object' &&
+                                'id' in notification &&
+                                typeof notification.id === 'string' &&
+                                notification.id === variables.id
+                            ) {
+                                return {
+                                    ...(notification as Record<
+                                        string,
+                                        unknown
+                                    >),
+                                    readAt: variables.read ? new Date() : null,
+                                };
+                            }
+                            return notification;
+                        });
+                        queryClient.setQueryData(queryKey, updated);
+                    }
                     previousQueries.set(queryKey, data);
                 }
             });

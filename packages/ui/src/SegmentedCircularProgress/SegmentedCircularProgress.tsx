@@ -6,6 +6,7 @@ export interface SegmentedCircularProgressSegment {
     color: string; // Tailwind class for stroke color, e.g. 'stroke-blue-500'
     pulse?: boolean;
     trackColor?: string; // Tailwind class for track color, e.g. 'stroke-blue-100'
+    borderColor?: string; // Tailwind class for border/outline color, e.g. 'stroke-blue-500'
     value?: number; // Optional value to display for this segment
 }
 
@@ -58,7 +59,6 @@ export const SegmentedCircularProgress: React.FC<
                         height={size}
                         viewBox="0 0 36 36"
                         className="absolute inset-0 block pointer-events-none"
-                        style={{ zIndex: i }}
                     >
                         <title>{segment.value}</title>
                         {segment.trackColor && (
@@ -67,13 +67,27 @@ export const SegmentedCircularProgress: React.FC<
                                 cy={center}
                                 r={radius}
                                 fill="none"
-                                className={segment.trackColor}
+                                className={
+                                    segment.borderColor ?? segment.trackColor
+                                }
                                 strokeLinecap="round"
                                 strokeWidth={strokeWidth}
                                 strokeDasharray={trackDashArray}
                                 strokeDashoffset={dashOffset}
                             />
                         )}
+                        {/* Optional outline/border for the segment track */}
+                        <circle
+                            cx={center}
+                            cy={center}
+                            r={radius}
+                            fill="none"
+                            className={segment.trackColor}
+                            strokeLinecap="round"
+                            strokeWidth={Math.max(1, strokeWidth / 1.5)}
+                            strokeDasharray={trackDashArray}
+                            strokeDashoffset={dashOffset}
+                        />
                         {Boolean(segment.value) && (
                             <circle
                                 cx={center}

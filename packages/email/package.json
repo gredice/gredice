@@ -1,19 +1,26 @@
 {
-  "name": "@gredice/email",
-  "version": "1.0.0",
-  "private": true,
-  "exports": {
-    "./*": "./src/*/index.ts"
-  },
-  "devDependencies": {
-    "@types/node": "22.18.4",
-    "@types/react": "19.1.13",
-    "typescript": "5.9.2"
-  },
-  "dependencies": {
-    "@azure/communication-email": "1.0.0",
-    "@react-email/components": "0.5.3",
-    "react": "19.1.1",
-    "react-email": "4.2.11"
-  }
+    "name": "@gredice/email",
+    "version": "1.0.0",
+    "private": true,
+    "exports": {
+        "./*": "./src/*/index.ts"
+    },
+    "scripts": {
+        "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
+        "lint": "biome check --write",
+        "lint:migrate": "biome migrate --write"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.4.15",
+        "@types/node": "24.12.2",
+        "@types/react": "19.2.14",
+        "typescript": "6.0.3"
+    },
+    "dependencies": {
+        "@azure/communication-email": "1.1.0",
+        "@azure/core-lro": "3.3.1",
+        "@gredice/storage": "workspace:*",
+        "react": "19.2.6",
+        "react-email": "6.1.1"
+    }
 }

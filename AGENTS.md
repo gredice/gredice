@@ -1,100 +1,76 @@
 # Welcome, AI collaborator
 
-This repository is the **Gredice** monorepo. It hosts several Next.js applications, supporting packages, and shared assets that power the Gredice platform. The notes below will help you ramp up quickly and work safely.
+This repository is the **Gredice** monorepo. It hosts multiple Next.js applications, shared packages, and assets for the Gredice platform.
 
-## Quick start checklist
+## First steps
 
-- ✅ Use **Node.js** and **pnpm**.
-- ✅ Install dependencies from the repo root with `pnpm install`.
-- ✅ Before editing code, look for additional `AGENTS.md` files inside the path you plan to touch—nested instructions override this file.
-- ✅ Keep the worktree clean: run the relevant lint/tests locally and commit only intentional changes (never commit `node_modules` or build artifacts).
-- ✅ Use Biome for linting and formatting (configured in individual `biome.json` files).
+- Use Node.js `>=24` and the pnpm version pinned by the root `packageManager` field.
+- Install dependencies from the repo root with `pnpm install`.
+- Before editing code, look for additional `AGENTS.md` files inside the path you plan to touch. Nested instructions override this file.
+- Keep the worktree clean. Commit only intentional source changes and never commit `node_modules`, build output, `.next`, coverage, or generated artifacts unless explicitly requested.
+- Use targeted Turbo commands from the repo root whenever possible.
+- Before handing off code changes, identify the affected workspace(s) and run targeted lint, test, and build checks unless the user explicitly asks to skip validation.
 
-## Repository layout
+## Read the relevant guides
 
-- `apps/`
-  - `api/`: Next.js app exposing API routes and OpenAPI generation.
-  - `app/`, `garden/`, `farm/`, `www/`: Product-facing Next.js front-ends (each with its own scripts, linting, and Playwright setup).
-- `packages/`: Shared libraries (client SDK, storage, UI kit, transactional email helpers, payment integration, etc.). Use pnpm workspaces to depend on these via `workspace:*` versions.
-- `assets/`: Source files for 3D game assets. Running `./export.sh` regenerates `game-assets.glb` in `apps/garden/public/assets/models`.
-- `turbo.json`, `pnpm-workspace.yaml`, and app-level `package.json` files coordinate Turborepo tasks, workspace scopes, and scripts.
+- [WORKSPACE.md](./WORKSPACE.md): repo layout, local setup, commands, package boundaries, and development servers.
+- [FRONTEND.md](./FRONTEND.md): Next.js, React, TypeScript, shared UI, Storybook, and app structure rules.
+- [DESIGN.md](./DESIGN.md): visual design standards for product, marketing, admin, farm, garden, and Storybook work.
+- [PRODUCT_SENSE.md](./PRODUCT_SENSE.md): Gredice product expectations, user roles, language, and domain behavior.
+- [QUALITY_SCORE.md](./QUALITY_SCORE.md): quality rubric, validation commands, type standards, and review expectations.
+- [RELIABILITY.md](./RELIABILITY.md): data integrity, migrations, background work, observability, and failure handling.
+- [SECURITY.md](./SECURITY.md): auth, secrets, data exposure, validation, payments, and unsafe rendering.
+- [SEO.md](./SEO.md): metadata, structured data, sitemap, canonical URL, and public page rules.
 
-## Core workflows
+## Non-negotiables
 
-- **Development servers**: Use `pnpm dev` from the repo root for the turborepo pipeline, or `pnpm dev --filter <app>` to focus on a single application.
-  - `www`: <http://localhost:3000>
-  - `garden`: <http://localhost:3001>
-  - `farm`: <http://localhost:3002>
-  - `app`: <http://localhost:3003>
-  - `api`: <http://localhost:3005>
-- **Linting**: Run `pnpm lint` for the full workspace. Individual apps/packages use [Biome](https://biomejs.dev) with `biome check`; you can lint a single target with `pnpm lint --filter <name>`.
-- **Formatting**: Use `pnpm biome check --write` to apply Biome formatting for single module, or `biome check --write` within individual package directories.
-- **Testing**: Use `pnpm test` to execute the configured Turborepo test tasks. Many apps expose Playwright-powered suites (`pnpm test:run --filter www`, etc.). Scope tests to the area you modified whenever possible.
-- **Builds**: Validate production builds with `pnpm build`, or filter down to specific packages/apps as needed.
+- Reuse existing packages and UI before adding new utilities or components.
+- Use `workspace:*` for internal package dependencies.
+- Do not duplicate shared TypeScript types. Prefer inferred types, use `unknown` instead of `any`, and avoid `as` assertions.
+- Schema changes live in `packages/storage`; run `pnpm db-generate` after editing schema.
+- Do not run `pnpm db-push`. Database migrations are applied manually during deployment.
+- For shared PRs, leave new migration files out of version control unless explicitly requested.
+- Follow existing Biome, TypeScript, React, Next.js, Tailwind, and package conventions.
 
-## Database & storage tooling
+## Task validation
 
-- Schema changes live under `packages/storage`. Use `pnpm db-generate` after modifying the schema to create migrations.
-- NEVER apply migrations with `pnpm db-push`, the DB migrations will be applied automatically during deployment.
-
-## Assets workflow
-
-- Regenerate 3D assets by running `./export.sh` inside the `assets/` directory. Ensure no one else is working on the GLB at the same time to prevent merge conflicts.
-- The export script uses Blender to convert `GameAssets.blend` to `GameAssets.glb` in `apps/garden/public/assets/models/`.
-
-## Package dependencies
-
-- Use `workspace:*` versions for internal package dependencies in `package.json` files.
-- Common shared packages:
-  - `@gredice/storage`: Database schema and migrations using Drizzle ORM
-  - `@gredice/ui`: Shared UI components with Tailwind CSS
-  - `@gredice/client`: API client SDK
-  - `@gredice/transactional`: Email templates and components
-  - `@gredice/stripe`: Payment integration utilities
-  - `@gredice/game`: Game-related components and models
-
-## Collaboration tips
-
-- Prefer targeted Turborepo commands (`pnpm <COMMAND> --filter ...`) to speed up workflows during development and CI validation.
-- When introducing new scripts or workspace packages, update the relevant `package.json` and workspace manifests.
-- Document non-obvious behaviors (e.g., manual steps, feature flag dependencies) in `AILOGS.md`. This helps future collaborators understand the context. But don't duplicate information already covered in this file or nested `AGENTS.md` files. Maintain a single source of truth.
-- Follow the repo's existing TypeScript, React, and Biome conventions. Avoid adding alternative linting or formatting tools without prior alignment.
-
-## Common commands reference
+For code changes, use the narrowest reliable validation set from the repo root:
 
 ```bash
-# Install dependencies for entire monorepo
-pnpm install
-
-# Start all development servers
-pnpm dev
-
-# Start specific app development server
-pnpm dev --filter www
-
-# Lint entire workspace
-pnpm lint
-
-# Lint specific package
-pnpm lint --filter @gredice/storage
-
-# Format code with Biome (from package directory)
-biome check --write
-
-# Run tests for all packages
-pnpm test
-
-# Run tests for specific app
-pnpm test --filter garden
-
-# Build all packages and apps
-pnpm build
-
-# Generate database migrations (after schema changes)
-pnpm db-generate
-
-# Regenerate assets and other generated files
-pnpm regenerate
+pnpm lint --filter <workspace>
+pnpm test --filter <workspace>
+pnpm build --filter <workspace>
 ```
 
-Happy shipping!
+Examples:
+
+```bash
+pnpm lint --filter garden
+pnpm test --filter garden
+pnpm build --filter garden
+```
+
+For shared package changes, also validate the consuming app(s) that exercise the changed behavior. For storage changes, run `pnpm test --filter @gredice/storage` and build affected consumers such as `app`, `api`, or `farm`. For `@gredice/game` changes specifically, validate and build both `garden` and `www` because both apps consume game package codepaths.
+
+If validation cannot run because of missing secrets, unavailable services, or time constraints, state exactly which command was skipped and why.
+
+## GitHub issues
+
+- Use GitHub Issue Type as the primary kind: `Feature` for larger product capabilities or umbrella work, `Task` for concrete implementation slices, and `Bug` for broken or incorrect behavior.
+- Use labels for routing and context, not as a replacement for issue type. Apply the existing area, package, feature, asset, documentation, test, enhancement, epic, and AI-origin labels that match the issue. Use multiple labels when work spans multiple apps or packages, and do not create near-duplicate labels.
+- Title issues with the existing square-bracket scope convention when a clear product, domain, or workstream exists, for example `[CMS] Pages - define Page structure` or `[Field] Ability to see diary and history if field had plants before`. Use a short imperative or outcome-focused title for devex/tooling tasks when labels already carry the scope.
+- For product and feature work, prefer issue bodies with `User story`, `Current-system notes`, `Scope`, and `Acceptance criteria` sections. For internal tooling or reliability work, use `Goal`, `Context`, `Scope`, and `Acceptance criteria`, adding `Blocked by` when sequencing matters.
+- For umbrella issues, link implementation issues with a checklist, include a suggested implementation order, and call out dependency relationships with issue references such as `#2501`. Mark these with the epic label when they group related work.
+- Milestones are not used by default in this repo; only add one when explicitly requested.
+
+## Quick commands
+
+```bash
+pnpm install
+pnpm dev
+pnpm lint --filter garden
+pnpm test --filter garden
+pnpm build --filter garden
+```
+
+For full command guidance, see [WORKSPACE.md](./WORKSPACE.md).

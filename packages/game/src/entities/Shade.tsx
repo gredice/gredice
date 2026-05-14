@@ -1,4 +1,5 @@
 import { animated } from '@react-spring/three';
+import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -93,76 +94,53 @@ export function Shade({ stack, block, rotation }: EntityInstanceProps) {
     }
 
     const [animatedRotation] = useAnimatedEntityRotation(realizedRotation);
+    type ShadeKey =
+        | 'Shade_Solo'
+        | 'Shade_Single_Left'
+        | 'Shade_Single_Right'
+        | 'Shade_N'
+        | 'Shade_E'
+        | 'Shade_W'
+        | 'Shade_S'
+        | 'Shade_Middle';
+
+    const renderPiece = (shouldRender: boolean, key: ShadeKey) => {
+        if (!shouldRender) {
+            return null;
+        }
+
+        return (
+            <mesh
+                key={key}
+                castShadow
+                receiveShadow
+                geometry={nodes[key].geometry}
+                material={materials['Material.Planks']}
+            >
+                <SnowOverlay
+                    geometry={nodes[key].geometry}
+                    maxThickness={0.03}
+                    slopeExponent={2.2}
+                    noiseScale={4}
+                    coverageMultiplier={0.35}
+                />
+            </mesh>
+        );
+    };
 
     return (
         <animated.group
             position={stack.position.clone().setY(currentStackHeight + 1)}
             rotation={animatedRotation as unknown as [number, number, number]}
         >
-            {solo && (
-                <mesh
-                    castShadow
-                    receiveShadow
-                    geometry={nodes.Shade_Solo.geometry}
-                    material={materials['Material.Planks']}
-                />
-            )}
-            {left && (
-                <mesh
-                    castShadow
-                    receiveShadow
-                    geometry={nodes.Shade_Single_Left.geometry}
-                    material={materials['Material.Planks']}
-                />
-            )}
-            {right && (
-                <mesh
-                    castShadow
-                    receiveShadow
-                    geometry={nodes.Shade_Single_Right.geometry}
-                    material={materials['Material.Planks']}
-                />
-            )}
-            {n && (
-                <mesh
-                    castShadow
-                    receiveShadow
-                    geometry={nodes.Shade_N.geometry}
-                    material={materials['Material.Planks']}
-                />
-            )}
-            {e && (
-                <mesh
-                    castShadow
-                    receiveShadow
-                    geometry={nodes.Shade_E.geometry}
-                    material={materials['Material.Planks']}
-                />
-            )}
-            {w && (
-                <mesh
-                    castShadow
-                    receiveShadow
-                    geometry={nodes.Shade_W.geometry}
-                    material={materials['Material.Planks']}
-                />
-            )}
-            {s && (
-                <mesh
-                    castShadow
-                    receiveShadow
-                    geometry={nodes.Shade_S.geometry}
-                    material={materials['Material.Planks']}
-                />
-            )}
-            {middle && (
-                <mesh
-                    castShadow
-                    receiveShadow
-                    geometry={nodes.Shade_Middle.geometry}
-                    material={materials['Material.Planks']}
-                />
-            )}
+            {renderPiece(solo, 'Shade_Solo')}
+            {renderPiece(left, 'Shade_Single_Left')}
+            {renderPiece(right, 'Shade_Single_Right')}
+            {renderPiece(n, 'Shade_N')}
+            {renderPiece(e, 'Shade_E')}
+            {renderPiece(w, 'Shade_W')}
+            {renderPiece(s, 'Shade_S')}
+            {renderPiece(middle, 'Shade_Middle')}
         </animated.group>
     );
 }

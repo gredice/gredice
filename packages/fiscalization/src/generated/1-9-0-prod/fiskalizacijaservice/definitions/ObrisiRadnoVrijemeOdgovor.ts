@@ -1,7 +1,7 @@
-import { Zaglavlje1 } from "./Zaglavlje1";
-import { PorukaOdgovora } from "./PorukaOdgovora";
-import { Greske } from "./Greske";
-import { Signature } from "./Signature";
+import type { Greske } from './Greske';
+import type { PorukaOdgovora } from './PorukaOdgovora';
+import type { Signature } from './Signature';
+import type { Zaglavlje1 } from './Zaglavlje1';
 
 /**
  * ObrisiRadnoVrijemeOdgovor
