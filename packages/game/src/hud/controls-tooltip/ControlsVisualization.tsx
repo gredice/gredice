@@ -10,6 +10,7 @@ import { WireframeCube } from './WireframeCube';
 export type ControlsVisualizationProps = {
     deviceType: DeviceType;
     phase: number;
+    isEditMode?: boolean;
 };
 
 function getActivePanKey(phase: number) {
@@ -23,8 +24,11 @@ function getActivePanKey(phase: number) {
     return y > 0 ? ('ArrowUp' as const) : ('ArrowDown' as const);
 }
 
-function getAccessibleDescription(deviceType: DeviceType) {
+function getAccessibleDescription(deviceType: DeviceType, isEditMode: boolean) {
     if (deviceType === 'desktop') {
+        if (isEditMode) {
+            return 'Pomak kamere: povucite desnom tipkom miša ili koristite strelice. Zum: kotačić miša. Rotacija vrta: tipke Q i W ili tipke za rotaciju.';
+        }
         return 'Pomak kamere: povucite mišem ili koristite strelice. Zum: kotačić miša. Rotacija vrta: tipke Q i W ili tipke za rotaciju.';
     }
 
@@ -34,6 +38,7 @@ function getAccessibleDescription(deviceType: DeviceType) {
 export function ControlsVisualization({
     deviceType,
     phase,
+    isEditMode = false,
 }: ControlsVisualizationProps) {
     const isTouchDevice = deviceType !== 'desktop';
     const moveX = Math.sin(phase) * 14;
@@ -45,14 +50,22 @@ export function ControlsVisualization({
 
     return (
         <>
-            <p className="sr-only">{getAccessibleDescription(deviceType)}</p>
+            <p className="sr-only">
+                {getAccessibleDescription(deviceType, isEditMode)}
+            </p>
             <div
                 className="grid grid-cols-3 overflow-hidden rounded-md bg-card border-b-4 border border-tertiary"
                 aria-hidden="true"
             >
                 <VisualizationSection
                     title="Pomak"
-                    label={isTouchDevice ? 'Povuci' : 'Strelice'}
+                    label={
+                        isTouchDevice
+                            ? 'Povuci'
+                            : isEditMode
+                              ? 'Desni klik'
+                              : 'Strelice'
+                    }
                     cube={<WireframeCube translateX={moveX} />}
                     controls={
                         isTouchDevice ? (
