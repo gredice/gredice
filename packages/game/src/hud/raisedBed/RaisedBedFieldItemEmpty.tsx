@@ -23,7 +23,7 @@ function parseScheduledSowingDate(additionalData: string | null | undefined) {
         }
 
         const date = new Date(parsed.scheduledDate);
-        return Number.isNaN(date.valueOf()) ? null : date;
+        return Number.isNaN(date.getTime()) ? null : date;
     } catch {
         return null;
     }
