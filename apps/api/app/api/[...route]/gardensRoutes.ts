@@ -60,7 +60,9 @@ import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
+// Directory operation 591 is the raised-bed abandonment operation queued for farm follow-up.
 const ABANDON_RAISED_BED_OPERATION_ID = 591;
+// Operations are stored as CMS entities with entityTypeName='operation'.
 const OPERATION_ENTITY_TYPE_NAME = 'operation';
 
 async function countRecentRaisedBedAiAnalyses(accountId: string) {

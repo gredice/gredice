@@ -1,7 +1,10 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
-import { RAISED_BED_ABANDON_FAILED_MESSAGE } from '../raisedBedMessages';
+import {
+    RAISED_BED_ABANDON_FAILED_MESSAGE,
+    RAISED_BED_ABANDONED_STATUS,
+} from '../raisedBedConstants';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
@@ -39,7 +42,7 @@ export function useAbandonRaisedBed(gardenId: number, raisedBedId: number) {
                 bed.id === raisedBedId
                     ? {
                           ...bed,
-                          status: 'abandoned',
+                          status: RAISED_BED_ABANDONED_STATUS,
                       }
                     : bed,
             );

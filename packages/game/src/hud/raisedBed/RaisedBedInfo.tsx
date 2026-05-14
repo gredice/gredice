@@ -2,9 +2,16 @@ import { BlockImage } from '@gredice/ui/BlockImage';
 import { Alert } from '@signalco/ui/Alert';
 import { EditableInput } from '@signalco/ui/EditableInput';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
-import { Book, Hammer, Info, Warning } from '@signalco/ui-icons';
+import {
+    Book,
+    Hammer,
+    Info,
+    MoreHorizontal,
+    Warning,
+} from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
+import { cx } from '@signalco/ui-primitives/cx';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import {
@@ -18,7 +25,10 @@ import { useState } from 'react';
 import { useAbandonRaisedBed } from '../../hooks/useAbandonRaisedBed';
 import type { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useUpdateRaisedBed } from '../../hooks/useUpdateRaisedBed';
-import { RAISED_BED_ABANDON_FAILED_MESSAGE } from '../../raisedBedMessages';
+import {
+    RAISED_BED_ABANDON_FAILED_MESSAGE,
+    RAISED_BED_ABANDONED_STATUS,
+} from '../../raisedBedConstants';
 import { useGameState } from '../../useGameState';
 import { RaisedBedDiary } from './RaisedBedDiary';
 import { RaisedBedInfoTab } from './RaisedBedInfoTab';
@@ -40,7 +50,7 @@ export function RaisedBedInfo({
     const setView = useGameState((state) => state.setView);
     const [activeTab, setActiveTab] = useState<RaisedBedTabValue>('diary');
     const [abandonError, setAbandonError] = useState<string | null>(null);
-    const isAbandoned = raisedBed.status === 'abandoned';
+    const isAbandoned = raisedBed.status === RAISED_BED_ABANDONED_STATUS;
 
     function handleNameChange(newName: string) {
         updateRaisedBed.mutate({ name: newName });
@@ -117,14 +127,15 @@ export function RaisedBedInfo({
                         type="button"
                         variant="plain"
                         aria-label="Prikaži dodatne opcije gredice"
-                        className={`absolute right-0 top-0 h-full min-w-10 rounded-full px-3 ${
+                        className={cx(
+                            'absolute right-0 top-0 h-full min-w-10 rounded-full px-3',
                             activeTab === 'abandon'
                                 ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'
-                                : ''
-                        }`}
+                                : undefined,
+                        )}
                         onClick={() => setActiveTab('abandon')}
                     >
-                        ...
+                        <MoreHorizontal className="size-4" />
                     </Button>
                 </div>
                 <TabsContent value="info">
