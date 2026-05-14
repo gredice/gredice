@@ -828,6 +828,10 @@ export interface components {
                         completionAttachImages: boolean;
                         /** @description (da li je obavezno proložiti slike za završetak radnje) */
                         completionAttachImagesRequired: boolean;
+                        /** @description (da li se mo\e priložiti napomena za završetak radnje) */
+                        completionAttachNotes: boolean;
+                        /** @description (da li je obavezno proložiti napomenu za završetak radnje) */
+                        completionAttachNotesRequired: boolean;
                     };
                     actions?: {
                         removePlant?: boolean;
@@ -1051,6 +1055,10 @@ export interface components {
                                 completionAttachImages: boolean;
                                 /** @description (da li je obavezno proložiti slike za završetak radnje) */
                                 completionAttachImagesRequired: boolean;
+                                /** @description (da li se mo\e priložiti napomena za završetak radnje) */
+                                completionAttachNotes: boolean;
+                                /** @description (da li je obavezno proložiti napomenu za završetak radnje) */
+                                completionAttachNotesRequired: boolean;
                             };
                             actions?: {
                                 removePlant?: boolean;
@@ -1333,6 +1341,10 @@ export interface components {
                                 completionAttachImages: boolean;
                                 /** @description (da li je obavezno proložiti slike za završetak radnje) */
                                 completionAttachImagesRequired: boolean;
+                                /** @description (da li se mo\e priložiti napomena za završetak radnje) */
+                                completionAttachNotes: boolean;
+                                /** @description (da li je obavezno proložiti napomenu za završetak radnje) */
+                                completionAttachNotesRequired: boolean;
                             };
                             actions?: {
                                 removePlant?: boolean;
@@ -1544,6 +1556,10 @@ export interface components {
                                         completionAttachImages: boolean;
                                         /** @description (da li je obavezno proložiti slike za završetak radnje) */
                                         completionAttachImagesRequired: boolean;
+                                        /** @description (da li se mo\e priložiti napomena za završetak radnje) */
+                                        completionAttachNotes: boolean;
+                                        /** @description (da li je obavezno proložiti napomenu za završetak radnje) */
+                                        completionAttachNotesRequired: boolean;
                                     };
                                     actions?: {
                                         removePlant?: boolean;
@@ -1817,6 +1833,10 @@ export interface components {
                 completionAttachImages: boolean;
                 /** @description (da li je obavezno proložiti slike za završetak radnje) */
                 completionAttachImagesRequired: boolean;
+                /** @description (da li se mo\e priložiti napomena za završetak radnje) */
+                completionAttachNotes: boolean;
+                /** @description (da li je obavezno proložiti napomenu za završetak radnje) */
+                completionAttachNotesRequired: boolean;
             };
             actions?: {
                 removePlant?: boolean;
