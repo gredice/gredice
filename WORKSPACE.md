@@ -137,6 +137,10 @@ pnpm env:pull
 
 `pnpm env:pull` runs `vercel env pull .env` in `apps/www`, `apps/garden`, `apps/farm`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
 
+### Public page revalidation
+
+`apps/app` triggers public `apps/www` ISR revalidation after admin changes to directory plants, plant sorts, and operations. Configure the same `GREDICE_WWW_REVALIDATE_SECRET` in both apps. In production the admin app calls `https://www.gredice.com/api/revalidate/directories`; for preview or custom environments, set `GREDICE_WWW_REVALIDATE_URL` in `apps/app` to the target `www` deployment URL.
+
 ### Codex environment setup
 
 Use a lean Codex environment for routine code tasks. Pin Node.js to `24.15.0` when the environment UI asks for an exact version, and use Corepack to install the pnpm version pinned by `packageManager`.

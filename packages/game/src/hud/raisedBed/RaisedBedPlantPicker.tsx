@@ -1,15 +1,22 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
-import { FilterInput } from '@gredice/ui/FilterInput';
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
-import { Left, ShoppingCart } from '@signalco/ui-icons';
+import { Close, Left, Search, ShoppingCart } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
+import { cx } from '@signalco/ui-primitives/cx';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { type ReactElement, useState } from 'react';
+import {
+    type ChangeEvent,
+    type ReactElement,
+    useId,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { SegmentedProgress } from '../../controls/components/SegmentedProgress';
 import { useInventory } from '../../hooks/useInventory';
@@ -53,7 +60,6 @@ export function PlantPicker({
 }: PlantPickerProps) {
     const [open, setOpen] = useState(false);
     const { track } = useGameAnalytics();
-    const [, setSearch] = useSearchParam('pretraga', '');
     const steps = [
         {
             label: 'Odabir biljke',
@@ -78,21 +84,55 @@ export function PlantPicker({
     } | null>(preselectedPlantOptions ?? null);
     const [flyToShoppingCart, setFlyToShoppingCart] = useState(false);
     const [useInventoryItem, setUseInventoryItem] = useState(false);
+    const [search, setSearch] = useState('');
+    const searchInputId = useId();
+    const shouldRestoreSearchFocusRef = useRef(false);
 
     let currentStep = 0;
     if (selectedPlantId) {
         currentStep = 1;
     }
 
+    useLayoutEffect(() => {
+        if (
+            currentStep !== 0 ||
+            !shouldRestoreSearchFocusRef.current ||
+            typeof document === 'undefined'
+        ) {
+            return;
+        }
+
+        const input = document.getElementById(searchInputId);
+        if (!(input instanceof HTMLInputElement)) {
+            return;
+        }
+
+        if (document.activeElement !== input) {
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+        }
+        shouldRestoreSearchFocusRef.current = false;
+    });
+
+    function resetSearch() {
+        shouldRestoreSearchFocusRef.current = false;
+        setSearch('');
+    }
+
+    function handleSearchChange(event: ChangeEvent<HTMLInputElement>) {
+        shouldRestoreSearchFocusRef.current = true;
+        setSearch(event.target.value);
+    }
+
     function handlePlantSelect(plant: PlantData) {
         setSelectedPlantId(plant.id);
         setSelectedSortId(null);
-        setSearch(undefined);
+        resetSearch();
     }
 
     function handleSortSelect(sort: PlantSortData) {
         setSelectedSortId(sort.id);
-        setSearch(undefined);
+        resetSearch();
     }
 
     async function removeFromCart(existingItem?: ShoppingCartItemData) {
@@ -130,7 +170,7 @@ export function PlantPicker({
         setSelectedSortId(null);
         setPlantOptions(null);
         setUseInventoryItem(false);
-        setSearch(undefined);
+        resetSearch();
         await removeFromCart();
     }
 
@@ -196,6 +236,7 @@ export function PlantPicker({
         setSelectedPlantId(preselectedPlantId ?? null);
         setSelectedSortId(preselectedSortId ?? null);
         setPlantOptions(preselectedPlantOptions ?? null);
+        resetSearch();
         const existingItem = cart?.items.find(
             (item) =>
                 item.entityTypeName === 'plantSort' &&
@@ -260,7 +301,7 @@ export function PlantPicker({
                                 ? () => {
                                       setSelectedPlantId(null);
                                       setSelectedSortId(null);
-                                      setSearch(undefined);
+                                      resetSearch();
                                   }
                                 : undefined,
                     }))}
@@ -274,14 +315,40 @@ export function PlantPicker({
                     </Typography>
                 </Stack>
                 {currentStep < 1 && (
-                    <FilterInput
-                        searchParamName={'pretraga'}
-                        fieldName={'search'}
-                        instant
+                    <Input
+                        id={searchInputId}
+                        name="plantSearch"
+                        value={search}
+                        onChange={handleSearchChange}
+                        placeholder="Pretraži..."
+                        startDecorator={
+                            <Search className="size-5 shrink-0 ml-3" />
+                        }
+                        endDecorator={
+                            <IconButton
+                                className={cx(
+                                    'hover:bg-neutral-300 mr-1 rounded-full aspect-square',
+                                    search ? 'visible' : 'invisible',
+                                )}
+                                title="Očisti pretragu"
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => {
+                                    shouldRestoreSearchFocusRef.current = true;
+                                    setSearch('');
+                                }}
+                                size="sm"
+                                variant="plain"
+                            >
+                                <Close className="size-5" />
+                            </IconButton>
+                        }
+                        className="min-w-60"
+                        variant="soft"
                     />
                 )}
                 {currentStep === 0 && (
-                    <PlantsList onChange={handlePlantSelect} />
+                    <PlantsList search={search} onChange={handlePlantSelect} />
                 )}
                 {currentStep === 1 && selectedPlantId && (
                     <>
@@ -289,10 +356,8 @@ export function PlantPicker({
                             <PlantsSortList
                                 plantId={selectedPlantId}
                                 selectedSortId={selectedSortId}
-                                onChange={(sort) => {
-                                    handleSortSelect(sort);
-                                    setSearch(undefined);
-                                }}
+                                onChange={handleSortSelect}
+                                search={search}
                                 flyToShoppingCart={flyToShoppingCart}
                             />
                             <Row spacing={1} className="flex-wrap">
@@ -342,7 +407,7 @@ export function PlantPicker({
                                 variant="plain"
                                 onClick={() => {
                                     setSelectedPlantId(null);
-                                    setSearch(undefined);
+                                    resetSearch();
                                 }}
                                 startDecorator={<Left className="size-5" />}
                             >

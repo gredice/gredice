@@ -9,6 +9,7 @@ import {
     timestamp,
 } from 'drizzle-orm/pg-core';
 import { entities, entityTypes } from './cmsSchema';
+import { farms } from './farmsSchema';
 import { gardens, raisedBedFields, raisedBeds } from './gardenSchema';
 import { accounts } from './usersSchema';
 
@@ -19,6 +20,7 @@ export const operations = pgTable(
         entityId: integer('entity_id').notNull(),
         entityTypeName: text('entity_type_name').notNull(),
         accountId: text('account_id'),
+        farmId: integer('farm_id'),
         gardenId: integer('garden_id'),
         raisedBedId: integer('raised_bed_id'),
         raisedBedFieldId: integer('raised_bed_field_id'),
@@ -31,6 +33,7 @@ export const operations = pgTable(
         index('operations_entity_id_idx').on(table.entityId),
         index('operations_entity_type_name_idx').on(table.entityTypeName),
         index('operations_account_id_idx').on(table.accountId),
+        index('operations_farm_id_idx').on(table.farmId),
         index('operations_garden_id_idx').on(table.gardenId),
         index('operations_raised_bed_id_idx').on(table.raisedBedId),
         index('operations_raised_bed_field_id_idx').on(table.raisedBedFieldId),
@@ -45,6 +48,11 @@ export const operationsRelations = relations(operations, ({ one }) => ({
         fields: [operations.accountId],
         references: [accounts.id],
         relationName: 'accountOperations',
+    }),
+    farm: one(farms, {
+        fields: [operations.farmId],
+        references: [farms.id],
+        relationName: 'farmOperations',
     }),
     garden: one(gardens, {
         fields: [operations.gardenId],

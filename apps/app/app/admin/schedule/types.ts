@@ -32,6 +32,7 @@ export type RaisedBed = {
 
 export type Operation = {
     id: number;
+    farmId?: number | null;
     raisedBedId: number | null;
     raisedBedFieldId?: number | null;
     entityId: number;
@@ -42,6 +43,8 @@ export type Operation = {
     scheduledDate?: Date;
     completedAt?: Date;
     completedBy?: string;
+    completionNotes?: string;
+    imageUrls?: string[];
     timestamp: Date;
     createdAt: Date;
     isAccepted: boolean;

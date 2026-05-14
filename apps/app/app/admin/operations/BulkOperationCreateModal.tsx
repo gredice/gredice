@@ -11,7 +11,10 @@ import { getEntities } from '../../../components/shared/attributes/actions/entit
 import { UserPickerField } from '../../../components/shared/fields/UserPickerField';
 import { bulkCreateOperationsAction } from '../../(actions)/operationActions';
 import { SelectEntity } from '../raised-beds/[raisedBedId]/SelectEntity';
-import { TargetsSelectionList } from './TargetsSelectionList';
+import {
+    type TargetSelectionMode,
+    TargetsSelectionList,
+} from './TargetsSelectionList';
 
 const unassignedValue = '__unassigned__';
 
@@ -26,6 +29,10 @@ function SubmitButton() {
 }
 
 export type BulkOperationCreateModalProps = {
+    farms: Array<{
+        id: number;
+        name: string;
+    }>;
     gardens: Array<{
         id: number;
         name?: string | null;
@@ -47,6 +54,7 @@ export type BulkOperationCreateModalProps = {
 };
 
 export function BulkOperationCreateModal({
+    farms,
     gardens,
     raisedBeds,
     assignableUsers,
@@ -73,21 +81,17 @@ export function BulkOperationCreateModal({
             .catch((e) => console.error('Failed to load operations', e));
     }, []);
 
-    const selectionMode = useMemo(() => {
+    const selectionMode = useMemo<TargetSelectionMode | undefined>(() => {
         if (!selectedOperationId) return undefined;
         const application = operations?.find(
             (o) => o.id?.toString() === selectedOperationId,
-        )?.attributes?.application as
-            | 'garden'
-            | 'raisedBedFull'
-            | 'raisedBed1m'
-            | 'plant'
-            | undefined;
+        )?.attributes?.application;
         if (!application) return undefined;
-        if (application === 'garden') return 'garden' as const;
-        if (application === 'plant') return 'plant' as const;
+        if (application === 'farm') return 'farm';
+        if (application === 'garden') return 'garden';
+        if (application === 'plant') return 'plant';
         // Treat both raised bed variants the same
-        return 'raisedBed' as const;
+        return 'raisedBed';
     }, [operations, selectedOperationId]);
 
     useEffect(() => {
@@ -157,6 +161,7 @@ export function BulkOperationCreateModal({
                     />
                     <TargetsSelectionList
                         name="targets"
+                        farms={farms}
                         gardens={gardens}
                         raisedBeds={raisedBeds}
                         mode={selectionMode}

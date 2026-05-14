@@ -8,6 +8,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { HarvestOperationPrintModal } from './HarvestOperationPrintModal';
+import { OperationCompletionAttachments } from './OperationCompletionAttachments';
 import type { FarmScheduleDayData } from './scheduleData';
 import {
     formatMinutes,
@@ -18,6 +19,10 @@ import {
 
 type FarmRaisedBed = FarmScheduleDayData['raisedBeds'][number];
 type FarmOperation = FarmScheduleDayData['scheduledOperations'][number];
+type FarmOperationCardData = FarmOperation & {
+    durationMinutes: number;
+    label: string;
+};
 
 interface FarmScheduleOperationsSectionProps {
     raisedBeds: FarmScheduleDayData['raisedBeds'];
@@ -133,9 +138,222 @@ export function FarmScheduleOperationsSection({
         raisedBeds,
         affectedRaisedBedIds,
     );
+    const farmOperations = scheduledOperations
+        .filter(
+            (operation) =>
+                typeof operation.farmId === 'number' &&
+                operation.raisedBedId === null,
+        )
+        .map((operation) => {
+            const label = buildOperationLabel(
+                operation,
+                raisedBeds,
+                plantSortById,
+                operationDataById,
+            );
+            const durationMinutes = getOperationDurationMinutes(
+                operationDataById.get(operation.entityId),
+            );
+
+            return {
+                ...operation,
+                durationMinutes,
+                label,
+            };
+        })
+        .sort((left, right) =>
+            left.label.localeCompare(right.label, undefined, {
+                numeric: true,
+            }),
+        );
+
+    function renderOperationCard(
+        operation: FarmOperationCardData,
+        groupedRaisedBeds: FarmRaisedBed[],
+    ) {
+        const completed = isOperationCompleted(operation.status);
+        const operationData = operationDataById.get(operation.entityId);
+        const canComplete =
+            !completed &&
+            (!operation.assignedUserId || operation.assignedUserId === userId);
+        const harvestLabelData =
+            !completed && shouldPrintHarvestLabel(operationData)
+                ? buildHarvestLabelData(
+                      operation,
+                      groupedRaisedBeds,
+                      plantSortById,
+                  )
+                : null;
+        const attachImages = Boolean(
+            operationData?.conditions?.completionAttachImages ||
+                operationData?.conditions?.completionAttachImagesRequired,
+        );
+        const attachImagesRequired = Boolean(
+            operationData?.conditions?.completionAttachImagesRequired,
+        );
+        const attachNotes = Boolean(
+            operationData?.conditions?.completionAttachNotes ||
+                operationData?.conditions?.completionAttachNotesRequired,
+        );
+        const attachNotesRequired = Boolean(
+            operationData?.conditions?.completionAttachNotesRequired,
+        );
+        const completionRequirementTexts = [
+            attachImages
+                ? attachImagesRequired
+                    ? 'Slike obavezne'
+                    : 'Slike opcionalne'
+                : null,
+            attachNotes
+                ? attachNotesRequired
+                    ? 'Napomena obavezna'
+                    : 'Napomena opcionalna'
+                : null,
+        ].filter((text): text is string => Boolean(text));
+
+        return (
+            <div
+                key={operation.id}
+                className="rounded-lg border bg-white px-3 py-2"
+            >
+                <Row spacing={1} className="items-start justify-between gap-3">
+                    <Row spacing={1} className="min-w-0 grow items-start">
+                        {completed ? (
+                            <Checkbox className="size-5" checked disabled />
+                        ) : canComplete ? (
+                            <CompleteOperationModal
+                                operationId={operation.id}
+                                label={operation.label}
+                                conditions={operationData?.conditions}
+                            />
+                        ) : (
+                            <div title="Radnja je dodijeljena drugom korisniku.">
+                                <Checkbox className="size-5" disabled />
+                            </div>
+                        )}
+                        <Stack spacing={0.5} className="min-w-0 grow">
+                            <Typography
+                                className={
+                                    completed
+                                        ? 'line-through text-muted-foreground'
+                                        : undefined
+                                }
+                            >
+                                {operation.label}
+                            </Typography>
+                            <Row
+                                spacing={1}
+                                className="items-center flex-wrap gap-y-1"
+                            >
+                                <Typography
+                                    level="body2"
+                                    className={
+                                        completed
+                                            ? 'text-green-600'
+                                            : 'text-muted-foreground'
+                                    }
+                                >
+                                    {completed ? 'Završeno' : 'Potvrđeno'}
+                                </Typography>
+                                {operation.durationMinutes > 0 && (
+                                    <Typography
+                                        level="body2"
+                                        className="text-muted-foreground"
+                                    >
+                                        {formatMinutes(
+                                            operation.durationMinutes,
+                                        )}
+                                    </Typography>
+                                )}
+                                <Typography
+                                    level="body2"
+                                    className="text-muted-foreground"
+                                >
+                                    {operation.scheduledDate ? (
+                                        <>
+                                            Planirano:{' '}
+                                            <LocalDateTime time={false}>
+                                                {operation.scheduledDate}
+                                            </LocalDateTime>
+                                        </>
+                                    ) : (
+                                        'Danas'
+                                    )}
+                                </Typography>
+                                {!completed &&
+                                    completionRequirementTexts.length > 0 && (
+                                        <Typography
+                                            level="body2"
+                                            className="text-xs text-muted-foreground"
+                                        >
+                                            {completionRequirementTexts.join(
+                                                ' · ',
+                                            )}
+                                        </Typography>
+                                    )}
+                                {harvestLabelData && (
+                                    <HarvestOperationPrintModal
+                                        operationLabel={operation.label}
+                                        labelData={harvestLabelData}
+                                    />
+                                )}
+                            </Row>
+                        </Stack>
+                    </Row>
+                    {(completed || operation.assignedUser) && (
+                        <Row spacing={0.5} className="shrink-0 items-center">
+                            {completed && (
+                                <OperationCompletionAttachments
+                                    operationId={operation.id}
+                                    notes={operation.completionNotes}
+                                    imageUrls={operation.imageUrls}
+                                />
+                            )}
+                            {operation.assignedUser && (
+                                <div
+                                    className="shrink-0"
+                                    title={`Dodijeljeno: ${operation.assignedUser.displayName ?? operation.assignedUser.userName}`}
+                                >
+                                    <UserAvatar
+                                        avatarUrl={
+                                            operation.assignedUser.avatarUrl
+                                        }
+                                        displayName={
+                                            operation.assignedUser
+                                                .displayName ??
+                                            operation.assignedUser.userName
+                                        }
+                                        className="size-7 rounded-full"
+                                    />
+                                </div>
+                            )}
+                        </Row>
+                    )}
+                </Row>
+            </div>
+        );
+    }
 
     return (
         <Stack spacing={2}>
+            {farmOperations.length > 0 && (
+                <Stack spacing={1}>
+                    <Row spacing={1} className="items-center flex-wrap gap-y-1">
+                        <Typography semiBold>Farma</Typography>
+                        <Typography
+                            level="body2"
+                            className="text-muted-foreground"
+                        >
+                            {farmOperations.length} zadataka
+                        </Typography>
+                    </Row>
+                    <Stack spacing={1}>
+                        {farmOperations.map((operation) =>
+                            renderOperationCard(operation, raisedBeds),
+                        )}
+                    </Stack>
+                </Stack>
+            )}
             {raisedBedGroups.map(
                 ({ key, physicalId, raisedBeds: groupedRaisedBeds }) => {
                     const dayOperations = scheduledOperations
@@ -225,6 +443,40 @@ export function FarmScheduleOperationsSection({
                                                   plantSortById,
                                               )
                                             : null;
+                                    const attachImages = Boolean(
+                                        operationData?.conditions
+                                            ?.completionAttachImages ||
+                                            operationData?.conditions
+                                                ?.completionAttachImagesRequired,
+                                    );
+                                    const attachImagesRequired = Boolean(
+                                        operationData?.conditions
+                                            ?.completionAttachImagesRequired,
+                                    );
+                                    const attachNotes = Boolean(
+                                        operationData?.conditions
+                                            ?.completionAttachNotes ||
+                                            operationData?.conditions
+                                                ?.completionAttachNotesRequired,
+                                    );
+                                    const attachNotesRequired = Boolean(
+                                        operationData?.conditions
+                                            ?.completionAttachNotesRequired,
+                                    );
+                                    const completionRequirementTexts = [
+                                        attachImages
+                                            ? attachImagesRequired
+                                                ? 'Slike obavezne'
+                                                : 'Slike opcionalne'
+                                            : null,
+                                        attachNotes
+                                            ? attachNotesRequired
+                                                ? 'Napomena obavezna'
+                                                : 'Napomena opcionalna'
+                                            : null,
+                                    ].filter((text): text is string =>
+                                        Boolean(text),
+                                    );
 
                                     return (
                                         <div
@@ -328,6 +580,18 @@ export function FarmScheduleOperationsSection({
                                                                     'Danas'
                                                                 )}
                                                             </Typography>
+                                                            {!completed &&
+                                                                completionRequirementTexts.length >
+                                                                    0 && (
+                                                                    <Typography
+                                                                        level="body2"
+                                                                        className="text-xs text-muted-foreground"
+                                                                    >
+                                                                        {completionRequirementTexts.join(
+                                                                            ' · ',
+                                                                        )}
+                                                                    </Typography>
+                                                                )}
                                                             {harvestLabelData && (
                                                                 <HarvestOperationPrintModal
                                                                     operationLabel={
@@ -341,28 +605,49 @@ export function FarmScheduleOperationsSection({
                                                         </Row>
                                                     </Stack>
                                                 </Row>
-                                                {operation.assignedUser && (
-                                                    <div
-                                                        className="shrink-0"
-                                                        title={`Dodijeljeno: ${operation.assignedUser.displayName ?? operation.assignedUser.userName}`}
+                                                {(completed ||
+                                                    operation.assignedUser) && (
+                                                    <Row
+                                                        spacing={0.5}
+                                                        className="shrink-0 items-center"
                                                     >
-                                                        <UserAvatar
-                                                            avatarUrl={
-                                                                operation
-                                                                    .assignedUser
-                                                                    .avatarUrl
-                                                            }
-                                                            displayName={
-                                                                operation
-                                                                    .assignedUser
-                                                                    .displayName ??
-                                                                operation
-                                                                    .assignedUser
-                                                                    .userName
-                                                            }
-                                                            className="size-7 rounded-full"
-                                                        />
-                                                    </div>
+                                                        {completed && (
+                                                            <OperationCompletionAttachments
+                                                                operationId={
+                                                                    operation.id
+                                                                }
+                                                                notes={
+                                                                    operation.completionNotes
+                                                                }
+                                                                imageUrls={
+                                                                    operation.imageUrls
+                                                                }
+                                                            />
+                                                        )}
+                                                        {operation.assignedUser && (
+                                                            <div
+                                                                className="shrink-0"
+                                                                title={`Dodijeljeno: ${operation.assignedUser.displayName ?? operation.assignedUser.userName}`}
+                                                            >
+                                                                <UserAvatar
+                                                                    avatarUrl={
+                                                                        operation
+                                                                            .assignedUser
+                                                                            .avatarUrl
+                                                                    }
+                                                                    displayName={
+                                                                        operation
+                                                                            .assignedUser
+                                                                            .displayName ??
+                                                                        operation
+                                                                            .assignedUser
+                                                                            .userName
+                                                                    }
+                                                                    className="size-7 rounded-full"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </Row>
                                                 )}
                                             </Row>
                                         </div>
