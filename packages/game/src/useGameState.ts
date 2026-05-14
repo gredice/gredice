@@ -1,15 +1,15 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useEffect } from 'react';
 import { getTimes } from 'suncalc';
 import type { OrbitControls } from 'three-stdlib';
 import { createStore, useStore } from 'zustand';
-import { audioMixer } from './audio/audioMixer';
+import { createGameAudio, type GameAudio } from './audio/audioMixer';
 import {
     type GameQualitySetting,
     getGameQualitySetting,
     setGameQualitySetting as persistGameQualitySetting,
 } from './scene/gameQuality';
 import type { Block } from './types/Block';
-import { audioConfig } from './utils/audioConfig';
+import { getAudioConfig } from './utils/audioConfig';
 import {
     ALWAYS_DAY_TIME,
     isDayNightCycleDisabled,
@@ -106,10 +106,7 @@ export type GameState = {
     setWinterMode: (winterMode: WinterMode) => void;
     appBaseUrl: string;
     spriteBaseUrl: string;
-    audio: {
-        ambient: ReturnType<typeof audioMixer>;
-        effects: ReturnType<typeof audioMixer>;
-    };
+    audio: GameAudio;
     freezeTime?: Date | null;
     setFreezeTime: (freezeTime: Date | null) => void;
     dayNightCycleDisabled: boolean;
@@ -202,18 +199,7 @@ export function createGameState({
         setWinterMode: (winterMode) => set({ winterMode }),
         appBaseUrl: appBaseUrl,
         spriteBaseUrl: spriteBaseUrl ?? appBaseUrl,
-        audio: {
-            ambient: audioMixer(
-                audioConfig().config.ambientVolume *
-                    audioConfig().config.masterVolume,
-                audioConfig().config.ambientIsMuted,
-            ),
-            effects: audioMixer(
-                audioConfig().config.effectsVolume *
-                    audioConfig().config.masterVolume,
-                audioConfig().config.effectsIsMuted,
-            ),
-        },
+        audio: createGameAudio(getAudioConfig()),
         freezeTime,
         setFreezeTime: (freezeTime) => {
             const referenceTime = freezeTime ?? new Date();
@@ -312,6 +298,36 @@ export function createGameState({
 
 export type GameStateStore = ReturnType<typeof createGameState>;
 export const GameStateContext = createContext<GameStateStore | null>(null);
+const pendingStoreDisposals = new WeakMap<
+    GameStateStore,
+    ReturnType<typeof setTimeout>
+>();
+
+export function useDisposeGameStateStore(store: GameStateStore | null) {
+    useEffect(() => {
+        if (!store) {
+            return;
+        }
+
+        const pendingDispose = pendingStoreDisposals.get(store);
+        if (pendingDispose) {
+            clearTimeout(pendingDispose);
+            pendingStoreDisposals.delete(store);
+        }
+
+        return () => {
+            const disposeTimeout = setTimeout(() => {
+                if (pendingStoreDisposals.get(store) !== disposeTimeout) {
+                    return;
+                }
+
+                pendingStoreDisposals.delete(store);
+                store.getState().audio.dispose();
+            }, 0);
+            pendingStoreDisposals.set(store, disposeTimeout);
+        };
+    }, [store]);
+}
 
 export function useGameState<T>(selector: (state: GameState) => T): T {
     const store = useContext(GameStateContext);

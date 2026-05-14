@@ -13,6 +13,7 @@ import {
     createGameState,
     GameStateContext,
     type GameStateStore,
+    useDisposeGameStateStore,
 } from '../useGameState';
 
 const position = new Vector3(0.5, 0, 0.5);
@@ -51,6 +52,7 @@ export function EntityViewer({
             winterMode: 'summer',
         });
     }
+    useDisposeGameStateStore(storeRef.current);
 
     const client = new QueryClient();
     const stack = {

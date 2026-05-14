@@ -18,6 +18,7 @@ import {
     createGameState,
     GameStateContext,
     type GameStateStore,
+    useDisposeGameStateStore,
 } from '../useGameState';
 
 export type PublicGardenBlock = Block;
@@ -62,6 +63,7 @@ export function PublicGardenViewer({
             winterMode: 'summer',
         });
     }
+    useDisposeGameStateStore(storeRef.current);
 
     const clientRef = useRef<QueryClient>(null);
     if (!clientRef.current) {
