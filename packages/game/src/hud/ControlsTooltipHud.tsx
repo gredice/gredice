@@ -1,8 +1,9 @@
 'use client';
 
-import { Check, Close, Info } from '@signalco/ui-icons';
+import { Check, Info } from '@signalco/ui-icons';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { useEffect, useState } from 'react';
+import { useIsEditMode } from '../hooks/useIsEditMode';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import type { DeviceType } from './controls-tooltip';
 import { ControlsVisualization } from './controls-tooltip';
@@ -54,6 +55,7 @@ function prefersReducedMotion() {
 }
 
 export function ControlsTooltipHud() {
+    const isEditMode = useIsEditMode();
     const [deviceType, setDeviceType] = useState<DeviceType>('desktop');
     const [open, setOpen] = useState(false);
     const [phase, setPhase] = useState(0.75);
@@ -110,7 +112,11 @@ export function ControlsTooltipHud() {
 
     return (
         <div className="pointer-events-auto relative p-2 sm:p-3">
-            <ControlsVisualization deviceType={deviceType} phase={phase} />
+            <ControlsVisualization
+                deviceType={deviceType}
+                phase={phase}
+                isEditMode={isEditMode}
+            />
             <ButtonGreen
                 title="Zatvori"
                 variant="soft"
