@@ -41,6 +41,7 @@ function withEnv(updates, callback) {
 function runAppCommandForTest(command, env = {}) {
     const binDir = mkdtempSync(resolve(tmpdir(), 'gredice-app-command-'));
     const nextPath = resolve(binDir, 'next');
+    const repoRoot = resolve(import.meta.dirname, '..');
     const childEnv = {
         ...process.env,
         ...env,
@@ -58,17 +59,23 @@ function runAppCommandForTest(command, env = {}) {
     );
     chmodSync(nextPath, 0o755);
 
-    const result = spawnSync(
-        process.execPath,
-        ['--experimental-strip-types', '../../scripts/run-app-command.mjs', command],
-        {
-            cwd: resolve(import.meta.dirname, '..', 'apps', 'app'),
-            env: childEnv,
-            encoding: 'utf8',
-        },
-    );
-    rmSync(binDir, { recursive: true, force: true });
-    return result;
+    try {
+        return spawnSync(
+            process.execPath,
+            [
+                '--experimental-strip-types',
+                resolve(import.meta.dirname, 'run-app-command.mjs'),
+                command,
+            ],
+            {
+                cwd: resolve(repoRoot, 'apps', 'app'),
+                env: childEnv,
+                encoding: 'utf8',
+            },
+        );
+    } finally {
+        rmSync(binDir, { recursive: true, force: true });
+    }
 }
 
 describe('app registry worktree ports', () => {
