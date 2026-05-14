@@ -1,19 +1,42 @@
 #!/usr/bin/env node
 
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
-import { dirname, resolve } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import { exit } from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { appRegistry, getAppDevPort, getWorktreeId } from './app-registry.ts';
+import {
+    appRegistry,
+    getAppDevPort,
+    getWorktreeId,
+    getWorktreeProxyHttpPort,
+    getWorktreeProxyHttpsPort,
+    getWorktreeSlug,
+} from './app-registry.ts';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(scriptDir, '..');
 const worktreeId = getWorktreeId();
-const worktreeSlug = worktreeId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'default';
+const worktreeSlug = getWorktreeSlug(worktreeId);
+const linkedGitWorktree = isLinkedGitWorktree();
 const containerName = `gredice-dev-caddy-${worktreeSlug}`;
 const dockerImage = process.env.GREDICE_DEV_CADDY_IMAGE ?? 'gredice-caddy-dev';
 const shouldSkipProxy = parseEnvFlag(process.env.SKIP_DEV_PROXY ?? '');
+const proxyPortsExplicitlyConfigured =
+    hasEnvValue(process.env.GREDICE_PROXY_HTTP_PORT) ||
+    hasEnvValue(process.env.GREDICE_PROXY_HTTPS_PORT);
+const defaultProxyPorts = {
+    http: parsePort(
+        process.env.GREDICE_PROXY_HTTP_PORT,
+        linkedGitWorktree ? getWorktreeProxyHttpPort() : 80,
+    ),
+    https: parsePort(
+        process.env.GREDICE_PROXY_HTTPS_PORT,
+        linkedGitWorktree ? getWorktreeProxyHttpsPort() : 443,
+    ),
+};
+let activeProxyPorts = defaultProxyPorts;
 const rawCliArgs = process.argv.slice(2);
 const includeAllApps = rawCliArgs.includes('--all-apps');
 const extraTurboArgs = rawCliArgs.filter((arg) => arg !== '--all-apps');
@@ -45,7 +68,7 @@ const caddyRootCertPath = resolve(
 );
 const caddyDomains = appRegistry.map((app) => app.localDomain);
 const requiredHostsLine = `127.0.0.1 ${caddyDomains.join(' ')}`;
-const caddyCertificateLabel = 'Caddy Local Authority';
+const caddyCertificateLabel = `Caddy Local Authority - ${worktreeSlug}`;
 const turboDevArgs = [
     ...excludedDefaultDevApps
         .filter((app) => !hasExplicitFilterForApp(app.name))
@@ -65,15 +88,59 @@ function hasExplicitFilterForApp(appName) {
     });
 }
 
+function hasEnvValue(value) {
+    return typeof value === 'string' && value.trim() !== '';
+}
+
+function parsePort(value, fallback) {
+    if (!hasEnvValue(value)) {
+        return fallback;
+    }
+
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isNaN(parsed) || parsed < 1 || parsed > 65_535) {
+        throw new Error(`Invalid port value: ${value}`);
+    }
+
+    return parsed;
+}
+
+function isLinkedGitWorktree() {
+    const result = spawnSync(
+        'git',
+        ['rev-parse', '--path-format=absolute', '--git-common-dir'],
+        {
+            cwd: repoRoot,
+            encoding: 'utf8',
+        },
+    );
+    if (result.status !== 0) {
+        return false;
+    }
+
+    const commonGitDir = result.stdout.trim();
+    if (basename(commonGitDir) !== '.git') {
+        return false;
+    }
+
+    return resolve(dirname(commonGitDir)) !== repoRoot;
+}
+
 function escapeRegExp(value) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function formatExternalProxyUrl(protocol, domain, port) {
+    const defaultPort = protocol === 'https' ? 443 : 80;
+    const portSegment = port === defaultPort ? '' : `:${port}`;
+    return `${protocol}://${domain}${portSegment}`;
 }
 
 function renderCaddyfile() {
     const appBlocks = appRegistry
         .map(
             (app) => `http://${app.localDomain} {
-    redir https://${app.localDomain}{uri}
+    redir ${formatExternalProxyUrl('https', app.localDomain, activeProxyPorts.https)}{uri}
 }
 
 https://${app.localDomain} {
@@ -295,8 +362,8 @@ async function warmUpCaddyCertificates() {
         '/dev/null',
         '--insecure',
         '--resolve',
-        `${domain}:443:127.0.0.1`,
-        `https://${domain}/`,
+        `${domain}:${activeProxyPorts.https}:127.0.0.1`,
+        `${formatExternalProxyUrl('https', domain, activeProxyPorts.https)}/`,
         '--max-time',
         '5',
     ];
@@ -411,27 +478,6 @@ async function trustCertificateOnMac(rootCertPath) {
           ).find((entry) => entry.exists)?.candidate ?? keychainCandidates[0])
         : null;
 
-    try {
-        if (keychain) {
-            await runCommand(
-                'security',
-                ['delete-certificate', '-c', caddyCertificateLabel, keychain],
-                {
-                    ignoreErrors: true,
-                },
-            );
-        }
-    } catch (error) {
-        if (error?.code !== 'ENOENT') {
-            return {
-                success: false,
-                message:
-                    error?.message ??
-                    'Failed to manage certificates with the macOS security tool.',
-            };
-        }
-    }
-
     if (keychain) {
         try {
             const addResult = await runCommand(
@@ -513,29 +559,6 @@ async function trustCertificateOnMac(rootCertPath) {
 }
 
 async function trustCertificateOnWindows(rootCertPath) {
-    try {
-        await runCommand(
-            'certutil',
-            ['-user', '-delstore', 'Root', caddyCertificateLabel],
-            { capture: true, ignoreErrors: true },
-        );
-    } catch (error) {
-        if (error?.code === 'ENOENT') {
-            return {
-                success: false,
-                message:
-                    'certutil is not available on this system. Import the certificate via certmgr.msc.',
-            };
-        }
-
-        return {
-            success: false,
-            message:
-                error?.message ??
-                'Failed to manage certificates with certutil.',
-        };
-    }
-
     const userStoreResult = await runCommand(
         'certutil',
         ['-user', '-addstore', 'Root', rootCertPath],
@@ -806,7 +829,33 @@ async function writeCaddyfile() {
     await writeFile(caddyfilePath, renderCaddyfile(), 'utf8');
 }
 
-async function startProxy() {
+function applyActiveProxyPorts(ports) {
+    activeProxyPorts = ports;
+    process.env.GREDICE_PROXY_HTTP_PORT = String(ports.http);
+    process.env.GREDICE_PROXY_HTTPS_PORT = String(ports.https);
+}
+
+function getFallbackProxyPorts() {
+    return {
+        http: getWorktreeProxyHttpPort(),
+        https: getWorktreeProxyHttpsPort(),
+    };
+}
+
+function areProxyPortsEqual(left, right) {
+    return left.http === right.http && left.https === right.https;
+}
+
+function isDockerPortBindingError(error) {
+    const message = `${error?.stderr ?? ''}\n${error?.message ?? ''}`;
+    return /port is already allocated|ports are not available|bind: address already in use|Bind for .* failed/i.test(
+        message,
+    );
+}
+
+async function startProxyOnPorts(ports) {
+    applyActiveProxyPorts(ports);
+
     // Ensure the Docker image exists before starting the container
     const imageReady = await ensureCaddyImage();
     if (!imageReady) {
@@ -829,9 +878,9 @@ async function startProxy() {
         '-d',
         '--add-host=host.docker.internal:host-gateway',
         '-p',
-        `${process.env.GREDICE_PROXY_HTTP_PORT ?? '80'}:80`,
+        `${ports.http}:80`,
         '-p',
-        `${process.env.GREDICE_PROXY_HTTPS_PORT ?? '443'}:443`,
+        `${ports.https}:443`,
     ];
 
     if (caddyDataDir) {
@@ -854,17 +903,38 @@ async function startProxy() {
     const { stdout } = await runCommand('docker', args, { capture: true });
     const containerId = stdout.trim();
 
-    const httpPort = process.env.GREDICE_PROXY_HTTP_PORT ?? '80';
-    const httpsPort = process.env.GREDICE_PROXY_HTTPS_PORT ?? '443';
     console.log(
-        `Caddy dev proxy started${containerId ? ` (${containerId.slice(0, 12)})` : ''} for worktree ${worktreeSlug} on ports ${httpPort}/${httpsPort}.`,
+        `Caddy dev proxy started${containerId ? ` (${containerId.slice(0, 12)})` : ''} for worktree ${worktreeSlug} on ports ${ports.http}/${ports.https}.`,
     );
     console.log('Local domain upstreams:');
     for (const app of appRegistry) {
-        console.log(`- ${app.localDomain} -> localhost:${getAppDevPort(app)}`);
+        console.log(
+            `- ${formatExternalProxyUrl('https', app.localDomain, ports.https)} -> localhost:${getAppDevPort(app)}`,
+        );
     }
     proxyStarted = true;
     return containerId;
+}
+
+async function startProxy() {
+    try {
+        return await startProxyOnPorts(defaultProxyPorts);
+    } catch (error) {
+        const fallbackPorts = getFallbackProxyPorts();
+        const canFallback =
+            !proxyPortsExplicitlyConfigured &&
+            !areProxyPortsEqual(defaultProxyPorts, fallbackPorts) &&
+            isDockerPortBindingError(error);
+
+        if (!canFallback) {
+            throw error;
+        }
+
+        console.warn(
+            `Proxy ports ${defaultProxyPorts.http}/${defaultProxyPorts.https} are already in use; retrying on worktree ports ${fallbackPorts.http}/${fallbackPorts.https}.`,
+        );
+        return await startProxyOnPorts(fallbackPorts);
+    }
 }
 
 async function stopProxy() {

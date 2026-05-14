@@ -105,6 +105,16 @@ The dev proxy writes its Caddyfile from the registry at startup.
 - `api`: <https://api.gredice.test>
 - `status`: <https://status.gredice.test> with `pnpm --filter=status dev`
 
+Dev server ports are worktree-aware. App ports use the registry base port plus
+the current worktree's deterministic offset, and linked Git worktrees use proxy
+ports derived from the same offset instead of binding `80` and `443`. This lets
+a feature/Codex worktree run the same app beside a normal local checkout. The
+dev script prints the effective URL for each app; when the HTTPS proxy port is
+not `443`, use the printed port-qualified form such as
+`https://vrt.gredice.test:8001`. Override the derived slot with
+`GREDICE_PORT_OFFSET`, or force proxy ports with `GREDICE_PROXY_HTTP_PORT` and
+`GREDICE_PROXY_HTTPS_PORT`.
+
 The dev script verifies the hosts entries for the local `gredice.test` domains and attempts to add missing entries automatically. If it cannot modify the hosts file, add this entry manually and rerun the command:
 
 ```text
@@ -115,13 +125,13 @@ Docker must be running for the proxy. Use `SKIP_DEV_PROXY=1 pnpm dev` only when 
 
 ### Development HTTPS certificates
 
-The local Caddy proxy terminates HTTPS. Its internal certificate authority is stored in `~/.gredice/dev-caddy` unless `GREDICE_DEV_CADDY_DATA_DIR` points somewhere else. The dev script attempts to trust the certificate authority automatically for the current OS.
+The local Caddy proxy terminates HTTPS. Its internal certificate authority is stored in `~/.gredice/dev-caddy/<worktree-slug>` unless `GREDICE_DEV_CADDY_DATA_DIR` points somewhere else. The dev script attempts to trust the certificate authority automatically for the current OS.
 
 If automatic trust fails, import `root.crt` manually from the Caddy data directory:
 
 - macOS: import `root.crt` into Keychain Access and mark it as trusted for SSL.
 - Windows: open `certmgr.msc`, then import `root.crt` into Trusted Root Certification Authorities.
-- Linux: run `trust anchor ~/.gredice/dev-caddy/caddy/pki/authorities/local/root.crt`, or use the distribution's certificate tooling.
+- Linux: run `trust anchor ~/.gredice/dev-caddy/<worktree-slug>/caddy/pki/authorities/local/root.crt`, or use the distribution's certificate tooling.
 
 After the certificate is trusted, browsers should accept the local `gredice.test` HTTPS domains.
 

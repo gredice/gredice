@@ -104,8 +104,9 @@ export const appRegistry: AppRegistryEntry[] = [
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
-
-
+const worktreePortStride = 10;
+const worktreeProxyHttpPortBase = 8000;
+const worktreeProxyHttpsPortBase = 8001;
 
 function hashString(value: string) {
     let hash = 0;
@@ -125,6 +126,16 @@ export function getWorktreeId() {
     return repoRoot.replaceAll('\\', '/');
 }
 
+export function getWorktreeSlug(worktreeId = getWorktreeId()) {
+    return (
+        worktreeId
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 40) || 'default'
+    );
+}
+
 export function getWorktreePortOffset() {
     const explicitOffset = process.env.GREDICE_PORT_OFFSET?.trim();
     if (!explicitOffset) {
@@ -141,7 +152,21 @@ export function getWorktreePortOffset() {
 }
 
 export function getAppDevPort(app: AppRegistryEntry) {
-    return app.devPort + getWorktreePortOffset() * 10;
+    return app.devPort + getWorktreePortOffset() * worktreePortStride;
+}
+
+export function getWorktreeProxyHttpPort() {
+    return (
+        worktreeProxyHttpPortBase +
+        getWorktreePortOffset() * worktreePortStride
+    );
+}
+
+export function getWorktreeProxyHttpsPort() {
+    return (
+        worktreeProxyHttpsPortBase +
+        getWorktreePortOffset() * worktreePortStride
+    );
 }
 
 export function getAppByName(appName: AppName) {
@@ -201,6 +226,18 @@ export function getAppStartPort(app: AppRegistryEntry) {
             process.env.GREDICE_TEST_PORT,
         app.startPort,
     );
+}
+
+export function getAppAllowedDevOrigins(app: AppRegistryEntry) {
+    const proxyHttpsPort = parsePortOverride(
+        process.env.GREDICE_PROXY_HTTPS_PORT,
+        443,
+    );
+    if (proxyHttpsPort === 443) {
+        return [app.localDomain];
+    }
+
+    return [app.localDomain, `${app.localDomain}:${proxyHttpsPort}`];
 }
 
 export function getPlaywrightBaseUrl(app: AppRegistryEntry) {

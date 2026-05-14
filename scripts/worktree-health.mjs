@@ -3,19 +3,62 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import os from 'node:os';
-import { resolve } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import net from 'node:net';
-import { appRegistry, getAppDevPort, getComponentTestPort } from './app-registry.ts';
+import {
+  appRegistry,
+  getAppDevPort,
+  getAppTestPort,
+  getComponentTestPort,
+  getWorktreeProxyHttpPort,
+  getWorktreeProxyHttpsPort,
+  getWorktreeSlug,
+} from './app-registry.ts';
 
 const mode = process.argv[2] === 'setup' ? 'setup' : 'doctor';
 const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)));
+const linkedGitWorktree = isLinkedGitWorktree();
+const worktreeSlug = getWorktreeSlug();
+const proxyHttpPort = parsePort(
+  process.env.GREDICE_PROXY_HTTP_PORT,
+  linkedGitWorktree ? getWorktreeProxyHttpPort() : 80,
+);
+const proxyHttpsPort = parsePort(
+  process.env.GREDICE_PROXY_HTTPS_PORT,
+  linkedGitWorktree ? getWorktreeProxyHttpsPort() : 443,
+);
 const requiredHostsLine = `127.0.0.1 ${appRegistry.map((a) => a.localDomain).join(' ')}`;
-const caddyDataDir = process.env.GREDICE_DEV_CADDY_DATA_DIR || resolve(os.homedir(), '.gredice', 'dev-caddy');
+const caddyDataDir = process.env.GREDICE_DEV_CADDY_DATA_DIR || resolve(
+  os.homedir(),
+  '.gredice',
+  'dev-caddy',
+  worktreeSlug,
+);
 const caddyCert = resolve(caddyDataDir, 'caddy', 'pki', 'authorities', 'local', 'root.crt');
 
 const checks = [];
 function addCheck(name, required, ok, detail, next) { checks.push({ name, required, ok, detail, next }); }
+function hasEnvValue(value) { return typeof value === 'string' && value.trim() !== ''; }
+function parsePort(value, fallback) {
+  if (!hasEnvValue(value)) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed < 1 || parsed > 65_535) {
+    throw new Error(`Invalid port value: ${value}`);
+  }
+  return parsed;
+}
+function isLinkedGitWorktree() {
+  const result = spawnSync(
+    'git',
+    ['rev-parse', '--path-format=absolute', '--git-common-dir'],
+    { cwd: rootDir, encoding: 'utf8' },
+  );
+  if (result.status !== 0) return false;
+  const commonGitDir = result.stdout.trim();
+  if (basename(commonGitDir) !== '.git') return false;
+  return resolve(dirname(commonGitDir)) !== rootDir;
+}
 function run(cmd, args, options = {}) {
   const shell = options.shell ?? process.platform === 'win32';
   const finalCmd = shell && /\s/.test(cmd) ? `"${cmd}"` : cmd;
@@ -181,13 +224,13 @@ function checkCertificate() {
 }
 
 function checkPorts() {
-  const ports = new Set([80, 443]);
+  const ports = new Set([proxyHttpPort, proxyHttpsPort]);
   for (const app of appRegistry) {
     ports.add(getAppDevPort(app));
     if (app.componentTestPort) {
       ports.add(getComponentTestPort(app));
     }
-    ports.add(app.testPort);
+    ports.add(getAppTestPort(app));
   }
 
   const probes = [...ports].map((port) => new Promise((resolveProbe) => {
