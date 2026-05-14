@@ -29,11 +29,14 @@ function parseScheduledSowingDate(additionalData: string | null | undefined) {
     }
 }
 
-function formatScheduledSowingDateLabel(date: Date, now: Date): string {
+function formatScheduledSowingDateLabel(
+    date: Date,
+    referenceDate: Date,
+): string {
     const day = date.getDate();
     const sameMonthAndYear =
-        date.getFullYear() === now.getFullYear() &&
-        date.getMonth() === now.getMonth();
+        date.getFullYear() === referenceDate.getFullYear() &&
+        date.getMonth() === referenceDate.getMonth();
 
     if (sameMonthAndYear) {
         return day.toString();
