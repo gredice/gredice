@@ -34,7 +34,7 @@ import { RaisedBedDiary } from './RaisedBedDiary';
 import { RaisedBedInfoTab } from './RaisedBedInfoTab';
 import { RaisedBedOperationsTab } from './RaisedBedOperationsTab';
 
-type RaisedBedTabValue = 'diary' | 'operations' | 'info' | 'more';
+type RaisedBedTab = 'diary' | 'operations' | 'info' | 'more';
 
 export function RaisedBedInfo({
     gardenId,
@@ -48,7 +48,7 @@ export function RaisedBedInfo({
     const updateRaisedBed = useUpdateRaisedBed(gardenId, raisedBed.id);
     const abandonRaisedBed = useAbandonRaisedBed(gardenId, raisedBed.id);
     const setView = useGameState((state) => state.setView);
-    const [activeTab, setActiveTab] = useState<RaisedBedTabValue>('diary');
+    const [activeTab, setActiveTab] = useState<RaisedBedTab>('diary');
     const [abandonError, setAbandonError] = useState<string | null>(null);
     const isAbandoned = raisedBed.status === RAISED_BED_STATUS_ABANDONED;
 
@@ -98,7 +98,7 @@ export function RaisedBedInfo({
             <Tabs
                 value={activeTab}
                 onValueChange={(value: string) =>
-                    setActiveTab(value as RaisedBedTabValue)
+                    setActiveTab(value as RaisedBedTab)
                 }
                 className="flex flex-col"
             >

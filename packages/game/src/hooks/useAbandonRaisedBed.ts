@@ -9,7 +9,7 @@ import { useGameState } from '../useGameState';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
 const mutationKey = ['gardens', 'current', 'raisedBedAbandon'];
-const ONE_MUTATION_IN_FLIGHT = 1;
+const SINGLE_MUTATION = 1;
 
 async function getAbandonErrorMessage(response: Response) {
     try {
@@ -46,6 +46,10 @@ export function useAbandonRaisedBed(gardenId: number, raisedBedId: number) {
             });
 
             if (response.status !== 201) {
+                console.warn('Failed to abandon raised bed response:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                });
                 throw new Error(await getAbandonErrorMessage(response));
             }
         },
@@ -80,10 +84,7 @@ export function useAbandonRaisedBed(gardenId: number, raisedBedId: number) {
             }
         },
         onSettled: async () => {
-            if (
-                queryClient.isMutating({ mutationKey }) ===
-                ONE_MUTATION_IN_FLIGHT
-            ) {
+            if (queryClient.isMutating({ mutationKey }) === SINGLE_MUTATION) {
                 await queryClient.invalidateQueries({
                     queryKey: gardenQueryKey,
                 });
