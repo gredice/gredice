@@ -235,13 +235,6 @@ export function AccountHud() {
         (notification) => !notification.readAt,
     );
 
-    console.log('AccountHud render', {
-        currentUser,
-        currentGarden,
-        gardens,
-        notifications,
-    });
-
     return (
         <HudCard open position="floating" className="p-0.5 md:px-2 static">
             <Row spacing={1}>
