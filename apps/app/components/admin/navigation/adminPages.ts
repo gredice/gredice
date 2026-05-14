@@ -50,6 +50,10 @@ export const adminPages = {
     Sensors: { href: KnownPages.Sensors, label: 'Senzori' },
     Cache: { href: KnownPages.Cache, label: 'Cache' },
     AiAnalytics: { href: KnownPages.AiAnalytics, label: 'AI analitika' },
+    SocialPublishing: {
+        href: KnownPages.SocialPublishing,
+        label: 'Društvene objave',
+    },
 } as const;
 
 export const adminBreadcrumbPages = [
@@ -84,4 +88,5 @@ export const adminBreadcrumbPages = [
     adminPages.Sensors,
     adminPages.Cache,
     adminPages.AiAnalytics,
+    adminPages.SocialPublishing,
 ] as const;
