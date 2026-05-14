@@ -271,6 +271,9 @@ function checkPorts() {
       canUseFallbackProxyPorts() &&
       blockedDefaultProxyPorts.length > 0 &&
       blockedFallbackProxyPorts.length === 0;
+    const allBlockedProxyPorts = [
+      ...new Set([...blockedDefaultProxyPorts, ...blockedFallbackProxyPorts]),
+    ];
     const ok =
       blockedAppPorts.length === 0 &&
       (blockedDefaultProxyPorts.length === 0 || canUseFallback);
@@ -287,7 +290,7 @@ function checkPorts() {
         return `Default proxy ports ${blockedDefaultProxyPorts.join(', ')} are in use; fallback proxy ports ${[...fallbackProxyPortSet].join(', ')} appear free.`;
       }
 
-      return `Ports in use: ${[...new Set([...blockedDefaultProxyPorts, ...blockedFallbackProxyPorts])].join(', ')}.`;
+      return `Ports in use: ${allBlockedProxyPorts.join(', ')}.`;
     })();
     addCheck('Local ports available', true, ok, detail, 'Stop conflicting processes before running `pnpm dev` or tests.');
   });
