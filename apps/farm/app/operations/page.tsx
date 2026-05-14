@@ -20,11 +20,10 @@ async function OperationsHandbookContent() {
             <div className="space-y-2">
                 <HomeButton />
                 <Typography level="h4" component="h1" semiBold>
-                    Priručnik operacija
+                    Priručnik radnji
                 </Typography>
                 <Typography className="text-muted-foreground">
-                    Pregled svih operacija i ključnih detalja za brži rad na
-                    farmi.
+                    Pregled svih radnji i ključnih detalja za brži rad na farmi.
                 </Typography>
             </div>
             {operationsData.length > 0 ? (
@@ -32,7 +31,7 @@ async function OperationsHandbookContent() {
             ) : (
                 <div className="rounded-lg border bg-white p-6">
                     <Typography className="text-muted-foreground">
-                        Trenutno nema dostupnih operacija.
+                        Trenutno nema dostupnih radnji.
                     </Typography>
                 </div>
             )}
