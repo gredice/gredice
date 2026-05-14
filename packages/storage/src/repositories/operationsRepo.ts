@@ -499,17 +499,22 @@ async function getAllOperationsUncached(filter?: {
         );
     } else {
         // Otherwise, use the original timestamp-based filtering
-        const operationsList = await storage().query.operations.findMany({
-            where: and(
-                eq(operations.isDeleted, false),
-                getOperationStatusWhere(filter?.status),
-                filter?.from
-                    ? gte(operations.timestamp, filter.from)
-                    : undefined,
-                filter?.to ? lte(operations.timestamp, filter.to) : undefined,
-            ),
-            orderBy: desc(operations.timestamp),
-        });
+        const operationsList = await storage()
+            .select()
+            .from(operations)
+            .where(
+                and(
+                    eq(operations.isDeleted, false),
+                    getOperationStatusWhere(filter?.status),
+                    filter?.from
+                        ? gte(operations.timestamp, filter.from)
+                        : undefined,
+                    filter?.to
+                        ? lte(operations.timestamp, filter.to)
+                        : undefined,
+                ),
+            )
+            .orderBy(desc(operations.timestamp));
         operationsWithAggregates =
             await fillOperationAggregates(operationsList);
     }
