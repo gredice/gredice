@@ -27,7 +27,7 @@ import type { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useUpdateRaisedBed } from '../../hooks/useUpdateRaisedBed';
 import {
     RAISED_BED_ABANDON_FAILED_MESSAGE,
-    RAISED_BED_ABANDONED_STATUS,
+    RAISED_BED_STATUS_ABANDONED,
 } from '../../raisedBedConstants';
 import { useGameState } from '../../useGameState';
 import { RaisedBedDiary } from './RaisedBedDiary';
@@ -50,7 +50,7 @@ export function RaisedBedInfo({
     const setView = useGameState((state) => state.setView);
     const [activeTab, setActiveTab] = useState<RaisedBedTabValue>('diary');
     const [abandonError, setAbandonError] = useState<string | null>(null);
-    const isAbandoned = raisedBed.status === RAISED_BED_ABANDONED_STATUS;
+    const isAbandoned = raisedBed.status === RAISED_BED_STATUS_ABANDONED;
 
     function handleNameChange(newName: string) {
         updateRaisedBed.mutate({ name: newName });
@@ -160,7 +160,7 @@ export function RaisedBedInfo({
                         ) : (
                             <Stack
                                 spacing={1.5}
-                                className="rounded-xl border border-red-200 bg-red-50/90 p-4 shadow-sm dark:border-red-900/60 dark:bg-red-950/40"
+                                className="rounded-xl border border-red-200 bg-red-50/90 p-4 shadow-sm dark:border-red-900/60 dark:bg-red-950/90"
                             >
                                 <Row spacing={2} alignItems="center">
                                     <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-700 ring-4 ring-red-200/70 dark:bg-red-900/70 dark:text-red-100 dark:ring-red-800/70">

@@ -3,13 +3,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import {
     RAISED_BED_ABANDON_FAILED_MESSAGE,
-    RAISED_BED_ABANDONED_STATUS,
+    RAISED_BED_STATUS_ABANDONED,
 } from '../raisedBedConstants';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
 const mutationKey = ['gardens', 'current', 'raisedBedAbandon'];
-const LAST_MUTATION_IN_FLIGHT = 1;
+const ONE_MUTATION_IN_FLIGHT = 1;
 
 export function useAbandonRaisedBed(gardenId: number, raisedBedId: number) {
     const queryClient = useQueryClient();
@@ -42,7 +42,7 @@ export function useAbandonRaisedBed(gardenId: number, raisedBedId: number) {
                 bed.id === raisedBedId
                     ? {
                           ...bed,
-                          status: RAISED_BED_ABANDONED_STATUS,
+                          status: RAISED_BED_STATUS_ABANDONED,
                       }
                     : bed,
             );
@@ -66,7 +66,7 @@ export function useAbandonRaisedBed(gardenId: number, raisedBedId: number) {
         onSettled: async () => {
             if (
                 queryClient.isMutating({ mutationKey }) ===
-                LAST_MUTATION_IN_FLIGHT
+                ONE_MUTATION_IN_FLIGHT
             ) {
                 await queryClient.invalidateQueries({
                     queryKey: gardenQueryKey,
