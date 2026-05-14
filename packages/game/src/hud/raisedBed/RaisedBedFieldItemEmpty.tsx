@@ -1,6 +1,6 @@
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { Calendar, ShoppingCart } from '@signalco/ui-icons';
+import { ShoppingCart } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';
@@ -9,11 +9,12 @@ import { PlantPicker } from './RaisedBedPlantPicker';
 
 function formatScheduledSowingDateLabel(date: Date, now: Date): string {
     const day = date.getDate();
-    const sameMonth =
+    const sameMonthAndYear =
         date.getFullYear() === now.getFullYear() &&
         date.getMonth() === now.getMonth();
+    const shouldIncludeMonth = !sameMonthAndYear && day >= now.getDate();
 
-    if (sameMonth) {
+    if (!shouldIncludeMonth) {
         return day.toString();
     }
 
@@ -100,13 +101,11 @@ export function RaisedBedFieldItemEmpty({
                             </div>
                             {scheduledDateLabel && (
                                 <div className="absolute left-0.5 bottom-0.5">
-                                    <div className="rounded-full border-2 px-1 py-0.5 bg-stone-200 border-stone-400 text-stone-800 shadow-lg min-w-8">
-                                        <div className="flex items-center gap-0.5">
-                                            <Calendar className="size-3" />
-                                            <span className="text-[10px] font-semibold leading-none">
-                                                {scheduledDateLabel}
-                                            </span>
-                                        </div>
+                                    <div className="relative size-8 rounded-full border-2 bg-stone-200 border-stone-400 text-stone-800 shadow-lg overflow-hidden">
+                                        <div className="absolute inset-x-0 top-0 h-2 bg-stone-300" />
+                                        <span className="absolute inset-0 pt-1.5 flex items-center justify-center text-[9px] font-semibold leading-none">
+                                            {scheduledDateLabel}
+                                        </span>
                                     </div>
                                 </div>
                             )}
