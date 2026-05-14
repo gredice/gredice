@@ -238,18 +238,18 @@ function checkCertificate() {
 }
 
 function checkPorts() {
-  const appPorts = new Set();
+  const requiredAppPorts = new Set();
   for (const app of appRegistry) {
-    appPorts.add(getAppDevPort(app));
+    requiredAppPorts.add(getAppDevPort(app));
     if (app.componentTestPort) {
-      appPorts.add(getComponentTestPort(app));
+      requiredAppPorts.add(getComponentTestPort(app));
     }
-    appPorts.add(getAppTestPort(app));
+    requiredAppPorts.add(getAppTestPort(app));
   }
 
-  const primaryProxyPorts = new Set([defaultProxyPorts.http, defaultProxyPorts.https]);
+  const primaryProxyPortSet = new Set([defaultProxyPorts.http, defaultProxyPorts.https]);
   const fallbackProxyPortSet = new Set([fallbackProxyPorts.http, fallbackProxyPorts.https]);
-  const ports = new Set([...appPorts, ...primaryProxyPorts]);
+  const ports = new Set([...requiredAppPorts, ...primaryProxyPortSet]);
   if (canFallbackProxyPorts()) {
     for (const port of fallbackProxyPortSet) {
       ports.add(port);
@@ -265,8 +265,8 @@ function checkPorts() {
 
   return Promise.all(probes).then((blockedPorts) => {
     const blocked = new Set(blockedPorts.filter(Boolean));
-    const blockedAppPorts = [...appPorts].filter((port) => blocked.has(port));
-    const blockedPrimaryProxyPorts = [...primaryProxyPorts].filter((port) => blocked.has(port));
+    const blockedAppPorts = [...requiredAppPorts].filter((port) => blocked.has(port));
+    const blockedPrimaryProxyPorts = [...primaryProxyPortSet].filter((port) => blocked.has(port));
     const blockedFallbackProxyPorts = [...fallbackProxyPortSet].filter((port) => blocked.has(port));
     const canUseFallback =
       canFallbackProxyPorts() &&
