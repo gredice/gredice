@@ -10,7 +10,6 @@ import { ControlsVisualization } from './controls-tooltip';
 const STORAGE_KEY = 'game-controls-tooltip-v1';
 const TOOLTIP_VERSION = 2;
 const REMINDER_AFTER_MS = 1000 * 60 * 60 * 24 * 30;
-const TWO_PI = Math.PI * 2;
 
 type TooltipState = { dismissedAt: number; seenVersion: number };
 
@@ -78,7 +77,7 @@ export function ControlsTooltipHud() {
         if (!open || prefersReducedMotion()) return;
 
         const interval = window.setInterval(() => {
-            setPhase((current) => (current + 0.12) % TWO_PI);
+            setPhase((current) => current + 0.12);
         }, 50);
 
         return () => window.clearInterval(interval);
@@ -117,7 +116,7 @@ export function ControlsTooltipHud() {
                 variant="soft"
                 size="sm"
                 onClick={dismiss}
-                className="absolute top-3 right-3 z-10 shrink-0 size-8 min-h-0 p-0 rounded-full"
+                className="absolute top-4 right-4 z-10 shrink-0 size-7 min-h-0 p-0 rounded-full"
             >
                 <Check className="size-4 shrink-0" />
             </ButtonGreen>
