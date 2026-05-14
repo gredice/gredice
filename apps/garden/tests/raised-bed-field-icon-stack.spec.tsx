@@ -103,6 +103,47 @@ test('field icon stack keeps newest indicators on top and prepares spread offset
     await expect(stack).toHaveAttribute('data-touch-expanded', 'false');
 });
 
+test('field icon stack collapses after a multi-icon child is activated', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <div className="relative size-20">
+            <RaisedBedFieldIconStack>
+                <button type="button" data-testid="older-plant">
+                    1
+                </button>
+                <button type="button" data-testid="cart">
+                    cart
+                </button>
+            </RaisedBedFieldIconStack>
+        </div>,
+    );
+
+    const stack = page.locator('[data-field-icon-stack]');
+    const cart = page.getByTestId('cart');
+
+    // First touch expands the stack and swallows the activating click.
+    await cart.dispatchEvent('pointerdown', {
+        bubbles: true,
+        cancelable: true,
+        pointerType: 'touch',
+    });
+    await cart.click({ force: true });
+    await expect(stack).toHaveAttribute('data-touch-expanded', 'true');
+
+    // Second touch activates the child; the stack must collapse so that the
+    // document-level pointerdown listener detaches before any opened drawer
+    // tries to receive swipe-to-dismiss/backdrop touches.
+    await cart.dispatchEvent('pointerdown', {
+        bubbles: true,
+        cancelable: true,
+        pointerType: 'touch',
+    });
+    await cart.click({ force: true });
+    await expect(stack).toHaveAttribute('data-touch-expanded', 'false');
+});
+
 test('field icon stack activates a single indicator on first touch', async ({
     mount,
     page,
