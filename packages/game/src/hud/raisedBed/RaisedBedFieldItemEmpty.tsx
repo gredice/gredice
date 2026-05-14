@@ -34,9 +34,8 @@ function formatScheduledSowingDateLabel(date: Date, now: Date): string {
     const sameMonthAndYear =
         date.getFullYear() === now.getFullYear() &&
         date.getMonth() === now.getMonth();
-    const shouldIncludeMonth = !sameMonthAndYear;
 
-    if (!shouldIncludeMonth) {
+    if (sameMonthAndYear) {
         return day.toString();
     }
 
