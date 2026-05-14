@@ -24,7 +24,7 @@ export const groundDecorationOptions: Record<
     GroundDecorationOptions
 > = {
     grass: {
-        angleLiftPerUnit: 0.3,
+        angleLiftPerUnit: 0.4,
         baseY: 0.16,
         clusterChance: 0.42,
         heightRange: [0.09, 0.14],
@@ -35,7 +35,7 @@ export const groundDecorationOptions: Record<
         spawnChance: 1,
     },
     sand: {
-        angleLiftPerUnit: 0.3,
+        angleLiftPerUnit: 0.4,
         baseY: 0.2,
         clusterChance: 0.1,
         heightRange: [0.09, 0.25],
