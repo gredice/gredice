@@ -5,7 +5,7 @@ import { Modal } from '@signalco/ui-primitives/Modal';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { useEffect } from 'react';
+import { Fragment, useEffect } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
 import { AccountUsersTab } from './components/AccountUsersTab';
@@ -147,9 +147,8 @@ export function OverviewModal() {
                     />
                     <List className="md:pr-6 hidden md:flex">
                         {navGroups.map((group) => (
-                            <>
+                            <Fragment key={group.label}>
                                 <Typography
-                                    key={`group-${group.label}`}
                                     level="body3"
                                     uppercase
                                     bold
@@ -171,7 +170,7 @@ export function OverviewModal() {
                                         }
                                     />
                                 ))}
-                            </>
+                            </Fragment>
                         ))}
                     </List>
                 </Stack>

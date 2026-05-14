@@ -1,8 +1,13 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useEffect } from 'react';
 import { getTimes } from 'suncalc';
 import type { OrbitControls } from 'three-stdlib';
 import { createStore, useStore } from 'zustand';
 import { createGameAudio, type GameAudio } from './audio/audioMixer';
+import {
+    type GameQualitySetting,
+    getGameQualitySetting,
+    setGameQualitySetting as persistGameQualitySetting,
+} from './scene/gameQuality';
 import type { Block } from './types/Block';
 import { getAudioConfig } from './utils/audioConfig';
 import {
@@ -106,6 +111,8 @@ export type GameState = {
     setFreezeTime: (freezeTime: Date | null) => void;
     dayNightCycleDisabled: boolean;
     setDayNightCycleDisabled: (disabled: boolean) => void;
+    gameQualitySetting: GameQualitySetting;
+    setGameQualitySetting: (setting: GameQualitySetting) => void;
     weatherVisualizationDisabled: boolean;
     setWeatherVisualizationDisabled: (disabled: boolean) => void;
     timeOfDay: number;
@@ -181,6 +188,7 @@ export function createGameState({
     winterMode?: WinterMode;
 }) {
     const dayNightCycleDisabled = isDayNightCycleDisabled();
+    const gameQualitySetting = getGameQualitySetting();
     const weatherVisualizationDisabled = isWeatherVisualizationDisabled();
     const now = freezeTime ?? new Date();
     const timeOfDay = resolveTimeOfDay(now, dayNightCycleDisabled);
@@ -219,6 +227,11 @@ export function createGameState({
                     disabled,
                 ),
             });
+        },
+        gameQualitySetting,
+        setGameQualitySetting: (setting) => {
+            persistGameQualitySetting(setting);
+            set({ gameQualitySetting: setting });
         },
         weatherVisualizationDisabled,
         setWeatherVisualizationDisabled: (disabled) => {
@@ -285,6 +298,36 @@ export function createGameState({
 
 export type GameStateStore = ReturnType<typeof createGameState>;
 export const GameStateContext = createContext<GameStateStore | null>(null);
+const pendingStoreDisposals = new WeakMap<
+    GameStateStore,
+    ReturnType<typeof setTimeout>
+>();
+
+export function useDisposeGameStateStore(store: GameStateStore | null) {
+    useEffect(() => {
+        if (!store) {
+            return;
+        }
+
+        const pendingDispose = pendingStoreDisposals.get(store);
+        if (pendingDispose) {
+            clearTimeout(pendingDispose);
+            pendingStoreDisposals.delete(store);
+        }
+
+        return () => {
+            const disposeTimeout = setTimeout(() => {
+                if (pendingStoreDisposals.get(store) !== disposeTimeout) {
+                    return;
+                }
+
+                pendingStoreDisposals.delete(store);
+                store.getState().audio.dispose();
+            }, 0);
+            pendingStoreDisposals.set(store, disposeTimeout);
+        };
+    }, [store]);
+}
 
 export function useGameState<T>(selector: (state: GameState) => T): T {
     const store = useContext(GameStateContext);

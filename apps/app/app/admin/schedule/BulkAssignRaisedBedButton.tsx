@@ -40,6 +40,7 @@ interface BulkAssignRaisedBedButtonProps {
     physicalId: string;
     fields: FieldAssignmentTarget[];
     operations: OperationAssignmentTarget[];
+    onSubmit?: (assignedUserIds: string[]) => unknown | Promise<unknown>;
 }
 
 function getUserLabel(user: AssignableUser) {
@@ -52,6 +53,7 @@ export function BulkAssignRaisedBedButton({
     physicalId,
     fields,
     operations,
+    onSubmit,
 }: BulkAssignRaisedBedButtonProps) {
     const [open, setOpen] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState(unassignedValue);
@@ -114,30 +116,34 @@ export function BulkAssignRaisedBedButton({
             return;
         }
 
-        setIsSubmitting(true);
         setErrorMessage(null);
         const assignedUserIds =
             selectedUserId === unassignedValue ? [] : [selectedUserId];
 
-        try {
-            await Promise.all([
-                ...fields.map((field) =>
-                    assignRaisedBedFieldUserAction(field.id, assignedUserIds),
-                ),
-                ...operations.map((operation) =>
-                    assignOperationUserAction(operation.id, assignedUserIds),
-                ),
-            ]);
+        if (onSubmit) {
+            await onSubmit(assignedUserIds);
             setOpen(false);
-        } catch (error) {
-            console.error(
-                'Failed to assign users for all raised bed items:',
-                error,
-            );
-            setErrorMessage('Greška pri spremanju skupne dodjele korisnika.');
-        } finally {
-            setIsSubmitting(false);
+            return;
         }
+
+        setIsSubmitting(true);
+        setOpen(false);
+        void Promise.all([
+            ...fields.map((field) =>
+                assignRaisedBedFieldUserAction(field.id, assignedUserIds),
+            ),
+            ...operations.map((operation) =>
+                assignOperationUserAction(operation.id, assignedUserIds),
+            ),
+        ])
+            .catch((error: unknown) => {
+                console.error(
+                    'Failed to assign users for all raised bed items:',
+                    error,
+                );
+                alert('Skupna dodjela korisnika nije uspjela.');
+            })
+            .finally(() => setIsSubmitting(false));
     }
 
     return (
@@ -172,7 +178,6 @@ export function BulkAssignRaisedBedButton({
                         value: unassignedValue,
                         label: 'Bez dodjele',
                     }}
-                    resetKey={open}
                 />
 
                 {errorMessage && (

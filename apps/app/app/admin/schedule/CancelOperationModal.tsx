@@ -13,18 +13,20 @@ interface CancelOperationModalProps {
     };
     operationLabel: string;
     trigger: React.ReactElement;
+    onSubmit?: (formData: FormData) => unknown | Promise<unknown>;
 }
 
 export function CancelOperationModal({
     operation,
     operationLabel,
     trigger,
+    onSubmit,
 }: CancelOperationModalProps) {
     return (
         <CancelRequestModal
             label={operationLabel}
             trigger={trigger}
-            onSubmit={cancelOperationAction}
+            onSubmit={onSubmit ?? cancelOperationAction}
             hiddenFields={
                 <input type="hidden" name="operationId" value={operation.id} />
             }

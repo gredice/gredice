@@ -1,22 +1,28 @@
-export { ArrowKey } from './ArrowKey';
 export type { ArrowKeyProps } from './ArrowKey';
-export { ControlsVisualization } from './ControlsVisualization';
+export { ArrowKey } from './ArrowKey';
 export type { ControlsVisualizationProps } from './ControlsVisualization';
-export { DesktopMoveControls } from './DesktopMoveControls';
+export { ControlsVisualization } from './ControlsVisualization';
 export type { DesktopMoveControlsProps } from './DesktopMoveControls';
-export { MouseIcon } from './MouseIcon';
+export { DesktopMoveControls } from './DesktopMoveControls';
 export type { MouseIconProps } from './MouseIcon';
-export { PinchGesture } from './PinchGesture';
+export { MouseIcon } from './MouseIcon';
 export type { PinchGestureProps } from './PinchGesture';
-export { RotateButton } from './RotateButton';
+export { PinchGesture } from './PinchGesture';
 export type { RotateButtonProps } from './RotateButton';
-export { RotateControls } from './RotateControls';
+export { RotateButton } from './RotateButton';
 export type { RotateControlsProps } from './RotateControls';
-export { ScrollWheelIndicator } from './ScrollWheelIndicator';
+export { RotateControls } from './RotateControls';
 export type { ScrollWheelIndicatorProps } from './ScrollWheelIndicator';
-export { TouchIndicator } from './TouchIndicator';
+export { ScrollWheelIndicator } from './ScrollWheelIndicator';
 export type { TouchIndicatorProps } from './TouchIndicator';
-export type { CubeOptions, CubeVertex, DeviceType, PanKey, RotateDirection } from './types';
-export { VisualizationSection } from './VisualizationSection';
+export { TouchIndicator } from './TouchIndicator';
+export type {
+    CubeOptions,
+    CubeVertex,
+    DeviceType,
+    PanKey,
+    RotateDirection,
+} from './types';
 export type { VisualizationSectionProps } from './VisualizationSection';
+export { VisualizationSection } from './VisualizationSection';
 export { WireframeCube } from './WireframeCube';

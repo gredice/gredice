@@ -7,19 +7,22 @@ interface AcceptOperationModalProps {
     operationId: number;
     label: string;
     disabled?: boolean;
+    onConfirm?: () => unknown | Promise<unknown>;
 }
 
 export function AcceptOperationModal({
     operationId,
     label,
     disabled = false,
+    onConfirm,
 }: AcceptOperationModalProps) {
     const handleConfirm = async () => {
-        try {
-            await acceptOperationAction(operationId);
-        } catch (error) {
-            console.error('Error accepting operation:', error);
+        if (onConfirm) {
+            await onConfirm();
+            return;
         }
+
+        await acceptOperationAction(operationId);
     };
 
     return (

@@ -14,12 +14,14 @@ interface VerifyPlantingModalProps {
     raisedBedId: number;
     positionIndex: number;
     label: string;
+    onConfirm?: () => unknown | Promise<unknown>;
 }
 
 export function VerifyPlantingModal({
     raisedBedId,
     positionIndex,
     label,
+    onConfirm,
 }: VerifyPlantingModalProps) {
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,10 +29,15 @@ export function VerifyPlantingModal({
     const handleConfirm = async () => {
         try {
             setIsSubmitting(true);
-            await verifyRaisedBedPlantingAction(raisedBedId, positionIndex);
+            if (onConfirm) {
+                await onConfirm();
+            } else {
+                await verifyRaisedBedPlantingAction(raisedBedId, positionIndex);
+            }
             setOpen(false);
         } catch (error) {
             console.error('Error verifying planting:', error);
+            alert('Verifikacija sijanja nije uspjela. Pokušajte ponovno.');
         } finally {
             setIsSubmitting(false);
         }

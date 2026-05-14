@@ -1,6 +1,9 @@
 import { MouseIcon } from './MouseIcon';
 
-export type ScrollWheelIndicatorProps = { isZoomingIn: boolean; progress: number };
+export type ScrollWheelIndicatorProps = {
+    isZoomingIn: boolean;
+    progress: number;
+};
 
 export function ScrollWheelIndicator({
     isZoomingIn,

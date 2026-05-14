@@ -1,6 +1,6 @@
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { Calendar, ShoppingCart } from '@signalco/ui-icons';
+import { ShoppingCart } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';
@@ -11,7 +11,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
 }
 
-function parseScheduledDate(additionalData: string | null | undefined) {
+function parseScheduledSowingDate(additionalData: string | null | undefined) {
     if (!additionalData) {
         return null;
     }
@@ -23,24 +23,24 @@ function parseScheduledDate(additionalData: string | null | undefined) {
         }
 
         const date = new Date(parsed.scheduledDate);
-        return Number.isNaN(date.getTime()) ? null : date;
+        return Number.isNaN(date.valueOf()) ? null : date;
     } catch {
         return null;
     }
 }
 
-function formatSowingDateLabel(date: Date | null, now = new Date()) {
-    if (!date) {
-        return null;
-    }
-
+function formatScheduledSowingDateLabel(date: Date, now: Date): string {
     const day = date.getDate();
-    const isCurrentMonth =
+    const sameMonthAndYear =
         date.getFullYear() === now.getFullYear() &&
         date.getMonth() === now.getMonth();
-    const shouldShowMonth = !isCurrentMonth && day >= now.getDate();
+    const shouldIncludeMonth = !sameMonthAndYear;
 
-    return shouldShowMonth ? `${day}.${date.getMonth() + 1}.` : `${day}`;
+    if (!shouldIncludeMonth) {
+        return day.toString();
+    }
+
+    return `${day}.${date.getMonth() + 1}.`;
 }
 
 export function RaisedBedFieldItemEmpty({
@@ -69,12 +69,15 @@ export function RaisedBedFieldItemEmpty({
 
     const cartPlantSort = cartPlantItem?.entityData;
     const cartPlantId = cartPlantSort?.information?.plant?.id;
-    const scheduledDate = parseScheduledDate(cartPlantItem?.additionalData);
-    const sowingDateLabel = formatSowingDateLabel(scheduledDate);
-    const sowingDateIncludesMonth = sowingDateLabel?.includes('.') ?? false;
+    const scheduledDate = parseScheduledSowingDate(
+        cartPlantItem?.additionalData,
+    );
     const cartPlantOptions = {
         scheduledDate,
     };
+    const scheduledDateLabel = scheduledDate
+        ? formatScheduledSowingDateLabel(scheduledDate, new Date())
+        : null;
 
     const isLoading = isCartPending || isGardenPending;
     if (isLoading) {
@@ -113,19 +116,12 @@ export function RaisedBedFieldItemEmpty({
                                     <ShoppingCart className="size-4 stroke-white" />
                                 </div>
                             </div>
-                            {sowingDateLabel && (
-                                <div className="absolute bottom-0.5 left-0.5">
-                                    <div className="relative flex size-8 items-center justify-center rounded-full border-2 border-white bg-stone-200 text-stone-700 shadow-lg">
-                                        <Calendar className="size-6 stroke-stone-600" />
-                                        <span
-                                            className={cx(
-                                                'absolute inset-0 flex items-center justify-center pt-1 font-bold leading-none tabular-nums text-stone-800',
-                                                sowingDateIncludesMonth
-                                                    ? 'text-[7px]'
-                                                    : 'text-[10px]',
-                                            )}
-                                        >
-                                            {sowingDateLabel}
+                            {scheduledDateLabel && (
+                                <div className="absolute left-0.5 bottom-0.5">
+                                    <div className="relative size-6 rounded-lg border-2 bg-stone-200 border-stone-400 text-stone-800 shadow-lg overflow-hidden">
+                                        <div className="absolute inset-x-0 top-0 h-1.5 bg-stone-400" />
+                                        <span className="absolute inset-0 pt-1.5 flex items-center justify-center text-[9px] font-semibold leading-none">
+                                            {scheduledDateLabel}
                                         </span>
                                     </div>
                                 </div>

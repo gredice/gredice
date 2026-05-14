@@ -161,7 +161,7 @@ async function FarmerDashboard() {
                                 startDecorator={<BookA className="size-4" />}
                                 href="/operations"
                             >
-                                Priručnik operacija
+                                Priručnik radnji
                             </Button>
                             <Button
                                 variant="soft"

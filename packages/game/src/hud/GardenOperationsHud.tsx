@@ -414,15 +414,25 @@ function HistoryModal({
     );
 }
 
+function getLatestOperationChangeTime(operation: GardenOperationItem) {
+    let latest = new Date(operation.createdAt).getTime();
+
+    for (const entry of operation.statusHistory) {
+        const changedAt = new Date(entry.changedAt).getTime();
+        if (Number.isFinite(changedAt) && changedAt > latest) {
+            latest = changedAt;
+        }
+    }
+
+    return latest;
+}
+
 function sortNewestFirst(operations: GardenOperationItem[]) {
     return [...operations].sort((a, b) => {
-        const aDate = new Date(
-            a.canceledAt ?? a.verifiedAt ?? a.completedAt ?? a.createdAt,
-        ).getTime();
-        const bDate = new Date(
-            b.canceledAt ?? b.verifiedAt ?? b.completedAt ?? b.createdAt,
-        ).getTime();
-        return bDate - aDate;
+        const dateDiff =
+            getLatestOperationChangeTime(b) - getLatestOperationChangeTime(a);
+
+        return dateDiff !== 0 ? dateDiff : b.id - a.id;
     });
 }
 

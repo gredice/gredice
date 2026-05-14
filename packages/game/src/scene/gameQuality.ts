@@ -1,8 +1,11 @@
 'use client';
 
 export type GameQualityTier = 'low' | 'medium' | 'high';
+export type GameQualitySetting = GameQualityTier | 'auto';
+export type GameCloudShadowMode = 'hard' | 'soft';
 
 export type GameQualityProfile = {
+    cloudShadowMode: GameCloudShadowMode;
     dpr: number;
     groundDecorationDensity: number;
     rainParticleMultiplier: number;
@@ -15,6 +18,7 @@ export type GameQualityProfile = {
 
 export const gameQualityProfiles = {
     low: {
+        cloudShadowMode: 'hard',
         dpr: 1,
         groundDecorationDensity: 0,
         rainParticleMultiplier: 0.35,
@@ -25,6 +29,7 @@ export const gameQualityProfiles = {
         tier: 'low',
     },
     medium: {
+        cloudShadowMode: 'hard',
         dpr: 1.5,
         groundDecorationDensity: 0.5,
         rainParticleMultiplier: 0.7,
@@ -35,6 +40,7 @@ export const gameQualityProfiles = {
         tier: 'medium',
     },
     high: {
+        cloudShadowMode: 'soft',
         dpr: 2,
         groundDecorationDensity: 1,
         rainParticleMultiplier: 1,
@@ -46,10 +52,61 @@ export const gameQualityProfiles = {
     },
 } satisfies Record<GameQualityTier, GameQualityProfile>;
 
+const GAME_QUALITY_SETTING_STORAGE_KEY = 'game-quality-setting';
+let cachedGameQualitySetting: GameQualitySetting | undefined;
+
 export function isGameQualityTier(
     value: string | undefined,
 ): value is GameQualityTier {
     return value === 'low' || value === 'medium' || value === 'high';
+}
+
+export function isGameQualitySetting(
+    value: string | undefined,
+): value is GameQualitySetting {
+    return value === 'auto' || isGameQualityTier(value);
+}
+
+export function getGameQualitySetting(): GameQualitySetting {
+    if (cachedGameQualitySetting !== undefined) {
+        return cachedGameQualitySetting;
+    }
+
+    try {
+        const storedValue =
+            typeof window !== 'undefined'
+                ? (window.localStorage.getItem(
+                      GAME_QUALITY_SETTING_STORAGE_KEY,
+                  ) ?? undefined)
+                : undefined;
+
+        cachedGameQualitySetting = isGameQualitySetting(storedValue)
+            ? storedValue
+            : 'auto';
+    } catch {
+        cachedGameQualitySetting = 'auto';
+    }
+
+    return cachedGameQualitySetting;
+}
+
+export function setGameQualitySetting(setting: GameQualitySetting) {
+    cachedGameQualitySetting = setting;
+
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    try {
+        if (setting === 'auto') {
+            window.localStorage.removeItem(GAME_QUALITY_SETTING_STORAGE_KEY);
+            return;
+        }
+
+        window.localStorage.setItem(GAME_QUALITY_SETTING_STORAGE_KEY, setting);
+    } catch {
+        // Ignore storage failures and keep the in-memory state updated.
+    }
 }
 
 function readNavigatorNumber(property: string) {
@@ -88,7 +145,11 @@ function resolveAutoGameQualityTier(): GameQualityTier {
 }
 
 export function resolveGameQualityProfile(
-    quality?: GameQualityTier,
+    quality?: GameQualitySetting,
 ): GameQualityProfile {
-    return gameQualityProfiles[quality ?? resolveAutoGameQualityTier()];
+    const tier =
+        quality === undefined || quality === 'auto'
+            ? resolveAutoGameQualityTier()
+            : quality;
+    return gameQualityProfiles[tier];
 }

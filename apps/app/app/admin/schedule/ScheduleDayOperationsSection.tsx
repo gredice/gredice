@@ -5,10 +5,9 @@ import {
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
-import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
 import { FarmOperationsScheduleSection } from './FarmOperationsScheduleSection';
 import { RaisedBedOperationsScheduleSection } from './RaisedBedOperationsScheduleSection';
+import { ScheduleDayOperationsBulkActions } from './ScheduleDayOperationsBulkActions';
 import {
     getScheduleDayData,
     getScheduleOperationsData,
@@ -20,6 +19,7 @@ import {
     isOperationCompleted,
     isOperationPendingVerification,
 } from './scheduleShared';
+import { OptimisticScheduleActionsProvider } from './useOptimisticScheduleActions';
 
 interface ScheduleDayOperationsSectionProps {
     isToday: boolean;
@@ -99,46 +99,44 @@ export async function ScheduleDayOperationsSection({
         }));
 
     return (
-        <Stack spacing={2}>
-            <Row spacing={1} alignItems="center">
-                <Typography level="h6">Radnje</Typography>
-                <BulkApproveRaisedBedButton
-                    physicalId="dan"
-                    fields={[]}
-                    operations={dayOperationsToApprove}
-                />
-                <BulkAssignRaisedBedButton
-                    physicalId="dan"
-                    fields={[]}
-                    operations={dayOperationsToAssign}
-                />
-            </Row>
-            {raisedBedGroups.map(({ key, physicalId, raisedBeds: beds }) => {
-                return (
-                    <RaisedBedOperationsScheduleSection
-                        key={key}
-                        physicalId={physicalId}
-                        raisedBeds={beds}
+        <OptimisticScheduleActionsProvider>
+            <Stack spacing={2}>
+                <Row spacing={1} alignItems="center">
+                    <Typography level="h6">Radnje</Typography>
+                    <ScheduleDayOperationsBulkActions
+                        operationsToApprove={dayOperationsToApprove}
+                        operationsToAssign={dayOperationsToAssign}
+                    />
+                </Row>
+                {raisedBedGroups.map(
+                    ({ key, physicalId, raisedBeds: beds }) => {
+                        return (
+                            <RaisedBedOperationsScheduleSection
+                                key={key}
+                                physicalId={physicalId}
+                                raisedBeds={beds}
+                                scheduledOperations={scheduledOperations}
+                                plantSorts={plantSorts}
+                                operationsData={operationsData}
+                                assignableFarmUsersByOperationId={
+                                    assignableFarmUsersByOperationId
+                                }
+                            />
+                        );
+                    },
+                )}
+                {operationFarms.map((farm) => (
+                    <FarmOperationsScheduleSection
+                        key={farm.id}
+                        farm={farm}
                         scheduledOperations={scheduledOperations}
-                        plantSorts={plantSorts}
                         operationsData={operationsData}
                         assignableFarmUsersByOperationId={
                             assignableFarmUsersByOperationId
                         }
                     />
-                );
-            })}
-            {operationFarms.map((farm) => (
-                <FarmOperationsScheduleSection
-                    key={farm.id}
-                    farm={farm}
-                    scheduledOperations={scheduledOperations}
-                    operationsData={operationsData}
-                    assignableFarmUsersByOperationId={
-                        assignableFarmUsersByOperationId
-                    }
-                />
-            ))}
-        </Stack>
+                ))}
+            </Stack>
+        </OptimisticScheduleActionsProvider>
     );
 }

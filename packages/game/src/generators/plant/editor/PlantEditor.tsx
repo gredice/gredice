@@ -11,6 +11,7 @@ import {
     createGameState,
     GameStateContext,
     type GameStateStore,
+    useDisposeGameStateStore,
 } from '../../../useGameState';
 import { useGeneratedLSystemSymbols } from '../hooks/useGeneratedLSystem';
 import { serializeLSystemSymbols } from '../lib/l-system';
@@ -214,6 +215,7 @@ export function PlantEditor({
             winterMode: 'summer',
         });
     }
+    useDisposeGameStateStore(storeRef.current);
 
     useGLTF.preload((appBaseUrl ?? '') + models.GameAssets.url);
 
