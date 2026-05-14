@@ -7,6 +7,7 @@ import {
     createEvent,
     createFarm,
     createOperation,
+    getAllOperations,
     getAssignableFarmUsersByOperationIds,
     getFarmUserAcceptedOperations,
     getOperationById,
@@ -93,4 +94,52 @@ test('completed operations expose completion notes and image URLs', async () => 
         'https://cdn.gredice.com/operation-complete.jpg',
     ]);
     assert.strictEqual(operation.completionNotes, 'Zaliveno nakon berbe.');
+});
+
+test('all operations can be filtered by event-derived status', async () => {
+    createTestDb();
+
+    const accountId = randomUUID();
+    const from = new Date('2040-01-01T00:00:00.000Z');
+    const plannedOperationId = await createOperation({
+        entityId: 1,
+        entityTypeName: 'operation',
+        accountId,
+        timestamp: new Date('2040-01-02T00:00:00.000Z'),
+    });
+    const newOperationId = await createOperation({
+        entityId: 2,
+        entityTypeName: 'operation',
+        accountId,
+        timestamp: new Date('2040-01-03T00:00:00.000Z'),
+    });
+    const pendingOperationId = await createOperation({
+        entityId: 3,
+        entityTypeName: 'operation',
+        accountId,
+        timestamp: new Date('2040-01-04T00:00:00.000Z'),
+    });
+
+    await createEvent(
+        knownEvents.operations.scheduledV1(plannedOperationId.toString(), {
+            scheduledDate: '2040-01-05T00:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.operations.completedV1(pendingOperationId.toString(), {
+            completedBy: randomUUID(),
+        }),
+    );
+
+    const operations = await getAllOperations({
+        from,
+        status: ['new', 'planned'],
+    });
+    const operationIds = operations.map((operation) => operation.id);
+
+    assert.deepStrictEqual(
+        new Set(operationIds),
+        new Set([newOperationId, plannedOperationId]),
+    );
+    assert.ok(!operationIds.includes(pendingOperationId));
 });
