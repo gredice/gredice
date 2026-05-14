@@ -120,6 +120,10 @@ test('pending verification operation remains visible today until verified', () =
 test('day operation bulk actions honor optimistic terminal statuses', () => {
     assert.equal(isDayBulkOperationApprovalTargetVisible(undefined), true);
     assert.equal(isDayBulkOperationAssignmentTargetVisible(undefined), true);
+    assert.equal(
+        isDayBulkOperationApprovalTargetVisible({ status: 'planned' }),
+        true,
+    );
 
     for (const status of ['completed', 'canceled', 'pendingVerification']) {
         assert.equal(
@@ -147,20 +151,33 @@ test('day operation bulk actions honor optimistic terminal statuses', () => {
 test('day planting bulk actions honor optimistic completed and deleted fields', () => {
     assert.equal(isDayBulkFieldApprovalTargetVisible(undefined), true);
     assert.equal(isDayBulkFieldAssignmentTargetVisible(undefined), true);
-
-    for (const plantStatus of ['sowed', 'pendingVerification']) {
-        assert.equal(
-            isDayBulkFieldApprovalTargetVisible({ plantStatus }),
-            false,
-        );
-        assert.equal(
-            isDayBulkFieldAssignmentTargetVisible({ plantStatus }),
-            false,
-        );
-    }
+    assert.equal(
+        isDayBulkFieldApprovalTargetVisible({ plantStatus: 'new' }),
+        true,
+    );
 
     assert.equal(
         isDayBulkFieldApprovalTargetVisible({ plantStatus: 'planned' }),
+        false,
+    );
+    assert.equal(
+        isDayBulkFieldApprovalTargetVisible({ plantStatus: 'sowed' }),
+        false,
+    );
+    assert.equal(
+        isDayBulkFieldAssignmentTargetVisible({ plantStatus: 'sowed' }),
+        false,
+    );
+    assert.equal(
+        isDayBulkFieldApprovalTargetVisible({
+            plantStatus: 'pendingVerification',
+        }),
+        false,
+    );
+    assert.equal(
+        isDayBulkFieldAssignmentTargetVisible({
+            plantStatus: 'pendingVerification',
+        }),
         false,
     );
     assert.equal(

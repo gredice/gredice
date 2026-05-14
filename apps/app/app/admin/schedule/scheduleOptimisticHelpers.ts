@@ -74,7 +74,11 @@ type DayBulkFieldPatch = {
 function hasOptimisticUnassignment(
     patch: { assignedUserId?: string | null } | undefined,
 ) {
-    return patch && 'assignedUserId' in patch && !patch.assignedUserId;
+    return (
+        patch !== undefined &&
+        Object.hasOwn(patch, 'assignedUserId') &&
+        !patch.assignedUserId
+    );
 }
 
 export function isDayBulkOperationApprovalTargetVisible(
