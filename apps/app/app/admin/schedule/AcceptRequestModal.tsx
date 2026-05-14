@@ -11,7 +11,7 @@ import { useState } from 'react';
 
 interface AcceptRequestModalProps {
     label: string;
-    onConfirm: () => Promise<void>;
+    onConfirm: () => unknown | Promise<unknown>;
     trigger?: React.ReactElement;
     title?: string;
     header?: string;
@@ -34,6 +34,7 @@ export function AcceptRequestModal({
             setOpen(false);
         } catch (error) {
             console.error('Error confirming request:', error);
+            alert('Potvrda zadatka nije uspjela. Pokušajte ponovno.');
         } finally {
             setIsSubmitting(false);
         }

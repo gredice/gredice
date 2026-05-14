@@ -19,6 +19,7 @@ interface VerifyOperationModalTriggerProps {
 interface VerifyOperationModalBaseProps {
     operationId: number;
     label: string;
+    onConfirm?: () => unknown | Promise<unknown>;
 }
 
 type VerifyOperationModalProps = VerifyOperationModalBaseProps &
@@ -38,6 +39,7 @@ type VerifyOperationModalProps = VerifyOperationModalBaseProps &
 export function VerifyOperationModal({
     operationId,
     label,
+    onConfirm,
     trigger,
     renderTrigger,
 }: VerifyOperationModalProps) {
@@ -58,10 +60,15 @@ export function VerifyOperationModal({
     const handleConfirm = async () => {
         try {
             setIsSubmitting(true);
-            await verifyOperationAction(operationId);
+            if (onConfirm) {
+                await onConfirm();
+            } else {
+                await verifyOperationAction(operationId);
+            }
             setOpen(false);
         } catch (error) {
             console.error('Error verifying operation:', error);
+            alert('Verifikacija radnje nije uspjela. Pokušajte ponovno.');
         } finally {
             setIsSubmitting(false);
         }

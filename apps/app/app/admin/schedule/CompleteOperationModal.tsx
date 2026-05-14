@@ -89,12 +89,17 @@ type CompleteOperationModalProps = {
     operationId: number;
     label: string;
     conditions?: EntityStandardized['conditions'];
+    onConfirm?: (
+        imageUrls: string[] | undefined,
+        notes?: string,
+    ) => unknown | Promise<unknown>;
 };
 
 export function CompleteOperationModal({
     operationId,
     label,
     conditions,
+    onConfirm,
 }: CompleteOperationModalProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [uploadItems, setUploadItems] = useState<UploadItem[]>([]);
@@ -281,19 +286,27 @@ export function CompleteOperationModal({
                     imageUrls.push(uploadedUrl);
                 }
                 setIsOpen(false);
-                await completeOperationWithImageUrls(
-                    operationId,
-                    imageUrls,
-                    completionNotes,
-                );
+                if (onConfirm) {
+                    await onConfirm(imageUrls, completionNotes);
+                } else {
+                    await completeOperationWithImageUrls(
+                        operationId,
+                        imageUrls,
+                        completionNotes,
+                    );
+                }
                 shouldResetModalState = true;
             } else {
                 setIsOpen(false);
-                await completeOperation(
-                    operationId,
-                    undefined,
-                    completionNotes,
-                );
+                if (onConfirm) {
+                    await onConfirm(undefined, completionNotes);
+                } else {
+                    await completeOperation(
+                        operationId,
+                        undefined,
+                        completionNotes,
+                    );
+                }
                 shouldResetModalState = true;
             }
             if (shouldResetModalState) {

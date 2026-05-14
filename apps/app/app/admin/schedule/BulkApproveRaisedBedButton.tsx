@@ -8,6 +8,7 @@ import { acceptRaisedBedFieldAction } from '../../(actions)/raisedBedFieldsActio
 import { AcceptRequestModal } from './AcceptRequestModal';
 
 type FieldApprovalTarget = {
+    id?: number;
     raisedBedId: number;
     positionIndex: number;
     label: string;
@@ -22,12 +23,14 @@ interface BulkApproveRaisedBedButtonProps {
     physicalId: string;
     fields: FieldApprovalTarget[];
     operations: OperationApprovalTarget[];
+    onConfirm?: () => unknown | Promise<unknown>;
 }
 
 export function BulkApproveRaisedBedButton({
     physicalId,
     fields,
     operations,
+    onConfirm,
 }: BulkApproveRaisedBedButtonProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -39,25 +42,28 @@ export function BulkApproveRaisedBedButton({
             return;
         }
 
-        setIsSubmitting(true);
-        try {
-            await Promise.all([
-                ...fields.map((field) =>
-                    acceptRaisedBedFieldAction(
-                        field.raisedBedId,
-                        field.positionIndex,
-                    ),
-                ),
-                ...operations.map((operation) =>
-                    acceptOperationAction(operation.id),
-                ),
-            ]);
-        } catch (error) {
-            console.error('Failed to approve all raised bed items:', error);
-            throw error;
-        } finally {
-            setIsSubmitting(false);
+        if (onConfirm) {
+            await onConfirm();
+            return;
         }
+
+        setIsSubmitting(true);
+        void Promise.all([
+            ...fields.map((field) =>
+                acceptRaisedBedFieldAction(
+                    field.raisedBedId,
+                    field.positionIndex,
+                ),
+            ),
+            ...operations.map((operation) =>
+                acceptOperationAction(operation.id),
+            ),
+        ])
+            .catch((error: unknown) => {
+                console.error('Failed to approve all raised bed items:', error);
+                alert('Skupna potvrda zadataka nije uspjela.');
+            })
+            .finally(() => setIsSubmitting(false));
     };
 
     return (
