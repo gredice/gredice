@@ -7,12 +7,35 @@ import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import { PlantPicker } from './RaisedBedPlantPicker';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function parseScheduledSowingDate(additionalData: string | null | undefined) {
+    if (!additionalData) {
+        return null;
+    }
+
+    try {
+        const parsed: unknown = JSON.parse(additionalData);
+        if (!isRecord(parsed) || typeof parsed.scheduledDate !== 'string') {
+            return null;
+        }
+
+        const date = new Date(parsed.scheduledDate);
+        return Number.isNaN(date.valueOf()) ? null : date;
+    } catch {
+        return null;
+    }
+}
+
 function formatScheduledSowingDateLabel(date: Date, now: Date): string {
     const day = date.getDate();
     const sameMonthAndYear =
         date.getFullYear() === now.getFullYear() &&
         date.getMonth() === now.getMonth();
-    const shouldIncludeMonth = !sameMonthAndYear && date >= now;
+    const shouldIncludeMonth =
+        !sameMonthAndYear && date.valueOf() >= now.valueOf();
 
     if (!shouldIncludeMonth) {
         return day.toString();
@@ -47,18 +70,13 @@ export function RaisedBedFieldItemEmpty({
 
     const cartPlantSort = cartPlantItem?.entityData;
     const cartPlantId = cartPlantSort?.information?.plant?.id;
-    const additionalDataRaw = cartPlantItem?.additionalData
-        ? JSON.parse(cartPlantItem.additionalData)
-        : null;
+    const scheduledDate = parseScheduledSowingDate(
+        cartPlantItem?.additionalData,
+    );
     const cartPlantOptions = {
-        scheduledDate: additionalDataRaw?.scheduledDate
-            ? new Date(additionalDataRaw.scheduledDate)
-            : null,
+        scheduledDate,
     };
-    const scheduledDate = cartPlantOptions.scheduledDate;
-    const hasScheduledDate =
-        scheduledDate instanceof Date && !Number.isNaN(scheduledDate.valueOf());
-    const scheduledDateLabel = hasScheduledDate
+    const scheduledDateLabel = scheduledDate
         ? formatScheduledSowingDateLabel(scheduledDate, new Date())
         : null;
 
