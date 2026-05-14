@@ -2,6 +2,14 @@ import type {
     OperationAssignableFarmUser,
     OperationAssignedUser,
 } from '@gredice/storage';
+import {
+    isFieldApproved,
+    isFieldCompleted,
+    isFieldPendingVerification,
+    isOperationCancelled,
+    isOperationCompleted,
+    isOperationPendingVerification,
+} from './scheduleShared';
 
 type AssignableOperationUser = Pick<
     OperationAssignableFarmUser,
@@ -48,5 +56,69 @@ export function createOperationAssignedUsers(
                 displayName: null,
                 avatarUrl: null,
             },
+    );
+}
+
+type DayBulkOperationPatch = {
+    assignedUserId?: string | null;
+    isAccepted?: boolean;
+    status?: string;
+};
+
+type DayBulkFieldPatch = {
+    assignedUserId?: string | null;
+    isDeleted?: boolean;
+    plantStatus?: string;
+};
+
+function hasOptimisticUnassignment(
+    patch: { assignedUserId?: string | null } | undefined,
+) {
+    return patch && 'assignedUserId' in patch && !patch.assignedUserId;
+}
+
+export function isDayBulkOperationApprovalTargetVisible(
+    patch: DayBulkOperationPatch | undefined,
+) {
+    return (
+        !patch?.isAccepted &&
+        !hasOptimisticUnassignment(patch) &&
+        !isOperationCompleted(patch?.status) &&
+        !isOperationPendingVerification(patch?.status) &&
+        !isOperationCancelled(patch?.status)
+    );
+}
+
+export function isDayBulkOperationAssignmentTargetVisible(
+    patch: DayBulkOperationPatch | undefined,
+) {
+    return (
+        !patch?.assignedUserId &&
+        !isOperationCompleted(patch?.status) &&
+        !isOperationPendingVerification(patch?.status) &&
+        !isOperationCancelled(patch?.status)
+    );
+}
+
+export function isDayBulkFieldApprovalTargetVisible(
+    patch: DayBulkFieldPatch | undefined,
+) {
+    return (
+        !patch?.isDeleted &&
+        !hasOptimisticUnassignment(patch) &&
+        !isFieldApproved(patch?.plantStatus) &&
+        !isFieldPendingVerification(patch?.plantStatus) &&
+        !isFieldCompleted(patch?.plantStatus)
+    );
+}
+
+export function isDayBulkFieldAssignmentTargetVisible(
+    patch: DayBulkFieldPatch | undefined,
+) {
+    return (
+        !patch?.isDeleted &&
+        !patch?.assignedUserId &&
+        !isFieldPendingVerification(patch?.plantStatus) &&
+        !isFieldCompleted(patch?.plantStatus)
     );
 }

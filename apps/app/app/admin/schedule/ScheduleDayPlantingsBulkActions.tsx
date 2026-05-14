@@ -7,6 +7,10 @@ import {
 } from '../../(actions)/raisedBedFieldsActions';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
 import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
+import {
+    isDayBulkFieldApprovalTargetVisible,
+    isDayBulkFieldAssignmentTargetVisible,
+} from './scheduleOptimisticHelpers';
 import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 
 type FieldApprovalTarget = {
@@ -32,11 +36,11 @@ export function ScheduleDayPlantingsBulkActions({
 }: ScheduleDayPlantingsBulkActionsProps) {
     const { getFieldPatch, runOptimisticAction } =
         useOptimisticScheduleActions();
-    const visibleFieldsToApprove = fieldsToApprove.filter(
-        (field) => getFieldPatch(field.id)?.plantStatus !== 'planned',
+    const visibleFieldsToApprove = fieldsToApprove.filter((field) =>
+        isDayBulkFieldApprovalTargetVisible(getFieldPatch(field.id)),
     );
-    const visibleFieldsToAssign = fieldsToAssign.filter(
-        (field) => !getFieldPatch(field.id)?.assignedUserId,
+    const visibleFieldsToAssign = fieldsToAssign.filter((field) =>
+        isDayBulkFieldAssignmentTargetVisible(getFieldPatch(field.id)),
     );
 
     return (

@@ -4,6 +4,12 @@ import {
     getScheduledFieldsForDay,
     getScheduledOperationsForDay,
 } from './scheduleDayFilters.ts';
+import {
+    isDayBulkFieldApprovalTargetVisible,
+    isDayBulkFieldAssignmentTargetVisible,
+    isDayBulkOperationApprovalTargetVisible,
+    isDayBulkOperationAssignmentTargetVisible,
+} from './scheduleOptimisticHelpers.ts';
 import type { Operation, RaisedBed, RaisedBedField } from './types.ts';
 
 const today = new Date(2026, 4, 14);
@@ -108,5 +114,65 @@ test('pending verification operation remains visible today until verified', () =
             verifiedOperation,
         ]).map((operation) => operation.id),
         [1],
+    );
+});
+
+test('day operation bulk actions honor optimistic terminal statuses', () => {
+    assert.equal(isDayBulkOperationApprovalTargetVisible(undefined), true);
+    assert.equal(isDayBulkOperationAssignmentTargetVisible(undefined), true);
+
+    for (const status of ['completed', 'canceled', 'pendingVerification']) {
+        assert.equal(
+            isDayBulkOperationApprovalTargetVisible({ status }),
+            false,
+        );
+        assert.equal(
+            isDayBulkOperationAssignmentTargetVisible({ status }),
+            false,
+        );
+    }
+
+    assert.equal(
+        isDayBulkOperationApprovalTargetVisible({ isAccepted: true }),
+        false,
+    );
+    assert.equal(
+        isDayBulkOperationAssignmentTargetVisible({
+            assignedUserId: 'farmer-1',
+        }),
+        false,
+    );
+});
+
+test('day planting bulk actions honor optimistic completed and deleted fields', () => {
+    assert.equal(isDayBulkFieldApprovalTargetVisible(undefined), true);
+    assert.equal(isDayBulkFieldAssignmentTargetVisible(undefined), true);
+
+    for (const plantStatus of ['sowed', 'pendingVerification']) {
+        assert.equal(
+            isDayBulkFieldApprovalTargetVisible({ plantStatus }),
+            false,
+        );
+        assert.equal(
+            isDayBulkFieldAssignmentTargetVisible({ plantStatus }),
+            false,
+        );
+    }
+
+    assert.equal(
+        isDayBulkFieldApprovalTargetVisible({ plantStatus: 'planned' }),
+        false,
+    );
+    assert.equal(
+        isDayBulkFieldApprovalTargetVisible({ isDeleted: true }),
+        false,
+    );
+    assert.equal(
+        isDayBulkFieldAssignmentTargetVisible({ isDeleted: true }),
+        false,
+    );
+    assert.equal(
+        isDayBulkFieldAssignmentTargetVisible({ assignedUserId: 'farmer-1' }),
+        false,
     );
 });

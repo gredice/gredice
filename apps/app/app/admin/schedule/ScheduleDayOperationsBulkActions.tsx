@@ -7,7 +7,11 @@ import {
 } from '../../(actions)/operationActions';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
 import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
-import { createOperationAssignedUsers } from './scheduleOptimisticHelpers';
+import {
+    createOperationAssignedUsers,
+    isDayBulkOperationApprovalTargetVisible,
+    isDayBulkOperationAssignmentTargetVisible,
+} from './scheduleOptimisticHelpers';
 import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 
 type OperationApprovalTarget = {
@@ -31,11 +35,15 @@ export function ScheduleDayOperationsBulkActions({
 }: ScheduleDayOperationsBulkActionsProps) {
     const { getOperationPatch, runOptimisticAction } =
         useOptimisticScheduleActions();
-    const visibleOperationsToApprove = operationsToApprove.filter(
-        (operation) => !getOperationPatch(operation.id)?.isAccepted,
+    const visibleOperationsToApprove = operationsToApprove.filter((operation) =>
+        isDayBulkOperationApprovalTargetVisible(
+            getOperationPatch(operation.id),
+        ),
     );
-    const visibleOperationsToAssign = operationsToAssign.filter(
-        (operation) => !getOperationPatch(operation.id)?.assignedUserId,
+    const visibleOperationsToAssign = operationsToAssign.filter((operation) =>
+        isDayBulkOperationAssignmentTargetVisible(
+            getOperationPatch(operation.id),
+        ),
     );
 
     return (
