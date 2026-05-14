@@ -27,13 +27,14 @@ export function PlantsList({
 }) {
     const { track } = useGameAnalytics();
     const { data: plants, isLoading, isError } = usePlants();
+    const normalizedSearch = search.trim().toLowerCase();
     // Filter plants based on search query
     const filteredPlants =
-        search.length > 0
+        normalizedSearch.length > 0
             ? plants?.filter((plant) =>
                   plant.information.name
                       .toLowerCase()
-                      .includes(search.toLowerCase()),
+                      .includes(normalizedSearch),
               )
             : plants;
 

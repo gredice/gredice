@@ -376,6 +376,24 @@ function getOperationStatusExpression() {
     )`;
 }
 
+function getOperationStatusWhere(
+    status: OperationStatus | OperationStatus[] | undefined,
+) {
+    if (!status) {
+        return undefined;
+    }
+
+    const statusValues = Array.isArray(status) ? status : [status];
+    if (statusValues.length === 0) {
+        return undefined;
+    }
+
+    return sql`${getOperationStatusExpression()} in (${sql.join(
+        statusValues.map((value) => sql`${value}`),
+        sql`, `,
+    )})`;
+}
+
 function getOperationTimelineSortExpression() {
     const scheduledDateExpression = getOperationScheduledDateExpression();
 
@@ -484,6 +502,7 @@ async function getAllOperationsUncached(filter?: {
         const operationsList = await storage().query.operations.findMany({
             where: and(
                 eq(operations.isDeleted, false),
+                getOperationStatusWhere(filter?.status),
                 filter?.from
                     ? gte(operations.timestamp, filter.from)
                     : undefined,

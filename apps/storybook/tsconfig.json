@@ -19,7 +19,8 @@
             "@apps/app/*": ["../app/*"],
             "@apps/farm/*": ["../farm/*"],
             "@apps/garden/*": ["../garden/*"],
-            "@apps/www/*": ["../www/*"]
+            "@apps/www/*": ["../www/*"],
+            "@packages/game/*": ["../../packages/game/src/*"]
         },
         "plugins": [
             {

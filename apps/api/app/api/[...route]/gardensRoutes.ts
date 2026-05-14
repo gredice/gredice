@@ -1,5 +1,6 @@
 import { signalcoClient } from '@gredice/signalco';
 import {
+    abandonRaisedBed,
     buildRaisedBedFieldPlantUpdatePayload,
     countEventsSince,
     createDefaultGardenForAccount,
@@ -59,6 +60,10 @@ import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
+// CMS operation directory (`/entities/operation`) ID 591 is the raised-bed abandonment operation queued for farm follow-up.
+const ABANDON_RAISED_BED_OPERATION_ID = 591;
+// Operations are stored as CMS entities with entityTypeName='operation'.
+const OPERATION_ENTITY_TYPE_NAME = 'operation';
 
 async function countRecentRaisedBedAiAnalyses(accountId: string) {
     const accountBedIds = await getRaisedBedIdsByAccount(accountId);
@@ -1542,6 +1547,63 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 id: raisedBedIdNumber,
                 name: context.req.valid('json').name || undefined,
             });
+        },
+    )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/abandon',
+        describeRoute({
+            description:
+                'Mark a raised bed as abandoned and queue the abandonment operation.',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const [garden, raisedBed] = await Promise.all([
+                getGarden(gardenIdNumber),
+                getRaisedBed(raisedBedIdNumber),
+            ]);
+            if (
+                !garden ||
+                garden.accountId !== accountId ||
+                !raisedBed ||
+                raisedBed.accountId !== accountId ||
+                raisedBed.gardenId !== gardenIdNumber
+            ) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+            if (raisedBed.status === 'abandoned') {
+                return context.json(
+                    { error: 'Raised bed is already abandoned' },
+                    409,
+                );
+            }
+
+            const operationId = await abandonRaisedBed({
+                accountId,
+                gardenId: gardenIdNumber,
+                operationEntityId: ABANDON_RAISED_BED_OPERATION_ID,
+                operationEntityTypeName: OPERATION_ENTITY_TYPE_NAME,
+                raisedBedId: raisedBedIdNumber,
+            });
+
+            return context.json({ id: operationId }, 201);
         },
     )
     .get(
