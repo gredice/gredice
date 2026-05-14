@@ -2,8 +2,10 @@
 
 export type GameQualityTier = 'low' | 'medium' | 'high';
 export type GameQualitySetting = GameQualityTier | 'auto';
+export type GameCloudShadowMode = 'hard' | 'soft';
 
 export type GameQualityProfile = {
+    cloudShadowMode: GameCloudShadowMode;
     dpr: number;
     groundDecorationDensity: number;
     rainParticleMultiplier: number;
@@ -16,6 +18,7 @@ export type GameQualityProfile = {
 
 export const gameQualityProfiles = {
     low: {
+        cloudShadowMode: 'hard',
         dpr: 1,
         groundDecorationDensity: 0,
         rainParticleMultiplier: 0.35,
@@ -26,6 +29,7 @@ export const gameQualityProfiles = {
         tier: 'low',
     },
     medium: {
+        cloudShadowMode: 'hard',
         dpr: 1.5,
         groundDecorationDensity: 0.5,
         rainParticleMultiplier: 0.7,
@@ -36,6 +40,7 @@ export const gameQualityProfiles = {
         tier: 'medium',
     },
     high: {
+        cloudShadowMode: 'soft',
         dpr: 2,
         groundDecorationDensity: 1,
         rainParticleMultiplier: 1,
