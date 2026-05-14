@@ -124,6 +124,13 @@ test('day operation bulk actions honor optimistic terminal statuses', () => {
         isDayBulkOperationApprovalTargetVisible({ status: 'planned' }),
         true,
     );
+    assert.equal(
+        isDayBulkOperationApprovalTargetVisible({
+            assignedUserId: null,
+            status: 'planned',
+        }),
+        false,
+    );
 
     for (const status of ['completed', 'canceled', 'pendingVerification']) {
         assert.equal(
@@ -154,6 +161,20 @@ test('day planting bulk actions honor optimistic completed and deleted fields', 
     assert.equal(
         isDayBulkFieldApprovalTargetVisible({ plantStatus: 'new' }),
         true,
+    );
+    assert.equal(
+        isDayBulkFieldApprovalTargetVisible({
+            isDeleted: true,
+            plantStatus: 'new',
+        }),
+        false,
+    );
+    assert.equal(
+        isDayBulkFieldApprovalTargetVisible({
+            assignedUserId: null,
+            plantStatus: 'new',
+        }),
+        false,
     );
 
     assert.equal(
