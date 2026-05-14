@@ -247,9 +247,9 @@ function checkPorts() {
     requiredAppPorts.add(getAppTestPort(app));
   }
 
-  const primaryProxyPortSet = new Set([defaultProxyPorts.http, defaultProxyPorts.https]);
+  const defaultProxyPortSet = new Set([defaultProxyPorts.http, defaultProxyPorts.https]);
   const fallbackProxyPortSet = new Set([fallbackProxyPorts.http, fallbackProxyPorts.https]);
-  const ports = new Set([...requiredAppPorts, ...primaryProxyPortSet]);
+  const ports = new Set([...requiredAppPorts, ...defaultProxyPortSet]);
   if (canFallbackProxyPorts()) {
     for (const port of fallbackProxyPortSet) {
       ports.add(port);
@@ -266,29 +266,29 @@ function checkPorts() {
   return Promise.all(probes).then((blockedPorts) => {
     const blocked = new Set(blockedPorts.filter(Boolean));
     const blockedAppPorts = [...requiredAppPorts].filter((port) => blocked.has(port));
-    const blockedPrimaryProxyPorts = [...primaryProxyPortSet].filter((port) => blocked.has(port));
+    const blockedDefaultProxyPorts = [...defaultProxyPortSet].filter((port) => blocked.has(port));
     const blockedFallbackProxyPorts = [...fallbackProxyPortSet].filter((port) => blocked.has(port));
     const canUseFallback =
       canFallbackProxyPorts() &&
-      blockedPrimaryProxyPorts.length > 0 &&
+      blockedDefaultProxyPorts.length > 0 &&
       blockedFallbackProxyPorts.length === 0;
     const ok =
       blockedAppPorts.length === 0 &&
-      (blockedPrimaryProxyPorts.length === 0 || canUseFallback);
+      (blockedDefaultProxyPorts.length === 0 || canUseFallback);
     const detail = (() => {
       if (blockedAppPorts.length > 0) {
         return `Ports in use: ${blockedAppPorts.join(', ')}.`;
       }
 
-      if (blockedPrimaryProxyPorts.length === 0) {
+      if (blockedDefaultProxyPorts.length === 0) {
         return 'All required ports appear free.';
       }
 
       if (canUseFallback) {
-        return `Default proxy ports ${blockedPrimaryProxyPorts.join(', ')} are in use; fallback proxy ports ${[...fallbackProxyPortSet].join(', ')} appear free.`;
+        return `Default proxy ports ${blockedDefaultProxyPorts.join(', ')} are in use; fallback proxy ports ${[...fallbackProxyPortSet].join(', ')} appear free.`;
       }
 
-      return `Ports in use: ${[...new Set([...blockedPrimaryProxyPorts, ...blockedFallbackProxyPorts])].join(', ')}.`;
+      return `Ports in use: ${[...new Set([...blockedDefaultProxyPorts, ...blockedFallbackProxyPorts])].join(', ')}.`;
     })();
     addCheck('Local ports available', true, ok, detail, 'Stop conflicting processes before running `pnpm dev` or tests.');
   });
