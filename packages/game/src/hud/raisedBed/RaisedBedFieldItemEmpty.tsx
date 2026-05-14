@@ -1,11 +1,24 @@
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { ShoppingCart } from '@signalco/ui-icons';
+import { Calendar, ShoppingCart } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import { PlantPicker } from './RaisedBedPlantPicker';
+
+function formatScheduledSowingDateLabel(date: Date, now: Date): string {
+    const day = date.getDate();
+    const sameMonth =
+        date.getFullYear() === now.getFullYear() &&
+        date.getMonth() === now.getMonth();
+
+    if (sameMonth) {
+        return day.toString();
+    }
+
+    return `${day}.${date.getMonth() + 1}.`;
+}
 
 export function RaisedBedFieldItemEmpty({
     cartPlantItem,
@@ -41,6 +54,12 @@ export function RaisedBedFieldItemEmpty({
             ? new Date(additionalDataRaw.scheduledDate)
             : null,
     };
+    const scheduledDate = cartPlantOptions.scheduledDate;
+    const hasScheduledDate =
+        scheduledDate instanceof Date && !Number.isNaN(scheduledDate.valueOf());
+    const scheduledDateLabel = hasScheduledDate
+        ? formatScheduledSowingDateLabel(scheduledDate, new Date())
+        : null;
 
     const isLoading = isCartPending || isGardenPending;
     if (isLoading) {
@@ -79,6 +98,18 @@ export function RaisedBedFieldItemEmpty({
                                     <ShoppingCart className="size-4 stroke-white" />
                                 </div>
                             </div>
+                            {scheduledDateLabel && (
+                                <div className="absolute left-0.5 bottom-0.5">
+                                    <div className="rounded-full border-2 px-1 py-0.5 bg-stone-200 border-stone-400 text-stone-800 shadow-lg min-w-8">
+                                        <div className="flex items-center gap-0.5">
+                                            <Calendar className="size-3" />
+                                            <span className="text-[10px] font-semibold leading-none">
+                                                {scheduledDateLabel}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </>
                     )}
                 </RaisedBedFieldItemButton>
