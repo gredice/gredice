@@ -45,5 +45,7 @@ export type EntityStandardized = {
     conditions?: {
         completionAttachImages?: boolean;
         completionAttachImagesRequired?: boolean;
+        completionAttachNotes?: boolean;
+        completionAttachNotesRequired?: boolean;
     };
 };

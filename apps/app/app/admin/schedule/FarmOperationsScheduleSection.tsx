@@ -17,6 +17,7 @@ import { AcceptOperationModal } from './AcceptOperationModal';
 import { AssignOperationModal } from './AssignOperationModal';
 import { CancelOperationModal } from './CancelOperationModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
+import { OperationCompletionAttachments } from './OperationCompletionAttachments';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
 import {
     formatMinutes,
@@ -127,6 +128,36 @@ export function FarmOperationsScheduleSection({
                     const operationTextInactive =
                         isOperationCancelled(operation.status) ||
                         isOperationCompleted(operation.status);
+                    const attachImages = Boolean(
+                        operationData?.conditions?.completionAttachImages ||
+                            operationData?.conditions
+                                ?.completionAttachImagesRequired,
+                    );
+                    const attachImagesRequired = Boolean(
+                        operationData?.conditions
+                            ?.completionAttachImagesRequired,
+                    );
+                    const attachNotes = Boolean(
+                        operationData?.conditions?.completionAttachNotes ||
+                            operationData?.conditions
+                                ?.completionAttachNotesRequired,
+                    );
+                    const attachNotesRequired = Boolean(
+                        operationData?.conditions
+                            ?.completionAttachNotesRequired,
+                    );
+                    const completionRequirementTexts = [
+                        attachImages
+                            ? attachImagesRequired
+                                ? 'Slike obavezne'
+                                : 'Slike opcionalne'
+                            : null,
+                        attachNotes
+                            ? attachNotesRequired
+                                ? 'Napomena obavezna'
+                                : 'Napomena opcionalna'
+                            : null,
+                    ].filter((text): text is string => Boolean(text));
 
                     const operationStatusText = isOperationCancelled(
                         operation.status,
@@ -240,6 +271,18 @@ export function FarmOperationsScheduleSection({
                                 >
                                     {operationStatusText}
                                 </Typography>
+                                {completionRequirementTexts.length > 0 &&
+                                    !isOperationCompleted(operation.status) &&
+                                    !operationPendingVerification && (
+                                        <Typography
+                                            level="body2"
+                                            className="ml-1 text-xs text-muted-foreground"
+                                        >
+                                            {completionRequirementTexts.join(
+                                                ' · ',
+                                            )}
+                                        </Typography>
+                                    )}
                                 <Typography
                                     level="body2"
                                     className="select-none"
@@ -260,6 +303,14 @@ export function FarmOperationsScheduleSection({
                                 </Typography>
                             </Row>
                             <Row>
+                                {(isOperationCompleted(operation.status) ||
+                                    operationPendingVerification) && (
+                                    <OperationCompletionAttachments
+                                        operationId={operation.id}
+                                        notes={operation.completionNotes}
+                                        imageUrls={operation.imageUrls}
+                                    />
+                                )}
                                 <AssignOperationModal
                                     operationId={operation.id}
                                     label={operationLabel}

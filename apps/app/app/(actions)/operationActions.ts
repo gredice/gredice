@@ -23,6 +23,21 @@ import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
 
+const MAX_COMPLETION_NOTES_LENGTH = 2000;
+
+function normalizeCompletionNotes(notes?: string) {
+    const normalizedNotes = notes?.trim();
+    if (!normalizedNotes) {
+        return undefined;
+    }
+
+    if (normalizedNotes.length > MAX_COMPLETION_NOTES_LENGTH) {
+        throw new Error('Napomena može imati najviše 2000 znakova.');
+    }
+
+    return normalizedNotes;
+}
+
 export async function createOperationAction(formData: FormData) {
     await auth(['admin']);
     const entityId = formData.get('entityId')
@@ -515,6 +530,7 @@ async function revalidateOperationPaths(
 ) {
     revalidatePath(KnownPages.Schedule);
     revalidatePath(KnownPages.Operations);
+    revalidatePath(KnownPages.Operation(operation.id));
     if (operation.accountId)
         revalidatePath(KnownPages.Account(operation.accountId));
     if (operation.gardenId)
@@ -645,11 +661,13 @@ async function verifyOperationCompletion(
 export async function completeOperation(
     operationId: number,
     imageUrls?: string[],
+    notes?: string,
 ) {
     const {
         user: { role },
         userId,
     } = await auth(['admin', 'farmer']);
+    const completionNotes = normalizeCompletionNotes(notes);
     const operation = await getOperationById(operationId);
     if (!operation) {
         throw new Error(`Operation with ID ${operationId} not found.`);
@@ -684,6 +702,7 @@ export async function completeOperation(
         knownEvents.operations.completedV1(operationId.toString(), {
             completedBy: userId,
             images: imageUrls,
+            notes: completionNotes,
         }),
     );
 
@@ -706,11 +725,12 @@ export async function completeOperation(
 export async function completeOperationWithImageUrls(
     operationId: number,
     imageUrls: string[],
+    notes?: string,
 ) {
     if (!operationId) {
         throw new Error('Operation ID is required');
     }
-    return completeOperation(operationId, imageUrls);
+    return completeOperation(operationId, imageUrls, notes);
 }
 
 export async function verifyOperationAction(operationId: number) {

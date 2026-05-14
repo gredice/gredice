@@ -8,6 +8,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { HarvestOperationPrintModal } from './HarvestOperationPrintModal';
+import { OperationCompletionAttachments } from './OperationCompletionAttachments';
 import type { FarmScheduleDayData } from './scheduleData';
 import {
     formatMinutes,
@@ -183,6 +184,32 @@ export function FarmScheduleOperationsSection({
                       plantSortById,
                   )
                 : null;
+        const attachImages = Boolean(
+            operationData?.conditions?.completionAttachImages ||
+                operationData?.conditions?.completionAttachImagesRequired,
+        );
+        const attachImagesRequired = Boolean(
+            operationData?.conditions?.completionAttachImagesRequired,
+        );
+        const attachNotes = Boolean(
+            operationData?.conditions?.completionAttachNotes ||
+                operationData?.conditions?.completionAttachNotesRequired,
+        );
+        const attachNotesRequired = Boolean(
+            operationData?.conditions?.completionAttachNotesRequired,
+        );
+        const completionRequirementTexts = [
+            attachImages
+                ? attachImagesRequired
+                    ? 'Slike obavezne'
+                    : 'Slike opcionalne'
+                : null,
+            attachNotes
+                ? attachNotesRequired
+                    ? 'Napomena obavezna'
+                    : 'Napomena opcionalna'
+                : null,
+        ].filter((text): text is string => Boolean(text));
 
         return (
             <div
@@ -253,6 +280,17 @@ export function FarmScheduleOperationsSection({
                                         'Danas'
                                     )}
                                 </Typography>
+                                {!completed &&
+                                    completionRequirementTexts.length > 0 && (
+                                        <Typography
+                                            level="body2"
+                                            className="text-xs text-muted-foreground"
+                                        >
+                                            {completionRequirementTexts.join(
+                                                ' · ',
+                                            )}
+                                        </Typography>
+                                    )}
                                 {harvestLabelData && (
                                     <HarvestOperationPrintModal
                                         operationLabel={operation.label}
@@ -262,20 +300,34 @@ export function FarmScheduleOperationsSection({
                             </Row>
                         </Stack>
                     </Row>
-                    {operation.assignedUser && (
-                        <div
-                            className="shrink-0"
-                            title={`Dodijeljeno: ${operation.assignedUser.displayName ?? operation.assignedUser.userName}`}
-                        >
-                            <UserAvatar
-                                avatarUrl={operation.assignedUser.avatarUrl}
-                                displayName={
-                                    operation.assignedUser.displayName ??
-                                    operation.assignedUser.userName
-                                }
-                                className="size-7 rounded-full"
-                            />
-                        </div>
+                    {(completed || operation.assignedUser) && (
+                        <Row spacing={0.5} className="shrink-0 items-center">
+                            {completed && (
+                                <OperationCompletionAttachments
+                                    operationId={operation.id}
+                                    notes={operation.completionNotes}
+                                    imageUrls={operation.imageUrls}
+                                />
+                            )}
+                            {operation.assignedUser && (
+                                <div
+                                    className="shrink-0"
+                                    title={`Dodijeljeno: ${operation.assignedUser.displayName ?? operation.assignedUser.userName}`}
+                                >
+                                    <UserAvatar
+                                        avatarUrl={
+                                            operation.assignedUser.avatarUrl
+                                        }
+                                        displayName={
+                                            operation.assignedUser
+                                                .displayName ??
+                                            operation.assignedUser.userName
+                                        }
+                                        className="size-7 rounded-full"
+                                    />
+                                </div>
+                            )}
+                        </Row>
                     )}
                 </Row>
             </div>
@@ -391,6 +443,40 @@ export function FarmScheduleOperationsSection({
                                                   plantSortById,
                                               )
                                             : null;
+                                    const attachImages = Boolean(
+                                        operationData?.conditions
+                                            ?.completionAttachImages ||
+                                            operationData?.conditions
+                                                ?.completionAttachImagesRequired,
+                                    );
+                                    const attachImagesRequired = Boolean(
+                                        operationData?.conditions
+                                            ?.completionAttachImagesRequired,
+                                    );
+                                    const attachNotes = Boolean(
+                                        operationData?.conditions
+                                            ?.completionAttachNotes ||
+                                            operationData?.conditions
+                                                ?.completionAttachNotesRequired,
+                                    );
+                                    const attachNotesRequired = Boolean(
+                                        operationData?.conditions
+                                            ?.completionAttachNotesRequired,
+                                    );
+                                    const completionRequirementTexts = [
+                                        attachImages
+                                            ? attachImagesRequired
+                                                ? 'Slike obavezne'
+                                                : 'Slike opcionalne'
+                                            : null,
+                                        attachNotes
+                                            ? attachNotesRequired
+                                                ? 'Napomena obavezna'
+                                                : 'Napomena opcionalna'
+                                            : null,
+                                    ].filter((text): text is string =>
+                                        Boolean(text),
+                                    );
 
                                     return (
                                         <div
@@ -494,6 +580,18 @@ export function FarmScheduleOperationsSection({
                                                                     'Danas'
                                                                 )}
                                                             </Typography>
+                                                            {!completed &&
+                                                                completionRequirementTexts.length >
+                                                                    0 && (
+                                                                    <Typography
+                                                                        level="body2"
+                                                                        className="text-xs text-muted-foreground"
+                                                                    >
+                                                                        {completionRequirementTexts.join(
+                                                                            ' · ',
+                                                                        )}
+                                                                    </Typography>
+                                                                )}
                                                             {harvestLabelData && (
                                                                 <HarvestOperationPrintModal
                                                                     operationLabel={
@@ -507,28 +605,49 @@ export function FarmScheduleOperationsSection({
                                                         </Row>
                                                     </Stack>
                                                 </Row>
-                                                {operation.assignedUser && (
-                                                    <div
-                                                        className="shrink-0"
-                                                        title={`Dodijeljeno: ${operation.assignedUser.displayName ?? operation.assignedUser.userName}`}
+                                                {(completed ||
+                                                    operation.assignedUser) && (
+                                                    <Row
+                                                        spacing={0.5}
+                                                        className="shrink-0 items-center"
                                                     >
-                                                        <UserAvatar
-                                                            avatarUrl={
-                                                                operation
-                                                                    .assignedUser
-                                                                    .avatarUrl
-                                                            }
-                                                            displayName={
-                                                                operation
-                                                                    .assignedUser
-                                                                    .displayName ??
-                                                                operation
-                                                                    .assignedUser
-                                                                    .userName
-                                                            }
-                                                            className="size-7 rounded-full"
-                                                        />
-                                                    </div>
+                                                        {completed && (
+                                                            <OperationCompletionAttachments
+                                                                operationId={
+                                                                    operation.id
+                                                                }
+                                                                notes={
+                                                                    operation.completionNotes
+                                                                }
+                                                                imageUrls={
+                                                                    operation.imageUrls
+                                                                }
+                                                            />
+                                                        )}
+                                                        {operation.assignedUser && (
+                                                            <div
+                                                                className="shrink-0"
+                                                                title={`Dodijeljeno: ${operation.assignedUser.displayName ?? operation.assignedUser.userName}`}
+                                                            >
+                                                                <UserAvatar
+                                                                    avatarUrl={
+                                                                        operation
+                                                                            .assignedUser
+                                                                            .avatarUrl
+                                                                    }
+                                                                    displayName={
+                                                                        operation
+                                                                            .assignedUser
+                                                                            .displayName ??
+                                                                        operation
+                                                                            .assignedUser
+                                                                            .userName
+                                                                    }
+                                                                    className="size-7 rounded-full"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </Row>
                                                 )}
                                             </Row>
                                         </div>

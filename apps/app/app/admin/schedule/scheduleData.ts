@@ -64,6 +64,7 @@ export const getScheduleOperations = cache(async () => {
                     status: ['new', 'planned'],
                 }),
                 getAllOperations({
+                    completedFrom: from,
                     status: 'pendingVerification',
                 }),
                 getAllOperations({
