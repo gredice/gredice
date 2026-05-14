@@ -214,7 +214,7 @@ export function RaisedBedFieldItemPlanted({
         triggerVariant === 'avatar' ? (
             <button
                 type="button"
-                className="inline-flex size-8 items-center justify-center overflow-hidden rounded-full border-2 hover:bg-gray-100 border-white bg-card p-0.5 shadow-lg ring-1 ring-black/10 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700"
+                className="inline-flex size-8 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-white p-0.5 hover:bg-gray-100 shadow-lg ring-1 ring-black/10 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700"
                 title={`Povijest biljke: ${plantSort.information.name}`}
                 aria-label={`Povijest biljke ${plantSort.information.name}`}
                 onPointerDown={(event) => event.stopPropagation()}
@@ -253,7 +253,7 @@ export function RaisedBedFieldItemPlanted({
                                 trigger={
                                     <button
                                         type="button"
-                                        className="inline-flex size-8 items-center justify-center rounded-full border-2 border-white bg-card p-0 shadow-lg ring-1 ring-black/10 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700"
+                                        className="inline-flex size-8 items-center justify-center rounded-full border-2 border-white bg-white p-0 shadow-lg ring-1 ring-black/10 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700"
                                         title={`Povijest biljaka (${plantHistory.length})`}
                                         aria-label={`Prikaži povijest biljaka za polje ${positionIndex + 1}`}
                                         onPointerDown={(event) =>
@@ -429,6 +429,18 @@ export function RaisedBedFieldItemPlanted({
                         />
                     </TabsContent>
                 </Tabs>
+                <button
+                    type="button"
+                    className="sm:hidden self-end rounded-md border px-3 py-1.5 text-sm font-medium"
+                    onClick={() => {
+                        if (!isOpenControlled) {
+                            setInternalOpen(false);
+                        }
+                        onOpenChange?.(false);
+                    }}
+                >
+                    Zatvori
+                </button>
             </Stack>
         </Modal>
     );
