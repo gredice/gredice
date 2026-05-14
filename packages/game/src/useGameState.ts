@@ -3,6 +3,11 @@ import { getTimes } from 'suncalc';
 import type { OrbitControls } from 'three-stdlib';
 import { createStore, useStore } from 'zustand';
 import { audioMixer } from './audio/audioMixer';
+import {
+    type GameQualitySetting,
+    getGameQualitySetting,
+    setGameQualitySetting as persistGameQualitySetting,
+} from './scene/gameQuality';
 import type { Block } from './types/Block';
 import { audioConfig } from './utils/audioConfig';
 import {
@@ -109,6 +114,8 @@ export type GameState = {
     setFreezeTime: (freezeTime: Date | null) => void;
     dayNightCycleDisabled: boolean;
     setDayNightCycleDisabled: (disabled: boolean) => void;
+    gameQualitySetting: GameQualitySetting;
+    setGameQualitySetting: (setting: GameQualitySetting) => void;
     weatherVisualizationDisabled: boolean;
     setWeatherVisualizationDisabled: (disabled: boolean) => void;
     timeOfDay: number;
@@ -184,6 +191,7 @@ export function createGameState({
     winterMode?: WinterMode;
 }) {
     const dayNightCycleDisabled = isDayNightCycleDisabled();
+    const gameQualitySetting = getGameQualitySetting();
     const weatherVisualizationDisabled = isWeatherVisualizationDisabled();
     const now = freezeTime ?? new Date();
     const timeOfDay = resolveTimeOfDay(now, dayNightCycleDisabled);
@@ -233,6 +241,11 @@ export function createGameState({
                     disabled,
                 ),
             });
+        },
+        gameQualitySetting,
+        setGameQualitySetting: (setting) => {
+            persistGameQualitySetting(setting);
+            set({ gameQualitySetting: setting });
         },
         weatherVisualizationDisabled,
         setWeatherVisualizationDisabled: (disabled) => {

@@ -1,21 +1,26 @@
 #!/usr/bin/env node
 
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import net from 'node:net';
 import { appRegistry, getAppDevPort, getComponentTestPort } from './app-registry.ts';
 
 const mode = process.argv[2] === 'setup' ? 'setup' : 'doctor';
-const rootDir = resolve(new URL('..', import.meta.url).pathname);
+const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const requiredHostsLine = `127.0.0.1 ${appRegistry.map((a) => a.localDomain).join(' ')}`;
 const caddyDataDir = process.env.GREDICE_DEV_CADDY_DATA_DIR || resolve(os.homedir(), '.gredice', 'dev-caddy');
 const caddyCert = resolve(caddyDataDir, 'caddy', 'pki', 'authorities', 'local', 'root.crt');
 
 const checks = [];
 function addCheck(name, required, ok, detail, next) { checks.push({ name, required, ok, detail, next }); }
-function run(cmd, args, options = {}) { return spawnSync(cmd, args, { encoding: 'utf8', ...options }); }
+function run(cmd, args, options = {}) {
+  const shell = options.shell ?? process.platform === 'win32';
+  const finalCmd = shell && /\s/.test(cmd) ? `"${cmd}"` : cmd;
+  return spawnSync(finalCmd, args, { encoding: 'utf8', ...options, shell });
+}
 function hasFailedRequiredChecks() { return checks.some((c) => c.required && !c.ok); }
 function readConfiguredPnpm() {
   const packageJsonPath = resolve(rootDir, 'package.json');
@@ -198,23 +203,68 @@ function checkPorts() {
   });
 }
 
+function spawnTagged(tag, cmd, args) {
+  return new Promise((resolvePromise) => {
+    const shell = process.platform === 'win32';
+    const finalCmd = shell && /\s/.test(cmd) ? `"${cmd}"` : cmd;
+    const child = spawn(finalCmd, args, { shell, stdio: ['ignore', 'pipe', 'pipe'] });
+
+    const pipe = (stream, target) => {
+      let buffer = '';
+      stream.setEncoding('utf8');
+      stream.on('data', (chunk) => {
+        buffer += chunk;
+        let nl;
+        while ((nl = buffer.indexOf('\n')) !== -1) {
+          target.write(`[${tag}] ${buffer.slice(0, nl + 1)}`);
+          buffer = buffer.slice(nl + 1);
+        }
+      });
+      stream.on('end', () => {
+        if (buffer) target.write(`[${tag}] ${buffer}\n`);
+      });
+    };
+    pipe(child.stdout, process.stdout);
+    pipe(child.stderr, process.stderr);
+
+    child.on('error', () => resolvePromise(1));
+    child.on('close', (code) => resolvePromise(code ?? 1));
+  });
+}
+
+async function runChain(tag, actions) {
+  for (const action of actions) {
+    console.log(`\n[${tag}] ${action.label}...`);
+    const code = await spawnTagged(tag, action.cmd, action.args);
+    if (code !== 0) {
+      console.error(`\n[${tag}] Setup action failed: ${action.label}.`);
+      return { label: action.label, code };
+    }
+  }
+  return null;
+}
+
 async function maybeRunSetupActions() {
   if (mode !== 'setup') return;
-  console.log('\nRunning setup actions...');
-  const actions = [
+  console.log('\nRunning setup actions (install chain || vercel chain)...');
+
+  const installChain = [
     { label: 'Installing dependencies', cmd: 'pnpm', args: ['install'] },
-    { label: 'Linking Vercel projects', cmd: 'pnpm', args: ['vercel:link'] },
-    { label: 'Pulling Vercel environment variables', cmd: 'pnpm', args: ['env:pull'] },
     { label: 'Installing Playwright browsers', cmd: 'pnpm', args: ['--filter', 'www', 'exec', 'playwright', 'install'] },
   ];
+  const vercelChain = [
+    { label: 'Linking Vercel projects', cmd: 'pnpm', args: ['vercel:link'] },
+    { label: 'Pulling Vercel environment variables', cmd: 'pnpm', args: ['env:pull'] },
+  ];
 
-  for (const action of actions) {
-    console.log(`\n${action.label}...`);
-    const result = run(action.cmd, action.args, { stdio: 'inherit' });
-    if (result.status !== 0) {
-      console.error(`\nSetup action failed: ${action.label}.`);
-      process.exit(result.status ?? 1);
-    }
+  const [installResult, vercelResult] = await Promise.all([
+    runChain('install', installChain),
+    runChain('vercel', vercelChain),
+  ]);
+
+  const failure = installResult ?? vercelResult;
+  if (failure) {
+    process.exit(failure.code || 1);
   }
 }
 
