@@ -34,7 +34,7 @@ import { RaisedBedDiary } from './RaisedBedDiary';
 import { RaisedBedInfoTab } from './RaisedBedInfoTab';
 import { RaisedBedOperationsTab } from './RaisedBedOperationsTab';
 
-type RaisedBedTabValue = 'diary' | 'operations' | 'info' | 'abandon';
+type RaisedBedTabValue = 'diary' | 'operations' | 'info' | 'more';
 
 export function RaisedBedInfo({
     gardenId,
@@ -129,11 +129,11 @@ export function RaisedBedInfo({
                         aria-label="Prikaži dodatne opcije gredice"
                         className={cx(
                             'absolute right-0 top-0 h-full min-w-10 rounded-full px-3',
-                            activeTab === 'abandon'
+                            activeTab === 'more'
                                 ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'
                                 : undefined,
                         )}
-                        onClick={() => setActiveTab('abandon')}
+                        onClick={() => setActiveTab('more')}
                     >
                         <MoreHorizontal className="size-4" />
                     </Button>
@@ -144,7 +144,7 @@ export function RaisedBedInfo({
                         raisedBedId={raisedBed.id}
                     />
                 </TabsContent>
-                <TabsContent value="abandon">
+                <TabsContent value="more">
                     <Stack spacing={2}>
                         {isAbandoned ? (
                             <Alert

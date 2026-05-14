@@ -1,12 +1,12 @@
 import { signalcoClient } from '@gredice/signalco';
 import {
+    abandonRaisedBed,
     buildRaisedBedFieldPlantUpdatePayload,
     countEventsSince,
     createDefaultGardenForAccount,
     createEvent,
     createGardenBlock,
     createGardenStack,
-    createOperation,
     deleteGardenStack,
     getAccount,
     getAccountGardens,
@@ -1595,20 +1595,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const operationId = await createOperation({
+            const operationId = await abandonRaisedBed({
                 accountId,
-                entityId: ABANDON_RAISED_BED_OPERATION_ID,
-                entityTypeName: OPERATION_ENTITY_TYPE_NAME,
                 gardenId: gardenIdNumber,
+                operationEntityId: ABANDON_RAISED_BED_OPERATION_ID,
+                operationEntityTypeName: OPERATION_ENTITY_TYPE_NAME,
                 raisedBedId: raisedBedIdNumber,
             });
-            await updateRaisedBed({
-                id: raisedBedIdNumber,
-                status: 'abandoned',
-            });
-            await createEvent(
-                knownEvents.raisedBeds.abandonV1(raisedBedIdNumber.toString()),
-            );
 
             return context.json({ id: operationId }, 201);
         },

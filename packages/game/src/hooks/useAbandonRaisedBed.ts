@@ -11,6 +11,22 @@ import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 const mutationKey = ['gardens', 'current', 'raisedBedAbandon'];
 const ONE_MUTATION_IN_FLIGHT = 1;
 
+async function getAbandonErrorMessage(response: Response) {
+    try {
+        const body: unknown = await response.json();
+        if (typeof body === 'object' && body !== null && 'error' in body) {
+            const { error } = body;
+            if (typeof error === 'string' && error.trim()) {
+                return error;
+            }
+        }
+    } catch {
+        return RAISED_BED_ABANDON_FAILED_MESSAGE;
+    }
+
+    return RAISED_BED_ABANDON_FAILED_MESSAGE;
+}
+
 export function useAbandonRaisedBed(gardenId: number, raisedBedId: number) {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
@@ -30,7 +46,7 @@ export function useAbandonRaisedBed(gardenId: number, raisedBedId: number) {
             });
 
             if (response.status !== 201) {
-                throw new Error(RAISED_BED_ABANDON_FAILED_MESSAGE);
+                throw new Error(await getAbandonErrorMessage(response));
             }
         },
         onMutate: async () => {
