@@ -128,7 +128,6 @@ function PlaceEntityButton({
                 onClick={placeEntity}
                 size={simple ? 'sm' : 'md'}
                 disabled={!block.prices.sunflowers || placeBlock.isPending}
-                loading={placeBlock.isPending}
                 endDecorator={
                     <Row
                         className={cx(
@@ -138,7 +137,7 @@ function PlaceEntityButton({
                         )}
                     >
                         {block.prices.sunflowers
-                            ? `🌻 ${block.prices.sunflowers}`
+                            ? `${placeBlock.isPending ? '⏳' : '🌻'} ${block.prices.sunflowers}`
                             : 'Nedostupno'}
                     </Row>
                 }
