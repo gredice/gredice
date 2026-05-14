@@ -304,6 +304,7 @@ export function RaisedBedPlantingScheduleSection({
                                     </Typography>
                                     <Typography
                                         level="body2"
+                                        component="div"
                                         className="select-none"
                                     >
                                         {field.plantScheduledDate ? (

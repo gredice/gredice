@@ -22,6 +22,7 @@ import { BulkRescheduleRaisedBedButton } from './BulkRescheduleRaisedBedButton';
 import { CancelOperationModal } from './CancelOperationModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { CopyTasksButton } from './CopyTasksButton';
+import { OperationCompletionAttachments } from './OperationCompletionAttachments';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
 import {
     formatMinutes,
@@ -290,16 +291,36 @@ export function RaisedBedOperationsScheduleSection({
                             : operation.isAccepted
                               ? 'text-green-600'
                               : 'text-muted-foreground';
-                    const attachImages =
-                        operationData?.conditions?.completionAttachImages;
-                    const attachRequired =
+                    const attachImages = Boolean(
+                        operationData?.conditions?.completionAttachImages ||
+                            operationData?.conditions
+                                ?.completionAttachImagesRequired,
+                    );
+                    const attachRequired = Boolean(
                         operationData?.conditions
-                            ?.completionAttachImagesRequired;
-                    const imageStatusText = attachImages
-                        ? attachRequired
-                            ? 'Slike obavezne'
-                            : 'Slike opcionalne'
-                        : null;
+                            ?.completionAttachImagesRequired,
+                    );
+                    const attachNotes = Boolean(
+                        operationData?.conditions?.completionAttachNotes ||
+                            operationData?.conditions
+                                ?.completionAttachNotesRequired,
+                    );
+                    const attachNotesRequired = Boolean(
+                        operationData?.conditions
+                            ?.completionAttachNotesRequired,
+                    );
+                    const completionRequirementTexts = [
+                        attachImages
+                            ? attachRequired
+                                ? 'Slike obavezne'
+                                : 'Slike opcionalne'
+                            : null,
+                        attachNotes
+                            ? attachNotesRequired
+                                ? 'Napomena obavezna'
+                                : 'Napomena opcionalna'
+                            : null,
+                    ].filter((text): text is string => Boolean(text));
 
                     return (
                         <div key={operation.id}>
@@ -392,7 +413,7 @@ export function RaisedBedOperationsScheduleSection({
                                     >
                                         {operationStatusText}
                                     </Typography>
-                                    {imageStatusText &&
+                                    {completionRequirementTexts.length > 0 &&
                                         !isOperationCompleted(
                                             operation.status,
                                         ) &&
@@ -401,11 +422,14 @@ export function RaisedBedOperationsScheduleSection({
                                                 level="body2"
                                                 className="ml-1 text-xs text-muted-foreground"
                                             >
-                                                {imageStatusText}
+                                                {completionRequirementTexts.join(
+                                                    ' · ',
+                                                )}
                                             </Typography>
                                         )}
                                     <Typography
                                         level="body2"
+                                        component="div"
                                         className="select-none"
                                     >
                                         {operation.scheduledDate ? (
@@ -424,6 +448,14 @@ export function RaisedBedOperationsScheduleSection({
                                     </Typography>
                                 </Row>
                                 <Row>
+                                    {(isOperationCompleted(operation.status) ||
+                                        operationPendingVerification) && (
+                                        <OperationCompletionAttachments
+                                            operationId={operation.id}
+                                            notes={operation.completionNotes}
+                                            imageUrls={operation.imageUrls}
+                                        />
+                                    )}
                                     <AssignOperationModal
                                         operationId={operation.id}
                                         label={operationLabel}

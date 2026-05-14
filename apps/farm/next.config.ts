@@ -24,6 +24,14 @@ const nextConfig: NextConfig = {
                 protocol: 'https',
                 hostname: 'cdn.gredice.com',
             },
+            {
+                protocol: 'https',
+                hostname: 'myegtvromcktt2y7.public.blob.vercel-storage.com',
+            },
+            {
+                protocol: 'https',
+                hostname: '7ql7fvz1vzzo6adz.public.blob.vercel-storage.com',
+            },
         ],
     },
     productionBrowserSourceMaps: !process.env.CI,

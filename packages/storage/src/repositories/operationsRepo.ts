@@ -115,6 +115,9 @@ function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
             (value): value is string => typeof value === 'string',
         );
     }
+    if (typeof record.notes === 'string') {
+        data.notes = record.notes;
+    }
     if (typeof record.error === 'string') {
         data.error = record.error;
     }
@@ -185,6 +188,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
         let canceledAt: Date | undefined;
         let cancelReason: string | undefined;
         let imageUrls: string[] | undefined;
+        let completionNotes: string | undefined;
 
         // helpers to safely extract typed values from unknown event.data
         const asString = (v: unknown): string | undefined =>
@@ -214,6 +218,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                         (url): url is string => typeof url === 'string',
                     );
                 }
+                completionNotes = asString(data?.notes) ?? completionNotes;
             } else if (event.type === knownEventTypes.operations.verify) {
                 status = 'completed';
                 verifiedBy = asString(data?.verifiedBy) ?? verifiedBy;
@@ -258,6 +263,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
             canceledAt,
             cancelReason,
             imageUrls,
+            completionNotes,
         };
     });
 
@@ -373,6 +379,24 @@ function getOperationStatusExpression() {
             else 'new'
         end
     )`;
+}
+
+function getOperationStatusWhere(
+    status: OperationStatus | OperationStatus[] | undefined,
+) {
+    if (!status) {
+        return undefined;
+    }
+
+    const statusValues = Array.isArray(status) ? status : [status];
+    if (statusValues.length === 0) {
+        return undefined;
+    }
+
+    return sql`${getOperationStatusExpression()} in (${sql.join(
+        statusValues.map((value) => sql`${value}`),
+        sql`, `,
+    )})`;
 }
 
 function getOperationTimelineSortExpression() {
@@ -498,16 +522,22 @@ async function getAllOperationsUncached(filter?: {
         );
     } else {
         // Otherwise, use the original timestamp-based filtering
-        const operationsList = await storage().query.operations.findMany({
-            where: and(
-                eq(operations.isDeleted, false),
-                filter?.from
-                    ? gte(operations.timestamp, filter.from)
-                    : undefined,
-                filter?.to ? lte(operations.timestamp, filter.to) : undefined,
-            ),
-            orderBy: desc(operations.timestamp),
-        });
+        const operationsList = await storage()
+            .select()
+            .from(operations)
+            .where(
+                and(
+                    eq(operations.isDeleted, false),
+                    getOperationStatusWhere(filter?.status),
+                    filter?.from
+                        ? gte(operations.timestamp, filter.from)
+                        : undefined,
+                    filter?.to
+                        ? lte(operations.timestamp, filter.to)
+                        : undefined,
+                ),
+            )
+            .orderBy(desc(operations.timestamp));
         operationsWithAggregates =
             await fillOperationAggregates(operationsList);
     }
