@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { delimiter, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import {
     getAppAllowedDevOrigins,
@@ -34,6 +38,37 @@ function withEnv(updates, callback) {
     }
 }
 
+function runAppCommand(command, env = {}) {
+    const binDir = mkdtempSync(resolve(tmpdir(), 'gredice-app-command-'));
+    const nextPath = resolve(binDir, 'next');
+    const childEnv = {
+        ...process.env,
+        ...env,
+        PATH: `${binDir}${delimiter}${process.env.PATH}`,
+    };
+    if (!Object.hasOwn(env, 'GREDICE_API_HOST')) {
+        delete childEnv.GREDICE_API_HOST;
+    }
+    writeFileSync(
+        nextPath,
+        [
+            '#!/usr/bin/env node',
+            "console.log(JSON.stringify({ args: process.argv.slice(2), apiHost: process.env.GREDICE_API_HOST }));",
+        ].join('\n'),
+    );
+    chmodSync(nextPath, 0o755);
+
+    return spawnSync(
+        process.execPath,
+        ['--experimental-strip-types', '../../scripts/run-app-command.mjs', command],
+        {
+            cwd: resolve(import.meta.dirname, '..', 'apps', 'app'),
+            env: childEnv,
+            encoding: 'utf8',
+        },
+    );
+}
+
 describe('app registry worktree ports', () => {
     it('derives app dev ports from the worktree offset', () => {
         withEnv({ GREDICE_PORT_OFFSET: '12' }, () => {
@@ -67,5 +102,29 @@ describe('app registry worktree ports', () => {
 
     it('creates stable worktree slugs for container and certificate paths', () => {
         assert.equal(getWorktreeSlug('Feature/ABC thing'), 'feature-abc-thing');
+    });
+
+    it('points local API calls at the app dev port for dev commands', () => {
+        const result = runAppCommand('dev', {
+            GREDICE_PORT_OFFSET: '12',
+            GREDICE_API_START_PORT: '13005',
+        });
+        assert.equal(result.status, 0, result.stderr);
+
+        const output = JSON.parse(result.stdout);
+        assert.deepEqual(output.args, ['dev', '-p', '3123']);
+        assert.equal(output.apiHost, 'http://localhost:3125');
+    });
+
+    it('points local API calls at the API start port for start commands', () => {
+        const result = runAppCommand('start', {
+            GREDICE_PORT_OFFSET: '12',
+            GREDICE_API_START_PORT: '13005',
+        });
+        assert.equal(result.status, 0, result.stderr);
+
+        const output = JSON.parse(result.stdout);
+        assert.deepEqual(output.args, ['start', '-p', '3003']);
+        assert.equal(output.apiHost, 'http://localhost:13005');
     });
 });

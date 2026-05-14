@@ -20,14 +20,23 @@ const mode = process.argv[2] === 'setup' ? 'setup' : 'doctor';
 const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const linkedGitWorktree = isLinkedGitWorktree();
 const worktreeSlug = getWorktreeSlug();
-const proxyHttpPort = parsePort(
-  process.env.GREDICE_PROXY_HTTP_PORT,
-  linkedGitWorktree ? getWorktreeProxyHttpPort() : 80,
-);
-const proxyHttpsPort = parsePort(
-  process.env.GREDICE_PROXY_HTTPS_PORT,
-  linkedGitWorktree ? getWorktreeProxyHttpsPort() : 443,
-);
+const proxyPortsExplicitlyConfigured =
+  hasEnvValue(process.env.GREDICE_PROXY_HTTP_PORT) ||
+  hasEnvValue(process.env.GREDICE_PROXY_HTTPS_PORT);
+const defaultProxyPorts = {
+  http: parsePort(
+    process.env.GREDICE_PROXY_HTTP_PORT,
+    linkedGitWorktree ? getWorktreeProxyHttpPort() : 80,
+  ),
+  https: parsePort(
+    process.env.GREDICE_PROXY_HTTPS_PORT,
+    linkedGitWorktree ? getWorktreeProxyHttpsPort() : 443,
+  ),
+};
+const fallbackProxyPorts = {
+  http: getWorktreeProxyHttpPort(),
+  https: getWorktreeProxyHttpsPort(),
+};
 const requiredHostsLine = `127.0.0.1 ${appRegistry.map((a) => a.localDomain).join(' ')}`;
 const caddyDataDir = process.env.GREDICE_DEV_CADDY_DATA_DIR || resolve(
   os.homedir(),
@@ -65,6 +74,11 @@ function run(cmd, args, options = {}) {
   return spawnSync(finalCmd, args, { encoding: 'utf8', ...options, shell });
 }
 function hasFailedRequiredChecks() { return checks.some((c) => c.required && !c.ok); }
+function canFallbackProxyPorts() {
+  return !proxyPortsExplicitlyConfigured &&
+    (defaultProxyPorts.http !== fallbackProxyPorts.http ||
+      defaultProxyPorts.https !== fallbackProxyPorts.https);
+}
 function readConfiguredPnpm() {
   const packageJsonPath = resolve(rootDir, 'package.json');
   try {
@@ -224,13 +238,22 @@ function checkCertificate() {
 }
 
 function checkPorts() {
-  const ports = new Set([proxyHttpPort, proxyHttpsPort]);
+  const appPorts = new Set();
   for (const app of appRegistry) {
-    ports.add(getAppDevPort(app));
+    appPorts.add(getAppDevPort(app));
     if (app.componentTestPort) {
-      ports.add(getComponentTestPort(app));
+      appPorts.add(getComponentTestPort(app));
     }
-    ports.add(getAppTestPort(app));
+    appPorts.add(getAppTestPort(app));
+  }
+
+  const primaryProxyPorts = new Set([defaultProxyPorts.http, defaultProxyPorts.https]);
+  const fallbackProxyPortSet = new Set([fallbackProxyPorts.http, fallbackProxyPorts.https]);
+  const ports = new Set([...appPorts, ...primaryProxyPorts]);
+  if (canFallbackProxyPorts()) {
+    for (const port of fallbackProxyPortSet) {
+      ports.add(port);
+    }
   }
 
   const probes = [...ports].map((port) => new Promise((resolveProbe) => {
@@ -241,8 +264,33 @@ function checkPorts() {
   }));
 
   return Promise.all(probes).then((blockedPorts) => {
-    const blocked = blockedPorts.filter(Boolean);
-    addCheck('Local ports available', true, blocked.length === 0, blocked.length === 0 ? 'All required ports appear free.' : `Ports in use: ${blocked.join(', ')}.`, 'Stop conflicting processes before running `pnpm dev` or tests.');
+    const blocked = new Set(blockedPorts.filter(Boolean));
+    const blockedAppPorts = [...appPorts].filter((port) => blocked.has(port));
+    const blockedPrimaryProxyPorts = [...primaryProxyPorts].filter((port) => blocked.has(port));
+    const blockedFallbackProxyPorts = [...fallbackProxyPortSet].filter((port) => blocked.has(port));
+    const canUseFallback =
+      canFallbackProxyPorts() &&
+      blockedPrimaryProxyPorts.length > 0 &&
+      blockedFallbackProxyPorts.length === 0;
+    const ok =
+      blockedAppPorts.length === 0 &&
+      (blockedPrimaryProxyPorts.length === 0 || canUseFallback);
+    const detail = (() => {
+      if (blockedAppPorts.length > 0) {
+        return `Ports in use: ${blockedAppPorts.join(', ')}.`;
+      }
+
+      if (blockedPrimaryProxyPorts.length === 0) {
+        return 'All required ports appear free.';
+      }
+
+      if (canUseFallback) {
+        return `Default proxy ports ${blockedPrimaryProxyPorts.join(', ')} are in use; fallback proxy ports ${[...fallbackProxyPortSet].join(', ')} appear free.`;
+      }
+
+      return `Ports in use: ${[...new Set([...blockedPrimaryProxyPorts, ...blockedFallbackProxyPorts])].join(', ')}.`;
+    })();
+    addCheck('Local ports available', true, ok, detail, 'Stop conflicting processes before running `pnpm dev` or tests.');
   });
 }
 

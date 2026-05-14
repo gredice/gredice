@@ -83,10 +83,12 @@ function getSpawnOptions(command, args) {
 
 function applyLocalServiceEnv() {
     const apiApp = getAppByName('api');
+    const apiPort =
+        commandName === 'start' ? getAppStartPort(apiApp) : getAppDevPort(apiApp);
     process.env.GREDICE_API_HOST ??= localAppHostnameUrl(
         apiApp,
         'localhost',
-        getAppDevPort(apiApp),
+        apiPort,
     );
 }
 
