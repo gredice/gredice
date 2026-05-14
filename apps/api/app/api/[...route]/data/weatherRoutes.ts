@@ -1,4 +1,3 @@
-import { TZDate } from '@date-fns/tz';
 import { getFarms, grediceCached, grediceCacheKeys } from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute } from 'hono-openapi';
@@ -8,6 +7,11 @@ import {
 } from '../../../../lib/http/cacheControl';
 import { getBjelovarForecast } from '../../../../lib/weather/forecast';
 import { populateWeatherFromSymbol } from '../../../../lib/weather/populateWeatherFromSymbol';
+import {
+    fallbackWeatherNow,
+    findClosestForecastEntry,
+    pickFarmSnowAccumulation,
+} from '../../../../lib/weather/weatherNowContract';
 
 // import { signalcoClient } from '@gredice/signalco';
 
@@ -38,12 +42,6 @@ const app = new Hono()
                 getBjelovarForecast,
                 60 * 60,
             );
-            if (!forecast || forecast.length === 0) {
-                return context.json(
-                    { error: 'Forecast not available' },
-                    { status: 500 },
-                );
-            }
 
             // const measurements = await grediceCached(grediceCacheKeys.airSensorOpgIb, async () => {
             //     const airSensorData = await signalcoClient().GET('/entity/{id}', { params: { path: { id: '565c2653-b3eb-4a7e-9399-bf5734128e03' } } });
@@ -60,38 +58,27 @@ const app = new Hono()
             //     };
             // }, 60 * 60);
 
-            // Find the forecast entry closest to now
-            const nowLocal = new TZDate(TZDate.now(), 'Europe/Zagreb');
-            let closestEntry = null;
-            let minDiff = Infinity;
+            const farmId = context.req.query('farmId');
+            const farms = await getFarms();
+            const snowAccumulation = pickFarmSnowAccumulation(farms, farmId);
 
-            for (const day of forecast) {
-                for (const entry of day.entries) {
-                    const entryDateTime = new TZDate(
-                        `${day.date}T${entry.time.toString().padStart(2, '0')}:00:00`,
-                        'Europe/Zagreb',
-                    );
-                    const diff = Math.abs(
-                        entryDateTime.getTime() - nowLocal.getTime(),
-                    );
-                    if (diff < minDiff) {
-                        minDiff = diff;
-                        closestEntry = entry;
-                    }
-                }
+            if (!forecast || forecast.length === 0) {
+                setCacheControl(context, cacheControlPresets.weatherShortTerm);
+                return context.json({
+                    ...fallbackWeatherNow,
+                    snowAccumulation,
+                });
             }
 
+            const closestEntry = findClosestForecastEntry(forecast, Date.now());
             if (!closestEntry) {
-                return context.json(
-                    { error: 'Forecast not available' },
-                    { status: 500 },
-                );
+                setCacheControl(context, cacheControlPresets.weatherShortTerm);
+                return context.json({
+                    ...fallbackWeatherNow,
+                    snowAccumulation,
+                });
             }
             setCacheControl(context, cacheControlPresets.weatherShortTerm);
-
-            // Get farm data to include snow accumulation
-            const farms = await getFarms();
-            const farm = farms[0]; // Get the first farm (assuming single farm for now)
 
             const weather = {
                 symbol: closestEntry.symbol,
@@ -100,8 +87,10 @@ const app = new Hono()
                 rain: closestEntry.rain,
                 windDirection: closestEntry.windDirection,
                 windSpeed: closestEntry.windStrength,
-                snowAccumulation: farm?.snowAccumulation ?? 0, // Snow accumulation in cm
+                snowAccumulation,
                 ...populateWeatherFromSymbol(closestEntry.symbol),
+                source: 'forecast' as const,
+                isStale: false,
             };
 
             return context.json(weather);

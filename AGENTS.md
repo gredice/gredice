@@ -4,11 +4,12 @@ This repository is the **Gredice** monorepo. It hosts multiple Next.js applicati
 
 ## First steps
 
-- Use Node.js `>=24` and pnpm `10.33.2`.
+- Use Node.js `>=24` and the pnpm version pinned by the root `packageManager` field.
 - Install dependencies from the repo root with `pnpm install`.
 - Before editing code, look for additional `AGENTS.md` files inside the path you plan to touch. Nested instructions override this file.
 - Keep the worktree clean. Commit only intentional source changes and never commit `node_modules`, build output, `.next`, coverage, or generated artifacts unless explicitly requested.
 - Use targeted Turbo commands from the repo root whenever possible.
+- Before handing off code changes, identify the affected workspace(s) and run targeted lint, test, and build checks unless the user explicitly asks to skip validation.
 
 ## Read the relevant guides
 
@@ -30,6 +31,28 @@ This repository is the **Gredice** monorepo. It hosts multiple Next.js applicati
 - Do not run `pnpm db-push`. Database migrations are applied manually during deployment.
 - For shared PRs, leave new migration files out of version control unless explicitly requested.
 - Follow existing Biome, TypeScript, React, Next.js, Tailwind, and package conventions.
+
+## Task validation
+
+For code changes, use the narrowest reliable validation set from the repo root:
+
+```bash
+pnpm lint --filter <workspace>
+pnpm test --filter <workspace>
+pnpm build --filter <workspace>
+```
+
+Examples:
+
+```bash
+pnpm lint --filter garden
+pnpm test --filter garden
+pnpm build --filter garden
+```
+
+For shared package changes, also validate the consuming app(s) that exercise the changed behavior. For storage changes, run `pnpm test --filter @gredice/storage` and build affected consumers such as `app`, `api`, or `farm`. For `@gredice/game` changes specifically, validate and build both `garden` and `www` because both apps consume game package codepaths.
+
+If validation cannot run because of missing secrets, unavailable services, or time constraints, state exactly which command was skipped and why.
 
 ## GitHub issues
 

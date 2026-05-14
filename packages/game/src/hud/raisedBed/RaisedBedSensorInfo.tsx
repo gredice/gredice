@@ -573,7 +573,7 @@ function SensorInfoModal({
                         {!status && isSensorInShoppingCart && (
                             <div className="flex flex-col items-center justify-center h-full gap-4 p-6">
                                 <Typography level="body1">
-                                    Senzor je već u tvojoj košarici.
+                                    Senzor je već u tvojoj košari.
                                 </Typography>
                                 <Typography
                                     level="body2"
@@ -581,7 +581,7 @@ function SensorInfoModal({
                                     center
                                 >
                                     Senzor za praćenje vlažnosti i temperature
-                                    tla te čekaju u košarici. Dovrši kupovinu i
+                                    tla te čekaju u košari. Dovrši kupovinu i
                                     uskoro možeš početi pratiti uvjete u tlu
                                     svoje gredice!
                                 </Typography>

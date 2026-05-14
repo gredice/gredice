@@ -1,3 +1,4 @@
+export { sql } from 'drizzle-orm';
 export * from './@types/EntityStandardized';
 export * from './cache/directoriesCached';
 export * from './cache/grediceCached';
@@ -42,6 +43,7 @@ export * from './repositories/refreshTokensRepo';
 export * from './repositories/seasonalOffersRepo';
 export * from './repositories/settingsRepo';
 export * from './repositories/shoppingCartRepo';
+export * from './repositories/socialPostsRepo';
 export * from './repositories/timeSlotsRepo';
 export * from './repositories/transactionsRepo';
 export * from './repositories/usersRepo';

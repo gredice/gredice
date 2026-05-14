@@ -188,11 +188,21 @@ export async function deleteAccountWithDependencies(
         );
         await storage().delete(events).where(eq(events.aggregateId, accountId));
 
+        // Delete user-account association
+        console.info(
+            `[AccountDelete] Deleting user-account association for accountId=${accountId}, userId=${userId}`,
+        );
+        await storage()
+            .delete(accountUsers)
+            .where(eq(accountUsers.accountId, accountId));
+
         // User cleanup (if user is not associated with any other account)
-        const userAccounts = await storage().query.accountUsers.findMany({
-            where: eq(accountUsers.accountId, accountId),
-        });
-        if (userAccounts.length === 0) {
+        const remainingUserAccounts = await storage().query.accountUsers.findMany(
+            {
+                where: eq(accountUsers.userId, userId),
+            },
+        );
+        if (remainingUserAccounts.length === 0) {
             console.info(
                 `[AccountDelete] Deleting notifications and user for userId=${userId}`,
             );
@@ -215,14 +225,6 @@ export async function deleteAccountWithDependencies(
             console.info(`[AccountDelete] Deleting user userId=${userId}`);
             await storage().delete(users).where(eq(users.id, userId));
         }
-
-        // Delete user-account association
-        console.info(
-            `[AccountDelete] Deleting user-account association for accountId=${accountId}, userId=${userId}`,
-        );
-        await storage()
-            .delete(accountUsers)
-            .where(eq(accountUsers.accountId, accountId));
 
         // Final - Delete account
         console.info(

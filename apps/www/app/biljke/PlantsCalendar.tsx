@@ -2,12 +2,13 @@
 
 import type { PlantData } from '@gredice/client';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { orderBy } from '@signalco/js';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { type CSSProperties, Fragment } from 'react';
+import { useClientSearchParam } from '../../hooks/useClientSearchParam';
+import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { KnownPages } from '../../src/KnownPages';
 
 const calendarMonths = [
@@ -49,12 +50,20 @@ const calendarActivityTypes = {
 } as const;
 
 export function PlantsCalendar({
+    initialSearch = '',
+    initialSeedTimeFilter = '',
     plants,
 }: {
+    initialSearch?: string;
+    initialSeedTimeFilter?: string;
     plants: (PlantData & { isRecommended?: boolean })[] | undefined;
 }) {
-    const [search] = useSearchParam('pretraga');
-    const [seedTimeFilter] = useSearchParam('vrijemeZaSijanje');
+    const [search] = useClientSearchParam('pretraga', initialSearch);
+    const [seedTimeFilter] = useClientSearchParam(
+        'vrijemeZaSijanje',
+        initialSeedTimeFilter,
+    );
+    const normalizedSearch = normalizeSearchText(search);
     const onlySeedTimePlants = seedTimeFilter === '1';
     const filteredPlants = orderBy(plants ?? [], (a, b) =>
         a.information.name.localeCompare(b.information.name),
@@ -62,10 +71,10 @@ export function PlantsCalendar({
         .filter((plant) => !onlySeedTimePlants || plant.isRecommended)
         .filter(
             (plant) =>
-                !search ||
-                plant.information.name
-                    .toLowerCase()
-                    .includes(search.toLowerCase()),
+                !normalizedSearch ||
+                normalizeSearchText(plant.information.name).includes(
+                    normalizedSearch,
+                ),
         )
         .map((plant) => ({ ...plant, id: plant.id.toString() }));
 

@@ -1,32 +1,30 @@
 'use client';
 
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Close, Search } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
 import type { ChangeEvent, HTMLAttributes } from 'react';
-import { useEffect, useState } from 'react';
+import { useClientSearchParam } from '../../hooks/useClientSearchParam';
 
 export type PageFilterInputProps = HTMLAttributes<HTMLFormElement> & {
     searchParamName: string;
     fieldName: string;
+    initialValue?: string;
 };
 
 export function PageFilterInput({
     searchParamName,
     fieldName,
+    initialValue = '',
+    onSubmit,
     ...rest
 }: PageFilterInputProps) {
-    const [search, setSearch] = useSearchParam(searchParamName);
-    const [localSearch, setLocalSearch] = useState(search ?? '');
-
-    useEffect(() => {
-        setLocalSearch(search ?? '');
-    }, [search]);
+    const [search, setSearch] = useClientSearchParam(
+        searchParamName,
+        initialValue,
+    );
 
     const updateSearch = (value: string) => {
-        setLocalSearch(value);
         setSearch(value);
     };
 
@@ -34,43 +32,48 @@ export function PageFilterInput({
         updateSearch(event.target.value);
     };
 
+    const handleSubmit: NonNullable<PageFilterInputProps['onSubmit']> = (
+        event,
+    ) => {
+        event.preventDefault();
+        onSubmit?.(event);
+    };
+
     return (
-        <form {...rest}>
-            <Input
-                name={fieldName}
-                value={localSearch}
-                onChange={handleChange}
-                placeholder="Pretraži..."
-                startDecorator={
-                    <IconButton
-                        className="hover:bg-neutral-300 ml-1 rounded-full aspect-square"
-                        title="Pretraga"
-                        type="button"
-                        size="sm"
-                        variant="plain"
-                    >
-                        <Search className="size-5" />
-                    </IconButton>
-                }
-                // Clear search
-                endDecorator={
-                    <IconButton
-                        className={cx(
-                            'hover:bg-neutral-300 mr-1 rounded-full aspect-square',
-                            localSearch ? 'visible' : 'invisible',
-                        )}
-                        title="Očisti pretragu"
-                        type="button"
-                        onClick={() => updateSearch('')}
-                        size="sm"
-                        variant="plain"
-                    >
-                        <Close className="size-5" />
-                    </IconButton>
-                }
-                className="min-w-60"
-                variant="soft"
-            />
+        <form {...rest} onSubmit={handleSubmit}>
+            <div className="flex min-w-60 items-center rounded-md border border-muted-foreground/10 bg-primary/10 ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                <IconButton
+                    className="hover:bg-neutral-300 ml-1 rounded-full aspect-square"
+                    title="Pretraga"
+                    type="button"
+                    size="sm"
+                    variant="plain"
+                >
+                    <Search className="size-5" />
+                </IconButton>
+                <input
+                    id={fieldName}
+                    name={fieldName}
+                    value={search}
+                    onChange={handleChange}
+                    placeholder="Pretraži..."
+                    aria-label="Pretraga"
+                    className="h-10 min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none ring-0 placeholder:text-muted-foreground"
+                />
+                <IconButton
+                    className={cx(
+                        'hover:bg-neutral-300 mr-1 rounded-full aspect-square',
+                        search ? 'visible' : 'invisible',
+                    )}
+                    title="Očisti pretragu"
+                    type="button"
+                    onClick={() => updateSearch('')}
+                    size="sm"
+                    variant="plain"
+                >
+                    <Close className="size-5" />
+                </IconButton>
+            </div>
         </form>
     );
 }

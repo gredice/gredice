@@ -26,6 +26,9 @@ export type TargetsSelectionListProps = {
      * - undefined: default behavior (all levels visible and selectable)
      */
     mode?: 'garden' | 'raisedBed' | 'plant';
+    selectionType?: 'multiple' | 'single';
+    selectedValue?: string | null;
+    onSelectedValueChange?: (value: string | null) => void;
 };
 
 export function TargetsSelectionList({
@@ -34,6 +37,9 @@ export function TargetsSelectionList({
     gardens,
     raisedBeds,
     mode,
+    selectionType = 'multiple',
+    selectedValue,
+    onSelectedValueChange,
 }: TargetsSelectionListProps) {
     // Only show gardens that have raised beds with physicalId
     const visibleGardens = gardens.filter((garden) =>
@@ -48,6 +54,7 @@ export function TargetsSelectionList({
     const selectableField = mode === undefined || mode === 'plant';
 
     const baseClass = 'max-h-64 overflow-y-auto border rounded p-2 space-y-2';
+    const inputType = selectionType === 'single' ? 'radio' : 'checkbox';
     return (
         <div className={className ? `${baseClass} ${className}` : baseClass}>
             {visibleGardens.map((garden) => {
@@ -60,9 +67,24 @@ export function TargetsSelectionList({
                         {selectableGarden ? (
                             <label className="font-semibold flex items-center gap-2">
                                 <input
-                                    type="checkbox"
+                                    type={inputType}
                                     name={name}
                                     value={`${garden.accountId}|${garden.id}`}
+                                    checked={
+                                        selectionType === 'single'
+                                            ? selectedValue ===
+                                              `${garden.accountId}|${garden.id}`
+                                            : undefined
+                                    }
+                                    onChange={(event) => {
+                                        if (selectionType === 'single') {
+                                            onSelectedValueChange?.(
+                                                event.target.checked
+                                                    ? event.target.value
+                                                    : null,
+                                            );
+                                        }
+                                    }}
                                 />
                                 {garden.name || `Vrt ${garden.id}`}
                             </label>
@@ -80,10 +102,29 @@ export function TargetsSelectionList({
                                     <div key={rb.id} className="space-y-1">
                                         <label className="flex items-center gap-2">
                                             <input
-                                                type="checkbox"
+                                                type={inputType}
                                                 name={name}
                                                 disabled={!selectableRaisedBed}
                                                 value={`${rb.accountId}|${rb.gardenId ?? ''}|${rb.id}`}
+                                                checked={
+                                                    selectionType === 'single'
+                                                        ? selectedValue ===
+                                                          `${rb.accountId}|${rb.gardenId ?? ''}|${rb.id}`
+                                                        : undefined
+                                                }
+                                                onChange={(event) => {
+                                                    if (
+                                                        selectionType ===
+                                                        'single'
+                                                    ) {
+                                                        onSelectedValueChange?.(
+                                                            event.target.checked
+                                                                ? event.target
+                                                                      .value
+                                                                : null,
+                                                        );
+                                                    }
+                                                }}
                                             />
                                             {rb.physicalId ? (
                                                 <RaisedBedLabel
@@ -102,12 +143,37 @@ export function TargetsSelectionList({
                                                         className="flex items-center gap-2"
                                                     >
                                                         <input
-                                                            type="checkbox"
+                                                            type={inputType}
                                                             name={name}
                                                             disabled={
                                                                 !selectableField
                                                             }
                                                             value={`${rb.accountId}|${rb.gardenId ?? ''}|${rb.id}|${field.id}`}
+                                                            checked={
+                                                                selectionType ===
+                                                                'single'
+                                                                    ? selectedValue ===
+                                                                      `${rb.accountId}|${rb.gardenId ?? ''}|${rb.id}|${field.id}`
+                                                                    : undefined
+                                                            }
+                                                            onChange={(
+                                                                event,
+                                                            ) => {
+                                                                if (
+                                                                    selectionType ===
+                                                                    'single'
+                                                                ) {
+                                                                    onSelectedValueChange?.(
+                                                                        event
+                                                                            .target
+                                                                            .checked
+                                                                            ? event
+                                                                                  .target
+                                                                                  .value
+                                                                            : null,
+                                                                    );
+                                                                }
+                                                            }}
                                                         />
                                                         {`Polje ${
                                                             field.positionIndex +

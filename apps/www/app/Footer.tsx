@@ -58,6 +58,7 @@ const sectionsData: SectionData[] = [
                 header: 'Aplikacija',
                 ctas: [
                     { label: 'Podignuta gredica', href: KnownPages.RaisedBeds },
+                    { label: 'Sjetva biljaka', href: KnownPages.Sowing },
                     { label: 'Biljke', href: KnownPages.Plants },
                     { label: 'Radnje', href: KnownPages.Operations },
                     { label: 'Blokovi', href: KnownPages.Blocks },

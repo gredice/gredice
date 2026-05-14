@@ -146,6 +146,7 @@ export function EntityInstances({
             <EntityInstancesBlock
                 stacks={stacks}
                 name="Block_Grass"
+                renderRainWetOverlay
                 yOffset={0.2}
                 geometry={nodes.Block_Grass_1_2.geometry}
                 material={nodes.Block_Grass_1_2.material}
@@ -156,6 +157,7 @@ export function EntityInstances({
             <EntityInstancesBlock
                 stacks={stacks}
                 name="Block_Grass_Angle"
+                renderRainWetOverlay
                 yOffset={0.2}
                 geometry={nodes.Block_Grass_Angle_1_2.geometry}
                 material={nodes.Block_Grass_Angle_1_2.material}
@@ -166,6 +168,7 @@ export function EntityInstances({
             <EntityInstancesBlock
                 stacks={stacks}
                 name="Block_Sand"
+                renderRainWetOverlay
                 yOffset={0.2}
                 geometry={nodes.Block_Sand_1.geometry}
                 material={nodes.Block_Sand_1.material}
@@ -176,6 +179,7 @@ export function EntityInstances({
             <EntityInstancesBlock
                 stacks={stacks}
                 name="Block_Sand_Angle"
+                renderRainWetOverlay
                 yOffset={0.2}
                 geometry={nodes.Block_Sand_Angle_1.geometry}
                 material={nodes.Block_Sand_Angle_1.material}

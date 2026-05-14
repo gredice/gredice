@@ -80,6 +80,10 @@ const breadcrumbSections: {
                 ...adminPages.Directories,
                 icon: <File className="size-4" />,
             },
+            {
+                ...adminPages.DirectoriesActivity,
+                icon: <File className="size-4" />,
+            },
         ],
     },
     {

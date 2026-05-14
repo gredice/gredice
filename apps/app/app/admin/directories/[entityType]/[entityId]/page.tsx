@@ -2,6 +2,7 @@ import {
     createInventoryItem,
     getAttributeDefinitionCategories,
     getAttributeDefinitions,
+    getEntitiesRaw,
     getEntityRaw,
     getEntityRevisions,
     getInventoryConfigByEntityTypeName,
@@ -42,6 +43,7 @@ import { EntityDetailsSaveProvider } from './EntityDetailsSaveProvider';
 import { EntityDetailsStickyHeader } from './EntityDetailsStickyHeader';
 import { EntityInventoryCard } from './EntityInventoryCard';
 import { EntityLinksPanel } from './EntityLinksPanel';
+import { HistoryRevisionListClient } from './HistoryRevisionListClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,6 +58,26 @@ function imageAttributeValue(value: string) {
     }
 
     return null;
+}
+
+function getEntityLabel(
+    attributes: {
+        attributeDefinition: { category: string; name: string };
+        value: string | null;
+    }[],
+) {
+    return (
+        attributes.find(
+            (attribute) =>
+                attribute.attributeDefinition.category === 'information' &&
+                attribute.attributeDefinition.name === 'label',
+        )?.value ??
+        attributes.find(
+            (attribute) =>
+                attribute.attributeDefinition.category === 'information' &&
+                attribute.attributeDefinition.name === 'name',
+        )?.value
+    );
 }
 
 export default async function EntityDetailsPage(props: {
@@ -150,6 +172,41 @@ export default async function EntityDetailsPage(props: {
     }
 
     const displayDefinitions = attributeDefinitions.filter((d) => d.display);
+    const refDefinitions = displayDefinitions.filter((definition) =>
+        definition.dataType.startsWith('ref:'),
+    );
+    const refEntityTypes = Array.from(
+        new Set(
+            refDefinitions.map(
+                (definition) => definition.dataType.split(':')[1],
+            ),
+        ),
+    );
+    const refEntitiesByType = await Promise.all(
+        refEntityTypes.map(async (refEntityTypeName) => ({
+            refEntityTypeName,
+            entities: await getEntitiesRaw(refEntityTypeName, 'published'),
+        })),
+    );
+    const refLabelsByDefinitionId = Object.fromEntries(
+        refDefinitions.map((definition) => {
+            const refEntityTypeName = definition.dataType.split(':')[1];
+            const refEntities =
+                refEntitiesByType.find(
+                    (entry) => entry.refEntityTypeName === refEntityTypeName,
+                )?.entities ?? [];
+            return [
+                definition.id,
+                Object.fromEntries(
+                    refEntities.map((refEntity) => [
+                        refEntity.id.toString(),
+                        getEntityLabel(refEntity.attributes) ??
+                            `${refEntity.entityType.label} ${refEntity.id}`,
+                    ]),
+                ),
+            ];
+        }),
+    );
     const completeness = getEntityCompleteness(entity, attributeDefinitions);
     const categoriesWithMissingRequiredAttributes = new Set(
         completeness.missingRequiredDefinitions.map(
@@ -202,7 +259,7 @@ export default async function EntityDetailsPage(props: {
                         <TabsList>
                             {[
                                 ...attributeCategories,
-                                { name: 'history', label: 'Historija' },
+                                { name: 'history', label: 'Povijest' },
                             ].map((category) => (
                                 <TabsTrigger
                                     key={category.name}
@@ -289,6 +346,14 @@ export default async function EntityDetailsPage(props: {
                                             );
                                         }
 
+                                        if (d.dataType.startsWith('ref:')) {
+                                            return (
+                                                refLabelsByDefinitionId[d.id]?.[
+                                                    value
+                                                ] ?? value
+                                            );
+                                        }
+
                                         return formatAttributeValueWithUnit(
                                             value,
                                             d.unit,
@@ -300,7 +365,7 @@ export default async function EntityDetailsPage(props: {
                     </Stack>
                     {[
                         ...attributeCategories,
-                        { name: 'history', label: 'Historija' },
+                        { name: 'history', label: 'Povijest' },
                     ].map((category) => (
                         <TabsContent value={category.name} key={category.name}>
                             <AttributeCategoryDetails
@@ -314,15 +379,12 @@ export default async function EntityDetailsPage(props: {
                     <TabsContent value="history" key="history">
                         <FieldSet>
                             {revisions.length === 0 ? (
-                                <Field name="Historija" value="Nema promjena" />
+                                <Field name="Povijest" value="Nema promjena" />
                             ) : (
-                                revisions.map((revision) => (
-                                    <Field
-                                        key={revision.id}
-                                        name={`${revision.action} • ${revision.actorName ?? 'Nepoznat korisnik'}`}
-                                        value={`${revision.createdAt.toISOString()} | ${revision.previousValue ?? revision.previousState ?? '-'} → ${revision.nextValue ?? revision.nextState ?? '-'}`}
-                                    />
-                                ))
+                                <HistoryRevisionListClient
+                                    revisions={revisions}
+                                    attributeDefinitions={attributeDefinitions}
+                                />
                             )}
                         </FieldSet>
                     </TabsContent>

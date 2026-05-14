@@ -280,7 +280,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                     {!isProcessed && (
                         <ModalConfirm
                             title="Potvrdi brisanje stavke"
-                            header="Brisanje stavke iz košarice"
+                            header="Brisanje stavke iz košare"
                             onConfirm={handleRemoveItem}
                             trigger={
                                 <IconButton
@@ -296,7 +296,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                         >
                             <Typography>
                                 Jeste li sigurni da želite ukloniti ovu stavku
-                                iz košarice?
+                                iz košare?
                             </Typography>
                         </ModalConfirm>
                     )}
