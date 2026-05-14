@@ -115,6 +115,9 @@ function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
             (value): value is string => typeof value === 'string',
         );
     }
+    if (typeof record.notes === 'string') {
+        data.notes = record.notes;
+    }
     if (typeof record.error === 'string') {
         data.error = record.error;
     }
@@ -185,6 +188,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
         let canceledAt: Date | undefined;
         let cancelReason: string | undefined;
         let imageUrls: string[] | undefined;
+        let completionNotes: string | undefined;
 
         // helpers to safely extract typed values from unknown event.data
         const asString = (v: unknown): string | undefined =>
@@ -214,6 +218,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                         (url): url is string => typeof url === 'string',
                     );
                 }
+                completionNotes = asString(data?.notes) ?? completionNotes;
             } else if (event.type === knownEventTypes.operations.verify) {
                 status = 'completed';
                 verifiedBy = asString(data?.verifiedBy) ?? verifiedBy;
@@ -258,6 +263,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
             canceledAt,
             cancelReason,
             imageUrls,
+            completionNotes,
         };
     });
 

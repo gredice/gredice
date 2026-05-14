@@ -12,6 +12,7 @@ import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import {
     Card,
+    CardContent,
     CardHeader,
     CardOverflow,
     CardTitle,
@@ -306,6 +307,18 @@ export default async function OperationDetailsPage({
                     />
                 </FieldSet>
             </Stack>
+            {operation.completionNotes && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Napomena završetka</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Typography className="whitespace-pre-wrap">
+                            {operation.completionNotes}
+                        </Typography>
+                    </CardContent>
+                </Card>
+            )}
             {operation.imageUrls && operation.imageUrls.length > 0 && (
                 <Card>
                     <CardHeader>

@@ -4,11 +4,13 @@ import test from 'node:test';
 import {
     acceptOperation,
     assignUserToFarm,
+    createEvent,
     createFarm,
     createOperation,
     getAssignableFarmUsersByOperationIds,
     getFarmUserAcceptedOperations,
     getOperationById,
+    knownEvents,
     storage,
     users,
 } from '@gredice/storage';
@@ -62,4 +64,33 @@ test('farm-targeted operations are visible and assignable for farm users', async
         ),
         'Expected farm users to be assignable to farm-targeted operations',
     );
+});
+
+test('completed operations expose completion notes and image URLs', async () => {
+    createTestDb();
+
+    const completedBy = randomUUID();
+    const operationId = await createOperation({
+        entityId: 1,
+        entityTypeName: 'operation',
+        accountId: randomUUID(),
+    });
+    await acceptOperation(operationId);
+
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy,
+            images: ['https://cdn.gredice.com/operation-complete.jpg'],
+            notes: 'Zaliveno nakon berbe.',
+        }),
+    );
+
+    const operation = await getOperationById(operationId);
+
+    assert.strictEqual(operation.status, 'pendingVerification');
+    assert.strictEqual(operation.completedBy, completedBy);
+    assert.deepStrictEqual(operation.imageUrls, [
+        'https://cdn.gredice.com/operation-complete.jpg',
+    ]);
+    assert.strictEqual(operation.completionNotes, 'Zaliveno nakon berbe.');
 });

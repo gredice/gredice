@@ -62,7 +62,7 @@ export const getScheduleOperations = cache(async () => {
                     }),
                     getAllOperations({
                         completedFrom,
-                        status: 'completed',
+                        status: ['pendingVerification', 'completed'],
                     }),
                 ]);
 
