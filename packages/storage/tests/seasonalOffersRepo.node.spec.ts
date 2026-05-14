@@ -176,7 +176,6 @@ test('queueSeasonalSowingOfferOperations skips days with existing scheduled free
     );
 });
 
-
 test('queueSeasonalSowingOfferOperations does not duplicate existing offer days on repeated sowing', async () => {
     createTestDb();
     const { accountId, gardenId, raisedBedId } =

@@ -2,6 +2,7 @@ import {
     AuthProtectedSection,
     SignedOut,
 } from '@signalco/auth-server/components';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import LoginDialog from '../../components/auth/LoginDialog';
 import { HomeButton } from '../../components/HomeButton';
@@ -18,10 +19,12 @@ async function OperationsHandbookContent() {
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
             <div className="space-y-2">
-                <HomeButton />
-                <Typography level="h4" component="h1" semiBold>
-                    Priručnik radnji
-                </Typography>
+                <Row spacing={1}>
+                    <HomeButton />
+                    <Typography level="h4" component="h1" semiBold>
+                        Priručnik radnji
+                    </Typography>
+                </Row>
                 <Typography className="text-muted-foreground">
                     Pregled svih radnji i ključnih detalja za brži rad na farmi.
                 </Typography>

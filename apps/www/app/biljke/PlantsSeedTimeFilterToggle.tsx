@@ -20,7 +20,8 @@ export function PlantsSeedTimeFilterToggle({
     return (
         <button
             type="button"
-            aria-pressed={isEnabled}
+            role="switch"
+            aria-checked={isEnabled}
             aria-label={
                 isEnabled
                     ? 'Isključi filter vrijeme za sijanje'
@@ -53,14 +54,16 @@ export function PlantsSeedTimeFilterToggle({
             <span
                 aria-hidden
                 className={cx(
-                    'relative h-5 w-9 shrink-0 rounded-full transition-colors',
-                    isEnabled ? 'bg-white/30' : 'bg-tertiary',
+                    'relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors',
+                    isEnabled
+                        ? 'bg-lime-800/20 ring-1 ring-white/35'
+                        : 'bg-tertiary',
                 )}
             >
                 <span
                     className={cx(
-                        'absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform',
-                        isEnabled ? 'translate-x-4' : 'translate-x-0.5',
+                        'absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow transition-transform',
+                        isEnabled ? 'translate-x-4' : 'translate-x-0',
                     )}
                 />
             </span>
