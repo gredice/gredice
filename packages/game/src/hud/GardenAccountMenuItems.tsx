@@ -31,8 +31,24 @@ export function GardenAccountMenuItems({
     const { data: accountGroups, isLoading: accountGroupsLoading } =
         useGardenAccountGroups();
     const switchGardenAccount = useSwitchGardenAccount();
-    const visibleGroups =
-        accountGroups?.filter((group) => group.gardens.length > 0) ?? [];
+    const fallbackGroups =
+        currentAccountGardens && currentAccountGardens.length > 0
+            ? [
+                  {
+                      accountId: 'current',
+                      name: 'Trenutni račun',
+                      isCurrent: true,
+                      gardens: currentAccountGardens,
+                  },
+              ]
+            : [];
+    const gardenGroups =
+        accountGroups && accountGroups.length > 0
+            ? accountGroups
+            : fallbackGroups;
+    const visibleGroups = gardenGroups.filter(
+        (group) => group.gardens.length > 0,
+    );
     const showAccountLabels =
         visibleGroups.length > 1 ||
         visibleGroups.some((accountGroup) => !accountGroup.isCurrent);
