@@ -48,38 +48,98 @@ function SunflowersCard() {
                     Suncokreti
                 </Typography>
                 <Popper
-                    className="min-w-80 border-tertiary border-b-4"
+                    className="w-[min(calc(100vw-2rem),28rem)] border-tertiary border-b-4"
                     trigger={
                         <IconButton title="Što su suncokreti?" variant="plain">
                             <Info className="size-4 shrink-0" />
                         </IconButton>
                     }
                 >
-                    <Row className="p-4" spacing={2}>
-                        <Image
-                            src="https://cdn.gredice.com/sunflower-large.svg"
-                            alt="Suncokret"
-                            width={80}
-                            height={80}
-                            className="size-20"
-                        />
-                        <Stack spacing={2}>
-                            <Typography level="body2">
-                                Sakupljaj i koristi suncokrete za uređenje i
-                                dekoraciju vrta ili kupnju i brigu o svojim
-                                biljkama 🌱
-                            </Typography>
-                            <Button
-                                variant="solid"
-                                size="sm"
-                                href={KnownPages.GrediceSunflowers}
-                                target="_blank"
-                                endDecorator={<Navigate className="size-5" />}
+                    <Stack className="p-4" spacing={3}>
+                        <Row spacing={2} alignItems="start">
+                            <Image
+                                src="https://cdn.gredice.com/sunflower-large.svg"
+                                alt="Suncokret"
+                                width={72}
+                                height={72}
+                                className="size-16 shrink-0"
+                            />
+                            <Stack spacing={1}>
+                                <Typography level="body2" bold>
+                                    Što su suncokreti?
+                                </Typography>
+                                <Typography level="body2">
+                                    Sakupljaj i koristi suncokrete za uređenje i
+                                    dekoraciju vrta ili kupnju i brigu o svojim
+                                    biljkama 🌱
+                                </Typography>
+                            </Stack>
+                        </Row>
+                        <Stack spacing={1.5}>
+                            <Typography
+                                level="body3"
+                                semiBold
+                                className="uppercase text-muted-foreground"
                             >
-                                Saznaj više
-                            </Button>
+                                Pretvorba
+                            </Typography>
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                <Stack
+                                    spacing={0.5}
+                                    className="rounded-md border bg-muted/40 p-3"
+                                >
+                                    <Typography
+                                        level="body3"
+                                        className="text-muted-foreground"
+                                    >
+                                        Plaćanje
+                                    </Typography>
+                                    <Typography
+                                        level="body1"
+                                        bold
+                                        className="tabular-nums"
+                                    >
+                                        1 € = 1.000 🌻
+                                    </Typography>
+                                </Stack>
+                                <Stack
+                                    spacing={0.5}
+                                    className="rounded-md border bg-muted/40 p-3"
+                                >
+                                    <Typography
+                                        level="body3"
+                                        className="text-muted-foreground"
+                                    >
+                                        Bonus za kupnju
+                                    </Typography>
+                                    <Typography
+                                        level="body1"
+                                        bold
+                                        className="tabular-nums"
+                                    >
+                                        1 € = 10 🌻
+                                    </Typography>
+                                </Stack>
+                            </div>
+                            <Typography
+                                level="body3"
+                                className="text-muted-foreground"
+                            >
+                                Kod plaćanja suncokretima cijena se računa iz
+                                eura i zaokružuje na cijeli broj.
+                            </Typography>
                         </Stack>
-                    </Row>
+                        <Button
+                            variant="solid"
+                            size="sm"
+                            href={KnownPages.GrediceSunflowers}
+                            target="_blank"
+                            className="self-start"
+                            endDecorator={<Navigate className="size-5" />}
+                        >
+                            Saznaj više
+                        </Button>
+                    </Stack>
                 </Popper>
             </Row>
             <Divider />
