@@ -664,9 +664,6 @@ async function handleUpdateCartItem(
         return { success: false, error: 'Cart item not found' };
     }
 
-    const forceCreate = false;
-    const bypassPaidItemDeleteProtection = false;
-
     const updatedId = await upsertOrRemoveCartItem(
         input.cartItemId,
         cart.id,
@@ -678,8 +675,8 @@ async function handleUpdateCartItem(
         item.positionIndex ?? undefined,
         item.additionalData ?? null,
         item.currency || 'eur',
-        forceCreate,
-        bypassPaidItemDeleteProtection,
+        false,
+        false, // Keep storage-layer paid item deletion protection active.
     );
 
     return {
