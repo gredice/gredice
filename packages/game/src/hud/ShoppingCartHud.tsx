@@ -321,12 +321,11 @@ export function ShoppingCartHud() {
                                             .slice(0, 2)
                                             .map((item, index) => {
                                                 const imageUrl =
-                                                    item.entityTypeName ===
-                                                    'plantSort'
-                                                        ? (item.entityData
-                                                              ?.iconImage ??
-                                                          null)
-                                                        : item.shopData.image;
+                                                    item.shopData.image ??
+                                                    item.entityData.image?.cover
+                                                        ?.url ??
+                                                    item.entityData.images
+                                                        ?.cover?.url;
                                                 return imageUrl ? (
                                                     <div
                                                         key={item.id}
