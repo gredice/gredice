@@ -119,7 +119,7 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
                             </Button>
                         }
                     >
-                        <TimeDisplay variant="card" />
+                        <TimeDisplay />
                     </Popper>
                 )}
             </Row>
