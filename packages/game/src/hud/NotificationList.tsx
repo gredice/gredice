@@ -166,7 +166,7 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
                 onClick={handleSetNotificationRead}
             >
                 {!isRead && (
-                    <Check className="size-4 shrink-0 hidden group-hover:block" />
+                    <Check className="size-4 shrink-0 hidden group-hover:block text-white" />
                 )}
             </button>
             {raisedBed?.physicalId && (
