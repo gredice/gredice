@@ -1,6 +1,7 @@
 import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { Markdown } from '@gredice/ui/Markdown';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Alert } from '@signalco/ui/Alert';
 import { Check } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
@@ -48,6 +49,13 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
     const setNotificationRead = useSetNotificationRead();
     const { data: currentGarden } = useCurrentGarden();
 
+    const raisedBed = useMemo(() => {
+        if (!raisedBedId || !currentGarden) {
+            return undefined;
+        }
+        return currentGarden.raisedBeds.find((bed) => bed.id === raisedBedId);
+    }, [raisedBedId, currentGarden]);
+
     // TODO: Remove this backward compatibility code after December 9, 2026
     // This generates the raised bed closeup URL from raisedBedId if linkUrl is not present
     // After all notifications have been migrated to include linkUrl, this can be removed
@@ -57,17 +65,12 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
         }
 
         // Backward compatibility: generate URL from raisedBedId if linkUrl is missing
-        if (raisedBedId && currentGarden) {
-            const raisedBed = currentGarden.raisedBeds.find(
-                (bed) => bed.id === raisedBedId,
-            );
-            if (raisedBed?.name) {
-                return getRaisedBedCloseupUrl(raisedBed.name);
-            }
+        if (raisedBed?.name) {
+            return getRaisedBedCloseupUrl(raisedBed.name);
         }
 
         return '#';
-    }, [linkUrl, raisedBedId, currentGarden]);
+    }, [linkUrl, raisedBed]);
 
     const isRead = Boolean(readAt);
 
@@ -166,6 +169,17 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
                     <Check className="size-4 shrink-0 hidden group-hover:block" />
                 )}
             </button>
+            {raisedBed?.physicalId && (
+                <div
+                    className="pointer-events-none absolute bottom-2 right-2 text-muted-foreground"
+                    title={`Gredica ${raisedBed.physicalId}`}
+                >
+                    <RaisedBedIcon
+                        physicalId={raisedBed.physicalId}
+                        className="size-5"
+                    />
+                </div>
+            )}
         </div>
     );
 }
