@@ -125,6 +125,16 @@ export function getWorktreeId() {
     return repoRoot.replaceAll('\\', '/');
 }
 
+export function getWorktreeSlug() {
+    return (
+        getWorktreeId()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 40) || 'default'
+    );
+}
+
 export function getWorktreePortOffset() {
     const explicitOffset = process.env.GREDICE_PORT_OFFSET?.trim();
     if (!explicitOffset) {
