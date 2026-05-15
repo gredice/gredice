@@ -62,6 +62,9 @@ const hiddenFromActive = new Set<GardenOperationStatus>([
     'failed',
     'canceled',
 ]);
+const cartOperationEntityType = 'operation';
+const cartPlantSortEntityType = 'plantSort';
+const plantingOperationLabel = 'Sadnja';
 
 type StatusConfig = {
     label: string;
@@ -185,8 +188,8 @@ function getCartOperationTargetLabel(
 
 function isCartOperationsPopupItem(item: ShoppingCartItemData) {
     return (
-        item.entityTypeName === 'operation' ||
-        item.entityTypeName === 'plantSort'
+        item.entityTypeName === cartOperationEntityType ||
+        item.entityTypeName === cartPlantSortEntityType
     );
 }
 
@@ -445,10 +448,12 @@ function CartOperationCard({
         ? formatDate(scheduledDate.toISOString())
         : 'sutra';
     const plantSort =
-        item.entityTypeName === 'plantSort' ? item.entityData : null;
+        item.entityTypeName === cartPlantSortEntityType
+            ? item.entityData
+            : null;
     const operationName =
-        item.entityTypeName === 'plantSort'
-            ? `Sadnja: ${item.shopData.name ?? `Sorta #${item.entityId}`}`
+        item.entityTypeName === cartPlantSortEntityType
+            ? `${plantingOperationLabel}: ${item.shopData.name ?? `Sorta #${item.entityId}`}`
             : (operationData?.information.label ??
               item.shopData.name ??
               `Radnja #${item.entityId}`);
