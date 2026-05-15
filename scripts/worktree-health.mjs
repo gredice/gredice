@@ -3,25 +3,82 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import os from 'node:os';
-import { resolve } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import net from 'node:net';
-import { appRegistry, getAppDevPort, getComponentTestPort, getWorktreeSlug } from './app-registry.ts';
+import {
+  appRegistry,
+  getAppDevPort,
+  getAppTestPort,
+  getComponentTestPort,
+  getWorktreeProxyHttpPort,
+  getWorktreeProxyHttpsPort,
+  getWorktreeSlug,
+} from './app-registry.ts';
 
 const mode = process.argv[2] === 'setup' ? 'setup' : 'doctor';
 const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)));
+const linkedGitWorktree = isLinkedGitWorktree();
+const worktreeSlug = getWorktreeSlug();
+const proxyPortsExplicitlyConfigured =
+  hasEnvValue(process.env.GREDICE_PROXY_HTTP_PORT) ||
+  hasEnvValue(process.env.GREDICE_PROXY_HTTPS_PORT);
+const defaultProxyPorts = {
+  http: parsePort(
+    process.env.GREDICE_PROXY_HTTP_PORT,
+    linkedGitWorktree ? getWorktreeProxyHttpPort() : 80,
+  ),
+  https: parsePort(
+    process.env.GREDICE_PROXY_HTTPS_PORT,
+    linkedGitWorktree ? getWorktreeProxyHttpsPort() : 443,
+  ),
+};
+const fallbackProxyPorts = {
+  http: getWorktreeProxyHttpPort(),
+  https: getWorktreeProxyHttpsPort(),
+};
 const requiredHostsLine = `127.0.0.1 ${appRegistry.map((a) => a.localDomain).join(' ')}`;
-const caddyDataDir = process.env.GREDICE_DEV_CADDY_DATA_DIR || resolve(os.homedir(), '.gredice', 'dev-caddy', getWorktreeSlug());
+const caddyDataDir = process.env.GREDICE_DEV_CADDY_DATA_DIR || resolve(
+  os.homedir(),
+  '.gredice',
+  'dev-caddy',
+  worktreeSlug,
+);
 const caddyCert = resolve(caddyDataDir, 'caddy', 'pki', 'authorities', 'local', 'root.crt');
 
 const checks = [];
 function addCheck(name, required, ok, detail, next) { checks.push({ name, required, ok, detail, next }); }
+function hasEnvValue(value) { return typeof value === 'string' && value.trim() !== ''; }
+function parsePort(value, fallback) {
+  if (!hasEnvValue(value)) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed < 1 || parsed > 65_535) {
+    throw new Error(`Invalid port value: ${value}`);
+  }
+  return parsed;
+}
+function isLinkedGitWorktree() {
+  const result = spawnSync(
+    'git',
+    ['rev-parse', '--path-format=absolute', '--git-common-dir'],
+    { cwd: rootDir, encoding: 'utf8' },
+  );
+  if (result.status !== 0) return false;
+  const commonGitDir = result.stdout.trim();
+  if (basename(commonGitDir) !== '.git') return false;
+  return resolve(dirname(commonGitDir)) !== rootDir;
+}
 function run(cmd, args, options = {}) {
   const shell = options.shell ?? process.platform === 'win32';
   const finalCmd = shell && /\s/.test(cmd) ? `"${cmd}"` : cmd;
   return spawnSync(finalCmd, args, { encoding: 'utf8', ...options, shell });
 }
 function hasFailedRequiredChecks() { return checks.some((c) => c.required && !c.ok); }
+function canUseFallbackProxyPorts() {
+  return !proxyPortsExplicitlyConfigured &&
+    (defaultProxyPorts.http !== fallbackProxyPorts.http ||
+      defaultProxyPorts.https !== fallbackProxyPorts.https);
+}
 function readConfiguredPnpm() {
   const packageJsonPath = resolve(rootDir, 'package.json');
   try {
@@ -181,14 +238,22 @@ function checkCertificate() {
 }
 
 function checkPorts() {
-  const ports = new Set([80, 443]);
+  const requiredAppPorts = new Set();
   for (const app of appRegistry) {
-    ports.add(getAppDevPort(app));
+    requiredAppPorts.add(getAppDevPort(app));
     if (app.componentTestPort) {
-      ports.add(getComponentTestPort(app));
+      requiredAppPorts.add(getComponentTestPort(app));
     }
-    ports.add(app.testPort);
+    requiredAppPorts.add(getAppTestPort(app));
   }
+
+  const defaultProxyPortSet = new Set([defaultProxyPorts.http, defaultProxyPorts.https]);
+  const fallbackProxyPortSet = new Set([fallbackProxyPorts.http, fallbackProxyPorts.https]);
+  const ports = new Set([
+    ...requiredAppPorts,
+    ...defaultProxyPortSet,
+    ...(canUseFallbackProxyPorts() ? fallbackProxyPortSet : []),
+  ]);
 
   const probes = [...ports].map((port) => new Promise((resolveProbe) => {
     const server = net.createServer();
@@ -198,8 +263,36 @@ function checkPorts() {
   }));
 
   return Promise.all(probes).then((blockedPorts) => {
-    const blocked = blockedPorts.filter(Boolean);
-    addCheck('Local ports available', true, blocked.length === 0, blocked.length === 0 ? 'All required ports appear free.' : `Ports in use: ${blocked.join(', ')}.`, 'Stop conflicting processes before running `pnpm dev` or tests.');
+    const blocked = new Set(blockedPorts.filter(Boolean));
+    const blockedAppPorts = [...requiredAppPorts].filter((port) => blocked.has(port));
+    const blockedDefaultProxyPorts = [...defaultProxyPortSet].filter((port) => blocked.has(port));
+    const blockedFallbackProxyPorts = [...fallbackProxyPortSet].filter((port) => blocked.has(port));
+    const canUseFallback =
+      canUseFallbackProxyPorts() &&
+      blockedDefaultProxyPorts.length > 0 &&
+      blockedFallbackProxyPorts.length === 0;
+    const allBlockedProxyPorts = [
+      ...new Set([...blockedDefaultProxyPorts, ...blockedFallbackProxyPorts]),
+    ];
+    const ok =
+      blockedAppPorts.length === 0 &&
+      (blockedDefaultProxyPorts.length === 0 || canUseFallback);
+    const detail = (() => {
+      if (blockedAppPorts.length > 0) {
+        return `Ports in use: ${blockedAppPorts.join(', ')}.`;
+      }
+
+      if (blockedDefaultProxyPorts.length === 0) {
+        return 'All required ports appear free.';
+      }
+
+      if (canUseFallback) {
+        return `Default proxy ports ${blockedDefaultProxyPorts.join(', ')} are in use; fallback proxy ports ${[...fallbackProxyPortSet].join(', ')} appear free.`;
+      }
+
+      return `Ports in use: ${allBlockedProxyPorts.join(', ')}.`;
+    })();
+    addCheck('Local ports available', true, ok, detail, 'Stop conflicting processes before running `pnpm dev` or tests.');
   });
 }
 

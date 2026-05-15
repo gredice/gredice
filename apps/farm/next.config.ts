@@ -1,5 +1,8 @@
 import type { NextConfig } from 'next';
-import { getAppByName } from '../../scripts/app-registry.ts';
+import {
+    getAppAllowedDevOrigins,
+    getAppByName,
+} from '../../scripts/app-registry.ts';
 
 const app = getAppByName('farm');
 const nextConfig: NextConfig = {
@@ -35,7 +38,7 @@ const nextConfig: NextConfig = {
         ],
     },
     productionBrowserSourceMaps: !process.env.CI,
-    allowedDevOrigins: [app.localDomain],
+    allowedDevOrigins: getAppAllowedDevOrigins(app),
 };
 
 export default nextConfig;

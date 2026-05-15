@@ -1,6 +1,7 @@
 import vercelToolbar from '@vercel/toolbar/plugins/next';
 import type { NextConfig } from 'next';
 import {
+    getAppAllowedDevOrigins,
     getAppByName,
     getAppDevPort,
     localAppHostnameUrl,
@@ -106,7 +107,7 @@ const nextConfig: NextConfig = {
             },
         ],
     },
-    allowedDevOrigins: [app.localDomain],
+    allowedDevOrigins: getAppAllowedDevOrigins(app),
 };
 
 const withVercelToolbar = vercelToolbar();

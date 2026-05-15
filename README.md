@@ -40,7 +40,7 @@ pnpm doctor
 pnpm dev
 ```
 
-The default dev command starts the main apps through local HTTPS domains such as `https://www.gredice.test`, `https://vrt.gredice.test`, and `https://api.gredice.test`. The `status` app is intentionally excluded so normal startup stays fast. Use `pnpm dev:all` when you need to validate every app (including `status`) can start in a fresh worktree, and use `pnpm --filter=status dev` for status-only development.
+The default dev command starts the main apps through local HTTPS domains such as `https://www.gredice.test`, `https://vrt.gredice.test`, and `https://api.gredice.test`. Linked Git worktrees use deterministic app and proxy port offsets so they can run beside another checkout; use the port-qualified HTTPS URLs printed by `pnpm dev` in those worktrees. The `status` app is intentionally excluded so normal startup stays fast. Use `pnpm dev:all` when you need to validate every app (including `status`) can start in a fresh worktree, and use `pnpm --filter=status dev` for status-only development.
 
 `pnpm bootstrap` prepares a fresh worktree as far as local permissions and credentials allow.
 `pnpm doctor` runs the same checks in read-only mode and exits non-zero when required dependencies are missing.

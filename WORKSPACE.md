@@ -105,6 +105,16 @@ The dev proxy writes its Caddyfile from the registry at startup.
 - `api`: <https://api.gredice.test>
 - `status`: <https://status.gredice.test> with `pnpm --filter=status dev`
 
+Dev server ports are worktree-aware. App ports use the registry base port plus
+the current worktree's deterministic offset, and linked Git worktrees use proxy
+ports derived from the same offset instead of binding `80` and `443`. This lets
+a feature/Codex worktree run the same app beside a normal local checkout. The
+dev script prints the effective URL for each app; when the HTTPS proxy port is
+not `443`, use the printed port-qualified form such as
+`https://vrt.gredice.test:8001`. Override the derived slot with
+`GREDICE_PORT_OFFSET`, or force proxy ports with `GREDICE_PROXY_HTTP_PORT` and
+`GREDICE_PROXY_HTTPS_PORT`.
+
 The dev script verifies the hosts entries for the local `gredice.test` domains and attempts to add missing entries automatically. If it cannot modify the hosts file, add this entry manually and rerun the command:
 
 ```text
