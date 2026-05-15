@@ -146,9 +146,11 @@ class GameAudioManager {
     private resumePromise: Promise<void> | null = null;
     private hasUnlockedAudio = false;
     private config: GameAudioConfig;
+    private stateSnapshot: GameAudioState;
 
     constructor(config: GameAudioConfig) {
         this.config = config;
+        this.stateSnapshot = this.createStateSnapshot();
         this.attachBrowserListeners();
     }
 
@@ -163,26 +165,30 @@ class GameAudioManager {
         };
     };
 
-    getState = (): GameAudioState => ({
-        isSuspended: getContextState(this.context) !== 'running',
-        isBackgrounded: !isPageVisible(),
-        master: {
-            volume: this.config.masterVolume,
-            isMuted: this.config.masterIsMuted,
-        },
-        ambient: {
-            volume: this.config.ambientVolume,
-            isMuted: this.config.ambientIsMuted,
-        },
-        effects: {
-            volume: this.config.effectsVolume,
-            isMuted: this.config.effectsIsMuted,
-        },
-        music: {
-            volume: this.config.musicVolume,
-            isMuted: this.config.musicIsMuted,
-        },
-    });
+    private createStateSnapshot(): GameAudioState {
+        return {
+            isSuspended: getContextState(this.context) !== 'running',
+            isBackgrounded: !isPageVisible(),
+            master: {
+                volume: this.config.masterVolume,
+                isMuted: this.config.masterIsMuted,
+            },
+            ambient: {
+                volume: this.config.ambientVolume,
+                isMuted: this.config.ambientIsMuted,
+            },
+            effects: {
+                volume: this.config.effectsVolume,
+                isMuted: this.config.effectsIsMuted,
+            },
+            music: {
+                volume: this.config.musicVolume,
+                isMuted: this.config.musicIsMuted,
+            },
+        };
+    }
+
+    getState = (): GameAudioState => this.stateSnapshot;
 
     getChannelState = (channel: GameAudioChannelName): ChannelState => {
         switch (channel) {
@@ -737,6 +743,7 @@ class GameAudioManager {
     }
 
     private emit() {
+        this.stateSnapshot = this.createStateSnapshot();
         for (const subscriber of this.subscribers) {
             subscriber();
         }

@@ -12,7 +12,7 @@
         "start": "node ../../scripts/run-app-command.mjs start",
         "test": "pnpm run test:run",
         "test:prepare": "pnpm --dir ../.. exec turbo build --filter=app",
-        "test:unit": "NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--conditions=react-server\" node --import tsx --test src/social/providers/reddit/redditAdapter.unit.ts app/admin/schedule/scheduleDayFilters.unit.ts",
+        "test:unit": "NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--conditions=react-server\" node --import tsx --test src/social/providers/reddit/redditAdapter.unit.ts app/admin/schedule/scheduleDayFilters.unit.ts 'app/(actions)/socialPublishActions.unit.ts'",
         "test:run": "pnpm run test:unit && playwright test",
         "test-ui": "pnpm run test:prepare && playwright test --ui",
         "test:local": "pnpm run test:prepare && pnpm run test:run"

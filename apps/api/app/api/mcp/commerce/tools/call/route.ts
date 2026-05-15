@@ -187,6 +187,18 @@ export async function POST(request: NextRequest) {
 
         const body = await request.json();
         const { name, arguments: args } = body.params || {};
+        const writeTools = new Set([
+            'commerce/add-to-cart',
+            'commerce/update-cart-item',
+            'commerce/create-order',
+        ]);
+
+        if (writeTools.has(name) && !checkMCPPermission(auth, 'commerce:purchase')) {
+            return NextResponse.json(
+                createMCPAuthError(auth, 'forbidden', correlationId),
+                { status: 403 },
+            );
+        }
 
         logger.info('mcp.commerce.tool.start', {
             toolName: name,
@@ -219,30 +231,60 @@ export async function POST(request: NextRequest) {
 
             case 'commerce/get-cart': {
                 const getCartInput = GetCartSchema.parse(args);
+                if (getCartInput.userId !== auth.userId) {
+                    return NextResponse.json(
+                        createMCPAuthError(auth, 'forbidden', correlationId),
+                        { status: 403 },
+                    );
+                }
                 result = await handleGetCart(getCartInput, auth);
                 break;
             }
 
             case 'commerce/add-to-cart': {
                 const addToCartInput = AddToCartSchema.parse(args);
+                if (addToCartInput.userId !== auth.userId) {
+                    return NextResponse.json(
+                        createMCPAuthError(auth, 'forbidden', correlationId),
+                        { status: 403 },
+                    );
+                }
                 result = await handleAddToCart(addToCartInput, auth);
                 break;
             }
 
             case 'commerce/update-cart-item': {
                 const updateCartInput = UpdateCartItemSchema.parse(args);
+                if (updateCartInput.userId !== auth.userId) {
+                    return NextResponse.json(
+                        createMCPAuthError(auth, 'forbidden', correlationId),
+                        { status: 403 },
+                    );
+                }
                 result = await handleUpdateCartItem(updateCartInput, auth);
                 break;
             }
 
             case 'commerce/create-order': {
                 const createOrderInput = CreateOrderSchema.parse(args);
+                if (createOrderInput.userId !== auth.userId) {
+                    return NextResponse.json(
+                        createMCPAuthError(auth, 'forbidden', correlationId),
+                        { status: 403 },
+                    );
+                }
                 result = await handleCreateOrder(createOrderInput, auth);
                 break;
             }
 
             case 'commerce/get-orders': {
                 const getOrdersInput = GetOrdersSchema.parse(args);
+                if (getOrdersInput.userId !== auth.userId) {
+                    return NextResponse.json(
+                        createMCPAuthError(auth, 'forbidden', correlationId),
+                        { status: 403 },
+                    );
+                }
                 result = await handleGetOrders(getOrdersInput, auth);
                 break;
             }

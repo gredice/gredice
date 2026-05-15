@@ -30,6 +30,55 @@ export type PublishSocialPostState = {
     providerPermalink?: string | null;
 };
 
+
+
+type NormalizedPayload = {
+    provider: string;
+    providerAccountKey: string;
+    destination: string;
+    postType: string;
+    title: string;
+    body: string;
+    url: string;
+    submissionToken: string;
+};
+
+function normalizePayload(formData: FormData): NormalizedPayload {
+    return {
+        provider: normalizeTrimmed(formData.get('provider')).toLowerCase(),
+        providerAccountKey: normalizeTrimmed(formData.get('providerAccountKey')),
+        destination: normalizeTrimmed(formData.get('destination')).replace(/^r\//i, ''),
+        postType: normalizeTrimmed(formData.get('postType')).toLowerCase(),
+        title: normalizeTrimmed(formData.get('title')),
+        body: normalizeTrimmed(formData.get('body')),
+        url: normalizeTrimmed(formData.get('url')),
+        submissionToken: normalizeTrimmed(formData.get('submissionToken')),
+    };
+}
+
+function validatePayload(payload: NormalizedPayload):
+    | { ok: true; payload: NormalizedPayload & { provider: SocialProvider; postType: SocialPostType } }
+    | { ok: false; state: PublishSocialPostState } {
+    const { provider, providerAccountKey, destination, postType, title, body, url, submissionToken } = payload;
+
+    if (!isValidProvider(provider) || !isValidPostType(postType)) {
+        return { ok: false, state: { ok: false, errorCode: 'invalid_payload', message: 'Neispravan provider ili tip objave.' } };
+    }
+    if (!providerAccountKey) return { ok: false, state: { ok: false, errorCode: 'invalid_payload', message: 'Nedostaje ključ provider računa.' } };
+    if (!destination) return { ok: false, state: { ok: false, errorCode: 'invalid_payload', message: 'Odredište je obavezno.' } };
+    if (!title || title.length > TITLE_MAX_LENGTH) return { ok: false, state: { ok: false, errorCode: 'invalid_payload', message: 'Naslov je obavezan i mora imati najviše 300 znakova.' } };
+    if (url) {
+        try { const parsed = new URL(url); if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('invalid protocol'); }
+        catch { return { ok: false, state: { ok: false, errorCode: 'invalid_payload', message: 'Link mora biti valjani http ili https URL.' } }; }
+    }
+    if (!url && !body) return { ok: false, state: { ok: false, errorCode: 'invalid_payload', message: 'Potrebno je unijeti sadržaj objave ili link.' } };
+    if (body.length > BODY_MAX_LENGTH) return { ok: false, state: { ok: false, errorCode: 'invalid_payload', message: 'Sadržaj objave je predugačak.' } };
+    if (submissionToken.length < SUBMISSION_TOKEN_MIN_LENGTH) return { ok: false, state: { ok: false, errorCode: 'invalid_payload', message: 'Nedostaje valjan token prijave obrasca.' } };
+
+    return { ok: true, payload: { ...payload, provider, postType } };
+}
+
+export const __testUtils = { normalizePayload, validatePayload, sanitizeProviderErrorDetails };
 function normalizeTrimmed(value: FormDataEntryValue | null): string {
     return typeof value === 'string' ? value.trim() : '';
 }
@@ -86,83 +135,13 @@ export async function publishSocialPostAction(
         };
     }
 
-    const provider = normalizeTrimmed(formData.get('provider')).toLowerCase();
-    const providerAccountKey = normalizeTrimmed(
-        formData.get('providerAccountKey'),
-    );
-    const destination = normalizeTrimmed(formData.get('destination')).replace(
-        /^r\//i,
-        '',
-    );
-    const postType = normalizeTrimmed(formData.get('postType')).toLowerCase();
-    const title = normalizeTrimmed(formData.get('title'));
-    const body = normalizeTrimmed(formData.get('body'));
-    const url = normalizeTrimmed(formData.get('url'));
-    const submissionToken = normalizeTrimmed(formData.get('submissionToken'));
+    const normalizedPayload = normalizePayload(formData);
+    const payloadValidation = validatePayload(normalizedPayload);
+    if (!payloadValidation.ok) {
+        return payloadValidation.state;
+    }
 
-    if (!isValidProvider(provider) || !isValidPostType(postType)) {
-        return {
-            ok: false,
-            errorCode: 'invalid_payload',
-            message: 'Neispravan provider ili tip objave.',
-        };
-    }
-    if (!providerAccountKey) {
-        return {
-            ok: false,
-            errorCode: 'invalid_payload',
-            message: 'Nedostaje ključ provider računa.',
-        };
-    }
-    if (!destination) {
-        return {
-            ok: false,
-            errorCode: 'invalid_payload',
-            message: 'Odredište je obavezno.',
-        };
-    }
-    if (!title || title.length > TITLE_MAX_LENGTH) {
-        return {
-            ok: false,
-            errorCode: 'invalid_payload',
-            message: 'Naslov je obavezan i mora imati najviše 300 znakova.',
-        };
-    }
-    if (url) {
-        try {
-            const parsed = new URL(url);
-            if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-                throw new Error('invalid protocol');
-            }
-        } catch {
-            return {
-                ok: false,
-                errorCode: 'invalid_payload',
-                message: 'Link mora biti valjani http ili https URL.',
-            };
-        }
-    }
-    if (!url && !body) {
-        return {
-            ok: false,
-            errorCode: 'invalid_payload',
-            message: 'Potrebno je unijeti sadržaj objave ili link.',
-        };
-    }
-    if (body.length > BODY_MAX_LENGTH) {
-        return {
-            ok: false,
-            errorCode: 'invalid_payload',
-            message: 'Sadržaj objave je predugačak.',
-        };
-    }
-    if (submissionToken.length < SUBMISSION_TOKEN_MIN_LENGTH) {
-        return {
-            ok: false,
-            errorCode: 'invalid_payload',
-            message: 'Nedostaje valjan token prijave obrasca.',
-        };
-    }
+    const { provider, providerAccountKey, destination, postType, title, body, url, submissionToken } = payloadValidation.payload;
 
     const adapter = createSocialProviderAdapter(provider);
     const configError = adapter.validateConfig();

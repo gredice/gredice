@@ -114,6 +114,10 @@ export function checkMCPPermission(
     return false;
   }
 
+  if (auth.permissions) {
+    return auth.permissions.includes(permission);
+  }
+
   const allowedRoles = MCPPermissions[permission];
   return (allowedRoles as readonly string[]).includes(auth.role);
 }

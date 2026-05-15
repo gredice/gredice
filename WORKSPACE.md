@@ -123,9 +123,18 @@ The dev script verifies the hosts entries for the local `gredice.test` domains a
 
 Docker must be running for the proxy. Use `SKIP_DEV_PROXY=1 pnpm dev` only when the local proxy is not needed.
 
+Only one default Caddy proxy can bind ports `80` and `443` at a time. Starting
+`pnpm dev` from another worktree stops older `gredice-dev-caddy*` containers
+that are holding those ports, then starts the proxy for the current worktree. To
+run another proxy concurrently, set `GREDICE_PROXY_HTTP_PORT` and
+`GREDICE_PROXY_HTTPS_PORT` and include the HTTPS port in local URLs.
+
 ### Development HTTPS certificates
 
-The local Caddy proxy terminates HTTPS. Its internal certificate authority is stored in `~/.gredice/dev-caddy/<worktree-slug>` unless `GREDICE_DEV_CADDY_DATA_DIR` points somewhere else. The dev script attempts to trust the certificate authority automatically for the current OS.
+The local Caddy proxy terminates HTTPS. Its internal certificate authority is
+stored in `~/.gredice/dev-caddy/<worktree-slug>` unless
+`GREDICE_DEV_CADDY_DATA_DIR` points somewhere else. The dev script attempts to
+trust the certificate authority automatically for the current OS.
 
 If automatic trust fails, import `root.crt` manually from the Caddy data directory:
 

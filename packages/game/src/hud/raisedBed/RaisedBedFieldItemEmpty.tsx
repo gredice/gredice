@@ -158,7 +158,7 @@ export function RaisedBedFieldItemEmpty({
                         trigger={
                             <button
                                 type="button"
-                                className="inline-flex size-8 items-center justify-center rounded-full border-2 hover:bg-gray-100 border-white bg-card p-0 shadow-lg ring-1 ring-black/10 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700"
+                                className="inline-flex size-8 items-center justify-center rounded-full border-2 border-white bg-white p-0 hover:bg-gray-100 shadow-lg ring-1 ring-black/10 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700"
                                 title={`Povijest biljaka (${plantHistory.length})`}
                                 aria-label={`Prikaži povijest biljaka za polje ${positionIndex + 1}`}
                                 onPointerDown={(event) =>

@@ -20,7 +20,8 @@ const repoRoot = resolve(scriptDir, '..');
 const worktreeId = getWorktreeId();
 const worktreeSlug = getWorktreeSlug(worktreeId);
 const linkedGitWorktree = isLinkedGitWorktree();
-const containerName = `gredice-dev-caddy-${worktreeSlug}`;
+const devProxyContainerNamePrefix = 'gredice-dev-caddy';
+const containerName = `${devProxyContainerNamePrefix}-${worktreeSlug}`;
 const dockerImage = process.env.GREDICE_DEV_CADDY_IMAGE ?? 'gredice-caddy-dev';
 const shouldSkipProxy = parseEnvFlag(process.env.SKIP_DEV_PROXY ?? '');
 const proxyPortsExplicitlyConfigured =
@@ -824,6 +825,162 @@ async function ensureCaddyImage() {
     return await buildCaddyImage();
 }
 
+function parseDockerContainerLine(line) {
+    if (!line.trim()) {
+        return null;
+    }
+
+    try {
+        const details = JSON.parse(line);
+        const id = typeof details.ID === 'string' ? details.ID : '';
+        const names =
+            typeof details.Names === 'string'
+                ? details.Names.split(',')
+                      .map((name) => name.trim())
+                      .filter(Boolean)
+                : [];
+        const ports = typeof details.Ports === 'string' ? details.Ports : '';
+
+        return { id, names, ports };
+    } catch {
+        return null;
+    }
+}
+
+async function listRunningDockerContainers() {
+    const result = await runCommand(
+        'docker',
+        ['ps', '--format', '{{json .}}'],
+        { capture: true, ignoreErrors: true },
+    );
+
+    if (result.code !== 0) {
+        return [];
+    }
+
+    return result.stdout
+        .split(/\r?\n/)
+        .map(parseDockerContainerLine)
+        .filter(Boolean);
+}
+
+function isGrediceDevProxyContainerName(name) {
+    return (
+        name === devProxyContainerNamePrefix ||
+        name.startsWith(`${devProxyContainerNamePrefix}-`)
+    );
+}
+
+function containerPublishesHostPort(container, port) {
+    const trimmedPort = String(port).trim();
+    if (!trimmedPort) {
+        return false;
+    }
+
+    const escapedPort = escapeRegExp(trimmedPort);
+    const pattern = new RegExp(
+        `(?:^|[\\s,])(?:[^\\s,]+:)?${escapedPort}->`,
+    );
+    return pattern.test(container.ports);
+}
+
+function getPublishedHostPorts(container, ports) {
+    return ports.filter((port) => containerPublishesHostPort(container, port));
+}
+
+async function stopConflictingGrediceDevProxies(ports) {
+    const containers = await listRunningDockerContainers();
+    const conflicts = containers.filter((container) => {
+        if (!container.id) {
+            return false;
+        }
+
+        if (container.names.includes(containerName)) {
+            return false;
+        }
+
+        const isGrediceDevProxy = container.names.some(
+            isGrediceDevProxyContainerName,
+        );
+        if (!isGrediceDevProxy) {
+            return false;
+        }
+
+        return ports.some((port) =>
+            containerPublishesHostPort(container, port),
+        );
+    });
+
+    for (const container of conflicts) {
+        const displayName = container.names[0] ?? container.id;
+        const publishedPorts = getPublishedHostPorts(container, ports);
+        const portLabel =
+            publishedPorts.length === 1
+                ? `port ${publishedPorts[0]}`
+                : `ports ${publishedPorts.join('/')}`;
+        console.log(
+            `Stopping existing Gredice dev proxy container ${displayName} on ${portLabel} before starting this worktree's proxy.`,
+        );
+        await runCommand('docker', ['rm', '-f', container.id], {
+            capture: true,
+            ignoreErrors: true,
+        });
+    }
+}
+
+function isProxyPortBindError(error) {
+    const message = `${error?.stderr ?? ''}\n${error?.message ?? ''}`;
+    return /port is already allocated|ports are not available|bind: address already in use|failed to set up container networking|Bind for .* failed/i.test(
+        message,
+    );
+}
+
+async function createProxyPortConflictError(cause, attemptedPorts) {
+    const ports = [String(attemptedPorts.http), String(attemptedPorts.https)];
+    const alternateHttpPort = ports[0] === '8080' ? '8081' : '8080';
+    const alternateHttpsPort = ports[1] === '8443' ? '8444' : '8443';
+    const containers = await listRunningDockerContainers();
+    const portOwners = containers.filter((container) =>
+        ports.some((port) => containerPublishesHostPort(container, port)),
+    );
+    const lines = [
+        `Ports ${ports.join('/')} are unavailable for the Caddy dev proxy.`,
+    ];
+
+    if (portOwners.length > 0) {
+        lines.push('Docker containers currently publishing those ports:');
+        for (const container of portOwners) {
+            const displayName = container.names[0] ?? container.id;
+            const publishedPorts = getPublishedHostPorts(container, ports);
+            lines.push(`- ${displayName}: ${publishedPorts.join(', ')}`);
+        }
+    } else if (process.platform === 'win32') {
+        lines.push(
+            `Use \`Get-NetTCPConnection -LocalPort ${ports.join(',')}\` to find the local process that owns the ports.`,
+        );
+    } else {
+        const lsofPortArgs = ports.map((port) => `-iTCP:${port}`).join(' ');
+        lines.push(
+            `Use \`lsof -nP ${lsofPortArgs} -sTCP:LISTEN\` to find the local process that owns the ports.`,
+        );
+    }
+
+    if (process.platform === 'win32') {
+        lines.push(
+            `Stop the conflicting service and rerun \`pnpm dev\`, or choose alternate host ports: \`$env:GREDICE_PROXY_HTTP_PORT='${alternateHttpPort}'; $env:GREDICE_PROXY_HTTPS_PORT='${alternateHttpsPort}'; pnpm dev\`.`,
+        );
+    } else {
+        lines.push(
+            `Stop the conflicting service and rerun \`pnpm dev\`, or choose alternate host ports: \`GREDICE_PROXY_HTTP_PORT=${alternateHttpPort} GREDICE_PROXY_HTTPS_PORT=${alternateHttpsPort} pnpm dev\`.`,
+        );
+    }
+
+    const error = new Error(lines.join('\n'));
+    error.code = 'PROXY_PORT_CONFLICT';
+    error.cause = cause;
+    return error;
+}
+
 async function writeCaddyfile() {
     await ensureCaddyDataDirectory();
     await writeFile(caddyfilePath, renderCaddyfile(), 'utf8');
@@ -846,13 +1003,6 @@ function areProxyPortsEqual(left, right) {
     return left.http === right.http && left.https === right.https;
 }
 
-function isDockerPortBindingError(error) {
-    const message = `${error?.stderr ?? ''}\n${error?.message ?? ''}`;
-    return /port is already allocated|ports are not available|bind: address already in use|Bind for .* failed/i.test(
-        message,
-    );
-}
-
 async function startProxyOnPorts(ports) {
     applyActiveProxyPorts(ports);
 
@@ -869,6 +1019,7 @@ async function startProxyOnPorts(ports) {
         capture: true,
         ignoreErrors: true,
     });
+    await stopConflictingGrediceDevProxies([ports.http, ports.https]);
 
     const args = [
         'run',
@@ -876,6 +1027,10 @@ async function startProxyOnPorts(ports) {
         '--name',
         containerName,
         '-d',
+        '--label',
+        'dev.gredice.role=dev-proxy',
+        '--label',
+        `dev.gredice.worktree-slug=${worktreeSlug}`,
         '--add-host=host.docker.internal:host-gateway',
         '-p',
         `${ports.http}:80`,
@@ -900,7 +1055,9 @@ async function startProxyOnPorts(ports) {
     args.push('-v', `${caddyfilePath}:/etc/caddy/Caddyfile:ro`);
     args.push(dockerImage);
 
-    const { stdout } = await runCommand('docker', args, { capture: true });
+    const result = await runCommand('docker', args, { capture: true });
+
+    const { stdout } = result;
     const containerId = stdout.trim();
 
     console.log(
@@ -921,19 +1078,38 @@ async function startProxy() {
         return await startProxyOnPorts(defaultProxyPorts);
     } catch (error) {
         const fallbackPorts = getFallbackProxyPorts();
+        const isPortBindError = isProxyPortBindError(error);
         const canFallback =
             !proxyPortsExplicitlyConfigured &&
             !areProxyPortsEqual(defaultProxyPorts, fallbackPorts) &&
-            isDockerPortBindingError(error);
+            isPortBindError;
 
         if (!canFallback) {
+            if (isPortBindError) {
+                throw await createProxyPortConflictError(
+                    error,
+                    defaultProxyPorts,
+                );
+            }
+
             throw error;
         }
 
         console.warn(
             `Proxy ports ${defaultProxyPorts.http}/${defaultProxyPorts.https} are already in use; retrying on worktree ports ${fallbackPorts.http}/${fallbackPorts.https}.`,
         );
-        return await startProxyOnPorts(fallbackPorts);
+        try {
+            return await startProxyOnPorts(fallbackPorts);
+        } catch (fallbackError) {
+            if (isProxyPortBindError(fallbackError)) {
+                throw await createProxyPortConflictError(
+                    fallbackError,
+                    fallbackPorts,
+                );
+            }
+
+            throw fallbackError;
+        }
     }
 }
 
@@ -1069,6 +1245,11 @@ async function main() {
                 console.error(
                     'Install Docker (or start Docker Desktop) and try again.',
                 );
+                return 1;
+            }
+
+            if (error?.code === 'PROXY_PORT_CONFLICT') {
+                console.error(error.message);
                 return 1;
             }
 
