@@ -37,7 +37,7 @@ function DailyRewardInfo() {
 
 export function SunflowersInfoTooltipContent() {
     return (
-        <Stack className="p-4" spacing={3}>
+        <Stack className="p-4" spacing={2}>
             <Row spacing={2} alignItems="start">
                 <Image
                     src="https://cdn.gredice.com/sunflower-large.svg"
@@ -56,14 +56,7 @@ export function SunflowersInfoTooltipContent() {
                     </Typography>
                 </Stack>
             </Row>
-            <Stack spacing={1.5}>
-                <Typography
-                    level="body3"
-                    semiBold
-                    className="uppercase text-muted-foreground"
-                >
-                    Pretvorba
-                </Typography>
+            <Stack spacing={1}>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <Stack
                         spacing={0.5}
