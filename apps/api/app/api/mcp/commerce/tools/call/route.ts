@@ -1,6 +1,8 @@
 import {
     type EntityStandardized,
     getEntitiesFormatted,
+    getEntityFormatted,
+    getEntityRaw,
     getOrCreateShoppingCart,
     upsertOrRemoveCartItem,
 } from '@gredice/storage';
@@ -449,9 +451,23 @@ async function handleGetProduct(
         };
     }
 
-    const publishedProducts =
-        await getEntitiesFormatted<CommerceEntity>('plantSort');
-    const product = publishedProducts?.find((item) => item.id === entityId);
+    const rawProduct = await getEntityRaw(entityId);
+
+    if (
+        rawProduct?.state !== 'published' ||
+        rawProduct.entityType?.name !== 'plantSort'
+    ) {
+        return {
+            unsupported: true,
+            reason:
+                input.locale === 'hr'
+                    ? 'Proizvod nije pronađen u katalogu'
+                    : 'Product not found in catalog',
+            productId: input.productId,
+        };
+    }
+
+    const product = await getEntityFormatted<CommerceEntity>(entityId);
 
     if (!product || product.entityType?.name !== 'plantSort') {
         return {
@@ -648,6 +664,9 @@ async function handleUpdateCartItem(
         return { success: false, error: 'Cart item not found' };
     }
 
+    const forceCreate = false;
+    const bypassPaidItemDeleteProtection = false;
+
     const updatedId = await upsertOrRemoveCartItem(
         input.cartItemId,
         cart.id,
@@ -659,8 +678,8 @@ async function handleUpdateCartItem(
         item.positionIndex ?? undefined,
         item.additionalData ?? null,
         item.currency || 'eur',
-        false,
-        false,
+        forceCreate,
+        bypassPaidItemDeleteProtection,
     );
 
     return {
