@@ -18,6 +18,7 @@ import {
 
 type DeliveryChannel = 'email' | 'push';
 type DeliveryOutcome = 'immediate' | 'digest' | 'suppressed' | 'required';
+type DeliveryAttemptStatus = 'accepted' | 'queued' | 'dropped';
 
 export type NotificationDeliveryDecision = {
     channel: DeliveryChannel;
@@ -112,6 +113,14 @@ function decideDeliveryOutcome({
     };
 }
 
+function deliveryAttemptStatusForOutcome(
+    outcome: DeliveryOutcome,
+): DeliveryAttemptStatus {
+    if (outcome === 'suppressed') return 'dropped';
+    if (outcome === 'digest') return 'queued';
+    return 'accepted';
+}
+
 export async function getNotification(
     id: string,
 ): Promise<SelectNotification | undefined> {
@@ -192,12 +201,7 @@ export async function routeNotificationDelivery(notificationId: string) {
                     userId: notification.userId ?? null,
                     accountId: notification.accountId,
                     channel: decision.channel,
-                    status:
-                        decision.outcome === 'suppressed'
-                            ? 'dropped'
-                            : decision.outcome === 'digest'
-                              ? 'queued'
-                              : 'accepted',
+                    status: deliveryAttemptStatusForOutcome(decision.outcome),
                     provider: 'router',
                     providerResponseCode: decision.reason,
                 })),
