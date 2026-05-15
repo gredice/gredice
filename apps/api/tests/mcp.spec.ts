@@ -463,11 +463,9 @@ test.describe('MCP Commerce Server', () => {
                 'commerce/get-cart',
                 'commerce/add-to-cart',
                 'commerce/update-cart-item',
-                'commerce/create-order',
-                'commerce/get-orders',
             ]),
         });
-        expect(data.availableTools).toHaveLength(8);
+        expect(data.availableTools).toHaveLength(6);
     });
 
     test('should get products with Croatian names and prices', async ({
@@ -672,43 +670,6 @@ test.describe('MCP Commerce Server', () => {
         expect(data.error.code).toBe(-32001);
     });
 
-    test('should create order with Croatian shipping address', async ({
-        request,
-    }) => {
-        const testJWT = createTestJWT('user-123', 'gardener');
-
-        const response = await request.post(
-            `${MCP_BASE_URL}/commerce/tools/call`,
-            {
-                data: {
-                    jsonrpc: '2.0',
-                    method: 'commerce/create-order',
-                    params: {
-                        name: 'commerce/create-order',
-                        arguments: {
-                            userId: 'user-123',
-                            shippingAddress: {
-                                name: 'Marko Marić',
-                                street: 'Ilica 1',
-                                city: 'Zagreb',
-                                postalCode: '10000',
-                                country: 'HR',
-                            },
-                            paymentMethod: 'card',
-                            locale: 'hr',
-                        },
-                    },
-                    id: 5,
-                },
-                headers: {
-                    Authorization: `Bearer ${testJWT}`,
-                },
-            },
-        );
-
-        // Expect either success or proper error response
-        expect([200, 400, 401, 404]).toContain(response.status());
-    });
 });
 
 test.describe('MCP Error Handling', () => {

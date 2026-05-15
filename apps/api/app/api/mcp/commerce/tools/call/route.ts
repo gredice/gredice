@@ -1,6 +1,7 @@
 import {
     type EntityStandardized,
     getEntitiesFormatted,
+    getEntityFormatted,
     getOrCreateShoppingCart,
     upsertOrRemoveCartItem,
 } from '@gredice/storage';
@@ -59,35 +60,8 @@ const AddToCartSchema = z.object({
 
 const UpdateCartItemSchema = z.object({
     userId: z.string(),
-    cartItemId: z.string(),
+    cartItemId: z.coerce.number().int().positive(),
     quantity: z.number().min(0), // 0 to remove item
-    locale: z.enum(['hr', 'en']).default('hr'),
-});
-
-const CreateOrderSchema = z.object({
-    userId: z.string(),
-    shippingAddress: z.object({
-        name: z.string(),
-        street: z.string(),
-        city: z.string(),
-        postalCode: z.string(),
-        country: z.string().default('HR'),
-        phone: z.string().optional(),
-    }),
-    paymentMethod: z
-        .enum(['card', 'bank_transfer', 'cash_on_delivery'])
-        .default('card'),
-    notes: z.string().optional(),
-    locale: z.enum(['hr', 'en']).default('hr'),
-});
-
-const GetOrdersSchema = z.object({
-    userId: z.string(),
-    status: z
-        .enum(['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'])
-        .optional(),
-    limit: z.number().min(1).max(100).default(20),
-    offset: z.number().min(0).default(0),
     locale: z.enum(['hr', 'en']).default('hr'),
 });
 
@@ -155,8 +129,6 @@ export async function GET() {
             'commerce/get-cart',
             'commerce/add-to-cart',
             'commerce/update-cart-item',
-            'commerce/create-order',
-            'commerce/get-orders',
         ],
     });
 }
@@ -190,7 +162,6 @@ export async function POST(request: NextRequest) {
         const writeTools = new Set([
             'commerce/add-to-cart',
             'commerce/update-cart-item',
-            'commerce/create-order',
         ]);
 
         if (writeTools.has(name) && !checkMCPPermission(auth, 'commerce:purchase')) {
@@ -203,6 +174,7 @@ export async function POST(request: NextRequest) {
         logger.info('mcp.commerce.tool.start', {
             toolName: name,
             userId: auth.userId,
+            accountId: auth.accountId,
             correlationId,
             timestamp: new Date().toISOString(),
         });
@@ -265,29 +237,6 @@ export async function POST(request: NextRequest) {
                 break;
             }
 
-            case 'commerce/create-order': {
-                const createOrderInput = CreateOrderSchema.parse(args);
-                if (createOrderInput.userId !== auth.userId) {
-                    return NextResponse.json(
-                        createMCPAuthError(auth, 'forbidden', correlationId),
-                        { status: 403 },
-                    );
-                }
-                result = await handleCreateOrder(createOrderInput, auth);
-                break;
-            }
-
-            case 'commerce/get-orders': {
-                const getOrdersInput = GetOrdersSchema.parse(args);
-                if (getOrdersInput.userId !== auth.userId) {
-                    return NextResponse.json(
-                        createMCPAuthError(auth, 'forbidden', correlationId),
-                        { status: 403 },
-                    );
-                }
-                result = await handleGetOrders(getOrdersInput, auth);
-                break;
-            }
 
             default:
                 return NextResponse.json(
@@ -381,7 +330,7 @@ async function handleGetProducts(
                     currency: 'EUR',
                 },
                 inStock: true,
-                stockQuantity: Math.floor(Math.random() * 100) + 50, // Random stock
+                stockQuantity: 0,
                 supplier: 'Gredice Seeds',
                 properties: {
                     packetSize: '25 sjemenki',
@@ -399,10 +348,6 @@ async function handleGetProducts(
                 images: plantSort.images?.cover?.url
                     ? [plantSort.images.cover.url]
                     : ['https://images.gredice.com/products/seeds-generic.jpg'],
-                rating: {
-                    average: 4.2 + Math.random() * 0.8, // Random rating 4.2-5.0
-                    reviewsCount: Math.floor(Math.random() * 200) + 20,
-                },
                 tags: [
                     'sjeme',
                     'biljka',
@@ -490,146 +435,76 @@ async function handleGetProduct(
     input: z.infer<typeof GetProductSchema>,
     _auth: MCPAuth,
 ) {
-    // TODO: Implement with actual getEntityFormatted('products', input.productId)
-    const mockProduct = {
-        id: input.productId,
-        category: 'seeds',
-        name: 'Sjeme Cherry rajčice',
-        description:
-            'Kvalitetno sjeme manje rajčice, idealne za balkonski uzgoj. Visoka stopa klijavosti i brza zrelost čine ovu sortu idealnom za početnike.',
-        plantType: 'rajčica',
-        price: { amount: 15.99, currency: 'EUR' },
-        inStock: true,
-        stockQuantity: 150,
-        supplier: {
-            id: 'supplier-gredice-seeds',
-            name: 'Gredice Seeds',
-            rating: 4.9,
-            verified: true,
-        },
-        properties: {
-            packetSize: '20 sjemenki',
-            germinationRate: '95%',
-            organicCertified: true,
-            variety: 'Cherry',
-            sowingDepth: '0.5 cm',
-            spacingBetweenPlants: '30 cm',
-            daysToMaturity: '65-75 dana',
-            harvestSeason: 'ljeto (srpanj-rujan)',
-        },
-        images: [
-            {
-                url: 'https://images.gredice.com/products/tomato-cherry-seeds-1.jpg',
-                alt: 'Paket sjemena Cherry rajčice',
-            },
-            {
-                url: 'https://images.gredice.com/products/tomato-cherry-seeds-2.jpg',
-                alt: 'Cherry rajčice u vrtu',
-            },
-        ],
-        rating: { average: 4.8, reviewsCount: 127 },
-        reviews: [
-            {
-                id: 'review-1',
-                userId: 'user-456',
-                userName: 'Marija K.',
-                rating: 5,
-                comment: 'Odličo sjeme! Sve su nikle i imao sam bogat urod.',
-                date: '2025-08-15T10:30:00Z',
-                verified: true,
-            },
-            {
-                id: 'review-2',
-                userId: 'user-789',
-                userName: 'Petar S.',
-                rating: 4,
-                comment:
-                    'Dobre rajčice, ali malo sporije sazrijevanje od očekivanog.',
-                date: '2025-07-22T14:15:00Z',
-                verified: true,
-            },
-        ],
-        relatedProducts: [
-            {
-                id: 'product-seed-tomato-beefsteak',
-                name: 'Sjeme Beefsteak rajčice',
-                price: { amount: 18.99, currency: 'EUR' },
-            },
-            {
-                id: 'product-fertilizer-tomato',
-                name: 'Gnojivo za rajčice 1kg',
-                price: { amount: 12.99, currency: 'EUR' },
-            },
-        ],
-        shippingInfo: {
-            freeShippingThreshold: 50,
-            standardShipping: { price: 5.99, deliveryDays: '3-5' },
-            expressShipping: { price: 12.99, deliveryDays: '1-2' },
-        },
-    };
+    const entityId = Number(input.productId.replace('plant-sort-', ''));
 
-    return mockProduct;
+    if (!Number.isInteger(entityId) || entityId <= 0) {
+        return {
+            unsupported: true,
+            reason:
+                input.locale === 'hr'
+                    ? 'Nepodržani identifikator proizvoda'
+                    : 'Unsupported product identifier',
+            productId: input.productId,
+        };
+    }
+
+    const product = await getEntityFormatted<CommerceEntity>(entityId);
+
+    if (!product || product.entityType?.name !== 'plantSort') {
+        return {
+            unsupported: true,
+            reason:
+                input.locale === 'hr'
+                    ? 'Proizvod nije pronađen u katalogu'
+                    : 'Product not found in catalog',
+            productId: input.productId,
+        };
+    }
+
+    const plantInfo = product.information?.plant;
+    const name = plantInfo?.information?.name || product.name;
+
+    return {
+        id: `plant-sort-${product.id}`,
+        category: 'seeds',
+        name: `Sjeme - ${name}`,
+        description: plantInfo?.information?.description || product.description,
+        price: { amount: product.prices?.perPlant || 0, currency: 'EUR' },
+        images: product.images?.cover?.url ? [product.images.cover.url] : [],
+        locale: input.locale,
+    };
 }
 
 async function handleSearchProducts(
     input: z.infer<typeof SearchProductsSchema>,
-    _auth: MCPAuth,
+    auth: MCPAuth,
 ) {
-    // TODO: Implement with actual search functionality
+    const products = await handleGetProducts(
+        {
+            inStock: true,
+            limit: 100,
+            offset: 0,
+            locale: input.locale,
+            category: input.category,
+            plantType: undefined,
+            minPrice: undefined,
+            maxPrice: undefined,
+        },
+        auth,
+    );
+
     const query = input.query.toLowerCase();
-    const mockResults = [
-        {
-            id: 'product-seed-tomato-cherry',
-            category: 'seeds',
-            name: 'Sjeme Cherry rajčice',
-            description: 'Kvalitetno sjeme manje rajčice...',
-            price: { amount: 15.99, currency: 'EUR' },
-            inStock: true,
-            rating: { average: 4.8, reviewsCount: 127 },
-            relevanceScore:
-                query.includes('rajč') || query.includes('cherry') ? 0.95 : 0.3,
-        },
-        {
-            id: 'product-fertilizer-tomato',
-            category: 'fertilizers',
-            name: 'Specijalno gnojivo za rajčice',
-            description: 'Formulirano posebno za rajčice...',
-            price: { amount: 12.99, currency: 'EUR' },
-            inStock: true,
-            rating: { average: 4.6, reviewsCount: 89 },
-            relevanceScore:
-                query.includes('rajč') || query.includes('gnojiv') ? 0.85 : 0.2,
-        },
-        {
-            id: 'product-tool-tomato-cage',
-            category: 'tools',
-            name: 'Nosač za rajčice 150cm',
-            description: 'Čvrsti nosač za potporu visokih rajčica...',
-            price: { amount: 22.5, currency: 'EUR' },
-            inStock: true,
-            rating: { average: 4.4, reviewsCount: 34 },
-            relevanceScore:
-                query.includes('rajč') || query.includes('nosač') ? 0.75 : 0.1,
-        },
-    ];
-
-    // Filter by category if provided
-    let filteredResults = mockResults;
-    if (input.category) {
-        filteredResults = filteredResults.filter(
-            (p) => p.category === input.category,
-        );
-    }
-
-    // Filter by relevance and sort
-    const relevantResults = filteredResults
-        .filter((p) => p.relevanceScore > 0.2)
-        .sort((a, b) => b.relevanceScore - a.relevanceScore)
+    const results = products.products
+        .filter((p) =>
+            [p.name, p.description, p.plantType]
+                .filter((field): field is string => typeof field === 'string')
+                .some((field) => field.toLowerCase().includes(query)),
+        )
         .slice(0, input.limit);
 
     return {
-        results: relevantResults,
-        total: relevantResults.length,
+        results,
+        total: results.length,
         query: input.query,
         category: input.category,
         limit: input.limit,
@@ -643,7 +518,7 @@ async function handleGetCart(
 ) {
     try {
         // Get or create shopping cart for the user
-        const cart = await getOrCreateShoppingCart(auth.userId);
+        const cart = await getOrCreateShoppingCart(auth.accountId);
 
         if (!cart) {
             throw new Error('Failed to get or create cart');
@@ -653,6 +528,7 @@ async function handleGetCart(
         const formattedCart = {
             id: cart.id,
             userId: auth.userId,
+            accountId: auth.accountId,
             items: cart.items.map(formatCartItem),
         };
 
@@ -701,7 +577,7 @@ async function handleAddToCart(
 ) {
     try {
         // First get or create shopping cart for the user
-        const cart = await getOrCreateShoppingCart(auth.userId);
+        const cart = await getOrCreateShoppingCart(auth.accountId);
         if (!cart) {
             throw new Error('Failed to get or create cart');
         }
@@ -755,116 +631,38 @@ async function handleAddToCart(
 
 async function handleUpdateCartItem(
     input: z.infer<typeof UpdateCartItemSchema>,
-    _auth: MCPAuth,
+    auth: MCPAuth,
 ) {
-    // TODO: Implement with actual database update
-    const action = input.quantity === 0 ? 'removed' : 'updated';
-
-    return {
-        success: true,
-        action,
-        cartItemId: input.cartItemId,
-        newQuantity: input.quantity,
-        message:
-            input.locale === 'hr'
-                ? action === 'removed'
-                    ? 'Proizvod je uklonjen iz košarice!'
-                    : 'Količina je ažurirana!'
-                : action === 'removed'
-                  ? 'Product removed from cart!'
-                  : 'Quantity updated!',
-    };
-}
-
-async function handleCreateOrder(
-    input: z.infer<typeof CreateOrderSchema>,
-    _auth: MCPAuth,
-) {
-    // TODO: Implement with actual order creation and payment processing
-    const orderId = `order-${Date.now()}`;
-
-    const newOrder = {
-        id: orderId,
-        userId: input.userId,
-        status: 'pending',
-        shippingAddress: input.shippingAddress,
-        paymentMethod: input.paymentMethod,
-        notes: input.notes,
-        createdAt: new Date().toISOString(),
-        estimatedDelivery: new Date(
-            Date.now() + 3 * 24 * 60 * 60 * 1000,
-        ).toISOString(), // 3 days
-    };
-
-    return {
-        success: true,
-        order: newOrder,
-        message:
-            input.locale === 'hr'
-                ? 'Narudžba je uspješno kreirana!'
-                : 'Order created successfully!',
-    };
-}
-
-async function handleGetOrders(
-    input: z.infer<typeof GetOrdersSchema>,
-    _auth: MCPAuth,
-) {
-    // TODO: Implement with actual database query
-    const mockOrders = [
-        {
-            id: 'order-1727234567890',
-            userId: input.userId,
-            status: 'delivered',
-            total: { amount: 56.79, currency: 'EUR' },
-            itemsCount: 3,
-            createdAt: '2025-09-20T10:30:00Z',
-            deliveredAt: '2025-09-23T14:15:00Z',
-            shippingAddress: {
-                name: 'Ana Marić',
-                city: 'Zagreb',
-                country: 'HR',
-            },
-        },
-        {
-            id: 'order-1727148167890',
-            userId: input.userId,
-            status: 'shipped',
-            total: { amount: 34.5, currency: 'EUR' },
-            itemsCount: 2,
-            createdAt: '2025-09-15T08:45:00Z',
-            shippedAt: '2025-09-16T12:00:00Z',
-            estimatedDelivery: '2025-09-28T00:00:00Z',
-            shippingAddress: {
-                name: 'Ana Marić',
-                city: 'Zagreb',
-                country: 'HR',
-            },
-        },
-    ];
-
-    let filteredOrders = mockOrders;
-    if (input.status) {
-        filteredOrders = filteredOrders.filter(
-            (order) => order.status === input.status,
-        );
+    const cart = await getOrCreateShoppingCart(auth.accountId);
+    if (!cart) {
+        return { success: false, error: 'Failed to get or create cart' };
     }
 
-    // Apply pagination
-    const paginatedOrders = filteredOrders.slice(
-        input.offset,
-        input.offset + input.limit,
+    const item = cart.items.find((cartItem) => cartItem.id === input.cartItemId);
+    if (!item) {
+        return { success: false, error: 'Cart item not found' };
+    }
+
+    const updatedId = await upsertOrRemoveCartItem(
+        input.cartItemId,
+        cart.id,
+        item.entityId,
+        item.entityTypeName,
+        input.quantity,
+        item.gardenId ?? undefined,
+        item.raisedBedId ?? undefined,
+        item.positionIndex ?? undefined,
+        item.additionalData ?? null,
+        item.currency || 'eur',
+        false,
+        input.quantity === 0,
     );
 
     return {
-        orders: paginatedOrders,
-        total: filteredOrders.length,
-        limit: input.limit,
-        offset: input.offset,
-        userId: input.userId,
-        filters: {
-            status: input.status,
-        },
+        success: Boolean(updatedId) || input.quantity === 0,
+        action: input.quantity === 0 ? 'removed' : 'updated',
+        cartItemId: input.cartItemId,
+        newQuantity: input.quantity,
         locale: input.locale,
     };
 }
