@@ -1,4 +1,5 @@
 import { OperationImage } from '@gredice/ui/OperationImage';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import {
     Approved,
     Calendar,
@@ -153,7 +154,7 @@ function getTomorrowDate() {
     return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
 }
 
-function getCartOperationScheduledDate(item: ShoppingCartItemData) {
+function getCartItemScheduledDate(item: ShoppingCartItemData) {
     const scheduledDate = parseScheduledDate(item.additionalData);
     return scheduledDate ? new Date(scheduledDate) : getTomorrowDate();
 }
@@ -180,6 +181,13 @@ function getCartOperationTargetLabel(
     }
 
     return garden.name || 'Vrt';
+}
+
+function isCartOperationsPopupItem(item: ShoppingCartItemData) {
+    return (
+        item.entityTypeName === 'operation' ||
+        item.entityTypeName === 'plantSort'
+    );
 }
 
 function StatusBadge({
@@ -432,20 +440,31 @@ function CartOperationCard({
     targetLabel: string;
     onOpenCart: () => void;
 }) {
-    const scheduledDate = getCartOperationScheduledDate(item);
+    const scheduledDate = getCartItemScheduledDate(item);
     const scheduledDateLabel = parseScheduledDate(item.additionalData)
         ? formatDate(scheduledDate.toISOString())
         : 'sutra';
+    const plantSort =
+        item.entityTypeName === 'plantSort' ? item.entityData : null;
     const operationName =
-        operationData?.information.label ??
-        item.shopData.name ??
-        `Radnja #${item.entityId}`;
+        item.entityTypeName === 'plantSort'
+            ? `Sadnja: ${item.shopData.name ?? `Sorta #${item.entityId}`}`
+            : (operationData?.information.label ??
+              item.shopData.name ??
+              `Radnja #${item.entityId}`);
 
     return (
         <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3">
             <Row spacing={1.5} alignItems="start">
                 <div className="size-12 rounded-lg bg-card flex items-center justify-center overflow-hidden shrink-0">
-                    {operationData ? (
+                    {plantSort ? (
+                        <PlantOrSortImage
+                            plantSort={plantSort}
+                            alt={item.shopData.name ?? 'Sadnja'}
+                            width={40}
+                            height={40}
+                        />
+                    ) : operationData ? (
                         <OperationImage operation={operationData} size={40} />
                     ) : (
                         <ShoppingCart className="size-5 text-amber-600" />
@@ -640,7 +659,7 @@ export function GardenOperationsHud() {
         return (cart?.items ?? [])
             .flatMap((item) => {
                 if (
-                    item.entityTypeName !== 'operation' ||
+                    !isCartOperationsPopupItem(item) ||
                     item.status !== 'new' ||
                     (item.gardenId != null &&
                         item.gardenId !== currentGarden.id)
@@ -649,7 +668,7 @@ export function GardenOperationsHud() {
                 }
 
                 const operationId = Number(item.entityId);
-                const scheduledDate = getCartOperationScheduledDate(item);
+                const scheduledDate = getCartItemScheduledDate(item);
                 return [
                     {
                         item,

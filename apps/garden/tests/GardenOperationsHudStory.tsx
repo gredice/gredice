@@ -10,6 +10,7 @@ import {
     GameStateContext,
 } from '../../../packages/game/src/useGameState';
 import {
+    buildCartItem,
     buildField,
     TEST_GARDEN_ID,
     TEST_RAISED_BED_ID,
@@ -160,6 +161,12 @@ function createQueryClient() {
             buildOperationCartItem({
                 id: 92,
                 positionIndex: 3,
+            }),
+            buildCartItem({
+                id: 93,
+                sort: testSorts.lettuce,
+                scheduledDate: '2026-05-21T00:00:00.000Z',
+                positionIndex: 4,
             }),
         ],
     });
