@@ -62,9 +62,10 @@ const hiddenFromActive = new Set<GardenOperationStatus>([
     'failed',
     'canceled',
 ]);
-const cartOperationEntityType = 'operation';
-const cartPlantSortEntityType = 'plantSort';
+const cartOperationEntityType = 'operation' as const;
+const cartPlantSortEntityType = 'plantSort' as const;
 const plantingOperationLabel = 'Sadnja';
+const plantSortFallbackLabel = 'Sorta';
 
 type StatusConfig = {
     label: string;
@@ -453,7 +454,7 @@ function CartOperationCard({
             : null;
     const operationName =
         item.entityTypeName === cartPlantSortEntityType
-            ? `${plantingOperationLabel}: ${item.shopData.name ?? `Sorta #${item.entityId}`}`
+            ? `${plantingOperationLabel}: ${item.shopData.name ?? `${plantSortFallbackLabel} #${item.entityId}`}`
             : (operationData?.information.label ??
               item.shopData.name ??
               `Radnja #${item.entityId}`);
@@ -465,7 +466,7 @@ function CartOperationCard({
                     {plantSort ? (
                         <PlantOrSortImage
                             plantSort={plantSort}
-                            alt={item.shopData.name ?? 'Sadnja'}
+                            alt={item.shopData.name ?? plantingOperationLabel}
                             width={40}
                             height={40}
                         />
