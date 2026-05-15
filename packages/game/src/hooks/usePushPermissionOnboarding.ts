@@ -8,10 +8,34 @@ type PushSetupStatus =
     | 'prompt-dismissed';
 
 const pushPromptDismissedKey = 'game:push:prompt-dismissed';
+const pushServiceWorkerPath = '/push-notifications-sw.js';
 
 function readPromptDismissed(): boolean {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(pushPromptDismissedKey) === '1';
+}
+
+async function ensurePushServiceWorkerRegistered() {
+    if (
+        typeof window === 'undefined' ||
+        !('serviceWorker' in navigator) ||
+        typeof window.isSecureContext !== 'boolean' ||
+        !window.isSecureContext
+    ) {
+        return;
+    }
+
+    const existing = await navigator.serviceWorker.getRegistration(
+        pushServiceWorkerPath,
+    );
+    if (existing) {
+        await existing.update();
+        return;
+    }
+
+    await navigator.serviceWorker.register(pushServiceWorkerPath, {
+        scope: '/',
+    });
 }
 
 function resolvePermissionStatus(): PushSetupStatus {
@@ -48,6 +72,7 @@ export function usePushPermissionOnboarding() {
 
         const permission = await window.Notification.requestPermission();
         if (permission === 'granted') {
+            await ensurePushServiceWorkerRegistered();
             setStatus('granted');
             return 'granted' as const;
         }
