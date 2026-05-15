@@ -15,25 +15,15 @@ import { useMarkAllNotificationsRead } from '../../hooks/useMarkAllNotifications
 import { usePushPermissionOnboarding } from '../../hooks/usePushPermissionOnboarding';
 import { NotificationList } from '../../hud/NotificationList';
 
-type NotificationPreference = {
-    id: string;
-    scope: 'global' | 'account';
-    category: string;
-    channel: 'in_app' | 'email' | 'push' | 'sms';
-    enabled: boolean;
-    quietHoursStartMinute: number | null;
-    quietHoursEndMinute: number | null;
-};
+type ApiClient = ReturnType<typeof clientAuthenticated>;
 
-type PushDevice = {
-    id: string;
-    deviceLabel: string | null;
-    userAgent: string | null;
-    enabled: boolean;
-    permissionState: 'default' | 'granted' | 'denied';
-    lastSeenAt: string | null;
-    revokedAt: string | null;
-};
+type NotificationPreferenceUpdate = NonNullable<
+    Parameters<ApiClient['api']['notifications']['preferences']['$put']>[0]
+>['json']['preferences'][number];
+
+type PushDeviceUpdate = NonNullable<
+    Parameters<ApiClient['api']['notifications']['devices'][':id']['$patch']>[0]
+>['json'];
 
 const notificationPreferencesKey = ['notifications', 'preferences'];
 const notificationDevicesKey = ['notifications', 'devices'];
@@ -55,8 +45,7 @@ export function NotificationsTab() {
             const response =
                 await clientAuthenticated().api.notifications.preferences.$get();
             if (!response.ok) throw new Error('Failed to load preferences');
-            return (await response.json())
-                .preferences as NotificationPreference[];
+            return (await response.json()).preferences;
         },
     });
 
@@ -66,7 +55,7 @@ export function NotificationsTab() {
             const response =
                 await clientAuthenticated().api.notifications.devices.$get();
             if (!response.ok) throw new Error('Failed to load devices');
-            return (await response.json()).devices as PushDevice[];
+            return (await response.json()).devices;
         },
     });
 
@@ -83,7 +72,7 @@ export function NotificationsTab() {
     });
 
     const savePreferencesMutation = useMutation({
-        mutationFn: async (preferences: Array<Record<string, unknown>>) => {
+        mutationFn: async (preferences: NotificationPreferenceUpdate[]) => {
             const response =
                 await clientAuthenticated().api.notifications.preferences.$put({
                     json: { preferences },
@@ -102,7 +91,7 @@ export function NotificationsTab() {
             payload,
         }: {
             id: string;
-            payload: Record<string, unknown>;
+            payload: PushDeviceUpdate;
         }) => {
             const response =
                 await clientAuthenticated().api.notifications.devices[
@@ -273,7 +262,7 @@ export function NotificationsTab() {
                                 <Typography>{item.label}</Typography>
                                 <Checkbox
                                     checked={preference?.enabled ?? false}
-                                    onCheckedChange={(checked) =>
+                                    onCheckedChange={(checked: boolean) =>
                                         savePreferencesMutation.mutate([
                                             {
                                                 scope: 'global',
