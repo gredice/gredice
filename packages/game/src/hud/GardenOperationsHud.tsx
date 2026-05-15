@@ -148,6 +148,16 @@ function parseScheduledDate(additionalData: string | null | undefined) {
     }
 }
 
+function getTomorrowDate() {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+}
+
+function getCartOperationScheduledDate(item: ShoppingCartItemData) {
+    const scheduledDate = parseScheduledDate(item.additionalData);
+    return scheduledDate ? new Date(scheduledDate) : getTomorrowDate();
+}
+
 function getTimestamp(value: string | Date | null | undefined) {
     const timestamp = value ? new Date(value).getTime() : 0;
     return Number.isFinite(timestamp) ? timestamp : 0;
@@ -422,7 +432,10 @@ function CartOperationCard({
     targetLabel: string;
     onOpenCart: () => void;
 }) {
-    const scheduledDate = parseScheduledDate(item.additionalData);
+    const scheduledDate = getCartOperationScheduledDate(item);
+    const scheduledDateLabel = parseScheduledDate(item.additionalData)
+        ? formatDate(scheduledDate.toISOString())
+        : 'sutra';
     const operationName =
         operationData?.information.label ??
         item.shopData.name ??
@@ -451,11 +464,9 @@ function CartOperationCard({
                         <Typography level="body3" secondary>
                             U košari, još nije kupljeno
                         </Typography>
-                        {scheduledDate && (
-                            <Typography level="body3" secondary>
-                                Zakazano: {formatDate(scheduledDate)}
-                            </Typography>
-                        )}
+                        <Typography level="body3" secondary>
+                            Zakazano: {scheduledDateLabel}
+                        </Typography>
                     </Row>
                     <Row justifyContent="space-between" spacing={1}>
                         <Row spacing={0.5} className="text-amber-600">
@@ -631,15 +642,18 @@ export function GardenOperationsHud() {
                 if (
                     item.entityTypeName !== 'operation' ||
                     item.status !== 'new' ||
-                    item.gardenId !== currentGarden.id
+                    (item.gardenId != null &&
+                        item.gardenId !== currentGarden.id)
                 ) {
                     return [];
                 }
 
                 const operationId = Number(item.entityId);
+                const scheduledDate = getCartOperationScheduledDate(item);
                 return [
                     {
                         item,
+                        scheduledDate,
                         operationData: Number.isFinite(operationId)
                             ? operationDataById.get(operationId)
                             : undefined,
@@ -650,11 +664,13 @@ export function GardenOperationsHud() {
                     },
                 ];
             })
-            .sort(
-                (a, b) =>
-                    getTimestamp(b.item.createdAt) -
-                    getTimestamp(a.item.createdAt),
-            );
+            .sort((a, b) => {
+                const dateDiff =
+                    getTimestamp(a.scheduledDate) -
+                    getTimestamp(b.scheduledDate);
+
+                return dateDiff !== 0 ? dateDiff : a.item.id - b.item.id;
+            });
     }, [cart?.items, currentGarden, operationDataById]);
     const activeOperationCount =
         pendingOperations.length + cartOperations.length;

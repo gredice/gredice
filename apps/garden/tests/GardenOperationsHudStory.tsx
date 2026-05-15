@@ -88,18 +88,28 @@ function buildGarden() {
     };
 }
 
-function buildOperationCartItem(): ShoppingCartItemData {
+function buildOperationCartItem({
+    id,
+    scheduledDate,
+    positionIndex,
+}: {
+    id: number;
+    scheduledDate?: string;
+    positionIndex: number;
+}): ShoppingCartItemData {
     return {
-        id: 91,
+        id,
         cartId: 1,
         entityId: cartOperation.id.toString(),
         entityTypeName: 'operation',
         gardenId: TEST_GARDEN_ID,
         raisedBedId: TEST_RAISED_BED_ID,
-        positionIndex: 2,
-        additionalData: JSON.stringify({
-            scheduledDate: '2026-05-20T00:00:00.000Z',
-        }),
+        positionIndex,
+        additionalData: scheduledDate
+            ? JSON.stringify({
+                  scheduledDate,
+              })
+            : null,
         amount: 1,
         currency: 'eur',
         status: 'new',
@@ -141,7 +151,17 @@ function createQueryClient() {
     queryClient.setQueryData(['operations'], [cartOperation]);
     queryClient.setQueryData(['shopping-cart'], {
         id: 1,
-        items: [buildOperationCartItem()],
+        items: [
+            buildOperationCartItem({
+                id: 91,
+                scheduledDate: '2026-05-20T00:00:00.000Z',
+                positionIndex: 2,
+            }),
+            buildOperationCartItem({
+                id: 92,
+                positionIndex: 3,
+            }),
+        ],
     });
     queryClient.setQueryData(
         ['garden-operations', TEST_GARDEN_ID, false, 10],
