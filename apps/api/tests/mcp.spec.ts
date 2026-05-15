@@ -4,7 +4,11 @@ import jwt from 'jsonwebtoken';
 const MCP_BASE_URL = '/api/mcp';
 
 // Create a test JWT for authenticated endpoints
-function createTestJWT(userId = 'user-123', role = 'gardener') {
+function createTestJWT(
+    userId = 'user-123',
+    role = 'gardener',
+    permissions = ['gardens:read', 'commerce:read', 'commerce:purchase'],
+) {
     const now = Math.floor(Date.now() / 1000);
     return jwt.sign(
         {
@@ -13,11 +17,7 @@ function createTestJWT(userId = 'user-123', role = 'gardener') {
             role,
             email: 'test@example.com',
             locale: 'hr',
-            permissions: [
-                'gardens:read',
-                'commerce:read',
-                'commerce:purchase',
-            ],
+            permissions,
             iat: now,
             exp: now + 3600, // 1 hour from now
         },
@@ -609,6 +609,67 @@ test.describe('MCP Commerce Server', () => {
                 items: expect.any(Array),
             });
         }
+    });
+
+    test('should reject cart mutation for read-only token', async ({
+        request,
+    }) => {
+        const testJWT = createTestJWT('user-123', 'gardener', ['commerce:read']);
+
+        const response = await request.post(
+            `${MCP_BASE_URL}/commerce/tools/call`,
+            {
+                data: {
+                    jsonrpc: '2.0',
+                    method: 'commerce/add-to-cart',
+                    params: {
+                        name: 'commerce/add-to-cart',
+                        arguments: {
+                            userId: 'user-123',
+                            productId: 'product-seed-tomato-cherry',
+                            quantity: 1,
+                        },
+                    },
+                    id: 6,
+                },
+                headers: {
+                    Authorization: `Bearer ${testJWT}`,
+                },
+            },
+        );
+
+        expect(response.status()).toBe(403);
+        const data = await response.json();
+        expect(data.error.code).toBe(-32001);
+    });
+
+    test('should reject cart access for different userId', async ({ request }) => {
+        const testJWT = createTestJWT('user-123', 'gardener');
+
+        const response = await request.post(
+            `${MCP_BASE_URL}/commerce/tools/call`,
+            {
+                data: {
+                    jsonrpc: '2.0',
+                    method: 'commerce/get-cart',
+                    params: {
+                        name: 'commerce/get-cart',
+                        arguments: {
+                            userId: 'user-456',
+                            locale: 'hr',
+                        },
+                    },
+                    id: 7,
+                },
+                headers: {
+                    Authorization: `Bearer ${testJWT}`,
+                },
+            },
+        );
+
+        expect(response.status()).toBe(403);
+        const data = await response.json();
+        expect(data.error.code).toBe(-32001);
     });
 
     test('should create order with Croatian shipping address', async ({
