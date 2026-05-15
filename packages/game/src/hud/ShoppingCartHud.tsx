@@ -322,9 +322,9 @@ export function ShoppingCartHud() {
                                             .map((item, index) => {
                                                 const imageUrl =
                                                     item.shopData.image ??
-                                                    item.entityData.image?.cover
-                                                        ?.url ??
-                                                    item.entityData.images
+                                                    item.entityData?.image
+                                                        ?.cover?.url ??
+                                                    item.entityData?.images
                                                         ?.cover?.url;
                                                 return imageUrl ? (
                                                     <div
