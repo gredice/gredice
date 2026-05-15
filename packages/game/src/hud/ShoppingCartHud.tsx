@@ -313,7 +313,56 @@ export function ShoppingCartHud() {
                             variant="plain"
                             className="relative rounded-full p-2 gap-2"
                         >
-                            <ShoppingCartIcon className="!stroke-[1.4px] shrink-0  size-6" />
+                            <div className="relative size-7 shrink-0">
+                                <ShoppingCartIcon className="!stroke-[1.4px] size-7 text-foreground" />
+                                {cart.items.length > 0 && (
+                                    <div className="absolute left-[3px] top-[9px] flex items-center gap-0.5 max-w-[22px] overflow-hidden">
+                                        {cart.items
+                                            .slice(0, 2)
+                                            .map((item, index) => {
+                                                const imageUrl =
+                                                    item.entityTypeName ===
+                                                    'plantSort'
+                                                        ? (item.entityData
+                                                              ?.iconImage ??
+                                                          null)
+                                                        : item.shopData.image;
+                                                return imageUrl ? (
+                                                    <div
+                                                        key={item.id}
+                                                        aria-hidden
+                                                        className={cx(
+                                                            'size-2.5 rounded-sm border border-background bg-cover bg-center shadow-sm',
+                                                            index === 1 &&
+                                                                '-ml-0.5',
+                                                        )}
+                                                        style={{
+                                                            backgroundImage: `url(${imageUrl})`,
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div
+                                                        key={item.id}
+                                                        aria-hidden
+                                                        className={cx(
+                                                            'size-2.5 rounded-sm border border-background bg-muted',
+                                                            index === 1 &&
+                                                                '-ml-0.5',
+                                                        )}
+                                                    />
+                                                );
+                                            })}
+                                        {cart.items.length > 2 && (
+                                            <span
+                                                aria-hidden
+                                                className="-ml-0.5 rounded-sm bg-background/95 px-0.5 text-[8px] leading-none text-foreground border border-muted"
+                                            >
+                                                +{cart.items.length - 2}
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                             <Typography
                                 level="body2"
                                 semiBold
