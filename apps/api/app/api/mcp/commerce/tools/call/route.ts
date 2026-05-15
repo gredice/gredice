@@ -1,7 +1,6 @@
 import {
     type EntityStandardized,
     getEntitiesFormatted,
-    getEntityFormatted,
     getOrCreateShoppingCart,
     upsertOrRemoveCartItem,
 } from '@gredice/storage';
@@ -164,7 +163,10 @@ export async function POST(request: NextRequest) {
             'commerce/update-cart-item',
         ]);
 
-        if (writeTools.has(name) && !checkMCPPermission(auth, 'commerce:purchase')) {
+        if (
+            writeTools.has(name) &&
+            !checkMCPPermission(auth, 'commerce:purchase')
+        ) {
             return NextResponse.json(
                 createMCPAuthError(auth, 'forbidden', correlationId),
                 { status: 403 },
@@ -236,7 +238,6 @@ export async function POST(request: NextRequest) {
                 result = await handleUpdateCartItem(updateCartInput, auth);
                 break;
             }
-
 
             default:
                 return NextResponse.json(
@@ -448,7 +449,9 @@ async function handleGetProduct(
         };
     }
 
-    const product = await getEntityFormatted<CommerceEntity>(entityId);
+    const publishedProducts =
+        await getEntitiesFormatted<CommerceEntity>('plantSort');
+    const product = publishedProducts?.find((item) => item.id === entityId);
 
     if (!product || product.entityType?.name !== 'plantSort') {
         return {
@@ -638,7 +641,9 @@ async function handleUpdateCartItem(
         return { success: false, error: 'Failed to get or create cart' };
     }
 
-    const item = cart.items.find((cartItem) => cartItem.id === input.cartItemId);
+    const item = cart.items.find(
+        (cartItem) => cartItem.id === input.cartItemId,
+    );
     if (!item) {
         return { success: false, error: 'Cart item not found' };
     }
@@ -655,7 +660,7 @@ async function handleUpdateCartItem(
         item.additionalData ?? null,
         item.currency || 'eur',
         false,
-        input.quantity === 0,
+        false,
     );
 
     return {
