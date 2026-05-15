@@ -6,14 +6,16 @@ import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { exit } from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { appRegistry, getAppDevPort, getWorktreeId } from './app-registry.ts';
+import { appRegistry, getAppDevPort, getWorktreeSlug } from './app-registry.ts';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
-const worktreeId = getWorktreeId();
-const worktreeSlug = worktreeId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'default';
-const containerName = `gredice-dev-caddy-${worktreeSlug}`;
+const worktreeSlug = getWorktreeSlug();
+const devProxyContainerNamePrefix = 'gredice-dev-caddy';
+const containerName = `${devProxyContainerNamePrefix}-${worktreeSlug}`;
 const dockerImage = process.env.GREDICE_DEV_CADDY_IMAGE ?? 'gredice-caddy-dev';
 const shouldSkipProxy = parseEnvFlag(process.env.SKIP_DEV_PROXY ?? '');
+const proxyHttpPort = process.env.GREDICE_PROXY_HTTP_PORT ?? '80';
+const proxyHttpsPort = process.env.GREDICE_PROXY_HTTPS_PORT ?? '443';
 const rawCliArgs = process.argv.slice(2);
 const includeAllApps = rawCliArgs.includes('--all-apps');
 const extraTurboArgs = rawCliArgs.filter((arg) => arg !== '--all-apps');
@@ -801,6 +803,162 @@ async function ensureCaddyImage() {
     return await buildCaddyImage();
 }
 
+function parseDockerContainerLine(line) {
+    if (!line.trim()) {
+        return null;
+    }
+
+    try {
+        const details = JSON.parse(line);
+        const id = typeof details.ID === 'string' ? details.ID : '';
+        const names =
+            typeof details.Names === 'string'
+                ? details.Names.split(',')
+                      .map((name) => name.trim())
+                      .filter(Boolean)
+                : [];
+        const ports = typeof details.Ports === 'string' ? details.Ports : '';
+
+        return { id, names, ports };
+    } catch {
+        return null;
+    }
+}
+
+async function listRunningDockerContainers() {
+    const result = await runCommand(
+        'docker',
+        ['ps', '--format', '{{json .}}'],
+        { capture: true, ignoreErrors: true },
+    );
+
+    if (result.code !== 0) {
+        return [];
+    }
+
+    return result.stdout
+        .split(/\r?\n/)
+        .map(parseDockerContainerLine)
+        .filter(Boolean);
+}
+
+function isGrediceDevProxyContainerName(name) {
+    return (
+        name === devProxyContainerNamePrefix ||
+        name.startsWith(`${devProxyContainerNamePrefix}-`)
+    );
+}
+
+function containerPublishesHostPort(container, port) {
+    const trimmedPort = String(port).trim();
+    if (!trimmedPort) {
+        return false;
+    }
+
+    const escapedPort = escapeRegExp(trimmedPort);
+    const pattern = new RegExp(
+        `(?:^|[\\s,])(?:[^\\s,]+:)?${escapedPort}->`,
+    );
+    return pattern.test(container.ports);
+}
+
+function getPublishedHostPorts(container, ports) {
+    return ports.filter((port) => containerPublishesHostPort(container, port));
+}
+
+async function stopConflictingGrediceDevProxies(ports) {
+    const containers = await listRunningDockerContainers();
+    const conflicts = containers.filter((container) => {
+        if (!container.id) {
+            return false;
+        }
+
+        if (container.names.includes(containerName)) {
+            return false;
+        }
+
+        const isGrediceDevProxy = container.names.some(
+            isGrediceDevProxyContainerName,
+        );
+        if (!isGrediceDevProxy) {
+            return false;
+        }
+
+        return ports.some((port) =>
+            containerPublishesHostPort(container, port),
+        );
+    });
+
+    for (const container of conflicts) {
+        const displayName = container.names[0] ?? container.id;
+        const publishedPorts = getPublishedHostPorts(container, ports);
+        const portLabel =
+            publishedPorts.length === 1
+                ? `port ${publishedPorts[0]}`
+                : `ports ${publishedPorts.join('/')}`;
+        console.log(
+            `Stopping existing Gredice dev proxy container ${displayName} on ${portLabel} before starting this worktree's proxy.`,
+        );
+        await runCommand('docker', ['rm', '-f', container.id], {
+            capture: true,
+            ignoreErrors: true,
+        });
+    }
+}
+
+function isProxyPortBindError(error) {
+    const message = `${error?.stderr ?? ''}\n${error?.message ?? ''}`;
+    return /port is already allocated|ports are not available|bind: address already in use|failed to set up container networking/i.test(
+        message,
+    );
+}
+
+async function createProxyPortConflictError(cause) {
+    const ports = [proxyHttpPort, proxyHttpsPort];
+    const alternateHttpPort = proxyHttpPort === '8080' ? '8081' : '8080';
+    const alternateHttpsPort = proxyHttpsPort === '8443' ? '8444' : '8443';
+    const containers = await listRunningDockerContainers();
+    const portOwners = containers.filter((container) =>
+        ports.some((port) => containerPublishesHostPort(container, port)),
+    );
+    const lines = [
+        `Ports ${ports.join('/')} are unavailable for the Caddy dev proxy.`,
+    ];
+
+    if (portOwners.length > 0) {
+        lines.push('Docker containers currently publishing those ports:');
+        for (const container of portOwners) {
+            const displayName = container.names[0] ?? container.id;
+            const publishedPorts = getPublishedHostPorts(container, ports);
+            lines.push(`- ${displayName}: ${publishedPorts.join(', ')}`);
+        }
+    } else if (process.platform === 'win32') {
+        lines.push(
+            `Use \`Get-NetTCPConnection -LocalPort ${ports.join(',')}\` to find the local process that owns the ports.`,
+        );
+    } else {
+        const lsofPortArgs = ports.map((port) => `-iTCP:${port}`).join(' ');
+        lines.push(
+            `Use \`lsof -nP ${lsofPortArgs} -sTCP:LISTEN\` to find the local process that owns the ports.`,
+        );
+    }
+
+    if (process.platform === 'win32') {
+        lines.push(
+            `Stop the conflicting service and rerun \`pnpm dev\`, or choose alternate host ports: \`$env:GREDICE_PROXY_HTTP_PORT='${alternateHttpPort}'; $env:GREDICE_PROXY_HTTPS_PORT='${alternateHttpsPort}'; pnpm dev\`.`,
+        );
+    } else {
+        lines.push(
+            `Stop the conflicting service and rerun \`pnpm dev\`, or choose alternate host ports: \`GREDICE_PROXY_HTTP_PORT=${alternateHttpPort} GREDICE_PROXY_HTTPS_PORT=${alternateHttpsPort} pnpm dev\`.`,
+        );
+    }
+
+    const error = new Error(lines.join('\n'));
+    error.code = 'PROXY_PORT_CONFLICT';
+    error.cause = cause;
+    return error;
+}
+
 async function writeCaddyfile() {
     await ensureCaddyDataDirectory();
     await writeFile(caddyfilePath, renderCaddyfile(), 'utf8');
@@ -820,6 +978,7 @@ async function startProxy() {
         capture: true,
         ignoreErrors: true,
     });
+    await stopConflictingGrediceDevProxies([proxyHttpPort, proxyHttpsPort]);
 
     const args = [
         'run',
@@ -827,11 +986,15 @@ async function startProxy() {
         '--name',
         containerName,
         '-d',
+        '--label',
+        'dev.gredice.role=dev-proxy',
+        '--label',
+        `dev.gredice.worktree-slug=${worktreeSlug}`,
         '--add-host=host.docker.internal:host-gateway',
         '-p',
-        `${process.env.GREDICE_PROXY_HTTP_PORT ?? '80'}:80`,
+        `${proxyHttpPort}:80`,
         '-p',
-        `${process.env.GREDICE_PROXY_HTTPS_PORT ?? '443'}:443`,
+        `${proxyHttpsPort}:443`,
     ];
 
     if (caddyDataDir) {
@@ -851,13 +1014,22 @@ async function startProxy() {
     args.push('-v', `${caddyfilePath}:/etc/caddy/Caddyfile:ro`);
     args.push(dockerImage);
 
-    const { stdout } = await runCommand('docker', args, { capture: true });
+    let result;
+    try {
+        result = await runCommand('docker', args, { capture: true });
+    } catch (error) {
+        if (isProxyPortBindError(error)) {
+            throw await createProxyPortConflictError(error);
+        }
+
+        throw error;
+    }
+
+    const { stdout } = result;
     const containerId = stdout.trim();
 
-    const httpPort = process.env.GREDICE_PROXY_HTTP_PORT ?? '80';
-    const httpsPort = process.env.GREDICE_PROXY_HTTPS_PORT ?? '443';
     console.log(
-        `Caddy dev proxy started${containerId ? ` (${containerId.slice(0, 12)})` : ''} for worktree ${worktreeSlug} on ports ${httpPort}/${httpsPort}.`,
+        `Caddy dev proxy started${containerId ? ` (${containerId.slice(0, 12)})` : ''} for worktree ${worktreeSlug} on ports ${proxyHttpPort}/${proxyHttpsPort}.`,
     );
     console.log('Local domain upstreams:');
     for (const app of appRegistry) {
@@ -999,6 +1171,11 @@ async function main() {
                 console.error(
                     'Install Docker (or start Docker Desktop) and try again.',
                 );
+                return 1;
+            }
+
+            if (error?.code === 'PROXY_PORT_CONFLICT') {
+                console.error(error.message);
                 return 1;
             }
 

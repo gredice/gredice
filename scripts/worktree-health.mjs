@@ -6,12 +6,12 @@ import os from 'node:os';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import net from 'node:net';
-import { appRegistry, getAppDevPort, getComponentTestPort } from './app-registry.ts';
+import { appRegistry, getAppDevPort, getComponentTestPort, getWorktreeSlug } from './app-registry.ts';
 
 const mode = process.argv[2] === 'setup' ? 'setup' : 'doctor';
 const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const requiredHostsLine = `127.0.0.1 ${appRegistry.map((a) => a.localDomain).join(' ')}`;
-const caddyDataDir = process.env.GREDICE_DEV_CADDY_DATA_DIR || resolve(os.homedir(), '.gredice', 'dev-caddy');
+const caddyDataDir = process.env.GREDICE_DEV_CADDY_DATA_DIR || resolve(os.homedir(), '.gredice', 'dev-caddy', getWorktreeSlug());
 const caddyCert = resolve(caddyDataDir, 'caddy', 'pki', 'authorities', 'local', 'root.crt');
 
 const checks = [];
