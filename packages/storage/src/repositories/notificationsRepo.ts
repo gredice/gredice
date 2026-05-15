@@ -5,12 +5,112 @@ import { isTargetHourInTimeZone } from '../helpers/timezoneUtils';
 import {
     accountUsers,
     type InsertNotification,
+    notificationDeliveryAttempts,
     notificationEmailLog,
     notifications,
+    notificationUserChannelPreferences,
     type SelectNotification,
+    type SelectNotificationUserChannelPreference,
     userNotificationSettings,
     users,
+    webPushSubscriptions,
 } from '../schema';
+
+type DeliveryChannel = 'email' | 'push';
+type DeliveryOutcome = 'immediate' | 'digest' | 'suppressed' | 'required';
+
+export type NotificationDeliveryDecision = {
+    channel: DeliveryChannel;
+    outcome: DeliveryOutcome;
+    reason: string;
+    required: boolean;
+};
+
+function minutesInTimezone(date: Date, timeZone?: string): number | undefined {
+    if (!timeZone) return undefined;
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+    });
+    const parts = formatter.formatToParts(date);
+    const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
+    const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? '0');
+    return hour * 60 + minute;
+}
+
+function isInsideQuietHours(
+    nowMinute: number | undefined,
+    preference: SelectNotificationUserChannelPreference,
+): boolean {
+    if (
+        nowMinute === undefined ||
+        preference.quietHoursStartMinute === null ||
+        preference.quietHoursEndMinute === null
+    ) {
+        return false;
+    }
+    const start = preference.quietHoursStartMinute;
+    const end = preference.quietHoursEndMinute;
+    if (start === end) return false;
+    return start < end
+        ? nowMinute >= start && nowMinute < end
+        : nowMinute >= start || nowMinute < end;
+}
+
+function decideDeliveryOutcome({
+    channel,
+    preference,
+    hasPushSubscription,
+    now,
+}: {
+    channel: DeliveryChannel;
+    preference?: SelectNotificationUserChannelPreference;
+    hasPushSubscription: boolean;
+    now: Date;
+}): NotificationDeliveryDecision {
+    const required = preference?.required ?? false;
+    if (channel === 'push' && !hasPushSubscription) {
+        return {
+            channel,
+            outcome: required ? 'required' : 'suppressed',
+            reason: 'missing_push_subscription',
+            required,
+        };
+    }
+    if ((preference?.enabled ?? true) === false) {
+        return {
+            channel,
+            outcome: required ? 'required' : 'suppressed',
+            reason: 'preference_disabled',
+            required,
+        };
+    }
+    const nowMinute = minutesInTimezone(now, preference?.timezone ?? undefined);
+    if (!required && preference && isInsideQuietHours(nowMinute, preference)) {
+        return {
+            channel,
+            outcome: 'digest',
+            reason: 'quiet_hours',
+            required: false,
+        };
+    }
+    if (!required && (preference?.digestFrequency ?? 'off') !== 'off') {
+        return {
+            channel,
+            outcome: 'digest',
+            reason: `digest_${preference?.digestFrequency}`,
+            required: false,
+        };
+    }
+    return {
+        channel,
+        outcome: required ? 'required' : 'immediate',
+        reason: required ? 'required_notification' : 'eligible_immediate',
+        required,
+    };
+}
 
 export async function getNotification(
     id: string,
@@ -30,6 +130,81 @@ export async function createNotification(notification: InsertNotification) {
         })
         .returning({ id: notifications.id });
     return result[0].id;
+}
+
+export async function routeNotificationDelivery(notificationId: string) {
+    const notification = await getNotification(notificationId);
+    if (!notification) return [];
+    const now = new Date();
+    const targetChannels: DeliveryChannel[] = ['email', 'push'];
+    const preferences = notification.userId
+        ? await storage().query.notificationUserChannelPreferences.findMany({
+              where: eq(
+                  notificationUserChannelPreferences.userId,
+                  notification.userId,
+              ),
+          })
+        : [];
+    const pushSubscriptionCount = notification.userId
+        ? await storage()
+              .select({ id: webPushSubscriptions.id })
+              .from(webPushSubscriptions)
+              .where(
+                  and(
+                      eq(webPushSubscriptions.userId, notification.userId),
+                      eq(webPushSubscriptions.enabled, true),
+                  ),
+              )
+              .limit(1)
+        : [];
+    const hasPushSubscription = pushSubscriptionCount.length > 0;
+
+    const decisions: NotificationDeliveryDecision[] = targetChannels.map(
+        (channel) => {
+            const accountPref = preferences.find(
+                (p) =>
+                    p.scope === 'account' &&
+                    p.accountId === notification.accountId &&
+                    p.category === notification.category &&
+                    p.channel === channel,
+            );
+            const globalPref = preferences.find(
+                (p) =>
+                    p.scope === 'global' &&
+                    p.category === notification.category &&
+                    p.channel === channel,
+            );
+            return decideDeliveryOutcome({
+                channel,
+                preference: accountPref ?? globalPref,
+                hasPushSubscription,
+                now,
+            });
+        },
+    );
+
+    if (notification.userId || notification.accountId) {
+        await storage()
+            .insert(notificationDeliveryAttempts)
+            .values(
+                decisions.map((decision) => ({
+                    notificationId,
+                    userId: notification.userId ?? null,
+                    accountId: notification.accountId,
+                    channel: decision.channel,
+                    status:
+                        decision.outcome === 'suppressed'
+                            ? 'dropped'
+                            : decision.outcome === 'digest'
+                              ? 'queued'
+                              : 'accepted',
+                    provider: 'router',
+                    providerResponseCode: decision.reason,
+                })),
+            );
+    }
+
+    return decisions;
 }
 
 export function getNotificationsByUser(
