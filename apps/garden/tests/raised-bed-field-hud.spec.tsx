@@ -314,6 +314,10 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             />,
         );
 
+        // Icons in the stack visually overlap until hover spreads them out, so
+        // hover the stack first to make the MoreHorizontal trigger clickable
+        // without being intercepted by sibling icons stacked on top of it.
+        await page.locator('[data-field-icon-stack]').hover();
         await page
             .getByRole('button', {
                 name: 'Prikaži povijest biljaka za polje 1',
@@ -436,6 +440,8 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
 
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
+        // Wait for the vaul slide-in animation to complete before measuring.
+        await page.waitForTimeout(700);
         const dialogBox = await dialog.boundingBox();
         if (!dialogBox) {
             throw new Error('Expected drawer to have a bounding box.');
@@ -494,6 +500,9 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
         await expect(dialog).toHaveAttribute('data-vaul-drawer', '');
+        // Let vaul's slide-in animation settle so layout measurements are
+        // taken against the resting position rather than mid-transform values.
+        await page.waitForTimeout(700);
         return dialog;
     }
 
@@ -565,21 +574,25 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
             cancelable: true,
             pointerType: 'touch',
         });
-        await allHistoryButton.click({ force: true });
+        await allHistoryButton.dispatchEvent('click', { bubbles: true });
         await expect(stack).toHaveAttribute('data-touch-expanded', 'true');
 
-        // Second tap actually opens the "Povijest polja" list drawer.
+        // Second tap actually opens the "Povijest polja" list drawer. Use
+        // dispatchEvent so we hit the trigger element directly instead of
+        // relying on position-based click while CSS transitions are running.
         await allHistoryButton.dispatchEvent('pointerdown', {
             bubbles: true,
             cancelable: true,
             pointerType: 'touch',
         });
-        await allHistoryButton.click({ force: true });
+        await allHistoryButton.dispatchEvent('click', { bubbles: true });
 
         const historyListDrawer = page.getByRole('dialog', {
             name: 'Povijest polja',
         });
         await expect(historyListDrawer).toBeVisible();
+        // Allow the slide-in animation to settle before sampling layout.
+        await page.waitForTimeout(700);
 
         await historyListDrawer
             .getByRole('button', { name: /Otvori detalje biljke / })
@@ -591,6 +604,7 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
             .filter({ hasText: /Prethodna biljka/ });
         await expect(detailsDrawer).toBeVisible();
         await expect(detailsDrawer).toHaveAttribute('data-vaul-drawer', '');
+        await page.waitForTimeout(700);
         return { detailsDrawer, historyListDrawer };
     }
 
@@ -703,6 +717,99 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
         const tapX = MOBILE_VIEWPORT.width / 2;
         const tapY = Math.max(20, dialogBox.y - 40);
         await page.mouse.click(tapX, tapY);
+
+        await expect(dialog).toBeHidden();
+    });
+
+    // Reproductions for the production bug where dismissal silently failed on
+    // real touch input because the icon stack's capture-phase handlers fired
+    // for events on the drawer overlay (which lives in a portal but is still a
+    // React-tree descendant of the fieldset). Use real `touchscreen.tap` here
+    // because the bug only manifests with `pointerType === 'touch'`.
+    test('[regression] backdrop tap with real touch dismisses a stacked-plant drawer', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={emptyWithHistoryScenario(2)}
+                positionIndex={0}
+            />,
+        );
+
+        const historyButton = page
+            .getByRole('button', { name: /Povijest biljke / })
+            .last();
+        // First tap expands the stack, second tap activates the avatar.
+        await historyButton.tap();
+        await historyButton.tap();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        // Wait for vaul's slide-in animation to settle before sampling layout.
+        await page.waitForTimeout(700);
+
+        const dialogBox = await dialog.boundingBox();
+        if (!dialogBox) {
+            throw new Error('Expected history drawer to have a bounding box.');
+        }
+        const tapX = dialogBox.x + dialogBox.width / 2;
+        const tapY = Math.max(20, dialogBox.y - 50);
+        await page.touchscreen.tap(tapX, tapY);
+
+        await expect(dialog).toBeHidden();
+    });
+
+    test('[regression] swipe-down with real touch dismisses a stacked-plant drawer', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={emptyWithHistoryScenario(2)}
+                positionIndex={0}
+            />,
+        );
+
+        const historyButton = page
+            .getByRole('button', { name: /Povijest biljke / })
+            .last();
+        await historyButton.tap();
+        await historyButton.tap();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        await page.waitForTimeout(700);
+
+        const dialogBox = await dialog.boundingBox();
+        if (!dialogBox) {
+            throw new Error('Expected history drawer to have a bounding box.');
+        }
+
+        // Swipe via CDP touch events so we exercise the real-touch dismissal
+        // path that the bug hides behind.
+        const cdp = await page.context().newCDPSession(page);
+        const startX = dialogBox.x + dialogBox.width / 2;
+        const startY = dialogBox.y + 16;
+        const endY = MOBILE_VIEWPORT.height + 200;
+        await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchStart',
+            touchPoints: [{ x: startX, y: startY }],
+        });
+        const steps = 10;
+        for (let i = 1; i <= steps; i += 1) {
+            await cdp.send('Input.dispatchTouchEvent', {
+                type: 'touchMove',
+                touchPoints: [
+                    { x: startX, y: startY + ((endY - startY) * i) / steps },
+                ],
+            });
+        }
+        await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchEnd',
+            touchPoints: [],
+        });
+        await cdp.detach();
 
         await expect(dialog).toBeHidden();
     });
