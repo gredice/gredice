@@ -67,6 +67,17 @@ async function mockGardenApi(page: Page, signedIn: boolean) {
             body = signedIn ? currentUser : null;
         } else if (pathname.endsWith('/api/gardens')) {
             body = signedIn ? [] : null;
+        } else if (pathname.endsWith('/api/accounts/gardens')) {
+            body = signedIn
+                ? [
+                      {
+                          accountId: 'test-account',
+                          name: 'test@example.com račun',
+                          isCurrent: true,
+                          gardens: [],
+                      },
+                  ]
+                : null;
         } else if (pathname.includes('/api/directories/entities/')) {
             body = [];
         } else if (pathname.endsWith('/api/data/weather/now')) {

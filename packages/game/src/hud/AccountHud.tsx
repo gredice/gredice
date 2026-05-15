@@ -1,18 +1,15 @@
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import {
     Approved,
-    Check,
     Comment,
     Configuration,
     ExternalLink,
     Inbox,
     LogOut,
-    MapPinHouse,
     Sprout,
     User,
 } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
-import { cx } from '@signalco/ui-primitives/cx';
 import { Divider } from '@signalco/ui-primitives/Divider';
 import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
@@ -20,27 +17,24 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@signalco/ui-primitives/Menu';
 import { Popper } from '@signalco/ui-primitives/Popper';
 import { Row } from '@signalco/ui-primitives/Row';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentUser } from '../hooks/useCurrentUser';
-import { useGardens } from '../hooks/useGardens';
 import { useMarkAllNotificationsRead } from '../hooks/useMarkAllNotificationsRead';
 import { useNotifications } from '../hooks/useNotifications';
 import { KnownPages } from '../knownPages';
 import { ProfileAvatar } from '../shared-ui/ProfileAvatar';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
-import { useCurrentGardenIdParam } from '../useUrlState';
 import { HudCard } from './components/HudCard';
+import { GardenAccountMenuItems } from './GardenAccountMenuItems';
 import { GardenOperationsHud } from './GardenOperationsHud';
 import { NotificationList } from './NotificationList';
 
@@ -101,11 +95,8 @@ function NotificationsCard() {
 
 function ProfileCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
-    const [, setSelectedGardenId] = useCurrentGardenIdParam();
     const { track } = useGameAnalytics();
     const { data: currentUser } = useCurrentUser();
-    const { data: currentGarden } = useCurrentGarden();
-    const { data: gardens, isLoading: gardensLoading } = useGardens();
     const { data: notifications } = useNotifications(currentUser?.id, false);
     const hasUnreadNotifications = notifications?.some(
         (notification) => !notification.readAt,
@@ -115,48 +106,9 @@ function ProfileCard() {
         <DropdownMenuContent className="w-80 p-4" align="end" sideOffset={12}>
             <ProfileInfo />
             <DropdownMenuSeparator className="my-4" />
-            {gardensLoading && (
-                <DropdownMenuLabel>
-                    <Skeleton className="h-5 w-32 ml-6" />
-                </DropdownMenuLabel>
-            )}
-            {gardens?.map((garden) => (
-                <DropdownMenuItem
-                    key={garden.id}
-                    className="gap-3"
-                    onClick={() => {
-                        track('game_garden_switched', {
-                            from_garden_id: currentGarden?.id,
-                            to_garden_id: garden.id,
-                            to_garden_name: garden.name,
-                        });
-                        setSelectedGardenId(garden.id);
-                    }}
-                >
-                    <Check
-                        aria-hidden={garden.id !== currentGarden?.id}
-                        className={cx(
-                            'size-4 shrink-0 opacity-0',
-                            garden.id === currentGarden?.id && 'opacity-100',
-                        )}
-                    />
-                    <Typography noWrap>{garden.name}</Typography>
-                </DropdownMenuItem>
-            ))}
-            {!gardensLoading && (gardens?.length ?? 0) <= 0 && (
-                <>
-                    <DropdownMenuLabel className="text-muted-foreground text-center">
-                        Još nemaš svoj vrt
-                    </DropdownMenuLabel>
-                    <DropdownMenuItem
-                        className="gap-3"
-                        onClick={() => setProfileModalOpen('vrt')}
-                    >
-                        <MapPinHouse className="size-4" />
-                        <span>Pregled tvojih vrtovima</span>
-                    </DropdownMenuItem>
-                </>
-            )}
+            <GardenAccountMenuItems
+                onGardenOverviewOpen={() => setProfileModalOpen('vrt')}
+            />
             <DropdownMenuSeparator className="my-4" />
             <DropdownMenuItem
                 className="gap-3"
@@ -228,8 +180,6 @@ export function AccountHud() {
     const { track } = useGameAnalytics();
     const { data: currentUser } = useCurrentUser();
     const { data: currentGarden, isLoading } = useCurrentGarden();
-    const { data: gardens } = useGardens();
-    const [, setSelectedGardenId] = useCurrentGardenIdParam();
     const { data: notifications } = useNotifications(currentUser?.id, false);
     const hasUnreadNotifications = notifications?.some(
         (notification) => !notification.readAt,
@@ -263,33 +213,27 @@ export function AccountHud() {
                     {isLoading ? (
                         <Skeleton className="w-32 h-7" />
                     ) : (
-                        gardens &&
                         currentGarden && (
-                            <SelectItems
-                                className="w-32"
-                                variant="plain"
-                                value={currentGarden.id.toString()}
-                                onValueChange={(value) => {
-                                    const gardenId = Number.parseInt(value, 10);
-                                    // Set to null when selecting the first garden (default)
-                                    const isDefault =
-                                        gardens?.[0]?.id === gardenId;
-                                    track('game_garden_switched', {
-                                        from_garden_id: currentGarden.id,
-                                        to_garden_id: gardenId,
-                                        to_garden_name: gardens?.find(
-                                            (garden) => garden.id === gardenId,
-                                        )?.name,
-                                    });
-                                    setSelectedGardenId(
-                                        isDefault ? null : gardenId,
-                                    );
-                                }}
-                                items={gardens?.map((garden) => ({
-                                    label: garden.name,
-                                    value: garden.id.toString(),
-                                }))}
-                            />
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        className="w-32 justify-start overflow-hidden px-2"
+                                        variant="plain"
+                                        title="Odaberi vrt"
+                                    >
+                                        <Typography noWrap>
+                                            {currentGarden.name}
+                                        </Typography>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    className="w-72 p-2"
+                                    align="start"
+                                    sideOffset={12}
+                                >
+                                    <GardenAccountMenuItems />
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         )
                     )}
                 </div>

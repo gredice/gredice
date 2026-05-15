@@ -33,6 +33,7 @@ import {
     accountCookieName,
     cookieDomain,
 } from '../../../lib/auth/sessionConfig';
+import { authSecurity } from '../../../lib/docs/security';
 import { sendAccountInvitation } from '../../../lib/email/transactional';
 import {
     type AuthVariables,
@@ -758,10 +759,59 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
         },
     )
+    .get(
+        '/gardens',
+        describeRoute({
+            description:
+                'Get garden picker groups for every account the current user can access.',
+            security: authSecurity,
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const {
+                accountId: currentAccountId,
+                user,
+                userId,
+            } = context.get('authContext');
+            const currentUser = await getUser(userId);
+            const fallbackEmail = currentUser?.userName ?? 'Gredice';
+            const orderedAccountIds = [
+                currentAccountId,
+                ...user.accountIds.filter(
+                    (accountId) => accountId !== currentAccountId,
+                ),
+            ];
+
+            const accountGardenGroups = await Promise.all(
+                orderedAccountIds.map(async (accountId) => {
+                    const [accountUsers, gardens] = await Promise.all([
+                        getAccountUsers(accountId),
+                        getAccountGardens(accountId),
+                    ]);
+                    const accountEmail =
+                        accountUsers[0]?.user.userName ?? fallbackEmail;
+
+                    return {
+                        accountId,
+                        name: `${accountEmail} račun`,
+                        isCurrent: accountId === currentAccountId,
+                        gardens: gardens.map((garden) => ({
+                            id: garden.id,
+                            name: garden.name,
+                            createdAt: garden.createdAt,
+                        })),
+                    };
+                }),
+            );
+
+            return context.json(accountGardenGroups);
+        },
+    )
     .post(
         '/switch',
         describeRoute({
             description: 'Switch the active account for the current user',
+            security: authSecurity,
         }),
         zValidator(
             'json',
