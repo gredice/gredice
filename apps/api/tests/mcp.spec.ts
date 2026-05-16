@@ -114,31 +114,43 @@ test.describe('MCP Core Infrastructure', () => {
         });
     });
 
-    test('should challenge unauthenticated unified MCP auth-read tools', async ({
-        request,
-    }) => {
-        const response = await request.post(MCP_BASE_URL, {
-            data: {
-                jsonrpc: '2.0',
-                id: 'auth-read-tool',
-                method: 'tools/call',
-                params: {
-                    name: 'directories/get-plant-sorts',
-                    arguments: { limit: 2, offset: 0 },
+    for (const protectedTool of [
+        {
+            name: 'directories/get-plant',
+            arguments: { plantName: 'rajcica', includeSorts: true },
+        },
+        {
+            name: 'directories/get-plant-sorts',
+            arguments: { limit: 2, offset: 0 },
+        },
+        {
+            name: 'directories/search-entities',
+            arguments: { query: 'rajcica' },
+        },
+    ]) {
+        test(`should challenge unauthenticated unified MCP auth-read tool ${protectedTool.name}`, async ({
+            request,
+        }) => {
+            const response = await request.post(MCP_BASE_URL, {
+                data: {
+                    jsonrpc: '2.0',
+                    id: 'auth-read-tool',
+                    method: 'tools/call',
+                    params: protectedTool,
                 },
-            },
-        });
+            });
 
-        expect(response.status()).toBe(401);
-        expect(response.headers()['www-authenticate']).toContain(
-            '/.well-known/oauth-protected-resource/api/mcp',
-        );
-        const data = await response.json();
-        expect(data.error).toMatchObject({
-            code: -32000,
-            message: 'Unauthorized',
+            expect(response.status()).toBe(401);
+            expect(response.headers()['www-authenticate']).toContain(
+                '/.well-known/oauth-protected-resource/api/mcp',
+            );
+            const data = await response.json();
+            expect(data.error).toMatchObject({
+                code: -32000,
+                message: 'Unauthorized',
+            });
         });
-    });
+    }
 
     test('should publish MCP resource metadata with docs link', async ({
         request,

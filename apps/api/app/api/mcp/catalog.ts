@@ -60,7 +60,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         name: 'directories/get-plant',
         description: 'Get one plant by name and optional sorts.',
         domain: 'directories',
-        exposure: 'public-read',
+        exposure: 'auth-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -89,7 +89,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         description:
             'Search directory entities by free text and optional type filters.',
         domain: 'directories',
-        exposure: 'public-read',
+        exposure: 'auth-read',
         inputSchema: {
             type: 'object',
             properties: {
