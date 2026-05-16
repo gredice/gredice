@@ -12,6 +12,7 @@ const tomatoPlant = {
         name: 'plant',
         label: 'Biljka',
     },
+    slug: 'mock-tomato',
     calendar: {
         harvest: [],
     },
@@ -67,6 +68,7 @@ const tomatoPlant = {
 const basilPlant = {
     ...tomatoPlant,
     id: 2,
+    slug: 'mock-basil',
     information: {
         ...tomatoPlant.information,
         name: 'Bosiljak',
@@ -82,6 +84,7 @@ const tomatoSort = {
         name: 'plantSort',
         label: 'Sorta biljke',
     },
+    slug: 'mock-cherry-tomato',
     information: {
         plant: tomatoPlant,
         name: 'Cherry rajčica',
