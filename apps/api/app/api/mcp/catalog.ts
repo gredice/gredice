@@ -7,6 +7,8 @@ type McpExposure =
     | 'admin-internal'
     | 'excluded';
 
+export type { McpExposure };
+
 type JsonSchemaObject = {
     type: 'object';
     properties: Record<string, { type: string }>;
@@ -20,13 +22,31 @@ type McpToolCatalogEntry = {
     inputSchema: JsonSchemaObject;
 };
 
+type McpResourceCatalogEntry =
+    | {
+          name: string;
+          description: string;
+          exposure: McpExposure;
+          mimeType: string;
+          uri: string;
+      }
+    | {
+          name: string;
+          description: string;
+          exposure: McpExposure;
+          mimeType: string;
+          uriTemplate: string;
+      };
+
+export type { McpResourceCatalogEntry, McpToolCatalogEntry };
+
 const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
     {
         name: 'directories/get-plants',
         description:
             'Get Croatian plant catalog with attributes and calendar data.',
         domain: 'directories',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -40,7 +60,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         name: 'directories/get-plant',
         description: 'Get one plant by name and optional sorts.',
         domain: 'directories',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -69,7 +89,7 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         description:
             'Search directory entities by free text and optional type filters.',
         domain: 'directories',
-        exposure: 'auth-read',
+        exposure: 'public-read',
         inputSchema: {
             type: 'object',
             properties: {
@@ -110,43 +130,70 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
     },
 ] as const;
 
+const RESOURCE_CATALOG: readonly McpResourceCatalogEntry[] = [
+    {
+        uri: 'gredice://directories/entity-types',
+        name: 'Directory entity types',
+        description: 'List of available directory entity type names.',
+        exposure: 'public-read',
+        mimeType: 'application/json',
+    },
+    {
+        uriTemplate: 'gredice://directories/entity-types/{entityTypeName}',
+        name: 'Directory entity schema',
+        description:
+            'Dynamic schema resource for a single directory entity type from API metadata.',
+        exposure: 'public-read',
+        mimeType: 'application/json',
+    },
+];
+
+export function getMcpToolCatalog() {
+    return TOOL_CATALOG.filter((tool) => tool.exposure !== 'excluded');
+}
+
+export function getMcpToolCatalogEntry(name: string) {
+    return getMcpToolCatalog().find((tool) => tool.name === name) ?? null;
+}
+
 export function getMcpTools() {
-    return TOOL_CATALOG.filter((tool) => tool.exposure !== 'excluded').map(
-        (tool) => ({
-            name: tool.name,
-            description: tool.description,
-            inputSchema: tool.inputSchema,
-        }),
-    );
+    return getMcpToolCatalog().map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+    }));
 }
 
 export function getMcpToolNamesByDomain(domain: McpToolCatalogEntry['domain']) {
-    return TOOL_CATALOG.filter((tool) => tool.domain === domain).map(
-        (tool) => tool.name,
-    );
+    return getMcpToolCatalog()
+        .filter((tool) => tool.domain === domain)
+        .map((tool) => tool.name);
+}
+
+export function getMcpResourceCatalog() {
+    return RESOURCE_CATALOG;
 }
 
 export async function getMcpResources() {
     const entityTypes = await getEntityTypes();
-    return [
-        {
-            uri: 'gredice://directories/entity-types',
-            name: 'Directory entity types',
-            description: 'List of available directory entity type names.',
-            mimeType: 'application/json',
+    return getMcpResourceCatalog()
+        .filter((resource) => 'uri' in resource)
+        .map((resource) => ({
+            uri: resource.uri,
+            name: resource.name,
+            description: resource.description,
+            mimeType: resource.mimeType,
             value: entityTypes,
-        },
-    ];
+        }));
 }
 
 export function getMcpResourceTemplates() {
-    return [
-        {
-            uriTemplate: 'gredice://directories/entity-types/{entityTypeName}',
-            name: 'Directory entity schema',
-            description:
-                'Dynamic schema resource for a single directory entity type from API metadata.',
-            mimeType: 'application/json',
-        },
-    ];
+    return getMcpResourceCatalog()
+        .filter((resource) => 'uriTemplate' in resource)
+        .map((resource) => ({
+            uriTemplate: resource.uriTemplate,
+            name: resource.name,
+            description: resource.description,
+            mimeType: resource.mimeType,
+        }));
 }
