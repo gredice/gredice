@@ -25,8 +25,17 @@ import { getEntityCompleteness } from '../helpers/entityCompleteness';
 const entityCacheTtl = 60 * 60; // 1 hour
 
 async function refreshEntitySearchDocumentAfterMutation(entityId: number) {
-    const { refreshEntitySearchDocument } = await import('./entitySearchRepo');
-    await refreshEntitySearchDocument(entityId);
+    try {
+        const { refreshEntitySearchDocument } = await import(
+            './entitySearchRepo'
+        );
+        await refreshEntitySearchDocument(entityId);
+    } catch (error) {
+        console.error('Failed to refresh entity search document', {
+            entityId,
+            error,
+        });
+    }
 }
 
 type EntityAttribute = SelectAttributeValue & {

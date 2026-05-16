@@ -18,8 +18,17 @@ async function refreshEntitySearchDocumentAfterMutation(
     if (!entityId) {
         return;
     }
-    const { refreshEntitySearchDocument } = await import('./entitySearchRepo');
-    await refreshEntitySearchDocument(entityId);
+    try {
+        const { refreshEntitySearchDocument } = await import(
+            './entitySearchRepo'
+        );
+        await refreshEntitySearchDocument(entityId);
+    } catch (error) {
+        console.error('Failed to refresh entity search document', {
+            entityId,
+            error,
+        });
+    }
 }
 
 export async function upsertAttributeValue(
