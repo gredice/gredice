@@ -59,7 +59,7 @@ export async function generateStaticParams() {
     const entities = await getBlocksData();
     return (
         entities?.map((entity) => ({
-            alias: toPageAlias(String(entity.information.label)),
+            alias: entity.slug || toPageAlias(String(entity.information.label)),
         })) ?? []
     );
 }

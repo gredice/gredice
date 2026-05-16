@@ -1,4 +1,5 @@
 import 'server-only';
+import { slugify } from '@gredice/js/slug';
 import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import {
     attributeDefinitions,
@@ -287,6 +288,7 @@ async function expandEntity(
         },
         createdAt: entityRaw.createdAt,
         updatedAt: entityRaw.updatedAt,
+        slug: slugify(entityDisplayNameFromAttributes(entityRaw)),
     };
     return await expandEntityAttributes(entity, entityRaw.attributes, cache);
 }
