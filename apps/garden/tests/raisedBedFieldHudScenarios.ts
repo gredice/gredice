@@ -6,6 +6,7 @@ const now = '2026-05-13T00:00:00.000Z';
 const tomatoPlant = {
     id: 1,
     entityType: { id: 1, name: 'plant', label: 'Biljka' },
+    slug: 'mock-tomato',
     calendar: { harvest: [] },
     information: {
         name: 'Rajčica',
@@ -51,6 +52,7 @@ const tomatoPlant = {
 const basilPlant = {
     ...tomatoPlant,
     id: 2,
+    slug: 'mock-basil',
     information: {
         ...tomatoPlant.information,
         name: 'Bosiljak',
@@ -62,6 +64,7 @@ const basilPlant = {
 const lettucePlant = {
     ...tomatoPlant,
     id: 3,
+    slug: 'mock-lettuce',
     information: {
         ...tomatoPlant.information,
         name: 'Zelena salata',
@@ -73,6 +76,7 @@ const lettucePlant = {
 const tomatoSort = {
     id: 101,
     entityType: { id: 11, name: 'plantSort', label: 'Sorta biljke' },
+    slug: 'mock-cherry-tomato',
     information: {
         plant: tomatoPlant,
         name: 'Cherry rajčica',
@@ -88,6 +92,7 @@ const tomatoSort = {
 const basilSort = {
     ...tomatoSort,
     id: 102,
+    slug: 'mock-classic-basil',
     information: {
         plant: basilPlant,
         name: 'Klasični bosiljak',
@@ -98,6 +103,7 @@ const basilSort = {
 const lettuceSort = {
     ...tomatoSort,
     id: 103,
+    slug: 'mock-butter-lettuce',
     information: {
         plant: lettucePlant,
         name: 'Maslac salata',
