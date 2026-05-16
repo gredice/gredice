@@ -1,10 +1,10 @@
-import type { PlantData } from '@gredice/client';
+import type { OperationData, PlantData } from '@gredice/client';
+import { Markdown } from '@gredice/ui/Markdown';
 import { slug } from '@signalco/js';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { ReactNode } from 'react';
-import Markdown from 'react-markdown';
 import { ExpandableText } from '../../../components/shared/ExpandableText';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
@@ -25,6 +25,10 @@ export type InformationSectionProps = {
     attributeCards?: ReactNode;
 };
 
+function isPublicOperation(operation: Pick<OperationData, 'attributes'>) {
+    return operation.attributes?.internal !== true;
+}
+
 export async function InformationSection({
     plantId,
     id,
@@ -43,24 +47,25 @@ export async function InformationSection({
     }
 
     // Filter operations based on stage
-    const allOperations = await getOperationsData();
-    const gardenOperations = allOperations?.filter(
+    const allOperations = (await getOperationsData()).filter(isPublicOperation);
+    const gardenOperations = allOperations.filter(
         (operation) =>
             operation.attributes?.application === 'garden' &&
             operation.attributes?.stage.information?.name === id,
     );
-    const raisedBedFullOperations = allOperations?.filter(
+    const raisedBedFullOperations = allOperations.filter(
         (operation) =>
             operation.attributes?.application === 'raisedBedFull' &&
             operation.attributes?.stage.information?.name === id,
     );
-    const raisedBedSquareOperations = allOperations?.filter(
+    const raisedBedSquareOperations = allOperations.filter(
         (operation) =>
             operation.attributes?.application === 'raisedBed1m' &&
             operation.attributes?.stage.information?.name === id,
     );
     const plantOperations = operations?.filter(
         (operation) =>
+            isPublicOperation(operation) &&
             operation.attributes?.application === 'plant' &&
             operation.attributes?.stage.information?.name === id,
     );

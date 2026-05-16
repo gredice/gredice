@@ -1,10 +1,9 @@
 import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardActions, CardContent } from '@signalco/ui-primitives/Card';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
-import { type FormEvent, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
+import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCreateGarden } from '../../hooks/useCreateGarden';
 
 type CreateGardenModalProps = {
@@ -17,12 +16,13 @@ export function CreateGardenModal({
     onOpenChange,
 }: CreateGardenModalProps) {
     const createGarden = useCreateGarden();
+    const { track } = useGameAnalytics();
     const [newGardenName, setNewGardenName] = useState('');
 
     const trimmedNewGardenName = newGardenName.trim();
     const isCreateDisabled = !trimmedNewGardenName || createGarden.isPending;
 
-    const handleCreateGarden = async (event: FormEvent<HTMLFormElement>) => {
+    const handleCreateGarden = async (event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault();
         const nextName = newGardenName.trim();
         if (!nextName) {
@@ -30,6 +30,9 @@ export function CreateGardenModal({
         }
 
         try {
+            track('game_garden_create_submitted', {
+                name_length: nextName.length,
+            });
             await createGarden.mutateAsync({ name: nextName });
             setNewGardenName('');
             onOpenChange(false);

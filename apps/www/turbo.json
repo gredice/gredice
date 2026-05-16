@@ -5,16 +5,25 @@
         "build": {
             "env": [
                 "BLOB_READ_WRITE_TOKEN",
+                "CHECKLY_ACCOUNT_ID",
+                "CHECKLY_API_KEY",
+                "CMS_PAGES_PREVIEW_SECRET",
+                "EDGE_CONFIG",
                 "ENABLE_EXPERIMENTAL_COREPACK",
                 "FACEBOOK_CAPI_API_VERSION",
                 "FACEBOOK_CAPI_PIXEL_ID",
                 "FACEBOOK_CAPI_TOKEN",
                 "FLAGS_SECRET",
+                "GREDICE_API_HOST",
+                "GREDICE_GOOGLE_MAPS_API_KEY",
+                "GREDICE_GOOGLE_MAPS_URL_SIGNING_SECRET",
                 "GREDICE_JWT_SIGN_SECRET",
-                "HYPERTUNE_FRAMEWORK",
-                "HYPERTUNE_INCLUDE_INIT_DATA",
-                "HYPERTUNE_OUTPUT_DIRECTORY_PATH",
-                "NEXT_PUBLIC_HYPERTUNE_TOKEN",
+                "GREDICE_WWW_REVALIDATE_SECRET",
+                "NEXT_PUBLIC_POSTHOG_API_HOST",
+                "NEXT_PUBLIC_POSTHOG_HOST",
+                "NEXT_PUBLIC_POSTHOG_KEY",
+                "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN",
+                "NEXT_PUBLIC_POSTHOG_UI_HOST",
                 "NEXT_PUBLIC_VERCEL_ENV",
                 "POSTGRES_DATABASE",
                 "POSTGRES_HOST",
@@ -24,7 +33,10 @@
                 "POSTGRES_URL_NON_POOLING",
                 "POSTGRES_URL_NO_SSL",
                 "POSTGRES_USER",
-                "VERCEL_OIDC_TOKEN"
+                "POSTHOG_SERVER_HOST",
+                "VERCEL_ENV",
+                "VERCEL_OIDC_TOKEN",
+                "VIZZLY_TOKEN"
             ]
         }
     }

@@ -16,10 +16,12 @@ import {
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import { authSecurity, publicSecurity } from '../../../lib/docs/security';
 import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { getPostHogClient } from '../../../lib/posthog-server';
 
 // Validation schemas
 const createAddressSchema = z.object({
@@ -64,6 +66,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/addresses',
         describeRoute({
             description: 'Get all delivery addresses for the current user',
+            security: authSecurity,
             tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
@@ -78,6 +81,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/addresses',
         describeRoute({
             description: 'Create a new delivery address',
+            security: authSecurity,
             tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
@@ -102,6 +106,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             const addressId = await createDeliveryAddress(insertData);
             const newAddress = await getDeliveryAddress(addressId, accountId);
+            (await getPostHogClient()).capture({
+                distinctId: accountId,
+                event: 'delivery_address_created',
+                properties: {
+                    city: data.city,
+                    country_code: data.countryCode,
+                    is_default: data.isDefault,
+                },
+            });
             return context.json(newAddress, 201);
         },
     )
@@ -110,6 +123,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/addresses/:id',
         describeRoute({
             description: 'Update a delivery address',
+            security: authSecurity,
             tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
@@ -144,6 +158,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/addresses/:id',
         describeRoute({
             description: 'Delete a delivery address',
+            security: authSecurity,
             tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
@@ -161,6 +176,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/pickup-locations',
         describeRoute({
             description: 'Get all active pickup locations',
+            security: publicSecurity,
             tags: ['Delivery'],
         }),
         async (context) => {
@@ -173,6 +189,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/slots',
         describeRoute({
             description: 'Get available time slots for delivery or pickup',
+            security: publicSecurity,
             tags: ['Delivery'],
         }),
         zValidator('query', slotsQuerySchema),
@@ -200,6 +217,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/requests',
         describeRoute({
             description: 'Get delivery requests for the current user',
+            security: authSecurity,
             tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
@@ -214,6 +232,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/requests/:id/cancel',
         describeRoute({
             description: 'Cancel a delivery request',
+            security: authSecurity,
             tags: ['Delivery'],
         }),
         authValidator(['user', 'admin']),
@@ -237,6 +256,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 await notifyDeliveryRequestEvent(id, 'cancelled', {
                     reason: cancelReason,
                     note,
+                });
+                (await getPostHogClient()).capture({
+                    distinctId: accountId,
+                    event: 'delivery_request_cancelled',
+                    properties: {
+                        request_id: id,
+                        cancel_reason: cancelReason,
+                    },
                 });
                 return context.json({ success: true });
             } catch (error) {

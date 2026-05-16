@@ -1,8 +1,17 @@
+import { getAssignableFarmUsersByRaisedBedFieldIds } from '@gredice/storage';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { RaisedBedPlantingScheduleSection } from './RaisedBedPlantingScheduleSection';
-import { getSchedulePlantSorts, getScheduleRaisedBeds } from './scheduleData';
-import { getScheduledFieldsForDay } from './scheduleDayFilters';
+import { ScheduleDayPlantingsBulkActions } from './ScheduleDayPlantingsBulkActions';
+import { getScheduleDayData, getSchedulePlantSorts } from './scheduleData';
+import {
+    groupRaisedBedsForSchedule,
+    isFieldApproved,
+    isFieldCompleted,
+    isFieldPendingVerification,
+} from './scheduleShared';
+import { OptimisticScheduleActionsProvider } from './useOptimisticScheduleActions';
 
 interface ScheduleDayPlantingsSectionProps {
     isToday: boolean;
@@ -13,12 +22,10 @@ export async function ScheduleDayPlantingsSection({
     isToday,
     date,
 }: ScheduleDayPlantingsSectionProps) {
-    const [raisedBeds, plantSorts] = await Promise.all([
-        getScheduleRaisedBeds(),
+    const [{ raisedBeds, scheduledFields }, plantSorts] = await Promise.all([
+        getScheduleDayData(date.toISOString(), isToday),
         getSchedulePlantSorts(),
     ]);
-
-    const scheduledFields = getScheduledFieldsForDay(isToday, date, raisedBeds);
     if (scheduledFields.length === 0) {
         return null;
     }
@@ -26,37 +33,69 @@ export async function ScheduleDayPlantingsSection({
     const affectedRaisedBedIds = [
         ...new Set(scheduledFields.map((field) => field.raisedBedId)),
     ];
-    const physicalIds = [
-        ...new Set(
-            raisedBeds
-                .filter((raisedBed) =>
-                    affectedRaisedBedIds.includes(raisedBed.id),
-                )
-                .map((raisedBed) => raisedBed.physicalId)
-                .filter(
-                    (physicalId): physicalId is string => physicalId !== null,
-                ),
-        ),
-    ].sort((a, b) => Number(a) - Number(b));
+    const assignableFarmUsersByRaisedBedFieldId =
+        await getAssignableFarmUsersByRaisedBedFieldIds(
+            scheduledFields.map((field) => field.id),
+        );
+    const raisedBedGroups = groupRaisedBedsForSchedule(
+        raisedBeds,
+        affectedRaisedBedIds,
+    );
+
+    const dayFieldsToApprove = scheduledFields
+        .filter(
+            (field) =>
+                !isFieldApproved(field.plantStatus) &&
+                !isFieldPendingVerification(field.plantStatus) &&
+                !isFieldCompleted(field.plantStatus) &&
+                !!field.assignedUserId,
+        )
+        .map((field) => ({
+            id: field.id,
+            raisedBedId: field.raisedBedId,
+            positionIndex: field.positionIndex,
+            label: `${field.positionIndex + 1}`,
+        }));
+
+    const dayFieldsToAssign = scheduledFields
+        .filter(
+            (field) =>
+                !field.assignedUserId &&
+                !isFieldCompleted(field.plantStatus) &&
+                !isFieldPendingVerification(field.plantStatus),
+        )
+        .map((field) => ({
+            id: field.id,
+            farmUsers: assignableFarmUsersByRaisedBedFieldId[field.id] ?? [],
+        }));
 
     return (
-        <Stack spacing={2}>
-            <Typography level="h6">Sijanje</Typography>
-            {physicalIds.map((physicalId) => {
-                const beds = raisedBeds
-                    .filter((raisedBed) => raisedBed.physicalId === physicalId)
-                    .sort((a, b) => a.id - b.id);
-
-                return (
-                    <RaisedBedPlantingScheduleSection
-                        key={physicalId}
-                        physicalId={physicalId}
-                        raisedBeds={beds}
-                        scheduledFields={scheduledFields}
-                        plantSorts={plantSorts}
+        <OptimisticScheduleActionsProvider>
+            <Stack spacing={2}>
+                <Row spacing={1} alignItems="center">
+                    <Typography level="h6">Sijanje</Typography>
+                    <ScheduleDayPlantingsBulkActions
+                        fieldsToApprove={dayFieldsToApprove}
+                        fieldsToAssign={dayFieldsToAssign}
                     />
-                );
-            })}
-        </Stack>
+                </Row>
+                {raisedBedGroups.map(
+                    ({ key, physicalId, raisedBeds: beds }) => {
+                        return (
+                            <RaisedBedPlantingScheduleSection
+                                key={key}
+                                physicalId={physicalId}
+                                raisedBeds={beds}
+                                scheduledFields={scheduledFields}
+                                plantSorts={plantSorts}
+                                assignableFarmUsersByRaisedBedFieldId={
+                                    assignableFarmUsersByRaisedBedFieldId
+                                }
+                            />
+                        );
+                    },
+                )}
+            </Stack>
+        </OptimisticScheduleActionsProvider>
     );
 }

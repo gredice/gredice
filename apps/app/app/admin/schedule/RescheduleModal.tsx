@@ -20,7 +20,7 @@ interface RescheduleModalProps {
     label: string;
     scheduledDate?: Date;
     trigger: React.ReactElement;
-    onSubmit: (formData: FormData) => Promise<void>;
+    onSubmit: (formData: FormData) => unknown | Promise<unknown>;
     hiddenFields: React.ReactNode;
 }
 
@@ -46,28 +46,25 @@ export function RescheduleModal({
             setOpen(false);
         } catch (error) {
             console.error('Error rescheduling item:', error);
+            alert('Zakazivanje zadatka nije uspjelo. Pokušajte ponovno.');
         } finally {
             setIsLoading(false);
         }
     }
 
     const today = new Date();
-    const tomorrow = new Date(
+    const threeMonthsFromToday = new Date(
         today.getFullYear(),
-        today.getMonth(),
-        today.getDate() + 1,
-    );
-    const threeMonthsFromTomorrow = new Date(
-        tomorrow.getFullYear(),
-        tomorrow.getMonth() + 3,
-        tomorrow.getDate(),
+        today.getMonth() + 3,
+        today.getDate(),
     );
 
-    const currentScheduledDate = scheduledDate
-        ? formatLocalDate(scheduledDate)
-        : formatLocalDate(tomorrow);
-    const min = formatLocalDate(tomorrow);
-    const max = formatLocalDate(threeMonthsFromTomorrow);
+    const min = formatLocalDate(today);
+    const currentScheduledDate =
+        scheduledDate && formatLocalDate(scheduledDate) >= min
+            ? formatLocalDate(scheduledDate)
+            : min;
+    const max = formatLocalDate(threeMonthsFromToday);
 
     return (
         <Modal

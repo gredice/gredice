@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    addInventoryItem,
     deleteShoppingCart,
     getAllShoppingCarts,
     getOrCreateShoppingCart,
     getShoppingCart,
     markCartPaidIfAllItemsPaid,
+    normalizeShoppingCartInventoryUsage,
+    normalizeShoppingCartScheduledDates,
     setCartItemPaid,
     upsertOrRemoveCartItem,
 } from '@gredice/storage';
@@ -235,4 +238,267 @@ test('paid items are not included in new cart queries', async () => {
     // Should not be in new carts
     const carts = await getAllShoppingCarts({ status: 'new' });
     assert.ok(!carts.some((c) => c.id === cart.id));
+});
+
+test('normalizeShoppingCartInventoryUsage moves duplicate inventory usage back to eur', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    await addInventoryItem(accountId, {
+        entityTypeName: 'plant',
+        entityId: 'entity-1',
+        amount: 1,
+    });
+
+    const cart = await getOrCreateShoppingCart(accountId);
+    if (!cart) throw new Error('Cart not created');
+
+    await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        'entity-1',
+        'plant',
+        1,
+        undefined,
+        undefined,
+        undefined,
+        'slot-1',
+        'inventory',
+        true,
+    );
+    await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        'entity-1',
+        'plant',
+        1,
+        undefined,
+        undefined,
+        undefined,
+        'slot-2',
+        'inventory',
+        true,
+    );
+
+    const normalizedCart = await normalizeShoppingCartInventoryUsage(cart.id);
+    assert.ok(normalizedCart);
+
+    const inventoryItems = normalizedCart.items.filter(
+        (item) => item.currency === 'inventory',
+    );
+    const eurItems = normalizedCart.items.filter(
+        (item) => item.currency === 'eur',
+    );
+
+    assert.strictEqual(inventoryItems.length, 1);
+    assert.strictEqual(eurItems.length, 1);
+});
+
+test('normalizeShoppingCartInventoryUsage splits partially covered inventory item', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    await addInventoryItem(accountId, {
+        entityTypeName: 'plant',
+        entityId: 'entity-1',
+        amount: 1,
+    });
+
+    const cart = await getOrCreateShoppingCart(accountId);
+    if (!cart) throw new Error('Cart not created');
+
+    await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        'entity-1',
+        'plant',
+        2,
+        undefined,
+        undefined,
+        undefined,
+        null,
+        'inventory',
+    );
+
+    const normalizedCart = await normalizeShoppingCartInventoryUsage(cart.id);
+    assert.ok(normalizedCart);
+
+    const inventoryItems = normalizedCart.items.filter(
+        (item) => item.currency === 'inventory',
+    );
+    const eurItems = normalizedCart.items.filter(
+        (item) => item.currency === 'eur',
+    );
+
+    assert.deepStrictEqual(
+        inventoryItems.map((item) => item.amount),
+        [1],
+    );
+    assert.deepStrictEqual(
+        eurItems.map((item) => item.amount),
+        [1],
+    );
+});
+
+test('upsertOrRemoveCartItem normalizes scheduled date to tomorrow when date is in the past', async () => {
+    createTestDb();
+    const fixedNow = new Date('2024-01-15T12:00:00Z');
+    test.mock.timers.enable({ now: fixedNow });
+    try {
+        const accountId = await createTestAccount();
+        const cart = await getOrCreateShoppingCart(accountId);
+        if (!cart) throw new Error('Cart not created');
+
+        const now = new Date();
+        const yesterday = new Date(
+            Date.UTC(
+                now.getUTCFullYear(),
+                now.getUTCMonth(),
+                now.getUTCDate() - 1,
+            ),
+        );
+        const expectedTomorrow = new Date(
+            Date.UTC(
+                now.getUTCFullYear(),
+                now.getUTCMonth(),
+                now.getUTCDate() + 1,
+            ),
+        );
+
+        await upsertOrRemoveCartItem(
+            null,
+            cart.id,
+            'entity-1',
+            'operation',
+            1,
+            undefined,
+            undefined,
+            undefined,
+            JSON.stringify({
+                scheduledDate: yesterday.toISOString(),
+            }),
+        );
+
+        const foundCart = await getShoppingCart(cart.id);
+        if (!foundCart) throw new Error('Cart not found');
+
+        const additionalData = foundCart.items[0]?.additionalData;
+        assert.ok(
+            additionalData,
+            'Scheduled additional data should be present',
+        );
+        assert.strictEqual(
+            JSON.parse(additionalData).scheduledDate,
+            expectedTomorrow.toISOString(),
+        );
+    } finally {
+        test.mock.timers.reset();
+    }
+});
+
+test('upsertOrRemoveCartItem normalizes scheduled date with time component to start-of-day UTC', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const cart = await getOrCreateShoppingCart(accountId);
+    if (!cart) throw new Error('Cart not created');
+
+    const now = new Date();
+    // Use a date 5 days in the future with a non-zero time component
+    const futureWithTime = new Date(
+        Date.UTC(
+            now.getUTCFullYear(),
+            now.getUTCMonth(),
+            now.getUTCDate() + 5,
+            15,
+            30,
+            45,
+        ),
+    );
+    const expectedStartOfDay = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 5),
+    );
+
+    await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        'entity-1',
+        'operation',
+        1,
+        undefined,
+        undefined,
+        undefined,
+        JSON.stringify({
+            scheduledDate: futureWithTime.toISOString(),
+        }),
+    );
+
+    const foundCart = await getShoppingCart(cart.id);
+    if (!foundCart) throw new Error('Cart not found');
+
+    const additionalData = foundCart.items[0]?.additionalData;
+    assert.ok(additionalData, 'Scheduled additional data should be present');
+    assert.strictEqual(
+        JSON.parse(additionalData).scheduledDate,
+        expectedStartOfDay.toISOString(),
+    );
+});
+
+test('normalizeShoppingCartScheduledDates updates past scheduled dates in cart', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const cart = await getOrCreateShoppingCart(accountId);
+    if (!cart) throw new Error('Cart not created');
+
+    const now = new Date();
+    const futureDate = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 7),
+    );
+    const pastDate = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 5),
+    );
+    const expectedTomorrow = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
+    );
+
+    await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        'entity-1',
+        'operation',
+        1,
+        undefined,
+        undefined,
+        undefined,
+        JSON.stringify({
+            scheduledDate: futureDate.toISOString(),
+        }),
+    );
+
+    await upsertOrRemoveCartItem(
+        null,
+        cart.id,
+        'entity-2',
+        'operation',
+        1,
+        undefined,
+        undefined,
+        undefined,
+        JSON.stringify({
+            scheduledDate: pastDate.toISOString(),
+        }),
+        undefined,
+        true,
+    );
+
+    const normalizedCart = await normalizeShoppingCartScheduledDates(cart.id);
+    assert.ok(normalizedCart);
+
+    const scheduledDates = normalizedCart.items.map((item) =>
+        item.additionalData
+            ? JSON.parse(item.additionalData).scheduledDate
+            : null,
+    );
+
+    assert.deepStrictEqual(scheduledDates, [
+        futureDate.toISOString(),
+        expectedTomorrow.toISOString(),
+    ]);
 });

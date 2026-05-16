@@ -1,18 +1,15 @@
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import {
     Approved,
-    Check,
     Comment,
     Configuration,
     ExternalLink,
     Inbox,
     LogOut,
-    MapPinHouse,
     Sprout,
     User,
 } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
-import { cx } from '@signalco/ui-primitives/cx';
 import { Divider } from '@signalco/ui-primitives/Divider';
 import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
@@ -20,33 +17,36 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@signalco/ui-primitives/Menu';
 import { Popper } from '@signalco/ui-primitives/Popper';
 import { Row } from '@signalco/ui-primitives/Row';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentUser } from '../hooks/useCurrentUser';
-import { useGardens } from '../hooks/useGardens';
 import { useMarkAllNotificationsRead } from '../hooks/useMarkAllNotificationsRead';
 import { useNotifications } from '../hooks/useNotifications';
 import { KnownPages } from '../knownPages';
 import { ProfileAvatar } from '../shared-ui/ProfileAvatar';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
-import { useCurrentGardenIdParam } from '../useUrlState';
 import { HudCard } from './components/HudCard';
+import { GardenAccountMenuItems } from './GardenAccountMenuItems';
+import { GardenOperationsHud } from './GardenOperationsHud';
 import { NotificationList } from './NotificationList';
 
 function NotificationsCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
     const markAllNotificationsRead = useMarkAllNotificationsRead();
+    const { track } = useGameAnalytics();
 
     const handleMarkAllNotificationsRead = () => {
+        track('game_notifications_mark_all_read', {
+            source: 'quick_panel',
+        });
         markAllNotificationsRead.mutate({ readWhere: 'game' });
     };
 
@@ -79,7 +79,12 @@ function NotificationsCard() {
                     size="sm"
                     fullWidth
                     className="rounded-t-none"
-                    onClick={() => setProfileModalOpen('obavijesti')}
+                    onClick={() => {
+                        track('game_notifications_view_all_opened', {
+                            source: 'quick_panel',
+                        });
+                        setProfileModalOpen('obavijesti');
+                    }}
                 >
                     Prikaži sve obavijesti
                 </Button>
@@ -90,10 +95,8 @@ function NotificationsCard() {
 
 function ProfileCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
-    const [, setSelectedGardenId] = useCurrentGardenIdParam();
+    const { track } = useGameAnalytics();
     const { data: currentUser } = useCurrentUser();
-    const { data: currentGarden } = useCurrentGarden();
-    const { data: gardens, isLoading: gardensLoading } = useGardens();
     const { data: notifications } = useNotifications(currentUser?.id, false);
     const hasUnreadNotifications = notifications?.some(
         (notification) => !notification.readAt,
@@ -103,41 +106,9 @@ function ProfileCard() {
         <DropdownMenuContent className="w-80 p-4" align="end" sideOffset={12}>
             <ProfileInfo />
             <DropdownMenuSeparator className="my-4" />
-            {gardensLoading && (
-                <DropdownMenuLabel>
-                    <Skeleton className="h-5 w-32 ml-6" />
-                </DropdownMenuLabel>
-            )}
-            {gardens?.map((garden) => (
-                <DropdownMenuItem
-                    key={garden.id}
-                    className="gap-3"
-                    onClick={() => setSelectedGardenId(garden.id)}
-                >
-                    <Check
-                        aria-hidden={garden.id !== currentGarden?.id}
-                        className={cx(
-                            'size-4 shrink-0 opacity-0',
-                            garden.id === currentGarden?.id && 'opacity-100',
-                        )}
-                    />
-                    <Typography noWrap>{garden.name}</Typography>
-                </DropdownMenuItem>
-            ))}
-            {!gardensLoading && (gardens?.length ?? 0) <= 0 && (
-                <>
-                    <DropdownMenuLabel className="text-muted-foreground text-center">
-                        Još nemaš svoj vrt
-                    </DropdownMenuLabel>
-                    <DropdownMenuItem
-                        className="gap-3"
-                        onClick={() => setProfileModalOpen('vrt')}
-                    >
-                        <MapPinHouse className="size-4" />
-                        <span>Pregled tvojih vrtovima</span>
-                    </DropdownMenuItem>
-                </>
-            )}
+            <GardenAccountMenuItems
+                onGardenOverviewOpen={() => setProfileModalOpen('vrt')}
+            />
             <DropdownMenuSeparator className="my-4" />
             <DropdownMenuItem
                 className="gap-3"
@@ -167,6 +138,12 @@ function ProfileCard() {
             <DropdownMenuItem
                 className="gap-3 justify-between"
                 href={KnownPages.GredicePlants}
+                onClick={() =>
+                    track('game_external_link_opened', {
+                        destination: 'plant_database',
+                        source: 'profile_menu',
+                    })
+                }
             >
                 <Row spacing={1.5}>
                     <Sprout className="size-4" />
@@ -177,6 +154,12 @@ function ProfileCard() {
             <DropdownMenuItem
                 className="gap-3 justify-between"
                 href={KnownPages.GrediceContact}
+                onClick={() =>
+                    track('game_external_link_opened', {
+                        destination: 'contact',
+                        source: 'profile_menu',
+                    })
+                }
             >
                 <Row spacing={1.5}>
                     <Comment className="size-4" />
@@ -194,21 +177,13 @@ function ProfileCard() {
 }
 
 export function AccountHud() {
+    const { track } = useGameAnalytics();
     const { data: currentUser } = useCurrentUser();
     const { data: currentGarden, isLoading } = useCurrentGarden();
-    const { data: gardens } = useGardens();
-    const [, setSelectedGardenId] = useCurrentGardenIdParam();
     const { data: notifications } = useNotifications(currentUser?.id, false);
     const hasUnreadNotifications = notifications?.some(
         (notification) => !notification.readAt,
     );
-
-    console.log('AccountHud render', {
-        currentUser,
-        currentGarden,
-        gardens,
-        notifications,
-    });
 
     return (
         <HudCard open position="floating" className="p-0.5 md:px-2 static">
@@ -219,6 +194,7 @@ export function AccountHud() {
                             className="size-10 md:size-auto relative rounded-full p-0.5 aspect-square shrink-0 md:hover:outline outline-offset-2 outline-tertiary-foreground"
                             variant="plain"
                             title="Profil"
+                            onClick={() => track('game_profile_menu_opened')}
                         >
                             <ProfileAvatar variant="transparentOnMobile" />
                             {hasUnreadNotifications && (
@@ -230,34 +206,38 @@ export function AccountHud() {
                     </DropdownMenuTrigger>
                     <ProfileCard />
                 </DropdownMenu>
-                <div className="hidden md:block">
+                <div className="md:order-3">
+                    <GardenOperationsHud />
+                </div>
+                <div className="hidden md:block md:order-1">
                     {isLoading ? (
                         <Skeleton className="w-32 h-7" />
                     ) : (
-                        gardens &&
                         currentGarden && (
-                            <SelectItems
-                                className="w-32"
-                                variant="plain"
-                                value={currentGarden.id.toString()}
-                                onValueChange={(value) => {
-                                    const gardenId = Number.parseInt(value, 10);
-                                    // Set to null when selecting the first garden (default)
-                                    const isDefault =
-                                        gardens?.[0]?.id === gardenId;
-                                    setSelectedGardenId(
-                                        isDefault ? null : gardenId,
-                                    );
-                                }}
-                                items={gardens?.map((garden) => ({
-                                    label: garden.name,
-                                    value: garden.id.toString(),
-                                }))}
-                            />
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        className="w-32 justify-start overflow-hidden px-2"
+                                        variant="plain"
+                                        title="Odaberi vrt"
+                                    >
+                                        <Typography noWrap>
+                                            {currentGarden.name}
+                                        </Typography>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    className="w-72 p-2"
+                                    align="start"
+                                    sideOffset={12}
+                                >
+                                    <GardenAccountMenuItems />
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         )
                     )}
                 </div>
-                <div className="hidden md:block">
+                <div className="hidden md:block md:order-2">
                     <Popper
                         className="overflow-hidden border-tertiary border-b-4 w-96"
                         side="bottom"
@@ -267,6 +247,11 @@ export function AccountHud() {
                                 className="relative rounded-full p-0 aspect-square"
                                 variant="plain"
                                 title="Obavijesti"
+                                onClick={() =>
+                                    track('game_notifications_opened', {
+                                        source: 'quick_panel',
+                                    })
+                                }
                             >
                                 {hasUnreadNotifications && (
                                     <div className="absolute right-1 top-1">

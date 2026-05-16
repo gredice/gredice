@@ -5,6 +5,7 @@ import {
     getShoppingCart,
     getUser,
     markCartPaidIfAllItemsPaid,
+    normalizeShoppingCartInventoryUsage,
     setCartItemPaid,
     spendSunflowers,
 } from '@gredice/storage';
@@ -23,6 +24,7 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { getPostHogClient } from '../../../lib/posthog-server';
 import { processItem } from '../../../lib/stripe/processCheckoutSession';
 
 const app = new Hono<{ Variables: AuthVariables }>()
@@ -52,7 +54,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const { cartId, deliveryInfo } = context.req.valid('json');
 
             // Retrieve data
-            const [account, user, cart] = await Promise.all([
+            const [account, user, initialCart] = await Promise.all([
                 getAccount(accountId),
                 getUser(userId),
                 getShoppingCart(cartId),
@@ -63,9 +65,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!user) {
                 return context.json({ error: 'User not found' }, 404);
             }
-            if (!cart) {
+            if (!initialCart) {
                 return context.json({ error: 'Cart not found' }, 404);
             }
+            const cart =
+                (await normalizeShoppingCartInventoryUsage(cartId)) ??
+                initialCart;
             if (cart.accountId !== accountId) {
                 console.warn('Account ID mismatch', {
                     accountId,
@@ -91,6 +96,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // Handle sunflower items
             if (!requiresStripePayment) {
+                const scheduledDeliveryEmailKeys = new Set<string>();
                 const sunflowerCartItemsWithShopData = cartInfo.items.filter(
                     (item) =>
                         item.status !== 'paid' && item.currency === 'sunflower',
@@ -123,6 +129,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                     accountId,
                                     ...item,
                                     amount_total: sunflowerAmount,
+                                    scheduledDeliveryEmailKeys,
                                     additionalData: {
                                         ...(item.additionalData
                                             ? JSON.parse(item.additionalData)
@@ -168,6 +175,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 accountId,
                                 ...item,
                                 amount_total: 0,
+                                scheduledDeliveryEmailKeys,
                                 additionalData: {
                                     ...(item.additionalData
                                         ? JSON.parse(item.additionalData)
@@ -201,7 +209,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 const valueInCents = Math.round((finalPrice ?? 0) * 100);
                 const quantity = item.amount;
                 const imageUrls = item.shopData.image
-                    ? [`https://www.gredice.com${item.shopData.image}`]
+                    ? [
+                          /^https?:\/\//u.test(item.shopData.image)
+                              ? item.shopData.image
+                              : `https://www.gredice.com${item.shopData.image}`,
+                      ]
                     : [];
 
                 // TODO: Validate item data
@@ -277,8 +289,33 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     await assignStripeCustomerId(account.id, customerId);
                 }
 
+                (await getPostHogClient()).capture({
+                    distinctId: accountId,
+                    event: 'checkout_initiated',
+                    properties: {
+                        cart_id: cartId,
+                        payment_method: 'stripe',
+                        item_count: stripeItems.length,
+                    },
+                });
+
                 return context.json({ sessionId, url });
             }
+
+            (await getPostHogClient()).capture({
+                distinctId: accountId,
+                event: 'checkout_initiated',
+                properties: {
+                    cart_id: cartId,
+                    payment_method: cartInfo.items.some(
+                        (i) => i.currency === 'sunflower',
+                    )
+                        ? 'sunflower'
+                        : 'inventory',
+                    item_count: cartInfo.items.length,
+                },
+            });
+
             return context.json({ success: true });
         },
     )
@@ -334,6 +371,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     500,
                 );
             }
+
+            (await getPostHogClient()).capture({
+                distinctId: accountId,
+                event: 'checkout_cancelled',
+                properties: { session_id: sessionId },
+            });
 
             return context.json({ success: true });
         },

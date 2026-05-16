@@ -1,5 +1,7 @@
 import type { OperationData } from '@gredice/client';
 import { formatPrice } from '@gredice/js/currency';
+import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
+import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Calendar } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
@@ -8,7 +10,6 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useInventory } from '../../../hooks/useInventory';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
-import { BackpackIcon } from '../../../icons/Backpack';
 import {
     AnimateFlyToItem,
     useAnimateFlyToShoppingCart,
@@ -21,17 +22,27 @@ export function OperationsListItem({
     gardenId,
     raisedBedId,
     positionIndex,
+    inShoppingCart,
 }: {
     gardenId: number;
     raisedBedId?: number;
     positionIndex?: number;
     operation: OperationData;
+    inShoppingCart?: boolean;
 }) {
     const setShoppingCartItem = useSetShoppingCartItem();
     const animateFlyToShoppingCart = useAnimateFlyToShoppingCart();
     const { data: inventory } = useInventory();
 
     const price = formatPrice(operation.prices?.perOperation);
+    const isHarvestOperation =
+        operation.attributes.stage.information?.name === 'harvest';
+    const harvestPlantRemovalDescription = isHarvestOperation
+        ? getHarvestOperationRemovalDisclaimer(
+              operation.actions?.removePlant,
+              true,
+          )
+        : null;
 
     const availableFromInventory = inventory?.items?.find(
         (item) =>
@@ -75,6 +86,11 @@ export function OperationsListItem({
                     <Typography level="body1" semiBold noWrap>
                         {operation.information.label}
                     </Typography>
+                    {inShoppingCart && (
+                        <Typography level="body3" className="text-amber-600">
+                            U košari (nije kupljeno)
+                        </Typography>
+                    )}
                     <Typography level="body1" semiBold>
                         {price}
                     </Typography>
@@ -85,6 +101,11 @@ export function OperationsListItem({
                         className="line-clamp-2 break-words"
                     >
                         {operation.information.shortDescription}
+                    </Typography>
+                )}
+                {harvestPlantRemovalDescription && (
+                    <Typography level="body2" className="text-muted-foreground">
+                        {harvestPlantRemovalDescription}
                     </Typography>
                 )}
             </Stack>

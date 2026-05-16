@@ -1,4 +1,7 @@
+import { publicIdToUserId, userIdToPublicId } from '@gredice/js/publicId';
 import {
+    getAccountAchievements,
+    getAccountGardens,
     getLastBirthdayRewardEvent,
     getUser,
     getUserWithLogins,
@@ -11,6 +14,7 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { getPostHogClient } from '../../../lib/posthog-server';
 import {
     type BirthdayRewardUser,
     grantBirthdayReward,
@@ -38,7 +42,130 @@ const birthdaySchema = z
     })
     .strict();
 
+function getUpdatedProfileFields(input: {
+    dbUser: Awaited<ReturnType<typeof getUser>>;
+    userInfo: {
+        userName?: string;
+        displayName?: string;
+        avatarUrl?: string | null;
+        birthday?: {
+            day: number;
+            month: number;
+            year?: number | null;
+        } | null;
+    };
+}) {
+    const updatedFields: string[] = [];
+
+    if (
+        input.userInfo.displayName !== undefined &&
+        input.userInfo.displayName !== input.dbUser?.displayName
+    ) {
+        updatedFields.push('display_name');
+    }
+
+    if (
+        input.userInfo.avatarUrl !== undefined &&
+        input.userInfo.avatarUrl !== input.dbUser?.avatarUrl
+    ) {
+        updatedFields.push('avatar_url');
+    }
+
+    if (
+        input.userInfo.userName !== undefined &&
+        input.userInfo.userName !== input.dbUser?.userName
+    ) {
+        updatedFields.push('user_name');
+    }
+
+    if (Object.hasOwn(input.userInfo, 'birthday')) {
+        const nextBirthday = input.userInfo.birthday;
+
+        if (nextBirthday === undefined) {
+            return updatedFields;
+        }
+
+        const birthdayChanged =
+            nextBirthday === null ||
+            !input.dbUser ||
+            nextBirthday.day !== input.dbUser.birthdayDay ||
+            nextBirthday.month !== input.dbUser.birthdayMonth ||
+            (nextBirthday.year ?? null) !== (input.dbUser.birthdayYear ?? null);
+
+        if (birthdayChanged) {
+            updatedFields.push(
+                nextBirthday === null ? 'birthday_cleared' : 'birthday',
+            );
+        }
+    }
+
+    return updatedFields;
+}
+
 const app = new Hono<{ Variables: AuthVariables }>()
+    .get(
+        '/public/:publicId/profile',
+        describeRoute({
+            description: 'Get public user profile information by public ID.',
+            security: [{}, { bearerAuth: [] }, { cookieAuth: [] }],
+        }),
+        zValidator(
+            'param',
+            z.object({
+                publicId: z.string(),
+            }),
+        ),
+        async (context) => {
+            const { publicId } = context.req.valid('param');
+            const userId = publicIdToUserId(publicId);
+            if (!userId) {
+                return context.json({ error: 'User not found' }, 404);
+            }
+
+            const dbUser = await getUser(userId);
+            if (!dbUser) {
+                return context.json({ error: 'User not found' }, 404);
+            }
+
+            const primaryAccountId = dbUser.accounts[0]?.accountId;
+            if (!primaryAccountId) {
+                return context.json({ error: 'User not found' }, 404);
+            }
+
+            const [gardens, achievements] = await Promise.all([
+                getAccountGardens(primaryAccountId),
+                getAccountAchievements(primaryAccountId),
+            ]);
+
+            return context.json({
+                user: {
+                    id: dbUser.id,
+                    publicId: userIdToPublicId(dbUser.id),
+                    userName: dbUser.userName,
+                    displayName: dbUser.displayName ?? dbUser.userName,
+                    avatarUrl: dbUser.avatarUrl,
+                    createdAt: dbUser.createdAt,
+                },
+                gardens: gardens.map((garden) => ({
+                    id: garden.id,
+                    name: garden.name,
+                    createdAt: garden.createdAt,
+                })),
+                achievements: achievements.map((achievement) => ({
+                    id: achievement.id,
+                    key: achievement.achievementKey,
+                    status: achievement.status,
+                    rewardSunflowers: achievement.rewardSunflowers,
+                    progressValue: achievement.progressValue,
+                    threshold: achievement.threshold,
+                    rewardGrantedAt:
+                        achievement.rewardGrantedAt?.toISOString() ?? null,
+                    createdAt: achievement.createdAt,
+                    updatedAt: achievement.updatedAt,
+                })),
+            });
+        },
+    )
     .get(
         '/current',
         describeRoute({
@@ -281,6 +408,25 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     user: updatedUser,
                     rewardDate,
                     isLate: rewardIsLate,
+                });
+            }
+
+            const updatedFields = getUpdatedProfileFields({
+                dbUser,
+                userInfo,
+            });
+
+            if (updatedFields.length > 0) {
+                await (await getPostHogClient()).capture({
+                    distinctId: userId,
+                    event: 'user_profile_updated',
+                    properties: {
+                        updated_fields: updatedFields,
+                        birthday_reward_granted: Boolean(
+                            rewardResult?.rewarded,
+                        ),
+                        birthday_reward_late: rewardIsLate,
+                    },
                 });
             }
 

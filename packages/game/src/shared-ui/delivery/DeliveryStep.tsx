@@ -178,7 +178,7 @@ export function DeliveryStep({
             <Typography level="h3">Način dostave</Typography>
 
             <Alert color="info">
-                Tvoja košarica sadrži radnje koje zahtijevaju dostavu ili
+                Tvoja košara sadrži radnje koje zahtijevaju dostavu ili
                 preuzimanje.
             </Alert>
 

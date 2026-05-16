@@ -1,4 +1,6 @@
+import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { PlantOrSortImage } from '@gredice/ui/plants';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
 import {
     Close,
@@ -14,19 +16,19 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { CSSProperties } from 'react';
+import { useGameAnalytics } from '../../../analytics/GameAnalyticsContext';
 import { useCurrentAccount } from '../../../hooks/useCurrentAccount';
 import { useCurrentGarden } from '../../../hooks/useCurrentGarden';
 import { useInventory } from '../../../hooks/useInventory';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
 import type { ShoppingCartItemData } from '../../../hooks/useShoppingCart';
-import { BackpackIcon } from '../../../icons/Backpack';
-import { RaisedBedIdentifierIcon } from '../RaisedBedIdentifierIcon';
 import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
 
 export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { data: garden } = useCurrentGarden();
     const { data: account } = useCurrentAccount();
     const { data: inventory } = useInventory();
+    const { track } = useGameAnalytics();
 
     const hasDiscount = typeof item.shopData.discountPrice === 'number';
     const hasRaisedBed = Boolean(item.raisedBedId);
@@ -52,6 +54,11 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     )?.amount;
 
     async function handleChangePaymentType(isSunflower: boolean) {
+        track('game_cart_payment_method_changed', {
+            entity_id: item.entityId,
+            entity_type: item.entityTypeName,
+            payment_method: isSunflower ? 'sunflower' : 'eur',
+        });
         await changeCurrencyShoppingCartItem.mutateAsync({
             id: item.id,
             amount: item.amount,
@@ -66,6 +73,11 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     }
 
     async function handleRemoveItem() {
+        track('game_cart_item_removed', {
+            entity_id: item.entityId,
+            entity_type: item.entityTypeName,
+            item_id: item.id,
+        });
         await removeShoppingCartItem.mutateAsync({
             id: item.id,
             amount: 0,
@@ -75,6 +87,12 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     }
 
     async function handleToggleInventory() {
+        track('game_cart_item_inventory_toggled', {
+            entity_id: item.entityId,
+            entity_type: item.entityTypeName,
+            item_id: item.id,
+            use_inventory: !usesInventory,
+        });
         await changeCurrencyShoppingCartItem.mutateAsync({
             id: item.id,
             amount: item.amount,
@@ -91,13 +109,23 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     // Hide delete button for paid items
     const isProcessed = item.status === 'paid';
 
+    const plantSort =
+        item.entityTypeName === 'plantSort' ? item.entityData : null;
     const hasShopImage = Boolean(item.shopData.image);
     const shouldShowOperationFallback =
         item.entityTypeName === 'operation' && !hasShopImage;
 
     return (
         <Row spacing={2} alignItems="start">
-            {shouldShowOperationFallback ? (
+            {plantSort ? (
+                <PlantOrSortImage
+                    className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0"
+                    width={56}
+                    height={56}
+                    alt={item.shopData.name ?? 'Nepoznato'}
+                    plantSort={plantSort}
+                />
+            ) : shouldShowOperationFallback ? (
                 <div className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0 flex items-center justify-center">
                     <Hammer
                         role="img"
@@ -117,7 +145,6 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                     height={56}
                     alt={item.shopData.name ?? 'Nepoznato'}
                     coverUrl={item.shopData.image}
-                    baseUrl="https://www.gredice.com"
                 />
             )}
             <Stack className="grow">
@@ -196,13 +223,18 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                         <Row spacing={1}>
                             <Row spacing={0.5} className="flex-wrap gap-y-0">
                                 {hasRaisedBed && (
-                                    <Typography level="body3" secondary>
+                                    <Typography
+                                        level="body3"
+                                        secondary
+                                        component="span"
+                                    >
                                         {raisedBed?.physicalId ? (
                                             <Row spacing={1}>
-                                                <RaisedBedIdentifierIcon
+                                                <RaisedBedIcon
                                                     physicalId={
                                                         raisedBed.physicalId
                                                     }
+                                                    className="size-6"
                                                 />
                                                 <span>
                                                     {`${raisedBed?.name}`}
@@ -248,7 +280,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                     {!isProcessed && (
                         <ModalConfirm
                             title="Potvrdi brisanje stavke"
-                            header="Brisanje stavke iz košarice"
+                            header="Brisanje stavke iz košare"
                             onConfirm={handleRemoveItem}
                             trigger={
                                 <IconButton
@@ -264,7 +296,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                         >
                             <Typography>
                                 Jeste li sigurni da želite ukloniti ovu stavku
-                                iz košarice?
+                                iz košare?
                             </Typography>
                         </ModalConfirm>
                     )}

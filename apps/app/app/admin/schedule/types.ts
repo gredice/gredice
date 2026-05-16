@@ -1,4 +1,4 @@
-import type { SelectTimeSlot } from '@gredice/storage';
+import type { OperationAssignedUser, SelectTimeSlot } from '@gredice/storage';
 
 // Type definitions shared across schedule components
 export type RaisedBedField = {
@@ -11,6 +11,10 @@ export type RaisedBedField = {
     plantSowDate?: Date;
     plantGrowthDate?: Date;
     plantReadyDate?: Date;
+    assignedUserId?: string | null;
+    assignedUserIds?: string[];
+    assignedBy?: string | null;
+    assignedAt?: Date;
     createdAt: Date;
     updatedAt: Date;
     isDeleted: boolean;
@@ -28,6 +32,7 @@ export type RaisedBed = {
 
 export type Operation = {
     id: number;
+    farmId?: number | null;
     raisedBedId: number | null;
     raisedBedFieldId?: number | null;
     entityId: number;
@@ -38,10 +43,18 @@ export type Operation = {
     scheduledDate?: Date;
     completedAt?: Date;
     completedBy?: string;
+    completionNotes?: string;
+    imageUrls?: string[];
     timestamp: Date;
     createdAt: Date;
     isAccepted: boolean;
     isDeleted: boolean;
+    assignedUserId?: string | null;
+    assignedUserIds?: string[];
+    assignedBy?: string;
+    assignedAt?: Date;
+    assignedUser?: OperationAssignedUser | null;
+    assignedUsers?: OperationAssignedUser[];
 };
 
 export type DeliveryRequestAddress = {

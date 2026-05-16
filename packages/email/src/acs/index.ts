@@ -13,8 +13,8 @@ import {
     type EmailStatus,
     updateEmailMessageLog,
 } from '@gredice/storage';
-import { render } from '@react-email/components';
 import type { ReactElement } from 'react';
+import { render } from 'react-email';
 
 function emailClient() {
     const connectionString = process.env.ACS_CONNECTION_STRING;

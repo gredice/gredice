@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
 interface SensorHistoryApiValue extends Record<string, unknown> {
@@ -37,19 +37,21 @@ export function useRaisedBedSensorHistory(
                 return null;
             }
 
-            const response = await client().api.gardens[':gardenId'][
-                'raised-beds'
-            ][':raisedBedId'].sensors[':sensorId'][':type'].$get({
-                param: {
-                    gardenId: gardenId.toString(),
-                    raisedBedId: raisedBedId.toString(),
-                    sensorId: sensorId.toString(),
-                    type: type,
+            const response = await clientAuthenticated().api.gardens[
+                ':gardenId'
+            ]['raised-beds'][':raisedBedId'].sensors[':sensorId'][':type'].$get(
+                {
+                    param: {
+                        gardenId: gardenId.toString(),
+                        raisedBedId: raisedBedId.toString(),
+                        sensorId: sensorId.toString(),
+                        type: type,
+                    },
+                    query: {
+                        duration: duration?.toString(), // Duration in days, formatted as "X.00:00"
+                    },
                 },
-                query: {
-                    duration: duration?.toString(), // Duration in days, formatted as "X.00:00"
-                },
-            });
+            );
             if (response.status === 400) {
                 console.error(
                     'Failed to fetch sensor data - bad request',

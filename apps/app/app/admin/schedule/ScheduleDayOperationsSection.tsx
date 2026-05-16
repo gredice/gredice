@@ -1,41 +1,51 @@
+import {
+    getAssignableFarmUsersByOperationIds,
+    getFarms,
+} from '@gredice/storage';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { FarmOperationsScheduleSection } from './FarmOperationsScheduleSection';
 import { RaisedBedOperationsScheduleSection } from './RaisedBedOperationsScheduleSection';
+import { ScheduleDayOperationsBulkActions } from './ScheduleDayOperationsBulkActions';
 import {
-    getScheduleOperations,
+    getScheduleDayData,
     getScheduleOperationsData,
     getSchedulePlantSorts,
-    getScheduleRaisedBeds,
 } from './scheduleData';
-import { getScheduledOperationsForDay } from './scheduleDayFilters';
+import {
+    groupRaisedBedsForSchedule,
+    isOperationCancelled,
+    isOperationCompleted,
+    isOperationPendingVerification,
+} from './scheduleShared';
+import { OptimisticScheduleActionsProvider } from './useOptimisticScheduleActions';
 
 interface ScheduleDayOperationsSectionProps {
     isToday: boolean;
     date: Date;
-    userId: string;
 }
 
 export async function ScheduleDayOperationsSection({
     isToday,
     date,
-    userId,
 }: ScheduleDayOperationsSectionProps) {
-    const [raisedBeds, operations, plantSorts, operationsData] =
+    const [{ raisedBeds, scheduledOperations }, plantSorts, operationsData] =
         await Promise.all([
-            getScheduleRaisedBeds(),
-            getScheduleOperations(),
+            getScheduleDayData(date.toISOString(), isToday),
             getSchedulePlantSorts(),
             getScheduleOperationsData(),
         ]);
-
-    const scheduledOperations = getScheduledOperationsForDay(
-        isToday,
-        date,
-        operations,
-    );
     if (scheduledOperations.length === 0) {
         return null;
     }
+
+    const [assignableFarmUsersByOperationId, farms] = await Promise.all([
+        getAssignableFarmUsersByOperationIds(
+            scheduledOperations.map((operation) => operation.id),
+        ),
+        getFarms(),
+    ]);
 
     const affectedRaisedBedIds = [
         ...new Set(
@@ -44,39 +54,89 @@ export async function ScheduleDayOperationsSection({
                 .filter((id): id is number => id !== null),
         ),
     ];
-    const physicalIds = [
-        ...new Set(
-            raisedBeds
-                .filter((raisedBed) =>
-                    affectedRaisedBedIds.includes(raisedBed.id),
-                )
-                .map((raisedBed) => raisedBed.physicalId)
-                .filter(
-                    (physicalId): physicalId is string => physicalId !== null,
-                ),
-        ),
-    ].sort((a, b) => Number(a) - Number(b));
+    const raisedBedGroups = groupRaisedBedsForSchedule(
+        raisedBeds,
+        affectedRaisedBedIds,
+    );
+    const farmOperations = scheduledOperations.filter(
+        (operation) =>
+            typeof operation.farmId === 'number' &&
+            operation.raisedBedId === null,
+    );
+    const operationFarmIds = new Set(
+        farmOperations
+            .map((operation) => operation.farmId)
+            .filter((farmId): farmId is number => typeof farmId === 'number'),
+    );
+    const operationFarms = farms
+        .filter((farm) => operationFarmIds.has(farm.id))
+        .map((farm) => ({ id: farm.id, name: farm.name }));
+
+    const dayOperationsToApprove = scheduledOperations
+        .filter(
+            (operation) =>
+                !operation.isAccepted &&
+                !isOperationCompleted(operation.status) &&
+                !isOperationCancelled(operation.status) &&
+                !!operation.assignedUserId,
+        )
+        .map((operation) => ({
+            id: operation.id,
+            label: operation.entityId.toString(),
+        }));
+
+    const dayOperationsToAssign = scheduledOperations
+        .filter(
+            (operation) =>
+                !operation.assignedUserId &&
+                !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
+                !isOperationCancelled(operation.status),
+        )
+        .map((operation) => ({
+            id: operation.id,
+            farmUsers: assignableFarmUsersByOperationId[operation.id] ?? [],
+        }));
 
     return (
-        <Stack spacing={2}>
-            <Typography level="h6">Radnje</Typography>
-            {physicalIds.map((physicalId) => {
-                const beds = raisedBeds
-                    .filter((raisedBed) => raisedBed.physicalId === physicalId)
-                    .sort((a, b) => a.id - b.id);
-
-                return (
-                    <RaisedBedOperationsScheduleSection
-                        key={physicalId}
-                        physicalId={physicalId}
-                        raisedBeds={beds}
-                        scheduledOperations={scheduledOperations}
-                        plantSorts={plantSorts}
-                        operationsData={operationsData}
-                        userId={userId}
+        <OptimisticScheduleActionsProvider>
+            <Stack spacing={2}>
+                <Row spacing={1} alignItems="center">
+                    <Typography level="h6">Radnje</Typography>
+                    <ScheduleDayOperationsBulkActions
+                        operationsToApprove={dayOperationsToApprove}
+                        operationsToAssign={dayOperationsToAssign}
                     />
-                );
-            })}
-        </Stack>
+                </Row>
+                {raisedBedGroups.map(
+                    ({ key, physicalId, raisedBeds: beds }) => {
+                        return (
+                            <RaisedBedOperationsScheduleSection
+                                key={key}
+                                physicalId={physicalId}
+                                raisedBeds={beds}
+                                scheduledOperations={scheduledOperations}
+                                plantSorts={plantSorts}
+                                operationsData={operationsData}
+                                assignableFarmUsersByOperationId={
+                                    assignableFarmUsersByOperationId
+                                }
+                            />
+                        );
+                    },
+                )}
+                {operationFarms.map((farm) => (
+                    <FarmOperationsScheduleSection
+                        key={farm.id}
+                        farm={farm}
+                        scheduledOperations={scheduledOperations}
+                        operationsData={operationsData}
+                        assignableFarmUsersByOperationId={
+                            assignableFarmUsersByOperationId
+                        }
+                    />
+                ))}
+            </Stack>
+        </OptimisticScheduleActionsProvider>
     );
 }

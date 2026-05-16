@@ -1,6 +1,5 @@
 import type { PlantSortData } from '@gredice/client';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Alert } from '@signalco/ui/Alert';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
 import { Check } from '@signalco/ui-icons';
@@ -11,6 +10,7 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useEffect } from 'react';
+import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { usePlantSorts } from '../../hooks/usePlantSorts';
 import {
     AnimateFlyToItem,
@@ -23,6 +23,7 @@ type PlantsSortListProps = {
     plantId: number;
     selectedSortId: number | null;
     onChange: (plant: PlantSortData) => void;
+    search: string;
     flyToShoppingCart?: boolean;
 };
 
@@ -38,6 +39,7 @@ function PlantSortListItem({
     flyToShoppingCart?: boolean;
 }) {
     const animateFlyToShoppingCart = useAnimateFlyToShoppingCart();
+    const { track } = useGameAnalytics();
 
     useEffect(() => {
         if (flyToShoppingCart) {
@@ -59,7 +61,14 @@ function PlantSortListItem({
                 className={cx(
                     'justify-between text-start p-0 h-auto py-2 gap-3 px-4 rounded-none font-normal',
                 )}
-                onClick={() => onChange(sort)}
+                onClick={() => {
+                    track('game_plant_sort_selected', {
+                        plant_name: sort.information.plant.information?.name,
+                        sort_id: sort.id,
+                        sort_name: sort.information.name,
+                    });
+                    onChange(sort);
+                }}
             >
                 <Row spacing={1.5}>
                     <AnimateFlyToItem {...animateFlyToShoppingCart.props}>
@@ -96,6 +105,14 @@ function PlantSortListItem({
                     )}
                     variant="link"
                     size="sm"
+                    onClick={() =>
+                        track('game_plant_sort_details_opened', {
+                            plant_name:
+                                sort.information.plant.information?.name,
+                            sort_id: sort.id,
+                            sort_name: sort.information.name,
+                        })
+                    }
                 >
                     Više informacija...
                 </Button>
@@ -108,19 +125,20 @@ export function PlantsSortList({
     plantId,
     selectedSortId,
     onChange,
+    search,
     flyToShoppingCart,
 }: PlantsSortListProps) {
     const { data: plantSorts, isLoading, isError } = usePlantSorts(plantId);
-    const [search] = useSearchParam('pretraga', '');
+    const normalizedSearch = search.trim().toLowerCase();
     const storePlants = plantSorts?.filter(
         (sort) => sort.store.availableInStore,
     );
     const filteredPlantSorts =
-        search.length > 0
+        normalizedSearch.length > 0
             ? storePlants?.filter((sort) =>
                   sort.information.name
                       .toLowerCase()
-                      .includes(search.toLowerCase()),
+                      .includes(normalizedSearch),
               )
             : storePlants;
 

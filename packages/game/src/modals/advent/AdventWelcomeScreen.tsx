@@ -24,6 +24,7 @@ export function AdventWelcomeScreen({ onContinue }: AdventWelcomeScreenProps) {
                     alt="Suncokret"
                     width={160}
                     height={160}
+                    loading="eager"
                     className="relative"
                 />
             </div>

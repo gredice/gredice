@@ -1,11 +1,25 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useEffect } from 'react';
 import { getTimes } from 'suncalc';
 import type { OrbitControls } from 'three-stdlib';
 import { createStore, useStore } from 'zustand';
-import { audioMixer } from './audio/audioMixer';
+import { createGameAudio, type GameAudio } from './audio/audioMixer';
+import {
+    type GameQualitySetting,
+    getGameQualitySetting,
+    setGameQualitySetting as persistGameQualitySetting,
+} from './scene/gameQuality';
 import type { Block } from './types/Block';
-import { audioConfig } from './utils/audioConfig';
+import { getAudioConfig } from './utils/audioConfig';
+import {
+    ALWAYS_DAY_TIME,
+    isDayNightCycleDisabled,
+    setDayNightCycleDisabled as persistDayNightCycleDisabled,
+} from './utils/dayNightCycle';
 import { triggerSelectionHaptic } from './utils/haptics';
+import {
+    isWeatherVisualizationDisabled,
+    setWeatherVisualizationDisabled as persistWeatherVisualizationDisabled,
+} from './utils/weather';
 
 const sunriseValue = 0.2;
 const sunsetValue = 0.8;
@@ -63,8 +77,27 @@ function getTimeOfDay(
     }
 }
 
+function resolveTimeOfDay(currentTime: Date, dayNightCycleDisabled: boolean) {
+    return dayNightCycleDisabled
+        ? ALWAYS_DAY_TIME
+        : getTimeOfDay(defaultLocation, currentTime);
+}
+
 type GameMode = 'normal' | 'edit';
 export type WinterMode = 'summer' | 'winter' | 'holiday';
+
+export type ActiveDragPreview = {
+    sourceBlockId: string;
+    attachedBlockId: string | null;
+    relative: {
+        x: number;
+        z: number;
+    };
+    sourceHoverHeight: number;
+    attachedHoverHeight: number;
+    isBlocked: boolean;
+    isOverRecycler: boolean;
+};
 
 export type GameState = {
     // General
@@ -72,17 +105,19 @@ export type GameState = {
     winterMode: WinterMode;
     setWinterMode: (winterMode: WinterMode) => void;
     appBaseUrl: string;
-    audio: {
-        ambient: ReturnType<typeof audioMixer>;
-        effects: ReturnType<typeof audioMixer>;
-    };
+    spriteBaseUrl: string;
+    audio: GameAudio;
     freezeTime?: Date | null;
     setFreezeTime: (freezeTime: Date | null) => void;
-    currentTime: Date;
+    dayNightCycleDisabled: boolean;
+    setDayNightCycleDisabled: (disabled: boolean) => void;
+    gameQualitySetting: GameQualitySetting;
+    setGameQualitySetting: (setting: GameQualitySetting) => void;
+    weatherVisualizationDisabled: boolean;
+    setWeatherVisualizationDisabled: (disabled: boolean) => void;
     timeOfDay: number;
     sunsetTime: Date | null;
     sunriseTime: Date | null;
-    setCurrentTime: (currentTime: Date) => void;
 
     // Game
     mode: GameMode;
@@ -91,6 +126,8 @@ export type GameState = {
     // Pickup system
     pickupBlock: Block | null;
     setPickupBlock: (block: Block | null) => void;
+    activeDragPreview: ActiveDragPreview | null;
+    setActiveDragPreview: (dragPreview: ActiveDragPreview | null) => void;
 
     // Camera
     view: 'normal' | 'closeup';
@@ -139,44 +176,73 @@ const defaultLocation = { lat: 45.739, lon: 16.572 };
 
 export function createGameState({
     appBaseUrl,
+    spriteBaseUrl,
     freezeTime,
     isMock,
     winterMode,
 }: {
     appBaseUrl: string;
+    spriteBaseUrl?: string;
     freezeTime: Date | null;
     isMock: boolean;
     winterMode?: WinterMode;
 }) {
+    const dayNightCycleDisabled = isDayNightCycleDisabled();
+    const gameQualitySetting = getGameQualitySetting();
+    const weatherVisualizationDisabled = isWeatherVisualizationDisabled();
     const now = freezeTime ?? new Date();
-    const timeOfDay = getTimeOfDay(defaultLocation, now);
+    const timeOfDay = resolveTimeOfDay(now, dayNightCycleDisabled);
+    const { sunrise, sunset } = getSunriseSunset(defaultLocation, now);
     return createStore<GameState>((set, get) => ({
         isMock: isMock,
         winterMode: winterMode ?? 'summer',
         setWinterMode: (winterMode) => set({ winterMode }),
         appBaseUrl: appBaseUrl,
-        audio: {
-            ambient: audioMixer(
-                audioConfig().config.ambientVolume *
-                    audioConfig().config.masterVolume,
-                audioConfig().config.ambientIsMuted,
-            ),
-            effects: audioMixer(
-                audioConfig().config.effectsVolume *
-                    audioConfig().config.masterVolume,
-                audioConfig().config.effectsIsMuted,
-            ),
-        },
+        spriteBaseUrl: spriteBaseUrl ?? appBaseUrl,
+        audio: createGameAudio(getAudioConfig()),
         freezeTime,
-        setFreezeTime: (freezeTime) =>
+        setFreezeTime: (freezeTime) => {
+            const referenceTime = freezeTime ?? new Date();
+            const { sunrise, sunset } = getSunriseSunset(
+                defaultLocation,
+                referenceTime,
+            );
             set({
                 freezeTime,
-                currentTime: freezeTime ? freezeTime : new Date(),
-            }),
-        currentTime: now,
+                timeOfDay: resolveTimeOfDay(
+                    referenceTime,
+                    get().dayNightCycleDisabled,
+                ),
+                sunriseTime: sunrise,
+                sunsetTime: sunset,
+            });
+        },
+        dayNightCycleDisabled,
+        setDayNightCycleDisabled: (disabled) => {
+            persistDayNightCycleDisabled(disabled);
+            set({
+                dayNightCycleDisabled: disabled,
+                timeOfDay: resolveTimeOfDay(
+                    get().freezeTime ?? new Date(),
+                    disabled,
+                ),
+            });
+        },
+        gameQualitySetting,
+        setGameQualitySetting: (setting) => {
+            persistGameQualitySetting(setting);
+            set({ gameQualitySetting: setting });
+        },
+        weatherVisualizationDisabled,
+        setWeatherVisualizationDisabled: (disabled) => {
+            persistWeatherVisualizationDisabled(disabled);
+            set({
+                weatherVisualizationDisabled: disabled,
+            });
+        },
         timeOfDay,
-        sunriseTime: getSunriseSunset(defaultLocation, now).sunrise,
-        sunsetTime: getSunriseSunset(defaultLocation, now).sunset,
+        sunriseTime: sunrise,
+        sunsetTime: sunset,
 
         // Game
         mode: 'normal',
@@ -190,6 +256,8 @@ export function createGameState({
         // Pickaup system
         pickupBlock: null,
         setPickupBlock: (block: Block | null) => set({ pickupBlock: block }),
+        activeDragPreview: null,
+        setActiveDragPreview: (activeDragPreview) => set({ activeDragPreview }),
 
         // Camera
         view: 'normal',
@@ -222,21 +290,6 @@ export function createGameState({
             })),
         setWorldRotation: (worldRotation) => set({ worldRotation }),
         setIsDragging: (isDragging) => set({ isDragging }),
-        setCurrentTime: (currentTime) => {
-            const freezeTime = get().freezeTime;
-            if (freezeTime) {
-                currentTime = freezeTime;
-            }
-
-            return set({
-                currentTime,
-                timeOfDay: getTimeOfDay(defaultLocation, currentTime),
-                sunriseTime: getSunriseSunset(defaultLocation, currentTime)
-                    .sunrise,
-                sunsetTime: getSunriseSunset(defaultLocation, currentTime)
-                    .sunset,
-            });
-        },
         setWeather: (weather) => set({ weather }),
         snowCoverage: 0,
         setSnowCoverage: (snowCoverage) => set({ snowCoverage }),
@@ -245,6 +298,36 @@ export function createGameState({
 
 export type GameStateStore = ReturnType<typeof createGameState>;
 export const GameStateContext = createContext<GameStateStore | null>(null);
+const pendingStoreDisposals = new WeakMap<
+    GameStateStore,
+    ReturnType<typeof setTimeout>
+>();
+
+export function useDisposeGameStateStore(store: GameStateStore | null) {
+    useEffect(() => {
+        if (!store) {
+            return;
+        }
+
+        const pendingDispose = pendingStoreDisposals.get(store);
+        if (pendingDispose) {
+            clearTimeout(pendingDispose);
+            pendingStoreDisposals.delete(store);
+        }
+
+        return () => {
+            const disposeTimeout = setTimeout(() => {
+                if (pendingStoreDisposals.get(store) !== disposeTimeout) {
+                    return;
+                }
+
+                pendingStoreDisposals.delete(store);
+                store.getState().audio.dispose();
+            }, 0);
+            pendingStoreDisposals.set(store, disposeTimeout);
+        };
+    }, [store]);
+}
 
 export function useGameState<T>(selector: (state: GameState) => T): T {
     const store = useContext(GameStateContext);

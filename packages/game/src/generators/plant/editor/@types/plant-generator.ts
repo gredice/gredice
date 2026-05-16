@@ -47,13 +47,21 @@ export interface PlantControlsProps {
     state: PlantGeneratorState;
     visibility: VisibilityState;
     onStateChange: (updates: Partial<PlantGeneratorState>) => void;
+    onPlantTypeChange: (plantType: string) => void;
     onVisibilityChange: (updates: Partial<VisibilityState>) => void;
     onDefinitionChange: (path: string, value: unknown) => void;
     onRulesChange: (newRules: Record<string, Rule>) => void;
     onRandomizeSeed: () => void;
+    onUndo: () => void;
+    onRedo: () => void;
+    onResetDefinition: () => void;
+    canUndo: boolean;
+    canRedo: boolean;
+    canResetDefinition: boolean;
     onCreateCustomPlant: (name: string) => void;
     onDeleteCustomPlant: (name: string) => void;
     lSystemChain: string;
+    lSystemSymbolCount: number;
 }
 
 /**

@@ -28,6 +28,7 @@ export function ImageViewer({
     previewHeight = 200,
     previewAs = 'button',
 }: ImageViewerProps) {
+    const resolvedAlt = alt?.trim() || 'Slika';
     const [isExpanded, setIsExpanded] = useState(false);
     const [zoomLevel, setZoomLevel] = useState(1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -61,7 +62,7 @@ export function ImageViewer({
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = alt || 'image';
+            link.download = resolvedAlt || 'image';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -227,7 +228,7 @@ export function ImageViewer({
             >
                 <Image
                     src={src}
-                    alt={alt}
+                    alt={resolvedAlt}
                     fill
                     sizes={`${previewWidth}px`}
                     className="h-full w-full object-cover"
@@ -324,7 +325,7 @@ export function ImageViewer({
                             style={{ touchAction: 'none' }}
                         >
                             <div
-                                className="relative h-full w-full select-none transition-transform duration-200 ease-out will-change-transform"
+                                className="relative flex h-full w-full select-none items-center justify-center transition-transform duration-200 ease-out will-change-transform"
                                 style={{
                                     transform: `scale(${zoomLevel}) translate(${position.x / zoomLevel}px, ${position.y / zoomLevel}px)`,
                                     transformOrigin: 'center center',
@@ -333,8 +334,8 @@ export function ImageViewer({
                                 {/** biome-ignore lint/performance/noImgElement: Using raw <img> intentionally for fallback display */}
                                 <img
                                     src={src}
-                                    alt={alt}
-                                    className="object-contain select-none"
+                                    alt={resolvedAlt}
+                                    className="max-h-full max-w-full object-contain select-none"
                                     draggable={false}
                                 />
                             </div>

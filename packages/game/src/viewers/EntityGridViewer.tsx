@@ -15,6 +15,7 @@ import {
     createGameState,
     GameStateContext,
     type GameStateStore,
+    useDisposeGameStateStore,
 } from '../useGameState';
 
 export type EntityGridViewerProps = {
@@ -45,6 +46,7 @@ export function EntityGridViewer({
             winterMode: 'summer',
         });
     }
+    useDisposeGameStateStore(storeRef.current);
 
     const client = new QueryClient();
 

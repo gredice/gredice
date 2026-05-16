@@ -1,7 +1,11 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { useGameState } from '../useGameState';
+import {
+    findRaisedBedOccupiedField,
+    isRaisedBedFieldOccupied,
+} from '../utils/raisedBedFields';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
 const mutationKey = ['gardens', 'current', 'raisedBedFieldRemove'];
@@ -33,9 +37,9 @@ export function useRaisedBedFieldRemove() {
                 throw new Error('Raised bed not found');
             }
 
-            const field = raisedBed.fields.find(
-                (field) =>
-                    field.positionIndex === positionIndex && field.active,
+            const field = findRaisedBedOccupiedField(
+                raisedBed.fields,
+                positionIndex,
             );
             if (!field) {
                 throw new Error('Field not found');
@@ -49,9 +53,9 @@ export function useRaisedBedFieldRemove() {
             }
 
             // Call the backend API to update the plant status to 'removed'
-            const response = await client().api.gardens[':gardenId'][
-                'raised-beds'
-            ][':raisedBedId'].fields[':positionIndex'].$patch({
+            const response = await clientAuthenticated().api.gardens[
+                ':gardenId'
+            ]['raised-beds'][':raisedBedId'].fields[':positionIndex'].$patch({
                 param: {
                     gardenId: garden.id.toString(),
                     raisedBedId: raisedBedId.toString(),
@@ -80,7 +84,7 @@ export function useRaisedBedFieldRemove() {
                         fields: raisedBed.fields.map((field) => {
                             if (
                                 field.positionIndex === positionIndex &&
-                                field.active
+                                isRaisedBedFieldOccupied(field)
                             ) {
                                 return {
                                     ...field,

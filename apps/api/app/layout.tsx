@@ -1,7 +1,7 @@
+import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata } from 'next';
 import './globals.css';
-import * as Sentry from '@sentry/nextjs';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import Head from 'next/head';
 import Image from 'next/image';
@@ -10,11 +10,8 @@ import type { ReactNode } from 'react';
 
 export function generateMetadata(): Metadata {
     return {
-        title: 'API | Gredice',
+        title: 'Gredice API',
         description: 'Gredice API - programski pristup podacima',
-        other: {
-            ...Sentry.getTraceData(),
-        },
     };
 }
 
@@ -23,29 +20,68 @@ export default function RootLayout({
 }: Readonly<{
     children: ReactNode;
 }>) {
+    const postHogApiKey =
+        process.env.NEXT_PUBLIC_POSTHOG_KEY ??
+        process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+    const postHogApiHost = '/ingest';
+    const postHogUiHost =
+        process.env.NEXT_PUBLIC_POSTHOG_UI_HOST ??
+        process.env.NEXT_PUBLIC_POSTHOG_HOST;
+    const content = (
+        <>
+            <Stack className="w-full">
+                <div className="h-[62px]" />
+                <div className="border-b border-blue-700/30 px-4 py-2 fixed top-0 left-0 w-full z-10 bg-[#2563eb]">
+                    <Link href="/">
+                        <Image
+                            alt="Gredice Logotype"
+                            className="brightness-0 invert"
+                            src="https://cdn.gredice.com/Logotype-gredice_2x.png"
+                            width={163}
+                            height={44}
+                        />
+                    </Link>
+                </div>
+                {children}
+            </Stack>
+            <Analytics />
+        </>
+    );
+
     return (
-        <html lang="en" className="dark">
+        <html lang="en">
             <Head>
-                <meta name="apple-mobile-web-app-title" content="Gredice" />
-                <meta name="theme-color" content="#2e6f40" />
-                <title>API | Gredice</title>
+                <meta name="apple-mobile-web-app-title" content="Gredice API" />
+                <meta
+                    name="theme-color"
+                    media="(prefers-color-scheme: light)"
+                    content="#2563eb"
+                />
+                <meta
+                    name="theme-color"
+                    media="(prefers-color-scheme: dark)"
+                    content="#0f172a"
+                />
+                <title>Gredice API</title>
             </Head>
-            <body className="antialiased min-h-screen flex bg-[#0f0f0f]">
-                <Stack className="w-full">
-                    <div className="h-[62px]" />
-                    <div className="border-b px-4 py-2 fixed top-0 left-0 w-full z-10 bg-[#0f0f0f]">
-                        <Link href="/">
-                            <Image
-                                alt="Gredice Logotype"
-                                src="https://cdn.gredice.com/Logotype-gredice_2x.png"
-                                width={163}
-                                height={44}
-                            />
-                        </Link>
-                    </div>
-                    {children}
-                </Stack>
-                <Analytics />
+            <body className="antialiased min-h-screen flex bg-background text-foreground">
+                {postHogApiKey ? (
+                    <PostHogProvider
+                        apiKey={postHogApiKey}
+                        clientOptions={{
+                            api_host: postHogApiHost,
+                            capture_exceptions: true,
+                            debug: process.env.NODE_ENV === 'development',
+                            defaults: '2026-01-30',
+                            ui_host: postHogUiHost ?? null,
+                        }}
+                    >
+                        <PostHogPageView />
+                        {content}
+                    </PostHogProvider>
+                ) : (
+                    content
+                )}
             </body>
         </html>
     );

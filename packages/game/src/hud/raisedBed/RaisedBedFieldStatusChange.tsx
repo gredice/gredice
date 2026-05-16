@@ -32,9 +32,18 @@ export function RaisedBedFieldStatusChange({
         return null;
     }
 
+    const isDateSelected = selectedDate.length > 0;
     const handleStatusChange = async (newStatus: string) => {
+        if (!isDateSelected) {
+            return;
+        }
+
         const [year, month, day] = selectedDate.split('-').map(Number);
         const localDate = new Date(year, month - 1, day, 12, 0, 0);
+        if (Number.isNaN(localDate.getTime())) {
+            return;
+        }
+
         const timestamp = localDate.toISOString();
         await updateStatusMutation.mutateAsync({
             raisedBedId,
@@ -57,6 +66,7 @@ export function RaisedBedFieldStatusChange({
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 max={formatLocalDate(new Date())}
+                required
             />
             <Row spacing={1} className="flex-wrap">
                 {allowedNextStatuses.map((nextStatus) => {
@@ -67,7 +77,10 @@ export function RaisedBedFieldStatusChange({
                             variant="outlined"
                             size="sm"
                             loading={updateStatusMutation.isPending}
-                            disabled={updateStatusMutation.isPending}
+                            disabled={
+                                updateStatusMutation.isPending ||
+                                !isDateSelected
+                            }
                             onClick={() => handleStatusChange(nextStatus)}
                         >
                             {statusInfo.shortLabel}

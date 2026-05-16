@@ -1,11 +1,12 @@
 'use client';
 
+import { cx } from '@signalco/ui-primitives/cx';
 import type { GameSceneProps } from './GameScene';
 import { AccountHud } from './hud/AccountHud';
 import { AdventHud } from './hud/AdventHud';
 import { AudioHud } from './hud/AudioHud';
 import { CameraHud } from './hud/CameraHud';
-import { DayNightCycleHud } from './hud/DayNightCycleHud';
+import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
 import { DebugHud } from './hud/DebugHud';
 import { GameModeHud } from './hud/GameModeHud';
 import { InventoryHud } from './hud/InventoryHud';
@@ -21,30 +22,45 @@ import { GiftBoxModal } from './modals/GiftBoxModal';
 import { OverviewModal } from './modals/OverviewModal';
 import { useGameState } from './useGameState';
 
-export function GameHud({ flags }: { flags: GameSceneProps['flags'] }) {
+export function GameHud({
+    flags,
+    noWeather,
+}: {
+    flags: GameSceneProps['flags'];
+    noWeather?: boolean;
+}) {
     const isCloseup = useGameState((state) => state.view) === 'closeup';
 
     return (
         <>
             <div className="absolute top-2 left-2 flex flex-col items-start gap-2">
                 <AccountHud />
-                {!isCloseup && <GameModeHud />}
-                {!isCloseup && <AdventHud />}
-                {!isCloseup && <InventoryHud />}
-                <ShoppingCartHud />
+                <div className={cx(isCloseup && 'hidden md:block')}>
+                    <GameModeHud />
+                </div>
+                <div className={cx(isCloseup && 'hidden md:block')}>
+                    <AdventHud />
+                </div>
+                <div className={cx(isCloseup && 'hidden md:block')}>
+                    <InventoryHud />
+                </div>
+                <div className={cx(isCloseup && 'hidden md:block')}>
+                    <ShoppingCartHud />
+                </div>
             </div>
             <div className="absolute top-2 right-2 flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2">
-                <WeatherHud />
+                <div className={cx(isCloseup && 'hidden md:block')}>
+                    <WeatherHud noWeather={noWeather} />
+                </div>
                 <SunflowersHud />
             </div>
-            {!isCloseup && <DayNightCycleHud />}
             <div className="absolute bottom-0 flex flex-col left-0 right-0 md:flex-row md:justify-between md:items-end pointer-events-none">
-                <div className="p-2 flex flex-row">
+                <div className="p-2 flex flex-row items-end">
                     <CameraHud />
                     <AudioHud />
+                    <ControlsTooltipHud />
                 </div>
                 <ItemsHud />
-                <div className="hidden md:block" />
             </div>
             <RaisedBedFieldHud flags={flags} />
             <OverviewModal />

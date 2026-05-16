@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys } from './useCurrentGarden';
@@ -16,7 +16,7 @@ export function useCreateGarden() {
     return useMutation({
         mutationFn: async ({ name }: CreateGardenVariables) => {
             const trimmedName = name?.trim();
-            await client().api.gardens.$post({
+            await clientAuthenticated().api.gardens.$post({
                 json: trimmedName ? { name: trimmedName } : {},
             });
         },

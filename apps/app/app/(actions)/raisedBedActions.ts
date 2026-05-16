@@ -1,6 +1,10 @@
 'use server';
 
-import { getRaisedBed, updateRaisedBed } from '@gredice/storage';
+import {
+    getRaisedBed,
+    mergeRaisedBeds,
+    updateRaisedBed,
+} from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
@@ -54,4 +58,82 @@ export async function setRaisedBedStatus(
     }
 
     revalidatePath(KnownPages.Sensors);
+}
+
+export type MergeRaisedBedsActionState = {
+    success: boolean;
+    message: string;
+} | null;
+
+export async function mergeRaisedBedsAction(
+    _previousState: MergeRaisedBedsActionState,
+    formData: FormData,
+): Promise<MergeRaisedBedsActionState> {
+    await auth(['admin']);
+
+    const targetRaisedBedId = Number(formData.get('targetRaisedBedId'));
+    const sourceRaisedBedId = Number(formData.get('sourceRaisedBedId'));
+
+    if (
+        !Number.isInteger(targetRaisedBedId) ||
+        !Number.isInteger(sourceRaisedBedId)
+    ) {
+        return {
+            success: false,
+            message: 'Neispravan ID gredice.',
+        };
+    }
+
+    if (targetRaisedBedId === sourceRaisedBedId) {
+        return {
+            success: false,
+            message: 'Izvorna i odredišna gredica moraju biti različite.',
+        };
+    }
+
+    const [targetRaisedBed, sourceRaisedBed] = await Promise.all([
+        getRaisedBed(targetRaisedBedId),
+        getRaisedBed(sourceRaisedBedId),
+    ]);
+
+    if (!targetRaisedBed || !sourceRaisedBed) {
+        return {
+            success: false,
+            message: 'Jedna od gredica ne postoji.',
+        };
+    }
+
+    if (!targetRaisedBed.physicalId || !sourceRaisedBed.physicalId) {
+        return {
+            success: false,
+            message: 'Obje gredice moraju imati fizičku oznaku za spajanje.',
+        };
+    }
+
+    if (targetRaisedBed.physicalId !== sourceRaisedBed.physicalId) {
+        return {
+            success: false,
+            message:
+                'Gredice se mogu spojiti samo ako imaju istu fizičku oznaku.',
+        };
+    }
+
+    await mergeRaisedBeds(targetRaisedBedId, sourceRaisedBedId);
+
+    revalidatePath(KnownPages.RaisedBed(targetRaisedBedId));
+    revalidatePath(KnownPages.RaisedBeds);
+    revalidatePath(KnownPages.Schedule);
+
+    if (targetRaisedBed.accountId) {
+        revalidatePath(KnownPages.Account(targetRaisedBed.accountId));
+    }
+
+    if (targetRaisedBed.gardenId) {
+        revalidatePath(KnownPages.Garden(targetRaisedBed.gardenId));
+    }
+
+    return {
+        success: true,
+        message: `Gredica ${sourceRaisedBedId} uspješno je spojena u gredicu ${targetRaisedBedId}.`,
+    };
 }

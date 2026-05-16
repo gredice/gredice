@@ -1,11 +1,8 @@
 import { getUsers } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
@@ -53,13 +50,6 @@ export default async function UsersPage({
 
     return (
         <Stack spacing={2}>
-            <Row spacing={1}>
-                <Typography level="h1" className="text-2xl" semiBold>
-                    {'Korisnici'}
-                </Typography>
-                <Chip color="primary">{filteredUsers.length}</Chip>
-            </Row>
-
             <UsersFilters />
 
             <Card>

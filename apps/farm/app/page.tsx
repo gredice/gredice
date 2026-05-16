@@ -3,15 +3,24 @@ import {
     AuthProtectedSection,
     SignedOut,
 } from '@signalco/auth-server/components';
-import { Calendar, Fence } from '@signalco/ui-icons';
+import {
+    BookA,
+    Calendar,
+    Fence,
+    Shield,
+    Sprout,
+    User,
+} from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
+    CardContent,
     CardHeader,
     CardOverflow,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
 import { Chip } from '@signalco/ui-primitives/Chip';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
@@ -37,6 +46,19 @@ function formatDate(date?: Date | string | null) {
     });
 }
 
+const roleConfig: Record<
+    string,
+    {
+        label: string;
+        icon: typeof Fence;
+        color: 'neutral' | 'success' | 'warning';
+    }
+> = {
+    user: { label: 'Korisnik', icon: User, color: 'neutral' },
+    farmer: { label: 'Poljoprivrednik', icon: Fence, color: 'success' },
+    admin: { label: 'Administrator', icon: Shield, color: 'warning' },
+};
+
 function formatCoordinate(value?: number | null) {
     if (typeof value !== 'number' || Number.isNaN(value)) {
         return '—';
@@ -47,8 +69,8 @@ function formatCoordinate(value?: number | null) {
 
 async function FarmerDashboard() {
     const { userId } = await auth(['farmer', 'admin']);
-    const dbUser = await getUser(userId);
-    const farms = await getFarms();
+    const [dbUser, farms] = await Promise.all([getUser(userId), getFarms()]);
+    const showDebugTools = process.env.NODE_ENV === 'development';
 
     if (!dbUser) {
         return (
@@ -62,36 +84,46 @@ async function FarmerDashboard() {
 
     const displayName = dbUser.displayName ?? dbUser.userName;
     const joinDate = formatDate(dbUser.createdAt);
+    const role = roleConfig[dbUser.role];
+    const RoleIcon = role?.icon ?? User;
 
     return (
-        <div className="max-w-5xl mx-auto w-full px-4 py-10 space-y-6">
-            <div className="rounded-2xl border border-primary/20 bg-primary/5 shadow-sm p-6 space-y-6">
-                <div className="flex gap-4 flex-row items-start justify-between">
-                    <div className="space-y-2">
-                        <Typography level="h1" className="text-3xl" semiBold>
-                            {`Dobrodošli, ${displayName}!`}
-                        </Typography>
-                        <Typography className="text-muted-foreground">
-                            Upravljaj farmom, planiraj nadolazeće aktivnosti i
-                            prati napredak u realnom vremenu.
-                        </Typography>
-                    </div>
-                    <LogoutButton />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    <Chip
-                        color="success"
-                        startDecorator={<Fence className="size-4" />}
-                    >
-                        Poljoprivrednik
-                    </Chip>
-                    <Chip color="neutral">Član od {joinDate}</Chip>
-                    <Chip color="neutral">
-                        Povezanih računa: {dbUser.accounts.length}
-                    </Chip>
-                </div>
-            </div>
-            <div className="grid gap-4 lg:grid-cols-2">
+        <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
+            <Card>
+                <CardContent noHeader>
+                    <Stack spacing={2}>
+                        <Row justifyContent="space-between">
+                            <Stack>
+                                <Typography level="h4" component="h1" semiBold>
+                                    {`Dobrodošli, ${displayName}!`}
+                                </Typography>
+                                <Typography
+                                    level="body2"
+                                    className="text-muted-foreground"
+                                >
+                                    Upravljaj farmom, planiraj nadolazeće
+                                    aktivnosti i prati napredak u realnom
+                                    vremenu.
+                                </Typography>
+                            </Stack>
+                            <LogoutButton />
+                        </Row>
+                        <Row spacing={1}>
+                            <Chip
+                                color={role?.color ?? 'neutral'}
+                                startDecorator={<RoleIcon className="size-4" />}
+                            >
+                                {role?.label ?? dbUser.role}
+                            </Chip>
+                            <Chip color="neutral">Član od {joinDate}</Chip>
+                            <Chip color="neutral">
+                                Povezanih računa: {dbUser.accounts.length}
+                            </Chip>
+                        </Row>
+                    </Stack>
+                </CardContent>
+            </Card>
+            <div className="grid gap-4 sm:grid-cols-2">
                 <Card className="h-full">
                     <CardHeader>
                         <Stack spacing={1}>
@@ -113,6 +145,43 @@ async function FarmerDashboard() {
                             >
                                 Pregled dnevnih zadataka
                             </Button>
+                            <Button
+                                variant="outlined"
+                                size="lg"
+                                className="justify-start"
+                                startDecorator={<Fence className="size-4" />}
+                                href="/raised-beds"
+                            >
+                                Pregled svih gredica
+                            </Button>
+                            <Button
+                                variant="soft"
+                                size="lg"
+                                className="justify-start"
+                                startDecorator={<BookA className="size-4" />}
+                                href="/operations"
+                            >
+                                Priručnik radnji
+                            </Button>
+                            <Button
+                                variant="soft"
+                                size="lg"
+                                className="justify-start"
+                                startDecorator={<Sprout className="size-4" />}
+                                href="/plants"
+                            >
+                                Priručnik biljaka
+                            </Button>
+                            {showDebugTools && (
+                                <Button
+                                    variant="outlined"
+                                    size="lg"
+                                    className="justify-start"
+                                    href="/debug/labels"
+                                >
+                                    Debug etiketa
+                                </Button>
+                            )}
                         </Stack>
                     </CardOverflow>
                 </Card>

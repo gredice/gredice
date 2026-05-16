@@ -1,6 +1,6 @@
-import { Tally3 } from '@signalco/ui-icons';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { RaisedBedIcon } from '../RaisedBedIcon';
 
 export function RaisedBedLabel({ physicalId }: { physicalId: string | null }) {
     if (!physicalId) {
@@ -8,8 +8,11 @@ export function RaisedBedLabel({ physicalId }: { physicalId: string | null }) {
     }
 
     return (
-        <Row spacing={1}>
-            <Tally3 className="size-5 rotate-90 mt-1" />
+        <Row spacing={1} className="items-center">
+            <RaisedBedIcon
+                className="size-6 shrink-0"
+                physicalId={physicalId}
+            />
             <Typography level="h5" component="p">
                 <strong>Gr {physicalId}</strong>
             </Typography>

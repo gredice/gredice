@@ -1,28 +1,52 @@
 'use client';
 
+import type { OperationAssignableFarmUser } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Calendar, Close } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { Chip } from '@signalco/ui-primitives/Chip';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import Link from 'next/link';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { KnownPages } from '../../../src/KnownPages';
+import {
+    acceptOperationAction,
+    assignOperationUserAction,
+    cancelOperationAction,
+    completeOperation,
+    completeOperationWithImageUrls,
+    rescheduleOperationAction,
+    verifyOperationAction,
+} from '../../(actions)/operationActions';
 import { AcceptOperationModal } from './AcceptOperationModal';
+import { AssignOperationModal } from './AssignOperationModal';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
+import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
+import { BulkRescheduleRaisedBedButton } from './BulkRescheduleRaisedBedButton';
 import { CancelOperationModal } from './CancelOperationModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { CopyTasksButton } from './CopyTasksButton';
+import { OperationCompletionAttachments } from './OperationCompletionAttachments';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
+import {
+    createOperationAssignedUsers,
+    parseScheduledDateInput,
+} from './scheduleOptimisticHelpers';
 import {
     formatMinutes,
     getOperationDurationMinutes,
     isOperationCancelled,
     isOperationCompleted,
+    isOperationPendingVerification,
 } from './scheduleShared';
 import type { Operation, RaisedBed } from './types';
+import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
+import { VerifyOperationModal } from './VerifyOperationModal';
 
 interface RaisedBedOperationsScheduleSectionProps {
     physicalId: string;
@@ -30,7 +54,10 @@ interface RaisedBedOperationsScheduleSectionProps {
     scheduledOperations: Operation[];
     plantSorts: EntityStandardized[] | null | undefined;
     operationsData: EntityStandardized[] | null | undefined;
-    userId: string;
+    assignableFarmUsersByOperationId: Record<
+        number,
+        OperationAssignableFarmUser[]
+    >;
 }
 
 export function RaisedBedOperationsScheduleSection({
@@ -39,13 +66,20 @@ export function RaisedBedOperationsScheduleSection({
     scheduledOperations,
     plantSorts,
     operationsData,
-    userId,
+    assignableFarmUsersByOperationId,
 }: RaisedBedOperationsScheduleSectionProps) {
+    const { getOperationPatch, runOptimisticAction } =
+        useOptimisticScheduleActions();
+
     if (raisedBeds.length === 0) {
         return null;
     }
 
     const sortedRaisedBeds = [...raisedBeds].sort((a, b) => a.id - b.id);
+    const firstRaisedBed = sortedRaisedBeds.at(0);
+    const raisedBedDetailsLink = firstRaisedBed
+        ? KnownPages.RaisedBed(firstRaisedBed.id)
+        : null;
 
     const operationDataById = new Map<number, EntityStandardized>();
     if (operationsData) {
@@ -63,8 +97,6 @@ export function RaisedBedOperationsScheduleSection({
                 ),
         )
         .map((operation) => {
-            const isFirstRaisedBed =
-                operation.raisedBedId === sortedRaisedBeds.at(0)?.id;
             const field = operation.raisedBedFieldId
                 ? sortedRaisedBeds
                       .flatMap((raisedBed) => raisedBed.fields)
@@ -80,16 +112,12 @@ export function RaisedBedOperationsScheduleSection({
                 : null;
 
             const physicalPositionIndex = field
-                ? (isFirstRaisedBed
-                      ? field.positionIndex + 1
-                      : field.positionIndex + 10
-                  ).toString()
-                : isFirstRaisedBed
-                  ? '1-9'
-                  : '10-18';
+                ? (field.positionIndex + 1).toString()
+                : '';
 
             return {
                 ...operation,
+                ...getOperationPatch(operation.id),
                 physicalPositionIndex,
                 sort,
             };
@@ -98,17 +126,19 @@ export function RaisedBedOperationsScheduleSection({
             a.physicalPositionIndex.localeCompare(
                 b.physicalPositionIndex,
                 undefined,
-                {
-                    numeric: true,
-                },
+                { numeric: true },
             ),
         );
+
+    const operationById = new Map(
+        dayOperations.map((operation) => [operation.id, operation]),
+    );
 
     const copyTasks = dayOperations.map((operation) => {
         const operationData = operationDataById.get(operation.entityId);
         const isFullRaisedBed =
             operationData?.attributes?.application === 'raisedBedFull';
-        const text = `${isFullRaisedBed ? '' : `${operation.physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${operation.sort ? `: ${operation.sort.information?.name ?? 'Nepoznato'}` : ''}`;
+        const text = `${isFullRaisedBed || !operation.physicalPositionIndex ? '' : `${operation.physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${operation.sort ? `: ${operation.sort.information?.name ?? 'Nepoznato'}` : ''}`;
 
         return {
             id: `operation-${operation.id}`,
@@ -119,6 +149,7 @@ export function RaisedBedOperationsScheduleSection({
             approved:
                 operation.isAccepted &&
                 !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
                 !isOperationCancelled(operation.status),
         };
     });
@@ -128,19 +159,41 @@ export function RaisedBedOperationsScheduleSection({
             (operation) =>
                 !operation.isAccepted &&
                 !isOperationCompleted(operation.status) &&
-                !isOperationCancelled(operation.status),
+                !isOperationCancelled(operation.status) &&
+                !!operation.assignedUserId,
         )
         .map((operation) => {
             const operationData = operationDataById.get(operation.entityId);
             const isFullRaisedBed =
                 operationData?.attributes?.application === 'raisedBedFull';
-            const label = `${isFullRaisedBed ? '' : `${operation.physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${operation.sort ? `: ${operation.sort.information?.name ?? 'Nepoznato'}` : ''}`;
+            const label = `${isFullRaisedBed || !operation.physicalPositionIndex ? '' : `${operation.physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${operation.sort ? `: ${operation.sort.information?.name ?? 'Nepoznato'}` : ''}`;
 
             return {
                 id: operation.id,
                 label,
             };
         });
+    const operationsToReschedule = dayOperations
+        .filter(
+            (operation) =>
+                !operation.isAccepted &&
+                !isOperationCompleted(operation.status) &&
+                !isOperationCancelled(operation.status),
+        )
+        .map((operation) => ({
+            id: operation.id,
+        }));
+    const operationsToAssign = dayOperations
+        .filter(
+            (operation) =>
+                !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
+                !isOperationCancelled(operation.status),
+        )
+        .map((operation) => ({
+            id: operation.id,
+            farmUsers: assignableFarmUsersByOperationId[operation.id] ?? [],
+        }));
 
     const durations = dayOperations.reduce(
         (acc, operation) => {
@@ -154,6 +207,7 @@ export function RaisedBedOperationsScheduleSection({
             if (
                 operation.isAccepted &&
                 !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
                 !isOperationCancelled(operation.status)
             ) {
                 acc.approved += duration;
@@ -165,22 +219,144 @@ export function RaisedBedOperationsScheduleSection({
 
     return (
         <Stack key={physicalId} spacing={1}>
-            <Row spacing={0.5} className="items-center flex-wrap gap-y-1">
+            <Row spacing={1} className="w-full items-center flex-wrap gap-y-1">
                 <BulkApproveRaisedBedButton
                     physicalId={physicalId.toString()}
                     fields={[]}
                     operations={operationsToApprove}
+                    onConfirm={() =>
+                        runOptimisticAction({
+                            operationPatches: operationsToApprove.map(
+                                (operation) => ({
+                                    id: operation.id,
+                                    patch: { isAccepted: true },
+                                }),
+                            ),
+                            action: () =>
+                                Promise.all(
+                                    operationsToApprove.map((operation) =>
+                                        acceptOperationAction(operation.id),
+                                    ),
+                                ),
+                            errorLogMessage:
+                                'Failed to approve all raised bed operation items:',
+                            errorAlertMessage:
+                                'Skupna potvrda radnji nije uspjela. Promjena je vraćena.',
+                        })
+                    }
                 />
-                <RaisedBedLabel physicalId={physicalId} />
-                <Typography level="body2" className="text-muted-foreground">
-                    Vrijeme: {formatMinutes(durations.completed, true)} /{' '}
-                    {formatMinutes(durations.approved)} (
-                    {formatMinutes(durations.total)})
-                </Typography>
-                <CopyTasksButton
-                    physicalId={physicalId.toString()}
-                    tasks={copyTasks}
-                />
+                <Row
+                    spacing={0.5}
+                    className="min-w-0 grow items-center flex-wrap gap-y-1"
+                >
+                    {raisedBedDetailsLink ? (
+                        <Link href={raisedBedDetailsLink}>
+                            <RaisedBedLabel physicalId={physicalId} />
+                        </Link>
+                    ) : (
+                        <RaisedBedLabel physicalId={physicalId} />
+                    )}
+                    <Typography level="body2" className="text-muted-foreground">
+                        Vrijeme: {formatMinutes(durations.completed, true)} /{' '}
+                        {formatMinutes(durations.approved)} (
+                        {formatMinutes(durations.total)})
+                    </Typography>
+                    <CopyTasksButton
+                        physicalId={physicalId.toString()}
+                        tasks={copyTasks}
+                    />
+                </Row>
+                <Row spacing={0.5} className="ml-auto shrink-0 items-center">
+                    <BulkAssignRaisedBedButton
+                        physicalId={physicalId.toString()}
+                        fields={[]}
+                        operations={operationsToAssign}
+                        onSubmit={(assignedUserIds) =>
+                            runOptimisticAction({
+                                operationPatches: operationsToAssign.map(
+                                    (operation) => {
+                                        const currentOperation =
+                                            operationById.get(operation.id);
+                                        const assignedUsers =
+                                            createOperationAssignedUsers(
+                                                assignedUserIds,
+                                                operation.farmUsers,
+                                                currentOperation?.assignedUsers,
+                                            );
+
+                                        return {
+                                            id: operation.id,
+                                            patch: {
+                                                assignedUser:
+                                                    assignedUsers[0] ?? null,
+                                                assignedUserId:
+                                                    assignedUserIds[0] ?? null,
+                                                assignedUserIds,
+                                                assignedUsers,
+                                            },
+                                        };
+                                    },
+                                ),
+                                action: () =>
+                                    Promise.all(
+                                        operationsToAssign.map((operation) =>
+                                            assignOperationUserAction(
+                                                operation.id,
+                                                assignedUserIds,
+                                            ),
+                                        ),
+                                    ),
+                                errorLogMessage:
+                                    'Failed to assign users for all raised bed operation items:',
+                                errorAlertMessage:
+                                    'Skupna dodjela radnji nije uspjela. Promjena je vraćena.',
+                            })
+                        }
+                    />
+                    <BulkRescheduleRaisedBedButton
+                        physicalId={physicalId.toString()}
+                        fields={[]}
+                        operations={operationsToReschedule}
+                        onSubmit={(scheduledDate) =>
+                            runOptimisticAction({
+                                operationPatches: operationsToReschedule.map(
+                                    (operation) => ({
+                                        id: operation.id,
+                                        patch: {
+                                            scheduledDate:
+                                                parseScheduledDateInput(
+                                                    scheduledDate,
+                                                ),
+                                        },
+                                    }),
+                                ),
+                                action: () =>
+                                    Promise.all(
+                                        operationsToReschedule.map(
+                                            (operation) => {
+                                                const formData = new FormData();
+                                                formData.set(
+                                                    'operationId',
+                                                    operation.id.toString(),
+                                                );
+                                                formData.set(
+                                                    'scheduledDate',
+                                                    scheduledDate,
+                                                );
+                                                return rescheduleOperationAction(
+                                                    formData,
+                                                );
+                                            },
+                                        ),
+                                    ),
+                                errorLogMessage:
+                                    'Failed to reschedule all raised bed operation items:',
+                                errorAlertMessage:
+                                    'Skupno zakazivanje radnji nije uspjelo. Promjena je vraćena.',
+                            })
+                        }
+                    />
+                </Row>
             </Row>
             <Stack spacing={1}>
                 {!dayOperations.length && (
@@ -195,44 +371,85 @@ export function RaisedBedOperationsScheduleSection({
                     const isFullRaisedBed =
                         operationData?.attributes?.application ===
                         'raisedBedFull';
-                    const operationLabel = `${isFullRaisedBed ? '' : `${operation.physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${operation.sort ? `: ${operation.sort.information?.name ?? 'Nepoznato'}` : ''}`;
+                    const operationLabel = `${isFullRaisedBed || !operation.physicalPositionIndex ? '' : `${operation.physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${operation.sort ? `: ${operation.sort.information?.name ?? 'Nepoznato'}` : ''}`;
 
-                    const operationInactive =
+                    const operationPendingVerification =
+                        isOperationPendingVerification(operation.status);
+                    const operationLocked =
+                        isOperationCancelled(operation.status) ||
+                        isOperationCompleted(operation.status) ||
+                        operationPendingVerification;
+                    const operationTextInactive =
                         isOperationCancelled(operation.status) ||
                         isOperationCompleted(operation.status);
+                    const operationApproved =
+                        operation.isAccepted &&
+                        !operationLocked &&
+                        !operationTextInactive;
 
                     const operationStatusText = isOperationCancelled(
                         operation.status,
                     )
                         ? 'Otkazano'
-                        : isOperationCompleted(operation.status)
-                          ? 'Završeno'
-                          : operation.isAccepted
-                            ? 'Potvrđeno'
-                            : 'Nije potvrđeno';
+                        : operationPendingVerification
+                          ? 'Čeka verifikaciju'
+                          : isOperationCompleted(operation.status)
+                            ? 'Završeno'
+                            : operation.isAccepted
+                              ? 'Potvrđeno'
+                              : 'Nije potvrđeno';
                     const operationStatusClassName = isOperationCancelled(
                         operation.status,
                     )
                         ? 'text-muted-foreground'
-                        : isOperationCompleted(operation.status)
-                          ? 'text-green-600'
-                          : operation.isAccepted
+                        : operationPendingVerification
+                          ? 'text-amber-600'
+                          : isOperationCompleted(operation.status)
                             ? 'text-green-600'
-                            : 'text-muted-foreground';
-                    const attachImages =
-                        operationData?.conditions?.completionAttachImages;
-                    const attachRequired =
+                            : operation.isAccepted
+                              ? 'text-green-600'
+                              : 'text-muted-foreground';
+                    const attachImages = Boolean(
+                        operationData?.conditions?.completionAttachImages ||
+                            operationData?.conditions
+                                ?.completionAttachImagesRequired,
+                    );
+                    const attachRequired = Boolean(
                         operationData?.conditions
-                            ?.completionAttachImagesRequired;
-                    const imageStatusText = attachImages
-                        ? attachRequired
-                            ? 'Slike obavezne'
-                            : 'Slike opcionalne'
-                        : null;
+                            ?.completionAttachImagesRequired,
+                    );
+                    const attachNotes = Boolean(
+                        operationData?.conditions?.completionAttachNotes ||
+                            operationData?.conditions
+                                ?.completionAttachNotesRequired,
+                    );
+                    const attachNotesRequired = Boolean(
+                        operationData?.conditions
+                            ?.completionAttachNotesRequired,
+                    );
+                    const completionRequirementTexts = [
+                        attachImages
+                            ? attachRequired
+                                ? 'Slike obavezne'
+                                : 'Slike opcionalne'
+                            : null,
+                        attachNotes
+                            ? attachNotesRequired
+                                ? 'Napomena obavezna'
+                                : 'Napomena opcionalna'
+                            : null,
+                    ].filter((text): text is string => Boolean(text));
 
                     return (
                         <div key={operation.id}>
-                            <Row spacing={1} className="hover:bg-muted rounded">
+                            <Row
+                                spacing={1}
+                                className={
+                                    operationApproved
+                                        ? 'rounded bg-muted/60 text-foreground hover:bg-muted/80'
+                                        : 'rounded hover:bg-muted'
+                                }
+                            >
                                 <Row spacing={1} className="grow">
                                     {isOperationCompleted(operation.status) ? (
                                         <Checkbox
@@ -240,7 +457,53 @@ export function RaisedBedOperationsScheduleSection({
                                             checked
                                             disabled
                                         />
-                                    ) : operationInactive ? (
+                                    ) : operationPendingVerification ? (
+                                        <VerifyOperationModal
+                                            operationId={operation.id}
+                                            label={operationLabel}
+                                            onConfirm={() =>
+                                                runOptimisticAction({
+                                                    operationPatches: [
+                                                        {
+                                                            id: operation.id,
+                                                            patch: {
+                                                                status: 'completed',
+                                                            },
+                                                        },
+                                                    ],
+                                                    action: () =>
+                                                        verifyOperationAction(
+                                                            operation.id,
+                                                        ),
+                                                    errorLogMessage:
+                                                        'Error verifying operation:',
+                                                    errorAlertMessage:
+                                                        'Verifikacija radnje nije uspjela. Promjena je vraćena.',
+                                                })
+                                            }
+                                            renderTrigger={({
+                                                isSubmitting,
+                                                openModal,
+                                                defaultTrigger,
+                                            }) => (
+                                                <Row
+                                                    spacing={0.5}
+                                                    className="items-center"
+                                                >
+                                                    {defaultTrigger}
+                                                    <Button
+                                                        variant="solid"
+                                                        size="sm"
+                                                        className="bg-green-600 hover:bg-green-700 text-white"
+                                                        onClick={openModal}
+                                                        disabled={isSubmitting}
+                                                    >
+                                                        Potvrdi
+                                                    </Button>
+                                                </Row>
+                                            )}
+                                        />
+                                    ) : operationLocked ? (
                                         <Checkbox
                                             className="size-5 mx-2"
                                             disabled
@@ -248,16 +511,67 @@ export function RaisedBedOperationsScheduleSection({
                                     ) : operation.isAccepted ? (
                                         <CompleteOperationModal
                                             operationId={operation.id}
-                                            userId={userId}
                                             label={operationLabel}
                                             conditions={
                                                 operationData?.conditions
+                                            }
+                                            onConfirm={(imageUrls, notes) =>
+                                                runOptimisticAction({
+                                                    operationPatches: [
+                                                        {
+                                                            id: operation.id,
+                                                            patch: {
+                                                                completionNotes:
+                                                                    notes,
+                                                                imageUrls,
+                                                                status: 'completed',
+                                                            },
+                                                        },
+                                                    ],
+                                                    action: () =>
+                                                        imageUrls
+                                                            ? completeOperationWithImageUrls(
+                                                                  operation.id,
+                                                                  imageUrls,
+                                                                  notes,
+                                                              )
+                                                            : completeOperation(
+                                                                  operation.id,
+                                                                  undefined,
+                                                                  notes,
+                                                              ),
+                                                    errorLogMessage:
+                                                        'Error completing operation:',
+                                                    errorAlertMessage:
+                                                        'Završetak radnje nije uspio. Promjena je vraćena.',
+                                                })
                                             }
                                         />
                                     ) : (
                                         <AcceptOperationModal
                                             operationId={operation.id}
                                             label={operationLabel}
+                                            disabled={!operation.assignedUserId}
+                                            onConfirm={() =>
+                                                runOptimisticAction({
+                                                    operationPatches: [
+                                                        {
+                                                            id: operation.id,
+                                                            patch: {
+                                                                isAccepted: true,
+                                                            },
+                                                        },
+                                                    ],
+                                                    action: () =>
+                                                        acceptOperationAction(
+                                                            operation.id,
+                                                        ),
+                                                    errorLogMessage:
+                                                        'Error accepting operation:',
+                                                    errorAlertMessage:
+                                                        'Potvrda radnje nije uspjela. Promjena je vraćena.',
+                                                })
+                                            }
                                         />
                                     )}
                                     <a
@@ -274,7 +588,7 @@ export function RaisedBedOperationsScheduleSection({
                                     >
                                         <Typography
                                             className={
-                                                operationInactive
+                                                operationTextInactive
                                                     ? 'line-through text-muted-foreground'
                                                     : undefined
                                             }
@@ -288,19 +602,23 @@ export function RaisedBedOperationsScheduleSection({
                                     >
                                         {operationStatusText}
                                     </Typography>
-                                    {imageStatusText &&
+                                    {completionRequirementTexts.length > 0 &&
                                         !isOperationCompleted(
                                             operation.status,
-                                        ) && (
+                                        ) &&
+                                        !operationPendingVerification && (
                                             <Typography
                                                 level="body2"
                                                 className="ml-1 text-xs text-muted-foreground"
                                             >
-                                                {imageStatusText}
+                                                {completionRequirementTexts.join(
+                                                    ' · ',
+                                                )}
                                             </Typography>
                                         )}
                                     <Typography
                                         level="body2"
+                                        component="div"
                                         className="select-none"
                                     >
                                         {operation.scheduledDate ? (
@@ -308,11 +626,74 @@ export function RaisedBedOperationsScheduleSection({
                                                 {operation.scheduledDate}
                                             </LocalDateTime>
                                         ) : (
-                                            <span>Danas</span>
+                                            <Chip
+                                                size="sm"
+                                                color="warning"
+                                                className="w-fit"
+                                            >
+                                                Nije planirano
+                                            </Chip>
                                         )}
                                     </Typography>
                                 </Row>
                                 <Row>
+                                    {(isOperationCompleted(operation.status) ||
+                                        operationPendingVerification) && (
+                                        <OperationCompletionAttachments
+                                            operationId={operation.id}
+                                            notes={operation.completionNotes}
+                                            imageUrls={operation.imageUrls}
+                                        />
+                                    )}
+                                    <AssignOperationModal
+                                        operationId={operation.id}
+                                        label={operationLabel}
+                                        farmUsers={
+                                            assignableFarmUsersByOperationId[
+                                                operation.id
+                                            ] ?? []
+                                        }
+                                        assignedUsers={operation.assignedUsers}
+                                        disabled={operationLocked}
+                                        onSubmit={(assignedUserIds) => {
+                                            const farmUsers =
+                                                assignableFarmUsersByOperationId[
+                                                    operation.id
+                                                ] ?? [];
+                                            const assignedUsers =
+                                                createOperationAssignedUsers(
+                                                    assignedUserIds,
+                                                    farmUsers,
+                                                    operation.assignedUsers,
+                                                );
+                                            runOptimisticAction({
+                                                operationPatches: [
+                                                    {
+                                                        id: operation.id,
+                                                        patch: {
+                                                            assignedUser:
+                                                                assignedUsers[0] ??
+                                                                null,
+                                                            assignedUserId:
+                                                                assignedUserIds[0] ??
+                                                                null,
+                                                            assignedUserIds,
+                                                            assignedUsers,
+                                                        },
+                                                    },
+                                                ],
+                                                action: () =>
+                                                    assignOperationUserAction(
+                                                        operation.id,
+                                                        assignedUserIds,
+                                                    ),
+                                                errorLogMessage:
+                                                    'Error assigning operation user:',
+                                                errorAlertMessage:
+                                                    'Dodjela radnje nije uspjela. Promjena je vraćena.',
+                                            });
+                                        }}
+                                    />
                                     <RescheduleOperationModal
                                         operation={{
                                             id: operation.id,
@@ -324,15 +705,43 @@ export function RaisedBedOperationsScheduleSection({
                                             operationData?.information?.label ??
                                             operation.entityId.toString()
                                         }
+                                        onSubmit={(formData) => {
+                                            const scheduledDate =
+                                                formData.get('scheduledDate');
+                                            runOptimisticAction({
+                                                operationPatches: [
+                                                    {
+                                                        id: operation.id,
+                                                        patch: {
+                                                            scheduledDate:
+                                                                typeof scheduledDate ===
+                                                                'string'
+                                                                    ? parseScheduledDateInput(
+                                                                          scheduledDate,
+                                                                      )
+                                                                    : undefined,
+                                                        },
+                                                    },
+                                                ],
+                                                action: () =>
+                                                    rescheduleOperationAction(
+                                                        formData,
+                                                    ),
+                                                errorLogMessage:
+                                                    'Error rescheduling operation:',
+                                                errorAlertMessage:
+                                                    'Zakazivanje radnje nije uspjelo. Promjena je vraćena.',
+                                            });
+                                        }}
                                         trigger={
                                             <IconButton
                                                 variant="plain"
                                                 title={
                                                     operation.scheduledDate
-                                                        ? 'Prerasporedi operaciju'
-                                                        : 'Zakaži operaciju'
+                                                        ? 'Prerasporedi radnju'
+                                                        : 'Zakaži radnju'
                                                 }
-                                                disabled={operationInactive}
+                                                disabled={operationLocked}
                                             >
                                                 <Calendar className="size-4 shrink-0" />
                                             </IconButton>
@@ -350,11 +759,31 @@ export function RaisedBedOperationsScheduleSection({
                                             operationData?.information?.label ??
                                             operation.entityId.toString()
                                         }
+                                        onSubmit={(formData) =>
+                                            runOptimisticAction({
+                                                operationPatches: [
+                                                    {
+                                                        id: operation.id,
+                                                        patch: {
+                                                            status: 'canceled',
+                                                        },
+                                                    },
+                                                ],
+                                                action: () =>
+                                                    cancelOperationAction(
+                                                        formData,
+                                                    ),
+                                                errorLogMessage:
+                                                    'Error canceling operation:',
+                                                errorAlertMessage:
+                                                    'Otkazivanje radnje nije uspjelo. Promjena je vraćena.',
+                                            })
+                                        }
                                         trigger={
                                             <IconButton
                                                 variant="plain"
                                                 title="Otkaži operaciju"
-                                                disabled={operationInactive}
+                                                disabled={operationLocked}
                                             >
                                                 <Close className="size-4 shrink-0" />
                                             </IconButton>

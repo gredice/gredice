@@ -7,11 +7,18 @@ import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../../../components/admin/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../../lib/auth/auth';
+import {
+    getInventoryFieldType,
+    getInventorySelectOptions,
+} from '../../../../../../lib/inventoryFieldTypes';
 import { KnownPages } from '../../../../../../src/KnownPages';
 import { createInventoryItemAction } from '../../../../../(actions)/inventoryActions';
 
 export const dynamic = 'force-dynamic';
+const noEntityValue = 'none';
 
 export default async function CreateInventoryItemPage({
     params,
@@ -30,7 +37,7 @@ export default async function CreateInventoryItemPage({
 
     const entities = await getEntitiesRaw(config.entityTypeName, 'published');
     const entityItems = [
-        { value: '', label: '- Bez entiteta -' },
+        { value: noEntityValue, label: '- Bez entiteta -' },
         ...entities.map((entity) => {
             const nameAttr = entity.attributes.find(
                 (a) =>
@@ -46,18 +53,43 @@ export default async function CreateInventoryItemPage({
     ];
 
     const createItemBound = createInventoryItemAction.bind(null, id);
+    const trackingTypeItems =
+        config.defaultTrackingType === 'serialNumber'
+            ? [
+                  {
+                      value: 'pieces',
+                      label: 'Komadi',
+                  },
+                  {
+                      value: 'serialNumber',
+                      label: 'Serijski broj',
+                  },
+              ]
+            : [
+                  {
+                      value: 'pieces',
+                      label: 'Komadi',
+                  },
+              ];
 
     return (
         <Stack spacing={4}>
-            <Breadcrumbs
-                items={[
-                    { label: 'Zalihe', href: KnownPages.Inventory },
-                    {
-                        label: config.label,
-                        href: KnownPages.InventoryConfig(id),
-                    },
-                    { label: 'Dodaj stavku' },
-                ]}
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                            },
+                            {
+                                label: config.label,
+                                href: KnownPages.InventoryConfig(id),
+                            },
+                            { label: 'Dodaj stavku' },
+                        ]}
+                    />
+                }
+                heading="Dodaj stavku zalihe"
             />
 
             <Stack spacing={2}>
@@ -78,30 +110,24 @@ export default async function CreateInventoryItemPage({
                                     name="entityId"
                                     label="Entitet (opcionalno)"
                                     items={entityItems}
-                                    defaultValue=""
+                                    defaultValue={noEntityValue}
                                     helperText="Odaberite entitet koji je predložak za ovu stavku"
                                 />
                                 <SelectItems
                                     name="trackingType"
                                     label="Način praćenja"
-                                    items={[
-                                        {
-                                            value: 'pieces',
-                                            label: 'Komadi',
-                                        },
-                                        {
-                                            value: 'serialNumber',
-                                            label: 'Serijski broj',
-                                        },
-                                    ]}
+                                    items={trackingTypeItems}
                                     defaultValue={config.defaultTrackingType}
                                 />
-                                <Input
-                                    name="serialNumber"
-                                    label="Serijski broj (opcionalno)"
-                                    placeholder="npr. SN-12345"
-                                    helperText="Popunite ako pratite po serijskom broju"
-                                />
+                                {config.defaultTrackingType ===
+                                    'serialNumber' && (
+                                    <Input
+                                        name="serialNumber"
+                                        label="Serijski broj (opcionalno)"
+                                        placeholder="npr. SN-12345"
+                                        helperText="Popunite ako pratite po serijskom broju"
+                                    />
+                                )}
                                 <Input
                                     name="quantity"
                                     label="Količina"
@@ -120,42 +146,83 @@ export default async function CreateInventoryItemPage({
                                         <Typography level="body1" semiBold>
                                             Dodatna polja
                                         </Typography>
-                                        {config.fieldDefinitions.map((field) =>
-                                            field.dataType === 'boolean' ? (
-                                                <SelectItems
-                                                    key={field.id}
-                                                    name={`field_${field.name}`}
-                                                    label={field.label}
-                                                    items={[
-                                                        {
-                                                            value: 'true',
-                                                            label: 'Da',
-                                                        },
-                                                        {
-                                                            value: 'false',
-                                                            label: 'Ne',
-                                                        },
-                                                    ]}
-                                                    defaultValue="false"
-                                                    required={field.required}
-                                                />
-                                            ) : (
-                                                <Input
-                                                    key={field.id}
-                                                    name={`field_${field.name}`}
-                                                    label={field.label}
-                                                    type={
-                                                        field.dataType ===
-                                                        'number'
-                                                            ? 'number'
-                                                            : field.dataType ===
-                                                                'date'
-                                                              ? 'date'
-                                                              : 'text'
+                                        {config.fieldDefinitions.map(
+                                            (field) => {
+                                                const fieldType =
+                                                    getInventoryFieldType(
+                                                        field.dataType,
+                                                    );
+                                                if (fieldType === 'boolean') {
+                                                    return (
+                                                        <SelectItems
+                                                            key={field.id}
+                                                            name={`field_${field.name}`}
+                                                            label={field.label}
+                                                            items={[
+                                                                {
+                                                                    value: 'true',
+                                                                    label: 'Da',
+                                                                },
+                                                                {
+                                                                    value: 'false',
+                                                                    label: 'Ne',
+                                                                },
+                                                            ]}
+                                                            defaultValue="false"
+                                                            required={
+                                                                field.required
+                                                            }
+                                                        />
+                                                    );
+                                                }
+
+                                                if (fieldType === 'select') {
+                                                    const options =
+                                                        getInventorySelectOptions(
+                                                            field.dataType,
+                                                        );
+                                                    const defaultValue =
+                                                        options[0]?.value;
+                                                    if (!defaultValue) {
+                                                        return null;
                                                     }
-                                                    required={field.required}
-                                                />
-                                            ),
+
+                                                    return (
+                                                        <SelectItems
+                                                            key={field.id}
+                                                            name={`field_${field.name}`}
+                                                            label={field.label}
+                                                            items={options}
+                                                            defaultValue={
+                                                                defaultValue
+                                                            }
+                                                            required={
+                                                                field.required
+                                                            }
+                                                        />
+                                                    );
+                                                }
+
+                                                return (
+                                                    <Input
+                                                        key={field.id}
+                                                        name={`field_${field.name}`}
+                                                        label={field.label}
+                                                        type={
+                                                            fieldType ===
+                                                            'number'
+                                                                ? 'number'
+                                                                : fieldType ===
+                                                                    'date'
+                                                                  ? 'date'
+                                                                  : 'text'
+                                                        }
+                                                        required={
+                                                            field.required
+                                                        }
+                                                    />
+                                                );
+                                            },
                                         )}
                                     </Stack>
                                 )}

@@ -11,7 +11,7 @@ export function LayoutContainer({
 }>) {
     const pathname = usePathname();
 
-    if (pathname === '/') {
+    if (pathname === '/' || pathname.startsWith('/blokovi/biljke/generator')) {
         return <>{children}</>;
     }
 

@@ -1,7 +1,8 @@
 'use client';
 
 import type { getAnalyticsTotals } from '@gredice/storage';
-import { Calendar, Tally3 } from '@signalco/ui-icons';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
+import { Calendar, Euro, File, Hammer, Truck } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -10,13 +11,19 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
+import type { DashboardQuickActionOption } from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { FactCard } from '../cards/FactCard';
+import { EntityTypeIcon } from '../directories/EntityTypeIcon';
 import { DashboardDivider } from './DashboardDivider';
 import {
     OperationsDurationCard,
     type OperationsDurationData,
 } from './OperationsDurationCard';
+import {
+    SunflowersDailyCard,
+    type SunflowersDailyData,
+} from './SunflowersDailyCard';
 import {
     UsersRegistrationWeekdayCard,
     type WeekdayRegistrationData,
@@ -26,6 +33,8 @@ type EntityData = {
     entityTypeName: string;
     label: string;
     count: number;
+    incompleteDraftCount: number;
+    incompletePublishedCount: number;
 };
 
 function getTodayDateValue() {
@@ -36,20 +45,52 @@ function getTodayDateValue() {
     return `${year}-${month}-${day}`;
 }
 
+type AiData = {
+    count: number;
+    totalTokens: number;
+};
+
+function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
+    if (quickAction.icon) {
+        return <EntityTypeIcon icon={quickAction.icon} className="size-4" />;
+    }
+
+    switch (quickAction.href) {
+        case KnownPages.Schedule:
+            return <Calendar className="size-4" />;
+        case KnownPages.RaisedBeds:
+            return <RaisedBedIcon className="size-4" />;
+        case KnownPages.Operations:
+            return <Hammer className="size-4" />;
+        case KnownPages.DeliveryRequests:
+            return <Truck className="size-4" />;
+        case KnownPages.Transactions:
+            return <Euro className="size-4" />;
+        default:
+            return <File className="size-4" />;
+    }
+}
+
 export function AdminDashboardClient({
     initialAnalyticsData,
     initialEntitiesData,
+    initialQuickActions,
     initialPeriod = '7',
     initialOperationsDurationData,
     initialWeekdayRegistrations,
+    initialAiData,
+    initialSunflowersData,
     initialFrom,
     initialTo,
 }: {
     initialAnalyticsData: Awaited<ReturnType<typeof getAnalyticsTotals>>;
+    initialQuickActions: DashboardQuickActionOption[];
     initialEntitiesData: EntityData[];
     initialPeriod?: string;
     initialOperationsDurationData: OperationsDurationData;
     initialWeekdayRegistrations: WeekdayRegistrationData[];
+    initialAiData: AiData;
+    initialSunflowersData: SunflowersDailyData[];
     initialFrom?: string;
     initialTo?: string;
 }) {
@@ -155,27 +196,21 @@ export function AdminDashboardClient({
 
     return (
         <Stack spacing={2}>
-            <Row spacing={1}>
-                <Button
-                    variant="outlined"
-                    className="rounded-full"
-                    size="sm"
-                    startDecorator={<Calendar className="size-4 shrink-0" />}
-                    href={KnownPages.Schedule}
-                >
-                    Raspored
-                </Button>
-                <Button
-                    variant="outlined"
-                    size="sm"
-                    className="rounded-full"
-                    startDecorator={
-                        <Tally3 className="size-4 shrink-0 -rotate-90 -mt-1" />
-                    }
-                    href={KnownPages.RaisedBeds}
-                >
-                    Gredice
-                </Button>
+            <Row spacing={1} className="flex-wrap">
+                {initialQuickActions.map((quickAction) => (
+                    <Button
+                        key={quickAction.id}
+                        variant="outlined"
+                        className="rounded-full"
+                        size="sm"
+                        href={quickAction.href}
+                    >
+                        <Row spacing={0.5} className="items-center">
+                            {quickActionIcon(quickAction)}
+                            <span>{quickAction.label}</span>
+                        </Row>
+                    </Button>
+                ))}
             </Row>
             <Stack spacing={1}>
                 <Row justifyContent="space-between">
@@ -302,10 +337,29 @@ export function AdminDashboardClient({
                 </div>
             </Stack>
             <Stack spacing={1}>
+                <DashboardDivider>AI</DashboardDivider>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                    <FactCard
+                        header="AI analize"
+                        value={initialAiData.count}
+                        href={KnownPages.AiAnalytics}
+                    />
+                    <FactCard
+                        header="Ukupno tokena"
+                        value={initialAiData.totalTokens.toLocaleString(
+                            'hr-HR',
+                        )}
+                        href={KnownPages.AiAnalytics}
+                    />
+                </div>
+            </Stack>
+            <Stack spacing={1}>
                 <DashboardDivider>Registracije</DashboardDivider>
-                <UsersRegistrationWeekdayCard
-                    data={initialWeekdayRegistrations}
-                />
+                <div className="w-full lg:max-w-2xl">
+                    <UsersRegistrationWeekdayCard
+                        data={initialWeekdayRegistrations}
+                    />
+                </div>
             </Stack>
             <Stack spacing={1}>
                 <DashboardDivider>Radnje</DashboardDivider>
@@ -315,11 +369,39 @@ export function AdminDashboardClient({
                 <DashboardDivider>Zapisi</DashboardDivider>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
                     {initialEntitiesData.map(
-                        ({ label, count, entityTypeName }) => (
+                        ({
+                            label,
+                            count,
+                            entityTypeName,
+                            incompleteDraftCount,
+                            incompletePublishedCount,
+                        }) => (
                             <FactCard
                                 key={entityTypeName}
                                 header={label}
-                                value={count}
+                                value={
+                                    <Stack spacing={0.5}>
+                                        <Typography>{count}</Typography>
+                                        <Button
+                                            variant="plain"
+                                            size="sm"
+                                            className="justify-start px-0 h-auto min-h-0"
+                                            href={`${KnownPages.DirectoryEntityType(entityTypeName)}?completion=incomplete&state=draft`}
+                                        >
+                                            Draft nepotpuni:{' '}
+                                            {incompleteDraftCount}
+                                        </Button>
+                                        <Button
+                                            variant="plain"
+                                            size="sm"
+                                            className="justify-start px-0 h-auto min-h-0"
+                                            href={`${KnownPages.DirectoryEntityType(entityTypeName)}?completion=incomplete&state=published`}
+                                        >
+                                            Objavljeno nepotpuni:{' '}
+                                            {incompletePublishedCount}
+                                        </Button>
+                                    </Stack>
+                                }
                                 href={KnownPages.DirectoryEntityType(
                                     entityTypeName,
                                 )}
@@ -327,6 +409,10 @@ export function AdminDashboardClient({
                         ),
                     )}
                 </div>
+            </Stack>
+            <Stack spacing={1}>
+                <DashboardDivider>Suncokreti</DashboardDivider>
+                <SunflowersDailyCard data={initialSunflowersData} />
             </Stack>
         </Stack>
     );

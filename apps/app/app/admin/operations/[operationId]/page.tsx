@@ -1,16 +1,18 @@
 import {
     getAccount,
     getEntitiesFormatted,
+    getFarm,
     getGarden,
     getOperationById,
     getRaisedBed,
 } from '@gredice/storage';
-import { ImageViewer } from '@gredice/ui/ImageViewer';
+import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import {
     Card,
+    CardContent,
     CardHeader,
     CardOverflow,
     CardTitle,
@@ -21,6 +23,9 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
@@ -49,20 +54,26 @@ export default async function OperationDetailsPage({
         return notFound();
     }
 
-    if (!operation.accountId) {
+    if (!operation.accountId && !operation.farmId) {
         return notFound();
     }
 
-    const [operationsData, account, garden, raisedBed] = await Promise.all([
-        getEntitiesFormatted<EntityStandardized>('operation'),
-        getAccount(operation.accountId),
-        operation.gardenId
-            ? getGarden(operation.gardenId)
-            : Promise.resolve(undefined),
-        operation.raisedBedId
-            ? getRaisedBed(operation.raisedBedId)
-            : Promise.resolve(undefined),
-    ]);
+    const [operationsData, account, farm, garden, raisedBed] =
+        await Promise.all([
+            getEntitiesFormatted<EntityStandardized>('operation'),
+            operation.accountId
+                ? getAccount(operation.accountId)
+                : Promise.resolve(undefined),
+            operation.farmId
+                ? getFarm(operation.farmId)
+                : Promise.resolve(null),
+            operation.gardenId
+                ? getGarden(operation.gardenId)
+                : Promise.resolve(undefined),
+            operation.raisedBedId
+                ? getRaisedBed(operation.raisedBedId)
+                : Promise.resolve(undefined),
+        ]);
 
     const operationDetails = operationsData?.find(
         (op) => op.id === operation.entityId,
@@ -75,16 +86,29 @@ export default async function OperationDetailsPage({
         raisedBed && operation.raisedBedFieldId
             ? raisedBed.fields.find((f) => f.id === operation.raisedBedFieldId)
             : undefined;
+    const operationTitle =
+        operationDetails?.information?.label ||
+        operationDetails?.information?.name ||
+        `Radnja ${operation.id}`;
 
     return (
         <Stack spacing={4}>
+            <AdminPageTitle title={operationTitle} />
+            <AdminPageHeader
+                breadcrumbs={
+                    <Breadcrumbs
+                        items={[
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.Operations,
+                            },
+                            { label: operationId },
+                        ]}
+                    />
+                }
+                heading="Detalji radnje"
+            />
             <Stack spacing={2}>
-                <Breadcrumbs
-                    items={[
-                        { label: 'Radnje', href: KnownPages.Operations },
-                        { label: operationId },
-                    ]}
-                />
                 <Typography level="h1" className="text-2xl" semiBold>
                     Detalji radnje
                 </Typography>
@@ -107,14 +131,19 @@ export default async function OperationDetailsPage({
                                 color={
                                     operation.status === 'completed'
                                         ? 'success'
-                                        : operation.status === 'planned'
-                                          ? 'info'
-                                          : operation.status === 'canceled'
-                                            ? 'neutral'
-                                            : 'warning'
+                                        : operation.status ===
+                                            'pendingVerification'
+                                          ? 'warning'
+                                          : operation.status === 'planned'
+                                            ? 'info'
+                                            : operation.status === 'canceled'
+                                              ? 'neutral'
+                                              : 'warning'
                                 }
                             >
-                                {operation.status}
+                                {operation.status === 'pendingVerification'
+                                    ? 'Čeka verifikaciju'
+                                    : operation.status}
                             </Chip>
                         }
                     />
@@ -140,6 +169,42 @@ export default async function OperationDetailsPage({
                             {operation.completedAt && (
                                 <Field
                                     name="Izvršeno"
+                                    value={
+                                        <LocalDateTime time={false}>
+                                            {operation.completedAt}
+                                        </LocalDateTime>
+                                    }
+                                />
+                            )}
+                            {operation.verifiedBy && (
+                                <Field
+                                    name="Verificirao"
+                                    value={operation.verifiedBy}
+                                />
+                            )}
+                            {operation.verifiedAt && (
+                                <Field
+                                    name="Verificirano"
+                                    value={
+                                        <LocalDateTime time={false}>
+                                            {operation.verifiedAt}
+                                        </LocalDateTime>
+                                    }
+                                />
+                            )}
+                        </>
+                    )}
+                    {operation.status === 'pendingVerification' && (
+                        <>
+                            {operation.completedBy && (
+                                <Field
+                                    name="Označio završeno"
+                                    value={operation.completedBy}
+                                />
+                            )}
+                            {operation.completedAt && (
+                                <Field
+                                    name="Označeno završeno"
                                     value={
                                         <LocalDateTime time={false}>
                                             {operation.completedAt}
@@ -188,12 +253,17 @@ export default async function OperationDetailsPage({
                             )}
                         </>
                     )}
-                    {accountUsers && (
+                    {accountUsers && operation.accountId && (
                         <Link href={KnownPages.Account(operation.accountId)}>
                             <Field
                                 name="Korisnici računa"
                                 value={accountUsers}
                             />
+                        </Link>
+                    )}
+                    {farm && (
+                        <Link href={KnownPages.Farm(farm.id)}>
+                            <Field name="Farma" value={farm.name} />
                         </Link>
                     )}
                     {gardenName && (
@@ -237,22 +307,34 @@ export default async function OperationDetailsPage({
                     />
                 </FieldSet>
             </Stack>
+            {operation.completionNotes && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Napomena završetka</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Typography className="whitespace-pre-wrap">
+                            {operation.completionNotes}
+                        </Typography>
+                    </CardContent>
+                </Card>
+            )}
             {operation.imageUrls && operation.imageUrls.length > 0 && (
                 <Card>
                     <CardHeader>
                         <CardTitle>Slike</CardTitle>
                     </CardHeader>
                     <CardOverflow>
-                        <Row className="flex-wrap" spacing={2}>
-                            {operation.imageUrls.map((url) => (
-                                <ImageViewer
-                                    key={url}
-                                    src={url}
-                                    alt={`Slika radnje ${operation.id}`}
-                                    previewWidth={200}
-                                    previewHeight={150}
-                                />
-                            ))}
+                        <Row className="w-full" spacing={2}>
+                            <ImageGallery
+                                images={operation.imageUrls.map((url) => ({
+                                    src: url,
+                                    alt: `Slika radnje ${operation.id}`,
+                                }))}
+                                previewWidth={200}
+                                previewHeight={150}
+                                previewVariant="carousel"
+                            />
                         </Row>
                     </CardOverflow>
                 </Card>

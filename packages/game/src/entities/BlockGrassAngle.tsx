@@ -4,6 +4,7 @@ import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { BlockSurfaceDecorationSprites } from './groundDecorations/BlockSurfaceDecorationSprites';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function BlockGrassAngle({
@@ -35,6 +36,7 @@ export function BlockGrassAngle({
                 }
                 {...snowPresets.grassAngle}
             />
+            <BlockSurfaceDecorationSprites block={block} surface="grass" />
         </animated.group>
     );
 }

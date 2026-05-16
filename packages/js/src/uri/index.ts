@@ -1,6 +1,8 @@
 export function decodeUriComponentSafe(value: string) {
     try {
-        return decodeURIComponent(value);
+        const normalizedValue = value.replaceAll(/%(?![0-9a-fA-F]{2})/g, '%25');
+
+        return decodeURIComponent(normalizedValue);
     } catch (error) {
         console.error('Failed to decode URI component', error);
         return value;

@@ -13,6 +13,7 @@ export type ShoppingCartDiscount = {
 };
 
 export type ShoppingCartItemWithShopData = SelectShoppingCartItem & {
+    entityData: EntityStandardized;
     shopData: {
         name?: string;
         description?: string;
@@ -24,6 +25,38 @@ export type ShoppingCartItemWithShopData = SelectShoppingCartItem & {
     usesInventory?: boolean;
     inventoryAvailable?: number;
 };
+
+const RAISED_BED_BLOCKS_PER_BED = 2;
+const REQUIRED_PLANT_ITEMS_PER_NEW_RAISED_BED = 9;
+
+function getNewRaisedBedCount(newRaisedBedBlockCount: number) {
+    return Math.ceil(newRaisedBedBlockCount / RAISED_BED_BLOCKS_PER_BED);
+}
+
+export function getNewRaisedBedPlantingNote(
+    missingItemsCount: number,
+    newRaisedBedBlockCount: number,
+) {
+    const newRaisedBedCount = getNewRaisedBedCount(newRaisedBedBlockCount);
+    const neededPlural =
+        missingItemsCount === 1
+            ? 'Potrebna je'
+            : missingItemsCount > 4
+              ? 'Potrebno je'
+              : 'Potrebne su';
+    const plantPlural =
+        missingItemsCount === 1
+            ? 'biljka'
+            : missingItemsCount > 4
+              ? 'biljaka'
+              : 'biljke';
+    const raisedBedsPlural =
+        newRaisedBedCount === 1 ? 'nove gredice' : 'novih gredica';
+    const raisedBedsLocation =
+        newRaisedBedCount === 1 ? 'u ovoj gredici' : 'u novim gredicama';
+
+    return `${neededPlural} još ${missingItemsCount} ${plantPlural} ${raisedBedsLocation} za postavljanje ${raisedBedsPlural}.`;
+}
 
 export async function getCartInfo(
     items: SelectShoppingCartItem[],
@@ -123,6 +156,7 @@ export async function getCartInfo(
                 ...item,
                 usesInventory: wantsInventory,
                 inventoryAvailable,
+                entityData,
                 shopData: {
                     name:
                         entityData.information?.label ??
@@ -179,7 +213,9 @@ export async function getCartInfo(
     const newRaisedBeds = mentionedRaisedBeds.filter(
         (rb) => rb && rb.status === 'new',
     );
-    const requiredItemsCount = Math.ceil(newRaisedBeds.length / 2) * 9;
+    const requiredItemsCount =
+        getNewRaisedBedCount(newRaisedBeds.length) *
+        REQUIRED_PLANT_ITEMS_PER_NEW_RAISED_BED;
 
     const cartItemsInNewRaisedBeds = cartItemsWithShopInfo.filter(
         (item) =>
@@ -191,22 +227,11 @@ export async function getCartInfo(
     if (cartItemsInNewRaisedBeds.length < requiredItemsCount) {
         const missingItemsCount =
             requiredItemsCount - cartItemsInNewRaisedBeds.length;
-        const neededPlural =
-            missingItemsCount === 1
-                ? 'Potrebna je'
-                : missingItemsCount > 4
-                  ? 'Potrebno je'
-                  : 'Potrebne su';
-        const plantPlural =
-            missingItemsCount === 1
-                ? 'biljka'
-                : missingItemsCount > 4
-                  ? 'biljaka'
-                  : 'biljke';
-        const raisedBedsPlural =
-            newRaisedBeds.length === 1 ? 'nove gredice' : 'novih gredica';
         notes.push(
-            `${neededPlural} još ${missingItemsCount} ${plantPlural} u ovoj ili susjednoj gredici za postavljanje ${raisedBedsPlural}.`,
+            getNewRaisedBedPlantingNote(
+                missingItemsCount,
+                newRaisedBeds.length,
+            ),
         );
         allowPurchase = false;
     }

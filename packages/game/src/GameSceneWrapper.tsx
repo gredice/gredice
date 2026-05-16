@@ -3,15 +3,19 @@
 import { useGLTF } from '@react-three/drei';
 import { useEffect, useRef } from 'react';
 import { models } from './data/models';
+import { GameFlagsContext } from './GameFlagsContext';
 import { GameScene, type GameSceneProps } from './GameScene';
 import {
     createGameState,
     GameStateContext,
     type GameStateStore,
+    useDisposeGameStateStore,
 } from './useGameState';
 
 export function GameSceneWrapper({
     appBaseUrl,
+    spriteBaseUrl,
+    flags,
     freezeTime,
     mockGarden,
     winterMode,
@@ -21,11 +25,13 @@ export function GameSceneWrapper({
     if (!storeRef.current) {
         storeRef.current = createGameState({
             appBaseUrl: appBaseUrl || '',
+            spriteBaseUrl,
             freezeTime: freezeTime || null,
             isMock: mockGarden || false,
             winterMode: winterMode ?? 'summer',
         });
     }
+    useDisposeGameStateStore(storeRef.current);
 
     // Sync winterMode prop changes to the store
     useEffect(() => {
@@ -45,7 +51,9 @@ export function GameSceneWrapper({
 
     return (
         <GameStateContext.Provider value={storeRef.current}>
-            <GameScene {...rest} />
+            <GameFlagsContext.Provider value={flags ?? {}}>
+                <GameScene flags={flags} {...rest} />
+            </GameFlagsContext.Provider>
         </GameStateContext.Provider>
     );
 }

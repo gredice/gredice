@@ -1,3 +1,4 @@
+import { orderBy } from '@signalco/js';
 import { Calendar, LayoutGrid } from '@signalco/ui-icons';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -15,7 +16,10 @@ import { Suspense } from 'react';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
 import { PageHeader } from '../../components/shared/PageHeader';
+import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
+import { KnownPages } from '../../src/KnownPages';
+import { merchantReturnPolicy } from '../../src/merchantReturnPolicy';
 import { PlantsCalendar } from './PlantsCalendar';
 import { PlantsGallery } from './PlantsGallery';
 import { PlantsSeedTimeFilterToggle } from './PlantsSeedTimeFilterToggle';
@@ -32,14 +36,52 @@ export default async function PlantsPage({
     const params = await searchParams;
     const viewParam = params.pregled;
     const view = Array.isArray(viewParam) ? viewParam[0] : viewParam;
-    const search = params.pretraga;
+    const search = Array.isArray(params.pretraga)
+        ? (params.pretraga[0] ?? '')
+        : (params.pretraga ?? '');
     const seedTimeFilter = params.vrijemeZaSijanje;
-    const isSeedTimeFilterEnabled =
-        (Array.isArray(seedTimeFilter) ? seedTimeFilter[0] : seedTimeFilter) ===
-        '1';
+    const seedTimeFilterValue = Array.isArray(seedTimeFilter)
+        ? (seedTimeFilter[0] ?? '')
+        : (seedTimeFilter ?? '');
+    const isSeedTimeFilterEnabled = seedTimeFilterValue === '1';
     const entities = await getPlantsData();
+    const isCanonicalView = !search && !isSeedTimeFilterEnabled;
+    const sortedEntities = orderBy(entities ?? [], (a, b) =>
+        a.information.name.localeCompare(b.information.name),
+    );
     return (
         <Stack>
+            {isCanonicalView && (
+                <StructuredDataScript
+                    data={{
+                        '@context': 'https://schema.org',
+                        '@type': 'ItemList',
+                        name: 'Biljke',
+                        itemListElement: sortedEntities.map((plant, index) => ({
+                            '@type': 'ListItem',
+                            position: index + 1,
+                            item: {
+                                '@type': 'Product',
+                                name: plant.information.name,
+                                url: `https://www.gredice.com${KnownPages.Plant(plant.information.name)}`,
+                                image: plant.image?.cover?.url,
+                                offers:
+                                    typeof plant.prices?.perPlant === 'number'
+                                        ? {
+                                              '@type': 'Offer',
+                                              price: plant.prices.perPlant.toFixed(
+                                                  2,
+                                              ),
+                                              priceCurrency: 'EUR',
+                                              hasMerchantReturnPolicy:
+                                                  merchantReturnPolicy,
+                                          }
+                                        : undefined,
+                            },
+                        })),
+                    }}
+                />
+            )}
             <PageHeader
                 padded
                 header="Biljke"
@@ -49,6 +91,7 @@ export default async function PlantsPage({
                     <PageFilterInputNoSSR
                         searchParamName="pretraga"
                         fieldName="plant-search"
+                        initialValue={search}
                         className="lg:flex items-start justify-end"
                     />
                 </Suspense>
@@ -84,16 +127,26 @@ export default async function PlantsPage({
                             </Link>
                         </TabsList>
                         <Suspense>
-                            <PlantsSeedTimeFilterToggle />
+                            <PlantsSeedTimeFilterToggle
+                                initialValue={seedTimeFilterValue}
+                            />
                         </Suspense>
                     </div>
                     <TabsContent value="popis" className="mt-2">
-                        <PlantsGallery plants={entities} />
+                        <PlantsGallery
+                            plants={entities}
+                            initialSearch={search}
+                            initialSeedTimeFilter={seedTimeFilterValue}
+                        />
                     </TabsContent>
                     <TabsContent value="kalendar" className="mt-2">
                         <Card>
                             <CardOverflow>
-                                <PlantsCalendar plants={entities} />
+                                <PlantsCalendar
+                                    plants={entities}
+                                    initialSearch={search}
+                                    initialSeedTimeFilter={seedTimeFilterValue}
+                                />
                             </CardOverflow>
                         </Card>
                     </TabsContent>

@@ -1,30 +1,57 @@
 import { tz } from '@date-fns/tz';
+import { sendEmail } from '@gredice/email/acs';
 import {
+    acceptAccountInvitation,
+    cancelAccountInvitation,
+    createAccountInvitation,
+    createEvent,
     deleteAccountWithDependencies,
     earnSunflowers,
     getAccount,
     getAccountAchievements,
+    getAccountGardens,
+    getAccountInvitationByToken,
+    getAccountInvitations,
+    getAccountInvitationsByEmail,
     getAccountUsers,
+    getEvents,
+    getRaisedBeds,
     getSunflowers,
     getSunflowersHistory,
     getUser,
     knownEventTypes,
     updateAccountTimeZone,
 } from '@gredice/storage';
+import AccountDeleteConfirmationTemplate from '@gredice/transactional/emails/Account/delete-confirmation';
 import { addDays, differenceInCalendarDays, startOfDay } from 'date-fns';
 import { Hono } from 'hono';
-import { describeRoute } from 'hono-openapi';
-import { verifyJwt } from '../../../lib/auth/auth';
+import { setCookie as honoSetCookie } from 'hono/cookie';
+import { describeRoute, validator as zValidator } from 'hono-openapi';
+import { z } from 'zod';
+import { createJwt, verifyJwt } from '../../../lib/auth/auth';
+import {
+    accountCookieName,
+    cookieDomain,
+} from '../../../lib/auth/sessionConfig';
+import { authSecurity } from '../../../lib/docs/security';
+import { sendAccountInvitation } from '../../../lib/email/transactional';
 import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { getPostHogClient } from '../../../lib/posthog-server';
 
 const dailyRewards = [5, 10, 15, 20, 25, 50];
 const DAILY_REWARD_TIME_ZONE = 'Europe/Zagreb';
 
 function rewardForDay(day: number) {
     return dailyRewards[Math.min(day, dailyRewards.length) - 1] ?? 0;
+}
+
+function getEmailDomain(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const [, domain] = normalizedEmail.split('@');
+    return domain ?? 'unknown';
 }
 
 async function getDailyRewardState(accountId: string) {
@@ -152,6 +179,26 @@ async function getDailyRewardState(accountId: string) {
     };
 }
 
+const REFERRAL_REWARD = 10000;
+const REFERRAL_EVENT_TYPE = 'account.referral.v1';
+
+function normalizeReferralCode(code: string) {
+    return code
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, '')
+        .slice(0, 32);
+}
+
+async function hasActiveRaisedBed(accountId: string) {
+    const gardens = await getAccountGardens(accountId);
+    for (const garden of gardens) {
+        const raisedBeds = await getRaisedBeds(garden.id, { status: 'active' });
+        if (raisedBeds.length > 0) return true;
+    }
+    return false;
+}
+
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
         '/current',
@@ -232,6 +279,130 @@ const app = new Hono<{ Variables: AuthVariables }>()
             });
         },
     )
+    .get(
+        '/current/referrals',
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const events = await getEvents(
+                REFERRAL_EVENT_TYPE,
+                [accountId],
+                0,
+                1000,
+            );
+
+            let myCode = '';
+            let usedReferralCode: string | null = null;
+            const referredAccounts: Array<{
+                accountId: string;
+                rewarded: boolean;
+            }> = [];
+
+            for (const event of events) {
+                const data = event.data as Record<string, unknown> | null;
+                if (
+                    data?.action === 'code_set' &&
+                    typeof data.code === 'string'
+                ) {
+                    myCode = data.code;
+                }
+                if (
+                    data?.action === 'used_code' &&
+                    typeof data.code === 'string'
+                ) {
+                    usedReferralCode = data.code;
+                }
+                if (
+                    data?.action === 'referred_account' &&
+                    typeof data.referredAccountId === 'string'
+                ) {
+                    referredAccounts.push({
+                        accountId: data.referredAccountId,
+                        rewarded: data.rewarded === true,
+                    });
+                }
+            }
+
+            if (!myCode) {
+                myCode = normalizeReferralCode(accountId.slice(0, 12));
+            }
+
+            return context.json({
+                myCode,
+                usedReferralCode,
+                referredAccounts,
+                rewardAmount: REFERRAL_REWARD,
+                referralLink: `https://www.gredice.com/preporuke?ref=${encodeURIComponent(myCode)}`,
+            });
+        },
+    )
+    .post(
+        '/current/referrals/code',
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const body = await context.req.json<{ code?: string }>();
+            const code = normalizeReferralCode(body.code ?? '');
+            if (!code) return context.json({ error: 'Neispravan kod' }, 400);
+            if (await hasActiveRaisedBed(accountId)) {
+                return context.json(
+                    { error: 'Kod se ne može mijenjati nakon aktivne gredice' },
+                    400,
+                );
+            }
+            await createEvent({
+                type: REFERRAL_EVENT_TYPE,
+                version: 1,
+                aggregateId: accountId,
+                data: { action: 'code_set', code },
+            });
+            return context.json({ code });
+        },
+    )
+    .post(
+        '/current/referrals/use',
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const body = await context.req.json<{ code?: string }>();
+            const code = normalizeReferralCode(body.code ?? '');
+            if (!code) return context.json({ error: 'Neispravan kod' }, 400);
+            if (await hasActiveRaisedBed(accountId)) {
+                return context.json(
+                    { error: 'Kod se ne može unijeti nakon aktivne gredice' },
+                    400,
+                );
+            }
+
+            const myEvents = await getEvents(
+                REFERRAL_EVENT_TYPE,
+                [accountId],
+                0,
+                1000,
+            );
+            if (
+                myEvents.some(
+                    (e) =>
+                        (e.data as Record<string, unknown> | null)?.action ===
+                        'used_code',
+                )
+            ) {
+                return context.json(
+                    { error: 'Referral kod je već iskorišten' },
+                    400,
+                );
+            }
+
+            await createEvent({
+                type: REFERRAL_EVENT_TYPE,
+                version: 1,
+                aggregateId: accountId,
+                data: { action: 'used_code', code },
+            });
+            return context.json({ ok: true });
+        },
+    )
+
     .get(
         '/current/sunflowers',
         describeRoute({
@@ -314,6 +485,363 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json(newState);
         },
     )
+    .get(
+        '/current/invitations',
+        describeRoute({
+            description: 'Get pending invitations for the current account',
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const invitations = await getAccountInvitations(accountId);
+            return context.json(
+                invitations.map((invitation) => ({
+                    id: invitation.id,
+                    email: invitation.email,
+                    status: invitation.status,
+                    invitedBy: {
+                        id: invitation.invitedByUser.id,
+                        displayName:
+                            invitation.invitedByUser.displayName ??
+                            invitation.invitedByUser.userName,
+                    },
+                    expiresAt: invitation.expiresAt.toISOString(),
+                    createdAt: invitation.createdAt.toISOString(),
+                })),
+            );
+        },
+    )
+    .post(
+        '/current/invitations',
+        describeRoute({
+            description: 'Send an invitation to join the current account',
+        }),
+        zValidator(
+            'json',
+            z.object({
+                email: z.string().email(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId, userId } = context.get('authContext');
+            const { email } = context.req.valid('json');
+
+            // Check if user is already a member
+            const existingUsers = await getAccountUsers(accountId);
+            const alreadyMember = existingUsers.some(
+                (u) => u.user.userName.toLowerCase() === email.toLowerCase(),
+            );
+            if (alreadyMember) {
+                return context.json(
+                    {
+                        error: 'User is already a member of this account',
+                        code: 'already_member',
+                    },
+                    400,
+                );
+            }
+
+            // Check if there is already a pending invitation for this email
+            const existingInvitations = await getAccountInvitations(accountId);
+            const alreadyInvited = existingInvitations.some(
+                (i) => i.email.toLowerCase() === email.toLowerCase(),
+            );
+            if (alreadyInvited) {
+                return context.json(
+                    {
+                        error: 'An invitation has already been sent to this email',
+                        code: 'already_invited',
+                    },
+                    400,
+                );
+            }
+
+            const invitation = await createAccountInvitation(
+                accountId,
+                email,
+                userId,
+            );
+
+            if (!invitation) {
+                return context.json(
+                    {
+                        error: 'Failed to create invitation',
+                        code: 'invitation_creation_failed',
+                    },
+                    500,
+                );
+            }
+
+            // Get inviter info for the email
+            const inviter = await getUser(userId);
+            const inviterName =
+                inviter?.displayName ?? inviter?.userName ?? 'Korisnik';
+
+            const acceptUrl = `https://vrt.gredice.com/pozivnica?token=${invitation.token}`;
+
+            try {
+                await sendAccountInvitation(email, {
+                    email,
+                    invitedByName: inviterName,
+                    acceptUrl,
+                });
+            } catch {
+                // Roll back the invitation so the user can retry
+                await cancelAccountInvitation(invitation.id, accountId);
+                return context.json(
+                    {
+                        error: 'Failed to send invitation email',
+                        code: 'email_send_failed',
+                    },
+                    500,
+                );
+            }
+
+            await (await getPostHogClient()).capture({
+                distinctId: userId,
+                event: 'account_invitation_sent',
+                properties: {
+                    account_id: accountId,
+                    invitation_id: invitation.id,
+                    invited_email_domain: getEmailDomain(email),
+                },
+            });
+
+            return context.json(
+                {
+                    id: invitation.id,
+                    email: invitation.email,
+                    status: invitation.status,
+                    expiresAt: invitation.expiresAt.toISOString(),
+                    createdAt: invitation.createdAt.toISOString(),
+                },
+                201,
+            );
+        },
+    )
+    .delete(
+        '/current/invitations/:invitationId',
+        describeRoute({
+            description: 'Cancel a pending invitation',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                invitationId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const { invitationId } = context.req.valid('param');
+            const invitationIdNumber = Number.parseInt(invitationId, 10);
+            if (Number.isNaN(invitationIdNumber)) {
+                return context.json({ error: 'Invalid invitation ID' }, 400);
+            }
+
+            const result = await cancelAccountInvitation(
+                invitationIdNumber,
+                accountId,
+            );
+            if (!result) {
+                return context.json({ error: 'Invitation not found' }, 404);
+            }
+
+            return context.json({ success: true });
+        },
+    )
+    .post(
+        '/invitations/accept',
+        describeRoute({
+            description: 'Accept an account invitation',
+        }),
+        zValidator(
+            'json',
+            z.object({
+                token: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { userId } = context.get('authContext');
+            const { token } = context.req.valid('json');
+
+            // Verify the accepting user's email matches the invitation
+            const invitation = await getAccountInvitationByToken(token);
+            if (!invitation) {
+                return context.json(
+                    {
+                        error: 'Invalid or expired invitation',
+                        code: 'invalid_invitation',
+                    },
+                    400,
+                );
+            }
+
+            const user = await getUser(userId);
+            if (
+                !user ||
+                user.userName.toLowerCase() !== invitation.email.toLowerCase()
+            ) {
+                return context.json(
+                    {
+                        error: 'Invitation was sent to a different email address',
+                        code: 'email_mismatch',
+                    },
+                    403,
+                );
+            }
+
+            const result = await acceptAccountInvitation(token, userId);
+            if (!result) {
+                return context.json(
+                    {
+                        error: 'Invalid or expired invitation',
+                        code: 'invalid_invitation',
+                    },
+                    400,
+                );
+            }
+
+            // Switch the user to the invited account
+            honoSetCookie(context, accountCookieName, result.accountId, {
+                secure: true,
+                httpOnly: true,
+                sameSite: 'Lax',
+                domain: cookieDomain,
+                maxAge: 365 * 24 * 60 * 60, // 1 year
+            });
+
+            await (await getPostHogClient()).capture({
+                distinctId: userId,
+                event: 'account_invitation_accepted',
+                properties: {
+                    account_id: result.accountId,
+                    invitation_id: invitation.id,
+                    invited_by_user_id: invitation.invitedByUserId,
+                },
+            });
+
+            return context.json({ success: true, accountId: result.accountId });
+        },
+    )
+    .get(
+        '/invitations/pending',
+        describeRoute({
+            description:
+                'Get pending invitations for the current user by email',
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { userId } = context.get('authContext');
+            const user = await getUser(userId);
+            if (!user) {
+                return context.json({ error: 'User not found' }, 404);
+            }
+
+            const invitations = await getAccountInvitationsByEmail(
+                user.userName,
+            );
+            return context.json(
+                invitations.map((invitation) => ({
+                    id: invitation.id,
+                    token: invitation.token,
+                    invitedBy: {
+                        id: invitation.invitedByUser.id,
+                        displayName:
+                            invitation.invitedByUser.displayName ??
+                            invitation.invitedByUser.userName,
+                    },
+                    expiresAt: invitation.expiresAt.toISOString(),
+                    createdAt: invitation.createdAt.toISOString(),
+                })),
+            );
+        },
+    )
+    .get(
+        '/gardens',
+        describeRoute({
+            description:
+                'Get garden picker groups for every account the current user can access.',
+            security: authSecurity,
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const {
+                accountId: currentAccountId,
+                user,
+                userId,
+            } = context.get('authContext');
+            const currentUser = await getUser(userId);
+            const fallbackEmail = currentUser?.userName ?? 'Gredice';
+            const orderedAccountIds = [
+                currentAccountId,
+                ...user.accountIds.filter(
+                    (accountId) => accountId !== currentAccountId,
+                ),
+            ];
+
+            const accountGardenGroups = await Promise.all(
+                orderedAccountIds.map(async (accountId) => {
+                    const [accountUsers, gardens] = await Promise.all([
+                        getAccountUsers(accountId),
+                        getAccountGardens(accountId),
+                    ]);
+                    const accountEmail =
+                        accountUsers[0]?.user.userName ?? fallbackEmail;
+
+                    return {
+                        accountId,
+                        name: `${accountEmail} račun`,
+                        isCurrent: accountId === currentAccountId,
+                        gardens: gardens.map((garden) => ({
+                            id: garden.id,
+                            name: garden.name,
+                            createdAt: garden.createdAt,
+                        })),
+                    };
+                }),
+            );
+
+            return context.json(accountGardenGroups);
+        },
+    )
+    .post(
+        '/switch',
+        describeRoute({
+            description: 'Switch the active account for the current user',
+            security: authSecurity,
+        }),
+        zValidator(
+            'json',
+            z.object({
+                accountId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { user } = context.get('authContext');
+            const { accountId } = context.req.valid('json');
+
+            if (!user.accountIds.includes(accountId)) {
+                return context.json(
+                    { error: 'Account not found or not accessible' },
+                    403,
+                );
+            }
+
+            honoSetCookie(context, accountCookieName, accountId, {
+                secure: true,
+                httpOnly: true,
+                sameSite: 'Lax',
+                domain: cookieDomain,
+                maxAge: 365 * 24 * 60 * 60,
+            });
+
+            return context.json({ success: true, accountId });
+        },
+    )
     .delete(
         '/',
         describeRoute({
@@ -326,6 +854,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 `[AccountDelete] Deleting account with token=${token}`,
             );
             let currentUserId: string | undefined;
+            let requestedAccountId: string | undefined;
             try {
                 const { result, error } = await verifyJwt(
                     typeof token === 'string' ? token : '',
@@ -338,6 +867,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     throw new Error('Invalid state token');
                 }
                 currentUserId = result.payload.sub;
+                const accountIdClaim = result.payload.accountId;
+                requestedAccountId =
+                    typeof accountIdClaim === 'string'
+                        ? accountIdClaim
+                        : undefined;
             } catch (error) {
                 console.warn('Error verifying JWT:', error);
                 return context.json({ error: 'Invalid or expired link.' }, 400);
@@ -345,9 +879,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             try {
                 const user = await getUser(currentUserId);
-                const accountId = user?.accounts?.at(0)?.accountId;
+                const accountIds =
+                    user?.accounts?.map((a) => a.accountId) ?? [];
+                const accountId =
+                    requestedAccountId &&
+                    accountIds.includes(requestedAccountId)
+                        ? requestedAccountId
+                        : undefined;
                 if (!accountId) {
-                    return context.json({ error: 'Account not found.' }, 404);
+                    return context.json(
+                        { error: 'Invalid or expired link.' },
+                        400,
+                    );
                 }
 
                 // TODO: Move check to delete function (repo)
@@ -370,6 +913,56 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 console.error('[AccountDelete] Error deleting account:', error);
                 return context.json({ error: 'Invalid or expired link.' }, 500);
             }
+        },
+    )
+    .post(
+        '/delete-request',
+        describeRoute({
+            description:
+                'Requests account deletion by sending a confirmation email.',
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { user, accountId } = context.get('authContext');
+            const accountUsers = await getAccountUsers(accountId);
+            if (accountUsers.length !== 1) {
+                return context.json(
+                    { error: 'Račun mora imati točno jednog korisnika.' },
+                    400,
+                );
+            }
+
+            const accountUser = accountUsers[0];
+            if (!accountUser || accountUser.userId !== user.id) {
+                return context.json(
+                    { error: 'Račun mora imati točno jednog korisnika.' },
+                    400,
+                );
+            }
+            const token = await createJwt(
+                {
+                    sub: user.id,
+                    accountId,
+                },
+                '72h',
+            );
+            const confirmLink = `https://vrt.gredice.com/racun/brisanje?token=${token}`;
+            const email = accountUser.user.userName;
+            await sendEmail({
+                from: 'suncokret@obavijesti.gredice.com',
+                to: email,
+                subject: 'Gredice - potvrda brisanja računa',
+                template: AccountDeleteConfirmationTemplate({
+                    confirmLink,
+                    email,
+                }),
+                templateName: 'account-delete-confirmation',
+                messageType: 'account',
+                metadata: { accountId },
+            });
+            return context.json({
+                success: true,
+            });
         },
     );
 

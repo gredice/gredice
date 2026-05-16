@@ -5,7 +5,6 @@ import {
     PlantYieldTooltip,
     SeedTimeInformationBadge,
 } from '@gredice/ui/plants';
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Alert } from '@signalco/ui/Alert';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
 import { Button } from '@signalco/ui-primitives/Button';
@@ -14,24 +13,28 @@ import { List } from '@signalco/ui-primitives/List';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { usePlants } from '../../hooks/usePlants';
 import { KnownPages } from '../../knownPages';
 import { PlantListItemSkeleton } from './PlantListItemSkeleton';
 
 export function PlantsList({
     onChange,
+    search,
 }: {
     onChange: (plant: PlantData) => void;
+    search: string;
 }) {
+    const { track } = useGameAnalytics();
     const { data: plants, isLoading, isError } = usePlants();
-    const [search] = useSearchParam('pretraga', '');
+    const normalizedSearch = search.trim().toLowerCase();
     // Filter plants based on search query
     const filteredPlants =
-        search.length > 0
+        normalizedSearch.length > 0
             ? plants?.filter((plant) =>
                   plant.information.name
                       .toLowerCase()
-                      .includes(search.toLowerCase()),
+                      .includes(normalizedSearch),
               )
             : plants;
 
@@ -73,7 +76,14 @@ export function PlantsList({
                             <Button
                                 variant="plain"
                                 className="justify-start text-start p-0 h-auto py-2 gap-3 px-4 rounded-none font-normal"
-                                onClick={() => onChange(plant)}
+                                onClick={() => {
+                                    track('game_plant_selected', {
+                                        is_recommended: plant.isRecommended,
+                                        plant_id: plant.id,
+                                        plant_name: plant.information.name,
+                                    });
+                                    onChange(plant);
+                                }}
                             >
                                 <PlantOrSortImage
                                     plant={plant}
@@ -125,6 +135,12 @@ export function PlantsList({
                                     href={KnownPages.GredicePlant(
                                         plant.information.name,
                                     )}
+                                    onClick={() =>
+                                        track('game_plant_details_opened', {
+                                            plant_id: plant.id,
+                                            plant_name: plant.information.name,
+                                        })
+                                    }
                                 >
                                     Više informacija...
                                 </Button>

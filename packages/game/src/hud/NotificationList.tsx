@@ -1,6 +1,7 @@
 import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { Markdown } from '@gredice/ui/Markdown';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Alert } from '@signalco/ui/Alert';
 import { Check } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
@@ -14,6 +15,7 @@ import type { Route } from 'next';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useMemo } from 'react';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useNotifications } from '../hooks/useNotifications';
@@ -43,8 +45,16 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
     const router = useRouter();
     const { id, header, content, linkUrl, readAt, timestamp, raisedBedId } =
         notification;
+    const { track } = useGameAnalytics();
     const setNotificationRead = useSetNotificationRead();
     const { data: currentGarden } = useCurrentGarden();
+
+    const raisedBed = useMemo(() => {
+        if (!raisedBedId || !currentGarden) {
+            return undefined;
+        }
+        return currentGarden.raisedBeds.find((bed) => bed.id === raisedBedId);
+    }, [raisedBedId, currentGarden]);
 
     // TODO: Remove this backward compatibility code after December 9, 2026
     // This generates the raised bed closeup URL from raisedBedId if linkUrl is not present
@@ -55,19 +65,22 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
         }
 
         // Backward compatibility: generate URL from raisedBedId if linkUrl is missing
-        if (raisedBedId && currentGarden) {
-            const raisedBed = currentGarden.raisedBeds.find(
-                (bed) => bed.id === raisedBedId,
-            );
-            if (raisedBed?.name) {
-                return getRaisedBedCloseupUrl(raisedBed.name);
-            }
+        if (raisedBed?.name) {
+            return getRaisedBedCloseupUrl(raisedBed.name);
         }
 
         return '#';
-    }, [linkUrl, raisedBedId, currentGarden]);
+    }, [linkUrl, raisedBed]);
+
+    const isRead = Boolean(readAt);
 
     function handleSetNotificationRead() {
+        track('game_notification_read_toggled', {
+            has_link: computedLinkUrl !== '#',
+            notification_id: id,
+            raised_bed_id: raisedBedId,
+            read: !isRead,
+        });
         setNotificationRead.mutate({
             id,
             read: !readAt,
@@ -76,6 +89,13 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
     }
 
     function handleNotificationSelected() {
+        track('game_notification_opened', {
+            has_link: computedLinkUrl !== '#',
+            notification_id: id,
+            raised_bed_id: raisedBedId,
+            was_read: isRead,
+        });
+
         if (!readAt) {
             setNotificationRead.mutate({
                 id,
@@ -88,8 +108,6 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
             router.push(computedLinkUrl as Route);
         }
     }
-
-    const isRead = Boolean(readAt);
 
     return (
         <div className="relative">
@@ -148,9 +166,20 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
                 onClick={handleSetNotificationRead}
             >
                 {!isRead && (
-                    <Check className="size-4 shrink-0 hidden group-hover:block" />
+                    <Check className="size-4 shrink-0 hidden group-hover:block text-white" />
                 )}
             </button>
+            {raisedBed?.physicalId && (
+                <div
+                    className="pointer-events-none absolute bottom-2 right-2 text-muted-foreground"
+                    title={`Gredica ${raisedBed.physicalId}`}
+                >
+                    <RaisedBedIcon
+                        physicalId={raisedBed.physicalId}
+                        className="size-5"
+                    />
+                </div>
+            )}
         </div>
     );
 }

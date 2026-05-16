@@ -3,6 +3,18 @@ import {
     devices,
     type PlaywrightTestConfig,
 } from '@playwright/experimental-ct-react';
+import {
+    getAppByName,
+    getComponentTestPort,
+    getPlaywrightBaseUrl,
+    shouldReusePlaywrightServer,
+} from '../../scripts/app-registry.ts';
+
+const app = getAppByName('www');
+const reporter: PlaywrightTestConfig['reporter'] = [
+    ['list'],
+    ['html', { open: 'never' }],
+];
 
 export const config: PlaywrightTestConfig = {
     testDir: './',
@@ -11,23 +23,34 @@ export const config: PlaywrightTestConfig = {
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
-    workers: process.env.CI ? 1 : undefined,
-    reporter: 'html',
+    workers: process.env.CI ? 4 : undefined,
+    reporter,
     use: {
-        baseURL: 'http://127.0.0.1:3000',
+        baseURL: getPlaywrightBaseUrl(app),
         trace: 'on-first-retry',
-        ctPort: 3100,
+        ctPort: getComponentTestPort(app),
     },
     projects: [
         {
             name: 'chromium',
+            testIgnore: /visual\.spec\.ts$/,
             use: { ...devices['Desktop Chrome'] },
+        },
+        {
+            name: 'visual',
+            testMatch: /visual\.spec\.ts$/,
+            workers: 4,
+            retries: 3,
+            use: {
+                ...devices['Desktop Chrome'],
+                viewport: { width: 1280, height: 720 },
+            },
         },
     ],
     webServer: {
         command: 'pnpm start',
-        url: 'http://127.0.0.1:3000',
-        reuseExistingServer: !process.env.CI,
+        url: getPlaywrightBaseUrl(app),
+        reuseExistingServer: shouldReusePlaywrightServer(),
     },
 };
 

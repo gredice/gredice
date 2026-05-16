@@ -1,3 +1,4 @@
+import { userIdToPublicId } from '@gredice/js/publicId';
 import { getUser, getUserWithLogins } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
@@ -14,6 +15,9 @@ import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '../../../../components/admin/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
+import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { Field } from '../../../../components/shared/fields/Field';
 import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
@@ -22,6 +26,7 @@ import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { unblockUserLogin } from '../../../(actions)/userActions';
 import { ButtonImpersonateUser } from '../ButtonImpersonateUser';
+import { SelectUserAvatar } from '../SelectUserAvatar';
 import { SelectUserRole } from '../SelectUserRole';
 
 export default async function UserPage({
@@ -38,24 +43,63 @@ export default async function UserPage({
 
     const logins = await getUserWithLogins(user.userName);
 
-    const { id, createdAt, updatedAt, userName, accounts } = user;
+    const {
+        id,
+        createdAt,
+        updatedAt,
+        userName,
+        accounts,
+        avatarUrl,
+        displayName,
+    } = user;
+    const publicProfileUrl = KnownPages.GrediceUser(userIdToPublicId(id));
+    const userTitle = displayName ?? userName;
 
     return (
         <Stack spacing={4}>
-            <Stack spacing={2}>
-                <Row spacing={2} justifyContent="space-between">
+            <AdminPageTitle title={userTitle} />
+            <AdminPageHeader
+                breadcrumbs={
                     <Breadcrumbs
                         items={[
-                            { label: 'Korisnici', href: KnownPages.Users },
+                            {
+                                label: <AdminBreadcrumbLevelSelector />,
+                                href: KnownPages.Users,
+                            },
                             { label: user.userName },
                         ]}
                     />
-                    <ButtonImpersonateUser userId={user.id} />
-                </Row>
+                }
+                actions={<ButtonImpersonateUser userId={user.id} />}
+                heading={user.userName}
+            />
+            <Stack spacing={2}>
                 <Stack spacing={2}>
                     <FieldSet>
                         <Field name="ID korisnika" value={id} mono />
                         <Field name="Korisničko ime" value={userName} />
+                        <Field
+                            name="Javni profil"
+                            value={
+                                <Link
+                                    href={publicProfileUrl}
+                                    rel="noreferrer"
+                                    target="_blank"
+                                >
+                                    Otvori javni profil
+                                </Link>
+                            }
+                        />
+                        <Field
+                            name="Avatar"
+                            value={
+                                <SelectUserAvatar
+                                    userId={id}
+                                    avatarUrl={avatarUrl}
+                                    displayName={displayName ?? userName}
+                                />
+                            }
+                        />
                         <Field
                             name="Uloga"
                             value={<SelectUserRole user={user} />}

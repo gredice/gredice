@@ -1,23 +1,54 @@
 #!/usr/bin/env node
 
-import { spawn } from 'node:child_process';
-import { access, appendFile, mkdir, readFile } from 'node:fs/promises';
+import { spawn, spawnSync } from 'node:child_process';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
-import { dirname, resolve } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import { exit } from 'node:process';
 import { fileURLToPath } from 'node:url';
+import {
+    appRegistry,
+    getAppDevPort,
+    getWorktreeId,
+    getWorktreeProxyHttpPort,
+    getWorktreeProxyHttpsPort,
+    getWorktreeSlug,
+} from './app-registry.ts';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
-const caddyfilePath = resolve(scriptDir, 'dev', 'Caddyfile');
-const containerName = 'gredice-dev-caddy';
+const repoRoot = resolve(scriptDir, '..');
+const worktreeId = getWorktreeId();
+const worktreeSlug = getWorktreeSlug(worktreeId);
+const linkedGitWorktree = isLinkedGitWorktree();
+const devProxyContainerNamePrefix = 'gredice-dev-caddy';
+const containerName = `${devProxyContainerNamePrefix}-${worktreeSlug}`;
 const dockerImage = process.env.GREDICE_DEV_CADDY_IMAGE ?? 'gredice-caddy-dev';
 const shouldSkipProxy = parseEnvFlag(process.env.SKIP_DEV_PROXY ?? '');
-const extraTurboArgs = process.argv.slice(2);
+const proxyPortsExplicitlyConfigured =
+    hasEnvValue(process.env.GREDICE_PROXY_HTTP_PORT) ||
+    hasEnvValue(process.env.GREDICE_PROXY_HTTPS_PORT);
+const defaultProxyPorts = {
+    http: parsePort(
+        process.env.GREDICE_PROXY_HTTP_PORT,
+        linkedGitWorktree ? getWorktreeProxyHttpPort() : 80,
+    ),
+    https: parsePort(
+        process.env.GREDICE_PROXY_HTTPS_PORT,
+        linkedGitWorktree ? getWorktreeProxyHttpsPort() : 443,
+    ),
+};
+let activeProxyPorts = defaultProxyPorts;
+const rawCliArgs = process.argv.slice(2);
+const includeAllApps = rawCliArgs.includes('--all-apps');
+const extraTurboArgs = rawCliArgs.filter((arg) => arg !== '--all-apps');
+const excludedDefaultDevApps = includeAllApps
+    ? []
+    : appRegistry.filter((app) => !app.startsInDefaultDev);
 const signalNumbers = os.constants?.signals ?? {};
 const defaultDataDir = (() => {
     const homeDir = os.homedir?.();
     if (homeDir) {
-        return resolve(homeDir, '.gredice', 'dev-caddy');
+        return resolve(homeDir, '.gredice', 'dev-caddy', worktreeSlug);
     }
 
     return resolve(scriptDir, 'dev', '.caddy-data');
@@ -27,6 +58,7 @@ const caddyDataDir =
     typeof configuredDataDir === 'string' && configuredDataDir.trim() !== ''
         ? resolve(configuredDataDir)
         : defaultDataDir;
+const caddyfilePath = resolve(caddyDataDir, 'Caddyfile');
 const caddyRootCertPath = resolve(
     caddyDataDir,
     'caddy',
@@ -35,24 +67,107 @@ const caddyRootCertPath = resolve(
     'local',
     'root.crt',
 );
-const caddyDomains = [
-    'www.gredice.test',
-    'vrt.gredice.test',
-    'farma.gredice.test',
-    'app.gredice.test',
-    'api.gredice.test',
+const caddyDomains = appRegistry.map((app) => app.localDomain);
+const requiredHostsLine = `127.0.0.1 ${caddyDomains.join(' ')}`;
+const caddyCertificateLabel = `Caddy Local Authority - ${worktreeSlug}`;
+const turboDevArgs = [
+    ...excludedDefaultDevApps
+        .filter((app) => !hasExplicitFilterForApp(app.name))
+        .map((app) => `--filter=!${app.name}`),
+    ...extraTurboArgs,
 ];
-const caddyCertificateLabel = 'Caddy Local Authority';
 
 let proxyStarted = false;
+
+function hasExplicitFilterForApp(appName) {
+    return extraTurboArgs.some((arg, index) => {
+        if (arg === '--filter') {
+            return extraTurboArgs[index + 1]?.startsWith(appName) === true;
+        }
+
+        return arg.startsWith(`--filter=${appName}`);
+    });
+}
+
+function hasEnvValue(value) {
+    return typeof value === 'string' && value.trim() !== '';
+}
+
+function parsePort(value, fallback) {
+    if (!hasEnvValue(value)) {
+        return fallback;
+    }
+
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isNaN(parsed) || parsed < 1 || parsed > 65_535) {
+        throw new Error(`Invalid port value: ${value}`);
+    }
+
+    return parsed;
+}
+
+function isLinkedGitWorktree() {
+    const result = spawnSync(
+        'git',
+        ['rev-parse', '--path-format=absolute', '--git-common-dir'],
+        {
+            cwd: repoRoot,
+            encoding: 'utf8',
+        },
+    );
+    if (result.status !== 0) {
+        return false;
+    }
+
+    const commonGitDir = result.stdout.trim();
+    if (basename(commonGitDir) !== '.git') {
+        return false;
+    }
+
+    return resolve(dirname(commonGitDir)) !== repoRoot;
+}
 
 function escapeRegExp(value) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function formatExternalProxyUrl(protocol, domain, port) {
+    const defaultPort = protocol === 'https' ? 443 : 80;
+    const portSegment = port === defaultPort ? '' : `:${port}`;
+    return `${protocol}://${domain}${portSegment}`;
+}
+
+function renderCaddyfile() {
+    const appBlocks = appRegistry
+        .map(
+            (app) => `http://${app.localDomain} {
+    redir ${formatExternalProxyUrl('https', app.localDomain, activeProxyPorts.https)}{uri}
+}
+
+https://${app.localDomain} {
+    tls internal
+    reverse_proxy http://host.docker.internal:${getAppDevPort(app)} {
+        header_up X-Forwarded-Proto {http.request.scheme}
+    }
+}`,
+        )
+        .join('\n\n');
+
+    return `{
+    admin off
+    servers {
+        protocols h1 h2
+    }
+}
+
+${appBlocks}
+`;
+}
+
 function getHostsFilePath() {
     if (process.platform === 'win32') {
-        const systemRoot = process.env.SystemRoot ?? process.env.windir ?? 'C:\\Windows';
+        const systemRoot =
+            process.env.SystemRoot ?? process.env.windir ?? 'C:\\Windows';
         return resolve(systemRoot, 'System32', 'drivers', 'etc', 'hosts');
     }
 
@@ -61,12 +176,17 @@ function getHostsFilePath() {
 
 function isHostMappedToLocalhost(contents, host) {
     const escapedHost = escapeRegExp(host);
-    const pattern = new RegExp(`^\\s*127\\.0\\.0\\.1\\s+.*\\b${escapedHost}\\b`, 'mi');
+    const pattern = new RegExp(
+        `^\\s*127\\.0\\.0\\.1\\s+.*\\b${escapedHost}\\b`,
+        'mi',
+    );
     return pattern.test(contents);
 }
 
 function createHostsPermissionError(hostsFilePath, cause) {
-    const error = new Error(`Insufficient permissions to modify the hosts file at ${hostsFilePath}.`);
+    const error = new Error(
+        `Insufficient permissions to modify the hosts file at ${hostsFilePath}.`,
+    );
     error.code = 'HOSTS_PERMISSION_DENIED';
     error.hostsFilePath = hostsFilePath;
     error.cause = cause;
@@ -74,7 +194,9 @@ function createHostsPermissionError(hostsFilePath, cause) {
 }
 
 function createHostsNotFoundError(hostsFilePath, cause) {
-    const error = new Error(`Unable to find the hosts file at ${hostsFilePath}.`);
+    const error = new Error(
+        `Unable to find the hosts file at ${hostsFilePath}.`,
+    );
     error.code = 'HOSTS_FILE_NOT_FOUND';
     error.hostsFilePath = hostsFilePath;
     error.cause = cause;
@@ -84,8 +206,12 @@ function createHostsNotFoundError(hostsFilePath, cause) {
 async function ensureHostsEntries() {
     const hostsFilePath = getHostsFilePath();
     if (!hostsFilePath) {
-        console.warn('Unable to determine the hosts file path for this platform.');
-        console.warn('Add the following entry manually to use the local dev proxy:');
+        console.warn(
+            'Unable to determine the hosts file path for this platform.',
+        );
+        console.warn(
+            'Add the following entry manually to use the local dev proxy:',
+        );
         console.warn(requiredHostsLine);
         return;
     }
@@ -105,28 +231,34 @@ async function ensureHostsEntries() {
         throw error;
     }
 
-    const missingHosts = caddyDomains.filter((host) => !isHostMappedToLocalhost(contents, host));
+    const missingHosts = caddyDomains.filter(
+        (host) => !isHostMappedToLocalhost(contents, host),
+    );
     if (missingHosts.length === 0) {
-        console.log('Verified hosts file entries for the *.gredice.test domains.');
+        console.log(
+            'Verified hosts file entries for the local gredice.test domains.',
+        );
         return;
     }
 
     const newline = contents.includes('\r\n') ? '\r\n' : '\n';
     // Prepare header comments and entries for each domain, both IPv4 and IPv6
-    const headerComment = `##${newline}# Gredice development domains - auto-generated by dev-with-proxy.mjs${newline}# These entries enable local HTTPS development with *.gredice.test domains${newline}# Do not remove unless you no longer need local development with HTTPS${newline}##`;
-    const entries = missingHosts.map((host) => {
-        return [
-            `127.0.0.1 ${host}`,
-            `::1 ${host}`
-        ].join(newline);
-    }).join(newline);
+    const headerComment = `##${newline}# Gredice development domains - auto-generated by dev-with-proxy.mjs${newline}# These entries enable local HTTPS development with gredice.test domains${newline}# Do not remove unless you no longer need local development with HTTPS${newline}##`;
+    const entries = missingHosts
+        .map((host) => {
+            return [`127.0.0.1 ${host}`, `::1 ${host}`].join(newline);
+        })
+        .join(newline);
 
     // Insert at the start of the file with header, entries, and empty line separator
-    const updatedContents = headerComment + newline + entries + newline + newline + contents;
+    const updatedContents =
+        headerComment + newline + entries + newline + newline + contents;
 
     try {
         // Overwrite the hosts file with new entries at the top
-        await import('node:fs/promises').then(fs => fs.writeFile(hostsFilePath, updatedContents, { encoding: 'utf8' }));
+        await import('node:fs/promises').then((fs) =>
+            fs.writeFile(hostsFilePath, updatedContents, { encoding: 'utf8' }),
+        );
         exit(0);
     } catch (error) {
         if (error?.code === 'EACCES' || error?.code === 'EPERM') {
@@ -143,7 +275,13 @@ function parseEnvFlag(value) {
     }
 
     const normalized = value.toString().trim().toLowerCase();
-    if (normalized === '' || normalized === '0' || normalized === 'false' || normalized === 'no' || normalized === 'off') {
+    if (
+        normalized === '' ||
+        normalized === '0' ||
+        normalized === 'false' ||
+        normalized === 'no' ||
+        normalized === 'off'
+    ) {
         return false;
     }
 
@@ -178,7 +316,10 @@ async function fileExists(filePath) {
     }
 }
 
-async function waitForFile(filePath, { intervalMs = 250, timeoutMs = 15000 } = {}) {
+async function waitForFile(
+    filePath,
+    { intervalMs = 250, timeoutMs = 15000 } = {},
+) {
     const start = Date.now();
 
     while (Date.now() - start <= timeoutMs) {
@@ -194,7 +335,10 @@ async function waitForFile(filePath, { intervalMs = 250, timeoutMs = 15000 } = {
 
 async function commandExists(command) {
     const locator = process.platform === 'win32' ? 'where' : 'which';
-    const result = await runCommand(locator, [command], { capture: true, ignoreErrors: true });
+    const result = await runCommand(locator, [command], {
+        capture: true,
+        ignoreErrors: true,
+    });
     return result.code === 0;
 }
 
@@ -219,15 +363,18 @@ async function warmUpCaddyCertificates() {
         '/dev/null',
         '--insecure',
         '--resolve',
-        `${domain}:443:127.0.0.1`,
-        `https://${domain}/`,
+        `${domain}:${activeProxyPorts.https}:127.0.0.1`,
+        `${formatExternalProxyUrl('https', domain, activeProxyPorts.https)}/`,
         '--max-time',
         '5',
     ];
 
     for (const domain of caddyDomains) {
         try {
-            const result = await runCommand('curl', curlArgs(domain), { capture: true, ignoreErrors: true });
+            const result = await runCommand('curl', curlArgs(domain), {
+                capture: true,
+                ignoreErrors: true,
+            });
             if (result.code === 0) {
                 return;
             }
@@ -243,12 +390,16 @@ async function warmUpCaddyCertificates() {
 
 async function trustCaddyCertificates() {
     if (!caddyDataDir) {
-        console.warn('Skipping Caddy certificate trust step because no data directory is configured.');
+        console.warn(
+            'Skipping Caddy certificate trust step because no data directory is configured.',
+        );
         return;
     }
 
     const dataDirReady = await ensureCaddyDataDirectory().catch((error) => {
-        console.warn('Unable to create the local data directory for the Caddy dev proxy.');
+        console.warn(
+            'Unable to create the local data directory for the Caddy dev proxy.',
+        );
         if (error?.message) {
             console.warn(error.message);
         }
@@ -262,10 +413,16 @@ async function trustCaddyCertificates() {
     await delay(500);
     await warmUpCaddyCertificates();
 
-    const certificateReady = await waitForFile(caddyRootCertPath, { timeoutMs: 20000 });
+    const certificateReady = await waitForFile(caddyRootCertPath, {
+        timeoutMs: 20000,
+    });
     if (!certificateReady) {
-        console.warn('Timed out waiting for the Caddy development certificate authority to be created.');
-        console.warn(`If browsers report certificate errors, import the CA manually from: ${caddyRootCertPath}`);
+        console.warn(
+            'Timed out waiting for the Caddy development certificate authority to be created.',
+        );
+        console.warn(
+            `If browsers report certificate errors, import the CA manually from: ${caddyRootCertPath}`,
+        );
         return;
     }
 
@@ -280,19 +437,25 @@ async function trustCaddyCertificates() {
 
     if (result?.success) {
         if (result.details) {
-            console.log(`Trusted the Caddy development certificate authority (${result.details}).`);
+            console.log(
+                `Trusted the Caddy development certificate authority (${result.details}).`,
+            );
         } else {
             console.log('Trusted the Caddy development certificate authority.');
         }
         return;
     }
 
-    console.warn('Unable to automatically trust the Caddy development certificate authority.');
+    console.warn(
+        'Unable to automatically trust the Caddy development certificate authority.',
+    );
     if (result?.message) {
         console.warn(result.message);
     }
 
-    console.warn(`If browsers continue to warn about HTTPS, import the CA manually from: ${caddyRootCertPath}`);
+    console.warn(
+        `If browsers continue to warn about HTTPS, import the CA manually from: ${caddyRootCertPath}`,
+    );
 }
 
 async function trustCertificateOnMac(rootCertPath) {
@@ -306,38 +469,45 @@ async function trustCertificateOnMac(rootCertPath) {
     const systemKeychain = '/Library/Keychains/System.keychain';
 
     const keychain = keychainCandidates.length
-        ? (
+        ? ((
               await Promise.all(
-                  keychainCandidates.map(async (candidate) => ({ candidate, exists: await fileExists(candidate) })),
+                  keychainCandidates.map(async (candidate) => ({
+                      candidate,
+                      exists: await fileExists(candidate),
+                  })),
               )
-          ).find((entry) => entry.exists)?.candidate ?? keychainCandidates[0]
+          ).find((entry) => entry.exists)?.candidate ?? keychainCandidates[0])
         : null;
-
-    try {
-        if (keychain) {
-            await runCommand('security', ['delete-certificate', '-c', caddyCertificateLabel, keychain], {
-                ignoreErrors: true,
-            });
-        }
-    } catch (error) {
-        if (error?.code !== 'ENOENT') {
-            return { success: false, message: error?.message ?? 'Failed to manage certificates with the macOS security tool.' };
-        }
-    }
 
     if (keychain) {
         try {
             const addResult = await runCommand(
                 'security',
-                ['add-trusted-cert', '-d', '-r', 'trustRoot', '-k', keychain, rootCertPath],
+                [
+                    'add-trusted-cert',
+                    '-d',
+                    '-r',
+                    'trustRoot',
+                    '-k',
+                    keychain,
+                    rootCertPath,
+                ],
                 { capture: true, ignoreErrors: true },
             );
             if (addResult.code === 0) {
-                return { success: true, details: 'added to the login keychain' };
+                return {
+                    success: true,
+                    details: 'added to the login keychain',
+                };
             }
         } catch (error) {
             if (error?.code !== 'ENOENT') {
-                return { success: false, message: error?.message ?? 'Failed to add the certificate to the login keychain.' };
+                return {
+                    success: false,
+                    message:
+                        error?.message ??
+                        'Failed to add the certificate to the login keychain.',
+                };
             }
         }
     }
@@ -345,7 +515,16 @@ async function trustCertificateOnMac(rootCertPath) {
     try {
         const sudoResult = await runCommand(
             'sudo',
-            ['security', 'add-trusted-cert', '-d', '-r', 'trustRoot', '-k', systemKeychain, rootCertPath],
+            [
+                'security',
+                'add-trusted-cert',
+                '-d',
+                '-r',
+                'trustRoot',
+                '-k',
+                systemKeychain,
+                rootCertPath,
+            ],
             { ignoreErrors: true },
         );
 
@@ -364,27 +543,23 @@ async function trustCertificateOnMac(rootCertPath) {
         if (error?.code === 'ENOENT') {
             return {
                 success: false,
-                message: 'sudo is not available to install the certificate. Import it manually via Keychain Access.',
+                message:
+                    'sudo is not available to install the certificate. Import it manually via Keychain Access.',
             };
         }
 
-        return { success: false, message: error?.message ?? 'Failed to add the certificate to the system keychain.' };
+        return {
+            success: false,
+            message:
+                error?.message ??
+                'Failed to add the certificate to the system keychain.',
+        };
     }
 
     return { success: false };
 }
 
 async function trustCertificateOnWindows(rootCertPath) {
-    try {
-        await runCommand('certutil', ['-user', '-delstore', 'Root', caddyCertificateLabel], { capture: true, ignoreErrors: true });
-    } catch (error) {
-        if (error?.code === 'ENOENT') {
-            return { success: false, message: 'certutil is not available on this system. Import the certificate via certmgr.msc.' };
-        }
-
-        return { success: false, message: error?.message ?? 'Failed to manage certificates with certutil.' };
-    }
-
     const userStoreResult = await runCommand(
         'certutil',
         ['-user', '-addstore', 'Root', rootCertPath],
@@ -392,7 +567,10 @@ async function trustCertificateOnWindows(rootCertPath) {
     );
 
     if (userStoreResult.code === 0) {
-        return { success: true, details: 'added to the current user trust store' };
+        return {
+            success: true,
+            details: 'added to the current user trust store',
+        };
     }
 
     const machineStoreResult = await runCommand(
@@ -402,7 +580,10 @@ async function trustCertificateOnWindows(rootCertPath) {
     );
 
     if (machineStoreResult.code === 0) {
-        return { success: true, details: 'added to the local machine trust store' };
+        return {
+            success: true,
+            details: 'added to the local machine trust store',
+        };
     }
 
     return {
@@ -418,7 +599,13 @@ async function trustCertificateOnLinux(rootCertPath) {
     if (await commandExists('trust')) {
         const trustResult = await runCommand(
             'trust',
-            ['anchor', '--store', '--label', caddyCertificateLabel, rootCertPath],
+            [
+                'anchor',
+                '--store',
+                '--label',
+                caddyCertificateLabel,
+                rootCertPath,
+            ],
             { capture: true, ignoreErrors: true },
         );
 
@@ -432,29 +619,61 @@ async function trustCertificateOnLinux(rootCertPath) {
         if (homeDir) {
             const nssDbPath = resolve(homeDir, '.pki', 'nssdb');
             await mkdir(nssDbPath, { recursive: true });
-            await runCommand('certutil', ['-d', `sql:${nssDbPath}`, '-D', '-n', caddyCertificateLabel], {
-                capture: true,
-                ignoreErrors: true,
-            });
+            await runCommand(
+                'certutil',
+                ['-d', `sql:${nssDbPath}`, '-D', '-n', caddyCertificateLabel],
+                {
+                    capture: true,
+                    ignoreErrors: true,
+                },
+            );
             const addResult = await runCommand(
                 'certutil',
-                ['-d', `sql:${nssDbPath}`, '-A', '-t', 'C,,', '-n', caddyCertificateLabel, '-i', rootCertPath],
+                [
+                    '-d',
+                    `sql:${nssDbPath}`,
+                    '-A',
+                    '-t',
+                    'C,,',
+                    '-n',
+                    caddyCertificateLabel,
+                    '-i',
+                    rootCertPath,
+                ],
                 { capture: true, ignoreErrors: true },
             );
 
             if (addResult.code === 0) {
-                return { success: true, details: 'added to the NSS trust store' };
+                return {
+                    success: true,
+                    details: 'added to the NSS trust store',
+                };
             }
         }
     }
 
-    if (await commandExists('sudo') && (await commandExists('update-ca-certificates'))) {
-        const destination = '/usr/local/share/ca-certificates/gredice-dev-caddy.crt';
-        const copyResult = await runCommand('sudo', ['cp', rootCertPath, destination], { ignoreErrors: true });
+    if (
+        (await commandExists('sudo')) &&
+        (await commandExists('update-ca-certificates'))
+    ) {
+        const destination =
+            '/usr/local/share/ca-certificates/gredice-dev-caddy.crt';
+        const copyResult = await runCommand(
+            'sudo',
+            ['cp', rootCertPath, destination],
+            { ignoreErrors: true },
+        );
         if (copyResult.code === 0) {
-            const updateResult = await runCommand('sudo', ['update-ca-certificates'], { ignoreErrors: true });
+            const updateResult = await runCommand(
+                'sudo',
+                ['update-ca-certificates'],
+                { ignoreErrors: true },
+            );
             if (updateResult.code === 0) {
-                return { success: true, details: 'added to the system CA bundle' };
+                return {
+                    success: true,
+                    details: 'added to the system CA bundle',
+                };
             }
         }
     }
@@ -462,11 +681,15 @@ async function trustCertificateOnLinux(rootCertPath) {
     return {
         success: false,
         message:
-            'Install p11-kit (trust), nss-tools (certutil), or use your distribution\'s certificate tools to trust the Caddy development CA manually. For Docker: consider using a custom image with these tools installed.',
+            "Install p11-kit (trust), nss-tools (certutil), or use your distribution's certificate tools to trust the Caddy development CA manually. For Docker: consider using a custom image with these tools installed.",
     };
 }
 
-async function spawnCommand(command, args, { capture = false, ignoreErrors = false, useShell = false } = {}) {
+async function spawnCommand(
+    command,
+    args,
+    { capture = false, ignoreErrors = false, useShell = false } = {},
+) {
     return await new Promise((resolve, reject) => {
         let child;
 
@@ -504,8 +727,14 @@ async function spawnCommand(command, args, { capture = false, ignoreErrors = fal
             }
 
             const commandString = `${command} ${args.join(' ')}`.trim();
-            const outputMessage = (capture ? `${stderr}${stderr && stdout ? '\n' : ''}${stdout}` : '').trim();
-            const error = new Error(outputMessage || `Command failed: ${commandString}`);
+            const outputMessage = (
+                capture
+                    ? `${stderr}${stderr && stdout ? '\n' : ''}${stdout}`
+                    : ''
+            ).trim();
+            const error = new Error(
+                outputMessage || `Command failed: ${commandString}`,
+            );
             error.code = code;
             error.stdout = stdout;
             error.stderr = stderr;
@@ -516,13 +745,24 @@ async function spawnCommand(command, args, { capture = false, ignoreErrors = fal
 
 async function runCommand(command, args, options = {}) {
     const { capture = false, ignoreErrors = false } = options;
-    const runOptions = { capture, ignoreErrors, useShell: options.useShell === true };
+    const runOptions = {
+        capture,
+        ignoreErrors,
+        useShell: options.useShell === true,
+    };
 
     try {
         return await spawnCommand(command, args, runOptions);
     } catch (error) {
-        if (error?.code === 'EINVAL' && process.platform === 'win32' && !runOptions.useShell) {
-            return await runCommand(command, args, { ...options, useShell: true });
+        if (
+            error?.code === 'EINVAL' &&
+            process.platform === 'win32' &&
+            !runOptions.useShell
+        ) {
+            return await runCommand(command, args, {
+                ...options,
+                useShell: true,
+            });
         }
 
         if (ignoreErrors) {
@@ -535,7 +775,11 @@ async function runCommand(command, args, options = {}) {
 
 async function dockerImageExists(imageName) {
     try {
-        const result = await runCommand('docker', ['image', 'inspect', imageName], { capture: true, ignoreErrors: true });
+        const result = await runCommand(
+            'docker',
+            ['image', 'inspect', imageName],
+            { capture: true, ignoreErrors: true },
+        );
         return result.code === 0;
     } catch {
         return false;
@@ -544,11 +788,17 @@ async function dockerImageExists(imageName) {
 
 async function buildCaddyImage() {
     const dockerfilePath = resolve(scriptDir, 'dev');
-    
-    console.log('Building custom Caddy development image with certificate tools...');
-    
+
+    console.log(
+        'Building custom Caddy development image with certificate tools...',
+    );
+
     try {
-        await runCommand('docker', ['build', '-t', 'gredice-caddy-dev', dockerfilePath], { capture: false });
+        await runCommand(
+            'docker',
+            ['build', '-t', 'gredice-caddy-dev', dockerfilePath],
+            { capture: false },
+        );
         console.log('Custom Caddy development image built successfully!');
         return true;
     } catch (error) {
@@ -565,28 +815,211 @@ async function ensureCaddyImage() {
     if (dockerImage === 'caddy:2.9.1') {
         return true;
     }
-    
+
     // Check if custom image exists
     if (await dockerImageExists(dockerImage)) {
         return true;
     }
-    
+
     console.log(`Custom Docker image '${dockerImage}' not found locally.`);
     return await buildCaddyImage();
 }
 
-async function ensureCaddyfile() {
-    await access(caddyfilePath);
+function parseDockerContainerLine(line) {
+    if (!line.trim()) {
+        return null;
+    }
+
+    try {
+        const details = JSON.parse(line);
+        const id = typeof details.ID === 'string' ? details.ID : '';
+        const names =
+            typeof details.Names === 'string'
+                ? details.Names.split(',')
+                      .map((name) => name.trim())
+                      .filter(Boolean)
+                : [];
+        const ports = typeof details.Ports === 'string' ? details.Ports : '';
+
+        return { id, names, ports };
+    } catch {
+        return null;
+    }
 }
 
-async function startProxy() {
+async function listRunningDockerContainers() {
+    const result = await runCommand(
+        'docker',
+        ['ps', '--format', '{{json .}}'],
+        { capture: true, ignoreErrors: true },
+    );
+
+    if (result.code !== 0) {
+        return [];
+    }
+
+    return result.stdout
+        .split(/\r?\n/)
+        .map(parseDockerContainerLine)
+        .filter(Boolean);
+}
+
+function isGrediceDevProxyContainerName(name) {
+    return (
+        name === devProxyContainerNamePrefix ||
+        name.startsWith(`${devProxyContainerNamePrefix}-`)
+    );
+}
+
+function containerPublishesHostPort(container, port) {
+    const trimmedPort = String(port).trim();
+    if (!trimmedPort) {
+        return false;
+    }
+
+    const escapedPort = escapeRegExp(trimmedPort);
+    const pattern = new RegExp(
+        `(?:^|[\\s,])(?:[^\\s,]+:)?${escapedPort}->`,
+    );
+    return pattern.test(container.ports);
+}
+
+function getPublishedHostPorts(container, ports) {
+    return ports.filter((port) => containerPublishesHostPort(container, port));
+}
+
+async function stopConflictingGrediceDevProxies(ports) {
+    const containers = await listRunningDockerContainers();
+    const conflicts = containers.filter((container) => {
+        if (!container.id) {
+            return false;
+        }
+
+        if (container.names.includes(containerName)) {
+            return false;
+        }
+
+        const isGrediceDevProxy = container.names.some(
+            isGrediceDevProxyContainerName,
+        );
+        if (!isGrediceDevProxy) {
+            return false;
+        }
+
+        return ports.some((port) =>
+            containerPublishesHostPort(container, port),
+        );
+    });
+
+    for (const container of conflicts) {
+        const displayName = container.names[0] ?? container.id;
+        const publishedPorts = getPublishedHostPorts(container, ports);
+        const portLabel =
+            publishedPorts.length === 1
+                ? `port ${publishedPorts[0]}`
+                : `ports ${publishedPorts.join('/')}`;
+        console.log(
+            `Stopping existing Gredice dev proxy container ${displayName} on ${portLabel} before starting this worktree's proxy.`,
+        );
+        await runCommand('docker', ['rm', '-f', container.id], {
+            capture: true,
+            ignoreErrors: true,
+        });
+    }
+}
+
+function isProxyPortBindError(error) {
+    const message = `${error?.stderr ?? ''}\n${error?.message ?? ''}`;
+    return /port is already allocated|ports are not available|bind: address already in use|failed to set up container networking|Bind for .* failed/i.test(
+        message,
+    );
+}
+
+async function createProxyPortConflictError(cause, attemptedPorts) {
+    const ports = [String(attemptedPorts.http), String(attemptedPorts.https)];
+    const alternateHttpPort = ports[0] === '8080' ? '8081' : '8080';
+    const alternateHttpsPort = ports[1] === '8443' ? '8444' : '8443';
+    const containers = await listRunningDockerContainers();
+    const portOwners = containers.filter((container) =>
+        ports.some((port) => containerPublishesHostPort(container, port)),
+    );
+    const lines = [
+        `Ports ${ports.join('/')} are unavailable for the Caddy dev proxy.`,
+    ];
+
+    if (portOwners.length > 0) {
+        lines.push('Docker containers currently publishing those ports:');
+        for (const container of portOwners) {
+            const displayName = container.names[0] ?? container.id;
+            const publishedPorts = getPublishedHostPorts(container, ports);
+            lines.push(`- ${displayName}: ${publishedPorts.join(', ')}`);
+        }
+    } else if (process.platform === 'win32') {
+        lines.push(
+            `Use \`Get-NetTCPConnection -LocalPort ${ports.join(',')}\` to find the local process that owns the ports.`,
+        );
+    } else {
+        const lsofPortArgs = ports.map((port) => `-iTCP:${port}`).join(' ');
+        lines.push(
+            `Use \`lsof -nP ${lsofPortArgs} -sTCP:LISTEN\` to find the local process that owns the ports.`,
+        );
+    }
+
+    if (process.platform === 'win32') {
+        lines.push(
+            `Stop the conflicting service and rerun \`pnpm dev\`, or choose alternate host ports: \`$env:GREDICE_PROXY_HTTP_PORT='${alternateHttpPort}'; $env:GREDICE_PROXY_HTTPS_PORT='${alternateHttpsPort}'; pnpm dev\`.`,
+        );
+    } else {
+        lines.push(
+            `Stop the conflicting service and rerun \`pnpm dev\`, or choose alternate host ports: \`GREDICE_PROXY_HTTP_PORT=${alternateHttpPort} GREDICE_PROXY_HTTPS_PORT=${alternateHttpsPort} pnpm dev\`.`,
+        );
+    }
+
+    const error = new Error(lines.join('\n'));
+    error.code = 'PROXY_PORT_CONFLICT';
+    error.cause = cause;
+    return error;
+}
+
+async function writeCaddyfile() {
+    await ensureCaddyDataDirectory();
+    await writeFile(caddyfilePath, renderCaddyfile(), 'utf8');
+}
+
+function applyActiveProxyPorts(ports) {
+    activeProxyPorts = ports;
+    process.env.GREDICE_PROXY_HTTP_PORT = String(ports.http);
+    process.env.GREDICE_PROXY_HTTPS_PORT = String(ports.https);
+}
+
+function getFallbackProxyPorts() {
+    return {
+        http: getWorktreeProxyHttpPort(),
+        https: getWorktreeProxyHttpsPort(),
+    };
+}
+
+function areProxyPortsEqual(left, right) {
+    return left.http === right.http && left.https === right.https;
+}
+
+async function startProxyOnPorts(ports) {
+    applyActiveProxyPorts(ports);
+
     // Ensure the Docker image exists before starting the container
     const imageReady = await ensureCaddyImage();
     if (!imageReady) {
-        throw new Error(`Failed to prepare Docker image '${dockerImage}'. Cannot start the dev proxy.`);
+        throw new Error(
+            `Failed to prepare Docker image '${dockerImage}'. Cannot start the dev proxy.`,
+        );
     }
 
-    await runCommand('docker', ['rm', '-f', containerName], { capture: true, ignoreErrors: true });
+    await writeCaddyfile();
+    await runCommand('docker', ['rm', '-f', containerName], {
+        capture: true,
+        ignoreErrors: true,
+    });
+    await stopConflictingGrediceDevProxies([ports.http, ports.https]);
 
     const args = [
         'run',
@@ -594,11 +1027,15 @@ async function startProxy() {
         '--name',
         containerName,
         '-d',
+        '--label',
+        'dev.gredice.role=dev-proxy',
+        '--label',
+        `dev.gredice.worktree-slug=${worktreeSlug}`,
         '--add-host=host.docker.internal:host-gateway',
         '-p',
-        '80:80',
+        `${ports.http}:80`,
         '-p',
-        '443:443',
+        `${ports.https}:443`,
     ];
 
     if (caddyDataDir) {
@@ -606,7 +1043,9 @@ async function startProxy() {
             await ensureCaddyDataDirectory();
             args.push('-v', `${caddyDataDir}:/data`);
         } catch (error) {
-            console.warn('Unable to prepare persistent storage for the Caddy dev proxy. Certificates may not be trusted.');
+            console.warn(
+                'Unable to prepare persistent storage for the Caddy dev proxy. Certificates may not be trusted.',
+            );
             if (error?.message) {
                 console.warn(error.message);
             }
@@ -616,12 +1055,62 @@ async function startProxy() {
     args.push('-v', `${caddyfilePath}:/etc/caddy/Caddyfile:ro`);
     args.push(dockerImage);
 
-    const { stdout } = await runCommand('docker', args, { capture: true });
+    const result = await runCommand('docker', args, { capture: true });
+
+    const { stdout } = result;
     const containerId = stdout.trim();
 
-    console.log(`Caddy dev proxy started${containerId ? ` (${containerId.slice(0, 12)})` : ''}.`);
+    console.log(
+        `Caddy dev proxy started${containerId ? ` (${containerId.slice(0, 12)})` : ''} for worktree ${worktreeSlug} on ports ${ports.http}/${ports.https}.`,
+    );
+    console.log('Local domain upstreams:');
+    for (const app of appRegistry) {
+        console.log(
+            `- ${formatExternalProxyUrl('https', app.localDomain, ports.https)} -> localhost:${getAppDevPort(app)}`,
+        );
+    }
     proxyStarted = true;
     return containerId;
+}
+
+async function startProxy() {
+    try {
+        return await startProxyOnPorts(defaultProxyPorts);
+    } catch (error) {
+        const fallbackPorts = getFallbackProxyPorts();
+        const isPortBindError = isProxyPortBindError(error);
+        const canFallback =
+            !proxyPortsExplicitlyConfigured &&
+            !areProxyPortsEqual(defaultProxyPorts, fallbackPorts) &&
+            isPortBindError;
+
+        if (!canFallback) {
+            if (isPortBindError) {
+                throw await createProxyPortConflictError(
+                    error,
+                    defaultProxyPorts,
+                );
+            }
+
+            throw error;
+        }
+
+        console.warn(
+            `Proxy ports ${defaultProxyPorts.http}/${defaultProxyPorts.https} are already in use; retrying on worktree ports ${fallbackPorts.http}/${fallbackPorts.https}.`,
+        );
+        try {
+            return await startProxyOnPorts(fallbackPorts);
+        } catch (fallbackError) {
+            if (isProxyPortBindError(fallbackError)) {
+                throw await createProxyPortConflictError(
+                    fallbackError,
+                    fallbackPorts,
+                );
+            }
+
+            throw fallbackError;
+        }
+    }
 }
 
 async function stopProxy() {
@@ -629,7 +1118,10 @@ async function stopProxy() {
         return;
     }
 
-    const result = await runCommand('docker', ['stop', containerName], { capture: true, ignoreErrors: true });
+    const result = await runCommand('docker', ['stop', containerName], {
+        capture: true,
+        ignoreErrors: true,
+    });
     if (result.code === 0) {
         console.log('Caddy dev proxy stopped.');
     }
@@ -642,7 +1134,7 @@ function getTurboCommand() {
 async function runTurboDev() {
     return await new Promise((resolve, reject) => {
         const turboCommand = getTurboCommand();
-        const turboProcess = spawn(turboCommand, ['dev', ...extraTurboArgs], {
+        const turboProcess = spawn(turboCommand, ['dev', ...turboDevArgs], {
             stdio: 'inherit',
             env: process.env,
             shell: process.platform === 'win32',
@@ -682,46 +1174,54 @@ async function runTurboDev() {
 
 async function main() {
     if (shouldSkipProxy) {
-        console.log('SKIP_DEV_PROXY is set. Starting Turborepo without the local Caddy proxy.');
+        console.log(
+            'SKIP_DEV_PROXY is set. Starting Turborepo without the local Caddy proxy.',
+        );
     } else {
-        try {
-            await ensureCaddyfile();
-        } catch {
-            console.error(`Missing Caddyfile for the dev proxy at ${caddyfilePath}.`);
-            console.error('Ensure the repository is up to date and try again.');
-            return 1;
-        }
-
         try {
             await ensureHostsEntries();
         } catch (error) {
             if (error?.code === 'HOSTS_PERMISSION_DENIED') {
-                console.error('Unable to update the hosts file automatically because elevated permissions are required.');
+                console.error(
+                    'Unable to update the hosts file automatically because elevated permissions are required.',
+                );
                 if (error?.hostsFilePath) {
                     console.error(`Hosts file: ${error.hostsFilePath}`);
                 }
-                console.error('Re-run this command with administrative privileges or add the following entry manually:');
+                console.error(
+                    'Re-run this command with administrative privileges or add the following entry manually:',
+                );
                 console.error(requiredHostsLine);
                 if (process.platform === 'win32') {
-                    console.error('Tip: run this command from an elevated PowerShell or Command Prompt.');
+                    console.error(
+                        'Tip: run this command from an elevated PowerShell or Command Prompt.',
+                    );
                 } else {
-                    console.error('Tip: run `sudo pnpm dev` once to add the entries, then rerun without sudo.');
+                    console.error(
+                        'Tip: run `sudo pnpm dev` once to add the entries, then rerun without sudo.',
+                    );
                 }
                 return 1;
             }
 
             if (error?.code === 'HOSTS_FILE_NOT_FOUND') {
                 if (error?.hostsFilePath) {
-                    console.error(`Unable to locate the hosts file at ${error.hostsFilePath}.`);
+                    console.error(
+                        `Unable to locate the hosts file at ${error.hostsFilePath}.`,
+                    );
                 } else {
                     console.error('Unable to locate the system hosts file.');
                 }
-                console.error('Add the following entry manually and rerun the command:');
+                console.error(
+                    'Add the following entry manually and rerun the command:',
+                );
                 console.error(requiredHostsLine);
                 return 1;
             }
 
-            console.error('Failed to verify the hosts file entries required by the local dev proxy.');
+            console.error(
+                'Failed to verify the hosts file entries required by the local dev proxy.',
+            );
             if (error?.message) {
                 console.error(error.message);
             }
@@ -730,17 +1230,32 @@ async function main() {
 
         try {
             await startProxy();
-            console.log('Apps will be available on the *.gredice.test subdomains once Turbo finishes booting.');
-            console.log('Ensure that your hosts file maps these domains to 127.0.0.1.');
+            console.log(
+                'Apps will be available on the local gredice.test domains once Turbo finishes booting.',
+            );
+            console.log(
+                'Ensure that your hosts file maps these domains to 127.0.0.1.',
+            );
             await trustCaddyCertificates();
         } catch (error) {
             if (error?.code === 'ENOENT') {
-                console.error('Docker is required to start the local dev proxy but it was not found in PATH.');
-                console.error('Install Docker (or start Docker Desktop) and try again.');
+                console.error(
+                    'Docker is required to start the local dev proxy but it was not found in PATH.',
+                );
+                console.error(
+                    'Install Docker (or start Docker Desktop) and try again.',
+                );
                 return 1;
             }
 
-            console.error('Failed to start the Caddy dev proxy. Is the Docker daemon running?');
+            if (error?.code === 'PROXY_PORT_CONFLICT') {
+                console.error(error.message);
+                return 1;
+            }
+
+            console.error(
+                'Failed to start the Caddy dev proxy. Is the Docker daemon running?',
+            );
             if (error?.stderr) {
                 console.error(error.stderr.trim());
             } else if (error?.message) {
@@ -756,7 +1271,9 @@ async function main() {
     } catch (error) {
         if (error?.code === 'ENOENT') {
             console.error('Unable to find the Turborepo executable.');
-            console.error('Ensure dependencies are installed and pnpm is available.');
+            console.error(
+                'Ensure dependencies are installed and pnpm is available.',
+            );
             return 1;
         }
 

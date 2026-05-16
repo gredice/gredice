@@ -59,9 +59,6 @@ export function GardenNameCard({
                 <CardContent noHeader>
                     <Stack spacing={3}>
                         <Stack spacing={1}>
-                            <Typography level="body2">
-                                Promijeni ime vrta.
-                            </Typography>
                             <Input
                                 name="gardenName"
                                 label="Naziv vrta"
@@ -74,9 +71,8 @@ export function GardenNameCard({
                                 disabled={renameGarden.isPending}
                             />
                             <Typography level="body3">
-                                Ovo ime će biti prikazano u Gredici i
-                                podijeljeno s drugim igračima kada posjete ovaj
-                                vrt.
+                                Ovo ime će biti prikazano i drugim korisnicima
+                                aplikacije Gredice.
                             </Typography>
                         </Stack>
                         <CardActions className="justify-between">

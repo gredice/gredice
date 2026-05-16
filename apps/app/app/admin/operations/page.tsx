@@ -1,13 +1,19 @@
-import { getAllRaisedBeds, getGardens } from '@gredice/storage';
+import {
+    getAllRaisedBeds,
+    getFarms,
+    getGardens,
+    getUniqueAssignableFarmUsersByFarmIds,
+    getUniqueAssignableFarmUsersByGardenIds,
+} from '@gredice/storage';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { AdminPageHeader } from '../../../components/admin/navigation';
 import { OperationsTable } from '../../../components/operations/OperationsTable';
 import { auth } from '../../../lib/auth/auth';
 import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
 import { BulkOperationCreateModal } from './BulkOperationCreateModal';
 import { OperationsFilters } from './OperationsFilters';
+import { SingleOperationCreateModal } from './SingleOperationCreateModal';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,10 +23,34 @@ export default async function OperationsPage({
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
     await auth(['admin']);
-    const [gardens, raisedBeds] = await Promise.all([
+    const [farms, gardens, raisedBeds] = await Promise.all([
+        getFarms(),
         getGardens(),
         getAllRaisedBeds(),
     ]);
+    const activeFarms = farms
+        .filter((farm) => !farm.isDeleted)
+        .map((farm) => ({ id: farm.id, name: farm.name }));
+    const [assignableFarmUsers, assignableGardenUsers] = await Promise.all([
+        getUniqueAssignableFarmUsersByFarmIds(
+            activeFarms.map((farm) => farm.id),
+        ),
+        getUniqueAssignableFarmUsersByGardenIds(
+            gardens.map((garden) => garden.id),
+        ),
+    ]);
+    const assignableUsers = Array.from(
+        new Map(
+            [...assignableFarmUsers, ...assignableGardenUsers].map((user) => [
+                user.id,
+                user,
+            ]),
+        ).values(),
+    ).map((user) => ({
+        id: user.id,
+        userName: user.userName,
+        displayName: user.displayName,
+    }));
 
     const params = await searchParams;
     const fromFilter =
@@ -29,15 +59,24 @@ export default async function OperationsPage({
 
     return (
         <Stack spacing={2}>
-            <Row justifyContent="space-between">
-                <Typography level="h1" className="text-2xl" semiBold>
-                    Radnje
-                </Typography>
-                <BulkOperationCreateModal
-                    gardens={gardens}
-                    raisedBeds={raisedBeds}
-                />
-            </Row>
+            <AdminPageHeader
+                actions={
+                    <div className="flex gap-2">
+                        <SingleOperationCreateModal
+                            farms={activeFarms}
+                            gardens={gardens}
+                            raisedBeds={raisedBeds}
+                            assignableUsers={assignableUsers}
+                        />
+                        <BulkOperationCreateModal
+                            farms={activeFarms}
+                            gardens={gardens}
+                            raisedBeds={raisedBeds}
+                            assignableUsers={assignableUsers}
+                        />
+                    </div>
+                }
+            />
             <OperationsFilters />
             <Card>
                 <CardOverflow>

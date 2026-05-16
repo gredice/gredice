@@ -4,57 +4,70 @@ import { Button } from '@signalco/ui-primitives/Button';
 import { Popper } from '@signalco/ui-primitives/Popper';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useLiveTime } from '../hooks/useLiveTime';
 import { useWeatherForecast } from '../hooks/useWeatherForecast';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import { HudCard } from './components/HudCard';
+import { TimeDisplay } from './components/TimeDisplay';
 import { WeatherForecastDetails } from './components/weather/WeatherForecastDetails';
 import { weatherIcons } from './components/weather/WeatherIcons';
 import { WeatherNowDetails } from './components/weather/WeatherNowDetails';
 
-export function WeatherHud() {
-    const { data: weatherData } = useWeatherNow();
-    const { data: forecastData } = useWeatherForecast();
-    if (!forecastData || !weatherData) return null;
+export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
+    const currentTime = useLiveTime();
+    const weatherEnabled = !noWeather;
+    const { data: weatherData } = useWeatherNow(weatherEnabled);
+    const { data: forecastData } = useWeatherForecast(weatherEnabled);
+    if (!weatherEnabled) return null;
     // TODO: Add loading indicator
     // TODO: Add error message
     // TODO: Show night icons when it's night for weather
 
-    const WeatherIcon = weatherData ? weatherIcons[weatherData.symbol] : null;
+    const WeatherIcon =
+        weatherData?.symbol != null ? weatherIcons[weatherData.symbol] : null;
+    const formattedTime = currentTime?.toLocaleTimeString('hr-HR', {
+        hour: '2-digit',
+        minute: '2-digit',
+    });
 
     return (
         <HudCard open position="floating" className="static md:px-1">
-            <Row spacing={1}>
-                <Popper
-                    side="bottom"
-                    sideOffset={12}
-                    className="overflow-hidden border-tertiary border-b-4 w-full"
-                    trigger={
-                        <Button
-                            title="Trenutno vrijeme"
-                            variant="plain"
-                            className="rounded-full px-2 justify-between pr-4 md:pr-2"
-                        >
-                            <Row>
-                                {WeatherIcon && (
-                                    <WeatherIcon.day className="size-6" />
-                                )}
-                                <Typography
-                                    level="body2"
-                                    className="text-base pl-0.5"
-                                >
-                                    {weatherData?.measuredTemperature?.toFixed(
-                                        1,
-                                    ) ?? weatherData?.temperature}
-                                    °C
-                                </Typography>
-                            </Row>
-                        </Button>
-                    }
-                >
-                    <WeatherNowDetails />
-                </Popper>
-                {forecastData && weatherData && (
-                    <div className="w-[1px] h-4 border-r hidden md:inline" />
+            <Row>
+                {weatherData && (
+                    <Popper
+                        side="bottom"
+                        sideOffset={12}
+                        className="overflow-hidden border-tertiary border-b-4 w-full"
+                        trigger={
+                            <Button
+                                title="Trenutno vrijeme"
+                                variant="plain"
+                                className="rounded-full px-2 justify-between pr-4 md:pr-2"
+                            >
+                                <Row>
+                                    {WeatherIcon && (
+                                        <WeatherIcon.day className="size-6" />
+                                    )}
+                                    <Typography
+                                        level="body2"
+                                        className="text-base pl-0.5"
+                                    >
+                                        {weatherData.measuredTemperature?.toFixed(
+                                            1,
+                                        ) ??
+                                            weatherData.temperature ??
+                                            '—'}
+                                        °C
+                                    </Typography>
+                                </Row>
+                            </Button>
+                        }
+                    >
+                        <WeatherNowDetails />
+                    </Popper>
+                )}
+                {weatherData && (forecastData || formattedTime) && (
+                    <div className="w-[1px] h-4 border-r" />
                 )}
                 {forecastData && (
                     <Popper
@@ -84,6 +97,29 @@ export function WeatherHud() {
                         }
                     >
                         <WeatherForecastDetails />
+                    </Popper>
+                )}
+                {forecastData && formattedTime && (
+                    <div className="w-[1px] h-4 border-r hidden md:inline" />
+                )}
+                {formattedTime && (
+                    <Popper
+                        side="bottom"
+                        sideOffset={12}
+                        className="overflow-hidden border-tertiary border-b-4"
+                        trigger={
+                            <Button
+                                title="Doba dana"
+                                variant="plain"
+                                className="rounded-full px-2 md:pr-2 pr-3"
+                            >
+                                <Typography level="body2" className="text-base">
+                                    {formattedTime}
+                                </Typography>
+                            </Button>
+                        }
+                    >
+                        <TimeDisplay />
                     </Popper>
                 )}
             </Row>

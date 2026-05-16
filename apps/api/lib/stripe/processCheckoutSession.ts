@@ -8,7 +8,6 @@ import {
     createDeliveryRequest,
     createEvent,
     createOperation,
-    createRaisedBedSensor,
     createTransaction,
     earnSunflowersForPayment,
     getAllTransactions,
@@ -18,6 +17,7 @@ import {
     isCartItemDeliverable,
     knownEvents,
     markCartPaidIfAllItemsPaid,
+    normalizeShoppingCartInventoryUsage,
     setCartItemPaid,
     spendSunflowers,
     updateRaisedBed,
@@ -30,6 +30,8 @@ import {
 } from '../checkout/cartInfo';
 import { calculateSunflowerAmount } from '../checkout/sunflowerCalculations';
 import { notifyDeliveryScheduled } from '../delivery/emailNotifications';
+import { notifyScheduledDeliveryEmailOnce } from '../delivery/scheduledEmailDeduper';
+import { getPostHogClient } from '../posthog-server';
 
 /**
  * Recursively sorts object keys for deterministic JSON serialization.
@@ -54,8 +56,9 @@ async function processNonStripeCartItems(
     cartId: number,
     accountId: string,
     deliveryInfo?: unknown,
+    scheduledDeliveryEmailKeys?: Set<string>,
 ): Promise<ShoppingCartItemWithShopData[]> {
-    const cart = await getShoppingCart(cartId);
+    const cart = await normalizeShoppingCartInventoryUsage(cartId);
     if (!cart) {
         console.warn(
             `No cart found for ID ${cartId} when processing non-stripe items.`,
@@ -131,6 +134,7 @@ async function processNonStripeCartItems(
                     currency: item.currency,
                     amount_total: sunflowerAmount,
                     additionalData,
+                    scheduledDeliveryEmailKeys,
                 }),
             ]);
         }
@@ -211,6 +215,7 @@ async function processNonStripeCartItems(
                     currency: item.currency,
                     amount_total: 0,
                     additionalData,
+                    scheduledDeliveryEmailKeys,
                 }),
             ]);
 
@@ -256,6 +261,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         quantity?: number | null;
         amountSubtotal?: number | null;
     }[] = [];
+    const scheduledDeliveryEmailKeys = new Set<string>();
     let accountId: string | undefined;
     let checkedExistingTransactions = false;
     for (const item of session.lineItems?.data ?? []) {
@@ -422,6 +428,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
                 ...itemData,
                 accountId: resolvedAccountId,
                 amount_total: item.amount_total,
+                scheduledDeliveryEmailKeys,
             });
         } catch (error) {
             console.error(
@@ -474,7 +481,12 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
     const uniqueAffectedCartIds = Array.from(new Set(affectedCartIds));
     if (accountId && uniqueAffectedCartIds.length > 0) {
         for (const cartId of uniqueAffectedCartIds) {
-            await processNonStripeCartItems(cartId, accountId, deliveryInfo);
+            await processNonStripeCartItems(
+                cartId,
+                accountId,
+                deliveryInfo,
+                scheduledDeliveryEmailKeys,
+            );
         }
     }
 
@@ -498,6 +510,19 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
         checkoutSessionId: session.id ?? null,
         items: purchasedItems,
     });
+
+    if (accountId) {
+        (await getPostHogClient()).capture({
+            distinctId: accountId,
+            event: 'purchase_completed',
+            properties: {
+                amount_total: session.amountTotal,
+                currency: 'eur',
+                item_count: purchasedItems.length,
+                checkout_session_id: session.id,
+            },
+        });
+    }
 }
 
 export async function processItem(itemData: {
@@ -511,6 +536,7 @@ export async function processItem(itemData: {
     additionalData: unknown | null | undefined;
     currency: string | null;
     amount_total: number; // Amount in cents or sunflowers
+    scheduledDeliveryEmailKeys?: Set<string>;
 }) {
     console.debug(
         `Processing item with entityId ${itemData.entityId} and entityTypeName ${itemData.entityTypeName} for account ${itemData.accountId} in total amount ${itemData.amount_total}`,
@@ -529,95 +555,94 @@ export async function processItem(itemData: {
         // TODO: Handle operation processing
         // TODO: Handle raisedBed operation placement (not currently necessary since we can't buy raised bed operation without planting plants)
 
-        // Special cases: Handle sensor installation
-        // TODO: Mitigate hardcoded '180' as place sensor ID
-        if (itemData.raisedBedId && itemData.entityId === '180') {
+        // Validate item data
+        if (
+            !itemData.accountId ||
+            !itemData.entityId ||
+            !itemData.entityTypeName
+        ) {
+            console.error(
+                `Missing required metadata for operation item in order.`,
+                itemData,
+            );
+            return;
+        }
+        const entityIdNumber = parseInt(itemData.entityId, 10);
+        if (Number.isNaN(entityIdNumber)) {
+            console.error(
+                `Invalid entityId ${itemData.entityId} for operation item in order.`,
+                itemData,
+            );
+            return;
+        }
+
+        // Try to resolve field ID from position index (only active fields)
+        let fieldId: number | undefined;
+        if (
+            typeof itemData.positionIndex === 'number' &&
+            itemData.raisedBedId
+        ) {
+            const raisedBedFields = await getRaisedBedFieldsWithEvents(
+                itemData.raisedBedId,
+            );
+            fieldId = raisedBedFields.find(
+                (field) =>
+                    field.positionIndex === itemData.positionIndex &&
+                    field.active,
+            )?.id;
+        }
+
+        // Try to extract scheduled date from additional data
+        let scheduledDate: string | null = null;
+        let additionalData = itemData.additionalData;
+        if (typeof additionalData === 'string') {
             try {
-                await Promise.all([
-                    createRaisedBedSensor({
-                        raisedBedId: itemData.raisedBedId,
-                    }),
-                    earnSunflowersFunc(),
-                ]);
-                console.debug(
-                    `Installed sensor in raised bed ${itemData.raisedBedId}.`,
-                );
+                additionalData = JSON.parse(additionalData);
             } catch (error) {
                 console.error(
-                    `Failed to install sensor for raised bed ${itemData.raisedBedId}.`,
-                    error,
+                    `Invalid additionalData for operation item in order.`,
+                    {
+                        additionalData,
+                        itemData,
+                        error,
+                    },
                 );
+                additionalData = null;
             }
-        } else {
-            // Validate item data
-            if (
-                !itemData.accountId ||
-                !itemData.entityId ||
-                !itemData.entityTypeName
-            ) {
-                console.error(
-                    `Missing required metadata for operation item in order.`,
-                    itemData,
-                );
-                return;
-            }
-            const entityIdNumber = parseInt(itemData.entityId, 10);
-            if (Number.isNaN(entityIdNumber)) {
-                console.error(
-                    `Invalid entityId ${itemData.entityId} for operation item in order.`,
-                    itemData,
-                );
-                return;
-            }
+        }
+        if (
+            typeof additionalData === 'object' &&
+            additionalData != null &&
+            'scheduledDate' in additionalData &&
+            typeof additionalData.scheduledDate === 'string'
+        ) {
+            scheduledDate = additionalData.scheduledDate;
+        }
 
-            // Try to resolve field ID from position index (only active fields)
-            let fieldId: number | undefined;
-            if (
-                typeof itemData.positionIndex === 'number' &&
-                itemData.raisedBedId
-            ) {
-                const raisedBedFields = await getRaisedBedFieldsWithEvents(
-                    itemData.raisedBedId,
-                );
-                fieldId = raisedBedFields.find(
-                    (field) =>
-                        field.positionIndex === itemData.positionIndex &&
-                        field.active,
-                )?.id;
-            }
+        const operationId = await createOperation({
+            accountId: itemData.accountId,
+            entityId: entityIdNumber,
+            entityTypeName: itemData.entityTypeName,
+            gardenId: itemData.gardenId,
+            raisedBedId: itemData.raisedBedId,
+            raisedBedFieldId: fieldId,
+        });
 
-            // Try to extract scheduled date from additional data
-            let scheduledDate: string | null = null;
-            const additionalData =
-                typeof itemData.additionalData === 'string'
-                    ? JSON.parse(itemData.additionalData)
-                    : itemData.additionalData;
-            if (
-                typeof additionalData === 'object' &&
-                additionalData != null &&
-                'scheduledDate' in additionalData &&
-                typeof additionalData.scheduledDate === 'string'
-            ) {
-                scheduledDate = additionalData.scheduledDate;
-            }
-
-            const [operationId] = await Promise.all([
-                createOperation({
-                    accountId: itemData.accountId,
-                    entityId: entityIdNumber,
-                    entityTypeName: itemData.entityTypeName,
-                    gardenId: itemData.gardenId,
-                    raisedBedId: itemData.raisedBedId,
-                    raisedBedFieldId: fieldId,
-                }),
-                earnSunflowersFunc(),
-            ]);
-            console.debug(
-                `Created operation ${itemData.entityId} of type ${itemData.entityTypeName} for account ${itemData.accountId} in garden ${itemData.gardenId ?? 'N/A'} with raised bed ${itemData.raisedBedId ?? 'N/A'} and field ${fieldId ?? 'N/A'}.`,
+        try {
+            await earnSunflowersFunc();
+        } catch (error) {
+            console.error(
+                `Failed to award sunflowers for operation item in order.`,
+                error,
             );
+        }
+        console.debug(
+            `Created operation ${itemData.entityId} of type ${itemData.entityTypeName} for account ${itemData.accountId} in garden ${itemData.gardenId ?? 'N/A'} with raised bed ${itemData.raisedBedId ?? 'N/A'} and field ${fieldId ?? 'N/A'}.`,
+        );
 
-            // Make operation scheduled event if there is schedule date in the request
-            if (scheduledDate) {
+        // Make operation scheduled event if there is schedule date in the request
+        if (scheduledDate) {
+            try {
                 await createEvent(
                     knownEvents.operations.scheduledV1(operationId.toString(), {
                         scheduledDate,
@@ -626,64 +651,93 @@ export async function processItem(itemData: {
                 console.debug(
                     `Scheduled operation ${operationId} for date ${scheduledDate}.`,
                 );
-                const scheduledDateValue = new Date(scheduledDate);
+            } catch (error) {
+                console.error(
+                    `Failed to create scheduled event for operation ${operationId}:`,
+                    error,
+                );
+            }
+            const scheduledDateValue = new Date(scheduledDate);
+            if (!Number.isNaN(scheduledDateValue.getTime())) {
                 await notifyOperationUpdate(operationId, 'scheduled', {
                     scheduledDate: scheduledDateValue.toISOString(),
                 });
+            } else {
+                console.warn(
+                    `Skipping scheduled notification update for operation ${operationId} due to invalid scheduledDate metadata: ${scheduledDate}`,
+                );
             }
+        }
 
-            // Check if this operation/entity is deliverable and create delivery request if needed
-            if (itemData.cartId) {
-                const isDeliverable = await isCartItemDeliverable({
-                    entityId: parseInt(itemData.entityId, 10),
-                });
-                if (isDeliverable) {
-                    console.debug(
-                        `Operation ${operationId} is deliverable - checking for delivery configuration in metadata`,
-                    );
+        // Check if this operation/entity is deliverable and create delivery request if needed
+        if (itemData.cartId) {
+            const isDeliverable = await isCartItemDeliverable({
+                entityId: entityIdNumber,
+            });
+            if (isDeliverable) {
+                console.debug(
+                    `Operation ${operationId} is deliverable - checking for delivery configuration in metadata`,
+                );
 
-                    // Check if delivery information was stored in additionalData
-                    let deliveryInfo = null;
-                    if (
-                        typeof additionalData === 'object' &&
-                        additionalData !== null &&
-                        'delivery' in additionalData
-                    ) {
-                        deliveryInfo = additionalData.delivery;
-                    }
+                // Check if delivery information was stored in additionalData
+                let deliveryInfo: {
+                    slotId?: number;
+                    mode?: 'delivery' | 'pickup';
+                    addressId?: number;
+                    locationId?: number;
+                    notes?: string;
+                } | null = null;
+                if (
+                    typeof additionalData === 'object' &&
+                    additionalData !== null &&
+                    'delivery' in additionalData
+                ) {
+                    deliveryInfo = (additionalData as Record<string, unknown>)
+                        .delivery as {
+                        slotId?: number;
+                        mode?: 'delivery' | 'pickup';
+                        addressId?: number;
+                        locationId?: number;
+                        notes?: string;
+                    };
+                }
 
-                    if (deliveryInfo?.slotId && deliveryInfo.mode) {
-                        try {
-                            const deliveryRequestId =
-                                await createDeliveryRequest({
-                                    operationId,
-                                    slotId: deliveryInfo.slotId,
-                                    mode: deliveryInfo.mode,
-                                    addressId: deliveryInfo.addressId,
-                                    locationId: deliveryInfo.locationId,
-                                    notes: deliveryInfo.notes,
-                                    accountId: itemData.accountId,
-                                });
-                            console.debug(
-                                `Created delivery request ${deliveryRequestId} for operation ${operationId}`,
-                            );
-                            await notifyDeliveryRequestEvent(
-                                deliveryRequestId,
-                                'created',
-                            );
-                            await notifyDeliveryScheduled(deliveryRequestId);
-                        } catch (error) {
-                            console.error(
-                                `Failed to create delivery request for operation ${operationId}:`,
-                                error,
-                            );
-                            // Don't fail the whole payment, just log the error
-                        }
-                    } else {
-                        console.warn(
-                            `Operation ${operationId} is deliverable but no delivery information found in metadata`,
+                if (deliveryInfo?.slotId && deliveryInfo.mode) {
+                    try {
+                        const deliveryRequestId = await createDeliveryRequest({
+                            operationId,
+                            slotId: deliveryInfo.slotId,
+                            mode: deliveryInfo.mode,
+                            addressId: deliveryInfo.addressId,
+                            locationId: deliveryInfo.locationId,
+                            notes: deliveryInfo.notes,
+                            accountId: itemData.accountId,
+                        });
+                        console.debug(
+                            `Created delivery request ${deliveryRequestId} for operation ${operationId}`,
                         );
+                        await notifyDeliveryRequestEvent(
+                            deliveryRequestId,
+                            'created',
+                        );
+                        await notifyScheduledDeliveryEmailOnce({
+                            requestId: deliveryRequestId,
+                            accountId: itemData.accountId,
+                            deliveryInfo,
+                            notifiedKeys: itemData.scheduledDeliveryEmailKeys,
+                            notify: notifyDeliveryScheduled,
+                        });
+                    } catch (error) {
+                        console.error(
+                            `Failed to create delivery request for operation ${operationId}:`,
+                            error,
+                        );
+                        // Don't fail the whole payment, just log the error
                     }
+                } else {
+                    console.warn(
+                        `Operation ${operationId} is deliverable but no delivery information found in metadata`,
+                    );
                 }
             }
         }

@@ -1,6 +1,5 @@
 'use server';
 
-import { randomUUID } from 'node:crypto';
 import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
 import { notifyOperationUpdate } from '@gredice/notifications';
 import {
@@ -9,17 +8,35 @@ import {
     createNotification,
     createOperation,
     earnSunflowers,
+    getAssignableFarmUsersByFarmIds,
+    getAssignableFarmUsersByGardenIds,
+    getAssignableFarmUsersByOperationIds,
     getEntityFormatted,
+    getFarmUserAcceptedOperationById,
     getOperationById,
     getRaisedBed,
     type InsertOperation,
     knownEvents,
 } from '@gredice/storage';
-import { put } from '@vercel/blob';
 import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+
+const MAX_COMPLETION_NOTES_LENGTH = 2000;
+
+function normalizeCompletionNotes(notes?: string) {
+    const normalizedNotes = notes?.trim();
+    if (!normalizedNotes) {
+        return undefined;
+    }
+
+    if (normalizedNotes.length > MAX_COMPLETION_NOTES_LENGTH) {
+        throw new Error('Napomena može imati najviše 2000 znakova.');
+    }
+
+    return normalizedNotes;
+}
 
 export async function createOperationAction(formData: FormData) {
     await auth(['admin']);
@@ -42,6 +59,9 @@ export async function createOperationAction(formData: FormData) {
         entityId,
         entityTypeName: formData.get('entityTypeName') as string,
         accountId,
+        farmId: formData.get('farmId')
+            ? Number(formData.get('farmId'))
+            : undefined,
         gardenId: formData.get('gardenId')
             ? Number(formData.get('gardenId'))
             : undefined,
@@ -69,6 +89,7 @@ export async function createOperationAction(formData: FormData) {
     revalidatePath(KnownPages.Schedule);
     if (operation.accountId)
         revalidatePath(KnownPages.Account(operation.accountId));
+    if (operation.farmId) revalidatePath(KnownPages.Farm(operation.farmId));
     if (operation.gardenId)
         revalidatePath(KnownPages.Garden(operation.gardenId));
     if (operation.raisedBedId)
@@ -76,34 +97,129 @@ export async function createOperationAction(formData: FormData) {
     return { success: true };
 }
 
-export async function bulkCreateOperationsAction(formData: FormData) {
-    await auth(['admin']);
-    const entityId = formData.get('entityId')
-        ? Number(formData.get('entityId'))
-        : undefined;
-    if (!entityId) {
-        throw new Error('Entity ID is required');
-    }
-    const scheduledDate = formData.get('scheduledDate')
-        ? new Date(formData.get('scheduledDate') as string)
-        : undefined;
-    const targets = formData.getAll('targets') as string[];
+export type SingleCreateOperationActionState = {
+    success: boolean;
+    message: string;
+};
 
-    for (const target of targets) {
-        const [accountId, gardenId, raisedBedId, raisedBedFieldId] =
-            target.split('|');
-        const operation: InsertOperation = {
+type ParsedOperationTarget = {
+    accountId?: string;
+    farmId?: number;
+    gardenId?: number;
+    raisedBedId?: number;
+    raisedBedFieldId?: number;
+};
+
+function getStringFormValue(formData: FormData, name: string) {
+    const value = formData.get(name);
+    return typeof value === 'string' ? value.trim() : '';
+}
+
+function parseOptionalTargetId(value: string | undefined, label: string) {
+    if (!value) {
+        return undefined;
+    }
+
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+        throw new Error(`Neispravna ciljna lokacija: ${label}.`);
+    }
+
+    return parsed;
+}
+
+function parseOperationTarget(rawTarget: string): ParsedOperationTarget {
+    const target = rawTarget.trim();
+    if (!target) {
+        throw new Error('Odaberite ciljnu lokaciju.');
+    }
+
+    const parts = target.split('|');
+    if (parts[0] === 'farm') {
+        const farmId = parseOptionalTargetId(parts[1], 'farma');
+        if (!farmId) {
+            throw new Error('Odaberite farmu.');
+        }
+
+        return { farmId };
+    }
+
+    const [accountId, gardenId, raisedBedId, raisedBedFieldId] = parts;
+
+    return {
+        accountId: accountId || undefined,
+        gardenId: parseOptionalTargetId(gardenId, 'vrt'),
+        raisedBedId: parseOptionalTargetId(raisedBedId, 'gredica'),
+        raisedBedFieldId: parseOptionalTargetId(
+            raisedBedFieldId,
+            'polje gredice',
+        ),
+    };
+}
+
+export async function singleCreateOperationAction(
+    _previousState: SingleCreateOperationActionState | null,
+    formData: FormData,
+): Promise<SingleCreateOperationActionState> {
+    try {
+        const { userId } = await auth(['admin']);
+        const entityId = formData.get('entityId')
+            ? Number(formData.get('entityId'))
+            : undefined;
+        if (!entityId) {
+            throw new Error('Entity ID is required');
+        }
+        const target = getStringFormValue(formData, 'target');
+        if (!target) {
+            throw new Error('Odaberite jednu ciljnu lokaciju.');
+        }
+        const selectedAssignedUserId =
+            getStringFormValue(formData, 'assignedUserId') || undefined;
+        const scheduledDate = formData.get('scheduledDate')
+            ? new Date(formData.get('scheduledDate') as string)
+            : undefined;
+
+        const parsedTarget = parseOperationTarget(target);
+
+        if (selectedAssignedUserId && parsedTarget.farmId) {
+            const assignableFarmUsersByFarmId =
+                await getAssignableFarmUsersByFarmIds([parsedTarget.farmId]);
+            const isUserAssignableToFarm =
+                assignableFarmUsersByFarmId[parsedTarget.farmId]?.some(
+                    (user) => user.id === selectedAssignedUserId,
+                ) ?? false;
+            if (!isUserAssignableToFarm) {
+                throw new Error(
+                    'Odabrani korisnik nije dostupan za odabranu radnju.',
+                );
+            }
+        } else if (selectedAssignedUserId && parsedTarget.gardenId) {
+            const assignableFarmUsersByGardenId =
+                await getAssignableFarmUsersByGardenIds([
+                    parsedTarget.gardenId,
+                ]);
+            const isUserAssignableToGarden =
+                assignableFarmUsersByGardenId[parsedTarget.gardenId]?.some(
+                    (user) => user.id === selectedAssignedUserId,
+                ) ?? false;
+            if (!isUserAssignableToGarden) {
+                throw new Error(
+                    'Odabrani korisnik nije dostupan za odabranu radnju.',
+                );
+            }
+        }
+
+        const operationId = await createOperation({
             entityId,
             entityTypeName: 'operation',
-            accountId: accountId || undefined,
-            gardenId: gardenId ? Number(gardenId) : undefined,
-            raisedBedId: raisedBedId ? Number(raisedBedId) : undefined,
-            raisedBedFieldId: raisedBedFieldId
-                ? Number(raisedBedFieldId)
-                : undefined,
+            accountId: parsedTarget.accountId,
+            farmId: parsedTarget.farmId,
+            gardenId: parsedTarget.gardenId,
+            raisedBedId: parsedTarget.raisedBedId,
+            raisedBedFieldId: parsedTarget.raisedBedFieldId,
             timestamp: undefined,
-        };
-        const operationId = await createOperation(operation);
+        });
+
         if (scheduledDate) {
             await createEvent(
                 knownEvents.operations.scheduledV1(operationId.toString(), {
@@ -114,9 +230,172 @@ export async function bulkCreateOperationsAction(formData: FormData) {
                 scheduledDate: scheduledDate.toISOString(),
             });
         }
+        if (selectedAssignedUserId) {
+            await createEvent(
+                knownEvents.operations.assignedV1(operationId.toString(), {
+                    assignedUserId: selectedAssignedUserId,
+                    assignedBy: userId,
+                }),
+            );
+        }
+
+        revalidatePath(KnownPages.Schedule);
+        revalidatePath(KnownPages.Operations);
+        if (parsedTarget.farmId) {
+            revalidatePath(KnownPages.Farm(parsedTarget.farmId));
+        }
+
+        return { success: true, message: 'Radnja je uspješno kreirana.' };
+    } catch (error) {
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Došlo je do greške pri kreiranju radnje.',
+        };
     }
-    revalidatePath(KnownPages.Schedule);
-    revalidatePath(KnownPages.Operations);
+}
+export type BulkCreateOperationsActionState = {
+    success: boolean;
+    message: string;
+    createdCount?: number;
+    totalCount?: number;
+};
+
+export async function bulkCreateOperationsAction(
+    _previousState: BulkCreateOperationsActionState | null,
+    formData: FormData,
+): Promise<BulkCreateOperationsActionState> {
+    try {
+        const { userId } = await auth(['admin']);
+        const entityId = formData.get('entityId')
+            ? Number(formData.get('entityId'))
+            : undefined;
+        if (!entityId) {
+            throw new Error('Entity ID is required');
+        }
+        const scheduledDate = formData.get('scheduledDate')
+            ? new Date(formData.get('scheduledDate') as string)
+            : undefined;
+        const selectedAssignedUserId =
+            getStringFormValue(formData, 'assignedUserId') || undefined;
+        const targets = formData
+            .getAll('targets')
+            .filter((value): value is string => typeof value === 'string');
+        if (targets.length === 0) {
+            throw new Error('Odaberite barem jednu ciljnu lokaciju.');
+        }
+        const parsedTargets = targets.map(parseOperationTarget);
+
+        if (selectedAssignedUserId) {
+            const uniqueFarmIds = Array.from(
+                new Set(
+                    parsedTargets
+                        .map((target) => target.farmId)
+                        .filter(
+                            (farmId): farmId is number => farmId !== undefined,
+                        ),
+                ),
+            );
+            const uniqueGardenIds = Array.from(
+                new Set(
+                    parsedTargets
+                        .map((target) => target.gardenId)
+                        .filter(
+                            (gardenId): gardenId is number =>
+                                gardenId !== undefined,
+                        ),
+                ),
+            );
+            const [assignableFarmUsersByFarmId, assignableFarmUsersByGardenId] =
+                await Promise.all([
+                    getAssignableFarmUsersByFarmIds(uniqueFarmIds),
+                    getAssignableFarmUsersByGardenIds(uniqueGardenIds),
+                ]);
+            for (const farmId of uniqueFarmIds) {
+                const isUserAssignableToFarm =
+                    assignableFarmUsersByFarmId[farmId]?.some(
+                        (user) => user.id === selectedAssignedUserId,
+                    ) ?? false;
+                if (!isUserAssignableToFarm) {
+                    throw new Error(
+                        'Odabrani korisnik nije dostupan za sve odabrane radnje.',
+                    );
+                }
+            }
+            for (const gardenId of uniqueGardenIds) {
+                const isUserAssignableToGarden =
+                    assignableFarmUsersByGardenId[gardenId]?.some(
+                        (user) => user.id === selectedAssignedUserId,
+                    ) ?? false;
+                if (!isUserAssignableToGarden) {
+                    throw new Error(
+                        'Odabrani korisnik nije dostupan za sve odabrane radnje.',
+                    );
+                }
+            }
+        }
+
+        let createdCount = 0;
+        for (const parsedTarget of parsedTargets) {
+            const operation: InsertOperation = {
+                entityId,
+                entityTypeName: 'operation',
+                accountId: parsedTarget.accountId,
+                farmId: parsedTarget.farmId,
+                gardenId: parsedTarget.gardenId,
+                raisedBedId: parsedTarget.raisedBedId,
+                raisedBedFieldId: parsedTarget.raisedBedFieldId,
+                timestamp: undefined,
+            };
+            const operationId = await createOperation(operation);
+            if (scheduledDate) {
+                await createEvent(
+                    knownEvents.operations.scheduledV1(operationId.toString(), {
+                        scheduledDate: scheduledDate.toISOString(),
+                    }),
+                );
+                await notifyOperationUpdate(operationId, 'scheduled', {
+                    scheduledDate: scheduledDate.toISOString(),
+                });
+            }
+            if (selectedAssignedUserId) {
+                await createEvent(
+                    knownEvents.operations.assignedV1(operationId.toString(), {
+                        assignedUserId: selectedAssignedUserId,
+                        assignedBy: userId,
+                    }),
+                );
+            }
+            createdCount += 1;
+        }
+
+        revalidatePath(KnownPages.Schedule);
+        revalidatePath(KnownPages.Operations);
+        for (const farmId of new Set(
+            parsedTargets
+                .map((target) => target.farmId)
+                .filter((farmId): farmId is number => farmId !== undefined),
+        )) {
+            revalidatePath(KnownPages.Farm(farmId));
+        }
+
+        return {
+            success: true,
+            message: `Uspješno kreirano ${createdCount} radnji.`,
+            createdCount,
+            totalCount: targets.length,
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Došlo je do greške pri kreiranju radnji.',
+        };
+    }
 }
 
 export async function rescheduleOperationAction(formData: FormData) {
@@ -165,6 +444,11 @@ export async function acceptOperationAction(operationId: number) {
     if (!operation) {
         throw new Error(`Operation with ID ${operationId} not found.`);
     }
+    if (!operation.assignedUserId) {
+        throw new Error(
+            'Radnja ne može biti potvrđena prije nego što korisnik bude dodijeljen.',
+        );
+    }
     await acceptOperation(operationId);
     await notifyOperationUpdate(operationId, 'approved');
     revalidatePath(KnownPages.Schedule);
@@ -176,25 +460,92 @@ export async function acceptOperationAction(operationId: number) {
         revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
 }
 
-export async function completeOperation(
+export async function assignOperationUserAction(
     operationId: number,
-    completedBy: string,
-    imageUrls?: string[],
+    assignedUserIds: string[],
 ) {
-    await auth(['admin']);
+    const { userId } = await auth(['admin']);
     const operation = await getOperationById(operationId);
     if (!operation) {
         throw new Error(`Operation with ID ${operationId} not found.`);
     }
-    if (!operation.isAccepted) {
-        throw new Error('Operation must be accepted before completion');
+
+    const normalizedAssignedUserIds = Array.from(
+        new Set(
+            assignedUserIds
+                .map((assignedUserId) => assignedUserId.trim())
+                .filter((assignedUserId) => assignedUserId.length > 0),
+        ),
+    );
+    const operationAssignedUserIds = operation.assignedUserIds ?? [];
+    if (
+        normalizedAssignedUserIds.length === operationAssignedUserIds.length &&
+        normalizedAssignedUserIds.every((assignedUserId) =>
+            operationAssignedUserIds.includes(assignedUserId),
+        )
+    ) {
+        return { success: true };
     }
 
+    if (normalizedAssignedUserIds.length > 0) {
+        const assignableFarmUsersByOperationId =
+            await getAssignableFarmUsersByOperationIds([operationId]);
+        const assignableFarmUsers =
+            assignableFarmUsersByOperationId[operationId] ?? [];
+
+        if (
+            !normalizedAssignedUserIds.every((assignedUserId) =>
+                assignableFarmUsers.some(
+                    (farmUser) => farmUser.id === assignedUserId,
+                ),
+            )
+        ) {
+            throw new Error(
+                'Jedan od odabranih korisnika nije dostupan za ovu radnju.',
+            );
+        }
+    }
+
+    await createEvent(
+        knownEvents.operations.assignedV1(operationId.toString(), {
+            assignedUserId: normalizedAssignedUserIds[0] ?? null,
+            assignedUserIds: normalizedAssignedUserIds,
+            assignedBy: userId,
+        }),
+    );
+
+    revalidatePath(KnownPages.Schedule);
+    if (operation.accountId)
+        revalidatePath(KnownPages.Account(operation.accountId));
+    if (operation.gardenId)
+        revalidatePath(KnownPages.Garden(operation.gardenId));
+    if (operation.raisedBedId)
+        revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+
+    return { success: true };
+}
+
+async function revalidateOperationPaths(
+    operation: Awaited<ReturnType<typeof getOperationById>>,
+) {
+    revalidatePath(KnownPages.Schedule);
+    revalidatePath(KnownPages.Operations);
+    revalidatePath(KnownPages.Operation(operation.id));
+    if (operation.accountId)
+        revalidatePath(KnownPages.Account(operation.accountId));
+    if (operation.gardenId)
+        revalidatePath(KnownPages.Garden(operation.gardenId));
+    if (operation.raisedBedId)
+        revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
+}
+
+async function buildOperationCompletionNotification(
+    operation: Awaited<ReturnType<typeof getOperationById>>,
+) {
     const operationData = await getEntityFormatted<EntityStandardized>(
         operation.entityId,
     );
 
-    // TODO: Add operation icon
     const header = `${operationData?.information?.label}`;
     let content = `Danas je određeno **${operationData?.information?.label}**.`;
     let linkUrl: string | undefined;
@@ -205,14 +556,13 @@ export async function completeOperation(
                 `Raised bed with ID ${operation.raisedBedId} not found.`,
             );
         } else {
-            // Generate the linkUrl for raised bed closeup
             if (raisedBed.name) {
                 linkUrl = getRaisedBedCloseupUrl(raisedBed.name);
             }
 
             const positionIndex = operation.raisedBedFieldId
                 ? raisedBed.fields.find(
-                      (f) => f.id === operation.raisedBedFieldId,
+                      (field) => field.id === operation.raisedBedFieldId,
                   )?.positionIndex
                 : null;
             if (typeof positionIndex === 'number') {
@@ -223,15 +573,26 @@ export async function completeOperation(
         }
     }
 
-    await createEvent(
-        knownEvents.operations.completedV1(operationId.toString(), {
-            completedBy,
-            images: imageUrls,
-        }),
-    );
+    return {
+        header,
+        content,
+        linkUrl,
+    };
+}
+
+async function notifyVerifiedOperationCompletion(
+    operation: Awaited<ReturnType<typeof getOperationById>>,
+) {
+    const { header, content, linkUrl } =
+        await buildOperationCompletionNotification(operation);
+    if (!operation.completedBy) {
+        throw new Error('Completed operation is missing a completion actor.');
+    }
 
     await Promise.all([
-        notifyOperationUpdate(operationId, 'completed', { completedBy }),
+        notifyOperationUpdate(operation.id, 'completed', {
+            completedBy: operation.completedBy,
+        }),
         operation.accountId
             ? createNotification({
                   accountId: operation.accountId,
@@ -239,50 +600,142 @@ export async function completeOperation(
                   raisedBedId: operation.raisedBedId,
                   header,
                   content,
-                  imageUrl: imageUrls?.[0],
+                  imageUrl: operation.imageUrls?.[0],
                   linkUrl,
                   timestamp: new Date(),
               })
             : undefined,
     ]);
-
-    revalidatePath(KnownPages.Schedule);
-    if (operation.accountId)
-        revalidatePath(KnownPages.Account(operation.accountId));
-    if (operation.gardenId)
-        revalidatePath(KnownPages.Garden(operation.gardenId));
-    if (operation.raisedBedId)
-        revalidatePath(KnownPages.RaisedBed(operation.raisedBedId));
 }
 
-export async function completeOperationWithImages(formData: FormData) {
-    await auth(['admin']);
-    const operationId = formData.get('operationId')
-        ? Number(formData.get('operationId'))
-        : undefined;
-    const completedBy = formData.get('completedBy') as string | undefined;
-    if (!operationId || !completedBy) {
-        throw new Error('Operation ID and completedBy are required');
+async function assertFarmerCanCompleteOperation(
+    userId: string,
+    operation: Awaited<ReturnType<typeof getOperationById>>,
+) {
+    const farmOperation = await getFarmUserAcceptedOperationById(
+        userId,
+        operation.id,
+    );
+    if (!farmOperation) {
+        throw new Error('Nemaš dozvolu za označavanje ove radnje.');
     }
-    const files = formData.getAll('images');
-    const imageUrls: string[] = [];
-    for (const file of files) {
-        if (typeof file === 'string') continue;
-        const ext = file.name?.split('.').pop();
-        const fileName = `operations/${operationId}/${randomUUID()}${
-            ext ? `.${ext}` : ''
-        }`;
-        try {
-            const { url } = await put(fileName, file, {
-                access: 'public',
-                token: process.env.BLOB_READ_WRITE_TOKEN,
-            });
-            if (url) imageUrls.push(url);
-        } catch (err) {
-            console.error('Error uploading image', fileName, err);
+
+    if (
+        (farmOperation.assignedUserIds?.length ?? 0) > 0 &&
+        !farmOperation.assignedUserIds?.includes(userId)
+    ) {
+        throw new Error('Ova radnja je dodijeljena drugom korisniku.');
+    }
+}
+
+async function verifyOperationCompletion(
+    operationId: number,
+    verifiedBy: string,
+) {
+    const operation = await getOperationById(operationId);
+    if (!operation) {
+        throw new Error(`Operation with ID ${operationId} not found.`);
+    }
+
+    if (operation.status === 'completed') {
+        return { success: true };
+    }
+
+    if (operation.status !== 'pendingVerification') {
+        throw new Error('Radnja ne čeka verifikaciju.');
+    }
+
+    await createEvent(
+        knownEvents.operations.verifiedV1(operationId.toString(), {
+            verifiedBy,
+        }),
+    );
+
+    const verifiedOperation = await getOperationById(operationId);
+    await notifyVerifiedOperationCompletion(verifiedOperation);
+    await revalidateOperationPaths(verifiedOperation);
+
+    return { success: true };
+}
+
+export async function completeOperation(
+    operationId: number,
+    imageUrls?: string[],
+    notes?: string,
+) {
+    const {
+        user: { role },
+        userId,
+    } = await auth(['admin', 'farmer']);
+    const completionNotes = normalizeCompletionNotes(notes);
+    const operation = await getOperationById(operationId);
+    if (!operation) {
+        throw new Error(`Operation with ID ${operationId} not found.`);
+    }
+    if (!operation.isAccepted) {
+        throw new Error('Operation must be accepted before completion');
+    }
+
+    if (operation.status === 'completed') {
+        return { success: true };
+    }
+
+    if (operation.status === 'pendingVerification') {
+        if (role === 'admin') {
+            return verifyOperationCompletion(operationId, userId);
         }
+
+        throw new Error('Radnja već čeka verifikaciju.');
     }
-    await completeOperation(operationId, completedBy, imageUrls);
+
+    if (operation.status === 'failed' || operation.status === 'canceled') {
+        throw new Error(
+            `Cannot complete operation with status ${operation.status}`,
+        );
+    }
+
+    if (role === 'farmer') {
+        await assertFarmerCanCompleteOperation(userId, operation);
+    }
+
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: userId,
+            images: imageUrls,
+            notes: completionNotes,
+        }),
+    );
+
+    if (role === 'admin') {
+        await createEvent(
+            knownEvents.operations.verifiedV1(operationId.toString(), {
+                verifiedBy: userId,
+            }),
+        );
+
+        const verifiedOperation = await getOperationById(operationId);
+        await notifyVerifiedOperationCompletion(verifiedOperation);
+    }
+
+    await revalidateOperationPaths(operation);
+
+    return { success: true };
+}
+
+export async function completeOperationWithImageUrls(
+    operationId: number,
+    imageUrls: string[],
+    notes?: string,
+) {
+    if (!operationId) {
+        throw new Error('Operation ID is required');
+    }
+    return completeOperation(operationId, imageUrls, notes);
+}
+
+export async function verifyOperationAction(operationId: number) {
+    const { userId } = await auth(['admin']);
+    return verifyOperationCompletion(operationId, userId);
 }
 
 export async function cancelOperationAction(formData: FormData) {
@@ -313,6 +766,7 @@ export async function cancelOperationAction(formData: FormData) {
     // Only allow canceling new or planned operations
     if (
         operation.status === 'completed' ||
+        operation.status === 'pendingVerification' ||
         operation.status === 'failed' ||
         operation.status === 'canceled'
     ) {

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gredice Docs Auditor"
+  short_description: "Audit Gredice docs and repo guidance"
+  default_prompt: "Use $gredice-docs-auditor to audit repository documentation for stale commands, paths, and contributor guidance."

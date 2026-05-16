@@ -2,8 +2,10 @@ import type { ThreeEvent } from '@react-three/fiber';
 import { type PropsWithChildren, useRef } from 'react';
 import type { Vector3 } from 'three';
 import { useBlockRotate } from '../hooks/useBlockRotate';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { Block } from '../types/Block';
 import { useGameState } from '../useGameState';
+import { findAttachedRaisedBedBlockId } from '../utils/raisedBedBlocks';
 
 const ROTATE_DRAG_THRESHOLD = 0.1;
 
@@ -12,6 +14,7 @@ export function RotatableGroup({
     block,
 }: PropsWithChildren<{ block: Block }>) {
     const blockRotate = useBlockRotate();
+    const { data: garden } = useCurrentGarden();
     const effectsAudioMixer = useGameState((state) => state.audio.effects);
     const isDragging = useGameState((state) => state.isDragging);
     const swipeSound = effectsAudioMixer.useSoundEffect(
@@ -30,10 +33,22 @@ export function RotatableGroup({
         if (isDragging) return;
 
         event.stopPropagation();
-        blockRotate.mutate({ blockId: block.id, rotation: block.rotation + 1 });
+
+        const attachedRaisedBedBlockId =
+            block.name === 'Raised_Bed' && garden
+                ? findAttachedRaisedBedBlockId(garden.stacks, block.id)
+                : null;
+        const blockIds = attachedRaisedBedBlockId
+            ? [block.id, attachedRaisedBedBlockId]
+            : [block.id];
+
+        blockRotate.mutate({
+            blockId: block.id,
+            rotation: block.rotation + 1,
+            blockIds,
+        });
         rotateInitiated.current = null;
 
-        // TODO: Don't play sound if rotation is not possible
         swipeSound.play();
     }
 
@@ -52,19 +67,16 @@ export function RotatableGroup({
     }
 
     function handleRotateCancel() {
-        console.debug('Rotate cancel - leave');
         rotateInitiated.current = null;
     }
 
     function handlePointerUp(event: ThreeEvent<globalThis.PointerEvent>) {
-        // Cancel if the pointer moved
         if (
             rotateInitiated.current &&
             event.point.distanceTo(rotateInitiated.current) >
                 ROTATE_DRAG_THRESHOLD
         ) {
             rotateInitiated.current = null;
-            console.debug('Rotate cancel - moved');
             return;
         }
 

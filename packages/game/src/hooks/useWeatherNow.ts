@@ -1,11 +1,11 @@
-import { client } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
 
 export function useWeatherNow(enabled = true) {
     return useQuery({
         queryKey: ['weather', 'now'],
         queryFn: async () => {
-            const response = await client().api.data.weather.now.$get();
+            const response = await clientPublic().api.data.weather.now.$get();
             if (response.status === 500) {
                 console.error('Failed to fetch weather data', response);
                 return null;

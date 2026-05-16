@@ -1,4 +1,5 @@
 import { animated } from '@react-spring/three';
+import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
@@ -83,6 +84,7 @@ export function Fence({ stack, block, rotation }: EntityInstanceProps) {
                     slopeExponent={2.9}
                     noiseScale={3.3}
                 />
+                <RainWetOverlay geometry={nodes[variant].geometry} />
             </mesh>
         </animated.group>
     );

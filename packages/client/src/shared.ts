@@ -9,7 +9,10 @@ export function getAppUrl() {
     }
 
     // Server-side: use direct API URL
-    if (process.env.NEXT_PUBLIC_VERCEL_ENV === 'development') {
+    if (
+        process.env.NODE_ENV === 'development' ||
+        process.env.VERCEL_ENV === 'development'
+    ) {
         return 'https://api.gredice.test';
     }
     return 'https://api.gredice.com';
@@ -23,7 +26,7 @@ export function createDevSafeFetch(): typeof fetch {
     // In development, disable SSL verification to handle self-signed certificates
     const isDevEnvironment =
         process.env.NODE_ENV === 'development' ||
-        process.env.NEXT_PUBLIC_VERCEL_ENV === 'development';
+        process.env.VERCEL_ENV === 'development';
 
     // Check if we're running server-side (Node.js environment)
     const isServerSide = typeof process?.versions?.node !== 'undefined';

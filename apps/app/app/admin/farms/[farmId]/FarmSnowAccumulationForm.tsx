@@ -51,7 +51,6 @@ export function FarmSnowAccumulationForm({
                     placeholder="0.0"
                     value={accumulation}
                     onChange={(event) => setAccumulation(event.target.value)}
-                    helperText="Unesite visinu snijega u centimetrima."
                 />
                 <input type="hidden" name="farmId" value={farmId} />
                 <SubmitButton />

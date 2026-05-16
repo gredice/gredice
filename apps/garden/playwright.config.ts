@@ -5,8 +5,19 @@ import {
     devices,
     type PlaywrightTestConfig,
 } from '@playwright/experimental-ct-react';
+import {
+    getAppByName,
+    getComponentTestPort,
+    getPlaywrightBaseUrl,
+    shouldReusePlaywrightServer,
+} from '../../scripts/app-registry.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const app = getAppByName('garden');
+const reporter: PlaywrightTestConfig['reporter'] = [
+    ['list'],
+    ['html', { open: 'never' }],
+];
 
 // Plugin to intercept next/font/google before Vite's resolver
 function nextFontMockPlugin() {
@@ -34,15 +45,18 @@ export const config: PlaywrightTestConfig = {
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
     workers: process.env.CI ? 1 : undefined,
-    reporter: 'html',
+    reporter,
     use: {
-        baseURL: 'http://127.0.0.1:3001',
+        baseURL: getPlaywrightBaseUrl(app),
         trace: 'on-first-retry',
-        ctPort: 3100,
+        ctPort: getComponentTestPort(app),
         ctViteConfig: {
             plugins: [nextFontMockPlugin()],
             optimizeDeps: {
                 exclude: ['next/font/google'],
+            },
+            resolve: {
+                dedupe: ['nuqs', 'react', 'react-dom'],
             },
         },
     },
@@ -54,8 +68,8 @@ export const config: PlaywrightTestConfig = {
     ],
     webServer: {
         command: 'pnpm start',
-        url: 'http://127.0.0.1:3001',
-        reuseExistingServer: !process.env.CI,
+        url: getPlaywrightBaseUrl(app),
+        reuseExistingServer: shouldReusePlaywrightServer(),
     },
 };
 

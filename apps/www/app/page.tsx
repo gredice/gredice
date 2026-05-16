@@ -1,4 +1,4 @@
-import { client } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 import { CountingNumber } from '@gredice/ui/CountingNumber';
 import type { SectionData } from '@signalco/cms-core/SectionData';
 import { SectionsView } from '@signalco/cms-core/SectionsView';
@@ -70,7 +70,7 @@ function PlantsStatisticsLoading() {
 
 async function PlantsStatistics() {
     try {
-        const response = await client().api.data.statistics.plants.$get();
+        const response = await clientPublic().api.data.statistics.plants.$get();
         if (!response || response.status !== 200) {
             return null;
         }
@@ -132,8 +132,8 @@ function StepsSection() {
                                     level="body1"
                                     className="text-pretty"
                                 >
-                                    Mi postavljamo gredice kod lokalnog OPG-a i
-                                    brzo sadimo tvoje biljke.
+                                    Mi postavljamo tvoju gredicu kod lokalnog
+                                    OPG-a i brzo sadimo tvoje biljke.
                                 </Typography>
                             </Stack>
                             <NavigatingButton
@@ -279,7 +279,7 @@ export default function Home() {
                         <Card className="w-fit border-tertiary border-b-4">
                             <CardContent noHeader className="p-6 lg:pr-10">
                                 <Stack spacing={2}>
-                                    <Typography level="h2">
+                                    <Typography level="h2" component="h1">
                                         Vrt po tvom 🌱
                                     </Typography>
                                     <Typography level="body1">

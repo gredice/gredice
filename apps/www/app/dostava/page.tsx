@@ -16,12 +16,22 @@ import type { Metadata } from 'next';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
+import { formatPrice } from '../../lib/formatPrice';
 import { KnownPages } from '../../src/KnownPages';
 
 export const metadata: Metadata = {
     title: 'Dostava',
     description: 'Sve informacije o dostavi povrća iz tvojih gredica.',
 };
+
+const distanceSurchargePerKm = 0.2;
+
+const deliveryLocations = [
+    { name: 'Velika Gorica', distance: 20 },
+    { name: 'Karlovac', distance: 50 },
+    { name: 'Sisak', distance: 60 },
+    { name: 'Varaždin', distance: 90 },
+] as const;
 
 export default function DeliveryPage() {
     return (
@@ -51,42 +61,30 @@ export default function DeliveryPage() {
                     </Typography>
                     <h2 id="besplatna-dostava">🆓 Besplatna dostava</h2>
                     <p>
-                        Ukoliko tvoja dostava sadrži povrće od biljke za koju se
-                        radi prva dostava, ostvaruješ pravo na{' '}
-                        <strong>besplatnu dostavu</strong> za područje Zagreba,
-                        bez obzira na količinu povrća koju želiš primiti u toj
-                        dostavi.
+                        Za adrese na području Zagreba dostava je uvijek{' '}
+                        <strong>besplatna</strong>, bez obzira na broj biljaka
+                        ili količinu povrća u narudžbi.
                     </p>
                     <Alert startDecorator={'ℹ️'} color="info">
-                        Za više besplatnih dostava, u berbu uključi barem jednu
-                        biljku koja se prvi put dostavlja.
-                        <br />
-                        Na taj način možeš ostvariti pravo na{' '}
-                        <strong>18 besplatnih</strong> dostava za gredicu sa 18
-                        posađenih biljaka.
+                        Dostava za adrese izvan Zagreba računa se prema
+                        udaljenosti:
+                        <strong>
+                            {' '}
+                            {formatPrice(distanceSurchargePerKm)} po kilometru
+                        </strong>
+                        .
                     </Alert>
-                    <p>
-                        <small>
-                            <em>
-                                Pravo na besplatnu dostavu možeš iskoristiti
-                                najviše jednom tjedno. Ako želiš dodatne dostave
-                                u istom tjednu možeš ih naručiti po standardnoj
-                                cijeni.
-                            </em>
-                        </small>
-                    </p>
                     <h2 id="cijena-dostave">🫰 Cijena dostave</h2>
                     <p>
-                        Standardna cijena za dostavu je <strong>4.99 €</strong>{' '}
-                        po dostavi - neovisno o količini povrća.
-                    </p>
-                    <p>
-                        Za dostavu izvan Zagreba, cijeni dostave dodaje se
-                        dodatak za udaljenost -{' '}
-                        <strong>0,10 € po kilometru</strong> od naše najbliže{' '}
+                        Za dostavu izvan Zagreba cijena se računa prema
+                        udaljenosti od naše najbliže{' '}
                         <a href="#osobno-preuzimanje">
                             lokacije za osobno preuzimanje
                         </a>
+                        :{' '}
+                        <strong>
+                            {formatPrice(distanceSurchargePerKm)} po kilometru
+                        </strong>
                         .
                     </p>
                     <p>Vidi mapu zona dostave i tablicu s cijenama ispod:</p>
@@ -144,7 +142,7 @@ export default function DeliveryPage() {
                                         backgroundColor: '#faf4e3',
                                     }}
                                 >
-                                    Prva dostava biljke
+                                    Cijena dostave
                                 </th>
                                 <th
                                     style={{
@@ -154,7 +152,7 @@ export default function DeliveryPage() {
                                         borderTopRightRadius: '12px',
                                     }}
                                 >
-                                    Ostale dostave
+                                    Formula
                                 </th>
                             </tr>
                         </thead>
@@ -182,113 +180,50 @@ export default function DeliveryPage() {
                                         padding: '8px',
                                     }}
                                 >
-                                    <strong>4,99 €</strong>
+                                    <strong>0 €</strong>
                                 </td>
                             </tr>
-                            <tr>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
-                                    <strong>Velika Gorica</strong> (20 km)
-                                </td>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
-                                    <strong>2,00 €</strong>
-                                </td>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
-                                    <strong>6,99 €</strong>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
-                                    <strong>Karlovac</strong> (50 km)
-                                </td>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
-                                    <strong>5,00 €</strong>
-                                </td>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
-                                    <strong>9,99 €</strong>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
-                                    <strong>Sisak</strong> (60 km)
-                                </td>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
-                                    <strong>6,00 €</strong>
-                                </td>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
-                                    <strong>10,99 €</strong>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
-                                    <strong>Varaždin</strong> (90 km)
-                                </td>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
-                                    <strong>9,00 €</strong>
-                                </td>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
-                                    <strong>13,99 €</strong>
-                                </td>
-                            </tr>
+                            {deliveryLocations.map((location) => {
+                                const distanceFee =
+                                    location.distance * distanceSurchargePerKm;
+                                return (
+                                    <tr key={location.name}>
+                                        <td
+                                            style={{
+                                                border: '1px solid #ddd',
+                                                padding: '8px',
+                                            }}
+                                        >
+                                            <strong>{location.name}</strong> (
+                                            {location.distance} km)
+                                        </td>
+                                        <td
+                                            style={{
+                                                border: '1px solid #ddd',
+                                                padding: '8px',
+                                            }}
+                                        >
+                                            <strong>
+                                                {formatPrice(distanceFee)}
+                                            </strong>
+                                        </td>
+                                        <td
+                                            style={{
+                                                border: '1px solid #ddd',
+                                                padding: '8px',
+                                            }}
+                                        >
+                                            <strong>
+                                                {location.distance} km ×{' '}
+                                                {formatPrice(
+                                                    distanceSurchargePerKm,
+                                                )}
+                                                /km = {formatPrice(distanceFee)}
+                                            </strong>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                             <tr>
                                 <td
                                     style={{
@@ -310,7 +245,10 @@ export default function DeliveryPage() {
                                         padding: '8px',
                                     }}
                                 >
-                                    <strong>0,10 €/km</strong>
+                                    <strong>
+                                        {formatPrice(distanceSurchargePerKm)}
+                                        /km
+                                    </strong>
                                 </td>
                                 <td
                                     style={{
@@ -318,8 +256,11 @@ export default function DeliveryPage() {
                                         padding: '8px',
                                     }}
                                 >
-                                    <strong>4,99 €</strong> +{' '}
-                                    <strong>0,10 €/km</strong>
+                                    <strong>
+                                        udaljenost ×{' '}
+                                        {formatPrice(distanceSurchargePerKm)}
+                                        /km
+                                    </strong>
                                 </td>
                             </tr>
                         </tbody>
@@ -352,6 +293,7 @@ export default function DeliveryPage() {
                             <a
                                 href={KnownPages.GoogleMapsGrediceHQ}
                                 target="_blank"
+                                rel="noopener"
                             >
                                 Ulica Julija Knifera 3, Zagreb
                             </a>

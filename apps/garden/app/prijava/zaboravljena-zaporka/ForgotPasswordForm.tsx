@@ -1,6 +1,6 @@
 'use client';
 
-import { client } from '@gredice/client';
+import { clientPublic } from '@gredice/client';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Stack } from '@signalco/ui-primitives/Stack';
@@ -19,7 +19,7 @@ export function ForgotPasswordForm() {
         e.preventDefault();
 
         setError('');
-        const response = await client().api.auth[
+        const response = await clientPublic().api.auth[
             'send-change-password-email'
         ].$post({
             json: {

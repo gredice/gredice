@@ -1,7 +1,9 @@
 import {
     FIELD_STATUSES_TO_INCLUDE,
+    isFieldPendingVerification,
     isOperationCancelled,
     isOperationCompleted,
+    isOperationPendingVerification,
     OPERATION_STATUSES_TO_INCLUDE,
 } from './scheduleShared';
 import type { DeliveryRequest, Operation, RaisedBed } from './types';
@@ -18,8 +20,26 @@ export function getScheduledFieldsForDay(
         .filter((raisedBed) => Boolean(raisedBed.physicalId))
         .flatMap((raisedBed) => raisedBed.fields)
         .filter((field) => {
+            // Placeholder field rows represent empty slots in a merged bed and
+            // should not surface as unknown sowing tasks.
+            if (!field.plantSortId) {
+                return false;
+            }
+
             if (!FIELD_STATUSES_TO_INCLUDE.has(field.plantStatus ?? 'new')) {
                 return false;
+            }
+
+            if (isFieldPendingVerification(field.plantStatus)) {
+                if (!field.plantSowDate) {
+                    return isToday;
+                }
+
+                const sowDate = new Date(field.plantSowDate);
+                return (
+                    sowDate.toDateString() === normalizedDate.toDateString() ||
+                    (isToday && normalizedDate > sowDate)
+                );
             }
 
             if (field.plantStatus === 'sowed' && field.plantSowDate) {
@@ -54,8 +74,24 @@ export function getScheduledOperationsForDay(
             return false;
         }
 
-        if (operation.raisedBedId === null) {
+        if (
+            operation.raisedBedId === null &&
+            typeof operation.farmId !== 'number'
+        ) {
             return false;
+        }
+
+        if (isOperationPendingVerification(operation.status)) {
+            if (!operation.completedAt) {
+                return isToday;
+            }
+
+            const completedDate = new Date(operation.completedAt);
+            return (
+                completedDate.toDateString() ===
+                    normalizedDate.toDateString() ||
+                (isToday && normalizedDate > completedDate)
+            );
         }
 
         if (isOperationCompleted(operation.status) && operation.completedAt) {
@@ -77,6 +113,7 @@ export function getScheduledOperationsForDay(
             isToday &&
             normalizedDate > scheduledDate &&
             !isOperationCompleted(operation.status) &&
+            !isOperationPendingVerification(operation.status) &&
             !isOperationCancelled(operation.status);
 
         return sameDay || isUnscheduledToday || isOverdueToday;

@@ -157,13 +157,13 @@ export default function PolitikaPrivatnostiPage() {
                     <p>
                         Za potrebe dijagnostike, praćenja grešaka i poboljšanja
                         stabilnosti naše platforme koristimo uslugu{' '}
-                        <strong>Sentry</strong> (Functional Software, Inc.).
-                        Sentry nam pomaže identificirati i otkloniti tehničke
+                        <strong>Posthog</strong>
+                        Posthog nam pomaže identificirati i otkloniti tehničke
                         probleme kako bismo vam pružili bolju i pouzdaniju
                         uslugu.
                     </p>
                     <p>
-                        Prilikom praćenja grešaka, Sentry može prikupljati
+                        Prilikom praćenja grešaka, Posthog može prikupljati
                         sljedeće osobne podatke:
                     </p>
                     <ul>
@@ -186,10 +186,10 @@ export default function PolitikaPrivatnostiPage() {
                     </ul>
                     <p>
                         <strong>Sigurnost i usklađenost s GDPR-om:</strong> Svi
-                        podaci prikupljeni putem Sentry usluge pohranjuju se na
+                        podaci prikupljeni putem Posthog usluge pohranjuju se na
                         poslužiteljima unutar <strong>Europske unije</strong>,
                         čime osiguravamo usklađenost s Općom uredbom o zaštiti
-                        podataka (GDPR). Sentry je certificiran prema
+                        podataka (GDPR). Posthog je certificiran prema
                         standardima zaštite podataka i primjenjuje odgovarajuće
                         tehničke i organizacijske mjere za zaštitu vaših
                         podataka.

@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm';
+import { bustScheduleCache } from '../cache/scheduleCache';
 import { events } from '../schema/eventsSchema';
 import {
     gardens as dbGardens,
@@ -27,11 +28,31 @@ export async function deleteAccountWithDependencies(
     accountId: string,
     userId: string,
 ): Promise<void> {
+    let hasScheduleAffectingChanges = false;
+
+    async function bustScheduleCacheIfNeeded(context: string) {
+        if (!hasScheduleAffectingChanges) {
+            return;
+        }
+
+        try {
+            await bustScheduleCache();
+        } catch (cacheError) {
+            console.error(
+                `[AccountDelete] Error busting schedule cache ${context}:`,
+                cacheError,
+            );
+        }
+    }
+
     try {
         console.info(
             `[AccountDelete] Starting deletion for accountId=${accountId}, userId=${userId}`,
         );
         const gardens = await getAccountGardens(accountId);
+        if (gardens.length > 0) {
+            hasScheduleAffectingChanges = true;
+        }
 
         // 5-8. Deactivate raised beds
         for (const garden of gardens) {
@@ -151,6 +172,9 @@ export async function deleteAccountWithDependencies(
         const ops = await storage().query.operations.findMany({
             where: eq(operations.accountId, accountId),
         });
+        if (ops.length > 0) {
+            hasScheduleAffectingChanges = true;
+        }
         for (const op of ops) {
             await storage()
                 .update(operations)
@@ -164,11 +188,20 @@ export async function deleteAccountWithDependencies(
         );
         await storage().delete(events).where(eq(events.aggregateId, accountId));
 
+        // Delete user-account association
+        console.info(
+            `[AccountDelete] Deleting user-account association for accountId=${accountId}, userId=${userId}`,
+        );
+        await storage()
+            .delete(accountUsers)
+            .where(eq(accountUsers.accountId, accountId));
+
         // User cleanup (if user is not associated with any other account)
-        const userAccounts = await storage().query.accountUsers.findMany({
-            where: eq(accountUsers.accountId, accountId),
-        });
-        if (userAccounts.length === 0) {
+        const remainingUserAccounts =
+            await storage().query.accountUsers.findMany({
+                where: eq(accountUsers.userId, userId),
+            });
+        if (remainingUserAccounts.length === 0) {
             console.info(
                 `[AccountDelete] Deleting notifications and user for userId=${userId}`,
             );
@@ -192,19 +225,12 @@ export async function deleteAccountWithDependencies(
             await storage().delete(users).where(eq(users.id, userId));
         }
 
-        // Delete user-account association
-        console.info(
-            `[AccountDelete] Deleting user-account association for accountId=${accountId}, userId=${userId}`,
-        );
-        await storage()
-            .delete(accountUsers)
-            .where(eq(accountUsers.accountId, accountId));
-
         // Final - Delete account
         console.info(
             `[AccountDelete] Deleting account record for accountId=${accountId}`,
         );
         await storage().delete(accounts).where(eq(accounts.id, accountId));
+        await bustScheduleCacheIfNeeded('after account deletion');
         console.info(
             `[AccountDelete] Deletion complete for accountId=${accountId}, userId=${userId}`,
         );
@@ -213,6 +239,7 @@ export async function deleteAccountWithDependencies(
             '[AccountDelete] Error deleting account with dependencies:',
             error,
         );
+        await bustScheduleCacheIfNeeded('after partial deletion');
         throw error; // Re-throw to allow retry logic if needed
     }
 }

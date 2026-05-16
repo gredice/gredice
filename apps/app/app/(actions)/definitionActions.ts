@@ -16,19 +16,32 @@ import {
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth } from '../../lib/auth/auth';
+import { revalidatePublicDirectoryPagesForEntityType } from '../../lib/revalidation/publicDirectoryPages';
 import { KnownPages } from '../../src/KnownPages';
+
+async function revalidateAttributeDefinitionPages(
+    entityTypeName: string,
+    reason: string,
+) {
+    revalidatePath(
+        KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName),
+    );
+    await revalidatePublicDirectoryPagesForEntityType(entityTypeName, reason);
+}
 
 export async function upsertAttributeDefinition(
     definition: InsertAttributeDefinition | UpdateAttributeDefinition,
-) {
+): Promise<{ id: number }> {
     await auth(['admin']);
 
     const id = definition.id;
+    let resultId: number;
     if (id) {
         await storageUpdateAttributeDefinition({
             ...definition,
             id,
         });
+        resultId = id;
     } else {
         // Validate required fields
         const name = definition.name;
@@ -47,7 +60,7 @@ export async function upsertAttributeDefinition(
             throw new Error('Missing required fields.');
         }
 
-        await storageCreateAttributeDefinition({
+        resultId = await storageCreateAttributeDefinition({
             ...definition,
             name,
             label,
@@ -57,23 +70,23 @@ export async function upsertAttributeDefinition(
         });
     }
 
-    // Retrieve the entity type name from the definition
-    const entityTypeName = definition.entityTypeName;
-    if (entityTypeName) {
-        revalidatePath(
-            KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName),
-        );
-    } else if (!entityTypeName && id) {
-        const definition = await storageGetAttributeDefinition(id);
-        if (!definition) {
+    let entityTypeName = definition.entityTypeName;
+    if (!entityTypeName && id) {
+        const storedDefinition = await storageGetAttributeDefinition(id);
+        if (!storedDefinition) {
             throw new Error('Definition not found');
         }
-        revalidatePath(
-            KnownPages.DirectoryEntityTypeAttributeDefinitions(
-                definition.entityTypeName,
-            ),
+        entityTypeName = storedDefinition.entityTypeName;
+    }
+
+    if (entityTypeName) {
+        await revalidateAttributeDefinitionPages(
+            entityTypeName,
+            'attribute-definition.upsert',
         );
     }
+
+    return { id: resultId };
 }
 
 export async function deleteAttributeDefinition(
@@ -83,8 +96,9 @@ export async function deleteAttributeDefinition(
     await auth(['admin']);
 
     await storageDeleteAttributeDefinition(definitionId);
-    revalidatePath(
-        KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName),
+    await revalidateAttributeDefinitionPages(
+        entityTypeName,
+        'attribute-definition.delete',
     );
     redirect(
         KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName),
@@ -120,10 +134,9 @@ export async function upsertAttributeDefinitionCategory(
         });
     }
     if (category.entityTypeName) {
-        revalidatePath(
-            KnownPages.DirectoryEntityTypeAttributeDefinitions(
-                category.entityTypeName,
-            ),
+        await revalidateAttributeDefinitionPages(
+            category.entityTypeName,
+            'attribute-definition-category.upsert',
         );
     }
 }
@@ -137,8 +150,9 @@ export async function reorderAttributeDefinitionCategory(
     await auth(['admin']);
     const order = lexinsert(prevOrder ?? undefined, nextOrder ?? undefined);
     await storageUpdateAttributeDefinitionCategory({ id: categoryId, order });
-    revalidatePath(
-        KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName),
+    await revalidateAttributeDefinitionPages(
+        entityTypeName,
+        'attribute-definition-category.reorder',
     );
 }
 
@@ -151,29 +165,10 @@ export async function reorderAttributeDefinition(
     await auth(['admin']);
     const order = lexinsert(prevOrder ?? undefined, nextOrder ?? undefined);
     await storageUpdateAttributeDefinition({ id: definitionId, order });
-    revalidatePath(
-        KnownPages.DirectoryEntityTypeAttributeDefinitions(entityTypeName),
-    );
-}
-
-export async function createAttributeDefinitionFromForm(
-    entityTypeName: string,
-    categoryName: string,
-    formData: FormData,
-) {
-    await auth(['admin']);
-
-    const name = formData.get('name') as string;
-    const label = formData.get('label') as string;
-    const dataType = formData.get('dataType') as string;
-
-    await upsertAttributeDefinition({
-        name,
-        label,
-        dataType,
+    await revalidateAttributeDefinitionPages(
         entityTypeName,
-        category: categoryName,
-    });
+        'attribute-definition.reorder',
+    );
 }
 
 export async function createAttributeDefinitionCategoryFromForm(
@@ -190,4 +185,8 @@ export async function createAttributeDefinitionCategoryFromForm(
         label,
         entityTypeName,
     });
+    await revalidateAttributeDefinitionPages(
+        entityTypeName,
+        'attribute-definition-category.create',
+    );
 }
