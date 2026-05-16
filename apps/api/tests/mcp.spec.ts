@@ -44,6 +44,129 @@ test.describe('MCP Core Infrastructure', () => {
             server: 'gredice-mcp-core',
         });
     });
+
+    test('should initialize the unified MCP endpoint without auth', async ({
+        request,
+    }) => {
+        const response = await request.post(MCP_BASE_URL, {
+            data: {
+                jsonrpc: '2.0',
+                id: 'initialize',
+                method: 'initialize',
+                params: {
+                    protocolVersion: '2025-03-26',
+                    capabilities: {},
+                    clientInfo: {
+                        name: 'playwright',
+                        version: '1.0.0',
+                    },
+                },
+            },
+        });
+
+        expect(response.status()).toBe(200);
+        const data = await response.json();
+        expect(data.result.serverInfo.name).toBe('gredice-mcp');
+    });
+
+    test('should list unified MCP tools without auth', async ({ request }) => {
+        const response = await request.post(MCP_BASE_URL, {
+            data: {
+                jsonrpc: '2.0',
+                id: 'tools-list',
+                method: 'tools/list',
+                params: {},
+            },
+        });
+
+        expect(response.status()).toBe(200);
+        const data = await response.json();
+        expect(data.result.tools).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ name: 'directories/get-plants' }),
+                expect.objectContaining({
+                    name: 'directories/get-plant-sorts',
+                }),
+            ]),
+        );
+    });
+
+    test('should call public unified MCP read tools without auth', async ({
+        request,
+    }) => {
+        const response = await request.post(MCP_BASE_URL, {
+            data: {
+                jsonrpc: '2.0',
+                id: 'public-read-tool',
+                method: 'tools/call',
+                params: {
+                    name: 'directories/get-plants',
+                    arguments: { limit: 2, offset: 0 },
+                },
+            },
+        });
+
+        expect(response.status()).toBe(200);
+        const data = await response.json();
+        expect(data.result).toMatchObject({
+            plants: expect.any(Array),
+            total: expect.any(Number),
+        });
+    });
+
+    for (const protectedTool of [
+        {
+            name: 'directories/get-plant',
+            arguments: { plantName: 'rajcica', includeSorts: true },
+        },
+        {
+            name: 'directories/get-plant-sorts',
+            arguments: { limit: 2, offset: 0 },
+        },
+        {
+            name: 'directories/search-entities',
+            arguments: { query: 'rajcica' },
+        },
+    ]) {
+        test(`should challenge unauthenticated unified MCP auth-read tool ${protectedTool.name}`, async ({
+            request,
+        }) => {
+            const response = await request.post(MCP_BASE_URL, {
+                data: {
+                    jsonrpc: '2.0',
+                    id: 'auth-read-tool',
+                    method: 'tools/call',
+                    params: protectedTool,
+                },
+            });
+
+            expect(response.status()).toBe(401);
+            expect(response.headers()['www-authenticate']).toContain(
+                '/.well-known/oauth-protected-resource/api/mcp',
+            );
+            const data = await response.json();
+            expect(data.error).toMatchObject({
+                code: -32000,
+                message: 'Unauthorized',
+            });
+        });
+    }
+
+    test('should publish MCP resource metadata with docs link', async ({
+        request,
+    }) => {
+        const response = await request.get(
+            '/.well-known/oauth-protected-resource/api/mcp',
+        );
+
+        expect(response.status()).toBe(200);
+        const data = await response.json();
+        expect(data.resource).toContain('/api/mcp');
+        expect(data.resource_documentation).toContain('/test');
+        expect(data.scopes_supported).toEqual(
+            expect.arrayContaining(['mcp:read', 'mcp:write', 'mcp:admin']),
+        );
+    });
 });
 
 test.describe('MCP Directories Server', () => {
@@ -612,7 +735,9 @@ test.describe('MCP Commerce Server', () => {
     test('should reject cart mutation for read-only token', async ({
         request,
     }) => {
-        const testJWT = createTestJWT('user-123', 'gardener', ['commerce:read']);
+        const testJWT = createTestJWT('user-123', 'gardener', [
+            'commerce:read',
+        ]);
 
         const response = await request.post(
             `${MCP_BASE_URL}/commerce/tools/call`,
@@ -641,7 +766,9 @@ test.describe('MCP Commerce Server', () => {
         expect(data.error.code).toBe(-32001);
     });
 
-    test('should reject cart access for different userId', async ({ request }) => {
+    test('should reject cart access for different userId', async ({
+        request,
+    }) => {
         const testJWT = createTestJWT('user-123', 'gardener');
 
         const response = await request.post(
@@ -669,7 +796,6 @@ test.describe('MCP Commerce Server', () => {
         const data = await response.json();
         expect(data.error.code).toBe(-32001);
     });
-
 });
 
 test.describe('MCP Error Handling', () => {

@@ -65,7 +65,11 @@ const DIRECTORY_ENTITY_TYPES = {
 } as const;
 
 function entityName(entity: EntityStandardized): string {
-    return entity.information?.name || entity.information?.label || `Entity ${entity.id}`;
+    return (
+        entity.information?.name ||
+        entity.information?.label ||
+        `Entity ${entity.id}`
+    );
 }
 
 function extractPlantName(entity: EntityStandardized): string {
@@ -76,14 +80,20 @@ function extractPlantName(entity: EntityStandardized): string {
     }
     const nestedPlantName = (info as Record<string, unknown>).plant;
     if (typeof nestedPlantName === 'object' && nestedPlantName) {
-        const nestedInfo = (nestedPlantName as { information?: { name?: string } }).information;
+        const nestedInfo = (
+            nestedPlantName as { information?: { name?: string } }
+        ).information;
         return nestedInfo?.name ?? '';
     }
     return '';
 }
 
 function extractSeedSortName(seed: EntityStandardized): string {
-    const plantSort = (seed.information as { plantSort?: { information?: { name?: string } } } | undefined)?.plantSort;
+    const plantSort = (
+        seed.information as
+            | { plantSort?: { information?: { name?: string } } }
+            | undefined
+    )?.plantSort;
     return plantSort?.information?.name ?? '';
 }
 
@@ -91,10 +101,15 @@ function paginate<T>(values: T[], limit: number, offset: number) {
     return values.slice(offset, offset + limit);
 }
 
-async function getDirectoryEntities(entityTypeName: string): Promise<EntityStandardized[]> {
+async function getDirectoryEntities(
+    entityTypeName: string,
+): Promise<EntityStandardized[]> {
     try {
-        const entities = await getEntitiesFormatted<EntityStandardized>(entityTypeName);
-        return [...(entities ?? [])].sort((a, b) => entityName(a).localeCompare(entityName(b), 'hr'));
+        const entities =
+            await getEntitiesFormatted<EntityStandardized>(entityTypeName);
+        return [...(entities ?? [])].sort((a, b) =>
+            entityName(a).localeCompare(entityName(b), 'hr'),
+        );
     } catch {
         return [];
     }
@@ -130,7 +145,9 @@ async function handleGetPlants(input: z.infer<typeof GetPlantsSchema>) {
     const allPlants = await getDirectoryEntities(DIRECTORY_ENTITY_TYPES.plant);
     const filtered = input.category
         ? allPlants.filter((plant) =>
-              `${plant.attributes?.category ?? ''}`.toLowerCase().includes((input.category ?? '').toLowerCase()),
+              `${plant.attributes?.category ?? ''}`
+                  .toLowerCase()
+                  .includes((input.category ?? '').toLowerCase()),
           )
         : allPlants;
 
@@ -151,7 +168,9 @@ async function handleGetPlants(input: z.infer<typeof GetPlantsSchema>) {
 async function handleGetPlant(input: z.infer<typeof GetPlantSchema>) {
     const allPlants = await getDirectoryEntities(DIRECTORY_ENTITY_TYPES.plant);
     const term = input.plantName.toLowerCase();
-    const plant = allPlants.find((item) => entityName(item).toLowerCase().includes(term));
+    const plant = allPlants.find((item) =>
+        entityName(item).toLowerCase().includes(term),
+    );
 
     if (!plant) {
         return { error: `Biljka "${input.plantName}" nije pronađena` };
@@ -172,30 +191,52 @@ async function handleGetPlant(input: z.infer<typeof GetPlantSchema>) {
         .filter((sort) => {
             const sortPlantId = sort.attributes?.plantId;
             const sortPlantName = sort.information?.plant?.information?.name;
-            return sortPlantId === plant.id || sortPlantName === plant.information?.name;
+            return (
+                sortPlantId === plant.id ||
+                sortPlantName === plant.information?.name
+            );
         })
         .map((sort) => ({
             id: sort.id.toString(),
             name: entityName(sort),
-            description: sort.information?.description || sort.information?.shortDescription || '',
+            description:
+                sort.information?.description ||
+                sort.information?.shortDescription ||
+                '',
         }));
 
     return { ...result, sorts };
 }
 
-async function handleSearchEntities(input: z.infer<typeof SearchEntitiesSchema>) {
+async function handleSearchEntities(
+    input: z.infer<typeof SearchEntitiesSchema>,
+) {
     const types = input.entityTypes?.length
         ? input.entityTypes
-        : [DIRECTORY_ENTITY_TYPES.plant, DIRECTORY_ENTITY_TYPES.sort, DIRECTORY_ENTITY_TYPES.operation, DIRECTORY_ENTITY_TYPES.seed];
+        : [
+              DIRECTORY_ENTITY_TYPES.plant,
+              DIRECTORY_ENTITY_TYPES.sort,
+              DIRECTORY_ENTITY_TYPES.operation,
+              DIRECTORY_ENTITY_TYPES.seed,
+          ];
 
     const query = input.query.toLowerCase();
-    const results: Array<{id:string; type:string; name:string; description:string; relevance:number}> = [];
+    const results: Array<{
+        id: string;
+        type: string;
+        name: string;
+        description: string;
+        relevance: number;
+    }> = [];
 
     for (const type of types) {
         const entities = await getDirectoryEntities(type);
         for (const entity of entities) {
             const name = entityName(entity);
-            const description = entity.information?.description || entity.information?.shortDescription || '';
+            const description =
+                entity.information?.description ||
+                entity.information?.shortDescription ||
+                '';
             const hay = `${name} ${description}`.toLowerCase();
             if (!hay.includes(query)) continue;
             results.push({
@@ -208,15 +249,30 @@ async function handleSearchEntities(input: z.infer<typeof SearchEntitiesSchema>)
         }
     }
 
-    const ranked = results.sort((a, b) => b.relevance - a.relevance || a.name.localeCompare(b.name, 'hr')).slice(0, input.limit);
+    const ranked = results
+        .sort(
+            (a, b) =>
+                b.relevance - a.relevance || a.name.localeCompare(b.name, 'hr'),
+        )
+        .slice(0, input.limit);
 
-    return { results: ranked, total: ranked.length, query: input.query, limit: input.limit, entityTypes: input.entityTypes ?? null };
+    return {
+        results: ranked,
+        total: ranked.length,
+        query: input.query,
+        limit: input.limit,
+        entityTypes: input.entityTypes ?? null,
+    };
 }
 
 async function handleGetPlantSorts(input: z.infer<typeof GetPlantSortsSchema>) {
     const allSorts = await getDirectoryEntities(DIRECTORY_ENTITY_TYPES.sort);
     const filtered = input.plant_type
-        ? allSorts.filter((sort) => extractPlantName(sort).toLowerCase().includes((input.plant_type ?? '').toLowerCase()))
+        ? allSorts.filter((sort) =>
+              extractPlantName(sort)
+                  .toLowerCase()
+                  .includes((input.plant_type ?? '').toLowerCase()),
+          )
         : allSorts;
 
     return {
@@ -232,23 +288,31 @@ async function handleGetPlantSorts(input: z.infer<typeof GetPlantSortsSchema>) {
 }
 
 async function handleGetOperations(input: z.infer<typeof GetOperationsSchema>) {
-    const allOperations = await getDirectoryEntities(DIRECTORY_ENTITY_TYPES.operation);
+    const allOperations = await getDirectoryEntities(
+        DIRECTORY_ENTITY_TYPES.operation,
+    );
     const filtered = input.category
-        ? allOperations.filter((op) =>
-              `${op.attributes?.application ?? op.attributes?.frequency ?? ''}`.toLowerCase() ===
-              (input.category ?? '').toLowerCase(),
+        ? allOperations.filter(
+              (op) =>
+                  `${op.attributes?.application ?? op.attributes?.frequency ?? ''}`.toLowerCase() ===
+                  (input.category ?? '').toLowerCase(),
           )
         : allOperations;
 
     return {
-        operations: paginate(filtered, input.limit, input.offset).map((operation) => ({
-            id: operation.id.toString(),
-            name: entityName(operation),
-            category: operation.attributes?.application ?? operation.attributes?.frequency ?? null,
-            description: operation.information?.description || '',
-            steps: operation.attributes?.steps ?? [],
-            tools: operation.attributes?.tools ?? [],
-        })),
+        operations: paginate(filtered, input.limit, input.offset).map(
+            (operation) => ({
+                id: operation.id.toString(),
+                name: entityName(operation),
+                category:
+                    operation.attributes?.application ??
+                    operation.attributes?.frequency ??
+                    null,
+                description: operation.information?.description || '',
+                steps: operation.attributes?.steps ?? [],
+                tools: operation.attributes?.tools ?? [],
+            }),
+        ),
         total: filtered.length,
         limit: input.limit,
         offset: input.offset,
@@ -259,10 +323,18 @@ async function handleGetSeeds(input: z.infer<typeof GetSeedsSchema>) {
     const allSeeds = await getDirectoryEntities(DIRECTORY_ENTITY_TYPES.seed);
     let filtered = allSeeds;
     if (input.plant_type) {
-        filtered = filtered.filter((seed) => extractPlantName(seed).toLowerCase().includes((input.plant_type ?? '').toLowerCase()));
+        filtered = filtered.filter((seed) =>
+            extractPlantName(seed)
+                .toLowerCase()
+                .includes((input.plant_type ?? '').toLowerCase()),
+        );
     }
     if (input.variety) {
-        filtered = filtered.filter((seed) => extractSeedSortName(seed).toLowerCase().includes((input.variety ?? '').toLowerCase()));
+        filtered = filtered.filter((seed) =>
+            extractSeedSortName(seed)
+                .toLowerCase()
+                .includes((input.variety ?? '').toLowerCase()),
+        );
     }
 
     return {
