@@ -225,6 +225,20 @@
       "when": 1778717523790,
       "tag": "0031_brief_doctor_strange",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1778898994333,
+      "tag": "0032_third_raza",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1778938710501,
+      "tag": "0033_workable_hercules",
+      "breakpoints": true
     }
   ]
 }

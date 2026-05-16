@@ -53,7 +53,11 @@ test('publishPost returns operational error when missing credentials', async () 
         async () => response({}),
     );
 
-    const result = await adapter.publishPost({ title: 'Hello' });
+    const result = await adapter.publishPost({
+        providerAccountKey: 'default',
+        postType: 'text',
+        title: 'Hello',
+    });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, 'missing_credentials');
 });
@@ -87,7 +91,12 @@ test('publishPost submits text post and normalizes success', async () => {
         },
     );
 
-    const result = await adapter.publishPost({ title: 'Hi', body: 'body' });
+    const result = await adapter.publishPost({
+        providerAccountKey: 'default',
+        postType: 'text',
+        title: 'Hi',
+        body: 'body',
+    });
     assert.equal(result.ok, true);
     if (result.ok) {
         assert.equal(result.providerPostId, 'abc123');
@@ -120,7 +129,11 @@ test('publishPost maps subreddit failure into sanitized invalid_destination', as
         },
     );
 
-    const result = await adapter.publishPost({ title: 'Hi' });
+    const result = await adapter.publishPost({
+        providerAccountKey: 'default',
+        postType: 'text',
+        title: 'Hi',
+    });
     assert.equal(result.ok, false);
     if (!result.ok) {
         assert.equal(result.code, 'invalid_destination');
@@ -147,7 +160,11 @@ test('publishPost maps submit transport failures into retriable provider_unavail
     );
 
     const { result, warnings } = await captureWarnings(() =>
-        adapter.publishPost({ title: 'Hi' }),
+        adapter.publishPost({
+            providerAccountKey: 'default',
+            postType: 'text',
+            title: 'Hi',
+        }),
     );
     assert.equal(result.ok, false);
     if (!result.ok) {
@@ -176,7 +193,11 @@ test('publishPost maps non-JSON submit responses into retriable provider_unavail
     );
 
     const { result, warnings } = await captureWarnings(() =>
-        adapter.publishPost({ title: 'Hi' }),
+        adapter.publishPost({
+            providerAccountKey: 'default',
+            postType: 'text',
+            title: 'Hi',
+        }),
     );
     assert.equal(result.ok, false);
     if (!result.ok) {
@@ -184,4 +205,27 @@ test('publishPost maps non-JSON submit responses into retriable provider_unavail
         assert.equal(result.retriable, true);
     }
     assert.equal(warnings.length, 1);
+});
+
+test('publishPost rejects unsupported media formats before transport', async () => {
+    const adapter = new RedditProviderAdapter(
+        {
+            enabled: true,
+            clientId: 'id',
+            clientSecret: 'secret',
+            userAgent: 'ua',
+            defaultDestination: 'gredice',
+            allowedDestinations: new Set(['gredice']),
+        },
+        async () => response({ access_token: 'token' }),
+    );
+
+    const result = await adapter.publishPost({
+        providerAccountKey: 'default',
+        postType: 'story',
+        title: 'Hi',
+        mediaUrls: [{ url: 'https://gredice.com/story.jpg', type: 'image' }],
+    });
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, 'invalid_request');
 });
