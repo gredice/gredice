@@ -23,6 +23,7 @@ const raisedBedOrientation = 'horizontal';
 export const cartOperation = {
     id: 501,
     entityType: { id: 10, name: 'operation', label: 'Radnje' },
+    slug: 'mock-cart-watering',
     attributes: {
         frequency: 'once',
         stage: {
