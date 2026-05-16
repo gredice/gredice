@@ -331,6 +331,9 @@ async function openApiEntitiesDoc(
             },
             required: ['id', 'name', 'label'],
         },
+        slug: {
+            type: 'string',
+        },
     };
 
     const attributeDefinitions = await getAttributeDefinitions(entityType.name);
@@ -386,6 +389,7 @@ async function openApiEntitiesDoc(
                     required: [
                         'id',
                         'entityType',
+                        'slug',
                         'createdAt',
                         'updatedAt',
                         ...requiredCategories,

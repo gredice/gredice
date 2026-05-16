@@ -1,3 +1,4 @@
+import { slugify } from '@gredice/js/slug';
 import {
     createInventoryItem,
     getAttributeDefinitionCategories,
@@ -253,6 +254,11 @@ export default async function EntityDetailsPage(props: {
                 }
                 heading={entityDisplayName(entity)}
             />
+            <div className="mb-3">
+                <FieldSet className="max-w-sm">
+                    <Field name="Slug" value={slugify(entityTitle)} />
+                </FieldSet>
+            </div>
             <Tabs defaultValue={attributeCategories.at(0)?.name}>
                 <EntityDetailsStickyHeader
                     tabs={
