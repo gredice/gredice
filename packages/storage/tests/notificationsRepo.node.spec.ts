@@ -7,6 +7,7 @@ import {
     createNotificationCampaign,
     createUserWithPassword,
     enqueueNotificationCampaign,
+    gardens,
     getNotificationCampaign,
     getNotificationsByAccount,
     getUser,
@@ -16,7 +17,11 @@ import {
     storage,
 } from '@gredice/storage';
 import { eq } from 'drizzle-orm';
-import { createTestAccount, ensureFarmId } from './helpers/testHelpers';
+import {
+    createTestAccount,
+    createTestGarden,
+    ensureFarmId,
+} from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
 test('createNotification and getNotificationsByAccount basic usage', async () => {
@@ -178,4 +183,37 @@ test('scheduled notification campaign can be cancelled before fan-out', async ()
     assert.equal(cancelled?.status, 'cancelled');
     assert.equal(cancelled?.queuedCount, 0);
     assert.ok(cancelled?.cancelledAt);
+});
+
+test('explicit notification campaign audience excludes deleted gardens', async () => {
+    createTestDb();
+    const farmId = await ensureFarmId();
+    const userName = `deleted-garden-campaign-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(userName, 'password');
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+    const gardenId = await createTestGarden({
+        accountId,
+        farmId,
+        name: 'Deleted campaign target garden',
+    });
+
+    await storage()
+        .update(gardens)
+        .set({ isDeleted: true })
+        .where(eq(gardens.id, gardenId));
+
+    const preview = await previewNotificationCampaignAudience({
+        type: 'explicit',
+        recipients: [{ accountId, userId, gardenId }],
+    });
+
+    assert.equal(preview.explicitRecipientCount, 1);
+    assert.equal(preview.targetCount, 0);
+    assert.equal(preview.accountCount, 0);
+    assert.equal(preview.userCount, 0);
+    assert.equal(preview.gardenCount, 0);
+    assert.equal(preview.unmatchedRecipientCount, 1);
 });

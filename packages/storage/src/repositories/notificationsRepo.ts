@@ -209,7 +209,12 @@ async function previewExplicitCampaignAudience(
                       accountId: gardens.accountId,
                   })
                   .from(gardens)
-                  .where(inArray(gardens.id, gardenIds))
+                  .where(
+                      and(
+                          inArray(gardens.id, gardenIds),
+                          eq(gardens.isDeleted, false),
+                      ),
+                  )
             : [];
     const gardenAccountById = new Map(
         matchedGardens.map((garden) => [garden.gardenId, garden.accountId]),
