@@ -24,6 +24,20 @@ import { getEntityCompleteness } from '../helpers/entityCompleteness';
 
 const entityCacheTtl = 60 * 60; // 1 hour
 
+async function refreshEntitySearchDocumentAfterMutation(entityId: number) {
+    try {
+        const { refreshEntitySearchDocument } = await import(
+            './entitySearchRepo'
+        );
+        await refreshEntitySearchDocument(entityId);
+    } catch (error) {
+        console.error('Failed to refresh entity search document', {
+            entityId,
+            error,
+        });
+    }
+}
+
 type EntityAttribute = SelectAttributeValue & {
     attributeDefinition: SelectAttributeDefinition;
 };
@@ -835,6 +849,8 @@ export async function updateEntity(
             : null,
         bustCachedByPrefixes(['dashboard:admin:']),
     ]);
+
+    await refreshEntitySearchDocumentAfterMutation(entity.id);
 }
 
 export async function deleteEntity(
@@ -866,6 +882,8 @@ export async function deleteEntity(
             : null,
         bustCachedByPrefixes(['dashboard:admin:']),
     ]);
+
+    await refreshEntitySearchDocumentAfterMutation(id);
 }
 
 export async function getEntityRevisions(entityId: number) {
