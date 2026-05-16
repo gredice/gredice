@@ -2,9 +2,8 @@ import { getAssignableFarmUsersByRaisedBedFieldIds } from '@gredice/storage';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
-import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
 import { RaisedBedPlantingScheduleSection } from './RaisedBedPlantingScheduleSection';
+import { ScheduleDayPlantingsBulkActions } from './ScheduleDayPlantingsBulkActions';
 import { getScheduleDayData, getSchedulePlantSorts } from './scheduleData';
 import {
     groupRaisedBedsForSchedule,
@@ -12,6 +11,7 @@ import {
     isFieldCompleted,
     isFieldPendingVerification,
 } from './scheduleShared';
+import { OptimisticScheduleActionsProvider } from './useOptimisticScheduleActions';
 
 interface ScheduleDayPlantingsSectionProps {
     isToday: boolean;
@@ -51,6 +51,7 @@ export async function ScheduleDayPlantingsSection({
                 !!field.assignedUserId,
         )
         .map((field) => ({
+            id: field.id,
             raisedBedId: field.raisedBedId,
             positionIndex: field.positionIndex,
             label: `${field.positionIndex + 1}`,
@@ -69,34 +70,32 @@ export async function ScheduleDayPlantingsSection({
         }));
 
     return (
-        <Stack spacing={2}>
-            <Row spacing={1} alignItems="center">
-                <Typography level="h6">Sijanje</Typography>
-                <BulkApproveRaisedBedButton
-                    physicalId="dan"
-                    fields={dayFieldsToApprove}
-                    operations={[]}
-                />
-                <BulkAssignRaisedBedButton
-                    physicalId="dan"
-                    fields={dayFieldsToAssign}
-                    operations={[]}
-                />
-            </Row>
-            {raisedBedGroups.map(({ key, physicalId, raisedBeds: beds }) => {
-                return (
-                    <RaisedBedPlantingScheduleSection
-                        key={key}
-                        physicalId={physicalId}
-                        raisedBeds={beds}
-                        scheduledFields={scheduledFields}
-                        plantSorts={plantSorts}
-                        assignableFarmUsersByRaisedBedFieldId={
-                            assignableFarmUsersByRaisedBedFieldId
-                        }
+        <OptimisticScheduleActionsProvider>
+            <Stack spacing={2}>
+                <Row spacing={1} alignItems="center">
+                    <Typography level="h6">Sijanje</Typography>
+                    <ScheduleDayPlantingsBulkActions
+                        fieldsToApprove={dayFieldsToApprove}
+                        fieldsToAssign={dayFieldsToAssign}
                     />
-                );
-            })}
-        </Stack>
+                </Row>
+                {raisedBedGroups.map(
+                    ({ key, physicalId, raisedBeds: beds }) => {
+                        return (
+                            <RaisedBedPlantingScheduleSection
+                                key={key}
+                                physicalId={physicalId}
+                                raisedBeds={beds}
+                                scheduledFields={scheduledFields}
+                                plantSorts={plantSorts}
+                                assignableFarmUsersByRaisedBedFieldId={
+                                    assignableFarmUsersByRaisedBedFieldId
+                                }
+                            />
+                        );
+                    },
+                )}
+            </Stack>
+        </OptimisticScheduleActionsProvider>
     );
 }

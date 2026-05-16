@@ -1,4 +1,16 @@
-import { and, asc, count, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
+import {
+    and,
+    asc,
+    count,
+    desc,
+    eq,
+    gte,
+    inArray,
+    isNull,
+    lte,
+    or,
+    sql,
+} from 'drizzle-orm';
 import {
     bustScheduleCache,
     cacheScheduleRead,
@@ -54,6 +66,24 @@ type GetOperationsInput = {
     raisedBedFieldIds?: number[];
 };
 
+function operationGardenIdExpression() {
+    return sql<number>`coalesce(${operations.gardenId}, ${raisedBeds.gardenId})`;
+}
+
+function operationFarmIdExpression() {
+    return sql<number>`coalesce(${operations.farmId}, ${gardens.farmId})`;
+}
+
+function operationLocationIntegrityWhere() {
+    return and(
+        or(isNull(operations.raisedBedId), eq(raisedBeds.isDeleted, false)),
+        or(
+            and(isNull(operations.gardenId), isNull(operations.raisedBedId)),
+            eq(gardens.isDeleted, false),
+        ),
+    );
+}
+
 function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
     if (!value || typeof value !== 'object') {
         return {};
@@ -84,6 +114,9 @@ function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
         data.images = record.images.filter(
             (value): value is string => typeof value === 'string',
         );
+    }
+    if (typeof record.notes === 'string') {
+        data.notes = record.notes;
     }
     if (typeof record.error === 'string') {
         data.error = record.error;
@@ -155,6 +188,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
         let canceledAt: Date | undefined;
         let cancelReason: string | undefined;
         let imageUrls: string[] | undefined;
+        let completionNotes: string | undefined;
 
         // helpers to safely extract typed values from unknown event.data
         const asString = (v: unknown): string | undefined =>
@@ -184,6 +218,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
                         (url): url is string => typeof url === 'string',
                     );
                 }
+                completionNotes = asString(data?.notes) ?? completionNotes;
             } else if (event.type === knownEventTypes.operations.verify) {
                 status = 'completed';
                 verifiedBy = asString(data?.verifiedBy) ?? verifiedBy;
@@ -228,6 +263,7 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
             canceledAt,
             cancelReason,
             imageUrls,
+            completionNotes,
         };
     });
 
@@ -300,6 +336,11 @@ const operationTimelineStatusTypes = [
     knownEventTypes.operations.cancel,
 ];
 
+const operationHistoryStatusTypes = [
+    knownEventTypes.operations.assign,
+    ...operationTimelineStatusTypes,
+];
+
 function getLatestOperationStatusTypeExpression() {
     return sql<string | null>`(
         select ${events.type}
@@ -340,10 +381,42 @@ function getOperationStatusExpression() {
     )`;
 }
 
+function getOperationStatusWhere(
+    status: OperationStatus | OperationStatus[] | undefined,
+) {
+    if (!status) {
+        return undefined;
+    }
+
+    const statusValues = Array.isArray(status) ? status : [status];
+    if (statusValues.length === 0) {
+        return undefined;
+    }
+
+    return sql`${getOperationStatusExpression()} in (${sql.join(
+        statusValues.map((value) => sql`${value}`),
+        sql`, `,
+    )})`;
+}
+
 function getOperationTimelineSortExpression() {
     const scheduledDateExpression = getOperationScheduledDateExpression();
 
     return sql<Date>`coalesce(${scheduledDateExpression}, ${operations.createdAt})`;
+}
+
+function getOperationHistorySortExpression() {
+    return sql<Date>`coalesce((
+        select ${events.createdAt}
+        from ${events}
+        where ${events.aggregateId} = CAST(${operations.id} as text)
+          and ${events.type} in (${sql.join(
+              operationHistoryStatusTypes.map((value) => sql`${value}`),
+              sql`, `,
+          )})
+        order by ${events.createdAt} desc, ${events.id} desc
+        limit 1
+    ), ${operations.createdAt})`;
 }
 
 export async function getOperations(
@@ -373,9 +446,13 @@ export async function getOperationsPage(
     const pageSize = input.limit ?? 20;
     const statusExpression = getOperationStatusExpression();
     const timelineSortExpression = getOperationTimelineSortExpression();
+    const historySortExpression = getOperationHistorySortExpression();
     const includeCompletedWhere = input.includeCompleted
         ? undefined
         : sql`${statusExpression} != 'completed'`;
+    const sortOrder = input.includeCompleted
+        ? [desc(historySortExpression), desc(operations.id)]
+        : [asc(timelineSortExpression), asc(operations.id)];
 
     const [pageRows, totalResult] = await Promise.all([
         storage()
@@ -384,7 +461,7 @@ export async function getOperationsPage(
             })
             .from(operations)
             .where(and(getOperationsWhere(input), includeCompletedWhere))
-            .orderBy(asc(timelineSortExpression), asc(operations.id))
+            .orderBy(...sortOrder)
             .offset(offset)
             .limit(pageSize + 1),
         storage()
@@ -445,16 +522,22 @@ async function getAllOperationsUncached(filter?: {
         );
     } else {
         // Otherwise, use the original timestamp-based filtering
-        const operationsList = await storage().query.operations.findMany({
-            where: and(
-                eq(operations.isDeleted, false),
-                filter?.from
-                    ? gte(operations.timestamp, filter.from)
-                    : undefined,
-                filter?.to ? lte(operations.timestamp, filter.to) : undefined,
-            ),
-            orderBy: desc(operations.timestamp),
-        });
+        const operationsList = await storage()
+            .select()
+            .from(operations)
+            .where(
+                and(
+                    eq(operations.isDeleted, false),
+                    getOperationStatusWhere(filter?.status),
+                    filter?.from
+                        ? gte(operations.timestamp, filter.from)
+                        : undefined,
+                    filter?.to
+                        ? lte(operations.timestamp, filter.to)
+                        : undefined,
+                ),
+            )
+            .orderBy(desc(operations.timestamp));
         operationsWithAggregates =
             await fillOperationAggregates(operationsList);
     }
@@ -484,17 +567,16 @@ async function getFarmUserAcceptedOperationsByIds(
     const rows = await storage()
         .select({ operation: operations })
         .from(operations)
-        .innerJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
-        .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
-        .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .innerJoin(farmUsers, eq(farmUsers.farmId, operationFarmIdExpression()))
         .where(
             and(
                 inArray(operations.id, uniqueIds),
                 eq(farmUsers.userId, userId),
                 eq(operations.isAccepted, true),
                 eq(operations.isDeleted, false),
-                eq(raisedBeds.isDeleted, false),
-                eq(gardens.isDeleted, false),
+                operationLocationIntegrityWhere(),
             ),
         )
         .orderBy(desc(operations.timestamp));
@@ -564,16 +646,18 @@ async function getFarmUserAcceptedOperationsUncached(
         const rows = await storage()
             .select({ operation: operations })
             .from(operations)
-            .innerJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
-            .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
-            .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+            .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+            .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+            .innerJoin(
+                farmUsers,
+                eq(farmUsers.farmId, operationFarmIdExpression()),
+            )
             .where(
                 and(
                     eq(farmUsers.userId, userId),
                     eq(operations.isAccepted, true),
                     eq(operations.isDeleted, false),
-                    eq(raisedBeds.isDeleted, false),
-                    eq(gardens.isDeleted, false),
+                    operationLocationIntegrityWhere(),
                     filter?.from
                         ? gte(operations.timestamp, filter.from)
                         : undefined,
@@ -635,16 +719,15 @@ export async function getAssignableFarmUsersByOperationIds(
             avatarUrl: users.avatarUrl,
         })
         .from(operations)
-        .innerJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
-        .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
-        .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .innerJoin(farmUsers, eq(farmUsers.farmId, operationFarmIdExpression()))
         .innerJoin(users, eq(farmUsers.userId, users.id))
         .where(
             and(
                 inArray(operations.id, uniqueOperationIds),
                 eq(operations.isDeleted, false),
-                eq(raisedBeds.isDeleted, false),
-                eq(gardens.isDeleted, false),
+                operationLocationIntegrityWhere(),
             ),
         )
         .orderBy(asc(operations.id), asc(users.userName));
@@ -705,6 +788,7 @@ export async function createOperation({
     entityId,
     entityTypeName,
     accountId,
+    farmId,
     gardenId,
     raisedBedId,
     raisedBedFieldId,
@@ -716,6 +800,7 @@ export async function createOperation({
             entityId,
             entityTypeName,
             accountId,
+            farmId,
             gardenId,
             raisedBedId,
             raisedBedFieldId,

@@ -89,8 +89,8 @@ export async function generateStaticParams() {
 
             return [
                 {
-                    alias: toPageAlias(String(plantName)),
-                    sortAlias: toPageAlias(String(sortName)),
+                    alias: plant.slug || toPageAlias(String(plantName)),
+                    sortAlias: entity.slug || toPageAlias(String(sortName)),
                 },
             ];
         }) ?? []

@@ -881,6 +881,15 @@ test('getRaisedBed returns the latest plant cycle after a field is removed and r
     assert.strictEqual(field?.plantRemovedDate, undefined);
     assert.strictEqual(field?.stoppedDate, undefined);
     assert.strictEqual(field?.toBeRemoved, false);
+    assert.strictEqual(field?.plantCycles.length, 2);
+    assert.deepStrictEqual(
+        field?.plantCycles.map((plantCycle) => plantCycle.plantSortId),
+        [101, 202],
+    );
+    assert.deepStrictEqual(
+        field?.plantCycles.map((plantCycle) => plantCycle.active),
+        [false, true],
+    );
 });
 
 test('raised bed field assignment metadata is projected for assign and unassign updates', async () => {

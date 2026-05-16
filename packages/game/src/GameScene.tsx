@@ -76,9 +76,14 @@ export function GameScene({
     const weatherVisualizationDisabled = useGameState(
         (state) => state.weatherVisualizationDisabled,
     );
+    const gameQualitySetting = useGameState(
+        (state) => state.gameQualitySetting,
+    );
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
     const renderDetails = useDeferredSceneDetails(deferDetails);
-    const qualityProfile = resolveGameQualityProfile(quality);
+    const qualityProfile = resolveGameQualityProfile(
+        quality ?? gameQualitySetting,
+    );
 
     // Start non-critical metadata early, but don't block the first scene frame.
     useBlockData();

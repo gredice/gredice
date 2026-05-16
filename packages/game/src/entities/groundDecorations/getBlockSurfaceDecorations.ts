@@ -13,16 +13,21 @@ export type BlockSurfaceDecorationPlacement = {
     spriteName: string;
 };
 
+const angledBlockHighEdgeX = 0.5;
+
 function resolveDecorationBaseY(
     block: Block,
     options: (typeof groundDecorationOptions)[GroundDecorationSurface],
-    z: number,
+    x: number,
 ) {
     if (!block.name.endsWith('_Angle')) {
         return options.baseY;
     }
 
-    return options.baseY + z * options.angleLiftPerUnit;
+    // baseY is tuned for the raised local +X edge of angled block meshes.
+    return (
+        options.baseY + (x - angledBlockHighEdgeX) * options.angleLiftPerUnit
+    );
 }
 
 function getDecorationCount(
@@ -121,7 +126,7 @@ export function getBlockSurfaceDecorations(options: {
             ),
             position: [
                 x,
-                resolveDecorationBaseY(block, decorationOptions, z) +
+                resolveDecorationBaseY(block, decorationOptions, x) +
                     index * 0.002,
                 z,
             ],

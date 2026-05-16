@@ -27,6 +27,7 @@ interface AssignOperationModalProps {
     farmUsers: AssignableUser[];
     assignedUsers?: OperationAssignedUser[];
     disabled?: boolean;
+    onSubmit?: (selectedUserIds: string[]) => unknown | Promise<unknown>;
 }
 
 function getUserLabel(user: AssignableUser | OperationAssignedUser) {
@@ -41,6 +42,7 @@ export function AssignOperationModal({
     farmUsers,
     assignedUsers,
     disabled = false,
+    onSubmit,
 }: AssignOperationModalProps) {
     const [open, setOpen] = useState(false);
     const initialAssignedUserIds = useMemo(
@@ -100,7 +102,11 @@ export function AssignOperationModal({
         setErrorMessage(null);
 
         try {
-            await assignOperationUserAction(operationId, selectedUserIds);
+            if (onSubmit) {
+                await onSubmit(selectedUserIds);
+            } else {
+                await assignOperationUserAction(operationId, selectedUserIds);
+            }
             setOpen(false);
         } catch (error) {
             console.error('Error assigning operation user:', error);
@@ -181,7 +187,7 @@ export function AssignOperationModal({
                                 key={user.id}
                                 label={getUserLabel(user)}
                                 checked={selectedUserIds.includes(user.id)}
-                                onCheckedChange={(checked) =>
+                                onCheckedChange={(checked: boolean) =>
                                     toggleSelectedUser(
                                         user.id,
                                         Boolean(checked),

@@ -10,7 +10,11 @@ import type { ReactNode } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useRaisedBedFieldRemove } from '../../hooks/useRaisedBedFieldRemove';
-import { findRaisedBedOccupiedField } from '../../utils/raisedBedFields';
+import {
+    findRaisedBedFieldWithPlant,
+    findRaisedBedOccupiedField,
+    type RaisedBedFieldPlantHistoryEntry,
+} from '../../utils/raisedBedFields';
 import type { PlantFieldStatus } from './featuredOperations';
 import { PlantStageSection } from './PlantStageSection';
 import { RecommendationsCard } from './RecommendationsCard';
@@ -19,6 +23,8 @@ import { RecommendationsCard } from './RecommendationsCard';
 export function useRaisedBedFieldLifecycleData(
     raisedBedId: number,
     positionIndex: number,
+    includeInactive = false,
+    fieldOverride?: RaisedBedFieldPlantHistoryEntry,
 ) {
     const result = {
         germinationValue: 0,
@@ -33,7 +39,11 @@ export function useRaisedBedFieldLifecycleData(
     };
     const { data: garden } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
-    const field = findRaisedBedOccupiedField(raisedBed?.fields, positionIndex);
+    const field =
+        fieldOverride ??
+        (includeInactive
+            ? findRaisedBedFieldWithPlant(raisedBed?.fields, positionIndex)
+            : findRaisedBedOccupiedField(raisedBed?.fields, positionIndex));
     const plantSortId = field?.plantSortId;
     const { data: plantSort } = usePlantSort(plantSortId);
     if (!raisedBed || !field || !plantSort) {
@@ -146,10 +156,14 @@ export function useRaisedBedFieldLifecycleData(
 export function RaisedBedFieldLifecycleTab({
     raisedBedId,
     positionIndex,
+    includeInactive = false,
+    fieldOverride,
     onShowOperations,
 }: {
     raisedBedId: number;
     positionIndex: number;
+    includeInactive?: boolean;
+    fieldOverride?: RaisedBedFieldPlantHistoryEntry;
     onShowOperations?: () => void;
 }) {
     const { data: garden } = useCurrentGarden();
@@ -163,11 +177,20 @@ export function RaisedBedFieldLifecycleTab({
         harvestValue,
         harvestPercentage,
         readyDays,
-    } = useRaisedBedFieldLifecycleData(raisedBedId, positionIndex);
+    } = useRaisedBedFieldLifecycleData(
+        raisedBedId,
+        positionIndex,
+        includeInactive,
+        fieldOverride,
+    );
     const removeFieldMutation = useRaisedBedFieldRemove();
 
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
-    const field = findRaisedBedOccupiedField(raisedBed?.fields, positionIndex);
+    const field =
+        fieldOverride ??
+        (includeInactive
+            ? findRaisedBedFieldWithPlant(raisedBed?.fields, positionIndex)
+            : findRaisedBedOccupiedField(raisedBed?.fields, positionIndex));
     const { data: plantSort } = usePlantSort(field?.plantSortId);
 
     if (!garden || !plantSort || !field) {
@@ -195,7 +218,9 @@ export function RaisedBedFieldLifecycleTab({
         : null;
 
     let icon: ReactNode | null = null;
-    const localizedStatus = plantFieldStatusLabel(field.plantStatus);
+    const localizedStatus = plantFieldStatusLabel(
+        field.plantStatus ?? undefined,
+    );
     switch (field.plantStatus) {
         case 'new':
             icon = <span className="mr-0.5">{'🌟'}</span>;
@@ -204,6 +229,7 @@ export function RaisedBedFieldLifecycleTab({
             icon = <span className="mr-0.5">{'⌛'}</span>;
             break;
         case 'sowed':
+        case 'pendingVerification':
             icon = <span className="mr-0.5">{'𓇢'}</span>;
             break;
         case 'notSprouted':
@@ -226,6 +252,9 @@ export function RaisedBedFieldLifecycleTab({
             break;
         case 'died':
             icon = <span className="mr-0.5">{'😢'}</span>;
+            break;
+        case 'removed':
+            icon = <span className="mr-0.5">{'🗑️'}</span>;
             break;
     }
 
@@ -390,16 +419,18 @@ export function RaisedBedFieldLifecycleTab({
                 </Stack>
             </Row>
 
-            <RecommendationsCard
-                onShowOperations={onShowOperations}
-                gardenId={garden.id}
-                raisedBedId={raisedBedId}
-                positionIndex={positionIndex}
-                plantStatus={field.plantStatus as PlantFieldStatus}
-                plantSortId={field.plantSortId}
-            />
+            {field.active && typeof field.plantSortId === 'number' && (
+                <RecommendationsCard
+                    onShowOperations={onShowOperations}
+                    gardenId={garden.id}
+                    raisedBedId={raisedBedId}
+                    positionIndex={positionIndex}
+                    plantStatus={field.plantStatus as PlantFieldStatus}
+                    plantSortId={field.plantSortId}
+                />
+            )}
 
-            {field.toBeRemoved && (
+            {field.active && field.toBeRemoved && (
                 <Row>
                     <Button
                         variant="solid"

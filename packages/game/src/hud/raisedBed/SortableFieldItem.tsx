@@ -1,4 +1,8 @@
-import { useSortable } from '@dnd-kit/sortable';
+import {
+    type AnimateLayoutChanges,
+    defaultAnimateLayoutChanges,
+    useSortable,
+} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cx } from '@signalco/ui-primitives/cx';
 import type { CSSProperties, ReactNode } from 'react';
@@ -7,14 +11,23 @@ import { DragGripIndicator } from './DragHandle';
 export function SortableFieldItem({
     id,
     disabled,
+    dropAnimationDisabled,
     showHandle,
     children,
 }: {
     id: string;
     disabled: boolean;
+    dropAnimationDisabled?: boolean;
     showHandle: boolean;
     children: (props: { isDragging: boolean }) => ReactNode;
 }) {
+    const animateLayoutChanges: AnimateLayoutChanges = (args) => {
+        if (dropAnimationDisabled && args.wasDragging && !args.isSorting) {
+            return false;
+        }
+
+        return defaultAnimateLayoutChanges(args);
+    };
     const {
         attributes,
         listeners,
@@ -25,6 +38,7 @@ export function SortableFieldItem({
     } = useSortable({
         id,
         disabled,
+        animateLayoutChanges,
     });
 
     const isDraggable = showHandle && !disabled;

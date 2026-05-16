@@ -1,12 +1,13 @@
 'use client';
 
 import type { PlantData } from '@gredice/client';
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { orderBy } from '@signalco/js';
 import { Gallery } from '@signalco/ui/Gallery';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { ItemCard } from '../../components/shared/ItemCard';
+import { useClientSearchParam } from '../../hooks/useClientSearchParam';
+import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { KnownPages } from '../../src/KnownPages';
 import { PlantBlockImage } from './PlantBlockImage';
 import { plantNamesWithLSystem } from './plantNamesWithLSystem';
@@ -35,7 +36,8 @@ export function PlantBlockGallery({
 }: {
     plants: PlantData[] | undefined;
 }) {
-    const [search] = useSearchParam('pretraga');
+    const [search] = useClientSearchParam('pretraga');
+    const normalizedSearch = normalizeSearchText(search);
     const filteredPlants = orderBy(plants ?? [], (a, b) =>
         a.information.name.localeCompare(b.information.name),
     )
@@ -44,10 +46,10 @@ export function PlantBlockGallery({
         )
         .filter(
             (plant) =>
-                !search ||
-                plant.information.name
-                    .toLowerCase()
-                    .includes(search.toLowerCase()),
+                !normalizedSearch ||
+                normalizeSearchText(plant.information.name).includes(
+                    normalizedSearch,
+                ),
         )
         .map((plant) => ({ ...plant, id: plant.id.toString() }));
 

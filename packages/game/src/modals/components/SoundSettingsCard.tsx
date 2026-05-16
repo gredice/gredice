@@ -4,14 +4,14 @@ import { Button } from '@signalco/ui-primitives/Button';
 import { Card, CardContent } from '@signalco/ui-primitives/Card';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import { useEffect, useRef } from 'react';
 import { useGameAudio } from '../../hooks/useGameAudio';
 import { SoundSlider } from './SoundSlider';
 
 const DEFAULT_VOLUMES = {
     master: 0.5,
     ambient: 0.5,
-    sfx: 0.5,
+    music: 0.5,
+    effects: 0.5,
 };
 
 export function SoundSettingsCard() {
@@ -28,138 +28,48 @@ export function SoundSettingsCard() {
             setMuted: setAmbientMuted,
             setVolume: setAmbientVolume,
         },
+        music: {
+            isMuted: musicMuted,
+            volume: musicVolume,
+            setMuted: setMusicMuted,
+            setVolume: setMusicVolume,
+        },
         effects: {
-            isMuted: sfxMuted,
-            volume: sfxVolume,
-            setMuted: setSfxMuted,
-            setVolume: setSfxVolume,
+            isMuted: effectsMuted,
+            volume: effectsVolume,
+            setMuted: setEffectsMuted,
+            setVolume: setEffectsVolume,
         },
     } = useGameAudio();
 
-    // Track the previous mute states before master muting
-    const previousAmbientMuted = useRef(ambientMuted);
-    const previousSfxMuted = useRef(sfxMuted);
-    const wasMasterMuted = useRef(isMasterMuted);
-
-    const handleMasterVolumeChange = (newVolume: number) => {
-        if (newVolume === masterVolume) return;
-
+    function handleMasterVolumeChange(newVolume: number) {
         setMasterVolume(newVolume);
-        const newMuted = newVolume === 0;
-        if (newMuted !== isMasterMuted) setMasterMuted(newMuted);
-        console.debug('Master volume changed:', newVolume, 'muted:', newMuted);
-    };
+        setMasterMuted(newVolume === 0);
+    }
 
-    const handleReset = () => {
+    function handleChannelVolumeChange(
+        newVolume: number,
+        setVolume: (volume: number) => Promise<void>,
+        setMuted: (muted: boolean) => Promise<void>,
+    ) {
+        setVolume(newVolume);
+        if (newVolume > 0) {
+            setMuted(false);
+        }
+    }
+
+    function handleReset() {
         setMasterVolume(DEFAULT_VOLUMES.master);
-        setSfxVolume(DEFAULT_VOLUMES.sfx);
         setAmbientVolume(DEFAULT_VOLUMES.ambient);
+        setMusicVolume(DEFAULT_VOLUMES.music);
+        setEffectsVolume(DEFAULT_VOLUMES.effects);
         setMasterMuted(false);
-        setSfxMuted(false);
         setAmbientMuted(false);
-
-        // Reset stored states
-        previousAmbientMuted.current = false;
-        previousSfxMuted.current = false;
-        wasMasterMuted.current = false;
-
-        console.debug('Sound settings reset to defaults');
-    };
-
-    function handleAmbientSetMuted(newMuted: boolean) {
-        if (!newMuted && ambientVolume === 0) {
-            setAmbientVolume(DEFAULT_VOLUMES.ambient);
-        }
-        setAmbientMuted(newMuted);
-
-        // Update stored state if master is not muted (so we remember user's choice)
-        if (!isMasterMuted && masterVolume > 0) {
-            previousAmbientMuted.current = newMuted;
-        }
-
-        console.debug('Ambient muted state changed:', newMuted);
+        setMusicMuted(false);
+        setEffectsMuted(false);
     }
 
-    function handleSfxSetMuted(newMuted: boolean) {
-        if (!newMuted && sfxVolume === 0) {
-            setSfxVolume(DEFAULT_VOLUMES.sfx);
-        }
-        setSfxMuted(newMuted);
-
-        // Update stored state if master is not muted (so we remember user's choice)
-        if (!isMasterMuted && masterVolume > 0) {
-            previousSfxMuted.current = newMuted;
-        }
-
-        console.debug('SFX muted state changed:', newMuted);
-    }
-
-    useEffect(() => {
-        const isMasterCurrentlyMuted = isMasterMuted || masterVolume === 0;
-
-        console.debug('useEffect triggered:', {
-            wasMasterMuted: wasMasterMuted.current,
-            isMasterCurrentlyMuted,
-            isMasterMuted,
-            masterVolume,
-            ambientMuted,
-            sfxMuted,
-            previousAmbientMuted: previousAmbientMuted.current,
-            previousSfxMuted: previousSfxMuted.current,
-        });
-
-        // Store previous states when transitioning from unmuted to muted
-        if (!wasMasterMuted.current && isMasterCurrentlyMuted) {
-            console.debug(
-                'Master became muted/zero - storing previous sub-mixer states',
-                { ambientMuted, sfxMuted },
-            );
-            previousAmbientMuted.current = ambientMuted;
-            previousSfxMuted.current = sfxMuted;
-
-            // Mute all sub-mixers
-            console.debug('Muting sub-mixers due to master mute');
-            setSfxMuted(true);
-            setAmbientMuted(true);
-        }
-        // Restore previous states when transitioning from muted to unmuted
-        else if (wasMasterMuted.current && !isMasterCurrentlyMuted) {
-            console.debug(
-                'Master became unmuted - restoring previous sub-mixer states',
-                {
-                    previousAmbientMuted: previousAmbientMuted.current,
-                    previousSfxMuted: previousSfxMuted.current,
-                },
-            );
-
-            // Use setTimeout to ensure this runs after any other state updates
-            setTimeout(() => {
-                setSfxMuted(previousSfxMuted.current);
-                setAmbientMuted(previousAmbientMuted.current);
-                console.debug('Sub-mixer states restored');
-            }, 0);
-        }
-
-        // Update the previous master muted state
-        wasMasterMuted.current = isMasterCurrentlyMuted;
-    }, [
-        isMasterMuted,
-        masterVolume,
-        ambientMuted,
-        sfxMuted,
-        setAmbientMuted,
-        setSfxMuted,
-    ]);
-
-    console.debug(
-        'SoundSettingsCard render',
-        isMasterMuted,
-        masterVolume,
-        ambientMuted,
-        ambientVolume,
-        sfxMuted,
-        sfxVolume,
-    );
+    const masterOff = isMasterMuted || masterVolume === 0;
 
     return (
         <Card>
@@ -183,8 +93,7 @@ export function SoundSettingsCard() {
                             }
                         >
                             <Typography>
-                                Zvuk je privremeno isključen jer tvoj uređaj
-                                štedi energiju.
+                                Zvuk je privremeno pauziran.
                             </Typography>
                         </Alert>
                     )}
@@ -200,24 +109,41 @@ export function SoundSettingsCard() {
                         />
                         <SoundSlider
                             value={Math.round(ambientVolume * 100)}
-                            muted={
-                                isMasterMuted ||
-                                masterVolume === 0 ||
-                                ambientMuted
+                            muted={masterOff || ambientMuted}
+                            onChange={(value) =>
+                                handleChannelVolumeChange(
+                                    value / 100,
+                                    setAmbientVolume,
+                                    setAmbientMuted,
+                                )
                             }
-                            onChange={(value) => setAmbientVolume(value / 100)}
-                            onMuteToggle={() =>
-                                handleAmbientSetMuted(!ambientMuted)
-                            }
+                            onMuteToggle={() => setAmbientMuted(!ambientMuted)}
                             label="Ambientalno"
                         />
                         <SoundSlider
-                            value={Math.round(sfxVolume * 100)}
-                            muted={
-                                isMasterMuted || masterVolume === 0 || sfxMuted
+                            value={Math.round(musicVolume * 100)}
+                            muted={masterOff || musicMuted}
+                            onChange={(value) =>
+                                handleChannelVolumeChange(
+                                    value / 100,
+                                    setMusicVolume,
+                                    setMusicMuted,
+                                )
                             }
-                            onChange={(value) => setSfxVolume(value / 100)}
-                            onMuteToggle={() => handleSfxSetMuted(!sfxMuted)}
+                            onMuteToggle={() => setMusicMuted(!musicMuted)}
+                            label="Glazba"
+                        />
+                        <SoundSlider
+                            value={Math.round(effectsVolume * 100)}
+                            muted={masterOff || effectsMuted}
+                            onChange={(value) =>
+                                handleChannelVolumeChange(
+                                    value / 100,
+                                    setEffectsVolume,
+                                    setEffectsMuted,
+                                )
+                            }
+                            onMuteToggle={() => setEffectsMuted(!effectsMuted)}
                             label="Efekti"
                         />
                     </Stack>

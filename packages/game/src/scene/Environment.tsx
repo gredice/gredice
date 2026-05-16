@@ -824,6 +824,7 @@ export function Environment({
                 <CloudLayer
                     cloudy={blendedWeather.cloudy ?? 0}
                     foggy={blendedWeather.foggy ?? 0}
+                    shadowMode={qualityProfile.cloudShadowMode}
                     shadowStrength={
                         qualityProfile.shadows ? cloudShadowStrength : 0
                     }

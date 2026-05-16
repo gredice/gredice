@@ -8,16 +8,12 @@ export function AudioHud() {
 
     const handleAudioToggle = useCallback(async () => {
         if (isSuspended) {
-            console.debug('Audio is suspended, attempting to resume...');
             await resumeIfNeeded();
+            if (isMuted) {
+                await setMuted(false);
+            }
         } else {
-            console.debug(
-                'Toggling audio mute state from',
-                isMuted,
-                'to',
-                !isMuted,
-            );
-            setMuted(!isMuted);
+            await setMuted(!isMuted);
         }
     }, [isSuspended, isMuted, resumeIfNeeded, setMuted]);
 

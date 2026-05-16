@@ -1,6 +1,7 @@
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { EnvironmentSettingsCard } from './EnvironmentSettingsCard';
+import { QualitySettingsCard } from './QualitySettingsCard';
 
 export function GameTab() {
     return (
@@ -9,6 +10,7 @@ export function GameTab() {
                 🎮 Igra
             </Typography>
             <Stack spacing={1}>
+                <QualitySettingsCard />
                 <EnvironmentSettingsCard />
             </Stack>
         </Stack>

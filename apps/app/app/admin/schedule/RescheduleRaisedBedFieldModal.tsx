@@ -11,19 +11,21 @@ interface RescheduleRaisedBedFieldModalProps {
     };
     fieldLabel: string;
     trigger: React.ReactElement;
+    onSubmit?: (formData: FormData) => unknown | Promise<unknown>;
 }
 
 export function RescheduleRaisedBedFieldModal({
     field,
     fieldLabel,
     trigger,
+    onSubmit,
 }: RescheduleRaisedBedFieldModalProps) {
     return (
         <RescheduleModal
             label={fieldLabel}
             scheduledDate={field.plantScheduledDate}
             trigger={trigger}
-            onSubmit={rescheduleRaisedBedFieldAction}
+            onSubmit={onSubmit ?? rescheduleRaisedBedFieldAction}
             hiddenFields={
                 <>
                     <input

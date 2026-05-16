@@ -8,6 +8,7 @@ const tailwindConfig: Config = {
         './.storybook/**/*.{js,ts,jsx,tsx,mdx}',
         './stories/**/*.{js,ts,jsx,tsx,mdx}',
         '../../packages/ui/src/**/*.{js,ts,jsx,tsx,mdx}',
+        '../../packages/game/src/**/*.{js,ts,jsx,tsx,mdx}',
         '../app/components/**/*.{js,ts,jsx,tsx,mdx}',
         '../farm/components/**/*.{js,ts,jsx,tsx,mdx}',
         '../garden/components/**/*.{js,ts,jsx,tsx,mdx}',

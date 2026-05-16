@@ -323,6 +323,7 @@ export function ShoppingCartHud() {
                             </Typography>
                             {Boolean(cart?.items.length) && (
                                 <div className="absolute -right-2 -top-2">
+                                    <div className="absolute inset-[3.5px] border bg-green-500 border-green-500 size-[17px] rounded-full animate-ping -z-10"></div>
                                     <DotIndicator
                                         size={24}
                                         color={'success'}
