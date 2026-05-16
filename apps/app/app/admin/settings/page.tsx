@@ -1,9 +1,11 @@
 import {
+    DEFAULT_ADMIN_TIME_ZONE,
     getEntityTypeCategories,
     getEntityTypes,
     getNotificationSetting,
     getSetting,
     IntegrationTypes,
+    isAdminGeneralSettingValue,
     isGoogleCalendarSettingValue,
     NotificationSettingKeys,
     type SelectNotificationSetting,
@@ -31,12 +33,17 @@ import {
 } from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { SlackChannelSettingForm } from '../communication/slack/SlackChannelSettingForm';
+import { AdminGeneralSettingForm } from './AdminGeneralSettingForm';
 import { DashboardQuickActionsSettingForm } from './DashboardQuickActionsSettingForm';
 import { GoogleCalendarSettingForm } from './GoogleCalendarSettingForm';
 
 export const dynamic = 'force-dynamic';
 
 const SETTINGS_SECTIONS = [
+    {
+        id: 'general-settings',
+        title: 'Općenito',
+    },
     {
         id: 'directory-settings',
         title: 'Zapisi',
@@ -80,6 +87,7 @@ export default async function SettingsPage() {
         shopping,
         categories,
         entityTypes,
+        adminGeneralSetting,
         dashboardQuickActionsSetting,
         googleCalendarSetting,
     ] = await Promise.all([
@@ -88,6 +96,7 @@ export default async function SettingsPage() {
         getNotificationSetting(NotificationSettingKeys.SlackShoppingChannel),
         getEntityTypeCategories(),
         getEntityTypes(),
+        getSetting(SettingsKeys.AdminGeneral),
         getSetting(SettingsKeys.DashboardQuickActions),
         getSetting(SettingsKeys.GoogleCalendar),
     ]);
@@ -108,6 +117,13 @@ export default async function SettingsPage() {
     )
         ? googleCalendarSetting.value
         : undefined;
+    const adminGeneralConfig = isAdminGeneralSettingValue(
+        adminGeneralSetting?.value,
+    )
+        ? adminGeneralSetting.value
+        : undefined;
+    const adminTimeZone =
+        adminGeneralConfig?.timeZone ?? DEFAULT_ADMIN_TIME_ZONE;
 
     return (
         <Stack spacing={4}>
@@ -134,6 +150,38 @@ export default async function SettingsPage() {
                 </nav>
 
                 <div className="space-y-16">
+                    <section
+                        id="general-settings"
+                        className="scroll-mt-28"
+                        aria-labelledby="general-settings-heading"
+                    >
+                        <Stack spacing={3}>
+                            <Stack spacing={1}>
+                                <Typography
+                                    id="general-settings-heading"
+                                    level="h2"
+                                    semiBold
+                                >
+                                    Općenito
+                                </Typography>
+                                <Typography level="body1">
+                                    Osnovne postavke backofficea koje koriste
+                                    administrativni procesi i integracije.
+                                </Typography>
+                            </Stack>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Backoffice</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <AdminGeneralSettingForm
+                                        initialTimeZone={adminTimeZone}
+                                    />
+                                </CardContent>
+                            </Card>
+                        </Stack>
+                    </section>
+
                     <section
                         id="directory-settings"
                         className="scroll-mt-28"
@@ -320,9 +368,6 @@ export default async function SettingsPage() {
                                         }
                                         initialCalendarId={
                                             googleCalendarConfig?.calendarId
-                                        }
-                                        initialTimeZone={
-                                            googleCalendarConfig?.timeZone
                                         }
                                         hasPrivateKey={Boolean(
                                             googleCalendarConfig?.privateKey,

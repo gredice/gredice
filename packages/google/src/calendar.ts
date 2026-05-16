@@ -27,23 +27,6 @@ function normalizePrivateKey(key: string): string {
     return key.replace(/\\n/g, '\n');
 }
 
-function getCalendarConfig(): GoogleCalendarConfig | undefined {
-    const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
-    const calendarId = process.env.GOOGLE_CALENDAR_ID;
-
-    if (!clientEmail || !privateKey || !calendarId) {
-        return undefined;
-    }
-
-    return {
-        clientEmail,
-        privateKey: normalizePrivateKey(privateKey),
-        calendarId,
-        timeZone: process.env.GOOGLE_CALENDAR_TIMEZONE ?? 'UTC',
-    };
-}
-
 function base64UrlEncode(value: string | Buffer): string {
     return Buffer.from(value)
         .toString('base64')
@@ -155,9 +138,9 @@ async function authorizedFetch(
 }
 
 export function isGoogleCalendarConfigured(
-    config?: GoogleCalendarConfig,
-): boolean {
-    return (config ?? getCalendarConfig()) !== undefined;
+    config: GoogleCalendarConfig | undefined,
+): config is GoogleCalendarConfig {
+    return config !== undefined;
 }
 
 export type CalendarEventDateTime = {
@@ -176,12 +159,8 @@ export type CreateCalendarEventInput = {
 
 export async function createCalendarEvent(
     input: CreateCalendarEventInput,
-    config = getCalendarConfig(),
-): Promise<Record<string, unknown> | undefined> {
-    if (!config) {
-        return undefined;
-    }
-
+    config: GoogleCalendarConfig,
+): Promise<Record<string, unknown>> {
     const payload = {
         id: input.id,
         summary: input.summary,
@@ -244,12 +223,8 @@ export async function createCalendarEvent(
 
 export async function deleteCalendarEvent(
     eventId: string,
-    config = getCalendarConfig(),
+    config: GoogleCalendarConfig,
 ): Promise<void> {
-    if (!config) {
-        return;
-    }
-
     const response = await authorizedFetch(
         config,
         `${CALENDAR_BASE_URL}/calendars/${encodeURIComponent(config.calendarId)}/events/${encodeURIComponent(eventId)}`,

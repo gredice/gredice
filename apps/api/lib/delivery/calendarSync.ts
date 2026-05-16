@@ -7,8 +7,10 @@ import {
     isGoogleCalendarConfigured,
 } from '@gredice/google';
 import {
+    DEFAULT_ADMIN_TIME_ZONE,
     getDeliveryRequest,
     getSetting,
+    isAdminGeneralSettingValue,
     isGoogleCalendarSettingValue,
     SettingsKeys,
 } from '@gredice/storage';
@@ -101,13 +103,23 @@ function resolveEventLocation(
 async function getDeliveryCalendarConfig(): Promise<
     GoogleCalendarConfig | undefined
 > {
-    const setting = await getSetting(SettingsKeys.GoogleCalendar);
+    const [googleCalendarSetting, adminGeneralSetting] = await Promise.all([
+        getSetting(SettingsKeys.GoogleCalendar),
+        getSetting(SettingsKeys.AdminGeneral),
+    ]);
 
-    if (isGoogleCalendarSettingValue(setting?.value)) {
-        return setting.value;
+    if (!isGoogleCalendarSettingValue(googleCalendarSetting?.value)) {
+        return undefined;
     }
 
-    return undefined;
+    const adminTimeZone = isAdminGeneralSettingValue(adminGeneralSetting?.value)
+        ? adminGeneralSetting.value.timeZone
+        : DEFAULT_ADMIN_TIME_ZONE;
+
+    return {
+        ...googleCalendarSetting.value,
+        timeZone: adminTimeZone,
+    };
 }
 
 export async function createDeliveryRequestCalendarEvent(

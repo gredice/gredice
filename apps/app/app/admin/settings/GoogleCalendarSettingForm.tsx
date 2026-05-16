@@ -9,21 +9,16 @@ import { updateGoogleCalendarSettingsAction } from '../../(actions)/googleCalend
 type GoogleCalendarSettingFormProps = {
     initialClientEmail?: string;
     initialCalendarId?: string;
-    initialTimeZone?: string;
     hasPrivateKey: boolean;
 };
 
 export function GoogleCalendarSettingForm({
     initialClientEmail,
     initialCalendarId,
-    initialTimeZone,
     hasPrivateKey,
 }: GoogleCalendarSettingFormProps) {
     const [clientEmail, setClientEmail] = useState(initialClientEmail ?? '');
     const [calendarId, setCalendarId] = useState(initialCalendarId ?? '');
-    const [timeZone, setTimeZone] = useState(
-        initialTimeZone ?? 'Europe/Zagreb',
-    );
     const [privateKey, setPrivateKey] = useState('');
     const [state, formAction, isPending] = useActionState(
         updateGoogleCalendarSettingsAction,
@@ -34,7 +29,6 @@ export function GoogleCalendarSettingForm({
         if (state?.success) {
             setClientEmail((value) => value.trim());
             setCalendarId((value) => value.trim());
-            setTimeZone((value) => value.trim());
             setPrivateKey('');
         }
     }, [state]);
@@ -56,14 +50,6 @@ export function GoogleCalendarSettingForm({
                     placeholder="primary"
                     value={calendarId}
                     onChange={(event) => setCalendarId(event.target.value)}
-                    autoComplete="off"
-                />
-                <Input
-                    name="timeZone"
-                    label="Vremenska zona"
-                    placeholder="Europe/Zagreb"
-                    value={timeZone}
-                    onChange={(event) => setTimeZone(event.target.value)}
                     autoComplete="off"
                 />
             </div>

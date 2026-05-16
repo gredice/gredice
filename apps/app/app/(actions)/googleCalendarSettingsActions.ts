@@ -30,13 +30,12 @@ export async function updateGoogleCalendarSettingsAction(
 
     const clientEmail = getStringValue(formData, 'clientEmail');
     const calendarId = getStringValue(formData, 'calendarId');
-    const timeZone = getStringValue(formData, 'timeZone') || 'Europe/Zagreb';
     const privateKeyInput = getStringValue(formData, 'privateKey');
 
-    if (!clientEmail || !calendarId || !timeZone) {
+    if (!clientEmail || !calendarId) {
         return {
             success: false,
-            message: 'Google račun, kalendar i vremenska zona su obavezni.',
+            message: 'Google račun i kalendar su obavezni.',
         };
     }
 
@@ -58,7 +57,6 @@ export async function updateGoogleCalendarSettingsAction(
             clientEmail,
             privateKey,
             calendarId,
-            timeZone,
         };
 
         await upsertSetting({

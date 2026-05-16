@@ -1,6 +1,9 @@
 import { jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
+export const DEFAULT_ADMIN_TIME_ZONE = 'Europe/Zagreb';
+
 export const SettingsKeys = {
+    AdminGeneral: 'admin.general',
     DashboardQuickActions: 'dashboard.quick_actions',
     GoogleCalendar: 'integrations.google_calendar',
 } as const;
@@ -16,16 +19,32 @@ export type DashboardQuickActionsSettingValue = {
     actions: DashboardQuickActionConfigItem[];
 };
 
+export type AdminGeneralSettingValue = {
+    timeZone: string;
+};
+
 export type GoogleCalendarSettingValue = {
     clientEmail: string;
     privateKey: string;
     calendarId: string;
-    timeZone: string;
 };
 
 export type SettingValue =
+    | AdminGeneralSettingValue
     | DashboardQuickActionsSettingValue
     | GoogleCalendarSettingValue;
+
+export function isAdminGeneralSettingValue(
+    value: unknown,
+): value is AdminGeneralSettingValue {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        'timeZone' in value &&
+        typeof value.timeZone === 'string' &&
+        value.timeZone.length > 0
+    );
+}
 
 export function isGoogleCalendarSettingValue(
     value: unknown,
@@ -41,10 +60,7 @@ export function isGoogleCalendarSettingValue(
         value.privateKey.length > 0 &&
         'calendarId' in value &&
         typeof value.calendarId === 'string' &&
-        value.calendarId.length > 0 &&
-        'timeZone' in value &&
-        typeof value.timeZone === 'string' &&
-        value.timeZone.length > 0
+        value.calendarId.length > 0
     );
 }
 
