@@ -10,10 +10,13 @@ import {
     enqueuePushDeliveryAttemptsForNotification,
     gardens,
     getNotificationCampaign,
+    getNotificationDeliverySummary,
     getNotificationsByAccount,
     getUser,
     notifications,
+    notificationDeliveryAttempts,
     previewNotificationCampaignAudience,
+    recordNotificationDeliveryEvent,
     routeNotificationDelivery,
     storage,
 } from '@gredice/storage';
@@ -34,6 +37,7 @@ test('createNotification and getNotificationsByAccount basic usage', async () =>
         content: 'Test notification',
         timestamp: new Date(),
     });
+
     const notifications = await getNotificationsByAccount(
         accountId,
         false,
@@ -253,4 +257,98 @@ test('explicit notification campaign audience excludes deleted gardens', async (
     assert.equal(preview.userCount, 0);
     assert.equal(preview.gardenCount, 0);
     assert.equal(preview.unmatchedRecipientCount, 1);
+});
+
+test('notification delivery summary tracks attempts and engagement events', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userName = `delivery-summary-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(userName, 'password');
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+
+    const notificationId = await createNotification({
+        accountId,
+        userId,
+        header: 'Push analytics',
+        content: 'Track delivery analytics',
+        category: 'general',
+        timestamp: new Date(),
+    });
+    const sub1Id = randomUUID();
+    const sub2Id = randomUUID();
+    await storage().execute(
+        `insert into web_push_subscriptions (id, account_id, user_id, endpoint, p256dh, auth, enabled)
+         values ('${sub1Id}', '${accountId}', '${userId}', 'https://example.com/${sub1Id}', 'k', 'a', true),
+                ('${sub2Id}', '${accountId}', '${userId}', 'https://example.com/${sub2Id}', 'k', 'a', true)`,
+    );
+
+    const attemptRows = await storage()
+        .insert(notificationDeliveryAttempts)
+        .values([
+            {
+                notificationId,
+                userId,
+                accountId,
+                channel: 'push',
+                status: 'accepted',
+                pushSubscriptionId: sub1Id,
+            },
+            {
+                notificationId,
+                userId,
+                accountId,
+                channel: 'push',
+                status: 'failed',
+                pushSubscriptionId: sub1Id,
+            },
+            {
+                notificationId,
+                userId,
+                accountId,
+                channel: 'push',
+                status: 'sent',
+                pushSubscriptionId: sub2Id,
+            },
+        ])
+        .returning({ id: notificationDeliveryAttempts.id });
+
+    await recordNotificationDeliveryEvent({
+        notificationId,
+        deliveryAttemptId: attemptRows[0].id,
+        type: 'opened',
+    });
+    await recordNotificationDeliveryEvent({
+        notificationId,
+        deliveryAttemptId: attemptRows[0].id,
+        type: 'clicked',
+    });
+    await recordNotificationDeliveryEvent({
+        notificationId,
+        deliveryAttemptId: attemptRows[1].id,
+        type: 'failed',
+    });
+    await recordNotificationDeliveryEvent({
+        notificationId,
+        deliveryAttemptId: attemptRows[2].id,
+        type: 'dismissed',
+    });
+    await recordNotificationDeliveryEvent({
+        notificationId,
+        deliveryAttemptId: attemptRows[2].id,
+        type: 'unsubscribed',
+    });
+
+    const summary = await getNotificationDeliverySummary(notificationId);
+    assert.equal(summary.sent, 1);
+    assert.equal(summary.accepted, 1);
+    assert.equal(summary.failed, 1);
+    assert.equal(summary.retried, 1);
+    assert.equal(summary.opened, 1);
+    assert.equal(summary.clicked, 1);
+    assert.equal(summary.dismissed, 1);
+    assert.equal(summary.invalidated, 1);
+    assert.equal(summary.unsubscribed, 1);
 });
