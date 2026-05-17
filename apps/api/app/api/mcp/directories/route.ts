@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { Logger } from '../logger';
 import { negotiateMcpProtocolVersion } from '../protocol';
+import { handleSearchEntities as handleStorageSearchEntities } from './searchEntities';
 
 export const dynamic = 'force-dynamic';
 
@@ -545,48 +546,5 @@ async function handleGetPlant(input: z.infer<typeof GetPlantSchema>) {
 async function handleSearchEntities(
     input: z.infer<typeof SearchEntitiesSchema>,
 ) {
-    // Placeholder search implementation
-    const query = input.query.toLowerCase();
-    const mockResults = [
-        {
-            id: '1',
-            type: 'plant',
-            name: 'Rajčica',
-            nameLatin: 'Solanum lycopersicum',
-            description: `Popularna biljka za uzgoj - pronađeno po upitu: ${input.query}`,
-            category: 'vegetables',
-            relevance: query.includes('rajč') ? 0.9 : 0.3,
-        },
-        {
-            id: '2',
-            type: 'plant_sort',
-            name: 'Cherry rajčica',
-            description: `Mala, slatka rajčica - pronađeno po upitu: ${input.query}`,
-            plant: { name: 'Rajčica', nameLatin: 'Solanum lycopersicum' },
-            relevance:
-                query.includes('cherry') || query.includes('rajč') ? 0.8 : 0.2,
-        },
-        {
-            id: '1',
-            type: 'operation',
-            name: 'Zalijevanje',
-            description: `Redovito zalijevanje biljaka - pronađeno po upitu: ${input.query}`,
-            category: 'watering',
-            relevance:
-                query.includes('zalij') || query.includes('voda') ? 0.9 : 0.1,
-        },
-    ];
-
-    const filteredResults = mockResults
-        .filter((result) => result.relevance > 0.2)
-        .sort((a, b) => b.relevance - a.relevance)
-        .slice(0, input.limit);
-
-    return {
-        results: filteredResults,
-        total: filteredResults.length,
-        query: input.query,
-        limit: input.limit,
-        entityTypes: input.entityTypes,
-    };
+    return handleStorageSearchEntities(input);
 }

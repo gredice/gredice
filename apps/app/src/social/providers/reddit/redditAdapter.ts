@@ -1,5 +1,9 @@
 import 'server-only';
 
+import {
+    readSocialProviderEnv,
+    readSocialProviderRuntimeConfig,
+} from '../config';
 import type {
     SocialPostInput,
     SocialProviderAdapter,
@@ -7,10 +11,12 @@ import type {
     SocialPublishResult,
 } from '../types';
 
-export type RedditProviderConfig = {
+type RedditEnv = {
     enabled: boolean;
+    accessToken: string;
     clientId: string;
     clientSecret: string;
+    refreshToken: string;
     userAgent: string;
     defaultDestination: string;
     allowedDestinations: Set<string>;
@@ -29,18 +35,59 @@ type RedditTokenResponse = {
     access_token?: string;
 };
 
+export function readRedditEnv(
+    env: Record<string, string | undefined> = process.env,
+    providerAccountKey?: string,
+): RedditEnv {
+    const runtime = readSocialProviderRuntimeConfig('reddit', {
+        providerAccountKey,
+        env,
+    });
+
+    return {
+        enabled: runtime.enabled,
+        accessToken: readSocialProviderEnv('reddit', 'ACCESS_TOKEN', {
+            providerAccountKey,
+            env,
+        }),
+        clientId: readSocialProviderEnv('reddit', 'CLIENT_ID', {
+            providerAccountKey,
+            env,
+        }),
+        clientSecret: readSocialProviderEnv('reddit', 'CLIENT_SECRET', {
+            providerAccountKey,
+            env,
+        }),
+        refreshToken: readSocialProviderEnv('reddit', 'REFRESH_TOKEN', {
+            providerAccountKey,
+            env,
+        }),
+        userAgent: readSocialProviderEnv('reddit', 'USER_AGENT', {
+            providerAccountKey,
+            env,
+        }),
+        defaultDestination: runtime.defaultDestination,
+        allowedDestinations: runtime.allowedDestinations,
+    };
+}
+
 export class RedditProviderAdapter implements SocialProviderAdapter {
     readonly name = 'reddit' as const;
-    private readonly config: RedditProviderConfig;
+    private readonly config: RedditEnv | null;
     private readonly fetchImpl: FetchLike;
 
-    constructor(config: RedditProviderConfig, fetchImpl: FetchLike = fetch) {
+    constructor(config: RedditEnv | null = null, fetchImpl: FetchLike = fetch) {
         this.config = config;
         this.fetchImpl = fetchImpl;
     }
 
-    validateConfig(): SocialPublishError | null {
-        if (!this.config.enabled) {
+    validateConfig(
+        input?: Pick<SocialPostInput, 'providerAccountKey'>,
+    ): SocialPublishError | null {
+        const config =
+            this.config ??
+            readRedditEnv(process.env, input?.providerAccountKey);
+        if (!config.enabled) {
             return {
                 ok: false,
                 code: 'provider_disabled',
@@ -49,9 +96,11 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
             };
         }
         if (
-            !this.config.clientId ||
-            !this.config.clientSecret ||
-            !this.config.userAgent
+            !config.accessToken &&
+            (!config.clientId ||
+                !config.clientSecret ||
+                !config.refreshToken ||
+                !config.userAgent)
         ) {
             return {
                 ok: false,
@@ -60,15 +109,7 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
                 retriable: false,
             };
         }
-        if (!this.config.defaultDestination) {
-            return {
-                ok: false,
-                code: 'invalid_destination',
-                message: 'Reddit default destination is not configured.',
-                retriable: false,
-            };
-        }
-        if (!this.config.allowedDestinations.size) {
+        if (!config.allowedDestinations.size) {
             return {
                 ok: false,
                 code: 'invalid_destination',
@@ -80,8 +121,12 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
     }
 
     async publishPost(input: SocialPostInput): Promise<SocialPublishResult> {
-        const configError = this.validateConfig();
+        const configError = this.validateConfig({
+            providerAccountKey: input.providerAccountKey,
+        });
         if (configError) return configError;
+        const config =
+            this.config ?? readRedditEnv(process.env, input.providerAccountKey);
 
         if (input.postType !== 'text' && input.postType !== 'link') {
             return {
@@ -94,9 +139,9 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
         }
 
         const destination = (
-            input.destination ?? this.config.defaultDestination
+            input.destination ?? config.defaultDestination
         ).replace(/^r\//, '');
-        if (!this.config.allowedDestinations.has(destination)) {
+        if (!config.allowedDestinations.has(destination)) {
             return {
                 ok: false,
                 code: 'invalid_destination',
@@ -105,7 +150,7 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
             };
         }
 
-        const token = await this.getAccessToken();
+        const token = await this.getAccessToken(config);
         if (!token.ok) return token;
 
         const kind = input.postType === 'link' ? 'link' : 'self';
@@ -128,7 +173,7 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
                     headers: {
                         Authorization: `Bearer ${token.accessToken}`,
                         'Content-Type': 'application/x-www-form-urlencoded',
-                        'User-Agent': this.config.userAgent,
+                        'User-Agent': config.userAgent,
                     },
                     body,
                 },
@@ -176,11 +221,14 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
         };
     }
 
-    private async getAccessToken(): Promise<
-        { ok: true; accessToken: string } | SocialPublishError
-    > {
+    private async getAccessToken(
+        config: RedditEnv,
+    ): Promise<{ ok: true; accessToken: string } | SocialPublishError> {
+        if (config.accessToken) {
+            return { ok: true, accessToken: config.accessToken };
+        }
         const credentials = Buffer.from(
-            `${this.config.clientId}:${this.config.clientSecret}`,
+            `${config.clientId}:${config.clientSecret}`,
         ).toString('base64');
         let response: Response;
         try {
@@ -191,10 +239,11 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
                     headers: {
                         Authorization: `Basic ${credentials}`,
                         'Content-Type': 'application/x-www-form-urlencoded',
-                        'User-Agent': this.config.userAgent,
+                        'User-Agent': config.userAgent,
                     },
                     body: new URLSearchParams({
-                        grant_type: 'client_credentials',
+                        grant_type: 'refresh_token',
+                        refresh_token: config.refreshToken,
                     }),
                 },
             );

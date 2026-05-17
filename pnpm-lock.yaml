@@ -808,6 +808,9 @@ importers:
       '@gredice/client':
         specifier: workspace:*
         version: link:../../packages/client
+      '@gredice/directory-types':
+        specifier: workspace:*
+        version: link:../../packages/directory-types
       '@gredice/game':
         specifier: workspace:*
         version: link:../../packages/game
@@ -955,6 +958,10 @@ importers:
         version: 6.0.3
 
   packages/directory-types:
+    dependencies:
+      '@gredice/js':
+        specifier: workspace:*
+        version: link:../js
     devDependencies:
       '@biomejs/biome':
         specifier: 2.4.15

@@ -1,4 +1,8 @@
 import 'server-only';
+import {
+    publicSearchCategoryForDirectoryEntityType,
+    resolveDirectoryEntityPublicPathFromParts,
+} from '@gredice/directory-types';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
     entities,
@@ -13,21 +17,6 @@ const minSearchQueryLength = 2;
 const defaultSearchLimit = 20;
 const maxSearchLimit = 50;
 
-type PublicSearchCategoryConfig = {
-    slug: string;
-    label: string;
-};
-
-const publicSearchCategoryByEntityType: Record<
-    string,
-    PublicSearchCategoryConfig
-> = {
-    plant: { slug: 'plants', label: 'Biljke' },
-    operation: { slug: 'operations', label: 'Radnje' },
-    block: { slug: 'blocks', label: 'Blokovi' },
-    plantSort: { slug: 'sorts', label: 'Sorte' },
-};
-
 type EntitySearchSource = NonNullable<Awaited<ReturnType<typeof getEntityRaw>>>;
 
 type EntitySearchAttribute = SelectAttributeValue & {
@@ -39,6 +28,7 @@ type EntitySearchDocumentValues = {
     entityTypeName: string;
     publicCategory: string;
     publicCategoryLabel: string;
+    publicUrl: string;
     title: string;
     summary: string | null;
     imageUrl: string | null;
@@ -65,6 +55,7 @@ export type DirectoryEntitySearchRow = {
     entityTypeName: string;
     publicCategory: string;
     publicCategoryLabel: string;
+    publicUrl: string;
     title: string;
     summary: string | null;
     imageUrl: string | null;
@@ -133,6 +124,18 @@ function attributeValue(
     );
 }
 
+function attributeRefId(
+    entity: EntitySearchSource,
+    category: string,
+    name: string,
+) {
+    const value = attributeValue(entity, category, name)?.trim();
+    if (!value || !/^\d+$/.test(value)) {
+        return null;
+    }
+    return Number.parseInt(value, 10);
+}
+
 function entityTitle(entity: EntitySearchSource) {
     return (
         compactText([
@@ -140,6 +143,45 @@ function entityTitle(entity: EntitySearchSource) {
                 attributeValue(entity, 'information', 'name'),
         ]) || `${entity.entityType.label} ${entity.id}`
     );
+}
+
+async function resolveEntitySearchPublicUrl(entity: EntitySearchSource) {
+    let parentName: string | null = null;
+    let parentLabel: string | null = null;
+
+    if (
+        entity.entityTypeName === 'plantSort' ||
+        entity.entityTypeName === 'seed'
+    ) {
+        const parentPlantId = attributeRefId(entity, 'information', 'plant');
+        const parentPlant = parentPlantId
+            ? await getEntityRaw(parentPlantId)
+            : null;
+        parentName = parentPlant
+            ? attributeValue(parentPlant, 'information', 'name')
+            : null;
+        parentLabel = parentPlant
+            ? attributeValue(parentPlant, 'information', 'label')
+            : null;
+    }
+
+    let plantSortName: string | null = null;
+    if (entity.entityTypeName === 'seed') {
+        const plantSortId = attributeRefId(entity, 'information', 'plantSort');
+        const plantSort = plantSortId ? await getEntityRaw(plantSortId) : null;
+        plantSortName = plantSort
+            ? attributeValue(plantSort, 'information', 'name')
+            : null;
+    }
+
+    return resolveDirectoryEntityPublicPathFromParts({
+        entityTypeName: entity.entityTypeName,
+        name: attributeValue(entity, 'information', 'name'),
+        label: attributeValue(entity, 'information', 'label'),
+        parentName,
+        parentLabel,
+        plantSortName,
+    });
 }
 
 function entitySummary(entity: EntitySearchSource) {
@@ -254,11 +296,18 @@ function searchVectorSql(values: EntitySearchDocumentValues) {
     `;
 }
 
-function buildEntitySearchDocumentValues(
+async function buildEntitySearchDocumentValues(
     entity: EntitySearchSource,
-): EntitySearchDocumentValues | null {
-    const category = publicSearchCategoryByEntityType[entity.entityTypeName];
+): Promise<EntitySearchDocumentValues | null> {
+    const category = publicSearchCategoryForDirectoryEntityType(
+        entity.entityTypeName,
+    );
     if (!category || entity.state !== 'published' || !entity.publishedAt) {
+        return null;
+    }
+
+    const publicUrl = await resolveEntitySearchPublicUrl(entity);
+    if (!publicUrl) {
         return null;
     }
 
@@ -284,6 +333,7 @@ function buildEntitySearchDocumentValues(
         entityTypeName: entity.entityTypeName,
         publicCategory: category.slug,
         publicCategoryLabel: category.label,
+        publicUrl,
         title,
         summary,
         imageUrl: image?.url ?? null,
@@ -315,7 +365,7 @@ export async function refreshEntitySearchDocument(entityId: number) {
         entityState.isDeleted ||
         entityState.state !== 'published' ||
         !entityState.publishedAt ||
-        !publicSearchCategoryByEntityType[entityState.entityTypeName]
+        !publicSearchCategoryForDirectoryEntityType(entityState.entityTypeName)
     ) {
         await storage()
             .delete(entitySearchDocuments)
@@ -324,7 +374,9 @@ export async function refreshEntitySearchDocument(entityId: number) {
     }
 
     const entity = await getEntityRaw(entityId);
-    const values = entity ? buildEntitySearchDocumentValues(entity) : null;
+    const values = entity
+        ? await buildEntitySearchDocumentValues(entity)
+        : null;
 
     if (!values) {
         await storage()
@@ -435,9 +487,23 @@ export async function searchDirectoryEntities({
         .limit(searchLimit(limit))
         .offset(searchOffset(offset));
 
-    return rows;
+    const rowsWithPublicUrls: DirectoryEntitySearchRow[] = [];
+    for (const row of rows) {
+        const entity = await getEntityRaw(row.entityId);
+        const publicUrl = entity
+            ? await resolveEntitySearchPublicUrl(entity)
+            : null;
+        if (publicUrl) {
+            rowsWithPublicUrls.push({
+                ...row,
+                publicUrl,
+            });
+        }
+    }
+
+    return rowsWithPublicUrls;
 }
 
 export function publicSearchCategoryForEntityType(entityTypeName: string) {
-    return publicSearchCategoryByEntityType[entityTypeName] ?? null;
+    return publicSearchCategoryForDirectoryEntityType(entityTypeName);
 }
