@@ -21,9 +21,9 @@ test('socialAccountsRepo creates, updates, and lists provider accounts', async (
         providerAccountKey: 'brand-main',
         label: 'Gredice Instagram',
         handle: '@gredice',
-        defaultDestination: '@gredice',
-        allowedDestinations: ['@gredice', '@gredice_stories'],
-        credentialReference: 'SOCIAL_PROVIDER_INSTAGRAM_API_KEY',
+        defaultDestination: '17841400000000000',
+        allowedDestinations: ['17841400000000000'],
+        credentialReference: 'SOCIAL_PROVIDER_INSTAGRAM_ACCESS_TOKEN',
     });
 
     assert.equal(account.provider, 'instagram');
@@ -77,7 +77,7 @@ test('socialPostsRepo stores multi-provider media queue metadata', async () => {
     const queued = await createSocialPost({
         provider: 'instagram',
         providerAccountKey: 'brand-main',
-        destination: '@gredice',
+        destination: '17841400000000000',
         status: 'queued',
         postType: 'story',
         body: 'Harvest story',
@@ -177,7 +177,7 @@ test('socialPostsRepo lists queued and due scheduled posts for processing', asyn
     const queued = await createSocialPost({
         provider: 'facebook',
         providerAccountKey: 'brand-main',
-        destination: 'Gredice',
+        destination: '1234567890',
         status: 'queued',
         postType: 'text',
         body: 'Queued update',
@@ -185,7 +185,7 @@ test('socialPostsRepo lists queued and due scheduled posts for processing', asyn
     const due = await createSocialPost({
         provider: 'linkedin',
         providerAccountKey: 'brand-main',
-        destination: 'Gredice',
+        destination: 'urn:li:organization:123456',
         status: 'scheduled',
         postType: 'text',
         body: 'Scheduled update',
@@ -194,7 +194,7 @@ test('socialPostsRepo lists queued and due scheduled posts for processing', asyn
     const future = await createSocialPost({
         provider: 'threads',
         providerAccountKey: 'brand-main',
-        destination: '@gredice',
+        destination: 'me',
         status: 'scheduled',
         postType: 'text',
         body: 'Future update',

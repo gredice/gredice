@@ -9,9 +9,12 @@ test('validateAccountPayload accepts active social account', () => {
     formData.set('label', 'Gredice Instagram');
     formData.set('handle', '@gredice');
     formData.set('externalAccountId', '17841400000000000');
-    formData.set('defaultDestination', '@gredice');
-    formData.set('allowedDestinations', '@gredice\n@gredice_stories');
-    formData.set('credentialReference', 'SOCIAL_PROVIDER_INSTAGRAM_API_KEY');
+    formData.set('defaultDestination', '17841400000000000');
+    formData.set('allowedDestinations', '17841400000000000');
+    formData.set(
+        'credentialReference',
+        'SOCIAL_PROVIDER_INSTAGRAM_ACCESS_TOKEN',
+    );
     formData.set('status', 'active');
 
     const payload = __testUtils.normalizeAccountPayload(formData);
@@ -22,8 +25,7 @@ test('validateAccountPayload accepts active social account', () => {
         assert.equal(result.payload.provider, 'instagram');
         assert.equal(result.payload.externalAccountId, '17841400000000000');
         assert.deepEqual(result.payload.allowedDestinations, [
-            '@gredice',
-            '@gredice_stories',
+            '17841400000000000',
         ]);
     }
 });

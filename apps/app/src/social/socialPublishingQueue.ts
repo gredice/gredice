@@ -51,7 +51,9 @@ export async function submitSocialPost(
         });
 
         const adapter = createSocialProviderAdapter(post.provider);
-        const configError = adapter.validateConfig();
+        const configError = adapter.validateConfig({
+            providerAccountKey: post.providerAccountKey,
+        });
         if (configError) {
             await updateSocialPostStatus({
                 id: post.id,
@@ -142,7 +144,13 @@ export function sanitizeProviderErrorDetails(
     details: Record<string, unknown> | undefined,
 ): Record<string, unknown> | null {
     if (!details) return null;
-    const safeKeys = new Set(['status', 'providerErrorId', 'reason']);
+    const safeKeys = new Set([
+        'status',
+        'providerErrorId',
+        'reason',
+        'errorCode',
+        'errorType',
+    ]);
     const sanitized: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(details)) {
         if (safeKeys.has(key) && value !== undefined) {

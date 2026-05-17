@@ -1,6 +1,7 @@
 import { listSocialAccounts, listSocialPosts } from '@gredice/storage';
 import { auth } from '../../../lib/auth/auth';
 import { SocialAccountsManager } from './SocialAccountsManager';
+import { SocialProviderSetupGuide } from './SocialProviderSetupGuide';
 import { SocialPublishingComposer } from './SocialPublishingComposer';
 
 export default async function SocialPublishingPage() {
@@ -17,6 +18,7 @@ export default async function SocialPublishingPage() {
                 Upravljanje objavama, redom i zakazanim slanjem za društvene
                 kanale Gredica.
             </p>
+            <SocialProviderSetupGuide />
             <SocialAccountsManager accounts={accounts} />
             <SocialPublishingComposer
                 accounts={accounts}
