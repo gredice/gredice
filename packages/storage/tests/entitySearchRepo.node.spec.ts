@@ -179,6 +179,99 @@ test('directory entity search returns canonical plant sort URLs through parent p
     assert.equal(rows[0]?.publicUrl, '/biljke/rajcica/sorte/cherry-rajcica');
 });
 
+test('directory entity search returns canonical seed URLs through plant sort data', async () => {
+    createTestDb();
+    const token = uniqueToken('sjeme');
+    const plantId = await createSearchableEntity({
+        entityTypeName: 'plant',
+        entityTypeLabel: 'Plant',
+        title: 'Rajčica',
+    });
+    await ensurePublicEntityType('plantSort', 'Sorta biljke');
+    await ensurePublicEntityType('seed', 'Sjeme');
+
+    const sortNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: 'plantSort',
+        dataType: 'text',
+    });
+    const sortPlantDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'plant',
+        label: 'Plant',
+        entityTypeName: 'plantSort',
+        dataType: 'ref:plant',
+    });
+    const sortId = await createEntity('plantSort');
+    await upsertAttributeValue({
+        attributeDefinitionId: sortNameDefinitionId,
+        entityTypeName: 'plantSort',
+        entityId: sortId,
+        value: 'Cherry Rajčica',
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: sortPlantDefinitionId,
+        entityTypeName: 'plantSort',
+        entityId: sortId,
+        value: String(plantId),
+    });
+    await updateEntity({ id: sortId, state: 'published' });
+
+    const seedNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: 'seed',
+        dataType: 'text',
+    });
+    const seedPlantDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'plant',
+        label: 'Plant',
+        entityTypeName: 'seed',
+        dataType: 'ref:plant',
+    });
+    const seedPlantSortDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'plantSort',
+        label: 'Plant sort',
+        entityTypeName: 'seed',
+        dataType: 'ref:plantSort',
+    });
+    const seedId = await createEntity('seed');
+    await upsertAttributeValue({
+        attributeDefinitionId: seedNameDefinitionId,
+        entityTypeName: 'seed',
+        entityId: seedId,
+        value: `Sjeme Cherry ${token}`,
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: seedPlantDefinitionId,
+        entityTypeName: 'seed',
+        entityId: seedId,
+        value: String(plantId),
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: seedPlantSortDefinitionId,
+        entityTypeName: 'seed',
+        entityId: seedId,
+        value: String(sortId),
+    });
+    await updateEntity({ id: seedId, state: 'published' });
+
+    const rows = await searchDirectoryEntities({
+        query: token,
+        entityTypeNames: ['seed'],
+    });
+
+    assert.equal(rows[0]?.entityId, seedId);
+    assert.equal(rows[0]?.publicCategory, 'seeds');
+    assert.equal(rows[0]?.publicCategoryLabel, 'Sjeme');
+    assert.equal(rows[0]?.publicUrl, '/biljke/rajcica/sorte/cherry-rajcica');
+});
+
 test('directory entity search excludes public entity types without route-compatible names', async () => {
     createTestDb();
     const token = uniqueToken('nameless');

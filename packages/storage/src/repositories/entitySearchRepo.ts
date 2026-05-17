@@ -149,7 +149,10 @@ async function resolveEntitySearchPublicUrl(entity: EntitySearchSource) {
     let parentName: string | null = null;
     let parentLabel: string | null = null;
 
-    if (entity.entityTypeName === 'plantSort') {
+    if (
+        entity.entityTypeName === 'plantSort' ||
+        entity.entityTypeName === 'seed'
+    ) {
         const parentPlantId = attributeRefId(entity, 'information', 'plant');
         const parentPlant = parentPlantId
             ? await getEntityRaw(parentPlantId)
@@ -162,13 +165,25 @@ async function resolveEntitySearchPublicUrl(entity: EntitySearchSource) {
             : null;
     }
 
+    const plantSortName =
+        entity.entityTypeName === 'seed'
+            ? await seedPlantSortName(entity)
+            : null;
+
     return resolveDirectoryEntityPublicPathFromParts({
         entityTypeName: entity.entityTypeName,
         name: attributeValue(entity, 'information', 'name'),
         label: attributeValue(entity, 'information', 'label'),
         parentName,
         parentLabel,
+        plantSortName,
     });
+}
+
+async function seedPlantSortName(entity: EntitySearchSource) {
+    const plantSortId = attributeRefId(entity, 'information', 'plantSort');
+    const plantSort = plantSortId ? await getEntityRaw(plantSortId) : null;
+    return plantSort ? attributeValue(plantSort, 'information', 'name') : null;
 }
 
 function entitySummary(entity: EntitySearchSource) {

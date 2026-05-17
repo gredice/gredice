@@ -11,6 +11,7 @@ export const publicSearchCategoryByDirectoryEntityType = {
     operation: { slug: 'operations', label: 'Radnje' },
     block: { slug: 'blocks', label: 'Blokovi' },
     plantSort: { slug: 'sorts', label: 'Sorte' },
+    seed: { slug: 'seeds', label: 'Sjeme' },
 } satisfies Partial<
     Record<DirectoryEntityTypeName, PublicSearchCategoryConfig>
 >;

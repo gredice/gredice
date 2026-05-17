@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
     PublicDirectoryPaths,
     publicDirectoryEntityTypeExclusions,
+    publicSearchCategoryForDirectoryEntityType,
     resolveDirectoryEntityPublicPathFromParts,
     toPublicPageAlias,
 } from '../src/publicUrls.ts';
@@ -104,4 +105,11 @@ test('directory public URL resolver links supported list-only entities and exclu
     assert.ok(publicDirectoryEntityTypeExclusions.liquidPreparation);
     assert.ok(publicDirectoryEntityTypeExclusions.operationFrequency);
     assert.ok(publicDirectoryEntityTypeExclusions.plantStage);
+});
+
+test('directory public search categories include seeds', () => {
+    assert.deepEqual(publicSearchCategoryForDirectoryEntityType('seed'), {
+        slug: 'seeds',
+        label: 'Sjeme',
+    });
 });
