@@ -1,11 +1,11 @@
 'use server';
 
 import {
-    getAttributeDefinitions,
     getAiAnalysisEvents,
     getAiAnalysisTotals,
     getAllOperations,
     getAnalyticsTotals,
+    getAttributeDefinitions,
     getEntitiesFormatted,
     getEntitiesRaw,
     getEntityTypes,
