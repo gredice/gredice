@@ -274,6 +274,7 @@ test('directory entity search returns canonical seed URLs through plant sort dat
 
 test('directory entity search falls back to plant URLs for seeds without plant sort data', async () => {
     createTestDb();
+    const nonExistentPlantSortId = 999_999;
     const token = uniqueToken('sjeme');
     const plantId = await createSearchableEntity({
         entityTypeName: 'plant',
@@ -320,7 +321,7 @@ test('directory entity search falls back to plant URLs for seeds without plant s
         attributeDefinitionId: seedPlantSortDefinitionId,
         entityTypeName: 'seed',
         entityId: seedId,
-        value: '999999',
+        value: String(nonExistentPlantSortId),
     });
     await updateEntity({ id: seedId, state: 'published' });
 
