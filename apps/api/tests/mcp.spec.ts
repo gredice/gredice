@@ -321,7 +321,7 @@ test.describe('MCP regression and invalid payload handling', () => {
         const oversized = 'x'.repeat(1_000_000);
         const response = await callMcp(request, {
             jsonrpc: '2.0',
-            id: 'oversized',
+            id: null,
             method: 'tools/call',
             params: {
                 name: 'directories/get-plants',
@@ -330,11 +330,11 @@ test.describe('MCP regression and invalid payload handling', () => {
             },
         });
 
-        expect(response.status()).toBe(400);
+        expect(response.status()).toBe(413);
         await expect(response.json()).resolves.toMatchObject({
             jsonrpc: '2.0',
-            id: 'oversized',
-            error: { code: -32602, message: 'Invalid params' },
+            id: null,
+            error: { code: -32600, message: 'Request payload too large' },
         });
     });
 });
