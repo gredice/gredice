@@ -11,6 +11,8 @@
 
 The Gredice MCP Platform provides AI assistants with secure, structured access to Croatian gardening data and garden management tools through the Model Context Protocol. Our implementation supports three specialized MCP servers for different functional domains.
 
+The public API-hosted documentation and JSON-RPC test console are published at `/test` on the API app, for example `https://api.gredice.com/test` and `https://api.gredice.test/test`.
+
 ## Architecture
 
 ```text
@@ -55,7 +57,7 @@ Model Context Protocol (MCP) is a standardized way for AI assistants to interact
 
 ### JWT Integration
 
-All MCP endpoints require standard Gredice API bearer JWTs (`GREDICE_JWT_SIGN_SECRET`) on every HTTP request:
+MCP discovery and public read tools are callable without credentials. Authenticated read, mutation, and admin tools require standard Gredice API bearer JWTs (`GREDICE_JWT_SIGN_SECRET`) on the request:
 
 ```typescript
 Authorization: Bearer <jwt_token>

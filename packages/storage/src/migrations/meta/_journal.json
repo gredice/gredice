@@ -229,8 +229,15 @@
     {
       "idx": 32,
       "version": "7",
-      "when": 1778959036497,
-      "tag": "0032_careless_millenium_guard",
+      "when": 1778958768477,
+      "tag": "0032_solid_stardust",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1778976603925,
+      "tag": "0033_giant_snowbird",
       "breakpoints": true
     }
   ]

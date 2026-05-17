@@ -11,6 +11,9 @@ export async function GET() {
     return Response.json({
         name: 'gredice-mcp',
         endpoint: '/api/mcp',
+        documentation: '/test',
+        protectedResourceMetadata:
+            '/.well-known/oauth-protected-resource/api/mcp',
         transport: 'streamable-http',
     });
 }
