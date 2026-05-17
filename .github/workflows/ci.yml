@@ -33,6 +33,7 @@ jobs:
             app_www:
               - apps/www/**
               - packages/client/**
+              - packages/directory-types/**
               - packages/game/**
               - packages/js/**
               - packages/ui/**
