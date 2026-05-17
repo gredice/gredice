@@ -571,8 +571,6 @@ export async function createNotification(notification: InsertNotification) {
     return result[0].id;
 }
 
-
-
 export async function enqueuePushDeliveryAttemptsForNotification({
     notificationId,
     batchSize = 100,
@@ -595,7 +593,9 @@ export async function enqueuePushDeliveryAttemptsForNotification({
     if (!subscriptions.length) return { queued: 0, skipped: 0 };
 
     const existing = await storage()
-        .select({ pushSubscriptionId: notificationDeliveryAttempts.pushSubscriptionId })
+        .select({
+            pushSubscriptionId: notificationDeliveryAttempts.pushSubscriptionId,
+        })
         .from(notificationDeliveryAttempts)
         .where(
             and(
@@ -620,7 +620,7 @@ export async function enqueuePushDeliveryAttemptsForNotification({
         return { queued: 0, skipped: subscriptions.length };
     }
 
-    await storage().insert(notificationDeliveryAttempts).values(
+    const deliveryAttempts: (typeof notificationDeliveryAttempts.$inferInsert)[] =
         pending.map((subscription) => ({
             notificationId,
             userId: notification.userId,
@@ -630,10 +630,16 @@ export async function enqueuePushDeliveryAttemptsForNotification({
             provider: 'web_push_queue',
             pushSubscriptionId: subscription.id,
             providerResponseCode: 'queued_background',
-        })),
-    );
+        }));
 
-    return { queued: pending.length, skipped: subscriptions.length - pending.length };
+    await storage()
+        .insert(notificationDeliveryAttempts)
+        .values(deliveryAttempts);
+
+    return {
+        queued: pending.length,
+        skipped: subscriptions.length - pending.length,
+    };
 }
 export async function routeNotificationDelivery(notificationId: string) {
     const notification = await getNotification(notificationId);

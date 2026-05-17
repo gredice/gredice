@@ -72,8 +72,6 @@ test('routeNotificationDelivery returns default immediate email and suppressed p
     );
 });
 
-
-
 test('enqueuePushDeliveryAttemptsForNotification queues enabled subscriptions idempotently', async () => {
     createTestDb();
     await ensureFarmId();
