@@ -7,6 +7,7 @@ import {
     createNotificationCampaign,
     createUserWithPassword,
     enqueueNotificationCampaign,
+    enqueuePushDeliveryAttemptsForNotification,
     gardens,
     getNotificationCampaign,
     getNotificationsByAccount,
@@ -71,6 +72,44 @@ test('routeNotificationDelivery returns default immediate email and suppressed p
     );
 });
 
+
+
+test('enqueuePushDeliveryAttemptsForNotification queues enabled subscriptions idempotently', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userName = `push-queue-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(userName, 'password');
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+
+    const subscriptionId = randomUUID();
+    await storage().execute(
+        `insert into web_push_subscriptions (id, account_id, user_id, endpoint, p256dh, auth, enabled)
+         values ('${subscriptionId}', '${accountId}', '${userId}', 'https://example.com/sub', 'k', 'a', true)`,
+    );
+
+    const notificationId = await createNotification({
+        accountId,
+        userId,
+        header: 'Push queued',
+        content: 'Queue push delivery',
+        category: 'general',
+        timestamp: new Date(),
+    });
+
+    const first = await enqueuePushDeliveryAttemptsForNotification({
+        notificationId,
+    });
+    assert.equal(first.queued, 1);
+
+    const second = await enqueuePushDeliveryAttemptsForNotification({
+        notificationId,
+    });
+    assert.equal(second.queued, 0);
+    assert.equal(second.skipped, 1);
+});
 test('notification campaign enqueue records queue intent without synchronous fan-out', async () => {
     createTestDb();
     await ensureFarmId();
