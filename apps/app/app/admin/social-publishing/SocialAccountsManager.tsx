@@ -187,7 +187,7 @@ export function SocialAccountsManager({
                         }
                     />
                     <Input
-                        label="Credential referenca"
+                        label="Interna referenca"
                         name="credentialReference"
                         defaultValue={
                             selectedAccount?.credentialReference ?? ''

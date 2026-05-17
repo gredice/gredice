@@ -2,6 +2,7 @@ import { relations, sql } from 'drizzle-orm';
 import {
     type AnyPgColumn,
     boolean,
+    customType,
     index,
     integer,
     pgTable,
@@ -10,6 +11,12 @@ import {
     timestamp,
     uniqueIndex,
 } from 'drizzle-orm/pg-core';
+
+const tsvector = customType<{ data: string }>({
+    dataType() {
+        return 'tsvector';
+    },
+});
 
 export const attributeDefinitionCategories = pgTable(
     'attribute_definition_categories',
@@ -321,6 +328,40 @@ export type UpdateEntity = Partial<
 > &
     Pick<typeof entities.$inferSelect, 'id'>;
 export type SelectEntity = typeof entities.$inferSelect;
+
+export const entitySearchDocuments = pgTable(
+    'entity_search_documents',
+    {
+        entityId: integer('entity_id')
+            .primaryKey()
+            .references(() => entities.id),
+        entityTypeName: text('entity_type').notNull(),
+        publicCategory: text('public_category').notNull(),
+        publicCategoryLabel: text('public_category_label').notNull(),
+        title: text('title').notNull(),
+        summary: text('summary'),
+        imageUrl: text('image_url'),
+        imageAlt: text('image_alt'),
+        searchableText: text('searchable_text').notNull(),
+        state: text('state').notNull(),
+        publishedAt: timestamp('published_at'),
+        updatedAt: timestamp('updated_at').notNull(),
+        indexedAt: timestamp('indexed_at').notNull().defaultNow(),
+        searchVector: tsvector('search_vector').notNull(),
+    },
+    (table) => [
+        index('cms_esd_entity_type_idx').on(table.entityTypeName),
+        index('cms_esd_public_category_idx').on(table.publicCategory),
+        index('cms_esd_state_idx').on(table.state),
+        index('cms_esd_published_at_idx').on(table.publishedAt),
+        index('cms_esd_search_vector_idx').using('gin', table.searchVector),
+    ],
+);
+
+export type InsertEntitySearchDocument =
+    typeof entitySearchDocuments.$inferInsert;
+export type SelectEntitySearchDocument =
+    typeof entitySearchDocuments.$inferSelect;
 
 export const cmsPages = pgTable(
     'cms_pages',

@@ -57,6 +57,10 @@
 			"path": "packages/game"
 		},
 		{
+			"name": "📦 @gredice/google",
+			"path": "packages/google"
+		},
+		{
 			"name": "📦 @gredice/js",
 			"path": "packages/js"
 		},
@@ -65,8 +69,16 @@
 			"path": "packages/label-printer"
 		},
 		{
+			"name": "📦 @gredice/notifications",
+			"path": "packages/notifications"
+		},
+		{
 			"name": "📦 @gredice/signalco",
 			"path": "packages/signalco"
+		},
+		{
+			"name": "📦 @gredice/slack",
+			"path": "packages/slack"
 		},
 		{
 			"name": "📦 @gredice/storage",

@@ -6,6 +6,7 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 
 const apis = [
+    { label: '/api/mcp', href: '/test' },
     { label: '/api/auth', href: '/docs/auth' },
     { label: '/api/accounts', href: '/docs/accounts' },
     { label: '/api/users', href: '/docs/users' },

@@ -23,7 +23,7 @@
         "@types/node": "24.12.2",
         "api": "workspace:*",
         "hono": "4.12.18",
-        "tsx": "4.21.0",
+        "tsx": "4.22.0",
         "typescript": "6.0.3"
     }
 }

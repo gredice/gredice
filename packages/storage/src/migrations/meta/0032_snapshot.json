@@ -1,5 +1,5 @@
 {
-  "id": "18ee739e-be65-4136-8a7d-e4ad094fda16",
+  "id": "0455e25b-e76b-48a6-83b6-56efe71222fd",
   "prevId": "9df2579f-788f-4db0-801b-ee940c4eb7c9",
   "version": "7",
   "dialect": "postgresql",
@@ -1355,6 +1355,194 @@
         "entity_revisions_entity_id_entities_id_fk": {
           "name": "entity_revisions_entity_id_entities_id_fk",
           "tableFrom": "entity_revisions",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.entity_search_documents": {
+      "name": "entity_search_documents",
+      "schema": "",
+      "columns": {
+        "entity_id": {
+          "name": "entity_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "entity_type": {
+          "name": "entity_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "public_category": {
+          "name": "public_category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "public_category_label": {
+          "name": "public_category_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "image_alt": {
+          "name": "image_alt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "searchable_text": {
+          "name": "searchable_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "indexed_at": {
+          "name": "indexed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "search_vector": {
+          "name": "search_vector",
+          "type": "tsvector",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "cms_esd_entity_type_idx": {
+          "name": "cms_esd_entity_type_idx",
+          "columns": [
+            {
+              "expression": "entity_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "cms_esd_public_category_idx": {
+          "name": "cms_esd_public_category_idx",
+          "columns": [
+            {
+              "expression": "public_category",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "cms_esd_state_idx": {
+          "name": "cms_esd_state_idx",
+          "columns": [
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "cms_esd_published_at_idx": {
+          "name": "cms_esd_published_at_idx",
+          "columns": [
+            {
+              "expression": "published_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "cms_esd_search_vector_idx": {
+          "name": "cms_esd_search_vector_idx",
+          "columns": [
+            {
+              "expression": "search_vector",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "entity_search_documents_entity_id_entities_id_fk": {
+          "name": "entity_search_documents_entity_id_entities_id_fk",
+          "tableFrom": "entity_search_documents",
           "tableTo": "entities",
           "columnsFrom": [
             "entity_id"
@@ -7063,12 +7251,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "media_urls": {
-          "name": "media_urls",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
         "provider_submission_id": {
           "name": "provider_submission_id",
           "type": "text",
@@ -7105,18 +7287,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "scheduled_at": {
-          "name": "scheduled_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "queued_at": {
-          "name": "queued_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
         "submitted_at": {
           "name": "submitted_at",
           "type": "timestamp",
@@ -7125,12 +7295,6 @@
         },
         "published_at": {
           "name": "published_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "canceled_at": {
-          "name": "canceled_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false
@@ -7171,36 +7335,6 @@
           "columns": [
             {
               "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "social_posts_scheduled_at_idx": {
-          "name": "social_posts_scheduled_at_idx",
-          "columns": [
-            {
-              "expression": "scheduled_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "social_posts_queued_at_idx": {
-          "name": "social_posts_queued_at_idx",
-          "columns": [
-            {
-              "expression": "queued_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -8200,13 +8334,10 @@
       "schema": "public",
       "values": [
         "created",
-        "queued",
-        "scheduled",
         "submitting",
         "submitted",
         "published",
-        "failed",
-        "canceled"
+        "failed"
       ]
     },
     "public.social_post_type": {
@@ -8217,9 +8348,6 @@
         "link",
         "image",
         "video",
-        "reel",
-        "story",
-        "carousel",
         "other"
       ]
     },
@@ -8227,15 +8355,7 @@
       "name": "social_provider",
       "schema": "public",
       "values": [
-        "reddit",
-        "instagram",
-        "facebook",
-        "google_business",
-        "x",
-        "tiktok",
-        "threads",
-        "linkedin",
-        "whatsapp"
+        "reddit"
       ]
     },
     "public.account_invitation_status": {

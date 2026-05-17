@@ -12,6 +12,25 @@ import {
     type InsertAttributeValue,
 } from '../schema';
 
+async function refreshEntitySearchDocumentAfterMutation(
+    entityId: number | undefined,
+) {
+    if (!entityId) {
+        return;
+    }
+    try {
+        const { refreshEntitySearchDocument } = await import(
+            './entitySearchRepo'
+        );
+        await refreshEntitySearchDocument(entityId);
+    } catch (error) {
+        console.error('Failed to refresh entity search document', {
+            entityId,
+            error,
+        });
+    }
+}
+
 export async function upsertAttributeValue(
     attributeValue: InsertAttributeValue,
     actor?: { id?: string; name?: string },
@@ -101,6 +120,8 @@ export async function upsertAttributeValue(
                   })
             : undefined,
     ]);
+
+    await refreshEntitySearchDocumentAfterMutation(attributeValue.entityId);
 }
 
 export async function deleteAttributeValue(
@@ -151,4 +172,6 @@ export async function deleteAttributeValue(
                 ]);
             }),
     ]);
+
+    await refreshEntitySearchDocumentAfterMutation(existingValue?.entityId);
 }

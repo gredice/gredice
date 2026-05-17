@@ -229,15 +229,29 @@
     {
       "idx": 32,
       "version": "7",
-      "when": 1778898994333,
-      "tag": "0032_third_raza",
+      "when": 1778958768477,
+      "tag": "0032_solid_stardust",
       "breakpoints": true
     },
     {
       "idx": 33,
       "version": "7",
+      "when": 1778976603925,
+      "tag": "0033_giant_snowbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1778898994333,
+      "tag": "0034_third_raza",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
       "when": 1778938710501,
-      "tag": "0033_workable_hercules",
+      "tag": "0035_workable_hercules",
       "breakpoints": true
     }
   ]
