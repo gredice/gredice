@@ -431,8 +431,8 @@ export async function refreshEntitySearchDocuments(entityIds: number[]) {
     }
 }
 
-async function relatedEntityIdsForPublicUrl(entity: EntitySearchSource) {
-    if (entity.entityTypeName === 'plant') {
+async function relatedEntityIdsForPublicUrl(entityTypeName: string) {
+    if (entityTypeName === 'plant') {
         const rows = await storage()
             .select({ id: entities.id })
             .from(entities)
@@ -445,7 +445,7 @@ async function relatedEntityIdsForPublicUrl(entity: EntitySearchSource) {
         return rows.map((row) => row.id);
     }
 
-    if (entity.entityTypeName === 'plantSort') {
+    if (entityTypeName === 'plantSort') {
         const rows = await storage()
             .select({ id: entities.id })
             .from(entities)
@@ -463,13 +463,21 @@ async function relatedEntityIdsForPublicUrl(entity: EntitySearchSource) {
 
 export async function refreshImpactedEntitySearchDocuments(entityId: number) {
     const sourceEntity = await getEntityRaw(entityId);
-    if (!sourceEntity) {
-        await refreshEntitySearchDocument(entityId);
-        return [entityId];
-    }
+    const sourceEntityState = sourceEntity
+        ? null
+        : await storage().query.entities.findFirst({
+              where: eq(entities.id, entityId),
+              columns: {
+                  entityTypeName: true,
+              },
+          });
+    const sourceEntityTypeName =
+        sourceEntity?.entityTypeName ?? sourceEntityState?.entityTypeName;
 
     const impacted = new Set<number>([entityId]);
-    const relatedIds = await relatedEntityIdsForPublicUrl(sourceEntity);
+    const relatedIds = sourceEntityTypeName
+        ? await relatedEntityIdsForPublicUrl(sourceEntityTypeName)
+        : [];
 
     if (relatedIds.length > 0) {
         const references = await storage().query.attributeValues.findMany({

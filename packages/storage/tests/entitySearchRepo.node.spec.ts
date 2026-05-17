@@ -271,6 +271,15 @@ test('directory entity search returns canonical seed URLs through plant sort dat
     assert.equal(rows[0]?.publicCategory, 'seeds');
     assert.equal(rows[0]?.publicCategoryLabel, 'Sjeme');
     assert.equal(rows[0]?.publicUrl, '/biljke/rajcica/sorte/cherry-rajcica');
+
+    await deleteEntity(sortId);
+
+    const refreshedRows = await searchDirectoryEntities({
+        query: token,
+        entityTypeNames: ['seed'],
+    });
+    assert.equal(refreshedRows[0]?.entityId, seedId);
+    assert.equal(refreshedRows[0]?.publicUrl, '/biljke/rajcica');
 });
 
 test('directory entity search falls back to plant URLs for seeds without plant sort data', async () => {
@@ -462,6 +471,66 @@ test('directory entity search excludes draft, unpublished, and deleted entities'
     );
     assert.deepEqual(
         await searchDirectoryEntities({ query: deletedToken }),
+        [],
+    );
+});
+
+test('directory entity search removes dependent plant sort documents after parent deletion', async () => {
+    createTestDb();
+    const token = uniqueToken('deletedparent');
+    const plantId = await createSearchableEntity({
+        entityTypeName: 'plant',
+        entityTypeLabel: 'Plant',
+        title: `Parent plant ${token}`,
+    });
+    await ensurePublicEntityType('plantSort', 'Sorta biljke');
+
+    const nameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: 'plantSort',
+        dataType: 'text',
+    });
+    const plantDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'plant',
+        label: 'Plant',
+        entityTypeName: 'plantSort',
+        dataType: 'ref:plant',
+    });
+    const sortId = await createEntity('plantSort');
+    await upsertAttributeValue({
+        attributeDefinitionId: nameDefinitionId,
+        entityTypeName: 'plantSort',
+        entityId: sortId,
+        value: `Dependent sort ${token}`,
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: plantDefinitionId,
+        entityTypeName: 'plantSort',
+        entityId: sortId,
+        value: String(plantId),
+    });
+    await updateEntity({ id: sortId, state: 'published' });
+
+    assert.equal(
+        (
+            await searchDirectoryEntities({
+                query: token,
+                entityTypeNames: ['plantSort'],
+            })
+        )[0]?.entityId,
+        sortId,
+    );
+
+    await deleteEntity(plantId);
+
+    assert.deepEqual(
+        await searchDirectoryEntities({
+            query: token,
+            entityTypeNames: ['plantSort'],
+        }),
         [],
     );
 });
