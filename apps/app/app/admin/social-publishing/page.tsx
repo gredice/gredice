@@ -1,19 +1,27 @@
-import { listSocialPosts } from '@gredice/storage';
-import { Card } from '@signalco/ui-primitives/Card';
+import { listSocialAccounts, listSocialPosts } from '@gredice/storage';
 import { auth } from '../../../lib/auth/auth';
+import { SocialAccountsManager } from './SocialAccountsManager';
 import { SocialPublishingComposer } from './SocialPublishingComposer';
 
 export default async function SocialPublishingPage() {
     await auth(['admin']);
-    const recentPosts = await listSocialPosts({ provider: 'reddit' });
+    const [accounts, recentPosts] = await Promise.all([
+        listSocialAccounts(),
+        listSocialPosts(),
+    ]);
 
     return (
-        <Card className="space-y-4 p-4">
+        <div className="space-y-4">
             <h1 className="text-xl font-semibold">Društvene objave</h1>
             <p className="text-sm text-muted-foreground">
-                Objavi odmah na podržani provider i prati status zadnjih objava.
+                Upravljanje objavama, redom i zakazanim slanjem za društvene
+                kanale Gredica.
             </p>
-            <SocialPublishingComposer recentPosts={recentPosts.slice(0, 20)} />
-        </Card>
+            <SocialAccountsManager accounts={accounts} />
+            <SocialPublishingComposer
+                accounts={accounts}
+                recentPosts={recentPosts.slice(0, 20)}
+            />
+        </div>
     );
 }

@@ -1,10 +1,19 @@
-export type SocialProviderName = 'reddit';
+import type {
+    SocialPostMediaUrl,
+    SocialPostType,
+    SocialProvider,
+} from '@gredice/storage';
+
+export type SocialProviderName = SocialProvider;
 
 export type SocialPostInput = {
+    providerAccountKey: string;
+    postType: SocialPostType;
     title: string;
     body?: string;
     url?: string;
     destination?: string;
+    mediaUrls?: SocialPostMediaUrl[];
 };
 
 export type SocialPublishSuccess = {

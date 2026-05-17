@@ -481,21 +481,31 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
     });
 
     async function openHistoryAvatarDrawer(page: Page) {
-        const historyButton = page
-            .getByRole('button', { name: /Povijest biljke / })
-            .last();
+        const stack = page.locator('[data-field-icon-stack]');
+        const historyButtons = page.getByRole('button', {
+            name: /Povijest biljke /,
+        });
+        await expect(historyButtons).toHaveCount(2);
+        const historyButton = historyButtons.last();
         await historyButton.dispatchEvent('pointerdown', {
             bubbles: true,
             cancelable: true,
             pointerType: 'touch',
         });
-        await historyButton.click({ force: true });
+        await historyButton.dispatchEvent('click', {
+            bubbles: true,
+            cancelable: true,
+        });
+        await expect(stack).toHaveAttribute('data-touch-expanded', 'true');
         await historyButton.dispatchEvent('pointerdown', {
             bubbles: true,
             cancelable: true,
             pointerType: 'touch',
         });
-        await historyButton.click({ force: true });
+        await historyButton.dispatchEvent('click', {
+            bubbles: true,
+            cancelable: true,
+        });
 
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();

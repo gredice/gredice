@@ -84,6 +84,7 @@ jobs:
               - apps/api/**
               - packages/directory-types/**
               - packages/email/**
+              - packages/google/**
               - packages/js/**
               - packages/notifications/**
               - packages/signalco/**
