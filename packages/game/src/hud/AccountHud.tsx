@@ -237,9 +237,9 @@ export function AccountHud() {
                         )
                     )}
                 </div>
-                <div className="hidden md:block md:order-2">
+                <div className="md:order-2">
                     <Popper
-                        className="overflow-hidden border-tertiary border-b-4 w-96"
+                        className="w-[min(24rem,calc(100vw-1rem))] overflow-hidden border-tertiary border-b-4"
                         side="bottom"
                         sideOffset={12}
                         trigger={
