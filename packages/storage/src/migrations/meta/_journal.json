@@ -232,6 +232,13 @@
       "when": 1778958768477,
       "tag": "0032_solid_stardust",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1778976603925,
+      "tag": "0033_giant_snowbird",
+      "breakpoints": true
     }
   ]
 }

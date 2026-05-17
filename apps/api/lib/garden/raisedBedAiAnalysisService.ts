@@ -1,34 +1,14 @@
 import { getEntitiesFormatted, getOperations } from '@gredice/storage';
 import { streamText } from 'ai';
+import { validateHostedImageUrl } from '../http/safeUrls';
 
 const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5';
-
-/** Vercel Blob Storage hostnames that are allowed as image sources. */
-const ALLOWED_IMAGE_HOSTS = new Set([
-    'myegtvromcktt2y7.public.blob.vercel-storage.com',
-    '7ql7fvz1vzzo6adz.public.blob.vercel-storage.com',
-]);
 
 /** Max AI analysis requests per account per day. */
 export const AI_ANALYSIS_DAILY_LIMIT = 10;
 
 export function validateImageUrl(imageUrl: string): string | null {
-    let parsed: URL;
-    try {
-        parsed = new URL(imageUrl);
-    } catch {
-        return 'Invalid image URL';
-    }
-
-    if (parsed.protocol !== 'https:') {
-        return 'Image URL must use HTTPS';
-    }
-
-    if (!ALLOWED_IMAGE_HOSTS.has(parsed.hostname)) {
-        return 'Image URL must be hosted on allowed storage';
-    }
-
-    return null;
+    return validateHostedImageUrl(imageUrl);
 }
 
 function daysSince(date: Date | string | null | undefined) {
