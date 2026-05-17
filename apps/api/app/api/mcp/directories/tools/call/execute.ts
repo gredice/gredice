@@ -104,10 +104,13 @@ function paginate<T>(values: T[], limit: number, offset: number) {
 
 async function getDirectoryEntities(
     entityTypeName: string,
+    signal?: AbortSignal,
 ): Promise<EntityStandardized[]> {
     try {
+        signal?.throwIfAborted();
         const entities =
             await getEntitiesFormatted<EntityStandardized>(entityTypeName);
+        signal?.throwIfAborted();
         return [...(entities ?? [])].sort((a, b) =>
             entityName(a).localeCompare(entityName(b), 'hr'),
         );
@@ -123,27 +126,52 @@ export class DirectoryToolNotFoundError extends Error {
     }
 }
 
-export async function executeDirectoryTool(name: string, args: unknown) {
+export async function executeDirectoryTool(
+    name: string,
+    args: unknown,
+    options?: { signal?: AbortSignal },
+) {
+    options?.signal?.throwIfAborted();
+
     switch (name) {
         case 'directories/get-plants':
-            return handleGetPlants(GetPlantsSchema.parse(args));
+            return handleGetPlants(
+                GetPlantsSchema.parse(args),
+                options?.signal,
+            );
         case 'directories/get-plant':
-            return handleGetPlant(GetPlantSchema.parse(args));
+            return handleGetPlant(GetPlantSchema.parse(args), options?.signal);
         case 'directories/get-plant-sorts':
-            return handleGetPlantSorts(GetPlantSortsSchema.parse(args));
+            return handleGetPlantSorts(
+                GetPlantSortsSchema.parse(args),
+                options?.signal,
+            );
         case 'directories/search-entities':
-            return handleSearchEntities(SearchEntitiesSchema.parse(args));
+            return handleSearchEntities(
+                SearchEntitiesSchema.parse(args),
+                options?.signal,
+            );
         case 'directories/get-operations':
-            return handleGetOperations(GetOperationsSchema.parse(args));
+            return handleGetOperations(
+                GetOperationsSchema.parse(args),
+                options?.signal,
+            );
         case 'directories/get-seeds':
-            return handleGetSeeds(GetSeedsSchema.parse(args));
+            return handleGetSeeds(GetSeedsSchema.parse(args), options?.signal);
         default:
             throw new DirectoryToolNotFoundError(name);
     }
 }
 
-async function handleGetPlants(input: z.infer<typeof GetPlantsSchema>) {
-    const allPlants = await getDirectoryEntities(DIRECTORY_ENTITY_TYPES.plant);
+async function handleGetPlants(
+    input: z.infer<typeof GetPlantsSchema>,
+    signal?: AbortSignal,
+) {
+    const allPlants = await getDirectoryEntities(
+        DIRECTORY_ENTITY_TYPES.plant,
+        signal,
+    );
+    signal?.throwIfAborted();
     const filtered = input.category
         ? allPlants.filter((plant) =>
               `${plant.attributes?.category ?? ''}`
@@ -166,8 +194,15 @@ async function handleGetPlants(input: z.infer<typeof GetPlantsSchema>) {
     };
 }
 
-async function handleGetPlant(input: z.infer<typeof GetPlantSchema>) {
-    const allPlants = await getDirectoryEntities(DIRECTORY_ENTITY_TYPES.plant);
+async function handleGetPlant(
+    input: z.infer<typeof GetPlantSchema>,
+    signal?: AbortSignal,
+) {
+    const allPlants = await getDirectoryEntities(
+        DIRECTORY_ENTITY_TYPES.plant,
+        signal,
+    );
+    signal?.throwIfAborted();
     const term = input.plantName.toLowerCase();
     const plant = allPlants.find((item) =>
         entityName(item).toLowerCase().includes(term),
@@ -187,7 +222,11 @@ async function handleGetPlant(input: z.infer<typeof GetPlantSchema>) {
 
     if (!input.includeSorts) return result;
 
-    const allSorts = await getDirectoryEntities(DIRECTORY_ENTITY_TYPES.sort);
+    const allSorts = await getDirectoryEntities(
+        DIRECTORY_ENTITY_TYPES.sort,
+        signal,
+    );
+    signal?.throwIfAborted();
     const sorts = allSorts
         .filter((sort) => {
             const sortPlantId = sort.attributes?.plantId;
@@ -209,8 +248,15 @@ async function handleGetPlant(input: z.infer<typeof GetPlantSchema>) {
     return { ...result, sorts };
 }
 
-async function handleGetPlantSorts(input: z.infer<typeof GetPlantSortsSchema>) {
-    const allSorts = await getDirectoryEntities(DIRECTORY_ENTITY_TYPES.sort);
+async function handleGetPlantSorts(
+    input: z.infer<typeof GetPlantSortsSchema>,
+    signal?: AbortSignal,
+) {
+    const allSorts = await getDirectoryEntities(
+        DIRECTORY_ENTITY_TYPES.sort,
+        signal,
+    );
+    signal?.throwIfAborted();
     const filtered = input.plant_type
         ? allSorts.filter((sort) =>
               extractPlantName(sort)
@@ -231,10 +277,15 @@ async function handleGetPlantSorts(input: z.infer<typeof GetPlantSortsSchema>) {
     };
 }
 
-async function handleGetOperations(input: z.infer<typeof GetOperationsSchema>) {
+async function handleGetOperations(
+    input: z.infer<typeof GetOperationsSchema>,
+    signal?: AbortSignal,
+) {
     const allOperations = await getDirectoryEntities(
         DIRECTORY_ENTITY_TYPES.operation,
+        signal,
     );
+    signal?.throwIfAborted();
     const filtered = input.category
         ? allOperations.filter(
               (op) =>
@@ -263,8 +314,15 @@ async function handleGetOperations(input: z.infer<typeof GetOperationsSchema>) {
     };
 }
 
-async function handleGetSeeds(input: z.infer<typeof GetSeedsSchema>) {
-    const allSeeds = await getDirectoryEntities(DIRECTORY_ENTITY_TYPES.seed);
+async function handleGetSeeds(
+    input: z.infer<typeof GetSeedsSchema>,
+    signal?: AbortSignal,
+) {
+    const allSeeds = await getDirectoryEntities(
+        DIRECTORY_ENTITY_TYPES.seed,
+        signal,
+    );
+    signal?.throwIfAborted();
     let filtered = allSeeds;
     if (input.plant_type) {
         filtered = filtered.filter((seed) =>

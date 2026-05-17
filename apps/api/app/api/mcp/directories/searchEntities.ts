@@ -17,7 +17,11 @@ function normalizeEntityTypeName(entityTypeName: string) {
     }
 }
 
-export async function handleSearchEntities(input: SearchEntitiesInput) {
+export async function handleSearchEntities(
+    input: SearchEntitiesInput,
+    signal?: AbortSignal,
+) {
+    signal?.throwIfAborted();
     const entityTypeNames = input.entityTypes?.length
         ? input.entityTypes.map(normalizeEntityTypeName)
         : undefined;
@@ -26,6 +30,7 @@ export async function handleSearchEntities(input: SearchEntitiesInput) {
         entityTypeNames,
         limit: input.limit,
     });
+    signal?.throwIfAborted();
 
     const results = rows.map((row) => ({
         id: row.entityId.toString(),
