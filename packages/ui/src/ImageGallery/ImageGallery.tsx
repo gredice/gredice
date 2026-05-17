@@ -474,7 +474,10 @@ export function ImageGallery({
                                 {/** biome-ignore lint/performance/noImgElement: Using raw <img> intentionally for fallback display */}
                                 <img
                                     src={activeImage.src}
-                                    alt={resolveAlt(activeImage?.alt, safeIndex)}
+                                    alt={resolveAlt(
+                                        activeImage?.alt,
+                                        safeIndex,
+                                    )}
                                     className="max-h-full max-w-full select-none object-contain"
                                     draggable={false}
                                 />

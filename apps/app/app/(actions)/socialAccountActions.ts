@@ -2,6 +2,7 @@
 
 import {
     createSocialAccount,
+    type SelectSocialAccount,
     type SocialAccountStatus,
     type SocialProvider,
     updateSocialAccount,
@@ -16,11 +17,19 @@ type SocialAccountActionErrorCode =
     | 'invalid_payload'
     | 'internal_error';
 
-export type SocialAccountActionState = {
-    ok: boolean;
-    errorCode?: SocialAccountActionErrorCode;
-    message: string;
-};
+export type SocialAccountActionState =
+    | {
+          ok: true;
+          message: string;
+          accountId: number;
+          provider: SocialProvider;
+      }
+    | {
+          ok: false;
+          errorCode?: SocialAccountActionErrorCode;
+          message: string;
+          provider?: SocialProvider;
+      };
 
 type NormalizedAccountPayload = {
     id: number | null;
@@ -139,6 +148,8 @@ export async function saveSocialAccountAction(
     const payload = validation.payload;
 
     try {
+        let savedAccount: SelectSocialAccount;
+
         if (payload.id) {
             const updated = await updateSocialAccount({
                 id: payload.id,
@@ -160,8 +171,9 @@ export async function saveSocialAccountAction(
                     message: 'Društveni račun nije pronađen.',
                 };
             }
+            savedAccount = updated;
         } else {
-            await createSocialAccount({
+            savedAccount = await createSocialAccount({
                 provider: payload.provider,
                 providerAccountKey: payload.providerAccountKey,
                 label: payload.label,
@@ -178,8 +190,18 @@ export async function saveSocialAccountAction(
         }
 
         revalidatePath(KnownPages.SocialPublishing);
+        revalidatePath(KnownPages.Settings);
+        revalidatePath(KnownPages.SocialIntegrationInstall(payload.provider));
+        revalidatePath(
+            KnownPages.SocialIntegrationAccount(
+                savedAccount.provider,
+                savedAccount.id,
+            ),
+        );
         return {
             ok: true,
+            accountId: savedAccount.id,
+            provider: savedAccount.provider,
             message: payload.id
                 ? 'Društveni račun je ažuriran.'
                 : 'Društveni račun je dodan.',

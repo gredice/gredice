@@ -2,6 +2,7 @@ import { expect, type Page, test } from '@playwright/experimental-ct-react';
 import { RaisedBedFieldHudStory } from './RaisedBedFieldHudStory';
 import {
     buildCartItem,
+    buildOperation,
     type RaisedBedScenario,
     testSorts,
 } from './raisedBedFieldHudScenarios';
@@ -41,6 +42,45 @@ function plantedGrowingScenario(): RaisedBedScenario {
     };
 }
 
+function plantedGrowingWithRecommendedOperationsScenario(): RaisedBedScenario {
+    return {
+        ...plantedGrowingScenario(),
+        operations: [
+            buildOperation({
+                id: 201,
+                name: 'mock-hoeing',
+                label: 'Okopavanje',
+                stageName: 'maintenance',
+                stageLabel: 'Održavanje',
+                relativeDays: 1,
+            }),
+            buildOperation({
+                id: 202,
+                name: 'mock-weeding',
+                label: 'Uklanjanje korova',
+                stageName: 'maintenance',
+                stageLabel: 'Održavanje',
+                relativeDays: 2,
+            }),
+        ],
+    };
+}
+
+function plantedSownWithScheduledScenario(): RaisedBedScenario {
+    return {
+        fields: [
+            {
+                positionIndex: 0,
+                plantSortId: testSorts.tomato.id,
+                plantStatus: 'sprouted',
+                plantScheduledDate: '2026-05-01T00:00:00.000Z',
+                plantSowDate: '2026-05-01T00:00:00.000Z',
+                plantGrowthDate: '2026-05-10T00:00:00.000Z',
+            },
+        ],
+    };
+}
+
 function plantedReadyScenario(): RaisedBedScenario {
     return {
         fields: [
@@ -51,6 +91,21 @@ function plantedReadyScenario(): RaisedBedScenario {
                 plantSowDate: daysAgoIso(60),
                 plantGrowthDate: daysAgoIso(45),
                 plantReadyDate: daysAgoIso(2),
+            },
+        ],
+    };
+}
+
+function plantedWithFutureReadyDateScenario(): RaisedBedScenario {
+    return {
+        fields: [
+            {
+                positionIndex: 0,
+                plantSortId: testSorts.tomato.id,
+                plantStatus: 'ready',
+                plantSowDate: daysAgoIso(60),
+                plantGrowthDate: daysAgoIso(45),
+                plantReadyDate: daysFromNowIso(140),
             },
         ],
     };
@@ -117,6 +172,12 @@ function emptyWithHistoryScenario(historyCount = 2): RaisedBedScenario {
 function daysAgoIso(days: number): string {
     const date = new Date('2026-05-13T12:00:00.000Z');
     date.setDate(date.getDate() - days);
+    return date.toISOString();
+}
+
+function daysFromNowIso(days: number): string {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
     return date.toISOString();
 }
 
@@ -191,6 +252,58 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(
             stack.locator('span.bg-blue-600 svg.lucide-sprout'),
         ).toBeVisible();
+    });
+
+    test('status popover explains when current state cannot change', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedReadyScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        await dialog
+            .getByRole('button', {
+                name: 'Stanje biljke: Spremna za berbu',
+            })
+            .click();
+
+        await expect(
+            page.getByText('Stanje biljke', { exact: true }),
+        ).toBeVisible();
+        await expect(page.getByText('Spremna za berbu').last()).toBeVisible();
+        await expect(
+            page.getByText('Stanje se ne može promijeniti u ovom trenutku.'),
+        ).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: 'Odaberi datum promjene' }),
+        ).toHaveCount(0);
+    });
+
+    test('future harvest date shows absolute harvest days', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedWithFutureReadyDateScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(
+            dialog.getByRole('button', { name: 'Berba: 140 dana' }),
+        ).toBeVisible();
+        await expect(dialog.getByText(/Berba:\s*-/)).toHaveCount(0);
     });
 
     test('harvested field shows check indicator', async ({ mount, page }) => {
@@ -303,6 +416,114 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(dialog.getByRole('tab', { name: /Radnje/ })).toBeVisible();
     });
 
+    test('recommended operations list ends with all actions item', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedGrowingWithRecommendedOperationsScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        const recommendationsList = dialog.locator(
+            '[data-recommended-operation-list]',
+        );
+        await expect(recommendationsList).toBeVisible();
+        await expect(recommendationsList).toContainText('Okopavanje');
+        await expect(recommendationsList).toContainText('Uklanjanje korova');
+
+        const listItems = recommendationsList.locator(':scope > *');
+        await expect(listItems).toHaveCount(3);
+        await expect(listItems.last()).toContainText('Sve radnje...');
+        const allActionsButton = recommendationsList.getByRole('button', {
+            name: 'Sve radnje...',
+        });
+        await expect(allActionsButton).toBeVisible();
+        await expect(
+            dialog.getByRole('button', { name: 'Sve radnje', exact: true }),
+        ).toHaveCount(0);
+
+        await allActionsButton.click();
+
+        await expect(
+            dialog.getByRole('tab', { name: /Radnje/ }),
+        ).toHaveAttribute('aria-selected', 'true');
+    });
+
+    test('lifecycle modal opens status change popover from current state', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedSownWithScheduledScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog.getByText('Planirani datum')).toHaveCount(0);
+
+        const germinationDetailsButton = dialog.getByRole('button', {
+            name: 'Klijanje: 9 dana',
+        });
+        await expect(germinationDetailsButton).toBeVisible();
+        await expect(dialog.getByText('1.-10.5.2026.')).toHaveCount(0);
+        await germinationDetailsButton.click();
+        await expect(page.getByText('1.-10.5.2026.')).toBeVisible();
+        await expect(
+            page.getByText('Očekivano za ovu sortu: 5-10 dana'),
+        ).toBeVisible();
+        await expect(
+            page.getByText(
+                'Klijanje je razdoblje od sijanja do trenutka kada sjeme proklija',
+            ),
+        ).toBeVisible();
+        const stageDetailsLink = page
+            .getByRole('link', { name: 'Detalji o biljci' })
+            .filter({ hasText: 'Detalji o biljci' });
+        await expect(stageDetailsLink).toHaveAttribute(
+            'href',
+            'https://www.gredice.com/biljke/rajcica/sorte/cherry-rajcica',
+        );
+
+        await dialog
+            .getByRole('button', {
+                name: 'Promijeni stanje biljke: Proklijala',
+            })
+            .click();
+
+        await expect(page.getByText('Promijeni stanje')).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: 'Nije proklijala' }),
+        ).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: 'Neuspjela' }),
+        ).toBeVisible();
+        const readyButton = page.getByRole('button', {
+            name: 'Spremna za berbu',
+        });
+        await expect(readyButton).toContainText('🥕');
+        await expect(readyButton.locator('svg')).toBeVisible();
+
+        const statusChangeDateButton = page.getByRole('button', {
+            name: /Odaberi datum promjene: \d{2}\. \d{2}\. \d{4}\./,
+        });
+        await expect(statusChangeDateButton).toBeVisible();
+        await statusChangeDateButton.click();
+
+        await expect(
+            page.getByRole('textbox', { name: 'Datum promjene' }),
+        ).toBeVisible();
+    });
+
     test('opening the plant history modal lists prior plants newest first', async ({
         mount,
         page,
@@ -383,7 +604,10 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
             cancelable: true,
             pointerType: 'touch',
         });
-        await historyButton.click({ force: true });
+        await historyButton.dispatchEvent('click', {
+            bubbles: true,
+            cancelable: true,
+        });
 
         await expect(stack).toHaveAttribute('data-touch-expanded', 'true');
         await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -393,7 +617,10 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
             cancelable: true,
             pointerType: 'touch',
         });
-        await historyButton.click({ force: true });
+        await historyButton.dispatchEvent('click', {
+            bubbles: true,
+            cancelable: true,
+        });
 
         await expect(page.getByRole('dialog')).toBeVisible();
     });

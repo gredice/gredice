@@ -353,4 +353,5 @@ export type Event = {
     version: number;
     aggregateId: string;
     data?: unknown | null | undefined;
+    createdAt?: Date;
 };

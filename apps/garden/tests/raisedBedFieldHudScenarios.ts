@@ -1,4 +1,4 @@
-import type { PlantData, PlantSortData } from '@gredice/client';
+import type { OperationData, PlantData, PlantSortData } from '@gredice/client';
 import type { ShoppingCartItemData } from '../../../packages/game/src/hooks/useShoppingCart';
 
 const now = '2026-05-13T00:00:00.000Z';
@@ -127,6 +127,7 @@ export type FieldConfig = {
     positionIndex: number;
     plantSortId?: number;
     plantStatus?: 'sowed' | 'sprouted' | 'ready' | 'died';
+    plantScheduledDate?: string;
     plantSowDate?: string;
     plantGrowthDate?: string;
     plantReadyDate?: string;
@@ -141,6 +142,7 @@ export type FieldConfig = {
 export type RaisedBedScenario = {
     fields: FieldConfig[];
     cartItems?: ShoppingCartItemData[];
+    operations?: OperationData[];
 };
 
 export function buildField(config: FieldConfig, id: number) {
@@ -154,7 +156,7 @@ export function buildField(config: FieldConfig, id: number) {
         positionIndex: config.positionIndex,
         plantSortId: config.plantSortId,
         plantStatus: config.plantStatus,
-        plantScheduledDate: undefined,
+        plantScheduledDate: config.plantScheduledDate,
         plantSowDate: config.plantSowDate,
         plantGrowthDate: config.plantGrowthDate,
         plantReadyDate: config.plantReadyDate,
@@ -213,4 +215,56 @@ export function buildCartItem({
         },
         entityData: sort,
     } as unknown as ShoppingCartItemData;
+}
+
+export function buildOperation({
+    id,
+    name,
+    label,
+    stageName,
+    stageLabel,
+    relativeDays,
+}: {
+    id: number;
+    name: string;
+    label: string;
+    stageName: string;
+    stageLabel: string;
+    relativeDays?: number;
+}): OperationData {
+    return {
+        id,
+        entityType: { id: 10, name: 'operation', label: 'Radnje' },
+        slug: `mock-${name}`,
+        attributes: {
+            frequency: 'once',
+            stage: {
+                id,
+                information: { name: stageName, label: stageLabel },
+            },
+            application: 'plant',
+            deliverable: false,
+            duration: 30,
+            relativeDays,
+        },
+        information: {
+            description: `${label} test description.`,
+            shortDescription: `${label} test short description.`,
+            name,
+            label,
+            instructions: `${label} test instructions.`,
+        },
+        prices: {
+            perOperation: 0.1,
+        },
+        image: { cover: { url: '' } },
+        conditions: {
+            completionAttachImages: false,
+            completionAttachImagesRequired: false,
+            completionAttachNotes: false,
+            completionAttachNotesRequired: false,
+        },
+        createdAt: now,
+        updatedAt: now,
+    } satisfies OperationData;
 }

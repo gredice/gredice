@@ -128,7 +128,7 @@ export async function countEventsSince(
 }
 
 export async function createEvent(
-    { type, version, aggregateId, data }: Event,
+    { type, version, aggregateId, data, createdAt }: Event,
     db: DatabaseClient = storage(),
 ) {
     await db.insert(events).values({
@@ -136,6 +136,7 @@ export async function createEvent(
         version,
         aggregateId,
         data,
+        ...(createdAt && { createdAt }),
     });
     await bustReadModelCachesForEvent({ type, version, aggregateId, data });
 }

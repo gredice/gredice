@@ -67,6 +67,7 @@ function createScenarioQueryClient(scenario: RaisedBedScenario) {
     queryClient.setQueryData(['inventory'], { items: [] });
     queryClient.setQueryData(['plants'], allPlants);
     queryClient.setQueryData(['sorts'], allSorts);
+    queryClient.setQueryData(['operations'], scenario.operations ?? []);
 
     return queryClient;
 }

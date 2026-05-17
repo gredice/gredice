@@ -7,7 +7,7 @@ import {
     IntegrationTypes,
     isAdminGeneralSettingValue,
     isGoogleCalendarSettingValue,
-    isSocialPublishingSettingValue,
+    listSocialAccounts,
     NotificationSettingKeys,
     type SelectNotificationSetting,
     SettingsKeys,
@@ -37,7 +37,7 @@ import { SlackChannelSettingForm } from '../communication/slack/SlackChannelSett
 import { AdminGeneralSettingForm } from './AdminGeneralSettingForm';
 import { DashboardQuickActionsSettingForm } from './DashboardQuickActionsSettingForm';
 import { GoogleCalendarSettingForm } from './GoogleCalendarSettingForm';
-import { SocialPublishingSettingForm } from './SocialPublishingSettingForm';
+import { SocialIntegrationsOverview } from './integrations/social/_components/SocialIntegrationsOverview';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,7 +92,7 @@ export default async function SettingsPage() {
         adminGeneralSetting,
         dashboardQuickActionsSetting,
         googleCalendarSetting,
-        socialPublishingSetting,
+        socialAccounts,
     ] = await Promise.all([
         getNotificationSetting(NotificationSettingKeys.SlackDeliveryChannel),
         getNotificationSetting(NotificationSettingKeys.SlackNewUsersChannel),
@@ -102,7 +102,7 @@ export default async function SettingsPage() {
         getSetting(SettingsKeys.AdminGeneral),
         getSetting(SettingsKeys.DashboardQuickActions),
         getSetting(SettingsKeys.GoogleCalendar),
-        getSetting(SettingsKeys.SocialPublishing),
+        listSocialAccounts(),
     ]);
 
     const dashboardQuickActionOptions = buildDashboardQuickActionOptions(
@@ -121,14 +121,9 @@ export default async function SettingsPage() {
     )
         ? googleCalendarSetting.value
         : undefined;
-    const socialPublishingConfig = isSocialPublishingSettingValue(
-        socialPublishingSetting?.value,
-    )
-        ? socialPublishingSetting.value
-        : { providers: {} };
-    const enabledSocialPublishingProviders = Object.values(
-        socialPublishingConfig.providers,
-    ).filter((config) => config?.enabled).length;
+    const activeSocialAccounts = socialAccounts.filter(
+        (account) => account.status === 'active',
+    ).length;
     const adminGeneralConfig = isAdminGeneralSettingValue(
         adminGeneralSetting?.value,
     )
@@ -398,19 +393,19 @@ export default async function SettingsPage() {
                                         </CardTitle>
                                         <div
                                             className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm ${
-                                                enabledSocialPublishingProviders
+                                                activeSocialAccounts
                                                     ? 'bg-green-100 text-green-800'
                                                     : 'bg-amber-100 text-amber-800'
                                             }`}
                                         >
-                                            {enabledSocialPublishingProviders ? (
+                                            {activeSocialAccounts ? (
                                                 <Check className="size-4" />
                                             ) : (
                                                 <Warning className="size-4" />
                                             )}
                                             <span>
-                                                {enabledSocialPublishingProviders
-                                                    ? `${enabledSocialPublishingProviders} aktivno`
+                                                {activeSocialAccounts
+                                                    ? `${activeSocialAccounts} aktivno`
                                                     : 'Nije povezano'}
                                             </span>
                                         </div>
@@ -418,14 +413,14 @@ export default async function SettingsPage() {
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <p className="text-sm text-muted-foreground">
-                                        Provider ključevi i endpointi spremaju
-                                        se u administratorske DB postavke, a ne
-                                        u deployment environment varijable.
+                                        Direktno slanje koristi provider
+                                        konfiguraciju iz deployment environment
+                                        varijabli. Svaka platforma ima vlastitu
+                                        instalaciju i zasebne konfiguracije za
+                                        više računa.
                                     </p>
-                                    <SocialPublishingSettingForm
-                                        providers={
-                                            socialPublishingConfig.providers
-                                        }
+                                    <SocialIntegrationsOverview
+                                        accounts={socialAccounts}
                                     />
                                 </CardContent>
                             </Card>

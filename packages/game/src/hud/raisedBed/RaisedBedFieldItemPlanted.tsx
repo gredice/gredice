@@ -321,14 +321,10 @@ export function RaisedBedFieldItemPlanted({
                         width={60}
                         height={60}
                     />
-                    <Row
-                        spacing={2}
-                        alignItems="center"
-                        justifyContent="space-between"
-                        className="w-full"
-                    >
+                    <Stack spacing={0.5} className="min-w-0 flex-1">
                         <Typography
                             level="h4"
+                            component="h1"
                             className="truncate line-clamp-2"
                             title={plantSort.information.name}
                         >
@@ -348,9 +344,9 @@ export function RaisedBedFieldItemPlanted({
                             }
                         >
                             <ExternalLink className="size-4" />
-                            <span className="hidden sm:inline">Detalji</span>
+                            <span>Detalji</span>
                         </Link>
-                    </Row>
+                    </Stack>
                 </Row>
                 <Tabs
                     value={activeTab}
