@@ -12,6 +12,7 @@ import { Table } from '@signalco/ui-primitives/Table';
 import { useActionState, useState } from 'react';
 import {
     getSocialProviderDefinition,
+    isSocialProvider,
     socialProviderDefinitions,
 } from '../../../src/social/providers/definitions';
 import {
@@ -47,6 +48,12 @@ function destinationsLabel(value: unknown) {
     return value.filter((entry) => typeof entry === 'string').join(', ');
 }
 
+function accessTokenReferencePlaceholder(
+    provider: SelectSocialAccount['provider'],
+) {
+    return `SOCIAL_PROVIDER_${provider.toUpperCase()}_ACCESS_TOKEN`;
+}
+
 export function SocialAccountsManager({
     accounts,
 }: SocialAccountsManagerProps) {
@@ -55,12 +62,16 @@ export function SocialAccountsManager({
         FormData
     >(saveSocialAccountAction, null);
     const [selectedAccountId, setSelectedAccountId] = useState('new');
+    const [newProvider, setNewProvider] =
+        useState<SelectSocialAccount['provider']>('reddit');
     const selectedAccount =
         selectedAccountId === 'new'
             ? null
             : (accounts.find(
                   (account) => account.id.toString() === selectedAccountId,
               ) ?? null);
+    const formProvider = selectedAccount?.provider ?? newProvider;
+    const formProviderDefinition = getSocialProviderDefinition(formProvider);
 
     const providerItems = socialProviderDefinitions.map((definition) => ({
         value: definition.name,
@@ -79,8 +90,8 @@ export function SocialAccountsManager({
             <div className="flex flex-col gap-1">
                 <h2 className="text-lg font-semibold">Društveni računi</h2>
                 <p className="text-sm text-muted-foreground">
-                    Upravljaj kanalima i zadanim odredištima. Provider
-                    integracije i tajne uređuju se u Postavkama.
+                    Upravljaj kanalima, zadanim odredištima i referencama na
+                    direktnu provider konfiguraciju.
                 </p>
             </div>
 
@@ -99,8 +110,13 @@ export function SocialAccountsManager({
                     <SelectItems
                         label="Provider"
                         name="provider"
-                        defaultValue={selectedAccount?.provider ?? 'reddit'}
+                        value={formProvider}
                         items={providerItems}
+                        onValueChange={(nextProvider) => {
+                            if (isSocialProvider(nextProvider)) {
+                                setNewProvider(nextProvider);
+                            }
+                        }}
                         disabled={Boolean(selectedAccount)}
                         required
                     />
@@ -156,13 +172,19 @@ export function SocialAccountsManager({
                         label="Vanjski ID računa"
                         name="externalAccountId"
                         defaultValue={selectedAccount?.externalAccountId ?? ''}
-                        placeholder="17841400000000000"
+                        placeholder={
+                            formProviderDefinition?.destinationPlaceholder ??
+                            '17841400000000000'
+                        }
                     />
                     <Input
                         label="Zadano odredište"
                         name="defaultDestination"
                         defaultValue={selectedAccount?.defaultDestination ?? ''}
-                        placeholder="@gredice"
+                        placeholder={
+                            formProviderDefinition?.destinationPlaceholder ??
+                            'gredice'
+                        }
                     />
                     <Input
                         label="Interna referenca"
@@ -170,7 +192,9 @@ export function SocialAccountsManager({
                         defaultValue={
                             selectedAccount?.credentialReference ?? ''
                         }
-                        placeholder="gredice-main"
+                        placeholder={accessTokenReferencePlaceholder(
+                            formProvider,
+                        )}
                     />
                 </div>
 
@@ -182,7 +206,10 @@ export function SocialAccountsManager({
                         defaultValue={destinationsLabel(
                             selectedAccount?.allowedDestinations,
                         ).replace('—', '')}
-                        placeholder="@gredice&#10;@gredice_stories"
+                        placeholder={
+                            formProviderDefinition?.destinationPlaceholder ??
+                            'gredice'
+                        }
                         className="w-full rounded border border-muted bg-card p-2"
                     />
                 </label>

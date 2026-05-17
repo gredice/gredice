@@ -12,10 +12,13 @@ const objectiveProviderRequirements = [
     },
     { provider: 'google_business', postTypes: ['text', 'link', 'image'] },
     { provider: 'x', postTypes: ['text', 'link', 'image', 'video'] },
-    { provider: 'tiktok', postTypes: ['video', 'reel'] },
-    { provider: 'threads', postTypes: ['text', 'link', 'image', 'video'] },
+    { provider: 'tiktok', postTypes: ['image', 'video', 'reel', 'carousel'] },
+    {
+        provider: 'threads',
+        postTypes: ['text', 'link', 'image', 'video', 'carousel'],
+    },
     { provider: 'linkedin', postTypes: ['text', 'link', 'image', 'video'] },
-    { provider: 'whatsapp', postTypes: ['story', 'image', 'video'] },
+    { provider: 'whatsapp', postTypes: ['text', 'image', 'video'] },
 ] as const;
 
 const providerValidationCases = [
@@ -28,21 +31,21 @@ const providerValidationCases = [
     },
     {
         provider: 'instagram',
-        destination: '@gredice',
+        destination: '17841400000000000',
         postType: 'story',
         body: 'Story caption',
         mediaUrls: 'https://gredice.com/story.jpg',
     },
     {
         provider: 'facebook',
-        destination: 'Gredice',
+        destination: '1234567890',
         postType: 'story',
         body: 'Story caption',
         mediaUrls: 'https://gredice.com/story.jpg',
     },
     {
         provider: 'google_business',
-        destination: 'Gredice Zagreb',
+        destination: 'accounts/1/locations/2',
         postType: 'image',
         body: 'Business update',
         mediaUrls: 'https://gredice.com/location.jpg',
@@ -63,24 +66,23 @@ const providerValidationCases = [
     },
     {
         provider: 'threads',
-        destination: '@gredice',
+        destination: 'me',
         postType: 'image',
         body: 'Image update',
         mediaUrls: 'https://gredice.com/thread.jpg',
     },
     {
         provider: 'linkedin',
-        destination: 'Gredice',
+        destination: 'urn:li:organization:123456',
         postType: 'video',
         body: 'Company video',
         mediaUrls: 'https://gredice.com/linkedin-video.mp4',
     },
     {
         provider: 'whatsapp',
-        destination: 'Gredice',
-        postType: 'story',
-        body: 'Status story',
-        mediaUrls: 'https://gredice.com/status.mp4',
+        destination: '385911234567',
+        postType: 'text',
+        body: 'WhatsApp message',
     },
 ] as const;
 

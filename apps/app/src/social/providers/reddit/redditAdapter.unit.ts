@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { RedditProviderAdapter } from './redditAdapter.ts';
+import { RedditProviderAdapter, readRedditEnv } from './redditAdapter.ts';
 
 function response(body: unknown, status = 200): Response {
     return new Response(JSON.stringify(body), {
@@ -25,25 +25,31 @@ async function captureWarnings<T>(
     }
 }
 
-test('validateConfig accepts complete DB Reddit config', () => {
-    const adapter = new RedditProviderAdapter({
-        enabled: true,
-        clientId: 'id',
-        clientSecret: 'secret',
-        userAgent: 'ua',
-        defaultDestination: 'gredice',
-        allowedDestinations: new Set(['gardening', 'gredice']),
+test('readRedditEnv builds allowlist and default destination', () => {
+    const env = readRedditEnv({
+        SOCIAL_PROVIDER_REDDIT_ENABLED: 'true',
+        SOCIAL_PROVIDER_REDDIT_ACCESS_TOKEN: '',
+        SOCIAL_PROVIDER_REDDIT_CLIENT_ID: 'id',
+        SOCIAL_PROVIDER_REDDIT_CLIENT_SECRET: 'secret',
+        SOCIAL_PROVIDER_REDDIT_REFRESH_TOKEN: 'refresh',
+        SOCIAL_PROVIDER_REDDIT_USER_AGENT: 'ua',
+        SOCIAL_PROVIDER_REDDIT_DEFAULT_DESTINATION: 'gredice',
+        SOCIAL_PROVIDER_REDDIT_ALLOWED_DESTINATIONS: 'gardening, gredice',
     });
 
-    assert.equal(adapter.validateConfig(), null);
+    assert.equal(env.enabled, true);
+    assert.equal(env.allowedDestinations.has('gredice'), true);
+    assert.equal(env.allowedDestinations.has('gardening'), true);
 });
 
 test('publishPost returns operational error when missing credentials', async () => {
     const adapter = new RedditProviderAdapter(
         {
             enabled: true,
+            accessToken: '',
             clientId: '',
             clientSecret: '',
+            refreshToken: '',
             userAgent: '',
             defaultDestination: '',
             allowedDestinations: new Set(),
@@ -65,8 +71,10 @@ test('publishPost submits text post and normalizes success', async () => {
     const adapter = new RedditProviderAdapter(
         {
             enabled: true,
+            accessToken: '',
             clientId: 'id',
             clientSecret: 'secret',
+            refreshToken: 'refresh',
             userAgent: 'ua',
             defaultDestination: 'gredice',
             allowedDestinations: new Set(['gredice']),
@@ -110,8 +118,10 @@ test('publishPost maps subreddit failure into sanitized invalid_destination', as
     const adapter = new RedditProviderAdapter(
         {
             enabled: true,
+            accessToken: '',
             clientId: 'id',
             clientSecret: 'secret',
+            refreshToken: 'refresh',
             userAgent: 'ua',
             defaultDestination: 'gredice',
             allowedDestinations: new Set(['gredice']),
@@ -143,8 +153,10 @@ test('publishPost maps submit transport failures into retriable provider_unavail
     const adapter = new RedditProviderAdapter(
         {
             enabled: true,
+            accessToken: '',
             clientId: 'id',
             clientSecret: 'secret',
+            refreshToken: 'refresh',
             userAgent: 'ua',
             defaultDestination: 'gredice',
             allowedDestinations: new Set(['gredice']),
@@ -176,8 +188,10 @@ test('publishPost maps non-JSON submit responses into retriable provider_unavail
     const adapter = new RedditProviderAdapter(
         {
             enabled: true,
+            accessToken: '',
             clientId: 'id',
             clientSecret: 'secret',
+            refreshToken: 'refresh',
             userAgent: 'ua',
             defaultDestination: 'gredice',
             allowedDestinations: new Set(['gredice']),
@@ -209,8 +223,10 @@ test('publishPost rejects unsupported media formats before transport', async () 
     const adapter = new RedditProviderAdapter(
         {
             enabled: true,
+            accessToken: 'token',
             clientId: 'id',
             clientSecret: 'secret',
+            refreshToken: '',
             userAgent: 'ua',
             defaultDestination: 'gredice',
             allowedDestinations: new Set(['gredice']),

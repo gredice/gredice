@@ -4,6 +4,12 @@ import type {
     SocialProvider,
 } from '@gredice/storage';
 
+export type {
+    SocialPostMediaUrl,
+    SocialPostType,
+    SocialProvider,
+} from '@gredice/storage';
+
 export type SocialProviderName = SocialProvider;
 
 export type SocialPostInput = {
@@ -43,8 +49,15 @@ export type SocialPublishError = {
 
 export type SocialPublishResult = SocialPublishSuccess | SocialPublishError;
 
+export type SocialProviderValidationInput = Pick<
+    SocialPostInput,
+    'providerAccountKey'
+>;
+
 export interface SocialProviderAdapter {
     readonly name: SocialProviderName;
-    validateConfig(): SocialPublishError | null;
+    validateConfig(
+        input?: SocialProviderValidationInput,
+    ): SocialPublishError | null;
     publishPost(input: SocialPostInput): Promise<SocialPublishResult>;
 }
