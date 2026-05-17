@@ -96,18 +96,20 @@ function safeIdentifier(value: string | null | undefined) {
     return createHash('sha256').update(value).digest('hex').slice(0, 16);
 }
 
-function firstHeaderValue(value: string | null) {
-    return value?.split(',')[0]?.trim() || null;
-}
-
-function lastHeaderValue(value: string | null) {
-    return value?.split(',').at(-1)?.trim() || null;
+function headerListValue(value: string | null, index: 'first' | 'last') {
+    const values = value?.split(',').map((item) => item.trim()) ?? [];
+    return (index === 'first' ? values[0] : values.at(-1)) || null;
 }
 
 function clientAddressForRateLimit(request: NextRequest) {
+    // Prefer Vercel's platform-managed client address. Fall back to the closest proxy hop
+    // so client-controlled prepended x-forwarded-for values cannot rotate the rate-limit key.
     return (
-        firstHeaderValue(request.headers.get('x-vercel-forwarded-for')) ??
-        lastHeaderValue(request.headers.get('x-forwarded-for')) ??
+        headerListValue(
+            request.headers.get('x-vercel-forwarded-for'),
+            'first',
+        ) ??
+        headerListValue(request.headers.get('x-forwarded-for'), 'last') ??
         'unknown'
     );
 }
