@@ -3,6 +3,8 @@ import { type APIRequestContext, expect, test } from '@playwright/test';
 const MCP_BASE_URL = '/api/mcp';
 const PROTECTED_RESOURCE_METADATA =
     '/.well-known/oauth-protected-resource/api/mcp';
+const MCP_TEST_BEARER_TOKEN = process.env.GREDICE_MCP_TEST_BEARER_TOKEN;
+const MCP_TEST_ACCOUNT_ID = process.env.GREDICE_MCP_TEST_ACCOUNT_ID;
 
 async function callMcp(
     request: APIRequestContext,
@@ -151,6 +153,9 @@ test.describe('MCP auth and security', () => {
         expect(response.headers()['www-authenticate']).toContain(
             PROTECTED_RESOURCE_METADATA,
         );
+        expect(response.headers()['www-authenticate']).toContain(
+            'scope="mcp:read"',
+        );
         await expect(response.json()).resolves.toMatchObject({
             error: { code: -32000, message: 'Unauthorized' },
         });
@@ -194,7 +199,7 @@ test.describe('MCP auth and security', () => {
         }
     });
 
-    test('enforces selected-account isolation and scope on protected routes', async ({
+    test('publishes protected-resource metadata scopes', async ({
         request,
     }) => {
         const metadataResponse = await request.get(PROTECTED_RESOURCE_METADATA);
@@ -203,6 +208,61 @@ test.describe('MCP auth and security', () => {
         expect(metadata.scopes_supported).toEqual(
             expect.arrayContaining(['mcp:read', 'mcp:write', 'mcp:admin']),
         );
+    });
+
+    test('enforces selected-account isolation on protected tool calls', async ({
+        request,
+    }) => {
+        test.skip(
+            !MCP_TEST_BEARER_TOKEN || !MCP_TEST_ACCOUNT_ID,
+            'Set GREDICE_MCP_TEST_BEARER_TOKEN and GREDICE_MCP_TEST_ACCOUNT_ID to exercise authenticated MCP account selection.',
+        );
+        if (!MCP_TEST_BEARER_TOKEN || !MCP_TEST_ACCOUNT_ID) {
+            return;
+        }
+
+        const authorizedResponse = await callMcp(
+            request,
+            {
+                jsonrpc: '2.0',
+                id: 'auth-account-ok',
+                method: 'tools/call',
+                params: {
+                    name: 'directories/get-plant',
+                    arguments: { plantName: 'rajcica', includeSorts: true },
+                },
+            },
+            {
+                Authorization: `Bearer ${MCP_TEST_BEARER_TOKEN}`,
+                'x-gredice-account-id': MCP_TEST_ACCOUNT_ID,
+            },
+        );
+
+        expect(authorizedResponse.status()).not.toBe(401);
+        expect(authorizedResponse.status()).not.toBe(403);
+
+        const isolatedResponse = await callMcp(
+            request,
+            {
+                jsonrpc: '2.0',
+                id: 'auth-account-isolated',
+                method: 'tools/call',
+                params: {
+                    name: 'directories/get-plant',
+                    arguments: { plantName: 'rajcica', includeSorts: true },
+                },
+            },
+            {
+                Authorization: `Bearer ${MCP_TEST_BEARER_TOKEN}`,
+                'x-gredice-account-id': 'unauthorized-account-id',
+            },
+        );
+
+        expect(isolatedResponse.status()).toBe(403);
+        await expect(isolatedResponse.json()).resolves.toMatchObject({
+            jsonrpc: '2.0',
+            error: { code: -32001, message: 'No authorized account selected' },
+        });
     });
 });
 
@@ -263,11 +323,16 @@ test.describe('MCP regression and invalid payload handling', () => {
             id: 'oversized',
             method: 'tools/call',
             params: {
-                name: 'directories/search-entities',
-                arguments: { query: oversized },
+                name: 'directories/get-plants',
+                arguments: oversized,
             },
         });
 
-        expect(response.status()).not.toBe(200);
+        expect(response.status()).toBe(400);
+        await expect(response.json()).resolves.toMatchObject({
+            jsonrpc: '2.0',
+            id: 'oversized',
+            error: { code: -32602, message: 'Invalid params' },
+        });
     });
 });

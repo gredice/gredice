@@ -76,14 +76,23 @@ function resolveAllowedOrigins() {
     return new Set(parsed);
 }
 
+export function resolveMcpAccountId(
+    selectedAccountId: string | undefined,
+    accountIds: string[],
+) {
+    if (selectedAccountId) {
+        return accountIds.includes(selectedAccountId)
+            ? selectedAccountId
+            : null;
+    }
+    return accountIds[0] ?? null;
+}
+
 function resolveAccountId(request: NextRequest, accountIds: string[]) {
     const selected =
         request.headers.get('x-gredice-account-id') ??
         request.cookies.get(accountCookieName)?.value;
-    if (selected && accountIds.includes(selected)) {
-        return selected;
-    }
-    return accountIds[0];
+    return resolveMcpAccountId(selected, accountIds);
 }
 
 function requiredScopeForExposure(exposure: McpExposure) {
