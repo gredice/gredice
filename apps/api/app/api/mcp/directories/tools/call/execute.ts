@@ -272,8 +272,10 @@ async function handleSearchEntities(
     for (const type of types) {
         signal?.throwIfAborted();
         const entities = await getDirectoryEntities(type, signal);
-        for (const entity of entities) {
-            signal?.throwIfAborted();
+        for (const [index, entity] of entities.entries()) {
+            if (index % 25 === 0) {
+                signal?.throwIfAborted();
+            }
             const name = entityName(entity);
             const description =
                 entity.information?.description ||

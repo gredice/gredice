@@ -43,6 +43,7 @@ class ToolExecutionTimeoutError extends Error {
     constructor() {
         super('Tool execution timed out');
         this.name = 'ToolExecutionTimeoutError';
+        Error.captureStackTrace?.(this, ToolExecutionTimeoutError);
     }
 }
 
