@@ -1,7 +1,7 @@
-import { slugify } from '@gredice/js/slug';
+import { toPublicPageAlias } from '@gredice/directory-types';
 
 export function toPageAlias(value: string): string {
-    return slugify(value);
+    return toPublicPageAlias(value);
 }
 
 export function matchesPageAlias(
