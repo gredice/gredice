@@ -217,9 +217,6 @@ test.describe('MCP auth and security', () => {
             !MCP_TEST_BEARER_TOKEN || !MCP_TEST_ACCOUNT_ID,
             'Set GREDICE_MCP_TEST_BEARER_TOKEN and GREDICE_MCP_TEST_ACCOUNT_ID to exercise authenticated MCP account selection.',
         );
-        if (!MCP_TEST_BEARER_TOKEN || !MCP_TEST_ACCOUNT_ID) {
-            return;
-        }
 
         const authorizedResponse = await callMcp(
             request,
@@ -233,8 +230,8 @@ test.describe('MCP auth and security', () => {
                 },
             },
             {
-                Authorization: `Bearer ${MCP_TEST_BEARER_TOKEN}`,
-                'x-gredice-account-id': MCP_TEST_ACCOUNT_ID,
+                Authorization: `Bearer ${MCP_TEST_BEARER_TOKEN ?? ''}`,
+                'x-gredice-account-id': MCP_TEST_ACCOUNT_ID ?? '',
             },
         );
 
@@ -253,7 +250,7 @@ test.describe('MCP auth and security', () => {
                 },
             },
             {
-                Authorization: `Bearer ${MCP_TEST_BEARER_TOKEN}`,
+                Authorization: `Bearer ${MCP_TEST_BEARER_TOKEN ?? ''}`,
                 'x-gredice-account-id': 'unauthorized-account-id',
             },
         );
@@ -324,6 +321,7 @@ test.describe('MCP regression and invalid payload handling', () => {
             method: 'tools/call',
             params: {
                 name: 'directories/get-plants',
+                // Use a public tool and oversized arguments value so auth cannot mask payload validation.
                 arguments: oversized,
             },
         });
