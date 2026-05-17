@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifyJwt } from '../../../lib/auth/auth';
 import { accountCookieName } from '../../../lib/auth/sessionConfig';
+import { resolveMcpAccountId } from '../../../lib/mcp/accountSelection';
 import {
     getMcpResources,
     getMcpResourceTemplates,
@@ -80,10 +81,7 @@ function resolveAccountId(request: NextRequest, accountIds: string[]) {
     const selected =
         request.headers.get('x-gredice-account-id') ??
         request.cookies.get(accountCookieName)?.value;
-    if (selected && accountIds.includes(selected)) {
-        return selected;
-    }
-    return accountIds[0];
+    return resolveMcpAccountId(selected, accountIds);
 }
 
 function requiredScopeForExposure(exposure: McpExposure) {

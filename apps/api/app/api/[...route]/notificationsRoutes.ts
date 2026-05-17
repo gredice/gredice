@@ -669,6 +669,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             .max(1439)
                             .nullable()
                             .optional(),
+                        digestFrequency: z
+                            .enum(['off', 'hourly', 'daily', 'weekly'])
+                            .optional(),
                     }),
                 ),
             }),
@@ -692,6 +695,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             preference.quietHoursStartMinute ?? null,
                         quietHoursEndMinute:
                             preference.quietHoursEndMinute ?? null,
+                        digestFrequency: preference.digestFrequency ?? 'off',
                     })
                     .onConflictDoUpdate({
                         target:
@@ -717,6 +721,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 preference.quietHoursStartMinute ?? null,
                             quietHoursEndMinute:
                                 preference.quietHoursEndMinute ?? null,
+                            ...(preference.digestFrequency === undefined
+                                ? {}
+                                : {
+                                      digestFrequency:
+                                          preference.digestFrequency,
+                                  }),
                             updatedAt: new Date(),
                         },
                     });

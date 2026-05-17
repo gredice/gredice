@@ -1,5 +1,6 @@
 import { getEntitiesFormatted } from '@gredice/storage';
 import { z } from 'zod';
+import { handleSearchEntities } from '../../searchEntities';
 
 type EntityStandardized = {
     id: number;
@@ -206,63 +207,6 @@ async function handleGetPlant(input: z.infer<typeof GetPlantSchema>) {
         }));
 
     return { ...result, sorts };
-}
-
-async function handleSearchEntities(
-    input: z.infer<typeof SearchEntitiesSchema>,
-) {
-    const types = input.entityTypes?.length
-        ? input.entityTypes
-        : [
-              DIRECTORY_ENTITY_TYPES.plant,
-              DIRECTORY_ENTITY_TYPES.sort,
-              DIRECTORY_ENTITY_TYPES.operation,
-              DIRECTORY_ENTITY_TYPES.seed,
-          ];
-
-    const query = input.query.toLowerCase();
-    const results: Array<{
-        id: string;
-        type: string;
-        name: string;
-        description: string;
-        relevance: number;
-    }> = [];
-
-    for (const type of types) {
-        const entities = await getDirectoryEntities(type);
-        for (const entity of entities) {
-            const name = entityName(entity);
-            const description =
-                entity.information?.description ||
-                entity.information?.shortDescription ||
-                '';
-            const hay = `${name} ${description}`.toLowerCase();
-            if (!hay.includes(query)) continue;
-            results.push({
-                id: entity.id.toString(),
-                type,
-                name,
-                description,
-                relevance: name.toLowerCase().includes(query) ? 1 : 0.7,
-            });
-        }
-    }
-
-    const ranked = results
-        .sort(
-            (a, b) =>
-                b.relevance - a.relevance || a.name.localeCompare(b.name, 'hr'),
-        )
-        .slice(0, input.limit);
-
-    return {
-        results: ranked,
-        total: ranked.length,
-        query: input.query,
-        limit: input.limit,
-        entityTypes: input.entityTypes ?? null,
-    };
 }
 
 async function handleGetPlantSorts(input: z.infer<typeof GetPlantSortsSchema>) {

@@ -1,11 +1,8 @@
 import 'server-only';
 
 import {
-    getSetting,
-    isSocialPublishingSettingValue,
     listReadySocialPosts,
     type SelectSocialPost,
-    SettingsKeys,
     type SocialPostMediaUrl,
     type SocialPostStatus,
     updateSocialPostStatus,
@@ -53,11 +50,10 @@ export async function submitSocialPost(
             status: 'submitting',
         });
 
-        const adapter = createSocialProviderAdapter(
-            post.provider,
-            await getProviderConfig(post.provider),
-        );
-        const configError = adapter.validateConfig();
+        const adapter = createSocialProviderAdapter(post.provider);
+        const configError = adapter.validateConfig({
+            providerAccountKey: post.providerAccountKey,
+        });
         if (configError) {
             await updateSocialPostStatus({
                 id: post.id,
@@ -144,20 +140,17 @@ export async function submitSocialPost(
     }
 }
 
-async function getProviderConfig(provider: SelectSocialPost['provider']) {
-    const setting = await getSetting(SettingsKeys.SocialPublishing);
-    if (!isSocialPublishingSettingValue(setting?.value)) {
-        return undefined;
-    }
-
-    return setting.value.providers[provider];
-}
-
 export function sanitizeProviderErrorDetails(
     details: Record<string, unknown> | undefined,
 ): Record<string, unknown> | null {
     if (!details) return null;
-    const safeKeys = new Set(['status', 'providerErrorId', 'reason']);
+    const safeKeys = new Set([
+        'status',
+        'providerErrorId',
+        'reason',
+        'errorCode',
+        'errorType',
+    ]);
     const sanitized: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(details)) {
         if (safeKeys.has(key) && value !== undefined) {
