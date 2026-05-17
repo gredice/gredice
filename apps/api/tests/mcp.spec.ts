@@ -210,7 +210,7 @@ test.describe('MCP auth and security', () => {
         );
     });
 
-    test('enforces selected-account isolation on protected tool calls', async ({
+    test('enforces selected-account isolation on protected tool calls when credentials are configured', async ({
         request,
     }) => {
         test.skip(
@@ -235,8 +235,12 @@ test.describe('MCP auth and security', () => {
             },
         );
 
-        expect(authorizedResponse.status()).not.toBe(401);
-        expect(authorizedResponse.status()).not.toBe(403);
+        expect(authorizedResponse.status()).toBe(200);
+        await expect(authorizedResponse.json()).resolves.toMatchObject({
+            jsonrpc: '2.0',
+            id: 'auth-account-ok',
+            result: expect.any(Object),
+        });
 
         const isolatedResponse = await callMcp(
             request,

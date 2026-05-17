@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifyJwt } from '../../../lib/auth/auth';
 import { accountCookieName } from '../../../lib/auth/sessionConfig';
+import { resolveMcpAccountId } from '../../../lib/mcp/accountSelection';
 import {
     getMcpResources,
     getMcpResourceTemplates,
@@ -74,18 +75,6 @@ function resolveAllowedOrigins() {
         .map((origin) => origin.trim())
         .filter(Boolean);
     return new Set(parsed);
-}
-
-export function resolveMcpAccountId(
-    selectedAccountId: string | undefined,
-    accountIds: string[],
-) {
-    if (selectedAccountId) {
-        return accountIds.includes(selectedAccountId)
-            ? selectedAccountId
-            : null;
-    }
-    return accountIds[0] ?? null;
 }
 
 function resolveAccountId(request: NextRequest, accountIds: string[]) {

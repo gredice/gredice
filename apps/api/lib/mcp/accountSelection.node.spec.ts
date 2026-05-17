@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { resolveMcpAccountId } from '../../app/api/mcp/server';
+import { resolveMcpAccountId } from './accountSelection';
 
 test('resolveMcpAccountId selects the requested authorized account', () => {
     assert.equal(
