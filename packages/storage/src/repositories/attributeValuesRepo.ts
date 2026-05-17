@@ -19,10 +19,10 @@ async function refreshEntitySearchDocumentAfterMutation(
         return;
     }
     try {
-        const { refreshEntitySearchDocument } = await import(
+        const { refreshImpactedEntitySearchDocuments } = await import(
             './entitySearchRepo'
         );
-        await refreshEntitySearchDocument(entityId);
+        await refreshImpactedEntitySearchDocuments(entityId);
     } catch (error) {
         console.error('Failed to refresh entity search document', {
             entityId,

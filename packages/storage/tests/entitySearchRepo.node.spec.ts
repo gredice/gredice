@@ -6,6 +6,7 @@ import {
     createEntity,
     deleteEntity,
     normalizeDirectorySearchText,
+    rebuildDirectorySearchIndex,
     searchDirectoryEntities,
     updateEntity,
     upsertAttributeValue,
@@ -474,4 +475,23 @@ test('directory entity search returns an empty result set for no matches', async
     });
 
     assert.deepEqual(rows, []);
+});
+
+test('rebuildDirectorySearchIndex is idempotent and supports empty no-op runs', async () => {
+    createTestDb();
+    const empty = await rebuildDirectorySearchIndex();
+    assert.ok(empty.refreshedCount >= 0);
+
+    await createSearchableEntity({
+        entityTypeName: 'plant',
+        entityTypeLabel: 'Plant',
+        title: `Rebuild ${uniqueToken('plant')}`,
+        description: 'Opis',
+    });
+
+    const first = await rebuildDirectorySearchIndex();
+    const second = await rebuildDirectorySearchIndex();
+
+    assert.ok(first.refreshedCount >= 1);
+    assert.equal(second.refreshedCount, first.refreshedCount);
 });

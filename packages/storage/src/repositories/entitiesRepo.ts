@@ -26,10 +26,10 @@ const entityCacheTtl = 60 * 60; // 1 hour
 
 async function refreshEntitySearchDocumentAfterMutation(entityId: number) {
     try {
-        const { refreshEntitySearchDocument } = await import(
+        const { refreshImpactedEntitySearchDocuments } = await import(
             './entitySearchRepo'
         );
-        await refreshEntitySearchDocument(entityId);
+        await refreshImpactedEntitySearchDocuments(entityId);
     } catch (error) {
         console.error('Failed to refresh entity search document', {
             entityId,

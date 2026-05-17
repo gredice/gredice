@@ -5,6 +5,7 @@ import {
 } from '@gredice/directory-types';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
+    attributeValues,
     entities,
     entitySearchDocuments,
     type SelectAttributeDefinition,
@@ -430,6 +431,91 @@ export async function refreshEntitySearchDocuments(entityIds: number[]) {
     }
 }
 
+async function relatedEntityIdsForPublicUrl(entity: EntitySearchSource) {
+    if (entity.entityTypeName === 'plant') {
+        const rows = await storage()
+            .select({ id: entities.id })
+            .from(entities)
+            .where(
+                and(
+                    eq(entities.isDeleted, false),
+                    inArray(entities.entityTypeName, ['plantSort', 'seed']),
+                ),
+            );
+        return rows.map((row) => row.id);
+    }
+
+    if (entity.entityTypeName === 'plantSort') {
+        const rows = await storage()
+            .select({ id: entities.id })
+            .from(entities)
+            .where(
+                and(
+                    eq(entities.isDeleted, false),
+                    eq(entities.entityTypeName, 'seed'),
+                ),
+            );
+        return rows.map((row) => row.id);
+    }
+
+    return [];
+}
+
+export async function refreshImpactedEntitySearchDocuments(entityId: number) {
+    const sourceEntity = await getEntityRaw(entityId);
+    if (!sourceEntity) {
+        await refreshEntitySearchDocument(entityId);
+        return [entityId];
+    }
+
+    const impacted = new Set<number>([entityId]);
+    const relatedIds = await relatedEntityIdsForPublicUrl(sourceEntity);
+
+    if (relatedIds.length > 0) {
+        const references = await storage().query.attributeValues.findMany({
+            where: and(
+                eq(attributeValues.isDeleted, false),
+                inArray(attributeValues.entityId, relatedIds),
+                inArray(attributeValues.value, [String(entityId)]),
+            ),
+            columns: {
+                entityId: true,
+            },
+        });
+
+        for (const reference of references) {
+            impacted.add(reference.entityId);
+        }
+    }
+
+    await refreshEntitySearchDocuments(Array.from(impacted));
+    return Array.from(impacted);
+}
+
+export async function rebuildDirectorySearchIndex() {
+    const publishedRows = await storage()
+        .select({ id: entities.id })
+        .from(entities)
+        .where(
+            and(eq(entities.isDeleted, false), eq(entities.state, 'published')),
+        );
+
+    const publishedIds = publishedRows.map((row) => row.id);
+    if (publishedIds.length > 0) {
+        await refreshEntitySearchDocuments(publishedIds);
+    }
+
+    await storage()
+        .delete(entitySearchDocuments)
+        .where(sql`${entitySearchDocuments.entityId} NOT IN (
+            select ${entities.id} from ${entities}
+            where ${entities.isDeleted} = false and ${entities.state} = 'published'
+        )`);
+
+    return {
+        refreshedCount: publishedIds.length,
+    };
+}
 export async function searchDirectoryEntities({
     query,
     entityTypeNames,
