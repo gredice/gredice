@@ -239,6 +239,20 @@
       "when": 1778976603925,
       "tag": "0033_giant_snowbird",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1778898994333,
+      "tag": "0034_third_raza",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1778938710501,
+      "tag": "0035_workable_hercules",
+      "breakpoints": true
     }
   ]
 }

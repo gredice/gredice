@@ -7,7 +7,7 @@ import type {
     SocialPublishResult,
 } from '../types';
 
-type RedditEnv = {
+export type RedditProviderConfig = {
     enabled: boolean;
     clientId: string;
     clientSecret: string;
@@ -29,42 +29,12 @@ type RedditTokenResponse = {
     access_token?: string;
 };
 
-function parseCsvList(value: string): Set<string> {
-    return new Set(
-        value
-            .split(',')
-            .map((entry) => entry.trim())
-            .filter(Boolean),
-    );
-}
-
-export function readRedditEnv(env = process.env): RedditEnv {
-    const defaultDestination = (
-        env.SOCIAL_PROVIDER_REDDIT_DEFAULT_DESTINATION ?? ''
-    ).trim();
-    const allowed = parseCsvList(
-        env.SOCIAL_PROVIDER_REDDIT_ALLOWED_DESTINATIONS ?? '',
-    );
-    if (defaultDestination) {
-        allowed.add(defaultDestination);
-    }
-
-    return {
-        enabled: (env.SOCIAL_PROVIDER_REDDIT_ENABLED ?? 'false') === 'true',
-        clientId: (env.SOCIAL_PROVIDER_REDDIT_CLIENT_ID ?? '').trim(),
-        clientSecret: (env.SOCIAL_PROVIDER_REDDIT_CLIENT_SECRET ?? '').trim(),
-        userAgent: (env.SOCIAL_PROVIDER_REDDIT_USER_AGENT ?? '').trim(),
-        defaultDestination,
-        allowedDestinations: allowed,
-    };
-}
-
 export class RedditProviderAdapter implements SocialProviderAdapter {
     readonly name = 'reddit' as const;
-    private readonly config: RedditEnv;
+    private readonly config: RedditProviderConfig;
     private readonly fetchImpl: FetchLike;
 
-    constructor(config = readRedditEnv(), fetchImpl: FetchLike = fetch) {
+    constructor(config: RedditProviderConfig, fetchImpl: FetchLike = fetch) {
         this.config = config;
         this.fetchImpl = fetchImpl;
     }
@@ -113,6 +83,16 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
         const configError = this.validateConfig();
         if (configError) return configError;
 
+        if (input.postType !== 'text' && input.postType !== 'link') {
+            return {
+                ok: false,
+                code: 'invalid_request',
+                message:
+                    'Reddit publishing currently supports text and link posts.',
+                retriable: false,
+            };
+        }
+
         const destination = (
             input.destination ?? this.config.defaultDestination
         ).replace(/^r\//, '');
@@ -128,13 +108,15 @@ export class RedditProviderAdapter implements SocialProviderAdapter {
         const token = await this.getAccessToken();
         if (!token.ok) return token;
 
-        const kind = input.url ? 'link' : 'self';
+        const kind = input.postType === 'link' ? 'link' : 'self';
         const body = new URLSearchParams({
             api_type: 'json',
             kind,
             sr: destination,
             title: input.title,
-            ...(input.url ? { url: input.url } : { text: input.body ?? '' }),
+            ...(kind === 'link'
+                ? { url: input.url ?? '' }
+                : { text: input.body ?? '' }),
         });
 
         let response: Response;

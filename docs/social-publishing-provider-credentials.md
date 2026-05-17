@@ -14,30 +14,24 @@ It is written for server-side execution only and keeps secrets out of browser bu
 
 > Keep the allowlist intentionally small. Add new subreddit targets through config review, not ad-hoc input.
 
-## 2) Provider-aware env var pattern
+## 2) DB-backed provider settings
 
-Use provider-prefixed server env vars so future platforms can reuse the same model:
+Configure social provider integrations in `apps/app` admin settings:
 
-- `SOCIAL_PROVIDER_<PROVIDER>_CLIENT_ID`
-- `SOCIAL_PROVIDER_<PROVIDER>_CLIENT_SECRET`
-- `SOCIAL_PROVIDER_<PROVIDER>_USER_AGENT`
-- `SOCIAL_PROVIDER_<PROVIDER>_DEFAULT_DESTINATION`
-- `SOCIAL_PROVIDER_<PROVIDER>_ALLOWED_DESTINATIONS`
-- `SOCIAL_PROVIDER_<PROVIDER>_ENABLED`
+- Page: `Postavke` > `Integracije` > `Društvene platforme`
+- Storage key: `settings.key = 'integrations.social_publishing'`
+- Stored value: per-provider enabled flag, provider credentials, bridge endpoint,
+  default destination, and allowed destinations
 
-For Reddit (`<PROVIDER>=REDDIT`):
-
-- `SOCIAL_PROVIDER_REDDIT_CLIENT_ID`
-- `SOCIAL_PROVIDER_REDDIT_CLIENT_SECRET`
-- `SOCIAL_PROVIDER_REDDIT_USER_AGENT`
-- `SOCIAL_PROVIDER_REDDIT_DEFAULT_DESTINATION`
-- `SOCIAL_PROVIDER_REDDIT_ALLOWED_DESTINATIONS`
-- `SOCIAL_PROVIDER_REDDIT_ENABLED`
+Provider credentials are operational settings like Google Calendar credentials.
+Do not store Reddit, Meta, X, LinkedIn, TikTok, Threads, or WhatsApp publishing
+secrets in deployment environment variables.
 
 ### Why this pattern
 
-- Keeps secrets server-side only (no `NEXT_PUBLIC_` prefix).
-- Supports additional providers (for example Meta/X/LinkedIn) without changing naming rules.
+- Keeps secrets out of browser bundles and source control.
+- Lets administrators rotate provider credentials without redeploying.
+- Supports additional providers through the same settings value.
 - Lets us gate rollout per provider with an explicit enabled flag.
 
 ## 3) Required Reddit credential details
@@ -50,10 +44,10 @@ Create a Reddit app dedicated to `apps/app` in the team-owned Reddit account and
 - user agent string used by API requests
 - approved redirect URI(s), if the selected auth flow requires them
 
-Store credentials in deployment secret managers (never in git):
+Store credentials in DB-backed admin settings (never in git or env files):
 
-- local `.env` for dev-only testing
-- Vercel/hosting project env vars for preview + production
+- `settings.key = 'integrations.social_publishing'` for preview + production
+- local database settings for dev-only testing
 
 ## 4) Destination guardrails and smoke testing
 
@@ -69,9 +63,9 @@ Store credentials in deployment secret managers (never in git):
 
 - [ ] Smoke test passed in private/test subreddit.
 - [ ] Posting account has required subreddit permissions.
-- [ ] `SOCIAL_PROVIDER_REDDIT_ALLOWED_DESTINATIONS` includes the public subreddit.
+- [ ] Reddit allowed destinations in admin Settings include the public subreddit.
 - [ ] Product + Operations sign-off captured in launch ticket.
-- [ ] Incident rollback path defined (set `SOCIAL_PROVIDER_REDDIT_ENABLED=false`).
+- [ ] Incident rollback path defined (disable Reddit in admin Settings).
 
 ## 5) Ownership and rotation
 
@@ -80,16 +74,16 @@ Store credentials in deployment secret managers (never in git):
 - **Rotation cadence:** rotate credentials on schedule and immediately after suspected exposure.
 - **Rotation process:**
   1. Generate new Reddit app secret.
-  2. Update secret manager values in preview + production.
+  2. Update the Reddit integration in admin Settings for preview + production.
   3. Run sandbox smoke test.
   4. Re-enable public destination.
   5. Revoke old secret.
 
 ## 6) Do/Don’t summary
 
-- Do keep provider credentials in server environment variables only.
+- Do keep provider credentials in DB-backed admin settings only.
 - Do keep MVP destination policy allowlist-based.
 - Do require sandbox smoke tests before public destination use.
 - Don’t commit production secrets.
-- Don’t expose provider secrets via `NEXT_PUBLIC_*`.
+- Don’t expose provider secrets via `NEXT_PUBLIC_*` or provider-specific env vars.
 - Don’t allow arbitrary user-entered subreddit targets in MVP.
