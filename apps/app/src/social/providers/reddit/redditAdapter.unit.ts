@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { RedditProviderAdapter, readRedditEnv } from './redditAdapter.ts';
+import { RedditProviderAdapter } from './redditAdapter.ts';
 
 function response(body: unknown, status = 200): Response {
     return new Response(JSON.stringify(body), {
@@ -25,19 +25,17 @@ async function captureWarnings<T>(
     }
 }
 
-test('readRedditEnv builds allowlist and default destination', () => {
-    const env = readRedditEnv({
-        SOCIAL_PROVIDER_REDDIT_ENABLED: 'true',
-        SOCIAL_PROVIDER_REDDIT_CLIENT_ID: 'id',
-        SOCIAL_PROVIDER_REDDIT_CLIENT_SECRET: 'secret',
-        SOCIAL_PROVIDER_REDDIT_USER_AGENT: 'ua',
-        SOCIAL_PROVIDER_REDDIT_DEFAULT_DESTINATION: 'gredice',
-        SOCIAL_PROVIDER_REDDIT_ALLOWED_DESTINATIONS: 'gardening, gredice',
+test('validateConfig accepts complete DB Reddit config', () => {
+    const adapter = new RedditProviderAdapter({
+        enabled: true,
+        clientId: 'id',
+        clientSecret: 'secret',
+        userAgent: 'ua',
+        defaultDestination: 'gredice',
+        allowedDestinations: new Set(['gardening', 'gredice']),
     });
 
-    assert.equal(env.enabled, true);
-    assert.equal(env.allowedDestinations.has('gredice'), true);
-    assert.equal(env.allowedDestinations.has('gardening'), true);
+    assert.equal(adapter.validateConfig(), null);
 });
 
 test('publishPost returns operational error when missing credentials', async () => {

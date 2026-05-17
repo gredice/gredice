@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-    GenericConfiguredProviderAdapter,
-    readConfiguredSocialProviderEnv,
-} from './genericConfiguredAdapter.ts';
+import { GenericConfiguredProviderAdapter } from './genericConfiguredAdapter.ts';
 
 function response(body: unknown, status = 200): Response {
     return new Response(JSON.stringify(body), {
@@ -13,20 +10,18 @@ function response(body: unknown, status = 200): Response {
     });
 }
 
-test('readConfiguredSocialProviderEnv reads endpoint and allowlist', () => {
-    const env = readConfiguredSocialProviderEnv('instagram', {
-        SOCIAL_PROVIDER_INSTAGRAM_ENABLED: 'true',
-        SOCIAL_PROVIDER_INSTAGRAM_PUBLISH_ENDPOINT:
-            'https://social.example.com/instagram',
-        SOCIAL_PROVIDER_INSTAGRAM_API_KEY: 'secret',
-        SOCIAL_PROVIDER_INSTAGRAM_DEFAULT_DESTINATION: '@gredice',
-        SOCIAL_PROVIDER_INSTAGRAM_ALLOWED_DESTINATIONS: '@gredice,@farm',
+test('validateConfig rejects disabled DB provider config', () => {
+    const adapter = new GenericConfiguredProviderAdapter('instagram', {
+        enabled: false,
+        endpoint: '',
+        apiKey: '',
+        defaultDestination: '',
+        allowedDestinations: new Set(),
     });
 
-    assert.equal(env.enabled, true);
-    assert.equal(env.endpoint, 'https://social.example.com/instagram');
-    assert.equal(env.allowedDestinations.has('@gredice'), true);
-    assert.equal(env.allowedDestinations.has('@farm'), true);
+    const result = adapter.validateConfig();
+
+    assert.equal(result?.code, 'provider_disabled');
 });
 
 test('publishPost posts normalized payload to configured bridge endpoint', async () => {

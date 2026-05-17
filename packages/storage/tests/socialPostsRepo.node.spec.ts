@@ -23,7 +23,7 @@ test('socialAccountsRepo creates, updates, and lists provider accounts', async (
         handle: '@gredice',
         defaultDestination: '@gredice',
         allowedDestinations: ['@gredice', '@gredice_stories'],
-        credentialReference: 'SOCIAL_PROVIDER_INSTAGRAM_API_KEY',
+        credentialReference: 'gredice-main',
     });
 
     assert.equal(account.provider, 'instagram');

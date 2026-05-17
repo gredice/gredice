@@ -79,8 +79,8 @@ export function SocialAccountsManager({
             <div className="flex flex-col gap-1">
                 <h2 className="text-lg font-semibold">Društveni računi</h2>
                 <p className="text-sm text-muted-foreground">
-                    Upravljaj kanalima, zadanim odredištima i referencama na
-                    provider konfiguraciju.
+                    Upravljaj kanalima i zadanim odredištima. Provider
+                    integracije i tajne uređuju se u Postavkama.
                 </p>
             </div>
 
@@ -165,12 +165,12 @@ export function SocialAccountsManager({
                         placeholder="@gredice"
                     />
                     <Input
-                        label="Credential referenca"
+                        label="Interna referenca"
                         name="credentialReference"
                         defaultValue={
                             selectedAccount?.credentialReference ?? ''
                         }
-                        placeholder="SOCIAL_PROVIDER_INSTAGRAM_API_KEY"
+                        placeholder="gredice-main"
                     />
                 </div>
 

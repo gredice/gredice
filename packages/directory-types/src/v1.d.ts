@@ -676,6 +676,7 @@ export interface components {
                 /** @default Biljka */
                 label: string;
             };
+            slug: string;
             calendar: {
                 /** @description vrijeme sijanja na otvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
                 sowing?: {
@@ -900,6 +901,7 @@ export interface components {
                 /** @default Sorta biljke */
                 label: string;
             };
+            slug: string;
             information: {
                 plant: {
                     id: number;
@@ -1153,6 +1155,7 @@ export interface components {
                 /** @default Stadij biljke */
                 label: string;
             };
+            slug: string;
             information: {
                 name: string;
                 label: string;
@@ -1172,6 +1175,7 @@ export interface components {
                 /** @default Sjeme */
                 label: string;
             };
+            slug: string;
             images?: {
                 cover?: components["schemas"]["image"];
                 /** @description (slika pozadine pakiranja) */
@@ -1670,6 +1674,7 @@ export interface components {
                 /** @default Brend sjemena */
                 label: string;
             };
+            slug: string;
             information: {
                 name: string;
                 website?: string;
@@ -1689,6 +1694,7 @@ export interface components {
                 /** @default Tekući pripravci */
                 label: string;
             };
+            slug: string;
             images?: {
                 cover?: components["schemas"]["image"];
             };
@@ -1727,6 +1733,7 @@ export interface components {
                 /** @default Radnje */
                 label: string;
             };
+            slug: string;
             attributes: {
                 /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
                 frequency?: string;
@@ -1856,6 +1863,7 @@ export interface components {
                 /** @default Učestalost radnje */
                 label: string;
             };
+            slug: string;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -1871,6 +1879,7 @@ export interface components {
                 /** @default FAQ */
                 label: string;
             };
+            slug: string;
             information: {
                 header: string;
                 content: string;
@@ -1901,6 +1910,7 @@ export interface components {
                 /** @default FAQ Kategorija */
                 label: string;
             };
+            slug: string;
             information: {
                 name: string;
                 label: string;
@@ -1920,6 +1930,7 @@ export interface components {
                 /** @default Blok */
                 label: string;
             };
+            slug: string;
             information: {
                 name: string;
                 shortDescription: string;
@@ -1956,6 +1967,7 @@ export interface components {
                 /** @default Materijali i potrošni inventar */
                 label: string;
             };
+            slug: string;
             images?: {
                 cover?: components["schemas"]["image"];
             };
@@ -1991,6 +2003,7 @@ export interface components {
                 /** @default Natječaji */
                 label: string;
             };
+            slug: string;
             information: {
                 name: string;
                 rules: string;
@@ -2013,6 +2026,7 @@ export interface components {
                 /** @default HQ lokacije */
                 label: string;
             };
+            slug: string;
             location: {
                 addressStreet1: string;
                 addressStreet2?: string;

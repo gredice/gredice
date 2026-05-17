@@ -48,7 +48,7 @@ export async function generateStaticParams() {
     const entities = await getOperationsData();
     return (
         entities?.map((entity) => ({
-            alias: toPageAlias(String(entity.information.label)),
+            alias: entity.slug || toPageAlias(String(entity.information.label)),
         })) ?? []
     );
 }
@@ -87,13 +87,13 @@ export default async function OperationPage(
                         '@type': 'Brand',
                         name: 'Gredice',
                     },
-                    url: `https://www.gredice.com${KnownPages.Operation(operation.information.label)}`,
+                    url: `https://www.gredice.com${KnownPages.Operation(operation.slug || operation.information.label)}`,
                     offers: {
                         '@type': 'Offer',
                         price: operation.prices.perOperation.toFixed(2),
                         priceCurrency: 'EUR',
                         availability: 'https://schema.org/InStock',
-                        url: `https://www.gredice.com${KnownPages.Operation(operation.information.label)}`,
+                        url: `https://www.gredice.com${KnownPages.Operation(operation.slug || operation.information.label)}`,
                         hasMerchantReturnPolicy: merchantReturnPolicy,
                     },
                 }}

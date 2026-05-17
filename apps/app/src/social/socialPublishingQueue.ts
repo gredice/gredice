@@ -1,8 +1,11 @@
 import 'server-only';
 
 import {
+    getSetting,
+    isSocialPublishingSettingValue,
     listReadySocialPosts,
     type SelectSocialPost,
+    SettingsKeys,
     type SocialPostMediaUrl,
     type SocialPostStatus,
     updateSocialPostStatus,
@@ -50,7 +53,10 @@ export async function submitSocialPost(
             status: 'submitting',
         });
 
-        const adapter = createSocialProviderAdapter(post.provider);
+        const adapter = createSocialProviderAdapter(
+            post.provider,
+            await getProviderConfig(post.provider),
+        );
         const configError = adapter.validateConfig();
         if (configError) {
             await updateSocialPostStatus({
@@ -136,6 +142,15 @@ export async function submitSocialPost(
             status: 'failed',
         };
     }
+}
+
+async function getProviderConfig(provider: SelectSocialPost['provider']) {
+    const setting = await getSetting(SettingsKeys.SocialPublishing);
+    if (!isSocialPublishingSettingValue(setting?.value)) {
+        return undefined;
+    }
+
+    return setting.value.providers[provider];
 }
 
 export function sanitizeProviderErrorDetails(

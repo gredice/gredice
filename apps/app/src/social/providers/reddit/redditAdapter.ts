@@ -7,7 +7,7 @@ import type {
     SocialPublishResult,
 } from '../types';
 
-type RedditEnv = {
+export type RedditProviderConfig = {
     enabled: boolean;
     clientId: string;
     clientSecret: string;
@@ -29,44 +29,12 @@ type RedditTokenResponse = {
     access_token?: string;
 };
 
-function parseCsvList(value: string): Set<string> {
-    return new Set(
-        value
-            .split(',')
-            .map((entry) => entry.trim())
-            .filter(Boolean),
-    );
-}
-
-export function readRedditEnv(
-    env: Record<string, string | undefined> = process.env,
-): RedditEnv {
-    const defaultDestination = (
-        env.SOCIAL_PROVIDER_REDDIT_DEFAULT_DESTINATION ?? ''
-    ).trim();
-    const allowed = parseCsvList(
-        env.SOCIAL_PROVIDER_REDDIT_ALLOWED_DESTINATIONS ?? '',
-    );
-    if (defaultDestination) {
-        allowed.add(defaultDestination);
-    }
-
-    return {
-        enabled: (env.SOCIAL_PROVIDER_REDDIT_ENABLED ?? 'false') === 'true',
-        clientId: (env.SOCIAL_PROVIDER_REDDIT_CLIENT_ID ?? '').trim(),
-        clientSecret: (env.SOCIAL_PROVIDER_REDDIT_CLIENT_SECRET ?? '').trim(),
-        userAgent: (env.SOCIAL_PROVIDER_REDDIT_USER_AGENT ?? '').trim(),
-        defaultDestination,
-        allowedDestinations: allowed,
-    };
-}
-
 export class RedditProviderAdapter implements SocialProviderAdapter {
     readonly name = 'reddit' as const;
-    private readonly config: RedditEnv;
+    private readonly config: RedditProviderConfig;
     private readonly fetchImpl: FetchLike;
 
-    constructor(config = readRedditEnv(), fetchImpl: FetchLike = fetch) {
+    constructor(config: RedditProviderConfig, fetchImpl: FetchLike = fetch) {
         this.config = config;
         this.fetchImpl = fetchImpl;
     }

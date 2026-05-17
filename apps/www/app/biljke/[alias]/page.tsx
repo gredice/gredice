@@ -50,7 +50,7 @@ export async function generateStaticParams() {
     const plants = await getPlantsData();
     return (
         plants?.map((entity) => ({
-            alias: toPageAlias(String(entity.information.name)),
+            alias: entity.slug || toPageAlias(String(entity.information.name)),
         })) ?? []
     );
 }

@@ -67,6 +67,143 @@ export const deliveryEventTypeEnum = pgEnum(
     ],
 );
 
+export const notificationCampaignStatusEnum = pgEnum(
+    'notification_campaign_status',
+    ['draft', 'scheduled', 'queued', 'sending', 'sent', 'cancelled', 'failed'],
+);
+
+export type NotificationCampaignAudience =
+    | {
+          type: 'all';
+      }
+    | {
+          type: 'accounts';
+          accountIds: string[];
+      }
+    | {
+          type: 'users';
+          userIds: string[];
+          accountIds?: string[];
+      }
+    | {
+          type: 'gardens';
+          gardenIds: number[];
+      }
+    | {
+          type: 'explicit';
+          recipients: Array<{
+              accountId: string;
+              userId: string;
+              gardenId?: number;
+          }>;
+      };
+
+export type NotificationCampaignChannelPolicy = {
+    inApp: boolean;
+    email: boolean;
+    push: boolean;
+    digest: boolean;
+    required: boolean;
+    respectPreferences: boolean;
+};
+
+export type NotificationCampaignFailure = {
+    code: string;
+    message: string;
+    occurredAt: string;
+};
+
+export type NotificationCampaignDeliveryMetadata = Record<string, unknown> & {
+    router?: 'preference_aware_delivery_router';
+    preferenceAware?: boolean;
+};
+
+export const notificationCampaigns = pgTable(
+    'notification_campaigns',
+    {
+        id: text('id').primaryKey(),
+        name: text('name').notNull(),
+        status: notificationCampaignStatusEnum('status')
+            .notNull()
+            .default('draft'),
+        audience: jsonb('audience')
+            .$type<NotificationCampaignAudience>()
+            .notNull(),
+        channelPolicy: jsonb('channel_policy')
+            .$type<NotificationCampaignChannelPolicy>()
+            .notNull(),
+        header: text('header').notNull(),
+        content: text('content').notNull(),
+        iconUrl: text('icon_url'),
+        imageUrl: text('image_url'),
+        linkUrl: text('link_url'),
+        actionUrl: text('action_url'),
+        actionLabel: text('action_label'),
+        safeImageUrl: text('safe_image_url'),
+        safeLinkUrl: text('safe_link_url'),
+        safeActionUrl: text('safe_action_url'),
+        category: text('category').notNull(),
+        eventType: text('event_type').notNull(),
+        primaryChannel: notificationChannelEnum('primary_channel')
+            .notNull()
+            .default('in_app'),
+        priority: notificationPriorityEnum('priority')
+            .notNull()
+            .default('normal'),
+        collapseKey: text('collapse_key'),
+        threadKey: text('thread_key'),
+        ttlSeconds: integer('ttl_seconds'),
+        urgency: text('urgency'),
+        metadata: jsonb('metadata')
+            .$type<Record<string, unknown>>()
+            .notNull()
+            .default(sql`'{}'::jsonb`),
+        deliveryMetadata: jsonb('delivery_metadata')
+            .$type<NotificationCampaignDeliveryMetadata>()
+            .notNull()
+            .default(sql`'{}'::jsonb`),
+        failures: jsonb('failures')
+            .$type<NotificationCampaignFailure[]>()
+            .notNull()
+            .default(sql`'[]'::jsonb`),
+        targetCount: integer('target_count').notNull().default(0),
+        queuedCount: integer('queued_count').notNull().default(0),
+        sentCount: integer('sent_count').notNull().default(0),
+        failedCount: integer('failed_count').notNull().default(0),
+        suppressedCount: integer('suppressed_count').notNull().default(0),
+        scheduledAt: timestamp('scheduled_at'),
+        enqueuedAt: timestamp('enqueued_at'),
+        startedAt: timestamp('started_at'),
+        completedAt: timestamp('completed_at'),
+        cancelledAt: timestamp('cancelled_at'),
+        createdByUserId: text('created_by_user_id')
+            .notNull()
+            .references(() => users.id, { onDelete: 'restrict' }),
+        createdFromAccountId: text('created_from_account_id').references(
+            () => accounts.id,
+            { onDelete: 'set null' },
+        ),
+        cancelledByUserId: text('cancelled_by_user_id').references(
+            () => users.id,
+            { onDelete: 'set null' },
+        ),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .defaultNow()
+            .$onUpdate(() => new Date()),
+    },
+    (table) => [
+        index('notification_campaigns_status_idx').on(table.status),
+        index('notification_campaigns_scheduled_at_idx').on(table.scheduledAt),
+        index('notification_campaigns_created_by_user_id_idx').on(
+            table.createdByUserId,
+        ),
+        index('notification_campaigns_category_idx').on(table.category),
+        index('notification_campaigns_event_type_idx').on(table.eventType),
+    ],
+);
+
 export const notifications = pgTable(
     'notifications',
     {
@@ -306,7 +443,43 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
         references: [gardenBlocks.id],
         relationName: 'notificationsBlock',
     }),
+    campaign: one(notificationCampaigns, {
+        fields: [notifications.campaignId],
+        references: [notificationCampaigns.id],
+        relationName: 'notificationCampaignNotifications',
+    }),
 }));
+
+export const notificationCampaignsRelations = relations(
+    notificationCampaigns,
+    ({ one, many }) => ({
+        creator: one(users, {
+            fields: [notificationCampaigns.createdByUserId],
+            references: [users.id],
+            relationName: 'notificationCampaignCreator',
+        }),
+        createdFromAccount: one(accounts, {
+            fields: [notificationCampaigns.createdFromAccountId],
+            references: [accounts.id],
+            relationName: 'notificationCampaignCreatedFromAccount',
+        }),
+        cancelledByUser: one(users, {
+            fields: [notificationCampaigns.cancelledByUserId],
+            references: [users.id],
+            relationName: 'notificationCampaignCancelledByUser',
+        }),
+        notifications: many(notifications, {
+            relationName: 'notificationCampaignNotifications',
+        }),
+    }),
+);
+
+export type InsertNotificationCampaign = Omit<
+    typeof notificationCampaigns.$inferInsert,
+    'id' | 'createdAt' | 'updatedAt'
+>;
+export type SelectNotificationCampaign =
+    typeof notificationCampaigns.$inferSelect;
 
 export type InsertNotification = Omit<
     typeof notifications.$inferInsert,

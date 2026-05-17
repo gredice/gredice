@@ -10,52 +10,13 @@ import type {
 
 type FetchLike = typeof fetch;
 
-type GenericProviderConfig = {
+export type GenericProviderConfig = {
     enabled: boolean;
     endpoint: string;
     apiKey: string;
     defaultDestination: string;
     allowedDestinations: Set<string>;
 };
-
-function parseCsvList(value: string): Set<string> {
-    return new Set(
-        value
-            .split(',')
-            .map((entry) => entry.trim())
-            .filter(Boolean),
-    );
-}
-
-function providerEnvKey(provider: SocialProviderName) {
-    return provider.toUpperCase();
-}
-
-export function readConfiguredSocialProviderEnv(
-    provider: SocialProviderName,
-    env: Record<string, string | undefined> = process.env,
-): GenericProviderConfig {
-    const envKey = providerEnvKey(provider);
-    const defaultDestination = (
-        env[`SOCIAL_PROVIDER_${envKey}_DEFAULT_DESTINATION`] ?? ''
-    ).trim();
-    const allowedDestinations = parseCsvList(
-        env[`SOCIAL_PROVIDER_${envKey}_ALLOWED_DESTINATIONS`] ?? '',
-    );
-    if (defaultDestination) {
-        allowedDestinations.add(defaultDestination);
-    }
-
-    return {
-        enabled: env[`SOCIAL_PROVIDER_${envKey}_ENABLED`] === 'true',
-        endpoint: (
-            env[`SOCIAL_PROVIDER_${envKey}_PUBLISH_ENDPOINT`] ?? ''
-        ).trim(),
-        apiKey: (env[`SOCIAL_PROVIDER_${envKey}_API_KEY`] ?? '').trim(),
-        defaultDestination,
-        allowedDestinations,
-    };
-}
 
 export class GenericConfiguredProviderAdapter implements SocialProviderAdapter {
     readonly name: SocialProviderName;
@@ -64,7 +25,7 @@ export class GenericConfiguredProviderAdapter implements SocialProviderAdapter {
 
     constructor(
         name: SocialProviderName,
-        config = readConfiguredSocialProviderEnv(name),
+        config: GenericProviderConfig,
         fetchImpl: FetchLike = fetch,
     ) {
         this.name = name;

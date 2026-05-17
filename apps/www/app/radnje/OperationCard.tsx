@@ -6,11 +6,12 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { KnownPages } from '../../src/KnownPages';
 
-export function OperationCard({
-    operation,
-}: {
-    operation: Omit<OperationData, 'entityType' | 'createdAt' | 'updatedAt'>;
-}) {
+type OperationCardData = Pick<
+    OperationData,
+    'attributes' | 'image' | 'information' | 'prices'
+>;
+
+export function OperationCard({ operation }: { operation: OperationCardData }) {
     return (
         <Card
             href={KnownPages.Operation(operation.information.label)}

@@ -11,7 +11,7 @@ test('validateAccountPayload accepts active social account', () => {
     formData.set('externalAccountId', '17841400000000000');
     formData.set('defaultDestination', '@gredice');
     formData.set('allowedDestinations', '@gredice\n@gredice_stories');
-    formData.set('credentialReference', 'SOCIAL_PROVIDER_INSTAGRAM_API_KEY');
+    formData.set('credentialReference', 'gredice-main');
     formData.set('status', 'active');
 
     const payload = __testUtils.normalizeAccountPayload(formData);
