@@ -571,6 +571,76 @@ export async function createNotification(notification: InsertNotification) {
     return result[0].id;
 }
 
+export async function enqueuePushDeliveryAttemptsForNotification({
+    notificationId,
+    batchSize = 100,
+}: {
+    notificationId: string;
+    batchSize?: number;
+}) {
+    const notification = await getNotification(notificationId);
+    if (!notification?.userId) return { queued: 0, skipped: 0 };
+
+    const subscriptions = await storage().query.webPushSubscriptions.findMany({
+        where: and(
+            eq(webPushSubscriptions.userId, notification.userId),
+            eq(webPushSubscriptions.enabled, true),
+            isNull(webPushSubscriptions.revokedAt),
+        ),
+        limit: Math.max(1, batchSize),
+    });
+
+    if (!subscriptions.length) return { queued: 0, skipped: 0 };
+
+    const existing = await storage()
+        .select({
+            pushSubscriptionId: notificationDeliveryAttempts.pushSubscriptionId,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(
+            and(
+                eq(notificationDeliveryAttempts.notificationId, notificationId),
+                inArray(
+                    notificationDeliveryAttempts.pushSubscriptionId,
+                    subscriptions.map((subscription) => subscription.id),
+                ),
+            ),
+        );
+    const existingIds = new Set(
+        existing
+            .map((row) => row.pushSubscriptionId)
+            .filter((id): id is string => Boolean(id)),
+    );
+
+    const pending = subscriptions.filter(
+        (subscription) => !existingIds.has(subscription.id),
+    );
+
+    if (!pending.length) {
+        return { queued: 0, skipped: subscriptions.length };
+    }
+
+    const deliveryAttempts: (typeof notificationDeliveryAttempts.$inferInsert)[] =
+        pending.map((subscription) => ({
+            notificationId,
+            userId: notification.userId,
+            accountId: notification.accountId,
+            channel: 'push',
+            status: 'queued',
+            provider: 'web_push_queue',
+            pushSubscriptionId: subscription.id,
+            providerResponseCode: 'queued_background',
+        }));
+
+    await storage()
+        .insert(notificationDeliveryAttempts)
+        .values(deliveryAttempts);
+
+    return {
+        queued: pending.length,
+        skipped: subscriptions.length - pending.length,
+    };
+}
 export async function routeNotificationDelivery(notificationId: string) {
     const notification = await getNotification(notificationId);
     if (!notification) return [];
