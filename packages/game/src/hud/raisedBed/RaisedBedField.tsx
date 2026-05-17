@@ -62,6 +62,7 @@ export function RaisedBedField({
     );
     const moveSequenceRef = useRef(0);
     const [dropAnimationDisabled, setDropAnimationDisabled] = useState(false);
+    const [isHudDialogOpen, setIsHudDialogOpen] = useState(false);
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
 
     const sensors = useSensors(
@@ -90,6 +91,28 @@ export function RaisedBedField({
 
         return () => window.clearTimeout(timeoutId);
     }, [dropAnimationDisabled]);
+
+    useEffect(() => {
+        function syncDialogState() {
+            const openDialog = document.querySelector(
+                '[role="dialog"][data-state="open"], [data-vaul-drawer][data-state="open"]',
+            );
+            setIsHudDialogOpen(Boolean(openDialog));
+        }
+
+        syncDialogState();
+        const observer = new MutationObserver(() => {
+            syncDialogState();
+        });
+        observer.observe(document.body, {
+            attributes: true,
+            attributeFilter: ['data-state'],
+            childList: true,
+            subtree: true,
+        });
+
+        return () => observer.disconnect();
+    }, []);
 
     // Determine which positions have cart items (draggable)
     const baseCartItemsByPosition = useMemo(() => {
@@ -254,7 +277,7 @@ export function RaisedBedField({
             <div></div>
             <DndContext
                 id={`raised-bed-field-${gardenId}-${raisedBedId}`}
-                sensors={sensors}
+                sensors={isHudDialogOpen ? [] : sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
             >
