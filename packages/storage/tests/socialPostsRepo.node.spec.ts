@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
     createSocialAccount,
     createSocialPost,
+    getSocialAccount,
     getSocialAccountByProviderKey,
     getSocialPostById,
     listReadySocialPosts,
@@ -43,6 +44,9 @@ test('socialAccountsRepo creates, updates, and lists provider accounts', async (
         providerAccountKey: 'brand-main',
     });
     assert.equal(loaded?.id, account.id);
+
+    const loadedById = await getSocialAccount(account.id);
+    assert.equal(loadedById?.providerAccountKey, 'brand-main');
 
     const needsReauth = await listSocialAccounts({
         status: 'needs_reauth',

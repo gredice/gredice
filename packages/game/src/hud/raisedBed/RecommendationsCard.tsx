@@ -4,7 +4,6 @@ import { Navigate } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { List } from '@signalco/ui-primitives/List';
-import { Row } from '@signalco/ui-primitives/Row';
 import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
@@ -150,8 +149,6 @@ export function RecommendationsCard({
         return sorted.slice(0, DEFAULT_FEATURED_OPERATION_LIMIT);
     }, [selectedStage, stageOperations]);
 
-    const hasMoreOperations =
-        stageOperations.length > featuredOperations.length;
     const isLoadingFeaturedOperations = isLoadingOperations;
     const skeletonKeys = useMemo(
         () =>
@@ -168,20 +165,14 @@ export function RecommendationsCard({
     }
 
     return (
-        <Stack spacing={1}>
-            <Row spacing={1} justifyContent="space-between">
-                <Typography level="body1">Preporučene radnje</Typography>
-                {onShowOperations && (
-                    <Button
-                        variant="link"
-                        size="sm"
-                        onClick={onShowOperations}
-                        endDecorator={<Navigate className="size-4 shrink-0" />}
-                    >
-                        Sve radnje
-                    </Button>
-                )}
-            </Row>
+        <Stack spacing={0.5}>
+            <Typography
+                level="body3"
+                className="leading-tight font-semibold uppercase"
+                component="h2"
+            >
+                Preporučene radnje
+            </Typography>
             <Card>
                 <CardOverflow>
                     <Stack>
@@ -202,6 +193,7 @@ export function RecommendationsCard({
                         ) : featuredOperations.length ? (
                             <List
                                 variant="outlined"
+                                data-recommended-operation-list
                                 className="border-b-0 border-l-0 border-r-0 rounded-none max-h-[25dvh] overflow-y-auto"
                             >
                                 {featuredOperations.map((operation) => (
@@ -213,6 +205,11 @@ export function RecommendationsCard({
                                         positionIndex={positionIndex}
                                     />
                                 ))}
+                                {onShowOperations && (
+                                    <ShowAllOperationsListItem
+                                        onShowOperations={onShowOperations}
+                                    />
+                                )}
                             </List>
                         ) : (
                             <Typography
@@ -223,20 +220,6 @@ export function RecommendationsCard({
                                 Trenutno nema dostupnih radnji za ovu fazu.
                             </Typography>
                         )}
-                        {hasMoreOperations &&
-                            onShowOperations &&
-                            !isLoadingFeaturedOperations && (
-                                <div className="border-t px-4 py-2">
-                                    <Button
-                                        variant="link"
-                                        size="sm"
-                                        className="self-start px-0"
-                                        onClick={onShowOperations}
-                                    >
-                                        Prikaži sve radnje
-                                    </Button>
-                                </div>
-                            )}
                     </Stack>
                 </CardOverflow>
             </Card>
@@ -245,3 +228,22 @@ export function RecommendationsCard({
 }
 
 export default RecommendationsCard;
+
+function ShowAllOperationsListItem({
+    onShowOperations,
+}: {
+    onShowOperations: () => void;
+}) {
+    return (
+        <Button
+            variant="plain"
+            className="w-full justify-between text-start p-0 h-auto py-3 gap-3 px-4 rounded-none font-normal border-t"
+            onClick={onShowOperations}
+            endDecorator={<Navigate className="size-4 shrink-0" />}
+        >
+            <Typography level="body1" semiBold>
+                Sve radnje...
+            </Typography>
+        </Button>
+    );
+}

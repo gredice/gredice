@@ -84,6 +84,18 @@ export async function updateSocialAccount(
     return updated ?? null;
 }
 
+export async function getSocialAccount(
+    id: number,
+): Promise<SelectSocialAccount | null> {
+    const [account] = await storage()
+        .select()
+        .from(socialAccounts)
+        .where(eq(socialAccounts.id, id))
+        .limit(1);
+
+    return account ?? null;
+}
+
 export async function getSocialAccountByProviderKey({
     provider,
     providerAccountKey,
