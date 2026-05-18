@@ -13,8 +13,8 @@ import {
     getNotificationDeliverySummary,
     getNotificationsByAccount,
     getUser,
-    notifications,
     notificationDeliveryAttempts,
+    notifications,
     previewNotificationCampaignAudience,
     recordNotificationDeliveryEvent,
     routeNotificationDelivery,
@@ -285,6 +285,17 @@ test('notification delivery summary tracks attempts and engagement events', asyn
                 ('${sub2Id}', '${accountId}', '${userId}', 'https://example.com/${sub2Id}', 'k', 'a', true)`,
     );
 
+    const emailAttempt = await storage()
+        .insert(notificationDeliveryAttempts)
+        .values({
+            notificationId,
+            userId,
+            accountId,
+            channel: 'email',
+            status: 'failed',
+        })
+        .returning({ id: notificationDeliveryAttempts.id });
+
     const attemptRows = await storage()
         .insert(notificationDeliveryAttempts)
         .values([
@@ -351,4 +362,63 @@ test('notification delivery summary tracks attempts and engagement events', asyn
     assert.equal(summary.dismissed, 1);
     assert.equal(summary.invalidated, 1);
     assert.equal(summary.unsubscribed, 1);
+    assert.notEqual(emailAttempt[0].id, attemptRows[0].id);
+});
+
+test('recordNotificationDeliveryEvent rejects mismatched notification and attempt ids', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const firstUserName = `delivery-event-first-${randomUUID()}@example.com`;
+    const firstUserId = await createUserWithPassword(firstUserName, 'password');
+    const firstUser = await getUser(firstUserId);
+    assert.ok(firstUser);
+    const firstAccountId = firstUser.accounts[0]?.accountId;
+    assert.ok(firstAccountId);
+
+    const secondUserName = `delivery-event-second-${randomUUID()}@example.com`;
+    const secondUserId = await createUserWithPassword(
+        secondUserName,
+        'password',
+    );
+    const secondUser = await getUser(secondUserId);
+    assert.ok(secondUser);
+    const secondAccountId = secondUser.accounts[0]?.accountId;
+    assert.ok(secondAccountId);
+
+    const firstNotificationId = await createNotification({
+        accountId: firstAccountId,
+        userId: firstUserId,
+        header: 'First',
+        content: 'First notification',
+        category: 'general',
+        timestamp: new Date(),
+    });
+    const secondNotificationId = await createNotification({
+        accountId: secondAccountId,
+        userId: secondUserId,
+        header: 'Second',
+        content: 'Second notification',
+        category: 'general',
+        timestamp: new Date(),
+    });
+
+    const secondAttempt = await storage()
+        .insert(notificationDeliveryAttempts)
+        .values({
+            notificationId: secondNotificationId,
+            userId: secondUserId,
+            accountId: secondAccountId,
+            channel: 'push',
+            status: 'accepted',
+        })
+        .returning({ id: notificationDeliveryAttempts.id });
+
+    await assert.rejects(
+        recordNotificationDeliveryEvent({
+            notificationId: firstNotificationId,
+            deliveryAttemptId: secondAttempt[0].id,
+            type: 'opened',
+        }),
+        /does not belong to the provided notification/u,
+    );
 });

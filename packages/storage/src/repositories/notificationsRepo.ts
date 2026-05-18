@@ -11,8 +11,8 @@ import {
     type NotificationCampaignAudience,
     type NotificationCampaignDeliveryMetadata,
     notificationCampaigns,
-    notificationDeliveryEvents,
     notificationDeliveryAttempts,
+    notificationDeliveryEvents,
     notificationEmailLog,
     notifications,
     notificationUserChannelPreferences,
@@ -740,6 +740,24 @@ export async function recordNotificationDeliveryEvent({
     metadata?: Record<string, unknown>;
     occurredAt?: Date;
 }) {
+    const attempt = await storage()
+        .select({
+            notificationId: notificationDeliveryAttempts.notificationId,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(eq(notificationDeliveryAttempts.id, deliveryAttemptId))
+        .limit(1);
+
+    if (!attempt[0]) {
+        throw new Error('Delivery attempt not found.');
+    }
+
+    if (attempt[0].notificationId !== notificationId) {
+        throw new Error(
+            'Delivery attempt does not belong to the provided notification.',
+        );
+    }
+
     const result = await storage()
         .insert(notificationDeliveryEvents)
         .values({
@@ -763,7 +781,12 @@ export async function getNotificationDeliverySummary(
             pushSubscriptionId: notificationDeliveryAttempts.pushSubscriptionId,
         })
         .from(notificationDeliveryAttempts)
-        .where(eq(notificationDeliveryAttempts.notificationId, notificationId));
+        .where(
+            and(
+                eq(notificationDeliveryAttempts.notificationId, notificationId),
+                eq(notificationDeliveryAttempts.channel, 'push'),
+            ),
+        );
 
     const events = await storage()
         .select({
@@ -790,7 +813,8 @@ export async function getNotificationDeliverySummary(
         sent: attempts.filter((attempt) => attempt.status === 'sent').length,
         accepted: attempts.filter((attempt) => attempt.status === 'accepted')
             .length,
-        failed: attempts.filter((attempt) => attempt.status === 'failed').length,
+        failed: attempts.filter((attempt) => attempt.status === 'failed')
+            .length,
         retried,
         invalidated: 0,
         opened: 0,
