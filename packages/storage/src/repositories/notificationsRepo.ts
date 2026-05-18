@@ -12,6 +12,7 @@ import {
     type NotificationCampaignDeliveryMetadata,
     notificationCampaigns,
     notificationDeliveryAttempts,
+    notificationDeliveryEvents,
     notificationEmailLog,
     notifications,
     notificationUserChannelPreferences,
@@ -47,6 +48,21 @@ export type NotificationCampaignAudiencePreview = {
     gardenCount: number;
     explicitRecipientCount: number;
     unmatchedRecipientCount: number;
+};
+
+export type NotificationDeliveryEventType =
+    (typeof notificationDeliveryEvents.$inferSelect)['type'];
+
+export type NotificationDeliveryRollup = {
+    sent: number;
+    accepted: number;
+    failed: number;
+    retried: number;
+    invalidated: number;
+    opened: number;
+    dismissed: number;
+    clicked: number;
+    unsubscribed: number;
 };
 
 export type CreateNotificationCampaignInput = Omit<
@@ -709,6 +725,113 @@ export async function routeNotificationDelivery(notificationId: string) {
     }
 
     return decisions;
+}
+
+export async function recordNotificationDeliveryEvent({
+    notificationId,
+    deliveryAttemptId,
+    type,
+    metadata,
+    occurredAt,
+}: {
+    notificationId: string;
+    deliveryAttemptId: number;
+    type: NotificationDeliveryEventType;
+    metadata?: Record<string, unknown>;
+    occurredAt?: Date;
+}) {
+    const attempt = await storage()
+        .select({
+            notificationId: notificationDeliveryAttempts.notificationId,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(eq(notificationDeliveryAttempts.id, deliveryAttemptId))
+        .limit(1);
+
+    if (!attempt[0]) {
+        throw new Error('Delivery attempt not found.');
+    }
+
+    if (attempt[0].notificationId !== notificationId) {
+        throw new Error(
+            'Delivery attempt does not belong to the provided notification.',
+        );
+    }
+
+    const result = await storage()
+        .insert(notificationDeliveryEvents)
+        .values({
+            notificationId,
+            deliveryAttemptId,
+            type,
+            metadata: metadata ?? {},
+            occurredAt: occurredAt ?? new Date(),
+        })
+        .returning();
+    return result[0];
+}
+
+export async function getNotificationDeliverySummary(
+    notificationId: string,
+): Promise<NotificationDeliveryRollup> {
+    const attempts = await storage()
+        .select({
+            id: notificationDeliveryAttempts.id,
+            status: notificationDeliveryAttempts.status,
+            pushSubscriptionId: notificationDeliveryAttempts.pushSubscriptionId,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(
+            and(
+                eq(notificationDeliveryAttempts.notificationId, notificationId),
+                eq(notificationDeliveryAttempts.channel, 'push'),
+            ),
+        );
+
+    const events = await storage()
+        .select({
+            type: notificationDeliveryEvents.type,
+            deliveryAttemptId: notificationDeliveryEvents.deliveryAttemptId,
+        })
+        .from(notificationDeliveryEvents)
+        .where(eq(notificationDeliveryEvents.notificationId, notificationId));
+
+    const attemptsBySubscription = new Map<string, number>();
+    for (const attempt of attempts) {
+        if (!attempt.pushSubscriptionId) continue;
+        attemptsBySubscription.set(
+            attempt.pushSubscriptionId,
+            (attemptsBySubscription.get(attempt.pushSubscriptionId) ?? 0) + 1,
+        );
+    }
+
+    const retried = Array.from(attemptsBySubscription.values()).filter(
+        (count) => count > 1,
+    ).length;
+
+    const rollup: NotificationDeliveryRollup = {
+        sent: attempts.filter((attempt) => attempt.status === 'sent').length,
+        accepted: attempts.filter((attempt) => attempt.status === 'accepted')
+            .length,
+        failed: attempts.filter((attempt) => attempt.status === 'failed')
+            .length,
+        retried,
+        invalidated: 0,
+        opened: 0,
+        dismissed: 0,
+        clicked: 0,
+        unsubscribed: 0,
+    };
+
+    for (const event of events) {
+        if (event.type === 'opened') rollup.opened += 1;
+        if (event.type === 'dismissed') rollup.dismissed += 1;
+        if (event.type === 'clicked') rollup.clicked += 1;
+        if (event.type === 'failed') rollup.invalidated += 1;
+        if (event.type === 'unsubscribed') rollup.unsubscribed += 1;
+    }
+
+    return rollup;
 }
 
 export function getNotificationsByUser(
