@@ -27,24 +27,20 @@ const calendarMonths = [
 ];
 
 const calendarActivityTypes = {
-    sowing: {
-        name: 'sowing',
-        label: 'Sijanje',
-        color: 'bg-yellow-400',
-    },
     propagating: {
-        name: 'propagating',
-        label: 'Uzgoj',
+        name: 'Sijanje unutra',
         color: 'bg-blue-400',
     },
+    sowing: {
+        name: 'Sijanje vani',
+        color: 'bg-yellow-400',
+    },
     planting: {
-        name: 'planting',
-        label: 'Sadnja',
+        name: 'Presađivanje',
         color: 'bg-amber-600',
     },
     harvest: {
-        name: 'harvest',
-        label: 'Branje',
+        name: 'Berba',
         color: 'bg-lime-400',
     },
 } as const;
@@ -85,7 +81,7 @@ export function PlantsCalendar({
         new Date(currentDate.getFullYear(), currentMonth, 0).getDate();
 
     return (
-        <div className="grid grid-cols-[200px_repeat(12,1fr)] text-sm rounded-lg overflow-x-auto relative">
+        <div className="grid grid-cols-[260px_repeat(12,1fr)] text-sm rounded-lg overflow-x-auto relative">
             <div></div>
             {calendarMonths.map((month) => (
                 <Typography
@@ -146,8 +142,12 @@ export function PlantsCalendar({
                                         </Row>
                                         <Row>
                                             {plantIndex === 0 && (
-                                                <Typography level="body2">
-                                                    {activityType.label}
+                                                <Typography
+                                                    level="body2"
+                                                    title={activityType.name}
+                                                    className="whitespace-nowrap"
+                                                >
+                                                    {activityType.name}
                                                 </Typography>
                                             )}
                                             <div

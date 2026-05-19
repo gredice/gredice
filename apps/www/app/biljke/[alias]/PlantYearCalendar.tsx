@@ -19,20 +19,20 @@ const plantCalendarMonths = [
 ];
 
 const calendarActivityTypes = {
-    sowing: {
-        name: 'Sijanje',
-        color: 'bg-yellow-400',
-    },
     propagating: {
-        name: 'Uzgoj',
+        name: 'Sijanje unutra',
         color: 'bg-blue-400',
     },
+    sowing: {
+        name: 'Sijanje vani',
+        color: 'bg-yellow-400',
+    },
     planting: {
-        name: 'Sadnja',
+        name: 'Presađivanje',
         color: 'bg-amber-600',
     },
     harvest: {
-        name: 'Branje',
+        name: 'Berba',
         color: 'bg-lime-400',
     },
 } as const;
@@ -50,7 +50,7 @@ export function PlantYearCalendar({ activities, now }: PlantYearCalendarProps) {
         new Date(currentDate.getFullYear(), currentMonth, 0).getDate();
 
     return (
-        <div className="grid grid-cols-[100px_repeat(12,1fr)] text-sm rounded-lg overflow-x-auto relative">
+        <div className="grid grid-cols-[150px_repeat(12,1fr)] text-sm rounded-lg overflow-x-auto relative">
             <div></div>
             {plantCalendarMonths.map((month) => (
                 <Typography
@@ -79,7 +79,11 @@ export function PlantYearCalendar({ activities, now }: PlantYearCalendarProps) {
                             spacing={1}
                             className="mx-2"
                         >
-                            <Typography level="body2">
+                            <Typography
+                                level="body2"
+                                title={activityType.name}
+                                className="whitespace-nowrap"
+                            >
                                 {activityType.name}
                             </Typography>
                             <div
