@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { and, desc, eq, inArray, isNull, notExists, or } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, notExists, or, sql } from 'drizzle-orm';
 import { storage } from '..';
 import { isTargetHourInTimeZone } from '../helpers/timezoneUtils';
 import {
@@ -63,6 +63,13 @@ export type NotificationDeliveryRollup = {
     dismissed: number;
     clicked: number;
     unsubscribed: number;
+};
+
+export type NotificationRetentionCleanupResult = {
+    subscriptionsDisabled: number;
+    deliveryEventsDeleted: number;
+    deliveryAttemptsDeleted: number;
+    campaignsDeleted: number;
 };
 
 export type CreateNotificationCampaignInput = Omit<
@@ -832,6 +839,90 @@ export async function getNotificationDeliverySummary(
     }
 
     return rollup;
+}
+
+export async function cleanupNotificationRetention({
+    disableFailCountAtOrAbove = 10,
+    disableInactiveSubscriptionDays = 90,
+    deleteDeliveryEventsOlderThanDays = 180,
+    deleteDeliveryAttemptsOlderThanDays = 180,
+    deleteCompletedCampaignsOlderThanDays = 365,
+}: {
+    disableFailCountAtOrAbove?: number;
+    disableInactiveSubscriptionDays?: number;
+    deleteDeliveryEventsOlderThanDays?: number;
+    deleteDeliveryAttemptsOlderThanDays?: number;
+    deleteCompletedCampaignsOlderThanDays?: number;
+} = {}): Promise<NotificationRetentionCleanupResult> {
+    const now = Date.now();
+    const staleSubscriptionCutoff = new Date(
+        now - disableInactiveSubscriptionDays * 24 * 60 * 60 * 1000,
+    );
+    const deliveryEventCutoff = new Date(
+        now - deleteDeliveryEventsOlderThanDays * 24 * 60 * 60 * 1000,
+    );
+    const deliveryAttemptCutoff = new Date(
+        now - deleteDeliveryAttemptsOlderThanDays * 24 * 60 * 60 * 1000,
+    );
+    const campaignCutoff = new Date(
+        now - deleteCompletedCampaignsOlderThanDays * 24 * 60 * 60 * 1000,
+    );
+
+    const disabledSubscriptions = await storage()
+        .update(webPushSubscriptions)
+        .set({
+            enabled: false,
+            revokedAt: new Date(),
+            revokedReason: 'retention_cleanup',
+            updatedAt: new Date(),
+        })
+        .where(
+            and(
+                eq(webPushSubscriptions.enabled, true),
+                isNull(webPushSubscriptions.revokedAt),
+                or(
+                    eq(webPushSubscriptions.permissionState, 'denied'),
+                    and(
+                        eq(webPushSubscriptions.permissionState, 'default'),
+                        eq(webPushSubscriptions.failCount, 0),
+                    ),
+                    sql`${webPushSubscriptions.failCount} >= ${disableFailCountAtOrAbove}`,
+                    sql`${webPushSubscriptions.lastSeenAt} < ${staleSubscriptionCutoff}`,
+                ),
+            ),
+        )
+        .returning({ id: webPushSubscriptions.id });
+
+    const deletedEvents = await storage()
+        .delete(notificationDeliveryEvents)
+        .where(sql`${notificationDeliveryEvents.occurredAt} < ${deliveryEventCutoff}`)
+        .returning({ id: notificationDeliveryEvents.id });
+
+    const deletedAttempts = await storage()
+        .delete(notificationDeliveryAttempts)
+        .where(sql`${notificationDeliveryAttempts.createdAt} < ${deliveryAttemptCutoff}`)
+        .returning({ id: notificationDeliveryAttempts.id });
+
+    const deletedCampaigns = await storage()
+        .delete(notificationCampaigns)
+        .where(
+            and(
+                inArray(notificationCampaigns.status, [
+                    'completed',
+                    'cancelled',
+                    'failed',
+                ]),
+                sql`${notificationCampaigns.updatedAt} < ${campaignCutoff}`,
+            ),
+        )
+        .returning({ id: notificationCampaigns.id });
+
+    return {
+        subscriptionsDisabled: disabledSubscriptions.length,
+        deliveryEventsDeleted: deletedEvents.length,
+        deliveryAttemptsDeleted: deletedAttempts.length,
+        campaignsDeleted: deletedCampaigns.length,
+    };
 }
 
 export function getNotificationsByUser(
