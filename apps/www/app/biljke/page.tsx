@@ -140,6 +140,17 @@ export default async function PlantsPage({
                         />
                     </TabsContent>
                     <TabsContent value="kalendar" className="mt-2">
+                        <Row justifyContent="end" className="mb-2">
+                            <Link
+                                href={`${KnownPages.Sowing}#kalendar-sjetve`}
+                                prefetch
+                                aria-label="Više informacija o kalendaru sjetve"
+                                className="inline-flex items-center gap-1 text-sm"
+                            >
+                                <span aria-hidden>(i)</span>
+                                <span>Više o značenju kalendara</span>
+                            </Link>
+                        </Row>
                         <Card>
                             <CardOverflow>
                                 <PlantsCalendar

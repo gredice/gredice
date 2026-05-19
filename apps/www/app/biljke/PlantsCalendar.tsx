@@ -29,22 +29,22 @@ const calendarMonths = [
 const calendarActivityTypes = {
     sowing: {
         name: 'sowing',
-        label: 'Sijanje',
+        icon: '🌱',
         color: 'bg-yellow-400',
     },
     propagating: {
         name: 'propagating',
-        label: 'Uzgoj',
+        icon: '🌿',
         color: 'bg-blue-400',
     },
     planting: {
         name: 'planting',
-        label: 'Sadnja',
+        icon: '🪴',
         color: 'bg-amber-600',
     },
     harvest: {
         name: 'harvest',
-        label: 'Branje',
+        icon: '🥕',
         color: 'bg-lime-400',
     },
 } as const;
@@ -147,7 +147,9 @@ export function PlantsCalendar({
                                         <Row>
                                             {plantIndex === 0 && (
                                                 <Typography level="body2">
-                                                    {activityType.label}
+                                                    <span>
+                                                        {activityType.icon}
+                                                    </span>
                                                 </Typography>
                                             )}
                                             <div

@@ -64,7 +64,7 @@ export default async function SowingPage() {
                         nadolazeće radnje pregledavaš na istom mjestu u
                         aplikaciji.
                     </p>
-                    <h2>🗓️ Kalendar sjetve</h2>
+                    <h2 id="kalendar-sjetve">🗓️ Kalendar sjetve</h2>
                     <p>
                         Svaka biljka ima svoj kalendar sjetve. Za odabir
                         idealnog termina posjeti stranicu{' '}
@@ -72,6 +72,25 @@ export default async function SowingPage() {
                         pročitati detaljne informacije o vremenu sjetve,
                         razmacima i potrebnoj njezi za svaku biljku.
                     </p>
+                    <p>Legenda kalendara aktivnosti:</p>
+                    <ul>
+                        <li>
+                            🌱 <strong>Sijanje</strong> — period kada je
+                            najbolje sijati sjeme.
+                        </li>
+                        <li>
+                            🌿 <strong>Uzgoj</strong> — period uzgoja mladih
+                            biljaka prije presađivanja.
+                        </li>
+                        <li>
+                            🪴 <strong>Sadnja</strong> — period presađivanja
+                            sadnica na stalno mjesto.
+                        </li>
+                        <li>
+                            🥕 <strong>Branje</strong> — period kada je biljka
+                            spremna za berbu.
+                        </li>
+                    </ul>
                     <p>
                         Imaj na umu da je kalendar sjetve orijentacijski i da se
                         može prilagoditi ovisno o vremenskim uvjetima i
