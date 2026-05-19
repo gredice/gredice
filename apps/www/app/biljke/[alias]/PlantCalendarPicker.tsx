@@ -33,11 +33,11 @@ export function PlantCalendarPicker({
             >
                 {hasCalendarData ? (
                     <Tabs defaultValue="year">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                            <TabsList className="grid min-w-0 max-w-full grid-cols-2">
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                            <TabsList className="grid w-full min-w-0 max-w-full grid-cols-2 overflow-hidden">
                                 <TabsTrigger
                                     value="year"
-                                    className="flex min-w-0 gap-1 px-2"
+                                    className="flex min-w-0 gap-1 overflow-hidden px-2"
                                 >
                                     <Calendar className="size-4 shrink-0" />
                                     <span className="truncate">
@@ -46,7 +46,7 @@ export function PlantCalendarPicker({
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="growth"
-                                    className="flex min-w-0 gap-1 px-2"
+                                    className="flex min-w-0 gap-1 overflow-hidden px-2"
                                 >
                                     <Sprout className="size-4 shrink-0" />
                                     <span className="truncate">
@@ -58,12 +58,10 @@ export function PlantCalendarPicker({
                         </div>
                         <TabsContent value="year">
                             <Card className="overflow-hidden bg-white">
-                                <div className="overflow-x-auto rounded-md bg-white pb-2">
-                                    <div className="min-w-[34rem]">
-                                        <PlantYearCalendar
-                                            activities={plant.calendar}
-                                        />
-                                    </div>
+                                <div className="rounded-md bg-white">
+                                    <PlantYearCalendar
+                                        activities={plant.calendar}
+                                    />
                                 </div>
                             </Card>
                             <Typography
@@ -76,12 +74,10 @@ export function PlantCalendarPicker({
                         </TabsContent>
                         <TabsContent value="growth">
                             <Card className="overflow-hidden bg-white">
-                                <div className="overflow-x-auto rounded-md bg-white pb-2">
-                                    <div className="min-w-[34rem]">
-                                        <PlantGrowthCalendar
-                                            windows={plant.attributes}
-                                        />
-                                    </div>
+                                <div className="rounded-md bg-white">
+                                    <PlantGrowthCalendar
+                                        windows={plant.attributes}
+                                    />
                                 </div>
                             </Card>
                             <Typography
