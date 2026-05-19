@@ -1,7 +1,7 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
 import { Calendar, Sprout } from '@signalco/ui-icons';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
+import { Card } from '@signalco/ui-primitives/Card';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import {
     Tabs,
@@ -33,32 +33,38 @@ export function PlantCalendarPicker({
             >
                 {hasCalendarData ? (
                     <Tabs defaultValue="year">
-                        <div className="flex flex-row gap-0.5 justify-between">
-                            <TabsList className="grid grid-cols-2 w-fit">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <TabsList className="grid min-w-0 max-w-full grid-cols-2">
                                 <TabsTrigger
                                     value="year"
-                                    className="flex gap-2"
+                                    className="flex min-w-0 gap-1 px-2"
                                 >
-                                    <Calendar className="size-5 shrink-0" />
-                                    <span>Kalendar sijanja</span>
+                                    <Calendar className="size-4 shrink-0" />
+                                    <span className="truncate">
+                                        Kalendar sijanja
+                                    </span>
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="growth"
-                                    className="flex gap-2"
+                                    className="flex min-w-0 gap-1 px-2"
                                 >
-                                    <Sprout className="size-5 shrink-0" />
-                                    <span>Kalendar rasta</span>
+                                    <Sprout className="size-4 shrink-0" />
+                                    <span className="truncate">
+                                        Kalendar rasta
+                                    </span>
                                 </TabsTrigger>
                             </TabsList>
                             <CalendarInfoChip className="self-center" />
                         </div>
                         <TabsContent value="year">
-                            <Card>
-                                <CardOverflow>
-                                    <PlantYearCalendar
-                                        activities={plant.calendar}
-                                    />
-                                </CardOverflow>
+                            <Card className="overflow-hidden bg-white">
+                                <div className="overflow-x-auto rounded-md bg-white pb-2">
+                                    <div className="min-w-[34rem]">
+                                        <PlantYearCalendar
+                                            activities={plant.calendar}
+                                        />
+                                    </div>
+                                </div>
                             </Card>
                             <Typography
                                 level="body2"
@@ -69,12 +75,14 @@ export function PlantCalendarPicker({
                             </Typography>
                         </TabsContent>
                         <TabsContent value="growth">
-                            <Card>
-                                <CardOverflow>
-                                    <PlantGrowthCalendar
-                                        windows={plant.attributes}
-                                    />
-                                </CardOverflow>
+                            <Card className="overflow-hidden bg-white">
+                                <div className="overflow-x-auto rounded-md bg-white pb-2">
+                                    <div className="min-w-[34rem]">
+                                        <PlantGrowthCalendar
+                                            windows={plant.attributes}
+                                        />
+                                    </div>
+                                </div>
                             </Card>
                             <Typography
                                 level="body2"
