@@ -1,5 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { and, desc, eq, inArray, isNull, notExists, or, sql } from 'drizzle-orm';
+import {
+    and,
+    desc,
+    eq,
+    inArray,
+    isNull,
+    notExists,
+    or,
+    sql,
+} from 'drizzle-orm';
 import { storage } from '..';
 import { isTargetHourInTimeZone } from '../helpers/timezoneUtils';
 import {
@@ -895,12 +904,24 @@ export async function cleanupNotificationRetention({
 
     const deletedEvents = await storage()
         .delete(notificationDeliveryEvents)
-        .where(sql`${notificationDeliveryEvents.occurredAt} < ${deliveryEventCutoff}`)
+        .where(
+            sql`${notificationDeliveryEvents.occurredAt} < ${deliveryEventCutoff}`,
+        )
         .returning({ id: notificationDeliveryEvents.id });
 
     const deletedAttempts = await storage()
         .delete(notificationDeliveryAttempts)
-        .where(sql`${notificationDeliveryAttempts.createdAt} < ${deliveryAttemptCutoff}`)
+        .where(
+            and(
+                sql`${notificationDeliveryAttempts.createdAt} < ${deliveryAttemptCutoff}`,
+                sql`not exists (
+                    select 1
+                    from ${notificationDeliveryEvents}
+                    where ${notificationDeliveryEvents.deliveryAttemptId} = ${notificationDeliveryAttempts.id}
+                      and ${notificationDeliveryEvents.occurredAt} >= ${deliveryEventCutoff}
+                )`,
+            ),
+        )
         .returning({ id: notificationDeliveryAttempts.id });
 
     const deletedCampaigns = await storage()
