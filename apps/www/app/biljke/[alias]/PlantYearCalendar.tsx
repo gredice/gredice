@@ -50,14 +50,14 @@ export function PlantYearCalendar({ activities, now }: PlantYearCalendarProps) {
         new Date(currentDate.getFullYear(), currentMonth, 0).getDate();
 
     return (
-        <div className="grid grid-cols-[150px_repeat(12,1fr)] text-sm rounded-lg overflow-x-auto relative">
+        <div className="grid w-full grid-cols-[clamp(124px,32%,150px)_repeat(12,minmax(0,1fr))] overflow-hidden rounded-lg text-sm relative">
             <div></div>
             {plantCalendarMonths.map((month) => (
                 <Typography
                     key={month}
                     level="body2"
                     center
-                    className="py-2 text-center min-w-8 border-l"
+                    className="min-w-0 overflow-hidden border-l py-2 text-center"
                 >
                     {month}
                 </Typography>
@@ -77,12 +77,12 @@ export function PlantYearCalendar({ activities, now }: PlantYearCalendarProps) {
                         <Row
                             justifyContent="space-between"
                             spacing={1}
-                            className="mx-2"
+                            className="mx-2 min-w-0 overflow-hidden"
                         >
                             <Typography
                                 level="body2"
                                 title={activityType.name}
-                                className="whitespace-nowrap"
+                                className="min-w-0 truncate whitespace-nowrap"
                             >
                                 {activityType.name}
                             </Typography>

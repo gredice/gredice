@@ -79,14 +79,14 @@ export function PlantGrowthCalendar({
     let lastWindowEndMin = 0;
     let windowsMinMaxDiffs = 0;
     return (
-        <div className="grid grid-cols-[130px_repeat(12,1fr)] text-sm rounded-lg overflow-x-auto relative">
+        <div className="grid w-full grid-cols-[clamp(112px,30%,130px)_repeat(12,minmax(0,1fr))] overflow-hidden rounded-lg text-sm relative">
             <div></div>
             {plantCalendarMonths.map((month) => (
                 <Typography
                     level="body2"
                     center
                     key={month}
-                    className="py-2 text-center min-w-8 border-l"
+                    className="min-w-0 overflow-hidden border-l py-2 text-center"
                 >
                     {month}
                 </Typography>
@@ -117,9 +117,13 @@ export function PlantGrowthCalendar({
                         <Row
                             justifyContent="space-between"
                             spacing={1}
-                            className="mx-2"
+                            className="mx-2 min-w-0 overflow-hidden"
                         >
-                            <Typography level="body2" title={window.label}>
+                            <Typography
+                                level="body2"
+                                title={window.label}
+                                className="min-w-0 truncate"
+                            >
                                 {window.label}
                             </Typography>
                             <div
