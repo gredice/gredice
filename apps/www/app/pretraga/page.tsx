@@ -106,6 +106,7 @@ export default async function SearchPage({
                 fieldName="global-search"
                 initialValue={query}
                 className="w-full"
+                navigateOnChange
             />
 
             <Row spacing={2} className="flex-wrap">

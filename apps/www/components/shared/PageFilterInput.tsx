@@ -3,29 +3,55 @@
 import { Close, Search } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { ChangeEvent, HTMLAttributes } from 'react';
+import { useMemo } from 'react';
 import { useClientSearchParam } from '../../hooks/useClientSearchParam';
 
 export type PageFilterInputProps = HTMLAttributes<HTMLFormElement> & {
     searchParamName: string;
     fieldName: string;
     initialValue?: string;
+    navigateOnChange?: boolean;
 };
 
 export function PageFilterInput({
     searchParamName,
     fieldName,
     initialValue = '',
+    navigateOnChange = false,
     onSubmit,
     ...rest
 }: PageFilterInputProps) {
+    const router = useRouter();
+    const pathname = usePathname();
+    const currentSearchParams = useSearchParams();
+
     const [search, setSearch] = useClientSearchParam(
         searchParamName,
         initialValue,
     );
 
+    const nextParams = useMemo(
+        () => new URLSearchParams(currentSearchParams.toString()),
+        [currentSearchParams],
+    );
+
     const updateSearch = (value: string) => {
         setSearch(value);
+
+        if (!navigateOnChange) {
+            return;
+        }
+
+        if (value.trim()) {
+            nextParams.set(searchParamName, value);
+        } else {
+            nextParams.delete(searchParamName);
+        }
+
+        const nextSearch = nextParams.toString();
+        router.replace(nextSearch ? `${pathname}?${nextSearch}` : pathname);
     };
 
     const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -35,6 +61,10 @@ export function PageFilterInput({
     const handleSubmit: NonNullable<PageFilterInputProps['onSubmit']> = (
         event,
     ) => {
+        if (navigateOnChange) {
+            return;
+        }
+
         event.preventDefault();
         onSubmit?.(event);
     };
@@ -53,7 +83,7 @@ export function PageFilterInput({
                 </IconButton>
                 <input
                     id={fieldName}
-                    name={fieldName}
+                    name={searchParamName}
                     value={search}
                     onChange={handleChange}
                     placeholder="Pretraži..."
