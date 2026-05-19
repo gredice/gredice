@@ -3,6 +3,7 @@
 import { Close, Search } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
+import type { Route } from 'next';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { ChangeEvent, HTMLAttributes } from 'react';
 import { useMemo } from 'react';
@@ -51,7 +52,10 @@ export function PageFilterInput({
         }
 
         const nextSearch = nextParams.toString();
-        router.replace(nextSearch ? `${pathname}?${nextSearch}` : pathname);
+        const nextHref = (
+            nextSearch ? `${pathname}?${nextSearch}` : pathname
+        ) as Route;
+        router.replace(nextHref);
     };
 
     const handleChange = (event: ChangeEvent<HTMLInputElement>) => {

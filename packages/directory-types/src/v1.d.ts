@@ -43,6 +43,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /search
+         * @description Search published directory entities.
+         */
+        get: {
+            parameters: {
+                query: {
+                    q: string;
+                    category?: string | string[];
+                    entityType?: string | string[];
+                    limit?: number;
+                    offset?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["directory-search-response"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{slug}": {
         parameters: {
             query?: never;
@@ -665,6 +710,30 @@ export interface components {
         };
         "page-detail": components["schemas"]["page-summary"] & {
             content: components["schemas"]["section-data"][];
+        };
+        "directory-search-result": {
+            entityId: number;
+            entityType: string;
+            category: string;
+            categoryLabel: string;
+            title: string;
+            summary?: string | null;
+            imageUrl?: string | null;
+            imageAlt?: string | null;
+            /** Format: uri */
+            href: string;
+            rank: number;
+            /** Format: date-time */
+            publishedAt: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "directory-search-response": {
+            query: string;
+            limit: number;
+            offset: number;
+            count: number;
+            results: components["schemas"]["directory-search-result"][];
         };
         "entity-plant": {
             id: number;

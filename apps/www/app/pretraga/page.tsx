@@ -9,7 +9,6 @@ import { Card } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
-import Link from 'next/link';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
 
 const categoryOptions = [
@@ -118,9 +117,9 @@ export default async function SearchPage({
                             key={option.slug}
                             variant={active ? 'solid' : 'outlined'}
                             size="sm"
-                            asChild
+                            href={href}
                         >
-                            <Link href={href}>{option.label}</Link>
+                            {option.label}
                         </Button>
                     );
                 })}
@@ -164,7 +163,7 @@ export default async function SearchPage({
                                     <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium">
                                         {result.categoryLabel}
                                     </span>
-                                    <Link
+                                    <a
                                         href={result.href.replace(
                                             'https://www.gredice.com',
                                             '',
@@ -173,12 +172,12 @@ export default async function SearchPage({
                                         <Typography level="h5">
                                             {result.title}
                                         </Typography>
-                                    </Link>
+                                    </a>
                                 </Row>
                                 {result.summary ? (
                                     <Typography>{result.summary}</Typography>
                                 ) : null}
-                                <Link
+                                <a
                                     href={result.href.replace(
                                         'https://www.gredice.com',
                                         '',
@@ -186,7 +185,7 @@ export default async function SearchPage({
                                     className="text-sm text-green-700"
                                 >
                                     Otvori stranicu
-                                </Link>
+                                </a>
                             </Stack>
                         </Card>
                     ))}
