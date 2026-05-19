@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     cancelNotificationCampaign,
+    cleanupNotificationRetention,
     createNotification,
     createNotificationCampaign,
     createUserWithPassword,
@@ -13,6 +14,7 @@ import {
     getNotificationDeliverySummary,
     getNotificationsByAccount,
     getUser,
+    notificationCampaigns,
     notificationDeliveryAttempts,
     notifications,
     previewNotificationCampaignAudience,
@@ -257,6 +259,72 @@ test('explicit notification campaign audience excludes deleted gardens', async (
     assert.equal(preview.userCount, 0);
     assert.equal(preview.gardenCount, 0);
     assert.equal(preview.unmatchedRecipientCount, 1);
+});
+
+test('notification retention cleanup deletes old terminal campaigns', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userName = `retention-campaign-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(userName, 'password');
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+
+    async function createCampaignWithStatus(
+        status: 'sent' | 'cancelled' | 'failed' | 'queued',
+        updatedAt: Date,
+    ) {
+        const id = await createNotificationCampaign({
+            name: `Retention ${status} ${randomUUID()}`,
+            audience: { type: 'accounts', accountIds: [accountId] },
+            channelPolicy: {
+                inApp: true,
+                email: false,
+                push: false,
+                digest: false,
+                required: false,
+                respectPreferences: true,
+            },
+            header: 'Retention cleanup',
+            content: 'Retention cleanup campaign',
+            category: 'admin_campaigns',
+            eventType: 'retention_cleanup',
+            primaryChannel: 'in_app',
+            priority: 'normal',
+            metadata: {},
+            deliveryMetadata: {},
+            scheduledAt: null,
+            createdByUserId: userId,
+            createdFromAccountId: accountId,
+        });
+
+        await storage()
+            .update(notificationCampaigns)
+            .set({ status, updatedAt })
+            .where(eq(notificationCampaigns.id, id));
+
+        return id;
+    }
+
+    const oldDate = new Date(Date.now() - 400 * 24 * 60 * 60 * 1000);
+    const freshDate = new Date();
+    const oldSentId = await createCampaignWithStatus('sent', oldDate);
+    const oldCancelledId = await createCampaignWithStatus('cancelled', oldDate);
+    const oldFailedId = await createCampaignWithStatus('failed', oldDate);
+    const oldQueuedId = await createCampaignWithStatus('queued', oldDate);
+    const freshSentId = await createCampaignWithStatus('sent', freshDate);
+
+    const result = await cleanupNotificationRetention({
+        deleteTerminalCampaignsOlderThanDays: 365,
+    });
+
+    assert.equal(result.campaignsDeleted, 3);
+    assert.equal(await getNotificationCampaign(oldSentId), undefined);
+    assert.equal(await getNotificationCampaign(oldCancelledId), undefined);
+    assert.equal(await getNotificationCampaign(oldFailedId), undefined);
+    assert.ok(await getNotificationCampaign(oldQueuedId));
+    assert.ok(await getNotificationCampaign(freshSentId));
 });
 
 test('notification delivery summary tracks attempts and engagement events', async () => {

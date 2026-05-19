@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { test } from '@playwright/test';
 import { vizzlyScreenshot } from '@vizzly-testing/cli/client';
+import { test } from './fixtures';
 
 const FALLBACK_ROUTES = ['/'];
 

@@ -1,4 +1,4 @@
-import { expect, type Locator, test } from '@playwright/test';
+import { expect, type Locator, test } from './fixtures';
 
 async function typeSearch(locator: Locator, value: string) {
     await locator.click();

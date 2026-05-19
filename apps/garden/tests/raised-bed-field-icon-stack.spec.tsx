@@ -27,7 +27,10 @@ test('field icon stack keeps newest indicators on top and prepares spread offset
     });
     await page.getByTestId('cart').evaluate((cart) => {
         cart.addEventListener('pointerdown', (event) => {
-            if (event.pointerType === 'touch') {
+            if (
+                event instanceof PointerEvent &&
+                event.pointerType === 'touch'
+            ) {
                 cart.setAttribute('data-pressed', 'true');
             }
         });
@@ -162,7 +165,10 @@ test('field icon stack activates a single indicator on first touch', async ({
             cart.setAttribute('data-clicked', 'true');
         });
         cart.addEventListener('pointerdown', (event) => {
-            if (event.pointerType === 'touch') {
+            if (
+                event instanceof PointerEvent &&
+                event.pointerType === 'touch'
+            ) {
                 cart.setAttribute('data-pressed', 'true');
             }
         });
