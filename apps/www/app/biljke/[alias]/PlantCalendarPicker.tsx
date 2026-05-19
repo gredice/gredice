@@ -11,6 +11,7 @@ import {
 } from '@signalco/ui-primitives/Tabs';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import { CalendarInfoChip } from '../CalendarInfoChip';
 import { PlantGrowthCalendar } from './PlantGrowthCalendar';
 import { PlantYearCalendar } from './PlantYearCalendar';
 
@@ -32,16 +33,25 @@ export function PlantCalendarPicker({
             >
                 {hasCalendarData ? (
                     <Tabs defaultValue="year">
-                        <TabsList className="grid grid-cols-2 w-fit">
-                            <TabsTrigger value="year" className="flex gap-2">
-                                <Calendar className="size-5 shrink-0" />
-                                <span>Kalendar sijanja</span>
-                            </TabsTrigger>
-                            <TabsTrigger value="growth" className="flex gap-2">
-                                <Sprout className="size-5 shrink-0" />
-                                <span>Kalendar rasta</span>
-                            </TabsTrigger>
-                        </TabsList>
+                        <div className="flex flex-row gap-0.5 justify-between">
+                            <TabsList className="grid grid-cols-2 w-fit">
+                                <TabsTrigger
+                                    value="year"
+                                    className="flex gap-2"
+                                >
+                                    <Calendar className="size-5 shrink-0" />
+                                    <span>Kalendar sijanja</span>
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value="growth"
+                                    className="flex gap-2"
+                                >
+                                    <Sprout className="size-5 shrink-0" />
+                                    <span>Kalendar rasta</span>
+                                </TabsTrigger>
+                            </TabsList>
+                            <CalendarInfoChip className="self-center" />
+                        </div>
                         <TabsContent value="year">
                             <Card>
                                 <CardOverflow>

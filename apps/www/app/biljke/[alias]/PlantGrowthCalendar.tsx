@@ -41,7 +41,7 @@ const growthCalendarWindows: GrowthCalendarWindowItem[] = [
     },
     {
         name: 'harvest',
-        label: 'Branje',
+        label: 'Berba',
         color: 'bg-lime-400',
         border: 'border-lime-500',
         chipColor: 'bg-lime-200',
@@ -56,12 +56,21 @@ type GrowthWindowValueNames = keyof Pick<
     | 'harvestWindowMin'
     | 'harvestWindowMax'
 >;
-export type PlantYearCalendarProps = {
-    windows: Pick<PlantData['attributes'], GrowthWindowValueNames>;
+
+export type PlantGrowthCalendarWindows = Pick<
+    PlantData['attributes'],
+    GrowthWindowValueNames
+>;
+
+export type PlantGrowthCalendarProps = {
+    windows: PlantGrowthCalendarWindows;
     now?: Date;
 };
 
-export function PlantGrowthCalendar({ windows, now }: PlantYearCalendarProps) {
+export function PlantGrowthCalendar({
+    windows,
+    now,
+}: PlantGrowthCalendarProps) {
     const currentDate = now ?? new Date();
     const currentMonth = currentDate.getMonth(); // 0-indexed
     const currentMonthProgress =
@@ -92,7 +101,7 @@ export function PlantGrowthCalendar({ windows, now }: PlantYearCalendarProps) {
 
                 const windowMin = windows[`${window.name}WindowMin`];
                 const windowMax = windows[`${window.name}WindowMax`];
-                const windowStartDate = new Date();
+                const windowStartDate = new Date(currentDate);
                 windowStartDate.setDate(
                     windowStartDate.getDate() + lastWindowEndMin,
                 );
@@ -110,7 +119,7 @@ export function PlantGrowthCalendar({ windows, now }: PlantYearCalendarProps) {
                             spacing={1}
                             className="mx-2"
                         >
-                            <Typography level="body2">
+                            <Typography level="body2" title={window.label}>
                                 {window.label}
                             </Typography>
                             <div
