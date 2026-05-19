@@ -855,13 +855,13 @@ export async function cleanupNotificationRetention({
     disableInactiveSubscriptionDays = 90,
     deleteDeliveryEventsOlderThanDays = 180,
     deleteDeliveryAttemptsOlderThanDays = 180,
-    deleteCompletedCampaignsOlderThanDays = 365,
+    deleteTerminalCampaignsOlderThanDays = 365,
 }: {
     disableFailCountAtOrAbove?: number;
     disableInactiveSubscriptionDays?: number;
     deleteDeliveryEventsOlderThanDays?: number;
     deleteDeliveryAttemptsOlderThanDays?: number;
-    deleteCompletedCampaignsOlderThanDays?: number;
+    deleteTerminalCampaignsOlderThanDays?: number;
 } = {}): Promise<NotificationRetentionCleanupResult> {
     const now = Date.now();
     const staleSubscriptionCutoff = new Date(
@@ -874,7 +874,7 @@ export async function cleanupNotificationRetention({
         now - deleteDeliveryAttemptsOlderThanDays * 24 * 60 * 60 * 1000,
     );
     const campaignCutoff = new Date(
-        now - deleteCompletedCampaignsOlderThanDays * 24 * 60 * 60 * 1000,
+        now - deleteTerminalCampaignsOlderThanDays * 24 * 60 * 60 * 1000,
     );
 
     const disabledSubscriptions = await storage()
@@ -929,7 +929,7 @@ export async function cleanupNotificationRetention({
         .where(
             and(
                 inArray(notificationCampaigns.status, [
-                    'completed',
+                    'sent',
                     'cancelled',
                     'failed',
                 ]),
