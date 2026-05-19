@@ -20,6 +20,7 @@ import { StructuredDataScript } from '../../components/shared/seo/StructuredData
 import { getPlantsData } from '../../lib/plants/getPlantsData';
 import { KnownPages } from '../../src/KnownPages';
 import { merchantReturnPolicy } from '../../src/merchantReturnPolicy';
+import { CalendarInfoChip } from './CalendarInfoChip';
 import { PlantsCalendar } from './PlantsCalendar';
 import { PlantsGallery } from './PlantsGallery';
 import { PlantsSeedTimeFilterToggle } from './PlantsSeedTimeFilterToggle';
@@ -98,7 +99,7 @@ export default async function PlantsPage({
             </PageHeader>
             <Suspense>
                 <Tabs value={view} defaultValue="popis" className="w-full">
-                    <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
                         <TabsList className="grid grid-cols-2 w-fit border">
                             <Link
                                 href={`?pregled=popis${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
@@ -126,11 +127,14 @@ export default async function PlantsPage({
                                 </TabsTrigger>
                             </Link>
                         </TabsList>
-                        <Suspense>
-                            <PlantsSeedTimeFilterToggle
-                                initialValue={seedTimeFilterValue}
-                            />
-                        </Suspense>
+                        {view === 'kalendar' && <CalendarInfoChip />}
+                        <div className="flex flex-col gap-2 md:ml-auto md:flex-row md:items-center">
+                            <Suspense>
+                                <PlantsSeedTimeFilterToggle
+                                    initialValue={seedTimeFilterValue}
+                                />
+                            </Suspense>
+                        </div>
                     </div>
                     <TabsContent value="popis" className="mt-2">
                         <PlantsGallery
