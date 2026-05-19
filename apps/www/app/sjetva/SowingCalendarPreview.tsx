@@ -58,8 +58,8 @@ function CalendarPreviewFrame({
                         {description}
                     </Typography>
                 </Stack>
-                <Card className="bg-white">
-                    <div className="rounded-md bg-white">{children}</div>
+                <Card className="overflow-hidden bg-card">
+                    <div className="rounded-md">{children}</div>
                 </Card>
             </Stack>
         </figure>
