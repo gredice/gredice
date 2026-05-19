@@ -79,119 +79,124 @@ export function PlantGrowthCalendar({
     let lastWindowEndMin = 0;
     let windowsMinMaxDiffs = 0;
     return (
-        <div className="grid w-full grid-cols-[clamp(112px,30%,130px)_repeat(12,minmax(0,1fr))] overflow-hidden rounded-lg text-sm relative">
-            <div></div>
-            {plantCalendarMonths.map((month) => (
-                <Typography
-                    level="body2"
-                    center
-                    key={month}
-                    className="min-w-0 overflow-hidden border-l py-2 text-center"
-                >
-                    {month}
-                </Typography>
-            ))}
-            {growthCalendarWindows.map((window) => {
-                if (
-                    !Object.keys(windows).some(
-                        (a) => a === `${window.name}WindowMin`,
+        <div className="w-full overflow-x-auto">
+            <div className="grid min-w-[34rem] grid-cols-[clamp(112px,30%,130px)_repeat(12,minmax(0,1fr))] rounded-lg text-sm relative">
+                <div></div>
+                {plantCalendarMonths.map((month) => (
+                    <Typography
+                        level="body2"
+                        center
+                        key={month}
+                        className="min-w-0 overflow-hidden border-l py-2 text-center"
+                    >
+                        {month}
+                    </Typography>
+                ))}
+                {growthCalendarWindows.map((window) => {
+                    if (
+                        !Object.keys(windows).some(
+                            (a) => a === `${window.name}WindowMin`,
+                        )
                     )
-                )
-                    return null;
+                        return null;
 
-                const windowMin = windows[`${window.name}WindowMin`];
-                const windowMax = windows[`${window.name}WindowMax`];
-                const windowStartDate = new Date(currentDate);
-                windowStartDate.setDate(
-                    windowStartDate.getDate() + lastWindowEndMin,
-                );
-                const windowEndDate = new Date(windowStartDate);
-                windowEndDate.setDate(
-                    windowEndDate.getDate() + windowMax + windowsMinMaxDiffs,
-                );
-                lastWindowEndMin += windowMin;
-                windowsMinMaxDiffs += windowMax - windowMin;
+                    const windowMin = windows[`${window.name}WindowMin`];
+                    const windowMax = windows[`${window.name}WindowMax`];
+                    const windowStartDate = new Date(currentDate);
+                    windowStartDate.setDate(
+                        windowStartDate.getDate() + lastWindowEndMin,
+                    );
+                    const windowEndDate = new Date(windowStartDate);
+                    windowEndDate.setDate(
+                        windowEndDate.getDate() +
+                            windowMax +
+                            windowsMinMaxDiffs,
+                    );
+                    lastWindowEndMin += windowMin;
+                    windowsMinMaxDiffs += windowMax - windowMin;
 
-                return (
-                    <Fragment key={window.name}>
-                        <Row
-                            justifyContent="space-between"
-                            spacing={1}
-                            className="mx-2 min-w-0 overflow-hidden"
-                        >
-                            <Typography
-                                level="body2"
-                                title={window.label}
-                                className="min-w-0 truncate"
+                    return (
+                        <Fragment key={window.name}>
+                            <Row
+                                justifyContent="space-between"
+                                spacing={1}
+                                className="mx-2 min-w-0 overflow-hidden"
                             >
-                                {window.label}
-                            </Typography>
-                            <div
-                                className={`text-xs px-1 text-black rounded-full inline-block ml-2 border ${window.border} ${window.chipColor}`}
-                            >
-                                {windowMin}-{windowMax}d
-                            </div>
-                        </Row>
-                        {plantCalendarMonths.map((monthName, index) => {
-                            const month = index;
-                            const minStart =
-                                windowStartDate.getMonth() > month
-                                    ? 0
-                                    : windowStartDate.getDate() / 30;
-                            const maxEnd =
-                                windowEndDate.getMonth() > month
-                                    ? 1
-                                    : windowEndDate.getDate() / 30;
-                            const isActivityStart =
-                                month ===
-                                Math.floor(windowStartDate.getMonth());
-                            const isActivityEnd =
-                                month === Math.floor(windowEndDate.getMonth());
-                            // Account for case when start or end dates are in next year
-                            const isActivityActive =
-                                (month >= windowStartDate.getMonth() &&
-                                    month <= windowEndDate.getMonth()) ||
-                                (windowStartDate.getMonth() >
-                                    windowEndDate.getMonth() &&
-                                    (month >= windowStartDate.getMonth() ||
-                                        month <= windowEndDate.getMonth()));
-
-                            return (
-                                <div
-                                    key={monthName}
-                                    className="relative border-l"
+                                <Typography
+                                    level="body2"
+                                    title={window.label}
+                                    className="min-w-0 truncate"
                                 >
-                                    {isActivityActive && (
-                                        <div
-                                            className={`absolute inset-y-1 left-[--activity-left] -ml-[1px] right-[--activity-right] ${window.color} ${isActivityStart ? 'rounded-l-full' : ''} ${isActivityEnd ? 'rounded-r-full' : ''}`}
-                                            style={
-                                                {
-                                                    '--activity-left':
-                                                        isActivityStart
-                                                            ? `${Math.min(75, minStart * 100)}%`
-                                                            : '0px',
-                                                    '--activity-right':
-                                                        isActivityEnd
-                                                            ? `${Math.min(75, (1 - maxEnd) * 100)}%`
-                                                            : '0px',
-                                                } as CSSProperties
-                                            }
-                                        ></div>
-                                    )}
+                                    {window.label}
+                                </Typography>
+                                <div
+                                    className={`text-xs px-1 text-black rounded-full inline-block ml-2 border ${window.border} ${window.chipColor}`}
+                                >
+                                    {windowMin}-{windowMax}d
                                 </div>
-                            );
-                        })}
-                    </Fragment>
-                );
-            })}
-            <div className="grid grid-cols-subgrid [grid-column:2/-1] relative">
-                <div
-                    className="absolute bottom-0 w-0.5 bg-red-600"
-                    style={{
-                        top: `${-(Object.keys(growthCalendarWindows).length + 1) * 20}px`,
-                        left: `${((currentMonth + currentMonthProgress) / 12) * 100}%`,
-                    }}
-                />
+                            </Row>
+                            {plantCalendarMonths.map((monthName, index) => {
+                                const month = index;
+                                const minStart =
+                                    windowStartDate.getMonth() > month
+                                        ? 0
+                                        : windowStartDate.getDate() / 30;
+                                const maxEnd =
+                                    windowEndDate.getMonth() > month
+                                        ? 1
+                                        : windowEndDate.getDate() / 30;
+                                const isActivityStart =
+                                    month ===
+                                    Math.floor(windowStartDate.getMonth());
+                                const isActivityEnd =
+                                    month ===
+                                    Math.floor(windowEndDate.getMonth());
+                                // Account for case when start or end dates are in next year
+                                const isActivityActive =
+                                    (month >= windowStartDate.getMonth() &&
+                                        month <= windowEndDate.getMonth()) ||
+                                    (windowStartDate.getMonth() >
+                                        windowEndDate.getMonth() &&
+                                        (month >= windowStartDate.getMonth() ||
+                                            month <= windowEndDate.getMonth()));
+
+                                return (
+                                    <div
+                                        key={monthName}
+                                        className="relative border-l"
+                                    >
+                                        {isActivityActive && (
+                                            <div
+                                                className={`absolute inset-y-1 left-[--activity-left] -ml-[1px] right-[--activity-right] ${window.color} ${isActivityStart ? 'rounded-l-full' : ''} ${isActivityEnd ? 'rounded-r-full' : ''}`}
+                                                style={
+                                                    {
+                                                        '--activity-left':
+                                                            isActivityStart
+                                                                ? `${Math.min(75, minStart * 100)}%`
+                                                                : '0px',
+                                                        '--activity-right':
+                                                            isActivityEnd
+                                                                ? `${Math.min(75, (1 - maxEnd) * 100)}%`
+                                                                : '0px',
+                                                    } as CSSProperties
+                                                }
+                                            ></div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </Fragment>
+                    );
+                })}
+                <div className="grid grid-cols-subgrid [grid-column:2/-1] relative">
+                    <div
+                        className="absolute bottom-0 w-0.5 bg-red-600"
+                        style={{
+                            top: `${-(Object.keys(growthCalendarWindows).length + 1) * 20}px`,
+                            left: `${((currentMonth + currentMonthProgress) / 12) * 100}%`,
+                        }}
+                    />
+                </div>
             </div>
         </div>
     );
