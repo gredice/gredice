@@ -10,6 +10,7 @@ import {
     createGameState,
     GameStateContext,
     type GameStateStore,
+    useDisposeGameStateStore,
 } from '../useGameState';
 
 export interface PlantPerformanceViewerProps {
@@ -33,6 +34,7 @@ export function PlantPerformanceViewer({
             winterMode: 'summer',
         });
     }
+    useDisposeGameStateStore(storeRef.current);
 
     const presets = useMemo(() => {
         return Object.entries(plantTypes).map(([key, definition], index) => {

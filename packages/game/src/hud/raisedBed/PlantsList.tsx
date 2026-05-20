@@ -5,7 +5,6 @@ import {
     PlantYieldTooltip,
     SeedTimeInformationBadge,
 } from '@gredice/ui/plants';
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Alert } from '@signalco/ui/Alert';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
 import { Button } from '@signalco/ui-primitives/Button';
@@ -21,19 +20,21 @@ import { PlantListItemSkeleton } from './PlantListItemSkeleton';
 
 export function PlantsList({
     onChange,
+    search,
 }: {
     onChange: (plant: PlantData) => void;
+    search: string;
 }) {
     const { track } = useGameAnalytics();
     const { data: plants, isLoading, isError } = usePlants();
-    const [search] = useSearchParam('pretraga', '');
+    const normalizedSearch = search.trim().toLowerCase();
     // Filter plants based on search query
     const filteredPlants =
-        search.length > 0
+        normalizedSearch.length > 0
             ? plants?.filter((plant) =>
                   plant.information.name
                       .toLowerCase()
-                      .includes(search.toLowerCase()),
+                      .includes(normalizedSearch),
               )
             : plants;
 

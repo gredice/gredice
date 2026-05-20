@@ -18,7 +18,7 @@ Use this guide for repo layout, setup, commands, package boundaries, and local d
 ## Tooling
 
 - Runtime: Node.js `>=24`.
-- Package manager: pnpm `10.33.2`.
+- Package manager: pnpm, pinned by the root `packageManager` field.
 - Task runner: Turborepo.
 - Formatting and linting: Biome per app/package.
 - Framework: Next.js 16 with React 19 and TypeScript 6.
@@ -105,6 +105,16 @@ The dev proxy writes its Caddyfile from the registry at startup.
 - `api`: <https://api.gredice.test>
 - `status`: <https://status.gredice.test> with `pnpm --filter=status dev`
 
+Dev server ports are worktree-aware. App ports use the registry base port plus
+the current worktree's deterministic offset, and linked Git worktrees use proxy
+ports derived from the same offset instead of binding `80` and `443`. This lets
+a feature/Codex worktree run the same app beside a normal local checkout. The
+dev script prints the effective URL for each app; when the HTTPS proxy port is
+not `443`, use the printed port-qualified form such as
+`https://vrt.gredice.test:8001`. Override the derived slot with
+`GREDICE_PORT_OFFSET`, or force proxy ports with `GREDICE_PROXY_HTTP_PORT` and
+`GREDICE_PROXY_HTTPS_PORT`.
+
 The dev script verifies the hosts entries for the local `gredice.test` domains and attempts to add missing entries automatically. If it cannot modify the hosts file, add this entry manually and rerun the command:
 
 ```text
@@ -113,15 +123,24 @@ The dev script verifies the hosts entries for the local `gredice.test` domains a
 
 Docker must be running for the proxy. Use `SKIP_DEV_PROXY=1 pnpm dev` only when the local proxy is not needed.
 
+Only one default Caddy proxy can bind ports `80` and `443` at a time. Starting
+`pnpm dev` from another worktree stops older `gredice-dev-caddy*` containers
+that are holding those ports, then starts the proxy for the current worktree. To
+run another proxy concurrently, set `GREDICE_PROXY_HTTP_PORT` and
+`GREDICE_PROXY_HTTPS_PORT` and include the HTTPS port in local URLs.
+
 ### Development HTTPS certificates
 
-The local Caddy proxy terminates HTTPS. Its internal certificate authority is stored in `~/.gredice/dev-caddy` unless `GREDICE_DEV_CADDY_DATA_DIR` points somewhere else. The dev script attempts to trust the certificate authority automatically for the current OS.
+The local Caddy proxy terminates HTTPS. Its internal certificate authority is
+stored in `~/.gredice/dev-caddy/<worktree-slug>` unless
+`GREDICE_DEV_CADDY_DATA_DIR` points somewhere else. The dev script attempts to
+trust the certificate authority automatically for the current OS.
 
 If automatic trust fails, import `root.crt` manually from the Caddy data directory:
 
 - macOS: import `root.crt` into Keychain Access and mark it as trusted for SSL.
 - Windows: open `certmgr.msc`, then import `root.crt` into Trusted Root Certification Authorities.
-- Linux: run `trust anchor ~/.gredice/dev-caddy/caddy/pki/authorities/local/root.crt`, or use the distribution's certificate tooling.
+- Linux: run `trust anchor ~/.gredice/dev-caddy/<worktree-slug>/caddy/pki/authorities/local/root.crt`, or use the distribution's certificate tooling.
 
 After the certificate is trusted, browsers should accept the local `gredice.test` HTTPS domains.
 
@@ -136,6 +155,66 @@ pnpm env:pull
 ```
 
 `pnpm env:pull` runs `vercel env pull .env` in `apps/www`, `apps/garden`, `apps/farm`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
+
+### Public page revalidation
+
+`apps/app` triggers public `apps/www` ISR revalidation after admin changes to directory plants, plant sorts, and operations. Configure the same `GREDICE_WWW_REVALIDATE_SECRET` in both apps. In production the admin app calls `https://www.gredice.com/api/revalidate/directories`; for preview or custom environments, set `GREDICE_WWW_REVALIDATE_URL` in `apps/app` to the target `www` deployment URL.
+
+### Codex environment setup
+
+Use a lean Codex environment for routine code tasks. Pin Node.js to `24.15.0` when the environment UI asks for an exact version, and use Corepack to install the pnpm version pinned by `packageManager`.
+
+Recommended Codex setup script:
+
+```bash
+set -euo pipefail
+
+corepack enable
+corepack install
+
+pnpm install --frozen-lockfile
+
+for f in apps/*/.env.example packages/*/.env.example; do
+  target="${f%.example}"
+  [ -f "$target" ] || cp "$f" "$target"
+done
+
+pnpm --filter www exec playwright install --with-deps chromium
+pnpm lint:ci-filters
+```
+
+Recommended Codex maintenance script:
+
+```bash
+set -euo pipefail
+
+corepack enable
+corepack install
+pnpm install --frozen-lockfile --prefer-offline
+```
+
+Recommended Codex environment variables:
+
+```bash
+CI=true
+NEXT_TELEMETRY_DISABLED=1
+TURBO_TELEMETRY_DISABLED=1
+PLAYWRIGHT_HTML_OPEN=never
+```
+
+Keep agent internet access off by default. Setup scripts already have internet access for dependency installation. If a task truly needs runtime internet access, prefer the common dependency allowlist and read-only HTTP methods.
+
+Do not use `pnpm dev` as the default Codex validation path. It starts the local HTTPS proxy and expects Docker, host entries, and Caddy certificate setup. Use targeted `pnpm lint --filter <workspace>`, `pnpm test --filter <workspace>`, and `pnpm build --filter <workspace>` commands instead.
+
+Avoid `pnpm bootstrap` in Codex unless Vercel auth and project access are configured. It links projects and pulls real environment variables. For most Codex tasks, the checked-in `.env.example` files provide enough safe smoke-test configuration.
+
+For secret-backed integration or visual tests, create a separate Codex environment with the required Vercel credentials, then run:
+
+```bash
+npm i -g vercel@latest
+pnpm vercel:link
+pnpm env:pull
+```
 
 ## Storage test database (Docker, local Postgres, and PGlite)
 

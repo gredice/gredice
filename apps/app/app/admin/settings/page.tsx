@@ -1,15 +1,19 @@
 import {
+    DEFAULT_ADMIN_TIME_ZONE,
     getEntityTypeCategories,
     getEntityTypes,
     getNotificationSetting,
     getSetting,
     IntegrationTypes,
+    isAdminGeneralSettingValue,
+    isGoogleCalendarSettingValue,
+    listSocialAccounts,
     NotificationSettingKeys,
     type SelectNotificationSetting,
     SettingsKeys,
     type SlackConfig,
 } from '@gredice/storage';
-import { Add, Edit } from '@signalco/ui-icons';
+import { Add, Check, Edit, Warning } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import {
     Card,
@@ -30,11 +34,18 @@ import {
 } from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { SlackChannelSettingForm } from '../communication/slack/SlackChannelSettingForm';
+import { AdminGeneralSettingForm } from './AdminGeneralSettingForm';
 import { DashboardQuickActionsSettingForm } from './DashboardQuickActionsSettingForm';
+import { GoogleCalendarSettingForm } from './GoogleCalendarSettingForm';
+import { SocialIntegrationsOverview } from './integrations/social/_components/SocialIntegrationsOverview';
 
 export const dynamic = 'force-dynamic';
 
 const SETTINGS_SECTIONS = [
+    {
+        id: 'general-settings',
+        title: 'Općenito',
+    },
     {
         id: 'directory-settings',
         title: 'Zapisi',
@@ -42,6 +53,10 @@ const SETTINGS_SECTIONS = [
     {
         id: 'dashboard-settings',
         title: 'Kontrolna ploča',
+    },
+    {
+        id: 'integration-settings',
+        title: 'Integracije',
     },
     {
         id: 'notification-settings',
@@ -74,14 +89,20 @@ export default async function SettingsPage() {
         shopping,
         categories,
         entityTypes,
+        adminGeneralSetting,
         dashboardQuickActionsSetting,
+        googleCalendarSetting,
+        socialAccounts,
     ] = await Promise.all([
         getNotificationSetting(NotificationSettingKeys.SlackDeliveryChannel),
         getNotificationSetting(NotificationSettingKeys.SlackNewUsersChannel),
         getNotificationSetting(NotificationSettingKeys.SlackShoppingChannel),
         getEntityTypeCategories(),
         getEntityTypes(),
+        getSetting(SettingsKeys.AdminGeneral),
         getSetting(SettingsKeys.DashboardQuickActions),
+        getSetting(SettingsKeys.GoogleCalendar),
+        listSocialAccounts(),
     ]);
 
     const dashboardQuickActionOptions = buildDashboardQuickActionOptions(
@@ -95,6 +116,21 @@ export default async function SettingsPage() {
     const selectedDashboardQuickActionIds = getQuickActionIdsFromConfig(
         dashboardQuickActionsSetting?.value,
     );
+    const googleCalendarConfig = isGoogleCalendarSettingValue(
+        googleCalendarSetting?.value,
+    )
+        ? googleCalendarSetting.value
+        : undefined;
+    const activeSocialAccounts = socialAccounts.filter(
+        (account) => account.status === 'active',
+    ).length;
+    const adminGeneralConfig = isAdminGeneralSettingValue(
+        adminGeneralSetting?.value,
+    )
+        ? adminGeneralSetting.value
+        : undefined;
+    const adminTimeZone =
+        adminGeneralConfig?.timeZone ?? DEFAULT_ADMIN_TIME_ZONE;
 
     return (
         <Stack spacing={4}>
@@ -121,6 +157,38 @@ export default async function SettingsPage() {
                 </nav>
 
                 <div className="space-y-16">
+                    <section
+                        id="general-settings"
+                        className="scroll-mt-28"
+                        aria-labelledby="general-settings-heading"
+                    >
+                        <Stack spacing={3}>
+                            <Stack spacing={1}>
+                                <Typography
+                                    id="general-settings-heading"
+                                    level="h2"
+                                    semiBold
+                                >
+                                    Općenito
+                                </Typography>
+                                <Typography level="body1">
+                                    Osnovne postavke backofficea koje koriste
+                                    administrativni procesi i integracije.
+                                </Typography>
+                            </Stack>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Backoffice</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <AdminGeneralSettingForm
+                                        initialTimeZone={adminTimeZone}
+                                    />
+                                </CardContent>
+                            </Card>
+                        </Stack>
+                    </section>
+
                     <section
                         id="directory-settings"
                         className="scroll-mt-28"
@@ -243,6 +311,116 @@ export default async function SettingsPage() {
                                         selectedActionIds={
                                             selectedDashboardQuickActionIds
                                         }
+                                    />
+                                </CardContent>
+                            </Card>
+                        </Stack>
+                    </section>
+
+                    <section
+                        id="integration-settings"
+                        className="scroll-mt-28"
+                        aria-labelledby="integration-settings-heading"
+                    >
+                        <Stack spacing={3}>
+                            <Stack spacing={1}>
+                                <Typography
+                                    id="integration-settings-heading"
+                                    level="h2"
+                                    semiBold
+                                >
+                                    Integracije
+                                </Typography>
+                                <Typography level="body1">
+                                    Poveži vanjske servise koji se koriste u
+                                    operativnim procesima.
+                                </Typography>
+                            </Stack>
+                            <Card>
+                                <CardHeader>
+                                    <Row
+                                        justifyContent="space-between"
+                                        alignItems="center"
+                                    >
+                                        <CardTitle>Google kalendar</CardTitle>
+                                        <div
+                                            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm ${
+                                                googleCalendarConfig
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : 'bg-amber-100 text-amber-800'
+                                            }`}
+                                        >
+                                            {googleCalendarConfig ? (
+                                                <Check className="size-4" />
+                                            ) : (
+                                                <Warning className="size-4" />
+                                            )}
+                                            <span>
+                                                {googleCalendarConfig
+                                                    ? 'Povezano'
+                                                    : 'Nije povezano'}
+                                            </span>
+                                        </div>
+                                    </Row>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <p className="text-sm text-muted-foreground">
+                                        Zahtjevi za dostavu dodaju se u Google
+                                        kalendar kada nastanu, a uklanjaju kada
+                                        se otkažu.
+                                    </p>
+                                    <GoogleCalendarSettingForm
+                                        initialClientEmail={
+                                            googleCalendarConfig?.clientEmail
+                                        }
+                                        initialCalendarId={
+                                            googleCalendarConfig?.calendarId
+                                        }
+                                        hasPrivateKey={Boolean(
+                                            googleCalendarConfig?.privateKey,
+                                        )}
+                                    />
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader>
+                                    <Row
+                                        justifyContent="space-between"
+                                        alignItems="center"
+                                    >
+                                        <CardTitle>
+                                            Društvene platforme
+                                        </CardTitle>
+                                        <div
+                                            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm ${
+                                                activeSocialAccounts
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : 'bg-amber-100 text-amber-800'
+                                            }`}
+                                        >
+                                            {activeSocialAccounts ? (
+                                                <Check className="size-4" />
+                                            ) : (
+                                                <Warning className="size-4" />
+                                            )}
+                                            <span>
+                                                {activeSocialAccounts
+                                                    ? `${activeSocialAccounts} aktivno`
+                                                    : 'Nije povezano'}
+                                            </span>
+                                        </div>
+                                    </Row>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <p className="text-sm text-muted-foreground">
+                                        Direktno slanje koristi provider
+                                        konfiguraciju iz deployment environment
+                                        varijabli. Svaka platforma ima vlastitu
+                                        instalaciju i zasebne konfiguracije za
+                                        više računa.
+                                    </p>
+                                    <SocialIntegrationsOverview
+                                        accounts={socialAccounts}
                                     />
                                 </CardContent>
                             </Card>

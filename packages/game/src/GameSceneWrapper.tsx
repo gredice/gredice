@@ -9,6 +9,7 @@ import {
     createGameState,
     GameStateContext,
     type GameStateStore,
+    useDisposeGameStateStore,
 } from './useGameState';
 
 export function GameSceneWrapper({
@@ -30,6 +31,7 @@ export function GameSceneWrapper({
             winterMode: winterMode ?? 'summer',
         });
     }
+    useDisposeGameStateStore(storeRef.current);
 
     // Sync winterMode prop changes to the store
     useEffect(() => {

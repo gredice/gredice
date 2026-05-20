@@ -34,8 +34,7 @@ export function FactCard({
         Number.isFinite(Number(beforeValue));
     const change = hasChange
         ? Number(beforeValue) > 0
-            ? ((numericValue - Number(beforeValue)) / Number(beforeValue)) *
-              100
+            ? ((numericValue - Number(beforeValue)) / Number(beforeValue)) * 100
             : numericValue * 100
         : 0;
     const changeText = hasChange

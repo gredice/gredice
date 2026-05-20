@@ -20,6 +20,7 @@ import { StructuredDataScript } from '../../components/shared/seo/StructuredData
 import { getPlantsData } from '../../lib/plants/getPlantsData';
 import { KnownPages } from '../../src/KnownPages';
 import { merchantReturnPolicy } from '../../src/merchantReturnPolicy';
+import { CalendarInfoChip } from './CalendarInfoChip';
 import { PlantsCalendar } from './PlantsCalendar';
 import { PlantsGallery } from './PlantsGallery';
 import { PlantsSeedTimeFilterToggle } from './PlantsSeedTimeFilterToggle';
@@ -36,11 +37,14 @@ export default async function PlantsPage({
     const params = await searchParams;
     const viewParam = params.pregled;
     const view = Array.isArray(viewParam) ? viewParam[0] : viewParam;
-    const search = params.pretraga;
+    const search = Array.isArray(params.pretraga)
+        ? (params.pretraga[0] ?? '')
+        : (params.pretraga ?? '');
     const seedTimeFilter = params.vrijemeZaSijanje;
-    const isSeedTimeFilterEnabled =
-        (Array.isArray(seedTimeFilter) ? seedTimeFilter[0] : seedTimeFilter) ===
-        '1';
+    const seedTimeFilterValue = Array.isArray(seedTimeFilter)
+        ? (seedTimeFilter[0] ?? '')
+        : (seedTimeFilter ?? '');
+    const isSeedTimeFilterEnabled = seedTimeFilterValue === '1';
     const entities = await getPlantsData();
     const isCanonicalView = !search && !isSeedTimeFilterEnabled;
     const sortedEntities = orderBy(entities ?? [], (a, b) =>
@@ -88,13 +92,14 @@ export default async function PlantsPage({
                     <PageFilterInputNoSSR
                         searchParamName="pretraga"
                         fieldName="plant-search"
+                        initialValue={search}
                         className="lg:flex items-start justify-end"
                     />
                 </Suspense>
             </PageHeader>
             <Suspense>
                 <Tabs value={view} defaultValue="popis" className="w-full">
-                    <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
                         <TabsList className="grid grid-cols-2 w-fit border">
                             <Link
                                 href={`?pregled=popis${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
@@ -122,17 +127,30 @@ export default async function PlantsPage({
                                 </TabsTrigger>
                             </Link>
                         </TabsList>
-                        <Suspense>
-                            <PlantsSeedTimeFilterToggle />
-                        </Suspense>
+                        {view === 'kalendar' && <CalendarInfoChip />}
+                        <div className="flex flex-col gap-2 md:ml-auto md:flex-row md:items-center">
+                            <Suspense>
+                                <PlantsSeedTimeFilterToggle
+                                    initialValue={seedTimeFilterValue}
+                                />
+                            </Suspense>
+                        </div>
                     </div>
                     <TabsContent value="popis" className="mt-2">
-                        <PlantsGallery plants={entities} />
+                        <PlantsGallery
+                            plants={entities}
+                            initialSearch={search}
+                            initialSeedTimeFilter={seedTimeFilterValue}
+                        />
                     </TabsContent>
                     <TabsContent value="kalendar" className="mt-2">
                         <Card>
                             <CardOverflow>
-                                <PlantsCalendar plants={entities} />
+                                <PlantsCalendar
+                                    plants={entities}
+                                    initialSearch={search}
+                                    initialSeedTimeFilter={seedTimeFilterValue}
+                                />
                             </CardOverflow>
                         </Card>
                     </TabsContent>

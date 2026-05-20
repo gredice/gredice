@@ -3,6 +3,10 @@ import { KnownPages } from '../../../src/KnownPages';
 export const adminPages = {
     Dashboard: { href: KnownPages.Dashboard, label: 'Početna' },
     Directories: { href: KnownPages.Directories, label: 'Zapisi' },
+    DirectoriesActivity: {
+        href: KnownPages.DirectoriesActivity,
+        label: 'Aktivnosti',
+    },
     CmsPages: { href: KnownPages.CmsPages, label: 'Stranice' },
     Accounts: { href: KnownPages.Accounts, label: 'Korisnički računi' },
     Achievements: { href: KnownPages.Achievements, label: 'Postignuća' },
@@ -46,11 +50,16 @@ export const adminPages = {
     Sensors: { href: KnownPages.Sensors, label: 'Senzori' },
     Cache: { href: KnownPages.Cache, label: 'Cache' },
     AiAnalytics: { href: KnownPages.AiAnalytics, label: 'AI analitika' },
+    SocialPublishing: {
+        href: KnownPages.SocialPublishing,
+        label: 'Društvene objave',
+    },
 } as const;
 
 export const adminBreadcrumbPages = [
     adminPages.Dashboard,
     adminPages.Directories,
+    adminPages.DirectoriesActivity,
     adminPages.CmsPages,
     adminPages.Accounts,
     adminPages.Achievements,
@@ -79,4 +88,5 @@ export const adminBreadcrumbPages = [
     adminPages.Sensors,
     adminPages.Cache,
     adminPages.AiAnalytics,
+    adminPages.SocialPublishing,
 ] as const;

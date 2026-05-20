@@ -1,4 +1,5 @@
 import { animated } from '@react-spring/three';
+import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -25,6 +26,12 @@ export function ShovelSmall({ stack, block, rotation }: EntityInstanceProps) {
                 <SnowOverlay
                     geometry={nodes.Shovel_Small.geometry}
                     {...snowPresets.tool}
+                />
+                <RainWetOverlay
+                    geometry={nodes.Shovel_Small.geometry}
+                    topSurfaceBias={2.8}
+                    darkness={0.8}
+                    glossiness={0.9}
                 />
             </mesh>
         </animated.group>

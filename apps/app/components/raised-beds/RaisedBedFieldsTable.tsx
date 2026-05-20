@@ -279,21 +279,14 @@ function RaisedBedFieldTile({
     ];
 
     return (
-        <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-background shadow-sm">
-            <RaisedBedFieldPlantSortSelector
-                raisedBedId={raisedBedId}
-                positionIndex={positionIndex}
-                status={field?.plantStatus ?? null}
-                plantSortId={field?.plantSortId}
-                plantSorts={plantSorts}
-            />
-            <div className="relative aspect-[4/3] bg-muted/40">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border bg-background shadow-sm">
+            <div className="relative min-h-52 flex-1 bg-muted/40">
                 {field?.active && sort ? (
                     <PlantOrSortImage
                         plantSort={sort}
                         alt={plantLabel}
                         fill
-                        className="object-cover p-2 md:p-3"
+                        className="object-cover"
                         sizes="(min-width: 1536px) 14rem, (min-width: 1280px) 16rem, (min-width: 768px) 18rem, 50vw"
                     />
                 ) : (
@@ -314,17 +307,40 @@ function RaisedBedFieldTile({
                     #{positionIndex + 1}
                 </div>
             </div>
-            <div className="flex flex-1 flex-col gap-2 p-2">
+            <div className="flex flex-col gap-2 p-2">
+                <RaisedBedFieldPlantSortSelector
+                    raisedBedId={raisedBedId}
+                    positionIndex={positionIndex}
+                    status={field?.plantStatus ?? null}
+                    plantSortId={field?.plantSortId}
+                    plantSorts={plantSorts}
+                />
                 {field?.active && (
-                    <Stack spacing={1} className="flex-1">
+                    <Stack spacing={1}>
                         {field.plantStatus && (
-                            <RaisedBedFieldPlantStatusSelector
-                                raisedBedId={raisedBedId}
-                                positionIndex={positionIndex}
-                                status={field.plantStatus}
-                            />
+                            <div className="flex items-center gap-2">
+                                <div className="min-w-0 flex-1">
+                                    <RaisedBedFieldPlantStatusSelector
+                                        raisedBedId={raisedBedId}
+                                        positionIndex={positionIndex}
+                                        status={field.plantStatus}
+                                    />
+                                </div>
+                                {activePlantCycle && (
+                                    <MoveRaisedBedFieldPlantModal
+                                        raisedBedId={raisedBedId}
+                                        sourcePositionIndex={positionIndex}
+                                        sourcePlantPlaceEventId={
+                                            activePlantCycle.plantPlaceEventId
+                                        }
+                                        sourcePlantLabel={plantLabel}
+                                        targetOptions={moveTargetOptions}
+                                        triggerVariant="icon"
+                                    />
+                                )}
+                            </div>
                         )}
-                        {activePlantCycle && (
+                        {activePlantCycle && !field.plantStatus && (
                             <MoveRaisedBedFieldPlantModal
                                 raisedBedId={raisedBedId}
                                 sourcePositionIndex={positionIndex}
@@ -333,6 +349,7 @@ function RaisedBedFieldTile({
                                 }
                                 sourcePlantLabel={plantLabel}
                                 targetOptions={moveTargetOptions}
+                                triggerVariant="icon"
                             />
                         )}
                         <Stack>

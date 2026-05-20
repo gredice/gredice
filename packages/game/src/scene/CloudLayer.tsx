@@ -14,9 +14,11 @@ import {
 } from 'three';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
+import type { GameCloudShadowMode } from './gameQuality';
 
 const MAX_CLOUDS = 8;
 const CLOUD_ALPHA_TEST = 0.025;
+const CLOUD_SHADOW_ALPHA_TEST = 0.08;
 const CLOUD_MARGIN = 12;
 const CLOUD_WORLD_ALTITUDE = 10;
 const CLOUD_ALTITUDE_VARIATION = 4;
@@ -32,6 +34,7 @@ const CLOUD_MIN_COVERAGE_SCALE = 0.62;
 const CLOUD_MAX_COVERAGE_SCALE = 1.14;
 const CLOUD_BASE_DRIFT_SPEED = 0.35;
 const CLOUD_WIND_DRIFT_SPEED = 0.5;
+const CLOUD_RENDER_ORDER = 30;
 
 function smoothstep(edge0: number, edge1: number, value: number) {
     const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
@@ -132,6 +135,7 @@ function getCloudBounds(stacks: Stack[] | undefined) {
 type CloudLayerProps = {
     cloudy: number;
     foggy: number;
+    shadowMode: GameCloudShadowMode;
     shadowStrength: number;
     stacks: Stack[] | undefined;
     timeOfDay: number;
@@ -210,6 +214,7 @@ function spawnCloud(
 export function CloudLayer({
     cloudy,
     foggy,
+    shadowMode,
     shadowStrength,
     stacks,
     timeOfDay,
@@ -473,12 +478,24 @@ export function CloudLayer({
                     key={cloud.id}
                     castShadow={index < shadowCasterCount}
                     frustumCulled={false}
+                    renderOrder={CLOUD_RENDER_ORDER}
                     ref={(mesh) => {
                         cloudRefs.current[index] = mesh;
                     }}
                 >
                     <planeGeometry args={[cloud.width, cloud.height]} />
-                    <meshDepthMaterial attach="customDepthMaterial" alphaHash />
+                    {shadowMode === 'hard' ? (
+                        <meshDepthMaterial
+                            attach="customDepthMaterial"
+                            alphaMap={cloudAlphaTexture}
+                            alphaTest={CLOUD_SHADOW_ALPHA_TEST}
+                        />
+                    ) : (
+                        <meshDepthMaterial
+                            attach="customDepthMaterial"
+                            alphaHash
+                        />
+                    )}
                     <meshBasicMaterial
                         alphaMap={cloudAlphaTexture}
                         alphaTest={CLOUD_ALPHA_TEST}

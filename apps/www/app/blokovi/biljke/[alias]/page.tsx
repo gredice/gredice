@@ -42,7 +42,7 @@ export async function generateStaticParams() {
         plants
             ?.filter((p) => resolvePlantType(p.information.name) !== null)
             .map((plant) => ({
-                alias: toPageAlias(plant.information.name),
+                alias: plant.slug || toPageAlias(plant.information.name),
             })) ?? []
     );
 }

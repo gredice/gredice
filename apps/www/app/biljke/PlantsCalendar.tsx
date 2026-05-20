@@ -2,12 +2,13 @@
 
 import type { PlantData } from '@gredice/client';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { orderBy } from '@signalco/js';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { type CSSProperties, Fragment } from 'react';
+import { useClientSearchParam } from '../../hooks/useClientSearchParam';
+import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { KnownPages } from '../../src/KnownPages';
 
 const calendarMonths = [
@@ -26,35 +27,39 @@ const calendarMonths = [
 ];
 
 const calendarActivityTypes = {
-    sowing: {
-        name: 'sowing',
-        label: 'Sijanje',
-        color: 'bg-yellow-400',
-    },
     propagating: {
-        name: 'propagating',
-        label: 'Uzgoj',
+        name: 'Sijanje unutra',
         color: 'bg-blue-400',
     },
+    sowing: {
+        name: 'Sijanje vani',
+        color: 'bg-yellow-400',
+    },
     planting: {
-        name: 'planting',
-        label: 'Sadnja',
+        name: 'Presađivanje',
         color: 'bg-amber-600',
     },
     harvest: {
-        name: 'harvest',
-        label: 'Branje',
+        name: 'Berba',
         color: 'bg-lime-400',
     },
 } as const;
 
 export function PlantsCalendar({
+    initialSearch = '',
+    initialSeedTimeFilter = '',
     plants,
 }: {
+    initialSearch?: string;
+    initialSeedTimeFilter?: string;
     plants: (PlantData & { isRecommended?: boolean })[] | undefined;
 }) {
-    const [search] = useSearchParam('pretraga');
-    const [seedTimeFilter] = useSearchParam('vrijemeZaSijanje');
+    const [search] = useClientSearchParam('pretraga', initialSearch);
+    const [seedTimeFilter] = useClientSearchParam(
+        'vrijemeZaSijanje',
+        initialSeedTimeFilter,
+    );
+    const normalizedSearch = normalizeSearchText(search);
     const onlySeedTimePlants = seedTimeFilter === '1';
     const filteredPlants = orderBy(plants ?? [], (a, b) =>
         a.information.name.localeCompare(b.information.name),
@@ -62,10 +67,10 @@ export function PlantsCalendar({
         .filter((plant) => !onlySeedTimePlants || plant.isRecommended)
         .filter(
             (plant) =>
-                !search ||
-                plant.information.name
-                    .toLowerCase()
-                    .includes(search.toLowerCase()),
+                !normalizedSearch ||
+                normalizeSearchText(plant.information.name).includes(
+                    normalizedSearch,
+                ),
         )
         .map((plant) => ({ ...plant, id: plant.id.toString() }));
 
@@ -76,7 +81,7 @@ export function PlantsCalendar({
         new Date(currentDate.getFullYear(), currentMonth, 0).getDate();
 
     return (
-        <div className="grid grid-cols-[200px_repeat(12,1fr)] text-sm rounded-lg overflow-x-auto relative">
+        <div className="grid grid-cols-[260px_repeat(12,1fr)] text-sm rounded-lg overflow-x-auto relative">
             <div></div>
             {calendarMonths.map((month) => (
                 <Typography
@@ -137,8 +142,12 @@ export function PlantsCalendar({
                                         </Row>
                                         <Row>
                                             {plantIndex === 0 && (
-                                                <Typography level="body2">
-                                                    {activityType.label}
+                                                <Typography
+                                                    level="body2"
+                                                    title={activityType.name}
+                                                    className="whitespace-nowrap"
+                                                >
+                                                    {activityType.name}
                                                 </Typography>
                                             )}
                                             <div

@@ -3,6 +3,7 @@ import { Info, Navigate } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import type { useCheckout } from '../../../hooks/useCheckout';
 import type { useShoppingCart } from '../../../hooks/useShoppingCart';
+import { SunflowerCheckoutBalance } from './SunflowerCheckoutBalance';
 
 type ButtonConfirmPaymentProps = {
     cart: ReturnType<typeof useShoppingCart>['data'];
@@ -46,7 +47,9 @@ export function ButtonConfirmPayment({
                             Potvrdi i plati
                         </Button>
                     }
-                />
+                >
+                    <SunflowerCheckoutBalance cart={cart} />
+                </ModalConfirm>
             ) : (
                 <Button
                     variant="solid"

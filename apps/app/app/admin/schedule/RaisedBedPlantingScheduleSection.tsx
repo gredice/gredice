@@ -14,7 +14,14 @@ import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { KnownPages } from '../../../src/KnownPages';
-import { raisedBedPlanted } from '../../(actions)/raisedBedFieldsActions';
+import {
+    acceptRaisedBedFieldAction,
+    assignRaisedBedFieldUserAction,
+    cancelRaisedBedFieldAction,
+    raisedBedPlanted,
+    rescheduleRaisedBedFieldAction,
+    verifyRaisedBedPlantingAction,
+} from '../../(actions)/raisedBedFieldsActions';
 import { AcceptRaisedBedFieldModal } from './AcceptRaisedBedFieldModal';
 import { AssignRaisedBedFieldModal } from './AssignRaisedBedFieldModal';
 import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
@@ -24,6 +31,7 @@ import { CancelRaisedBedFieldModal } from './CancelRaisedBedFieldModal';
 import { CompletePlantingModal } from './CompletePlantingModal';
 import { CopyTasksButton } from './CopyTasksButton';
 import { RescheduleRaisedBedFieldModal } from './RescheduleRaisedBedFieldModal';
+import { parseScheduledDateInput } from './scheduleOptimisticHelpers';
 import {
     formatMinutes,
     isFieldApproved,
@@ -32,6 +40,7 @@ import {
     PLANTING_TASK_DURATION_MINUTES,
 } from './scheduleShared';
 import type { RaisedBed, RaisedBedField } from './types';
+import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 import { VerifyPlantingModal } from './VerifyPlantingModal';
 
 interface RaisedBedPlantingScheduleSectionProps {
@@ -52,6 +61,9 @@ export function RaisedBedPlantingScheduleSection({
     plantSorts,
     assignableFarmUsersByRaisedBedFieldId,
 }: RaisedBedPlantingScheduleSectionProps) {
+    const { getFieldPatch, runOptimisticAction } =
+        useOptimisticScheduleActions();
+
     if (raisedBeds.length === 0) {
         return null;
     }
@@ -68,16 +80,21 @@ export function RaisedBedPlantingScheduleSection({
                 (raisedBed) => raisedBed.id === field.raisedBedId,
             ),
         )
-        .map((field) => ({
-            ...field,
-            physicalPositionIndex: sortedRaisedBeds
-                .at(0)
-                ?.fields.find(
-                    (raisedBedField) => raisedBedField.id === field.id,
-                )
-                ? field.positionIndex + 1
-                : field.positionIndex + 10,
-        }))
+        .map((field) => {
+            const optimisticPatch = getFieldPatch(field.id);
+            return {
+                ...field,
+                ...optimisticPatch,
+                physicalPositionIndex: sortedRaisedBeds
+                    .at(0)
+                    ?.fields.find(
+                        (raisedBedField) => raisedBedField.id === field.id,
+                    )
+                    ? field.positionIndex + 1
+                    : field.positionIndex + 10,
+            };
+        })
+        .filter((field) => !field.isDeleted)
         .sort((a, b) => a.physicalPositionIndex - b.physicalPositionIndex);
 
     const copyTasks = dayFields.map((field) => {
@@ -118,6 +135,7 @@ export function RaisedBedPlantingScheduleSection({
                 ) ** 2;
 
             return {
+                id: field.id,
                 raisedBedId: field.raisedBedId,
                 positionIndex: field.positionIndex,
                 label: `${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : 'Nepoznato'}`,
@@ -131,6 +149,7 @@ export function RaisedBedPlantingScheduleSection({
                 !isFieldCompleted(field.plantStatus),
         )
         .map((field) => ({
+            id: field.id,
             raisedBedId: field.raisedBedId,
             positionIndex: field.positionIndex,
         }));
@@ -166,6 +185,27 @@ export function RaisedBedPlantingScheduleSection({
                     physicalId={physicalId.toString()}
                     fields={fieldsToApprove}
                     operations={[]}
+                    onConfirm={() =>
+                        runOptimisticAction({
+                            fieldPatches: fieldsToApprove.map((field) => ({
+                                id: field.id,
+                                patch: { plantStatus: 'planned' },
+                            })),
+                            action: () =>
+                                Promise.all(
+                                    fieldsToApprove.map((field) =>
+                                        acceptRaisedBedFieldAction(
+                                            field.raisedBedId,
+                                            field.positionIndex,
+                                        ),
+                                    ),
+                                ),
+                            errorLogMessage:
+                                'Failed to approve all raised bed planting items:',
+                            errorAlertMessage:
+                                'Skupna potvrda sijanja nije uspjela. Promjena je vraćena.',
+                        })
+                    }
                 />
                 <Row
                     spacing={0.5}
@@ -193,11 +233,76 @@ export function RaisedBedPlantingScheduleSection({
                         physicalId={physicalId.toString()}
                         fields={fieldsToAssign}
                         operations={[]}
+                        onSubmit={(assignedUserIds) =>
+                            runOptimisticAction({
+                                fieldPatches: fieldsToAssign.map((field) => ({
+                                    id: field.id,
+                                    patch: {
+                                        assignedUserId:
+                                            assignedUserIds[0] ?? null,
+                                        assignedUserIds,
+                                    },
+                                })),
+                                action: () =>
+                                    Promise.all(
+                                        fieldsToAssign.map((field) =>
+                                            assignRaisedBedFieldUserAction(
+                                                field.id,
+                                                assignedUserIds,
+                                            ),
+                                        ),
+                                    ),
+                                errorLogMessage:
+                                    'Failed to assign users for all raised bed planting items:',
+                                errorAlertMessage:
+                                    'Skupna dodjela sijanja nije uspjela. Promjena je vraćena.',
+                            })
+                        }
                     />
                     <BulkRescheduleRaisedBedButton
                         physicalId={physicalId.toString()}
                         fields={fieldsToReschedule}
                         operations={[]}
+                        onSubmit={(scheduledDate) =>
+                            runOptimisticAction({
+                                fieldPatches: fieldsToReschedule.map(
+                                    (field) => ({
+                                        id: field.id,
+                                        patch: {
+                                            plantScheduledDate:
+                                                parseScheduledDateInput(
+                                                    scheduledDate,
+                                                ),
+                                        },
+                                    }),
+                                ),
+                                action: () =>
+                                    Promise.all(
+                                        fieldsToReschedule.map((field) => {
+                                            const formData = new FormData();
+                                            formData.set(
+                                                'raisedBedId',
+                                                field.raisedBedId.toString(),
+                                            );
+                                            formData.set(
+                                                'positionIndex',
+                                                field.positionIndex.toString(),
+                                            );
+                                            formData.set(
+                                                'scheduledDate',
+                                                scheduledDate,
+                                            );
+                                            return rescheduleRaisedBedFieldAction(
+                                                formData,
+                                            );
+                                        }),
+                                    ),
+                                errorLogMessage:
+                                    'Failed to reschedule all raised bed planting items:',
+                                errorAlertMessage:
+                                    'Skupno zakazivanje sijanja nije uspjelo. Promjena je vraćena.',
+                            })
+                        }
                     />
                 </Row>
             </Row>
@@ -219,12 +324,25 @@ export function RaisedBedPlantingScheduleSection({
                         ) ** 2;
 
                     const handlePlantConfirm = async () => {
-                        if (!field.plantSortId) return;
-                        await raisedBedPlanted(
-                            field.raisedBedId,
-                            field.positionIndex,
-                            field.plantSortId,
-                        );
+                        const plantSortId = field.plantSortId;
+                        if (!plantSortId) return;
+                        runOptimisticAction({
+                            fieldPatches: [
+                                {
+                                    id: field.id,
+                                    patch: { plantStatus: 'sowed' },
+                                },
+                            ],
+                            action: () =>
+                                raisedBedPlanted(
+                                    field.raisedBedId,
+                                    field.positionIndex,
+                                    plantSortId,
+                                ),
+                            errorLogMessage: 'Error completing planting:',
+                            errorAlertMessage:
+                                'Završetak sijanja nije uspio. Promjena je vraćena.',
+                        });
                     };
 
                     const fieldLabel = `${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : 'Nepoznato'}`;
@@ -273,6 +391,28 @@ export function RaisedBedPlantingScheduleSection({
                                             raisedBedId={field.raisedBedId}
                                             positionIndex={field.positionIndex}
                                             label={fieldLabel}
+                                            onConfirm={() =>
+                                                runOptimisticAction({
+                                                    fieldPatches: [
+                                                        {
+                                                            id: field.id,
+                                                            patch: {
+                                                                plantStatus:
+                                                                    'sowed',
+                                                            },
+                                                        },
+                                                    ],
+                                                    action: () =>
+                                                        verifyRaisedBedPlantingAction(
+                                                            field.raisedBedId,
+                                                            field.positionIndex,
+                                                        ),
+                                                    errorLogMessage:
+                                                        'Error verifying planting:',
+                                                    errorAlertMessage:
+                                                        'Verifikacija sijanja nije uspjela. Promjena je vraćena.',
+                                                })
+                                            }
                                         />
                                     ) : field.plantSortId && !fieldApproved ? (
                                         <AcceptRaisedBedFieldModal
@@ -280,6 +420,28 @@ export function RaisedBedPlantingScheduleSection({
                                             positionIndex={field.positionIndex}
                                             label={fieldLabel}
                                             disabled={!field.assignedUserId}
+                                            onConfirm={() =>
+                                                runOptimisticAction({
+                                                    fieldPatches: [
+                                                        {
+                                                            id: field.id,
+                                                            patch: {
+                                                                plantStatus:
+                                                                    'planned',
+                                                            },
+                                                        },
+                                                    ],
+                                                    action: () =>
+                                                        acceptRaisedBedFieldAction(
+                                                            field.raisedBedId,
+                                                            field.positionIndex,
+                                                        ),
+                                                    errorLogMessage:
+                                                        'Error accepting field request:',
+                                                    errorAlertMessage:
+                                                        'Potvrda sijanja nije uspjela. Promjena je vraćena.',
+                                                })
+                                            }
                                         />
                                     ) : (
                                         <CompletePlantingModal
@@ -304,6 +466,7 @@ export function RaisedBedPlantingScheduleSection({
                                     </Typography>
                                     <Typography
                                         level="body2"
+                                        component="div"
                                         className="select-none"
                                     >
                                         {field.plantScheduledDate ? (
@@ -332,6 +495,30 @@ export function RaisedBedPlantingScheduleSection({
                                         }
                                         assignedUserIds={field.assignedUserIds}
                                         disabled={fieldLocked}
+                                        onSubmit={(assignedUserIds) =>
+                                            runOptimisticAction({
+                                                fieldPatches: [
+                                                    {
+                                                        id: field.id,
+                                                        patch: {
+                                                            assignedUserId:
+                                                                assignedUserIds[0] ??
+                                                                null,
+                                                            assignedUserIds,
+                                                        },
+                                                    },
+                                                ],
+                                                action: () =>
+                                                    assignRaisedBedFieldUserAction(
+                                                        field.id,
+                                                        assignedUserIds,
+                                                    ),
+                                                errorLogMessage:
+                                                    'Error assigning planting user:',
+                                                errorAlertMessage:
+                                                    'Dodjela sijanja nije uspjela. Promjena je vraćena.',
+                                            })
+                                        }
                                     />
                                     <RescheduleRaisedBedFieldModal
                                         field={{
@@ -345,6 +532,34 @@ export function RaisedBedPlantingScheduleSection({
                                             field.plantSortId?.toString() ??
                                             '?'
                                         }
+                                        onSubmit={(formData) => {
+                                            const scheduledDate =
+                                                formData.get('scheduledDate');
+                                            runOptimisticAction({
+                                                fieldPatches: [
+                                                    {
+                                                        id: field.id,
+                                                        patch: {
+                                                            plantScheduledDate:
+                                                                typeof scheduledDate ===
+                                                                'string'
+                                                                    ? parseScheduledDateInput(
+                                                                          scheduledDate,
+                                                                      )
+                                                                    : undefined,
+                                                        },
+                                                    },
+                                                ],
+                                                action: () =>
+                                                    rescheduleRaisedBedFieldAction(
+                                                        formData,
+                                                    ),
+                                                errorLogMessage:
+                                                    'Error rescheduling planting:',
+                                                errorAlertMessage:
+                                                    'Zakazivanje sijanja nije uspjelo. Promjena je vraćena.',
+                                            });
+                                        }}
                                         trigger={
                                             <IconButton
                                                 variant="plain"
@@ -365,6 +580,26 @@ export function RaisedBedPlantingScheduleSection({
                                             positionIndex: field.positionIndex,
                                         }}
                                         fieldLabel={fieldLabel}
+                                        onSubmit={(formData) =>
+                                            runOptimisticAction({
+                                                fieldPatches: [
+                                                    {
+                                                        id: field.id,
+                                                        patch: {
+                                                            isDeleted: true,
+                                                        },
+                                                    },
+                                                ],
+                                                action: () =>
+                                                    cancelRaisedBedFieldAction(
+                                                        formData,
+                                                    ),
+                                                errorLogMessage:
+                                                    'Error canceling planting:',
+                                                errorAlertMessage:
+                                                    'Otkazivanje sijanja nije uspjelo. Promjena je vraćena.',
+                                            })
+                                        }
                                         trigger={
                                             <IconButton
                                                 variant="plain"

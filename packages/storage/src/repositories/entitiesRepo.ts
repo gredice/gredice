@@ -1,4 +1,5 @@
 import 'server-only';
+import { slugify } from '@gredice/js/slug';
 import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import {
     attributeDefinitions,
@@ -8,6 +9,7 @@ import {
     type SelectAttributeDefinition,
     type SelectAttributeValue,
     type SelectEntity,
+    type SelectEntityRevision,
     type SelectEntityType,
     storage,
     type UpdateEntity,
@@ -22,6 +24,20 @@ import { getEntityCompleteness } from '../helpers/entityCompleteness';
 
 const entityCacheTtl = 60 * 60; // 1 hour
 
+async function refreshEntitySearchDocumentAfterMutation(entityId: number) {
+    try {
+        const { refreshImpactedEntitySearchDocuments } = await import(
+            './entitySearchRepo'
+        );
+        await refreshImpactedEntitySearchDocuments(entityId);
+    } catch (error) {
+        console.error('Failed to refresh entity search document', {
+            entityId,
+            error,
+        });
+    }
+}
+
 type EntityAttribute = SelectAttributeValue & {
     attributeDefinition: SelectAttributeDefinition;
 };
@@ -32,6 +48,17 @@ type EntityWithAttributesAndDefinitions = SelectEntity & {
         attributeDefinitions: SelectAttributeDefinition[];
     };
 };
+
+export type LatestEntityRevision = Pick<
+    SelectEntityRevision,
+    | 'id'
+    | 'entityId'
+    | 'entityTypeName'
+    | 'action'
+    | 'actorId'
+    | 'actorName'
+    | 'createdAt'
+>;
 
 function tryParseAttributeJson(
     value: string,
@@ -275,6 +302,7 @@ async function expandEntity(
         },
         createdAt: entityRaw.createdAt,
         updatedAt: entityRaw.updatedAt,
+        slug: slugify(entityDisplayNameFromAttributes(entityRaw)),
     };
     return await expandEntityAttributes(entity, entityRaw.attributes, cache);
 }
@@ -821,6 +849,8 @@ export async function updateEntity(
             : null,
         bustCachedByPrefixes(['dashboard:admin:']),
     ]);
+
+    await refreshEntitySearchDocumentAfterMutation(entity.id);
 }
 
 export async function deleteEntity(
@@ -852,6 +882,8 @@ export async function deleteEntity(
             : null,
         bustCachedByPrefixes(['dashboard:admin:']),
     ]);
+
+    await refreshEntitySearchDocumentAfterMutation(id);
 }
 
 export async function getEntityRevisions(entityId: number) {
@@ -861,5 +893,26 @@ export async function getEntityRevisions(entityId: number) {
             desc(revisions.createdAt),
             desc(revisions.id),
         ],
+    });
+}
+
+export async function getLatestEntityRevisions(
+    limit = 100,
+): Promise<LatestEntityRevision[]> {
+    return storage().query.entityRevisions.findMany({
+        columns: {
+            id: true,
+            entityId: true,
+            entityTypeName: true,
+            action: true,
+            actorId: true,
+            actorName: true,
+            createdAt: true,
+        },
+        orderBy: (revisions, { desc }) => [
+            desc(revisions.createdAt),
+            desc(revisions.id),
+        ],
+        limit,
     });
 }

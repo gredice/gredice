@@ -437,3 +437,60 @@ Use the same matrix before and after each optimization:
 Target budget for smooth mobile interaction: p95 below 16.7 ms for 60 FPS, or
 below 33.3 ms for an acceptable 30 FPS fallback during heavy weather or large
 gardens.
+
+## Weather QA matrix and performance budget (GRE-306)
+
+Use this matrix for weather sign-off so we validate realistic overlaps instead
+of isolated effects. Run each preset in **day**, **twilight**, and **night**,
+on both desktop and mobile viewport presets.
+
+### Preset definitions (debug path)
+
+Preferred local path: open a garden scene with the in-game debug panel and
+enable weather override controls.
+
+- Toggle **Override weather**.
+- Set cloudy/rain/snow/fog sliders and wind values for the target preset.
+- Use the time controls to force day/twilight/night snapshots.
+
+If the panel is not available in your environment, use
+`/debug/profile/game` modes (`baseline`, `rain`, `snow`) plus temporary local
+debug values in `GameScene` props as a fallback.
+
+### Required QA presets
+
+| Preset | Weather control target | Extra checks |
+| --- | --- | --- |
+| Clear | cloudy 0, rain 0, snow 0, fog 0, wind 0-2 | HUD icons/text legible in full sun and night contrast |
+| Cloudy | cloudy 0.6-0.9, rain 0, snow 0, fog 0-0.1 | Cloud coverage does not flatten scene readability |
+| Foggy | fog 0.5-0.9, cloudy 0.2-0.7 | Near/far depth remains readable and clickable |
+| Light rain | rain 0.2-0.4, cloudy 0.4-0.8, wind 2-6 | Rain sound level and mute behavior are correct |
+| Heavy rain | rain 0.8-1.0, cloudy 0.8-1.0, wind 6-14 | No input lag spikes; overlays do not hide interactables |
+| Snow | snow 0.4-0.8, cloudy 0.5-0.9, wind 2-8 | Snow particles and audio remain balanced |
+| Accumulated snow | snow 0.6-1.0 + snow accumulation maxed | Block/entity overlays align with geometry |
+| Windy | wind 12-25, rain/snow 0-0.2 | Wind-driven motion and sound stay synchronized |
+| Thunderstorm | rain 0.8-1.0, cloudy 0.9-1.0, wind 10-20 + thunder/lightning | Flash + thunder are noticeable but not overwhelming |
+| Autumn leaves | windy + autumn season/leaves enabled | Leaf particles + accumulation keep scene readable |
+
+### Cross-cut checks per preset
+
+- Interaction: no state makes the garden blank, unclickable, or touch-blocked.
+- HUD: weather HUD remains readable in day/twilight/night on desktop and mobile.
+- Audio: mute, volume sliders, and weather-disable settings are respected.
+- Accessibility: reduced-motion mode lowers or simplifies weather motion.
+- Fallback behavior: disabling weather visualization removes weather FX without
+  breaking non-weather gameplay.
+
+### Performance budget for heavy weather sign-off
+
+Treat these as release gates for heavy-rain/heavy-snow/windy/autumn scenarios
+on a full garden:
+
+- **Desktop target:** p95 frame time <= 16.7 ms (about 60 FPS).
+- **Mobile target:** p95 frame time <= 33.3 ms (about 30 FPS minimum fallback).
+- **Stability target:** no sustained interaction stalls > 500 ms during active
+  weather and overlay updates.
+
+Measure via `apps/garden/scripts/profile-game-scene.mjs` profiles plus manual
+device checks for touch/HUD/audio quality. If any preset fails, file a focused
+follow-up ticket with reproduction details instead of broadening this pass.

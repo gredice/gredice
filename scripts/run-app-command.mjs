@@ -5,9 +5,11 @@ import os from 'node:os';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+    getAppByName,
     getAppByPackagePath,
     getAppDevPort,
     getAppStartPort,
+    localAppHostnameUrl,
 } from './app-registry.ts';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -79,6 +81,17 @@ function getSpawnOptions(command, args) {
     };
 }
 
+function applyLocalServiceEnv() {
+    const apiApp = getAppByName('api');
+    const apiPort =
+        commandName === 'start' ? getAppStartPort(apiApp) : getAppDevPort(apiApp);
+    process.env.GREDICE_API_HOST ??= localAppHostnameUrl(
+        apiApp,
+        'localhost',
+        apiPort,
+    );
+}
+
 function signalExitCode(signal) {
     const signalNumber = signalNumbers?.[signal];
     if (typeof signalNumber === 'number') {
@@ -89,6 +102,7 @@ function signalExitCode(signal) {
 }
 
 try {
+    applyLocalServiceEnv();
     const appCommand = commandForApp();
     const spawnOptions = getSpawnOptions(appCommand.command, appCommand.args);
     const child = spawn(spawnOptions.command, spawnOptions.args, {

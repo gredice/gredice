@@ -1,5 +1,5 @@
+import { PublicDirectoryPaths } from '@gredice/directory-types';
 import type { Route } from 'next';
-import { toPageAlias } from './pageAliases';
 
 // TODO: Deprecate KnownPages in favor of using route types directly
 export const KnownPages = {
@@ -7,25 +7,27 @@ export const KnownPages = {
 
     Delivery: '/dostava',
     DeliverySlots: '/dostava/termini',
-    Plants: '/biljke',
-    Plant: (alias: string) => `/biljke/${toPageAlias(alias)}` as Route,
+    Plants: PublicDirectoryPaths.Plants as Route,
+    Plant: (alias: string) => PublicDirectoryPaths.Plant(alias) as Route,
     PlantSort: (alias: string, sortName: string) =>
-        `/biljke/${toPageAlias(alias)}/sorte/${toPageAlias(sortName)}` as Route,
-    Blocks: '/blokovi',
-    Block: (alias: string) => `/blokovi/${toPageAlias(alias)}` as Route,
-    BlockPlants: '/blokovi/biljke',
+        PublicDirectoryPaths.PlantSort(alias, sortName) as Route,
+    Blocks: PublicDirectoryPaths.Blocks as Route,
+    Block: (alias: string) => PublicDirectoryPaths.Block(alias) as Route,
+    BlockPlants: PublicDirectoryPaths.BlockPlants as Route,
     BlockPlant: (alias: string) =>
-        `/blokovi/biljke/${toPageAlias(alias)}` as Route,
+        PublicDirectoryPaths.BlockPlant(alias) as Route,
     BlockPlantGenerator: '/blokovi/biljke/generator' as Route,
     Sunflowers: '/suncokreti',
     RaisedBeds: '/podignuta-gredica',
     Sowing: '/sjetva',
-    Operations: '/radnje',
-    Operation: (alias: string) => `/radnje/${toPageAlias(alias)}` as Route,
+    Operations: PublicDirectoryPaths.Operations as Route,
+    Operation: (alias: string) =>
+        PublicDirectoryPaths.Operation(alias) as Route,
     Recipes: '/recepti',
     Recipe: (slug: string) => `/recepti/${encodeURIComponent(slug)}` as Route,
     AboutUs: '/o-nama',
-    FAQ: '/cesta-pitanja',
+    FAQ: PublicDirectoryPaths.FAQ as Route,
+    Search: '/pretraga' as Route,
     Contact: '/kontakt',
     Pricing: '/cjenik',
     Refunds: '/povrati-i-povrat-novca',
@@ -36,7 +38,7 @@ export const KnownPages = {
     LegalLicense: '/legalno/licenca',
     LegalThirdParty: '/legalno/trece-strane',
     LegalCompany: '/legalno/tvrtka',
-    LegalOccasions: '/legalno/natjecaji',
+    LegalOccasions: PublicDirectoryPaths.LegalOccasions as Route,
 
     GardenApp: 'https://vrt.gredice.com',
     Status: 'https://status.gredice.com',

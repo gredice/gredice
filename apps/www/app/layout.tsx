@@ -5,6 +5,7 @@ import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { PageNav } from '@signalco/ui/Nav';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { VercelToolbar } from '@vercel/toolbar/next';
+import { Montserrat } from 'next/font/google';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
 import { PageViewTracker } from '../components/analytics/PageViewTracker';
@@ -14,6 +15,11 @@ import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 import { KnownPages } from '../src/KnownPages';
 import { Footer } from './Footer';
 import { LayoutContainer } from './LayoutContainer';
+
+const montserrat = Montserrat({
+    subsets: ['latin'],
+    variable: '--font-montserrat',
+});
 
 export function generateMetadata(): Metadata {
     return {
@@ -97,6 +103,10 @@ export default async function RootLayout({
                                 href: KnownPages.FAQ,
                                 text: 'Česta pitanja',
                             },
+                            {
+                                href: KnownPages.Search,
+                                text: 'Pretraga',
+                            },
                         ]}
                     >
                         <div className="absolute bg-background/80 w-full inset-0 -z-10" />
@@ -129,7 +139,7 @@ export default async function RootLayout({
                     crossOrigin="anonymous"
                 />
             </Head>
-            <body className="antialiased">
+            <body className={`${montserrat.variable} antialiased`}>
                 {postHogApiKey ? (
                     <PostHogProvider
                         apiKey={postHogApiKey}

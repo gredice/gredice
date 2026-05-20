@@ -10,18 +10,20 @@ interface CancelRaisedBedFieldModalProps {
     };
     fieldLabel: string;
     trigger: React.ReactElement;
+    onSubmit?: (formData: FormData) => unknown | Promise<unknown>;
 }
 
 export function CancelRaisedBedFieldModal({
     field,
     fieldLabel,
     trigger,
+    onSubmit,
 }: CancelRaisedBedFieldModalProps) {
     return (
         <CancelRequestModal
             label={fieldLabel}
             trigger={trigger}
-            onSubmit={cancelRaisedBedFieldAction}
+            onSubmit={onSubmit ?? cancelRaisedBedFieldAction}
             hiddenFields={
                 <>
                     <input

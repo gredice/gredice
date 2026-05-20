@@ -20,7 +20,7 @@ type DeliveryRequestsSummaryCacheInput = {
     toDate?: Date;
 };
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 
 export const scheduleCacheTtls = {
     day: 45,

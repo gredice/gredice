@@ -66,7 +66,7 @@ export async function generateStaticParams() {
     ]);
     const plantsById = new Map(plants?.map((plant) => [plant.id, plant]));
     return (
-        sorts?.map((entity, index) => {
+        sorts?.flatMap((entity, index) => {
             const sortName = entity?.information?.name;
             const plantId = entity?.information?.plant?.id;
             const plant = plantId ? plantsById.get(plantId) : null;
@@ -84,15 +84,15 @@ export async function generateStaticParams() {
                     },
                 );
 
-                throw new Error(
-                    'Invalid plant sort data while generating static params for /biljke/[alias]/sorte/[sortAlias]',
-                );
+                return [];
             }
 
-            return {
-                alias: toPageAlias(String(plantName)),
-                sortAlias: toPageAlias(String(sortName)),
-            };
+            return [
+                {
+                    alias: plant.slug || toPageAlias(String(plantName)),
+                    sortAlias: entity.slug || toPageAlias(String(sortName)),
+                },
+            ];
         }) ?? []
     );
 }
@@ -168,48 +168,80 @@ export default async function PlantSortPage(
         }
     };
 
+    const sortUrl = `https://www.gredice.com${KnownPages.PlantSort(alias, sortData.information.name)}`;
+    const hasPerPlantPrice = typeof basePlantData.prices?.perPlant === 'number';
+
+    if (!hasPerPlantPrice) {
+        console.error('Missing per-plant price for plant sort product schema', {
+            alias,
+            plantId: basePlantData.id,
+            plantName: basePlantData.information.name,
+            sortAlias: sort,
+            sortId: sortData.id,
+            sortName: sortData.information.name,
+            sortUrl,
+        });
+    }
+
     return (
         <div className="py-8">
             <StructuredDataScript
-                data={{
-                    '@context': 'https://schema.org',
-                    '@type': 'Product',
-                    name: sortData.information.name,
-                    description:
-                        sortData.information.shortDescription ??
-                        sortData.information.description ??
-                        basePlantData.information.description,
-                    category: 'Sorta biljke',
-                    image:
-                        sortData.image?.cover?.url ??
-                        basePlantData.image?.cover?.url,
-                    brand: {
-                        '@type': 'Brand',
-                        name: 'Gredice',
-                    },
-                    isVariantOf: {
-                        '@type': 'Product',
-                        name: basePlantData.information.name,
-                        url: `https://www.gredice.com${KnownPages.Plant(alias)}`,
-                    },
-                    url: `https://www.gredice.com${KnownPages.PlantSort(alias, sortData.information.name)}`,
-                    offers:
-                        typeof basePlantData.prices?.perPlant === 'number'
-                            ? {
-                                '@type': 'Offer',
-                                price: basePlantData.prices.perPlant.toFixed(
-                                    2,
-                                ),
-                                priceCurrency: 'EUR',
-                                availability:
-                                    sortData.store?.availableInStore === false
-                                        ? 'https://schema.org/OutOfStock'
-                                        : 'https://schema.org/InStock',
-                                url: `https://www.gredice.com${KnownPages.PlantSort(alias, sortData.information.name)}`,
-                                hasMerchantReturnPolicy: merchantReturnPolicy,
-                            }
-                            : undefined,
-                }}
+                data={
+                    hasPerPlantPrice
+                        ? {
+                              '@context': 'https://schema.org',
+                              '@type': 'Product',
+                              name: sortData.information.name,
+                              description:
+                                  sortData.information.shortDescription ??
+                                  sortData.information.description ??
+                                  basePlantData.information.description,
+                              category: 'Sorta biljke',
+                              image:
+                                  sortData.image?.cover?.url ??
+                                  basePlantData.image?.cover?.url,
+                              brand: {
+                                  '@type': 'Brand',
+                                  name: 'Gredice',
+                              },
+                              isVariantOf: {
+                                  '@type': 'Product',
+                                  name: basePlantData.information.name,
+                                  url: `https://www.gredice.com${KnownPages.Plant(alias)}`,
+                              },
+                              url: sortUrl,
+                              offers: {
+                                  '@type': 'Offer',
+                                  price: basePlantData.prices.perPlant.toFixed(
+                                      2,
+                                  ),
+                                  priceCurrency: 'EUR',
+                                  availability:
+                                      sortData.store?.availableInStore === false
+                                          ? 'https://schema.org/OutOfStock'
+                                          : 'https://schema.org/InStock',
+                                  url: sortUrl,
+                                  hasMerchantReturnPolicy: merchantReturnPolicy,
+                              },
+                          }
+                        : {
+                              '@context': 'https://schema.org',
+                              '@type': 'WebPage',
+                              name: sortData.information.name,
+                              description:
+                                  sortData.information.shortDescription ??
+                                  sortData.information.description ??
+                                  basePlantData.information.description,
+                              image:
+                                  sortData.image?.cover?.url ??
+                                  basePlantData.image?.cover?.url,
+                              url: sortUrl,
+                              about: {
+                                  '@type': 'Thing',
+                                  name: basePlantData.information.name,
+                              },
+                          }
+                }
             />
             <Stack spacing={4}>
                 <Breadcrumbs

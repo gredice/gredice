@@ -4,6 +4,7 @@ import {
     getCmsPages,
     getEntitiesFormatted,
     getEntityFormatted,
+    searchDirectoryEntities,
 } from '@gredice/storage';
 import { Hono } from 'hono';
 import { validator as zValidator } from 'hono-openapi';
@@ -14,6 +15,67 @@ import {
 } from '../../../lib/http/cacheControl';
 
 const app = new Hono()
+    .get(
+        '/search',
+        zValidator(
+            'query',
+            z.object({
+                q: z.string().trim().min(2).max(200),
+                category: z.union([z.string(), z.array(z.string())]).optional(),
+                entityType: z
+                    .union([z.string(), z.array(z.string())])
+                    .optional(),
+                limit: z.coerce.number().int().min(1).max(50).optional(),
+                offset: z.coerce.number().int().min(0).max(500).optional(),
+            }),
+        ),
+        async (context) => {
+            const query = context.req.valid('query');
+            const limit = query.limit ?? 20;
+            const offset = query.offset ?? 0;
+            const categoriesRaw = Array.isArray(query.category)
+                ? query.category
+                : query.category
+                  ? [query.category]
+                  : [];
+            const categories = categoriesRaw.map((value) =>
+                value === 'operation' ? 'operations' : value,
+            );
+            const entityTypes = Array.isArray(query.entityType)
+                ? query.entityType
+                : query.entityType
+                  ? [query.entityType]
+                  : [];
+            const rows = await searchDirectoryEntities({
+                query: query.q,
+                publicCategories: categories,
+                entityTypeNames: entityTypes,
+                limit,
+                offset,
+            });
+            setCacheControl(context, cacheControlPresets.directories);
+            return context.json({
+                query: query.q,
+                limit,
+                offset,
+                count: rows.length,
+                results: rows.map((row) => ({
+                    entityId: row.entityId,
+                    entityType: row.entityTypeName,
+                    category: row.publicCategory,
+                    categoryLabel: row.publicCategoryLabel,
+                    title: row.title,
+                    summary: row.summary,
+                    imageUrl: row.imageUrl,
+                    imageAlt: row.imageAlt,
+                    href: `https://www.gredice.com${row.publicUrl}`,
+                    rank: row.score,
+                    publishedAt: row.publishedAt,
+                    updatedAt: row.updatedAt,
+                })),
+            });
+        },
+    )
     .get('/pages', async (context) => {
         const pages = await getCmsPages({ state: 'published' });
         setCacheControl(context, cacheControlPresets.directories);

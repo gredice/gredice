@@ -1383,8 +1383,12 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
     });
 
     // Retrieve all events in bulk
-    const fieldAggregateIds = fields.map(
-        (field) => `${field.raisedBedId}|${field.positionIndex}`,
+    const fieldAggregateIds = Array.from(
+        new Set(
+            fields.map(
+                (field) => `${field.raisedBedId}|${field.positionIndex}`,
+            ),
+        ),
     );
     const fieldsEvents = await getEvents(
         [
@@ -1399,6 +1403,25 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         0,
         100000,
     );
+    const plantCycleEventsByAggregateId = new Map<
+        string,
+        RaisedBedFieldPlantCycleEvent[]
+    >();
+    const plantCycleEventTypes = new Set<string>(PLANT_CYCLE_EVENT_TYPES);
+    for (const event of fieldsEvents) {
+        if (!plantCycleEventTypes.has(event.type)) {
+            continue;
+        }
+
+        const aggregateEvents = plantCycleEventsByAggregateId.get(
+            event.aggregateId,
+        );
+        if (aggregateEvents) {
+            aggregateEvents.push(event);
+        } else {
+            plantCycleEventsByAggregateId.set(event.aggregateId, [event]);
+        }
+    }
 
     // For each field, fetch and apply events
     return fields.map((field) => {
@@ -1600,6 +1623,11 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
 
         return {
             ...field,
+            plantCycles: summarizePlantCycles(
+                aggregateId,
+                field.positionIndex,
+                plantCycleEventsByAggregateId.get(aggregateId) ?? [],
+            ),
             plantStatus,
             plantSortId,
             plantScheduledDate,
@@ -1635,6 +1663,7 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                 knownEventTypes.raisedBeds.create,
                 knownEventTypes.raisedBeds.aiAnalysis,
                 knownEventTypes.raisedBeds.delete,
+                knownEventTypes.raisedBeds.abandon,
             ],
             [raisedBedId.toString()],
             0,
@@ -1672,6 +1701,10 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                 }
                 case knownEventTypes.raisedBeds.delete: {
                     name = 'Gredica obrisana';
+                    break;
+                }
+                case knownEventTypes.raisedBeds.abandon: {
+                    name = 'Gredica napuštena';
                     break;
                 }
             }
@@ -1728,6 +1761,46 @@ export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {
         .set(raisedBed)
         .where(eq(raisedBeds.id, raisedBed.id));
     await bustScheduleCache();
+}
+
+export async function abandonRaisedBed({
+    accountId,
+    gardenId,
+    operationEntityId,
+    operationEntityTypeName,
+    raisedBedId,
+}: {
+    accountId: string;
+    gardenId: number;
+    operationEntityId: number;
+    operationEntityTypeName: string;
+    raisedBedId: number;
+}) {
+    const operation = await storage().transaction(async (tx) => {
+        const [createdOperation] = await tx
+            .insert(operations)
+            .values({
+                accountId,
+                entityId: operationEntityId,
+                entityTypeName: operationEntityTypeName,
+                gardenId,
+                raisedBedId,
+            })
+            .returning({ id: operations.id });
+
+        await tx
+            .update(raisedBeds)
+            .set({ status: 'abandoned' })
+            .where(eq(raisedBeds.id, raisedBedId));
+
+        await tx
+            .insert(events)
+            .values(knownEvents.raisedBeds.abandonV1(raisedBedId.toString()));
+
+        return createdOperation;
+    });
+    await bustScheduleCache();
+    return operation.id;
 }
 
 export async function mergeRaisedBeds(

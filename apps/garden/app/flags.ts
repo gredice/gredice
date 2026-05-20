@@ -35,6 +35,13 @@ export const lsystemPlantsFlag = flag<boolean>({
     options: booleanOptions,
 });
 
+export const rainWetOverlayFlag = flag<boolean>({
+    key: 'rainWetOverlay',
+    description: 'Enable rain wetness overlays on exposed garden entities.',
+    decide: () => false,
+    options: booleanOptions,
+});
+
 export const enableDebugCloseupFlag = flag<boolean>({
     key: 'enableDebugCloseup',
     decide: () => false,
@@ -44,5 +51,12 @@ export const enableDebugCloseupFlag = flag<boolean>({
 export const enableDebugHudFlag = flag<boolean>({
     key: 'enableDebugHud',
     decide: () => false,
+    options: booleanOptions,
+});
+
+export const plantHistoryFlag = flag<boolean>({
+    key: 'plantHistory',
+    description: 'Show previous plant history on inactive raised-bed fields.',
+    decide: () => true,
     options: booleanOptions,
 });

@@ -88,7 +88,7 @@ export function OperationsListItem({
                     </Typography>
                     {inShoppingCart && (
                         <Typography level="body3" className="text-amber-600">
-                            U košarici (nije kupljeno)
+                            U košari (nije kupljeno)
                         </Typography>
                     )}
                     <Typography level="body1" semiBold>

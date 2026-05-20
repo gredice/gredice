@@ -1,4 +1,5 @@
 import { tz } from '@date-fns/tz';
+import { sendEmail } from '@gredice/email/acs';
 import {
     acceptAccountInvitation,
     cancelAccountInvitation,
@@ -21,16 +22,18 @@ import {
     knownEventTypes,
     updateAccountTimeZone,
 } from '@gredice/storage';
+import AccountDeleteConfirmationTemplate from '@gredice/transactional/emails/Account/delete-confirmation';
 import { addDays, differenceInCalendarDays, startOfDay } from 'date-fns';
 import { Hono } from 'hono';
-import { getCookie, setCookie as honoSetCookie } from 'hono/cookie';
+import { setCookie as honoSetCookie } from 'hono/cookie';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
-import { verifyJwt } from '../../../lib/auth/auth';
+import { createJwt, verifyJwt } from '../../../lib/auth/auth';
 import {
     accountCookieName,
     cookieDomain,
 } from '../../../lib/auth/sessionConfig';
+import { authSecurity } from '../../../lib/docs/security';
 import { sendAccountInvitation } from '../../../lib/email/transactional';
 import {
     type AuthVariables,
@@ -756,10 +759,59 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
         },
     )
+    .get(
+        '/gardens',
+        describeRoute({
+            description:
+                'Get garden picker groups for every account the current user can access.',
+            security: authSecurity,
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const {
+                accountId: currentAccountId,
+                user,
+                userId,
+            } = context.get('authContext');
+            const currentUser = await getUser(userId);
+            const fallbackEmail = currentUser?.userName ?? 'Gredice';
+            const orderedAccountIds = [
+                currentAccountId,
+                ...user.accountIds.filter(
+                    (accountId) => accountId !== currentAccountId,
+                ),
+            ];
+
+            const accountGardenGroups = await Promise.all(
+                orderedAccountIds.map(async (accountId) => {
+                    const [accountUsers, gardens] = await Promise.all([
+                        getAccountUsers(accountId),
+                        getAccountGardens(accountId),
+                    ]);
+                    const accountEmail =
+                        accountUsers[0]?.user.userName ?? fallbackEmail;
+
+                    return {
+                        accountId,
+                        name: `${accountEmail} račun`,
+                        isCurrent: accountId === currentAccountId,
+                        gardens: gardens.map((garden) => ({
+                            id: garden.id,
+                            name: garden.name,
+                            createdAt: garden.createdAt,
+                        })),
+                    };
+                }),
+            );
+
+            return context.json(accountGardenGroups);
+        },
+    )
     .post(
         '/switch',
         describeRoute({
             description: 'Switch the active account for the current user',
+            security: authSecurity,
         }),
         zValidator(
             'json',
@@ -802,6 +854,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 `[AccountDelete] Deleting account with token=${token}`,
             );
             let currentUserId: string | undefined;
+            let requestedAccountId: string | undefined;
             try {
                 const { result, error } = await verifyJwt(
                     typeof token === 'string' ? token : '',
@@ -814,6 +867,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     throw new Error('Invalid state token');
                 }
                 currentUserId = result.payload.sub;
+                const accountIdClaim = result.payload.accountId;
+                requestedAccountId =
+                    typeof accountIdClaim === 'string'
+                        ? accountIdClaim
+                        : undefined;
             } catch (error) {
                 console.warn('Error verifying JWT:', error);
                 return context.json({ error: 'Invalid or expired link.' }, 400);
@@ -821,15 +879,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             try {
                 const user = await getUser(currentUserId);
-                const selectedAccountId = getCookie(context, accountCookieName);
                 const accountIds =
                     user?.accounts?.map((a) => a.accountId) ?? [];
                 const accountId =
-                    selectedAccountId && accountIds.includes(selectedAccountId)
-                        ? selectedAccountId
-                        : accountIds[0];
+                    requestedAccountId &&
+                    accountIds.includes(requestedAccountId)
+                        ? requestedAccountId
+                        : undefined;
                 if (!accountId) {
-                    return context.json({ error: 'Account not found.' }, 404);
+                    return context.json(
+                        { error: 'Invalid or expired link.' },
+                        400,
+                    );
                 }
 
                 // TODO: Move check to delete function (repo)
@@ -852,6 +913,56 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 console.error('[AccountDelete] Error deleting account:', error);
                 return context.json({ error: 'Invalid or expired link.' }, 500);
             }
+        },
+    )
+    .post(
+        '/delete-request',
+        describeRoute({
+            description:
+                'Requests account deletion by sending a confirmation email.',
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { user, accountId } = context.get('authContext');
+            const accountUsers = await getAccountUsers(accountId);
+            if (accountUsers.length !== 1) {
+                return context.json(
+                    { error: 'Račun mora imati točno jednog korisnika.' },
+                    400,
+                );
+            }
+
+            const accountUser = accountUsers[0];
+            if (!accountUser || accountUser.userId !== user.id) {
+                return context.json(
+                    { error: 'Račun mora imati točno jednog korisnika.' },
+                    400,
+                );
+            }
+            const token = await createJwt(
+                {
+                    sub: user.id,
+                    accountId,
+                },
+                '72h',
+            );
+            const confirmLink = `https://vrt.gredice.com/racun/brisanje?token=${token}`;
+            const email = accountUser.user.userName;
+            await sendEmail({
+                from: 'suncokret@obavijesti.gredice.com',
+                to: email,
+                subject: 'Gredice - potvrda brisanja računa',
+                template: AccountDeleteConfirmationTemplate({
+                    confirmLink,
+                    email,
+                }),
+                templateName: 'account-delete-confirmation',
+                messageType: 'account',
+                metadata: { accountId },
+            });
+            return context.json({
+                success: true,
+            });
         },
     );
 

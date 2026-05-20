@@ -12,12 +12,16 @@
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
+        "test": "node --experimental-strip-types --test ./tests/**/*.node.spec.ts",
         "regenerate": "pnpm run regenerate:directories-api && pnpm run regenerate:cms-types",
         "regenerate:directories-api": "pnpm dlx openapi-typescript https://api.gredice.com/api/docs/directories -o ./src/v1.d.ts",
         "regenerate:cms-types": "node ./scripts/generateCmsTypeAliases.mjs && biome check --write ./src/cms.ts"
     },
+    "dependencies": {
+        "@gredice/js": "workspace:*"
+    },
     "devDependencies": {
-        "@biomejs/biome": "2.4.14",
+        "@biomejs/biome": "2.4.15",
         "openapi-typescript": "7.13.0",
         "typescript": "6.0.3"
     }

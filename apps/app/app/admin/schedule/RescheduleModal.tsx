@@ -20,7 +20,7 @@ interface RescheduleModalProps {
     label: string;
     scheduledDate?: Date;
     trigger: React.ReactElement;
-    onSubmit: (formData: FormData) => Promise<void>;
+    onSubmit: (formData: FormData) => unknown | Promise<unknown>;
     hiddenFields: React.ReactNode;
 }
 
@@ -46,6 +46,7 @@ export function RescheduleModal({
             setOpen(false);
         } catch (error) {
             console.error('Error rescheduling item:', error);
+            alert('Zakazivanje zadatka nije uspjelo. Pokušajte ponovno.');
         } finally {
             setIsLoading(false);
         }

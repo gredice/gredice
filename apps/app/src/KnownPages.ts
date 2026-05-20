@@ -1,10 +1,12 @@
 import { slugify } from '@gredice/js/slug';
+import type { SocialProvider } from '@gredice/storage';
 import type { Route } from 'next';
 
 export const KnownPages = {
     Dashboard: '/admin',
     Settings: '/admin/settings',
     Directories: '/admin/directories',
+    DirectoriesActivity: '/admin/directories/activity',
     CmsPages: '/admin/cms/pages',
     CmsPageCreate: '/admin/cms/pages/create',
     CmsPage: (pageId: number) => `/admin/cms/pages/${pageId}` as Route,
@@ -92,6 +94,14 @@ export const KnownPages = {
 
     // AI
     AiAnalytics: '/admin/ai-analytics',
+    SocialPublishing: '/admin/social-publishing',
+    SocialIntegrationInstall: (provider: SocialProvider | string) =>
+        `/admin/settings/integrations/social/${provider}/install` as Route,
+    SocialIntegrationAccount: (
+        provider: SocialProvider | string,
+        accountId: number,
+    ) =>
+        `/admin/settings/integrations/social/${provider}/${accountId}` as Route,
 
     // Delivery management
     DeliverySlots: '/admin/delivery/slots',

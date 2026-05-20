@@ -167,18 +167,18 @@ test.describe('Authentication Flow', () => {
             page,
         }) => {
             // Track requests to the oauth-callback endpoint
-            let callbackRequest: {
+            const callbackRequests: Array<{
                 method: string;
                 body: { token?: string; refreshToken?: string };
                 headers: Record<string, string>;
-            } | null = null;
+            }> = [];
 
             await page.route('**/api/oauth-callback', async (route) => {
-                callbackRequest = {
+                callbackRequests.push({
                     method: route.request().method(),
                     body: route.request().postDataJSON(),
                     headers: route.request().headers(),
-                };
+                });
 
                 await route.fulfill({
                     status: 200,
@@ -200,13 +200,17 @@ test.describe('Authentication Flow', () => {
             await responsePromise;
 
             // Verify that the POST request was made with correct data
+            const callbackRequest = callbackRequests[0];
             expect(callbackRequest).toBeDefined();
-            expect(callbackRequest?.method).toBe('POST');
-            expect(callbackRequest?.body?.token).toBe('test-access-token');
-            expect(callbackRequest?.body?.refreshToken).toBe(
+            if (!callbackRequest) {
+                throw new Error('Expected oauth callback request');
+            }
+            expect(callbackRequest.method).toBe('POST');
+            expect(callbackRequest.body.token).toBe('test-access-token');
+            expect(callbackRequest.body.refreshToken).toBe(
                 'test-refresh-token',
             );
-            expect(callbackRequest?.headers['content-type']).toContain(
+            expect(callbackRequest.headers['content-type']).toContain(
                 'application/json',
             );
         });

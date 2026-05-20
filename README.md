@@ -32,15 +32,28 @@ Gredice is a Turborepo monorepo for the Gredice platform. It includes the public
 
 ## Getting Started
 
-Use [Node.js](https://nodejs.org/en/) `>=24`, [pnpm](https://pnpm.io/) `10.33.2`, [Docker](https://www.docker.com/), and the [Vercel CLI](https://vercel.com/download).
+Prerequirenments:
+
+- [nvm](https://github.com/nvm-sh/nvm)
+  - [Node.js](https://nodejs.org/) (managed through nvm)
+  - [corepack](https://github.com/nodejs/corepack) (managed through npm)
+  - [pnpm](https://pnpm.io/) (managed through corepack)
+  - [Vercel CLI](https://vercel.com/cli) (managed through pnpm)
+- [Docker](https://www.docker.com/)
 
 ```bash
+nvm use
+npm install corepack
+corepack enable
+pnpm i -g vercel
+pnpm install
+vercel login
 pnpm bootstrap
 pnpm doctor
 pnpm dev
 ```
 
-The default dev command starts the main apps through local HTTPS domains such as `https://www.gredice.test`, `https://vrt.gredice.test`, and `https://api.gredice.test`. The `status` app is intentionally excluded so normal startup stays fast. Use `pnpm dev:all` when you need to validate every app (including `status`) can start in a fresh worktree, and use `pnpm --filter=status dev` for status-only development.
+The default dev command starts the main apps through local HTTPS domains such as `https://www.gredice.test`, `https://vrt.gredice.test`, and `https://api.gredice.test`. Linked Git worktrees use deterministic app and proxy port offsets so they can run beside another checkout; use the port-qualified HTTPS URLs printed by `pnpm dev` in those worktrees. The `status` app is intentionally excluded so normal startup stays fast. Use `pnpm dev:all` when you need to validate every app (including `status`) can start in a fresh worktree, and use `pnpm --filter=status dev` for status-only development.
 
 `pnpm bootstrap` prepares a fresh worktree as far as local permissions and credentials allow.
 `pnpm doctor` runs the same checks in read-only mode and exits non-zero when required dependencies are missing.

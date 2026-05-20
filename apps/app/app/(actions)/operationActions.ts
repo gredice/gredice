@@ -8,6 +8,7 @@ import {
     createNotification,
     createOperation,
     earnSunflowers,
+    getAssignableFarmUsersByFarmIds,
     getAssignableFarmUsersByGardenIds,
     getAssignableFarmUsersByOperationIds,
     getEntityFormatted,
@@ -21,6 +22,21 @@ import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+
+const MAX_COMPLETION_NOTES_LENGTH = 2000;
+
+function normalizeCompletionNotes(notes?: string) {
+    const normalizedNotes = notes?.trim();
+    if (!normalizedNotes) {
+        return undefined;
+    }
+
+    if (normalizedNotes.length > MAX_COMPLETION_NOTES_LENGTH) {
+        throw new Error('Napomena može imati najviše 2000 znakova.');
+    }
+
+    return normalizedNotes;
+}
 
 export async function createOperationAction(formData: FormData) {
     await auth(['admin']);
@@ -43,6 +59,9 @@ export async function createOperationAction(formData: FormData) {
         entityId,
         entityTypeName: formData.get('entityTypeName') as string,
         accountId,
+        farmId: formData.get('farmId')
+            ? Number(formData.get('farmId'))
+            : undefined,
         gardenId: formData.get('gardenId')
             ? Number(formData.get('gardenId'))
             : undefined,
@@ -70,6 +89,7 @@ export async function createOperationAction(formData: FormData) {
     revalidatePath(KnownPages.Schedule);
     if (operation.accountId)
         revalidatePath(KnownPages.Account(operation.accountId));
+    if (operation.farmId) revalidatePath(KnownPages.Farm(operation.farmId));
     if (operation.gardenId)
         revalidatePath(KnownPages.Garden(operation.gardenId));
     if (operation.raisedBedId)
@@ -77,6 +97,165 @@ export async function createOperationAction(formData: FormData) {
     return { success: true };
 }
 
+export type SingleCreateOperationActionState = {
+    success: boolean;
+    message: string;
+};
+
+type ParsedOperationTarget = {
+    accountId?: string;
+    farmId?: number;
+    gardenId?: number;
+    raisedBedId?: number;
+    raisedBedFieldId?: number;
+};
+
+function getStringFormValue(formData: FormData, name: string) {
+    const value = formData.get(name);
+    return typeof value === 'string' ? value.trim() : '';
+}
+
+function parseOptionalTargetId(value: string | undefined, label: string) {
+    if (!value) {
+        return undefined;
+    }
+
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+        throw new Error(`Neispravna ciljna lokacija: ${label}.`);
+    }
+
+    return parsed;
+}
+
+function parseOperationTarget(rawTarget: string): ParsedOperationTarget {
+    const target = rawTarget.trim();
+    if (!target) {
+        throw new Error('Odaberite ciljnu lokaciju.');
+    }
+
+    const parts = target.split('|');
+    if (parts[0] === 'farm') {
+        const farmId = parseOptionalTargetId(parts[1], 'farma');
+        if (!farmId) {
+            throw new Error('Odaberite farmu.');
+        }
+
+        return { farmId };
+    }
+
+    const [accountId, gardenId, raisedBedId, raisedBedFieldId] = parts;
+
+    return {
+        accountId: accountId || undefined,
+        gardenId: parseOptionalTargetId(gardenId, 'vrt'),
+        raisedBedId: parseOptionalTargetId(raisedBedId, 'gredica'),
+        raisedBedFieldId: parseOptionalTargetId(
+            raisedBedFieldId,
+            'polje gredice',
+        ),
+    };
+}
+
+export async function singleCreateOperationAction(
+    _previousState: SingleCreateOperationActionState | null,
+    formData: FormData,
+): Promise<SingleCreateOperationActionState> {
+    try {
+        const { userId } = await auth(['admin']);
+        const entityId = formData.get('entityId')
+            ? Number(formData.get('entityId'))
+            : undefined;
+        if (!entityId) {
+            throw new Error('Entity ID is required');
+        }
+        const target = getStringFormValue(formData, 'target');
+        if (!target) {
+            throw new Error('Odaberite jednu ciljnu lokaciju.');
+        }
+        const selectedAssignedUserId =
+            getStringFormValue(formData, 'assignedUserId') || undefined;
+        const scheduledDate = formData.get('scheduledDate')
+            ? new Date(formData.get('scheduledDate') as string)
+            : undefined;
+
+        const parsedTarget = parseOperationTarget(target);
+
+        if (selectedAssignedUserId && parsedTarget.farmId) {
+            const assignableFarmUsersByFarmId =
+                await getAssignableFarmUsersByFarmIds([parsedTarget.farmId]);
+            const isUserAssignableToFarm =
+                assignableFarmUsersByFarmId[parsedTarget.farmId]?.some(
+                    (user) => user.id === selectedAssignedUserId,
+                ) ?? false;
+            if (!isUserAssignableToFarm) {
+                throw new Error(
+                    'Odabrani korisnik nije dostupan za odabranu radnju.',
+                );
+            }
+        } else if (selectedAssignedUserId && parsedTarget.gardenId) {
+            const assignableFarmUsersByGardenId =
+                await getAssignableFarmUsersByGardenIds([
+                    parsedTarget.gardenId,
+                ]);
+            const isUserAssignableToGarden =
+                assignableFarmUsersByGardenId[parsedTarget.gardenId]?.some(
+                    (user) => user.id === selectedAssignedUserId,
+                ) ?? false;
+            if (!isUserAssignableToGarden) {
+                throw new Error(
+                    'Odabrani korisnik nije dostupan za odabranu radnju.',
+                );
+            }
+        }
+
+        const operationId = await createOperation({
+            entityId,
+            entityTypeName: 'operation',
+            accountId: parsedTarget.accountId,
+            farmId: parsedTarget.farmId,
+            gardenId: parsedTarget.gardenId,
+            raisedBedId: parsedTarget.raisedBedId,
+            raisedBedFieldId: parsedTarget.raisedBedFieldId,
+            timestamp: undefined,
+        });
+
+        if (scheduledDate) {
+            await createEvent(
+                knownEvents.operations.scheduledV1(operationId.toString(), {
+                    scheduledDate: scheduledDate.toISOString(),
+                }),
+            );
+            await notifyOperationUpdate(operationId, 'scheduled', {
+                scheduledDate: scheduledDate.toISOString(),
+            });
+        }
+        if (selectedAssignedUserId) {
+            await createEvent(
+                knownEvents.operations.assignedV1(operationId.toString(), {
+                    assignedUserId: selectedAssignedUserId,
+                    assignedBy: userId,
+                }),
+            );
+        }
+
+        revalidatePath(KnownPages.Schedule);
+        revalidatePath(KnownPages.Operations);
+        if (parsedTarget.farmId) {
+            revalidatePath(KnownPages.Farm(parsedTarget.farmId));
+        }
+
+        return { success: true, message: 'Radnja je uspješno kreirana.' };
+    } catch (error) {
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : 'Došlo je do greške pri kreiranju radnje.',
+        };
+    }
+}
 export type BulkCreateOperationsActionState = {
     success: boolean;
     message: string;
@@ -100,25 +279,51 @@ export async function bulkCreateOperationsAction(
             ? new Date(formData.get('scheduledDate') as string)
             : undefined;
         const selectedAssignedUserId =
-            (formData.get('assignedUserId') as string | null)?.trim() ||
-            undefined;
-        const targets = formData.getAll('targets') as string[];
+            getStringFormValue(formData, 'assignedUserId') || undefined;
+        const targets = formData
+            .getAll('targets')
+            .filter((value): value is string => typeof value === 'string');
         if (targets.length === 0) {
             throw new Error('Odaberite barem jednu ciljnu lokaciju.');
         }
+        const parsedTargets = targets.map(parseOperationTarget);
 
         if (selectedAssignedUserId) {
-            const uniqueGardenIds = Array.from(
+            const uniqueFarmIds = Array.from(
                 new Set(
-                    targets
-                        .map((target) => target.split('|')[1])
-                        .filter((gardenId) => gardenId)
-                        .map((gardenId) => Number(gardenId))
-                        .filter((gardenId) => !Number.isNaN(gardenId)),
+                    parsedTargets
+                        .map((target) => target.farmId)
+                        .filter(
+                            (farmId): farmId is number => farmId !== undefined,
+                        ),
                 ),
             );
-            const assignableFarmUsersByGardenId =
-                await getAssignableFarmUsersByGardenIds(uniqueGardenIds);
+            const uniqueGardenIds = Array.from(
+                new Set(
+                    parsedTargets
+                        .map((target) => target.gardenId)
+                        .filter(
+                            (gardenId): gardenId is number =>
+                                gardenId !== undefined,
+                        ),
+                ),
+            );
+            const [assignableFarmUsersByFarmId, assignableFarmUsersByGardenId] =
+                await Promise.all([
+                    getAssignableFarmUsersByFarmIds(uniqueFarmIds),
+                    getAssignableFarmUsersByGardenIds(uniqueGardenIds),
+                ]);
+            for (const farmId of uniqueFarmIds) {
+                const isUserAssignableToFarm =
+                    assignableFarmUsersByFarmId[farmId]?.some(
+                        (user) => user.id === selectedAssignedUserId,
+                    ) ?? false;
+                if (!isUserAssignableToFarm) {
+                    throw new Error(
+                        'Odabrani korisnik nije dostupan za sve odabrane radnje.',
+                    );
+                }
+            }
             for (const gardenId of uniqueGardenIds) {
                 const isUserAssignableToGarden =
                     assignableFarmUsersByGardenId[gardenId]?.some(
@@ -133,18 +338,15 @@ export async function bulkCreateOperationsAction(
         }
 
         let createdCount = 0;
-        for (const target of targets) {
-            const [accountId, gardenId, raisedBedId, raisedBedFieldId] =
-                target.split('|');
+        for (const parsedTarget of parsedTargets) {
             const operation: InsertOperation = {
                 entityId,
                 entityTypeName: 'operation',
-                accountId: accountId || undefined,
-                gardenId: gardenId ? Number(gardenId) : undefined,
-                raisedBedId: raisedBedId ? Number(raisedBedId) : undefined,
-                raisedBedFieldId: raisedBedFieldId
-                    ? Number(raisedBedFieldId)
-                    : undefined,
+                accountId: parsedTarget.accountId,
+                farmId: parsedTarget.farmId,
+                gardenId: parsedTarget.gardenId,
+                raisedBedId: parsedTarget.raisedBedId,
+                raisedBedFieldId: parsedTarget.raisedBedFieldId,
                 timestamp: undefined,
             };
             const operationId = await createOperation(operation);
@@ -171,6 +373,13 @@ export async function bulkCreateOperationsAction(
 
         revalidatePath(KnownPages.Schedule);
         revalidatePath(KnownPages.Operations);
+        for (const farmId of new Set(
+            parsedTargets
+                .map((target) => target.farmId)
+                .filter((farmId): farmId is number => farmId !== undefined),
+        )) {
+            revalidatePath(KnownPages.Farm(farmId));
+        }
 
         return {
             success: true,
@@ -321,6 +530,7 @@ async function revalidateOperationPaths(
 ) {
     revalidatePath(KnownPages.Schedule);
     revalidatePath(KnownPages.Operations);
+    revalidatePath(KnownPages.Operation(operation.id));
     if (operation.accountId)
         revalidatePath(KnownPages.Account(operation.accountId));
     if (operation.gardenId)
@@ -451,11 +661,13 @@ async function verifyOperationCompletion(
 export async function completeOperation(
     operationId: number,
     imageUrls?: string[],
+    notes?: string,
 ) {
     const {
         user: { role },
         userId,
     } = await auth(['admin', 'farmer']);
+    const completionNotes = normalizeCompletionNotes(notes);
     const operation = await getOperationById(operationId);
     if (!operation) {
         throw new Error(`Operation with ID ${operationId} not found.`);
@@ -490,6 +702,7 @@ export async function completeOperation(
         knownEvents.operations.completedV1(operationId.toString(), {
             completedBy: userId,
             images: imageUrls,
+            notes: completionNotes,
         }),
     );
 
@@ -512,11 +725,12 @@ export async function completeOperation(
 export async function completeOperationWithImageUrls(
     operationId: number,
     imageUrls: string[],
+    notes?: string,
 ) {
     if (!operationId) {
         throw new Error('Operation ID is required');
     }
-    return completeOperation(operationId, imageUrls);
+    return completeOperation(operationId, imageUrls, notes);
 }
 
 export async function verifyOperationAction(operationId: number) {

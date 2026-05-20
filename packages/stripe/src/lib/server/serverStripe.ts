@@ -36,7 +36,8 @@ function getValidStripeImageUrls(imageUrls?: string[]): string[] | undefined {
         try {
             const parsedUrl = new URL(imageUrl);
             return (
-                parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'http:'
+                parsedUrl.protocol === 'https:' ||
+                parsedUrl.protocol === 'http:'
             );
         } catch {
             return false;
@@ -184,9 +185,7 @@ export async function stripeCheckout(
                     product_data: {
                         name: item.product.name,
                         description: item.product.description,
-                        images: getValidStripeImageUrls(
-                            item.product.imageUrls,
-                        ),
+                        images: getValidStripeImageUrls(item.product.imageUrls),
                         metadata: item.product.metadata,
                     },
                     unit_amount: item.price.valueInCents,

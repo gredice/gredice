@@ -44,7 +44,7 @@ export function WeatherNowDetails() {
     const [showForecast, setShowForecast] = useState(false);
     if (!data) return null;
 
-    const WeatherIcon = weatherIcons[data.symbol];
+    const WeatherIcon = data.symbol != null ? weatherIcons[data.symbol] : null;
     const WindIcon = data.windDirection
         ? windDirectionIcons[data.windDirection]
         : Empty;
@@ -79,7 +79,7 @@ export function WeatherNowDetails() {
                                     Temperatura (prognoza)
                                 </Typography>
                                 <Typography semiBold>
-                                    {data.temperature}°C
+                                    {data.temperature ?? '—'}°C
                                 </Typography>
                             </Stack>
                             {data.measuredTemperature && (

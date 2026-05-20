@@ -1,5 +1,7 @@
+import { userAllowedPlantStatusTransitions } from '@gredice/js/plants';
 import { signalcoClient } from '@gredice/signalco';
 import {
+    abandonRaisedBed,
     buildRaisedBedFieldPlantUpdatePayload,
     countEventsSince,
     createDefaultGardenForAccount,
@@ -59,6 +61,10 @@ import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
+// CMS operation directory (`/entities/operation`) ID 591 is the raised-bed abandonment operation queued for farm follow-up.
+const ABANDON_RAISED_BED_OPERATION_ID = 591;
+// Operations are stored as CMS entities with entityTypeName='operation'.
+const OPERATION_ENTITY_TYPE_NAME = 'operation';
 
 async function countRecentRaisedBedAiAnalyses(accountId: string) {
     const accountBedIds = await getRaisedBedIdsByAccount(accountId);
@@ -1544,6 +1550,63 @@ const app = new Hono<{ Variables: AuthVariables }>()
             });
         },
     )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/abandon',
+        describeRoute({
+            description:
+                'Mark a raised bed as abandoned and queue the abandonment operation.',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const [garden, raisedBed] = await Promise.all([
+                getGarden(gardenIdNumber),
+                getRaisedBed(raisedBedIdNumber),
+            ]);
+            if (
+                !garden ||
+                garden.accountId !== accountId ||
+                !raisedBed ||
+                raisedBed.accountId !== accountId ||
+                raisedBed.gardenId !== gardenIdNumber
+            ) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+            if (raisedBed.status === 'abandoned') {
+                return context.json(
+                    { error: 'Raised bed is already abandoned' },
+                    409,
+                );
+            }
+
+            const operationId = await abandonRaisedBed({
+                accountId,
+                gardenId: gardenIdNumber,
+                operationEntityId: ABANDON_RAISED_BED_OPERATION_ID,
+                operationEntityTypeName: OPERATION_ENTITY_TYPE_NAME,
+                raisedBedId: raisedBedIdNumber,
+            });
+
+            return context.json({ id: operationId }, 201);
+        },
+    )
     .get(
         '/:gardenId/raised-beds/:raisedBedId/diary-entries',
         describeRoute({
@@ -1869,16 +1932,22 @@ const app = new Hono<{ Variables: AuthVariables }>()
             'json',
             z.object({
                 status: z.string(),
+                timestamp: z.string().datetime().optional(),
             }),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId, positionIndex } =
                 context.req.valid('param');
-            const { status } = context.req.valid('json');
+            const { status, timestamp } = context.req.valid('json');
 
-            // For now, we only support 'remove' status update this way
-            if (status !== 'removed') {
+            // Build reverse lookup: target status → allowed source statuses
+            const allowedTargetStatuses = new Set([
+                ...Object.values(userAllowedPlantStatusTransitions).flat(),
+                'removed',
+            ]);
+
+            if (!allowedTargetStatuses.has(status)) {
                 return context.json({ error: 'Invalid status' }, 400);
             }
 
@@ -1930,17 +1999,60 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            // Validate state transition for user-allowed statuses
+            // Find allowed source states by looking up which current statuses can transition to the target
+            const allowedFromStates = Object.entries(
+                userAllowedPlantStatusTransitions,
+            )
+                .filter(([, targets]) => targets.includes(status))
+                .map(([source]) => source);
+            if (
+                allowedFromStates.length > 0 &&
+                (!field.plantStatus ||
+                    !allowedFromStates.includes(field.plantStatus))
+            ) {
+                return context.json(
+                    {
+                        error: `Cannot change from '${field.plantStatus}' to '${status}'. Allowed source states: ${allowedFromStates.join(', ')}`,
+                    },
+                    400,
+                );
+            }
+
+            // Validate timestamp if provided
+            let createdAt: Date | undefined;
+            if (timestamp) {
+                createdAt = new Date(timestamp);
+                if (Number.isNaN(createdAt.getTime())) {
+                    return context.json({ error: 'Invalid timestamp' }, 400);
+                }
+                const activePlantCycle = field.plantCycles.find(
+                    (plantCycle) => plantCycle.active,
+                );
+                if (activePlantCycle && createdAt < activePlantCycle.endedAt) {
+                    return context.json(
+                        {
+                            error: 'Timestamp cannot be earlier than the latest field lifecycle event',
+                        },
+                        400,
+                    );
+                }
+            }
+
             // Call the storage function to create the event and update the plant status
             try {
-                await createEvent(
-                    knownEvents.raisedBedFields.plantUpdateV1(
-                        `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
-                        buildRaisedBedFieldPlantUpdatePayload(
-                            status,
-                            field.assignedUserIds,
-                        ),
+                const event = knownEvents.raisedBedFields.plantUpdateV1(
+                    `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
+                    buildRaisedBedFieldPlantUpdatePayload(
+                        status,
+                        field.assignedUserIds,
                     ),
                 );
+
+                await createEvent({
+                    ...event,
+                    ...(createdAt && { createdAt }),
+                });
 
                 return context.json({ success: true }, 200);
             } catch (error) {

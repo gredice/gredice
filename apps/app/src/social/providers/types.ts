@@ -1,0 +1,63 @@
+import type {
+    SocialPostMediaUrl,
+    SocialPostType,
+    SocialProvider,
+} from '@gredice/storage';
+
+export type {
+    SocialPostMediaUrl,
+    SocialPostType,
+    SocialProvider,
+} from '@gredice/storage';
+
+export type SocialProviderName = SocialProvider;
+
+export type SocialPostInput = {
+    providerAccountKey: string;
+    postType: SocialPostType;
+    title: string;
+    body?: string;
+    url?: string;
+    destination?: string;
+    mediaUrls?: SocialPostMediaUrl[];
+};
+
+export type SocialPublishSuccess = {
+    ok: true;
+    providerPostId: string;
+    permalink: string;
+    metadata?: Record<string, unknown>;
+};
+
+export type SocialPublishErrorCode =
+    | 'provider_disabled'
+    | 'missing_credentials'
+    | 'invalid_destination'
+    | 'auth_failed'
+    | 'rate_limited'
+    | 'invalid_request'
+    | 'provider_unavailable'
+    | 'unknown_error';
+
+export type SocialPublishError = {
+    ok: false;
+    code: SocialPublishErrorCode;
+    message: string;
+    retriable: boolean;
+    details?: Record<string, unknown>;
+};
+
+export type SocialPublishResult = SocialPublishSuccess | SocialPublishError;
+
+export type SocialProviderValidationInput = Pick<
+    SocialPostInput,
+    'providerAccountKey'
+>;
+
+export interface SocialProviderAdapter {
+    readonly name: SocialProviderName;
+    validateConfig(
+        input?: SocialProviderValidationInput,
+    ): SocialPublishError | null;
+    publishPost(input: SocialPostInput): Promise<SocialPublishResult>;
+}

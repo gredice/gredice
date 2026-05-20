@@ -24,6 +24,9 @@ function normalizeSitemapPath(path) {
 module.exports = {
     siteUrl: process.env.SITE_URL || 'https://www.gredice.com',
     generateRobotsTxt: true,
+    robotsTxtOptions: {
+        includeHost: false,
+    },
     transform: async (config, path) => ({
         loc: normalizeSitemapPath(path),
         changefreq: config.changefreq,

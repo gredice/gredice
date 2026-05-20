@@ -8,6 +8,7 @@ import {
     deleteAttributeValue,
     deleteEntity,
     getEntityIncomingLinks,
+    getEntityRaw,
     type IncomingEntityLinkGroup,
     type SelectAttributeDefinition,
     type SelectAttributeValue,
@@ -21,6 +22,7 @@ import {
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth } from '../../lib/auth/auth';
+import { revalidatePublicDirectoryPagesForEntityType } from '../../lib/revalidation/publicDirectoryPages';
 import { KnownPages } from '../../src/KnownPages';
 
 const imageContentTypeExtensions: Record<string, string> = {
@@ -182,7 +184,21 @@ export async function createEntity(entityTypeName: string) {
     revalidatePath(KnownPages.Directories);
     revalidatePath(KnownPages.DirectoryEntityType(entityTypeName));
     revalidatePath(KnownPages.DirectoryEntity(entityTypeName, entityId));
+    await revalidatePublicDirectoryPagesForEntityType(
+        entityTypeName,
+        'entity.create',
+    );
     redirect(KnownPages.DirectoryEntity(entityTypeName, entityId));
+}
+
+async function revalidatePublicDirectoryPagesForEntity(
+    entity: UpdateEntity,
+    reason: string,
+) {
+    const entityTypeName =
+        entity.entityTypeName ??
+        (await getEntityRaw(entity.id))?.entityTypeName;
+    await revalidatePublicDirectoryPagesForEntityType(entityTypeName, reason);
 }
 
 export async function updateEntity(entity: UpdateEntity) {
@@ -199,6 +215,47 @@ export async function updateEntity(entity: UpdateEntity) {
     revalidatePath(KnownPages.DirectoryEntityTypePath, 'layout');
     revalidatePath(KnownPages.DirectoryEntityPath, 'page');
     revalidatePath(KnownPages.DirectoryEntityPath, 'layout');
+    await revalidatePublicDirectoryPagesForEntity(entity, 'entity.update');
+}
+
+function entityActionErrorMessage(error: unknown) {
+    if (error instanceof Error) {
+        return error.message;
+    }
+    return 'Promjena statusa nije uspjela.';
+}
+
+export async function updateEntityStateAction(entity: UpdateEntity) {
+    await auth(['admin']);
+
+    const authData = await auth(['admin']);
+
+    try {
+        await storageUpdateEntity(entity, {
+            id: authData.userId,
+            name: authData.user.userName,
+        });
+    } catch (error) {
+        return {
+            success: false,
+            message: entityActionErrorMessage(error),
+        };
+    }
+
+    revalidatePath(KnownPages.Directories);
+    revalidatePath(KnownPages.DirectoryEntityTypePath, 'page');
+    revalidatePath(KnownPages.DirectoryEntityTypePath, 'layout');
+    revalidatePath(KnownPages.DirectoryEntityPath, 'page');
+    revalidatePath(KnownPages.DirectoryEntityPath, 'layout');
+    await revalidatePublicDirectoryPagesForEntity(
+        entity,
+        'entity.state.update',
+    );
+
+    return {
+        success: true,
+        message: null,
+    };
 }
 
 export async function duplicateEntity(
@@ -210,6 +267,10 @@ export async function duplicateEntity(
     const newEntityId = await storageDuplicateEntity(entityId);
     revalidatePath(KnownPages.Directories);
     revalidatePath(KnownPages.DirectoryEntityType(entityTypeName));
+    await revalidatePublicDirectoryPagesForEntityType(
+        entityTypeName,
+        'entity.duplicate',
+    );
     redirect(KnownPages.DirectoryEntity(entityTypeName, newEntityId));
 }
 
@@ -240,6 +301,10 @@ export async function handleValueSave(
         },
     );
     revalidatePath(KnownPages.DirectoryEntity(entityTypeName, entityId));
+    await revalidatePublicDirectoryPagesForEntityType(
+        entityTypeName,
+        'entity.attribute.update',
+    );
 }
 
 export async function handleValueDelete(attributeValue: SelectAttributeValue) {
@@ -253,6 +318,10 @@ export async function handleValueDelete(attributeValue: SelectAttributeValue) {
     });
     revalidatePath(
         `/admin/directories/${attributeValue.entityTypeName}/${attributeValue.entityId}`,
+    );
+    await revalidatePublicDirectoryPagesForEntityType(
+        attributeValue.entityTypeName,
+        'entity.attribute.delete',
     );
 }
 
@@ -317,6 +386,10 @@ export async function handleEntityDelete(
         name: authData.user.userName,
     });
     revalidatePath(KnownPages.Directories);
+    await revalidatePublicDirectoryPagesForEntityType(
+        entityTypeName,
+        'entity.delete',
+    );
     redirect(KnownPages.DirectoryEntityType(entityTypeName));
 }
 

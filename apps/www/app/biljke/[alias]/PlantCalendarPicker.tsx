@@ -1,7 +1,6 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
 import { Calendar, Sprout } from '@signalco/ui-icons';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import {
     Tabs,
@@ -11,6 +10,7 @@ import {
 } from '@signalco/ui-primitives/Tabs';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import { CalendarInfoChip } from '../CalendarInfoChip';
 import { PlantGrowthCalendar } from './PlantGrowthCalendar';
 import { PlantYearCalendar } from './PlantYearCalendar';
 
@@ -32,40 +32,49 @@ export function PlantCalendarPicker({
             >
                 {hasCalendarData ? (
                     <Tabs defaultValue="year">
-                        <TabsList className="grid grid-cols-2 w-fit">
-                            <TabsTrigger value="year" className="flex gap-2">
-                                <Calendar className="size-5 shrink-0" />
-                                <span>Kalendar sijanja</span>
-                            </TabsTrigger>
-                            <TabsTrigger value="growth" className="flex gap-2">
-                                <Sprout className="size-5 shrink-0" />
-                                <span>Kalendar rasta</span>
-                            </TabsTrigger>
-                        </TabsList>
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                            <TabsList className="grid w-full min-w-0 max-w-full grid-cols-2 overflow-hidden">
+                                <TabsTrigger
+                                    value="year"
+                                    className="flex min-w-0 gap-1 overflow-hidden px-2"
+                                >
+                                    <Calendar className="size-4 shrink-0" />
+                                    <span className="truncate">
+                                        Kalendar sijanja
+                                    </span>
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value="growth"
+                                    className="flex min-w-0 gap-1 overflow-hidden px-2"
+                                >
+                                    <Sprout className="size-4 shrink-0" />
+                                    <span className="truncate">
+                                        Kalendar rasta
+                                    </span>
+                                </TabsTrigger>
+                            </TabsList>
+                            <CalendarInfoChip className="self-center" />
+                        </div>
                         <TabsContent value="year">
-                            <Card>
-                                <CardOverflow>
-                                    <PlantYearCalendar
-                                        activities={plant.calendar}
-                                    />
-                                </CardOverflow>
-                            </Card>
+                            <div className="overflow-hidden rounded-md">
+                                <PlantYearCalendar
+                                    activities={plant.calendar}
+                                />
+                            </div>
                             <Typography
-                                level="body2"
-                                className="italic text-right text-balance"
+                                level="body3"
+                                className="italic text-right text-balance mt-1"
                             >
                                 Kalendar sijanja prikazuje smjernice za sjetvu i
                                 razvoj biljke kroz godinu.
                             </Typography>
                         </TabsContent>
                         <TabsContent value="growth">
-                            <Card>
-                                <CardOverflow>
-                                    <PlantGrowthCalendar
-                                        windows={plant.attributes}
-                                    />
-                                </CardOverflow>
-                            </Card>
+                            <div className="overflow-hidden rounded-md">
+                                <PlantGrowthCalendar
+                                    windows={plant.attributes}
+                                />
+                            </div>
                             <Typography
                                 level="body2"
                                 className="italic text-right text-balance"

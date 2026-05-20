@@ -13,6 +13,21 @@ import {
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
 
+const MAX_COMPLETION_NOTES_LENGTH = 2000;
+
+function normalizeCompletionNotes(notes?: string) {
+    const normalizedNotes = notes?.trim();
+    if (!normalizedNotes) {
+        return undefined;
+    }
+
+    if (normalizedNotes.length > MAX_COMPLETION_NOTES_LENGTH) {
+        throw new Error('Napomena može imati najviše 2000 znakova.');
+    }
+
+    return normalizedNotes;
+}
+
 async function assertFarmerCanCompleteOperation(
     userId: string,
     operationId: number,
@@ -67,11 +82,13 @@ function revalidateSchedule() {
 export async function completeFarmOperation(
     operationId: number,
     imageUrls?: string[],
+    notes?: string,
 ) {
     const {
         user: { role },
         userId,
     } = await auth(['admin', 'farmer']);
+    const completionNotes = normalizeCompletionNotes(notes);
 
     const operation =
         role === 'admin'
@@ -103,6 +120,7 @@ export async function completeFarmOperation(
         knownEvents.operations.completedV1(operationId.toString(), {
             completedBy: userId,
             images: imageUrls,
+            notes: completionNotes,
         }),
     );
 
@@ -114,12 +132,13 @@ export async function completeFarmOperation(
 export async function completeFarmOperationWithImageUrls(
     operationId: number,
     imageUrls: string[],
+    notes?: string,
 ) {
     if (!operationId) {
         throw new Error('Operation ID is required');
     }
 
-    return completeFarmOperation(operationId, imageUrls);
+    return completeFarmOperation(operationId, imageUrls, notes);
 }
 
 export async function completeFarmPlanting(

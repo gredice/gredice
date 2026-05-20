@@ -14,6 +14,7 @@ import {
     createGameState,
     GameStateContext,
     type GameStateStore,
+    useDisposeGameStateStore,
 } from '../useGameState';
 
 const APP_BASE_URL = 'https://vrt.gredice.com';
@@ -100,6 +101,7 @@ export function PlantViewer({
             winterMode: 'summer',
         });
     }
+    useDisposeGameStateStore(storeRef.current);
 
     return (
         <GameStateContext.Provider value={storeRef.current}>

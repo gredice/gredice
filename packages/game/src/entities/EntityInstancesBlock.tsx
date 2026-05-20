@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { Material } from 'three';
 import type { BufferGeometry } from 'three/src/Three.Core.js';
 import { useBlockData } from '../hooks/useBlockData';
+import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { type SnowMaterialOptions, SnowOverlay } from '../snow/SnowOverlay';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
@@ -18,6 +19,7 @@ type EntityInstancesBlockBaseProps = {
     scale?: [number, number, number];
     geometry: BufferGeometry;
     snow?: SnowMaterialOptions;
+    renderRainWetOverlay?: boolean;
 };
 
 type EntityInstancesBlockMaterialProps =
@@ -43,6 +45,7 @@ export function EntityInstancesBlock(
         scale,
         geometry,
         snow,
+        renderRainWetOverlay = false,
     } = props;
     const { data: blockData } = useBlockData();
     const pickupBlock = useGameState((state) => state.pickupBlock);
@@ -104,6 +107,20 @@ export function EntityInstancesBlock(
                   </group>
               ));
 
+    const renderRainOverlays = () =>
+        !renderRainWetOverlay
+            ? null
+            : (blockInstances ?? []).map((data) => (
+                  <group
+                      key={`block-${name}-rain-${data.id}`}
+                      position={data.position}
+                      rotation={[0, data.rotation * (Math.PI / 2), 0]}
+                      scale={scale}
+                  >
+                      <RainWetOverlay geometry={geometry} />
+                  </group>
+              ));
+
     return (
         <>
             <Instances
@@ -116,6 +133,7 @@ export function EntityInstancesBlock(
                 {'materialNode' in props ? props.materialNode : null}
                 {renderInstances('base')}
             </Instances>
+            {renderRainOverlays()}
             {renderSnowOverlays()}
         </>
     );

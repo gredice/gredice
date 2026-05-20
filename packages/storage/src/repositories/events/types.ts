@@ -236,6 +236,7 @@ export type OperationAssignPayload =
 export type OperationCompletePayload = {
     completedBy: string;
     images?: string[];
+    notes?: string;
 };
 
 export type OperationVerifyPayload = {
@@ -352,4 +353,5 @@ export type Event = {
     version: number;
     aggregateId: string;
     data?: unknown | null | undefined;
+    createdAt?: Date;
 };

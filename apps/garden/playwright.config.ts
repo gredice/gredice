@@ -55,6 +55,9 @@ export const config: PlaywrightTestConfig = {
             optimizeDeps: {
                 exclude: ['next/font/google'],
             },
+            resolve: {
+                dedupe: ['nuqs', 'react', 'react-dom'],
+            },
         },
     },
     projects: [

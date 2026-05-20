@@ -2,13 +2,14 @@
 
 import type { BlockData } from '@gredice/client';
 import { BlockImage } from '@gredice/ui/BlockImage';
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { orderBy } from '@signalco/js';
 import { Gallery } from '@signalco/ui/Gallery';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { ItemCard } from '../../components/shared/ItemCard';
+import { useClientSearchParam } from '../../hooks/useClientSearchParam';
+import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { KnownPages } from '../../src/KnownPages';
 
 function BlockGalleryItem(
@@ -49,16 +50,17 @@ function BlockGalleryItem(
 }
 
 export function BlockGallery({ blocks }: { blocks: BlockData[] | undefined }) {
-    const [search] = useSearchParam('pretraga');
+    const [search] = useClientSearchParam('pretraga');
+    const normalizedSearch = normalizeSearchText(search);
     const filteredBlocks = orderBy(blocks ?? [], (a, b) =>
         a.information.name.localeCompare(b.information.label),
     )
         .filter(
             (blocks) =>
-                !search ||
-                blocks.information.label
-                    .toLowerCase()
-                    .includes(search.toLowerCase()),
+                !normalizedSearch ||
+                normalizeSearchText(blocks.information.label).includes(
+                    normalizedSearch,
+                ),
         )
         .map((blocks) => ({ ...blocks, id: blocks.id.toString() }));
 

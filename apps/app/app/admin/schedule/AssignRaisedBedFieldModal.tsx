@@ -26,6 +26,7 @@ interface AssignRaisedBedFieldModalProps {
     farmUsers: AssignableUser[];
     assignedUserIds?: string[];
     disabled?: boolean;
+    onSubmit?: (selectedUserIds: string[]) => unknown | Promise<unknown>;
 }
 
 function getUserLabel(user: AssignableUser) {
@@ -40,6 +41,7 @@ export function AssignRaisedBedFieldModal({
     farmUsers,
     assignedUserIds,
     disabled = false,
+    onSubmit,
 }: AssignRaisedBedFieldModalProps) {
     const [open, setOpen] = useState(false);
     const initialAssignedUserIds = useMemo(
@@ -115,10 +117,14 @@ export function AssignRaisedBedFieldModal({
         setErrorMessage(null);
 
         try {
-            await assignRaisedBedFieldUserAction(
-                raisedBedFieldId,
-                selectedUserIds,
-            );
+            if (onSubmit) {
+                await onSubmit(selectedUserIds);
+            } else {
+                await assignRaisedBedFieldUserAction(
+                    raisedBedFieldId,
+                    selectedUserIds,
+                );
+            }
             setOpen(false);
         } catch (error) {
             console.error('Error assigning planting user:', error);
@@ -204,7 +210,7 @@ export function AssignRaisedBedFieldModal({
                                 key={user.id}
                                 label={getUserLabel(user)}
                                 checked={selectedUserIds.includes(user.id)}
-                                onCheckedChange={(checked) =>
+                                onCheckedChange={(checked: boolean) =>
                                     toggleSelectedUser(
                                         user.id,
                                         Boolean(checked),

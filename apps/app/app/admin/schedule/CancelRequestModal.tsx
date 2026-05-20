@@ -11,7 +11,7 @@ import { useState } from 'react';
 interface CancelRequestModalProps {
     label: string;
     trigger: React.ReactElement;
-    onSubmit: (formData: FormData) => Promise<void>;
+    onSubmit: (formData: FormData) => unknown | Promise<unknown>;
     hiddenFields: React.ReactNode;
     description?: string;
     confirmLabel?: string;

@@ -331,6 +331,9 @@ async function openApiEntitiesDoc(
             },
             required: ['id', 'name', 'label'],
         },
+        slug: {
+            type: 'string',
+        },
     };
 
     const attributeDefinitions = await getAttributeDefinitions(entityType.name);
@@ -386,6 +389,7 @@ async function openApiEntitiesDoc(
                     required: [
                         'id',
                         'entityType',
+                        'slug',
                         'createdAt',
                         'updatedAt',
                         ...requiredCategories,
@@ -477,6 +481,67 @@ export async function openApiDocs(
         },
     };
 
+    paths['/search'] = {
+        get: {
+            summary: '/search',
+            description: 'Search published directory entities.',
+            parameters: [
+                {
+                    name: 'q',
+                    in: 'query',
+                    required: true,
+                    schema: { type: 'string', minLength: 2, maxLength: 200 },
+                },
+                {
+                    name: 'category',
+                    in: 'query',
+                    required: false,
+                    schema: {
+                        oneOf: [
+                            { type: 'string' },
+                            { type: 'array', items: { type: 'string' } },
+                        ],
+                    },
+                },
+                {
+                    name: 'entityType',
+                    in: 'query',
+                    required: false,
+                    schema: {
+                        oneOf: [
+                            { type: 'string' },
+                            { type: 'array', items: { type: 'string' } },
+                        ],
+                    },
+                },
+                {
+                    name: 'limit',
+                    in: 'query',
+                    required: false,
+                    schema: { type: 'integer', minimum: 1, maximum: 50 },
+                },
+                {
+                    name: 'offset',
+                    in: 'query',
+                    required: false,
+                    schema: { type: 'integer', minimum: 0, maximum: 500 },
+                },
+            ],
+            responses: {
+                200: {
+                    description: 'Successful response',
+                    content: {
+                        'application/json': {
+                            schema: {
+                                $ref: '#/components/schemas/directory-search-response',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    };
+
     paths['/pages/{slug}'] = {
         get: {
             summary: '/pages/{slug}',
@@ -548,6 +613,50 @@ export async function openApiDocs(
                     },
                 },
             ],
+        };
+        baseDoc.components.schemas['directory-search-result'] = {
+            type: 'object',
+            required: [
+                'entityId',
+                'entityType',
+                'category',
+                'categoryLabel',
+                'title',
+                'href',
+                'rank',
+                'publishedAt',
+                'updatedAt',
+            ],
+            properties: {
+                entityId: { type: 'number' },
+                entityType: { type: 'string' },
+                category: { type: 'string' },
+                categoryLabel: { type: 'string' },
+                title: { type: 'string' },
+                summary: { type: ['string', 'null'] },
+                imageUrl: { type: ['string', 'null'] },
+                imageAlt: { type: ['string', 'null'] },
+                href: { type: 'string', format: 'uri' },
+                rank: { type: 'number' },
+                publishedAt: { type: ['string', 'null'], format: 'date-time' },
+                updatedAt: { type: 'string', format: 'date-time' },
+            },
+        };
+        baseDoc.components.schemas['directory-search-response'] = {
+            type: 'object',
+            required: ['query', 'limit', 'offset', 'count', 'results'],
+            properties: {
+                query: { type: 'string' },
+                limit: { type: 'number' },
+                offset: { type: 'number' },
+                count: { type: 'number' },
+                results: {
+                    type: 'array',
+                    items: {
+                        $ref: '#/components/schemas/directory-search-result',
+                    },
+                },
+            },
         };
     }
 

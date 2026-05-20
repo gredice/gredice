@@ -1,6 +1,8 @@
 'use client';
 
+import { Replace } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
+import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
@@ -20,6 +22,7 @@ type MoveRaisedBedFieldPlantModalProps = {
     sourcePlantPlaceEventId: number;
     sourcePlantLabel: string;
     targetOptions: MoveRaisedBedFieldPlantOption[];
+    triggerVariant?: 'button' | 'icon';
 };
 
 export function MoveRaisedBedFieldPlantModal({
@@ -28,6 +31,7 @@ export function MoveRaisedBedFieldPlantModal({
     sourcePlantPlaceEventId,
     sourcePlantLabel,
     targetOptions,
+    triggerVariant = 'button',
 }: MoveRaisedBedFieldPlantModalProps) {
     const [open, setOpen] = useState(false);
     const [selectedTarget, setSelectedTarget] = useState(
@@ -70,13 +74,24 @@ export function MoveRaisedBedFieldPlantModal({
         <Modal
             title={`Premjesti biljku: ${sourcePlantLabel}`}
             trigger={
-                <Button
-                    variant="outlined"
-                    size="sm"
-                    disabled={targetOptions.length === 0}
-                >
-                    Premjesti
-                </Button>
+                triggerVariant === 'icon' ? (
+                    <IconButton
+                        variant="outlined"
+                        size="sm"
+                        title="Premjesti biljku"
+                        disabled={targetOptions.length === 0}
+                    >
+                        <Replace className="size-4 shrink-0" />
+                    </IconButton>
+                ) : (
+                    <Button
+                        variant="outlined"
+                        size="sm"
+                        disabled={targetOptions.length === 0}
+                    >
+                        Premjesti
+                    </Button>
+                )
             }
             open={open}
             onOpenChange={setOpen}

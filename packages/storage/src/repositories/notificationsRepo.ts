@@ -1,16 +1,587 @@
 import { randomUUID } from 'node:crypto';
-import { and, desc, eq, inArray, isNull, notExists, or } from 'drizzle-orm';
-import { accounts, storage } from '..';
+import {
+    and,
+    desc,
+    eq,
+    inArray,
+    isNull,
+    notExists,
+    or,
+    sql,
+} from 'drizzle-orm';
+import { storage } from '..';
 import { isTargetHourInTimeZone } from '../helpers/timezoneUtils';
 import {
+    accounts,
     accountUsers,
+    gardens,
     type InsertNotification,
+    type InsertNotificationCampaign,
+    type NotificationCampaignAudience,
+    type NotificationCampaignDeliveryMetadata,
+    notificationCampaigns,
+    notificationDeliveryAttempts,
+    notificationDeliveryEvents,
     notificationEmailLog,
     notifications,
+    notificationUserChannelPreferences,
     type SelectNotification,
+    type SelectNotificationCampaign,
+    type SelectNotificationUserChannelPreference,
     userNotificationSettings,
     users,
+    webPushSubscriptions,
 } from '../schema';
+
+type DeliveryChannel = 'email' | 'push';
+type DeliveryOutcome = 'immediate' | 'digest' | 'suppressed' | 'required';
+type DeliveryAttemptStatus = 'accepted' | 'queued' | 'dropped';
+type NotificationCampaignQueueStatus = 'queued' | 'scheduled';
+type NotificationCampaignExplicitRecipient = Extract<
+    NotificationCampaignAudience,
+    { type: 'explicit' }
+>['recipients'][number];
+
+export type NotificationDeliveryDecision = {
+    channel: DeliveryChannel;
+    outcome: DeliveryOutcome;
+    reason: string;
+    required: boolean;
+};
+
+export type NotificationCampaignAudiencePreview = {
+    audienceType: NotificationCampaignAudience['type'];
+    targetCount: number;
+    accountCount: number;
+    userCount: number;
+    gardenCount: number;
+    explicitRecipientCount: number;
+    unmatchedRecipientCount: number;
+};
+
+export type NotificationDeliveryEventType =
+    (typeof notificationDeliveryEvents.$inferSelect)['type'];
+
+export type NotificationDeliveryRollup = {
+    sent: number;
+    accepted: number;
+    failed: number;
+    retried: number;
+    invalidated: number;
+    opened: number;
+    dismissed: number;
+    clicked: number;
+    unsubscribed: number;
+};
+
+export type NotificationRetentionCleanupResult = {
+    subscriptionsDisabled: number;
+    deliveryEventsDeleted: number;
+    deliveryAttemptsDeleted: number;
+    campaignsDeleted: number;
+};
+
+export type CreateNotificationCampaignInput = Omit<
+    InsertNotificationCampaign,
+    | 'status'
+    | 'targetCount'
+    | 'queuedCount'
+    | 'sentCount'
+    | 'failedCount'
+    | 'suppressedCount'
+    | 'enqueuedAt'
+    | 'startedAt'
+    | 'completedAt'
+    | 'cancelledAt'
+    | 'cancelledByUserId'
+    | 'failures'
+>;
+
+type AudienceMembershipRow = {
+    accountId: string;
+    userId: string;
+    gardenId?: number;
+};
+
+function uniqueStrings(values: string[]) {
+    return Array.from(new Set(values));
+}
+
+function uniqueNumbers(values: number[]) {
+    return Array.from(new Set(values));
+}
+
+function recipientKey(recipient: {
+    accountId: string;
+    userId: string;
+    gardenId?: number;
+}) {
+    return `${recipient.accountId}:${recipient.userId}:${recipient.gardenId ?? ''}`;
+}
+
+function membershipKey(row: { accountId: string; userId: string }) {
+    return `${row.accountId}:${row.userId}`;
+}
+
+function normalizeAudience(
+    audience: NotificationCampaignAudience,
+): NotificationCampaignAudience {
+    switch (audience.type) {
+        case 'all':
+            return audience;
+        case 'accounts':
+            return {
+                type: audience.type,
+                accountIds: uniqueStrings(audience.accountIds),
+            };
+        case 'users':
+            return {
+                type: audience.type,
+                userIds: uniqueStrings(audience.userIds),
+                accountIds: audience.accountIds
+                    ? uniqueStrings(audience.accountIds)
+                    : undefined,
+            };
+        case 'gardens':
+            return {
+                type: audience.type,
+                gardenIds: uniqueNumbers(audience.gardenIds),
+            };
+        case 'explicit': {
+            const recipients = new Map<
+                string,
+                NotificationCampaignExplicitRecipient
+            >();
+            for (const recipient of audience.recipients) {
+                recipients.set(recipientKey(recipient), recipient);
+            }
+            return {
+                type: audience.type,
+                recipients: Array.from(recipients.values()),
+            };
+        }
+    }
+}
+
+function audiencePreviewFromRows(
+    audienceType: NotificationCampaignAudience['type'],
+    rows: AudienceMembershipRow[],
+    explicitRecipientCount = 0,
+    unmatchedRecipientCount = 0,
+): NotificationCampaignAudiencePreview {
+    const memberships = new Map<string, AudienceMembershipRow>();
+    for (const row of rows) {
+        memberships.set(membershipKey(row), row);
+    }
+    const uniqueRows = Array.from(memberships.values());
+    return {
+        audienceType,
+        targetCount: uniqueRows.length,
+        accountCount: new Set(uniqueRows.map((row) => row.accountId)).size,
+        userCount: new Set(uniqueRows.map((row) => row.userId)).size,
+        gardenCount: new Set(
+            rows
+                .map((row) => row.gardenId)
+                .filter(
+                    (gardenId): gardenId is number => gardenId !== undefined,
+                ),
+        ).size,
+        explicitRecipientCount,
+        unmatchedRecipientCount,
+    };
+}
+
+async function previewExplicitCampaignAudience(
+    recipients: Extract<
+        NotificationCampaignAudience,
+        { type: 'explicit' }
+    >['recipients'],
+): Promise<NotificationCampaignAudiencePreview> {
+    const normalizedAudience = normalizeAudience({
+        type: 'explicit',
+        recipients,
+    });
+    const normalizedRecipients =
+        normalizedAudience.type === 'explicit'
+            ? normalizedAudience.recipients
+            : [];
+    const userIds = uniqueStrings(
+        normalizedRecipients.map((recipient) => recipient.userId),
+    );
+    const accountIds = uniqueStrings(
+        normalizedRecipients.map((recipient) => recipient.accountId),
+    );
+    const memberships =
+        userIds.length > 0 && accountIds.length > 0
+            ? await storage()
+                  .select({
+                      accountId: accountUsers.accountId,
+                      userId: accountUsers.userId,
+                  })
+                  .from(accountUsers)
+                  .where(
+                      and(
+                          inArray(accountUsers.userId, userIds),
+                          inArray(accountUsers.accountId, accountIds),
+                      ),
+                  )
+            : [];
+    const membershipKeys = new Set(memberships.map(membershipKey));
+
+    const gardenIds = uniqueNumbers(
+        normalizedRecipients
+            .map((recipient) => recipient.gardenId)
+            .filter((gardenId): gardenId is number => gardenId !== undefined),
+    );
+    const matchedGardens =
+        gardenIds.length > 0
+            ? await storage()
+                  .select({
+                      gardenId: gardens.id,
+                      accountId: gardens.accountId,
+                  })
+                  .from(gardens)
+                  .where(
+                      and(
+                          inArray(gardens.id, gardenIds),
+                          eq(gardens.isDeleted, false),
+                      ),
+                  )
+            : [];
+    const gardenAccountById = new Map(
+        matchedGardens.map((garden) => [garden.gardenId, garden.accountId]),
+    );
+
+    const matchedRows: AudienceMembershipRow[] = [];
+    let unmatchedRecipientCount = 0;
+    for (const recipient of normalizedRecipients) {
+        const hasMembership = membershipKeys.has(membershipKey(recipient));
+        const gardenAccountId =
+            recipient.gardenId === undefined
+                ? recipient.accountId
+                : gardenAccountById.get(recipient.gardenId);
+        if (hasMembership && gardenAccountId === recipient.accountId) {
+            matchedRows.push(recipient);
+        } else {
+            unmatchedRecipientCount += 1;
+        }
+    }
+
+    return audiencePreviewFromRows(
+        'explicit',
+        matchedRows,
+        normalizedRecipients.length,
+        unmatchedRecipientCount,
+    );
+}
+
+function campaignQueueStatus(
+    scheduledAt: Date | null | undefined,
+    now: Date,
+): NotificationCampaignQueueStatus {
+    if (scheduledAt && scheduledAt.getTime() > now.getTime()) {
+        return 'scheduled';
+    }
+    return 'queued';
+}
+
+function campaignDeliveryMetadata({
+    campaign,
+    preview,
+    requestedByUserId,
+    requestedAt,
+    scheduledAt,
+    status,
+}: {
+    campaign: SelectNotificationCampaign;
+    preview: NotificationCampaignAudiencePreview;
+    requestedByUserId: string;
+    requestedAt: Date;
+    scheduledAt: Date | null;
+    status: NotificationCampaignQueueStatus;
+}): NotificationCampaignDeliveryMetadata {
+    return {
+        ...campaign.deliveryMetadata,
+        router: 'preference_aware_delivery_router',
+        preferenceAware: true,
+        audiencePreview: preview,
+        enqueue: {
+            requestedByUserId,
+            requestedAt: requestedAt.toISOString(),
+            scheduledAt: scheduledAt?.toISOString() ?? null,
+            status,
+        },
+    };
+}
+
+function minutesInTimezone(date: Date, timeZone?: string): number | undefined {
+    if (!timeZone) return undefined;
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+    });
+    const parts = formatter.formatToParts(date);
+    const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
+    const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? '0');
+    return hour * 60 + minute;
+}
+
+function isInsideQuietHours(
+    nowMinute: number | undefined,
+    preference: SelectNotificationUserChannelPreference,
+): boolean {
+    if (
+        nowMinute === undefined ||
+        preference.quietHoursStartMinute === null ||
+        preference.quietHoursEndMinute === null
+    ) {
+        return false;
+    }
+    const start = preference.quietHoursStartMinute;
+    const end = preference.quietHoursEndMinute;
+    if (start === end) return false;
+    return start < end
+        ? nowMinute >= start && nowMinute < end
+        : nowMinute >= start || nowMinute < end;
+}
+
+function decideDeliveryOutcome({
+    channel,
+    preference,
+    hasPushSubscription,
+    now,
+}: {
+    channel: DeliveryChannel;
+    preference?: SelectNotificationUserChannelPreference;
+    hasPushSubscription: boolean;
+    now: Date;
+}): NotificationDeliveryDecision {
+    const required = preference?.required ?? false;
+    if (channel === 'push' && !hasPushSubscription) {
+        return {
+            channel,
+            outcome: required ? 'required' : 'suppressed',
+            reason: 'missing_push_subscription',
+            required,
+        };
+    }
+    if ((preference?.enabled ?? true) === false) {
+        return {
+            channel,
+            outcome: required ? 'required' : 'suppressed',
+            reason: 'preference_disabled',
+            required,
+        };
+    }
+    const nowMinute = minutesInTimezone(now, preference?.timezone ?? undefined);
+    if (!required && preference && isInsideQuietHours(nowMinute, preference)) {
+        return {
+            channel,
+            outcome: 'digest',
+            reason: 'quiet_hours',
+            required: false,
+        };
+    }
+    if (!required && (preference?.digestFrequency ?? 'off') !== 'off') {
+        return {
+            channel,
+            outcome: 'digest',
+            reason: `digest_${preference?.digestFrequency}`,
+            required: false,
+        };
+    }
+    return {
+        channel,
+        outcome: required ? 'required' : 'immediate',
+        reason: required ? 'required_notification' : 'eligible_immediate',
+        required,
+    };
+}
+
+function deliveryAttemptStatusForOutcome(
+    outcome: DeliveryOutcome,
+): DeliveryAttemptStatus {
+    if (outcome === 'suppressed') return 'dropped';
+    if (outcome === 'digest') return 'queued';
+    return 'accepted';
+}
+
+export async function previewNotificationCampaignAudience(
+    audienceInput: NotificationCampaignAudience,
+): Promise<NotificationCampaignAudiencePreview> {
+    const audience = normalizeAudience(audienceInput);
+    if (audience.type === 'explicit') {
+        return await previewExplicitCampaignAudience(audience.recipients);
+    }
+
+    if (audience.type === 'all') {
+        const rows = await storage()
+            .select({
+                accountId: accountUsers.accountId,
+                userId: accountUsers.userId,
+            })
+            .from(accountUsers);
+        return audiencePreviewFromRows(audience.type, rows);
+    }
+
+    if (audience.type === 'accounts') {
+        const rows = await storage()
+            .select({
+                accountId: accountUsers.accountId,
+                userId: accountUsers.userId,
+            })
+            .from(accountUsers)
+            .where(inArray(accountUsers.accountId, audience.accountIds));
+        return audiencePreviewFromRows(audience.type, rows);
+    }
+
+    if (audience.type === 'users') {
+        const rows = await storage()
+            .select({
+                accountId: accountUsers.accountId,
+                userId: accountUsers.userId,
+            })
+            .from(accountUsers)
+            .where(
+                audience.accountIds && audience.accountIds.length > 0
+                    ? and(
+                          inArray(accountUsers.userId, audience.userIds),
+                          inArray(accountUsers.accountId, audience.accountIds),
+                      )
+                    : inArray(accountUsers.userId, audience.userIds),
+            );
+        return audiencePreviewFromRows(audience.type, rows);
+    }
+
+    const rows = await storage()
+        .select({
+            accountId: accountUsers.accountId,
+            userId: accountUsers.userId,
+            gardenId: gardens.id,
+        })
+        .from(gardens)
+        .innerJoin(accountUsers, eq(gardens.accountId, accountUsers.accountId))
+        .where(
+            and(
+                inArray(gardens.id, audience.gardenIds),
+                eq(gardens.isDeleted, false),
+            ),
+        );
+    return audiencePreviewFromRows(audience.type, rows);
+}
+
+export async function createNotificationCampaign(
+    input: CreateNotificationCampaignInput,
+): Promise<string> {
+    const result = await storage()
+        .insert(notificationCampaigns)
+        .values({
+            id: randomUUID(),
+            ...input,
+            audience: normalizeAudience(input.audience),
+            deliveryMetadata: {
+                ...(input.deliveryMetadata ?? {}),
+                router: 'preference_aware_delivery_router',
+                preferenceAware: true,
+            },
+        })
+        .returning({ id: notificationCampaigns.id });
+    return result[0].id;
+}
+
+export async function getNotificationCampaign(
+    id: string,
+): Promise<SelectNotificationCampaign | undefined> {
+    return await storage().query.notificationCampaigns.findFirst({
+        where: eq(notificationCampaigns.id, id),
+    });
+}
+
+export async function enqueueNotificationCampaign({
+    id,
+    requestedByUserId,
+    scheduledAt,
+}: {
+    id: string;
+    requestedByUserId: string;
+    scheduledAt?: Date | null;
+}): Promise<SelectNotificationCampaign | undefined> {
+    const campaign = await getNotificationCampaign(id);
+    if (!campaign) return undefined;
+    if (campaign.status !== 'draft' && campaign.status !== 'scheduled') {
+        return campaign;
+    }
+
+    const now = new Date();
+    const effectiveScheduledAt = scheduledAt ?? campaign.scheduledAt;
+    const status = campaignQueueStatus(effectiveScheduledAt, now);
+    const preview = await previewNotificationCampaignAudience(
+        campaign.audience,
+    );
+    const result = await storage()
+        .update(notificationCampaigns)
+        .set({
+            status,
+            scheduledAt: effectiveScheduledAt,
+            enqueuedAt: status === 'queued' ? now : null,
+            targetCount: preview.targetCount,
+            queuedCount: status === 'queued' ? preview.targetCount : 0,
+            deliveryMetadata: campaignDeliveryMetadata({
+                campaign,
+                preview,
+                requestedByUserId,
+                requestedAt: now,
+                scheduledAt: effectiveScheduledAt ?? null,
+                status,
+            }),
+            updatedAt: now,
+        })
+        .where(eq(notificationCampaigns.id, id))
+        .returning();
+    return result[0];
+}
+
+export async function cancelNotificationCampaign({
+    id,
+    cancelledByUserId,
+}: {
+    id: string;
+    cancelledByUserId: string;
+}): Promise<SelectNotificationCampaign | undefined> {
+    const campaign = await getNotificationCampaign(id);
+    if (!campaign) return undefined;
+    if (
+        campaign.status !== 'draft' &&
+        campaign.status !== 'scheduled' &&
+        campaign.status !== 'queued'
+    ) {
+        return campaign;
+    }
+
+    const now = new Date();
+    const result = await storage()
+        .update(notificationCampaigns)
+        .set({
+            status: 'cancelled',
+            cancelledAt: now,
+            cancelledByUserId,
+            queuedCount: 0,
+            deliveryMetadata: {
+                ...campaign.deliveryMetadata,
+                cancel: {
+                    requestedByUserId: cancelledByUserId,
+                    requestedAt: now.toISOString(),
+                    previousStatus: campaign.status,
+                },
+            },
+            updatedAt: now,
+        })
+        .where(eq(notificationCampaigns.id, id))
+        .returning();
+    return result[0];
+}
 
 export async function getNotification(
     id: string,
@@ -30,6 +601,349 @@ export async function createNotification(notification: InsertNotification) {
         })
         .returning({ id: notifications.id });
     return result[0].id;
+}
+
+export async function enqueuePushDeliveryAttemptsForNotification({
+    notificationId,
+    batchSize = 100,
+}: {
+    notificationId: string;
+    batchSize?: number;
+}) {
+    const notification = await getNotification(notificationId);
+    if (!notification?.userId) return { queued: 0, skipped: 0 };
+
+    const subscriptions = await storage().query.webPushSubscriptions.findMany({
+        where: and(
+            eq(webPushSubscriptions.userId, notification.userId),
+            eq(webPushSubscriptions.enabled, true),
+            isNull(webPushSubscriptions.revokedAt),
+        ),
+        limit: Math.max(1, batchSize),
+    });
+
+    if (!subscriptions.length) return { queued: 0, skipped: 0 };
+
+    const existing = await storage()
+        .select({
+            pushSubscriptionId: notificationDeliveryAttempts.pushSubscriptionId,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(
+            and(
+                eq(notificationDeliveryAttempts.notificationId, notificationId),
+                inArray(
+                    notificationDeliveryAttempts.pushSubscriptionId,
+                    subscriptions.map((subscription) => subscription.id),
+                ),
+            ),
+        );
+    const existingIds = new Set(
+        existing
+            .map((row) => row.pushSubscriptionId)
+            .filter((id): id is string => Boolean(id)),
+    );
+
+    const pending = subscriptions.filter(
+        (subscription) => !existingIds.has(subscription.id),
+    );
+
+    if (!pending.length) {
+        return { queued: 0, skipped: subscriptions.length };
+    }
+
+    const deliveryAttempts: (typeof notificationDeliveryAttempts.$inferInsert)[] =
+        pending.map((subscription) => ({
+            notificationId,
+            userId: notification.userId,
+            accountId: notification.accountId,
+            channel: 'push',
+            status: 'queued',
+            provider: 'web_push_queue',
+            pushSubscriptionId: subscription.id,
+            providerResponseCode: 'queued_background',
+        }));
+
+    await storage()
+        .insert(notificationDeliveryAttempts)
+        .values(deliveryAttempts);
+
+    return {
+        queued: pending.length,
+        skipped: subscriptions.length - pending.length,
+    };
+}
+export async function routeNotificationDelivery(notificationId: string) {
+    const notification = await getNotification(notificationId);
+    if (!notification) return [];
+    const now = new Date();
+    const targetChannels: DeliveryChannel[] = ['email', 'push'];
+    const preferences = notification.userId
+        ? await storage().query.notificationUserChannelPreferences.findMany({
+              where: eq(
+                  notificationUserChannelPreferences.userId,
+                  notification.userId,
+              ),
+          })
+        : [];
+    const pushSubscriptionCount = notification.userId
+        ? await storage()
+              .select({ id: webPushSubscriptions.id })
+              .from(webPushSubscriptions)
+              .where(
+                  and(
+                      eq(webPushSubscriptions.userId, notification.userId),
+                      eq(webPushSubscriptions.enabled, true),
+                  ),
+              )
+              .limit(1)
+        : [];
+    const hasPushSubscription = pushSubscriptionCount.length > 0;
+
+    const decisions: NotificationDeliveryDecision[] = targetChannels.map(
+        (channel) => {
+            const accountPref = preferences.find(
+                (p) =>
+                    p.scope === 'account' &&
+                    p.accountId === notification.accountId &&
+                    p.category === notification.category &&
+                    p.channel === channel,
+            );
+            const globalPref = preferences.find(
+                (p) =>
+                    p.scope === 'global' &&
+                    p.category === notification.category &&
+                    p.channel === channel,
+            );
+            return decideDeliveryOutcome({
+                channel,
+                preference: accountPref ?? globalPref,
+                hasPushSubscription,
+                now,
+            });
+        },
+    );
+
+    if (notification.userId || notification.accountId) {
+        await storage()
+            .insert(notificationDeliveryAttempts)
+            .values(
+                decisions.map((decision) => ({
+                    notificationId,
+                    userId: notification.userId ?? null,
+                    accountId: notification.accountId,
+                    channel: decision.channel,
+                    status: deliveryAttemptStatusForOutcome(decision.outcome),
+                    provider: 'router',
+                    providerResponseCode: decision.reason,
+                })),
+            );
+    }
+
+    return decisions;
+}
+
+export async function recordNotificationDeliveryEvent({
+    notificationId,
+    deliveryAttemptId,
+    type,
+    metadata,
+    occurredAt,
+}: {
+    notificationId: string;
+    deliveryAttemptId: number;
+    type: NotificationDeliveryEventType;
+    metadata?: Record<string, unknown>;
+    occurredAt?: Date;
+}) {
+    const attempt = await storage()
+        .select({
+            notificationId: notificationDeliveryAttempts.notificationId,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(eq(notificationDeliveryAttempts.id, deliveryAttemptId))
+        .limit(1);
+
+    if (!attempt[0]) {
+        throw new Error('Delivery attempt not found.');
+    }
+
+    if (attempt[0].notificationId !== notificationId) {
+        throw new Error(
+            'Delivery attempt does not belong to the provided notification.',
+        );
+    }
+
+    const result = await storage()
+        .insert(notificationDeliveryEvents)
+        .values({
+            notificationId,
+            deliveryAttemptId,
+            type,
+            metadata: metadata ?? {},
+            occurredAt: occurredAt ?? new Date(),
+        })
+        .returning();
+    return result[0];
+}
+
+export async function getNotificationDeliverySummary(
+    notificationId: string,
+): Promise<NotificationDeliveryRollup> {
+    const attempts = await storage()
+        .select({
+            id: notificationDeliveryAttempts.id,
+            status: notificationDeliveryAttempts.status,
+            pushSubscriptionId: notificationDeliveryAttempts.pushSubscriptionId,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(
+            and(
+                eq(notificationDeliveryAttempts.notificationId, notificationId),
+                eq(notificationDeliveryAttempts.channel, 'push'),
+            ),
+        );
+
+    const events = await storage()
+        .select({
+            type: notificationDeliveryEvents.type,
+            deliveryAttemptId: notificationDeliveryEvents.deliveryAttemptId,
+        })
+        .from(notificationDeliveryEvents)
+        .where(eq(notificationDeliveryEvents.notificationId, notificationId));
+
+    const attemptsBySubscription = new Map<string, number>();
+    for (const attempt of attempts) {
+        if (!attempt.pushSubscriptionId) continue;
+        attemptsBySubscription.set(
+            attempt.pushSubscriptionId,
+            (attemptsBySubscription.get(attempt.pushSubscriptionId) ?? 0) + 1,
+        );
+    }
+
+    const retried = Array.from(attemptsBySubscription.values()).filter(
+        (count) => count > 1,
+    ).length;
+
+    const rollup: NotificationDeliveryRollup = {
+        sent: attempts.filter((attempt) => attempt.status === 'sent').length,
+        accepted: attempts.filter((attempt) => attempt.status === 'accepted')
+            .length,
+        failed: attempts.filter((attempt) => attempt.status === 'failed')
+            .length,
+        retried,
+        invalidated: 0,
+        opened: 0,
+        dismissed: 0,
+        clicked: 0,
+        unsubscribed: 0,
+    };
+
+    for (const event of events) {
+        if (event.type === 'opened') rollup.opened += 1;
+        if (event.type === 'dismissed') rollup.dismissed += 1;
+        if (event.type === 'clicked') rollup.clicked += 1;
+        if (event.type === 'failed') rollup.invalidated += 1;
+        if (event.type === 'unsubscribed') rollup.unsubscribed += 1;
+    }
+
+    return rollup;
+}
+
+export async function cleanupNotificationRetention({
+    disableFailCountAtOrAbove = 10,
+    disableInactiveSubscriptionDays = 90,
+    deleteDeliveryEventsOlderThanDays = 180,
+    deleteDeliveryAttemptsOlderThanDays = 180,
+    deleteTerminalCampaignsOlderThanDays = 365,
+}: {
+    disableFailCountAtOrAbove?: number;
+    disableInactiveSubscriptionDays?: number;
+    deleteDeliveryEventsOlderThanDays?: number;
+    deleteDeliveryAttemptsOlderThanDays?: number;
+    deleteTerminalCampaignsOlderThanDays?: number;
+} = {}): Promise<NotificationRetentionCleanupResult> {
+    const now = Date.now();
+    const staleSubscriptionCutoff = new Date(
+        now - disableInactiveSubscriptionDays * 24 * 60 * 60 * 1000,
+    );
+    const deliveryEventCutoff = new Date(
+        now - deleteDeliveryEventsOlderThanDays * 24 * 60 * 60 * 1000,
+    );
+    const deliveryAttemptCutoff = new Date(
+        now - deleteDeliveryAttemptsOlderThanDays * 24 * 60 * 60 * 1000,
+    );
+    const campaignCutoff = new Date(
+        now - deleteTerminalCampaignsOlderThanDays * 24 * 60 * 60 * 1000,
+    );
+
+    const disabledSubscriptions = await storage()
+        .update(webPushSubscriptions)
+        .set({
+            enabled: false,
+            revokedAt: new Date(),
+            revokedReason: 'retention_cleanup',
+            updatedAt: new Date(),
+        })
+        .where(
+            and(
+                eq(webPushSubscriptions.enabled, true),
+                isNull(webPushSubscriptions.revokedAt),
+                or(
+                    eq(webPushSubscriptions.permissionState, 'denied'),
+                    and(
+                        eq(webPushSubscriptions.permissionState, 'default'),
+                        eq(webPushSubscriptions.failCount, 0),
+                    ),
+                    sql`${webPushSubscriptions.failCount} >= ${disableFailCountAtOrAbove}`,
+                    sql`${webPushSubscriptions.lastSeenAt} < ${staleSubscriptionCutoff}`,
+                ),
+            ),
+        )
+        .returning({ id: webPushSubscriptions.id });
+
+    const deletedEvents = await storage()
+        .delete(notificationDeliveryEvents)
+        .where(
+            sql`${notificationDeliveryEvents.occurredAt} < ${deliveryEventCutoff}`,
+        )
+        .returning({ id: notificationDeliveryEvents.id });
+
+    const deletedAttempts = await storage()
+        .delete(notificationDeliveryAttempts)
+        .where(
+            and(
+                sql`${notificationDeliveryAttempts.createdAt} < ${deliveryAttemptCutoff}`,
+                sql`not exists (
+                    select 1
+                    from ${notificationDeliveryEvents}
+                    where ${notificationDeliveryEvents.deliveryAttemptId} = ${notificationDeliveryAttempts.id}
+                      and ${notificationDeliveryEvents.occurredAt} >= ${deliveryEventCutoff}
+                )`,
+            ),
+        )
+        .returning({ id: notificationDeliveryAttempts.id });
+
+    const deletedCampaigns = await storage()
+        .delete(notificationCampaigns)
+        .where(
+            and(
+                inArray(notificationCampaigns.status, [
+                    'sent',
+                    'cancelled',
+                    'failed',
+                ]),
+                sql`${notificationCampaigns.updatedAt} < ${campaignCutoff}`,
+            ),
+        )
+        .returning({ id: notificationCampaigns.id });
+
+    return {
+        subscriptionsDisabled: disabledSubscriptions.length,
+        deliveryEventsDeleted: deletedEvents.length,
+        deliveryAttemptsDeleted: deletedAttempts.length,
+        campaignsDeleted: deletedCampaigns.length,
+    };
 }
 
 export function getNotificationsByUser(

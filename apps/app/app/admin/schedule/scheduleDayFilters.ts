@@ -30,11 +30,19 @@ export function getScheduledFieldsForDay(
                 return false;
             }
 
-            if (
-                (field.plantStatus === 'sowed' ||
-                    isFieldPendingVerification(field.plantStatus)) &&
-                field.plantSowDate
-            ) {
+            if (isFieldPendingVerification(field.plantStatus)) {
+                if (!field.plantSowDate) {
+                    return isToday;
+                }
+
+                const sowDate = new Date(field.plantSowDate);
+                return (
+                    sowDate.toDateString() === normalizedDate.toDateString() ||
+                    (isToday && normalizedDate > sowDate)
+                );
+            }
+
+            if (field.plantStatus === 'sowed' && field.plantSowDate) {
                 const sowDate = new Date(field.plantSowDate);
                 return sowDate.toDateString() === normalizedDate.toDateString();
             }
@@ -66,15 +74,27 @@ export function getScheduledOperationsForDay(
             return false;
         }
 
-        if (operation.raisedBedId === null) {
+        if (
+            operation.raisedBedId === null &&
+            typeof operation.farmId !== 'number'
+        ) {
             return false;
         }
 
-        if (
-            (isOperationCompleted(operation.status) ||
-                isOperationPendingVerification(operation.status)) &&
-            operation.completedAt
-        ) {
+        if (isOperationPendingVerification(operation.status)) {
+            if (!operation.completedAt) {
+                return isToday;
+            }
+
+            const completedDate = new Date(operation.completedAt);
+            return (
+                completedDate.toDateString() ===
+                    normalizedDate.toDateString() ||
+                (isToday && normalizedDate > completedDate)
+            );
+        }
+
+        if (isOperationCompleted(operation.status) && operation.completedAt) {
             const completedDate = new Date(operation.completedAt);
             return (
                 completedDate.toDateString() === normalizedDate.toDateString()
