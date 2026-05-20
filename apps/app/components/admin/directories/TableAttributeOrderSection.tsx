@@ -29,6 +29,7 @@ import type { CSSProperties, MouseEvent } from 'react';
 import { useEffect, useState } from 'react';
 import { reorderAttributeDefinition } from '../../../app/(actions)/definitionActions';
 import { KnownPages } from '../../../src/KnownPages';
+import { SortableDragHandle } from './SortableDragHandle';
 
 function SortableTableAttributeRow({
     attribute,
@@ -61,13 +62,27 @@ function SortableTableAttributeRow({
     };
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+        <div
+            ref={setNodeRef}
+            style={style}
+            className="flex items-stretch gap-1"
+        >
+            <SortableDragHandle
+                {...attributes}
+                {...listeners}
+                aria-label="Promijeni poredak atributa u tablici"
+                title="Promijeni poredak atributa u tablici"
+                className={
+                    isDragging ? 'cursor-grabbing bg-muted text-foreground' : ''
+                }
+            />
             <Link
                 href={KnownPages.DirectoryEntityTypeAttributeDefinition(
                     attribute.entityTypeName,
                     attribute.id,
                 )}
                 onClick={handleClick}
+                className="min-w-0 flex-1"
             >
                 <Card>
                     <Row spacing={1} justifyContent="space-between">
