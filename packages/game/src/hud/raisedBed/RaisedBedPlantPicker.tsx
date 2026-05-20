@@ -25,6 +25,10 @@ import {
     type ShoppingCartItemData,
     useShoppingCart,
 } from '../../hooks/useShoppingCart';
+import {
+    scheduleHideShoppingCartTransientHub,
+    showShoppingCartTransientHub,
+} from '../../hooks/useShoppingCartTransientHub';
 import { PlantsList } from './PlantsList';
 import { PlantsSortList } from './PlantsSortList';
 
@@ -205,22 +209,27 @@ export function PlantPicker({
             sort_id: selectedSortId,
             use_inventory: useInventoryItem,
         });
+        showShoppingCartTransientHub();
         setFlyToShoppingCart(true);
-        await setCartItem.mutateAsync({
-            entityTypeName: 'plantSort',
-            entityId: selectedSortId?.toString(),
-            amount: 1,
-            gardenId,
-            raisedBedId,
-            positionIndex,
-            additionalData: JSON.stringify({
-                scheduledDate: plantOptions?.scheduledDate?.toISOString(),
-            }),
-            currency: useInventoryItem ? 'inventory' : 'eur',
-        });
-        await new Promise((resolve) => setTimeout(resolve, 800)); // Wait for animation to finish
-        setOpen(false);
-        setFlyToShoppingCart(false);
+        try {
+            await setCartItem.mutateAsync({
+                entityTypeName: 'plantSort',
+                entityId: selectedSortId?.toString(),
+                amount: 1,
+                gardenId,
+                raisedBedId,
+                positionIndex,
+                additionalData: JSON.stringify({
+                    scheduledDate: plantOptions?.scheduledDate?.toISOString(),
+                }),
+                currency: useInventoryItem ? 'inventory' : 'eur',
+            });
+            await new Promise((resolve) => setTimeout(resolve, 800)); // Wait for animation to finish
+        } finally {
+            scheduleHideShoppingCartTransientHub();
+            setOpen(false);
+            setFlyToShoppingCart(false);
+        }
     }
 
     function handleOpenChange(open: boolean) {

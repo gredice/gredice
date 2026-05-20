@@ -20,6 +20,7 @@ import { isCompleteDeliverySelection, useCheckout } from '../hooks/useCheckout';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
 import { useShoppingCart } from '../hooks/useShoppingCart';
 import { useShoppingCartDelete } from '../hooks/useShoppingCartDelete';
+import { useShoppingCartTransientHub } from '../hooks/useShoppingCartTransientHub';
 import {
     type DeliverySelectionData,
     DeliveryStep,
@@ -286,8 +287,9 @@ export function ShoppingCartHud() {
     const { data: cart } = useShoppingCart();
     const { track } = useGameAnalytics();
     const [isOpen, setIsOpen] = useShoppingCartOpenParam();
+    const showTransientHub = useShoppingCartTransientHub(isOpen);
 
-    if (!cart?.items.length) {
+    if (!cart?.items.length && !showTransientHub) {
         return null;
     }
 
@@ -299,8 +301,8 @@ export function ShoppingCartHud() {
                     onOpenChange={(open) => {
                         if (open) {
                             track('game_cart_opened', {
-                                item_count: cart.items.length,
-                                total: cart.total,
+                                item_count: cart?.items.length ?? 0,
+                                total: cart?.total ?? 0,
                             });
                         }
                         setIsOpen(open);
@@ -319,7 +321,7 @@ export function ShoppingCartHud() {
                                 semiBold
                                 className="text-foreground"
                             >
-                                {(cart.total ?? 0).toFixed(2)} €
+                                {(cart?.total ?? 0).toFixed(2)} €
                             </Typography>
                             {Boolean(cart?.items.length) && (
                                 <div className="absolute -right-2 -top-2">
