@@ -1,5 +1,7 @@
 import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import { useRef } from 'react';
+import { useSunflowerTransferAnimation } from '../../../indicators/SunflowerTransfer/useSunflowerTransferAnimation';
 import {
     calculateSunflowerAmountFromPrices,
     getEffectiveEurPrice,
@@ -20,10 +22,8 @@ export function ButtonPricePickPaymentMethod({
     discountPrice?: number | null;
     disabled?: boolean;
 }) {
-    function handleToggle() {
-        if (isToggleDisabled) return;
-        onChange?.(!isSunflower);
-    }
+    const paymentTargetRef = useRef<HTMLButtonElement>(null);
+    const runSunflowerTransfer = useSunflowerTransferAnimation();
 
     if (price == null || price === undefined) {
         return <Typography level="body1">Nevaljan iznos</Typography>;
@@ -40,6 +40,18 @@ export function ButtonPricePickPaymentMethod({
             ? availableSunflowers >= requiredSunflowers
             : true;
     const isToggleDisabled = disabled || (!isSunflower && !canAffordSunflowers);
+    const nextIsSunflower = !isSunflower;
+
+    function handleToggle() {
+        if (isToggleDisabled) return;
+
+        runSunflowerTransfer({
+            paymentElement: paymentTargetRef.current,
+            direction: nextIsSunflower ? 'hud-to-payment' : 'payment-to-hud',
+            amount: requiredSunflowers,
+        });
+        onChange?.(nextIsSunflower);
+    }
 
     return (
         <Row spacing={1}>
@@ -50,9 +62,11 @@ export function ButtonPricePickPaymentMethod({
 
             {/* Custom Switch */}
             <button
+                ref={paymentTargetRef}
                 type="button"
                 onClick={handleToggle}
                 disabled={isToggleDisabled}
+                data-sunflower-payment-target
                 className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors focus:outline-1 focus:outline-[#2f6e40] focus:outline-offset-2 ${
                     isToggleDisabled
                         ? 'bg-gray-200 dark:bg-gray-700 cursor-not-allowed opacity-50'
@@ -62,6 +76,11 @@ export function ButtonPricePickPaymentMethod({
                 }`}
                 role="switch"
                 aria-checked={isSunflower}
+                aria-label={
+                    isSunflower
+                        ? `Plaćanje suncokretima, ${requiredSunflowers.toLocaleString('hr-HR')} suncokreta`
+                        : `Plaćanje eurima, prebaci na ${requiredSunflowers.toLocaleString('hr-HR')} suncokreta`
+                }
                 title={
                     isToggleDisabled && !isSunflower
                         ? 'Nedovoljno suncokreta'
