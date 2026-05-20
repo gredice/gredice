@@ -1,3 +1,4 @@
+import { Tabs, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import {
     Check,
     Down,
@@ -16,7 +17,6 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 import { Spinner } from '@signalco/ui-primitives/Spinner';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Tabs, TabsList, TabsTrigger } from '@signalco/ui-primitives/Tabs';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
 import {

@@ -12,14 +12,9 @@ import {
 } from '@gredice/storage';
 import { getEntityCompleteness } from '@gredice/storage/entityCompleteness';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from '@signalco/ui-primitives/Tabs';
 import { revalidatePath } from 'next/cache';
 import { notFound } from 'next/navigation';
 import { importEntityData } from '../../../../../app/admin/directories/(actions)/importEntityData';

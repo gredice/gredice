@@ -1,3 +1,4 @@
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Alert } from '@signalco/ui/Alert';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
 import {
@@ -14,12 +15,6 @@ import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from '@signalco/ui-primitives/Tabs';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useEffect, useState } from 'react';
 import type { useCheckout } from '../../hooks/useCheckout';

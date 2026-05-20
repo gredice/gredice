@@ -1,5 +1,6 @@
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import {
     Book,
     Check,
@@ -15,12 +16,6 @@ import { Link } from '@signalco/ui-primitives/Link';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from '@signalco/ui-primitives/Tabs';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { type ReactElement, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
