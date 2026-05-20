@@ -1,4 +1,4 @@
-import { and, eq, gte } from 'drizzle-orm';
+import { and, eq, gte, sql } from 'drizzle-orm';
 import { events } from '../schema';
 import { storage } from '../storage';
 import { createEvent, getEvents, knownEvents, knownEventTypes } from './events';
@@ -63,7 +63,10 @@ function inventoryItemKey(
     return `${item.entityTypeName}-${item.entityId}`;
 }
 
-async function getInventoryForAggregateIds(aggregateIds: string[]) {
+async function getInventoryForAggregateIds(
+    aggregateIds: string[],
+    db: DatabaseClient = storage(),
+) {
     if (aggregateIds.length === 0) {
         return [];
     }
@@ -73,6 +76,7 @@ async function getInventoryForAggregateIds(aggregateIds: string[]) {
         aggregateIds,
         0,
         5000,
+        db,
     );
 
     const totals = new Map<string, InventoryItem>();
@@ -194,11 +198,11 @@ export async function setGardenBoxInventory(
     blockId: string,
     items: InventoryItemInput[],
 ) {
-    const currentInventory = await getGardenBoxInventory(
+    const aggregateId = getGardenBoxInventoryAggregateId({
         accountId,
         gardenId,
         blockId,
-    );
+    });
     const requestedTotals = new Map<string, InventoryItemInput>();
 
     for (const item of items) {
@@ -215,15 +219,23 @@ export async function setGardenBoxInventory(
         });
     }
 
-    const currentTotals = new Map(
-        currentInventory.map((item) => [inventoryItemKey(item), item]),
-    );
-    const inventoryKeys = new Set([
-        ...currentTotals.keys(),
-        ...requestedTotals.keys(),
-    ]);
-
     await storage().transaction(async (tx) => {
+        await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${aggregateId}));`,
+        );
+
+        const currentInventory = await getInventoryForAggregateIds(
+            [aggregateId],
+            tx,
+        );
+        const currentTotals = new Map(
+            currentInventory.map((item) => [inventoryItemKey(item), item]),
+        );
+        const inventoryKeys = new Set([
+            ...currentTotals.keys(),
+            ...requestedTotals.keys(),
+        ]);
+
         for (const key of inventoryKeys) {
             const current = currentTotals.get(key);
             const requested = requestedTotals.get(key);

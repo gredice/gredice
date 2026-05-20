@@ -58,8 +58,9 @@ export function getEvents(
     aggregateIds: string[],
     offset: number = 0,
     limit: number = 1000,
+    db: DatabaseClient = storage(),
 ) {
-    return storage().query.events.findMany({
+    return db.query.events.findMany({
         where: and(
             inArray(events.aggregateId, aggregateIds),
             Array.isArray(type)
