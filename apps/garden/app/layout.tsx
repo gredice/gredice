@@ -29,8 +29,10 @@ export default function RootLayout({
 }>) {
     const shouldInjectToolbar = process.env.NODE_ENV === 'development';
     const postHogApiKey =
-        process.env.NEXT_PUBLIC_POSTHOG_KEY ??
-        process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+        process.env.NODE_ENV === 'development'
+            ? undefined
+            : (process.env.NEXT_PUBLIC_POSTHOG_KEY ??
+              process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN);
     const postHogApiHost = '/ingest';
     const postHogUiHost =
         process.env.NEXT_PUBLIC_POSTHOG_UI_HOST ??

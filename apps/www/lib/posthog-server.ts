@@ -21,8 +21,10 @@ const postHogConsoleForwardingKey = Symbol.for(
 );
 
 const postHogApiKey =
-    process.env.NEXT_PUBLIC_POSTHOG_KEY ??
-    process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+    process.env.NODE_ENV === 'development'
+        ? undefined
+        : (process.env.NEXT_PUBLIC_POSTHOG_KEY ??
+          process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN);
 const postHogServerHost =
     process.env.POSTHOG_SERVER_HOST ??
     process.env.NEXT_PUBLIC_POSTHOG_UI_HOST ??
