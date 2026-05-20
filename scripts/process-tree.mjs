@@ -36,6 +36,17 @@ export function processStatesIncludeLiveProcess(processStates) {
     return states.some((state) => !state.startsWith('Z'));
 }
 
+let hasWarnedAboutProcessGroupProbe = false;
+
+function warnAboutProcessGroupProbeFailure(message) {
+    if (hasWarnedAboutProcessGroupProbe) {
+        return;
+    }
+
+    hasWarnedAboutProcessGroupProbe = true;
+    console.warn(message);
+}
+
 export function signalChildProcessTree(child, signal) {
     if (!child?.pid) {
         return false;
@@ -75,12 +86,31 @@ function forceKillChildProcessTree(child) {
 }
 
 function processGroupHasLiveProcesses(processGroupId) {
+    if (!Number.isSafeInteger(processGroupId) || processGroupId <= 0) {
+        return false;
+    }
+
     const result = spawnSync('ps', ['-o', 'state=', '-g', String(processGroupId)], {
         encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
+        stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    if (result.error || result.status !== 0) {
+    if (result.error) {
+        warnAboutProcessGroupProbeFailure(
+            `Unable to inspect process group ${processGroupId}: ${result.error.message}`,
+        );
+        return true;
+    }
+
+    if (result.status !== 0) {
+        const errorOutput = result.stderr.trim();
+        if (!errorOutput) {
+            return false;
+        }
+
+        warnAboutProcessGroupProbeFailure(
+            `Unable to inspect process group ${processGroupId}: ps exited with status ${result.status}: ${errorOutput}`,
+        );
         return true;
     }
 
