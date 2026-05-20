@@ -16,24 +16,24 @@ export function EntityDetailsPropertyList({
     items: EntityDetailsPropertyListItem[];
 }) {
     return (
-        <dl className="overflow-hidden rounded-lg border bg-background">
+        <dl className="min-w-0 overflow-hidden">
             {items.map((item) => (
                 <div
                     key={item.id}
-                    className="grid grid-cols-[minmax(6rem,0.85fr)_minmax(0,1.15fr)] gap-3 border-b px-3 py-2.5 text-sm last:border-b-0"
+                    className="grid min-w-0 grid-cols-[minmax(5.5rem,0.85fr)_minmax(0,1.15fr)] items-center gap-2 px-4 py-1.5 text-sm"
                 >
-                    <dt className="min-w-0 truncate text-muted-foreground">
-                        {item.label}
-                    </dt>
-                    <dd className="flex min-w-0 items-center gap-2 text-foreground">
+                    <dt className="flex min-w-0 items-center gap-2 text-muted-foreground">
                         {item.visual && (
                             <span className="shrink-0 text-muted-foreground">
                                 {item.visual}
                             </span>
                         )}
+                        <span className="min-w-0 truncate">{item.label}</span>
+                    </dt>
+                    <dd className="flex min-w-0 items-center overflow-hidden text-foreground">
                         <span
                             className={cx(
-                                'min-w-0',
+                                'block min-w-0 max-w-full overflow-hidden',
                                 isCompactValue(item.value) && 'truncate',
                                 item.mono && 'font-mono',
                             )}

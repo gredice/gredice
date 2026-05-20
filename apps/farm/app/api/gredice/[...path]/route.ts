@@ -8,9 +8,9 @@ import { type NextRequest, NextResponse } from 'next/server';
  */
 
 const API_BASE_URL =
-    process.env.NEXT_PUBLIC_VERCEL_ENV === 'development'
-        ? 'https://api.gredice.test'
-        : 'https://api.gredice.com';
+    process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'
+        ? 'https://api.gredice.com'
+        : (process.env.GREDICE_API_HOST ?? 'http://localhost:3005');
 
 export async function GET(
     request: NextRequest,

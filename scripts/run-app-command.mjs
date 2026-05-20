@@ -81,14 +81,79 @@ function getSpawnOptions(command, args) {
     };
 }
 
-function applyLocalServiceEnv() {
-    const apiApp = getAppByName('api');
-    const apiPort =
-        commandName === 'start' ? getAppStartPort(apiApp) : getAppDevPort(apiApp);
-    process.env.GREDICE_API_HOST ??= localAppHostnameUrl(
-        apiApp,
+function trimTrailingSlash(value) {
+    return value.replace(/\/+$/, '');
+}
+
+function parsePort(value) {
+    if (!value?.trim()) {
+        return null;
+    }
+
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isNaN(parsed) || parsed < 1 || parsed > 65_535) {
+        throw new Error(`Invalid port value: ${value}`);
+    }
+
+    return parsed;
+}
+
+function formatLocalDomainUrl(targetApp, port) {
+    const portSegment = port === 443 ? '' : `:${port}`;
+    return `https://${targetApp.localDomain}${portSegment}`;
+}
+
+function appPortForCommand(targetApp) {
+    return commandName === 'start'
+        ? getAppStartPort(targetApp)
+        : getAppDevPort(targetApp);
+}
+
+function localAppServerUrl(targetApp) {
+    return localAppHostnameUrl(
+        targetApp,
         'localhost',
-        apiPort,
+        appPortForCommand(targetApp),
+    );
+}
+
+function localAppBrowserOrigin(targetApp) {
+    const proxyHttpsPort = parsePort(process.env.GREDICE_PROXY_HTTPS_PORT);
+    if (proxyHttpsPort) {
+        return formatLocalDomainUrl(targetApp, proxyHttpsPort);
+    }
+
+    return localAppServerUrl(targetApp);
+}
+
+function applyLocalServiceEnv() {
+    const appOrigins = {
+        api: getAppByName('api'),
+        app: getAppByName('app'),
+        farm: getAppByName('farm'),
+        garden: getAppByName('garden'),
+        www: getAppByName('www'),
+    };
+
+    process.env.GREDICE_API_HOST ??= localAppServerUrl(appOrigins.api);
+    process.env.GREDICE_WWW_REVALIDATE_URL ??= trimTrailingSlash(
+        localAppServerUrl(appOrigins.www),
+    );
+
+    process.env.NEXT_PUBLIC_GREDICE_API_ORIGIN ??= trimTrailingSlash(
+        localAppBrowserOrigin(appOrigins.api),
+    );
+    process.env.NEXT_PUBLIC_GREDICE_APP_ORIGIN ??= trimTrailingSlash(
+        localAppBrowserOrigin(appOrigins.app),
+    );
+    process.env.NEXT_PUBLIC_GREDICE_FARM_ORIGIN ??= trimTrailingSlash(
+        localAppBrowserOrigin(appOrigins.farm),
+    );
+    process.env.NEXT_PUBLIC_GREDICE_GARDEN_ORIGIN ??= trimTrailingSlash(
+        localAppBrowserOrigin(appOrigins.garden),
+    );
+    process.env.NEXT_PUBLIC_GREDICE_WWW_ORIGIN ??= trimTrailingSlash(
+        localAppBrowserOrigin(appOrigins.www),
     );
 }
 

@@ -169,18 +169,21 @@ function code128Bars(value: string) {
 
 export function BarcodeValue({ value }: { value: string }) {
     const barcode = code128Bars(value);
+    const barcodeMaxWidth = barcode
+        ? `${Math.min(barcode.width * 1.5, 176)}px`
+        : undefined;
 
     return (
-        <div className="inline-flex w-fit max-w-full flex-col items-start">
+        <div
+            className="flex w-full min-w-0 flex-col items-start overflow-hidden"
+            style={{ maxWidth: barcodeMaxWidth ?? '176px' }}
+        >
             {barcode && (
                 <svg
                     role="img"
                     aria-label={`Barcode ${value}`}
                     viewBox={`0 0 ${barcode.width} 24`}
-                    className="h-6 max-w-44 text-foreground"
-                    style={{
-                        width: `${Math.min(barcode.width * 1.5, 176)}px`,
-                    }}
+                    className="h-6 w-full max-w-full text-foreground"
                     preserveAspectRatio="none"
                 >
                     <title>{value}</title>
@@ -199,7 +202,7 @@ export function BarcodeValue({ value }: { value: string }) {
             )}
             <Typography
                 level="body3"
-                className="max-w-44 break-all self-center"
+                className="w-full max-w-full break-all text-center"
             >
                 {value}
             </Typography>

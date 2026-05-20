@@ -17,6 +17,7 @@ import { Calendar, Code } from '@signalco/ui-icons';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { revalidatePath } from 'next/cache';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { importEntityData } from '../../../../../app/admin/directories/(actions)/importEntityData';
 import { EntityAttributeProgress } from '../../../../../components/admin/directories/EntityAttributeProgress';
@@ -36,6 +37,7 @@ import { handleEntityDelete } from '../../../../(actions)/entityActions';
 import { AttributeDataTypeIcon } from '../attribute-definitions/AttributeDataTypes';
 import { AttributeCategoryDetails } from './AttributeCategoryDetails';
 import { EntityActions } from './EntityActions';
+import { EntityDetailsPanelCard } from './EntityDetailsPanelCard';
 import { EntityDetailsPropertiesLayout } from './EntityDetailsPropertiesLayout';
 import { EntityDetailsPropertiesPanel } from './EntityDetailsPropertiesPanel';
 import { EntityDetailsPropertiesProvider } from './EntityDetailsPropertiesProvider';
@@ -284,7 +286,7 @@ export default async function EntityDetailsPage(props: {
                     ) : (
                         '-'
                     ),
-                    visual: imageUrl ? undefined : dataTypeIcon,
+                    visual: dataTypeIcon,
                 };
             }
 
@@ -298,14 +300,34 @@ export default async function EntityDetailsPage(props: {
                             value={value}
                         />
                     ),
+                    visual: dataTypeIcon,
                 };
             }
 
             if (d.dataType.startsWith('ref:')) {
+                const refEntityTypeName = d.dataType.split(':')[1];
+                const refEntityId = Number(value);
+                const refLabel =
+                    refLabelsByDefinitionId[d.id]?.[value] ?? value;
+
                 return {
                     id: `attribute-${d.id}`,
                     label: d.label,
-                    value: refLabelsByDefinitionId[d.id]?.[value] ?? value,
+                    value:
+                        refEntityTypeName && Number.isInteger(refEntityId) ? (
+                            <Link
+                                href={KnownPages.DirectoryEntity(
+                                    refEntityTypeName,
+                                    refEntityId,
+                                )}
+                                title={`Otvori ${refLabel}`}
+                                className="inline-block max-w-full truncate rounded-sm text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                                {refLabel}
+                            </Link>
+                        ) : (
+                            refLabel
+                        ),
                     visual: dataTypeIcon,
                 };
             }
@@ -320,7 +342,9 @@ export default async function EntityDetailsPage(props: {
     ];
     const propertiesPanel = (
         <EntityDetailsPropertiesPanel>
-            <EntityDetailsPropertyList items={propertyItems} />
+            <EntityDetailsPanelCard title="Detalji">
+                <EntityDetailsPropertyList items={propertyItems} />
+            </EntityDetailsPanelCard>
             {inventoryConfig && (
                 <EntityInventoryCard
                     inventoryConfigId={inventoryConfig.id}

@@ -13,6 +13,11 @@ export function getAppUrl() {
         process.env.NODE_ENV === 'development' ||
         process.env.VERCEL_ENV === 'development'
     ) {
+        const configuredApiHost = process.env.GREDICE_API_HOST?.trim();
+        if (configuredApiHost) {
+            return configuredApiHost.replace(/\/+$/, '');
+        }
+
         return 'https://api.gredice.test';
     }
     return 'https://api.gredice.com';

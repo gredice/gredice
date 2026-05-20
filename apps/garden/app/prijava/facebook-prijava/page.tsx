@@ -1,5 +1,6 @@
 'use client';
 
+import { getBrowserGrediceAppOrigin } from '@gredice/client';
 import {
     Card,
     CardContent,
@@ -18,7 +19,12 @@ export default function FacebookLoginPage() {
             setTimeout(() => {
                 const timeZone =
                     Intl.DateTimeFormat().resolvedOptions().timeZone;
-                window.location.href = `https://api.gredice.com/api/auth/facebook?timeZone=${encodeURIComponent(timeZone)}`;
+                const authUrl = new URL(
+                    '/api/auth/facebook',
+                    getBrowserGrediceAppOrigin('api'),
+                );
+                authUrl.searchParams.set('timeZone', timeZone);
+                window.location.href = authUrl.toString();
             }, 3000);
         };
 
