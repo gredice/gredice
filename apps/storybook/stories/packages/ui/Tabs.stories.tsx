@@ -9,7 +9,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Tabs switch between sibling views with Gredice control styling and Radix keyboard behavior.',
+                    'Tabs switch between sibling views with Gredice control styling, a sliding active indicator, and Radix keyboard behavior.',
             },
         },
     },
