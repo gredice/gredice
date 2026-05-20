@@ -479,6 +479,17 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
     }
 
     const uniqueAffectedCartIds = Array.from(new Set(affectedCartIds));
+
+    if (accountId && session.amountTotal) {
+        await createTransaction({
+            accountId,
+            amount: session.amountTotal,
+            stripePaymentId: session.paymentId ?? session.id,
+            status: 'completed',
+            currency: 'eur',
+        });
+    }
+
     if (accountId && uniqueAffectedCartIds.length > 0) {
         for (const cartId of uniqueAffectedCartIds) {
             await processNonStripeCartItems(
@@ -491,18 +502,7 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
     }
 
     // Update all affected carts to mark them as paid if all items are paid
-    await Promise.all([
-        ...uniqueAffectedCartIds.map(markCartPaidIfAllItemsPaid),
-        accountId && session.amountTotal
-            ? createTransaction({
-                  accountId,
-                  amount: session.amountTotal,
-                  stripePaymentId: session.paymentId ?? session.id,
-                  status: 'completed',
-                  currency: 'eur',
-              })
-            : undefined,
-    ]);
+    await Promise.all(uniqueAffectedCartIds.map(markCartPaidIfAllItemsPaid));
 
     await notifyPurchase({
         accountId,
