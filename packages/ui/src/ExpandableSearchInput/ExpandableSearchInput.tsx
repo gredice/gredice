@@ -23,12 +23,11 @@ export function ExpandableSearchInput({
 }: ExpandableSearchInputProps) {
     const [isExpanded, setIsExpanded] = useState(Boolean(value));
     const rootRef = useRef<HTMLDivElement>(null);
-    const desktopInputRef = useRef<HTMLInputElement>(null);
-    const mobileInputRef = useRef<HTMLInputElement>(null);
+    const mobileInputRootRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (isExpanded) {
-            mobileInputRef.current?.focus();
+            mobileInputRootRef.current?.querySelector('input')?.focus();
         }
     }, [isExpanded]);
 
@@ -40,7 +39,10 @@ export function ExpandableSearchInput({
 
     useEffect(() => {
         const handlePointerDown = (event: PointerEvent) => {
-            if (!rootRef.current?.contains(event.target as Node)) {
+            if (
+                !(event.target instanceof Node) ||
+                !rootRef.current?.contains(event.target)
+            ) {
                 setIsExpanded(false);
             }
         };
@@ -55,7 +57,6 @@ export function ExpandableSearchInput({
         <div ref={rootRef} className={cx('relative', className)}>
             <div className="hidden md:block">
                 <Input
-                    ref={desktopInputRef}
                     value={value}
                     onChange={onChange}
                     placeholder={placeholder}
@@ -72,9 +73,11 @@ export function ExpandableSearchInput({
                     <Search className="size-5" />
                 </IconButton>
                 {isExpanded && (
-                    <div className="absolute right-0 top-full z-20 mt-2 w-[min(18rem,calc(100vw-2rem))]">
+                    <div
+                        ref={mobileInputRootRef}
+                        className="absolute right-0 top-full z-20 mt-2 w-[min(18rem,calc(100vw-2rem))]"
+                    >
                         <Input
-                            ref={mobileInputRef}
                             value={value}
                             onChange={onChange}
                             placeholder={placeholder}
