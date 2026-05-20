@@ -21,6 +21,7 @@ import {
 } from './app-registry.ts';
 import {
     childProcessTreeOptions,
+    processStatesIncludeLiveProcess,
     terminateChildProcessTree,
 } from './process-tree.mjs';
 
@@ -394,5 +395,10 @@ describe('app registry worktree ports', () => {
             child.kill('SIGKILL');
             rmSync(tempDir, { recursive: true, force: true });
         }
+    });
+
+    it('treats zombie-only process groups as stopped', () => {
+        assert.equal(processStatesIncludeLiveProcess('Z\nZ+\n'), false);
+        assert.equal(processStatesIncludeLiveProcess('Z\nS\n'), true);
     });
 });

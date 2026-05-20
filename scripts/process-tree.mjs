@@ -27,6 +27,15 @@ function isMissingProcessError(error) {
     return error?.code === 'ESRCH';
 }
 
+export function processStatesIncludeLiveProcess(processStates) {
+    const states = processStates
+        .split('\n')
+        .map((state) => state.trim())
+        .filter(Boolean);
+
+    return states.some((state) => !state.startsWith('Z'));
+}
+
 export function signalChildProcessTree(child, signal) {
     if (!child?.pid) {
         return false;
@@ -65,6 +74,19 @@ function forceKillChildProcessTree(child) {
     return signalChildProcessTree(child, 'SIGKILL');
 }
 
+function processGroupHasLiveProcesses(processGroupId) {
+    const result = spawnSync('ps', ['-o', 'state=', '-g', String(processGroupId)], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+    });
+
+    if (result.error || result.status !== 0) {
+        return true;
+    }
+
+    return processStatesIncludeLiveProcess(result.stdout);
+}
+
 function isChildProcessTreeRunning(child) {
     if (!child?.pid) {
         return false;
@@ -76,7 +98,6 @@ function isChildProcessTreeRunning(child) {
 
     try {
         process.kill(-child.pid, 0);
-        return true;
     } catch (error) {
         if (isMissingProcessError(error)) {
             return false;
@@ -84,6 +105,8 @@ function isChildProcessTreeRunning(child) {
 
         throw error;
     }
+
+    return processGroupHasLiveProcesses(child.pid);
 }
 
 export async function waitForChildProcessTreeExit(
