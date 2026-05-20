@@ -55,13 +55,15 @@ export function PlantsGallery({
                     false),
         )
         .map((plant) => {
-            const matchingSortName = (sorts ?? []).find(
-                (sort) =>
-                    sort.information.plant?.id === plant.id &&
-                    normalizeSearchText(sort.information.name).includes(
-                        normalizedSearch,
-                    ),
-            )?.information.name;
+            const matchingSortName = normalizedSearch
+                ? (sorts ?? []).find(
+                      (sort) =>
+                          sort.information.plant?.id === plant.id &&
+                          normalizeSearchText(sort.information.name).includes(
+                              normalizedSearch,
+                          ),
+                  )?.information.name
+                : undefined;
             return {
                 ...plant,
                 id: plant.id.toString(),
