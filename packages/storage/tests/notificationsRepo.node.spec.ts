@@ -21,6 +21,7 @@ import {
     recordNotificationDeliveryEvent,
     routeNotificationDelivery,
     storage,
+    webPushSubscriptions,
 } from '@gredice/storage';
 import { eq } from 'drizzle-orm';
 import {
@@ -489,4 +490,75 @@ test('recordNotificationDeliveryEvent rejects mismatched notification and attemp
         }),
         /does not belong to the provided notification/u,
     );
+});
+
+test('enqueuePushDeliveryAttemptsForNotification skips revoked subscriptions', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userName = `push-revoked-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(userName, 'password');
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+
+    await storage().execute(
+        `insert into web_push_subscriptions (id, account_id, user_id, endpoint, p256dh, auth, enabled, revoked_at)
+         values ('${randomUUID()}', '${accountId}', '${userId}', 'https://example.com/revoked', 'k', 'a', true, now())`,
+    );
+
+    const notificationId = await createNotification({
+        accountId,
+        userId,
+        header: 'Push revoked',
+        content: 'Revoked subscriptions should not queue',
+        category: 'general',
+        timestamp: new Date(),
+    });
+
+    const result = await enqueuePushDeliveryAttemptsForNotification({
+        notificationId,
+    });
+
+    assert.equal(result.queued, 0);
+    assert.equal(result.skipped, 0);
+});
+
+test('cleanupNotificationRetention disables denied and default subscriptions', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userName = `push-cleanup-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(userName, 'password');
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+
+    const deniedSubscriptionId = randomUUID();
+    const defaultSubscriptionId = randomUUID();
+    await storage().execute(
+        `insert into web_push_subscriptions (id, account_id, user_id, endpoint, p256dh, auth, enabled, permission_state, fail_count)
+         values ('${deniedSubscriptionId}', '${accountId}', '${userId}', 'https://example.com/denied', 'k', 'a', true, 'denied', 0)`,
+    );
+    await storage().execute(
+        `insert into web_push_subscriptions (id, account_id, user_id, endpoint, p256dh, auth, enabled, permission_state, fail_count)
+         values ('${defaultSubscriptionId}', '${accountId}', '${userId}', 'https://example.com/default', 'k', 'a', true, 'default', 0)`,
+    );
+
+    const cleanup = await cleanupNotificationRetention();
+    assert.ok(cleanup.subscriptionsDisabled >= 2);
+    const deniedSubscription =
+        await storage().query.webPushSubscriptions.findFirst({
+            where: eq(webPushSubscriptions.id, deniedSubscriptionId),
+        });
+    const defaultSubscription =
+        await storage().query.webPushSubscriptions.findFirst({
+            where: eq(webPushSubscriptions.id, defaultSubscriptionId),
+        });
+    assert.equal(deniedSubscription?.enabled, false);
+    assert.equal(deniedSubscription?.revokedReason, 'retention_cleanup');
+    assert.ok(deniedSubscription?.revokedAt);
+    assert.equal(defaultSubscription?.enabled, false);
+    assert.equal(defaultSubscription?.revokedReason, 'retention_cleanup');
+    assert.ok(defaultSubscription?.revokedAt);
 });
