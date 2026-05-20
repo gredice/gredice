@@ -11,11 +11,11 @@ import { useAnimatedEntityRotation } from './useAnimatedEntityRotation';
 
 type GardenBoxProps = EntityInstanceProps & {
     bodyColor: string;
-    trimColor: string;
+    lidColor: string;
     bodyMetalness?: number;
     bodyRoughness?: number;
-    trimMetalness?: number;
-    trimRoughness?: number;
+    lidMetalness?: number;
+    lidRoughness?: number;
 };
 
 export function GardenBox({
@@ -23,11 +23,11 @@ export function GardenBox({
     block,
     rotation,
     bodyColor,
-    trimColor,
+    lidColor,
     bodyMetalness = 0.1,
     bodyRoughness = 0.85,
-    trimMetalness = 0.2,
-    trimRoughness = 0.75,
+    lidMetalness = 0.2,
+    lidRoughness = 0.75,
 }: GardenBoxProps) {
     const { nodes } = useGameGLTF();
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
@@ -37,13 +37,13 @@ export function GardenBox({
 
     return (
         <animated.group
-            position={stack.position.clone().setY(currentStackHeight + 0.25)}
+            position={stack.position.clone().setY(currentStackHeight)}
             rotation={animatedRotation as unknown as [number, number, number]}
         >
             <mesh
                 castShadow
                 receiveShadow
-                geometry={nodes.GiftBox_Box.geometry}
+                geometry={nodes.GardenBox_Body_Planks.geometry}
             >
                 <meshStandardMaterial
                     color={bodyColor}
@@ -52,27 +52,31 @@ export function GardenBox({
                 />
                 <HoverOutline hovered={hovered} variant="outlines" />
             </mesh>
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes.GiftBox_Strip.geometry}
-            >
-                <meshStandardMaterial
-                    color={trimColor}
-                    metalness={trimMetalness}
-                    roughness={trimRoughness}
+            <SnowOverlay
+                geometry={nodes.GardenBox_Body_Planks.geometry}
+                {...snowPresets.giftBox}
+            />
+            <RainWetOverlay geometry={nodes.GardenBox_Body_Planks.geometry} />
+            <group position={[0, 0.6, -0.38]}>
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
+                >
+                    <meshStandardMaterial
+                        color={lidColor}
+                        metalness={lidMetalness}
+                        roughness={lidRoughness}
+                    />
+                </mesh>
+                <SnowOverlay
+                    geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
+                    {...snowPresets.giftBox}
                 />
-            </mesh>
-            <SnowOverlay
-                geometry={nodes.GiftBox_Box.geometry}
-                {...snowPresets.giftBox}
-            />
-            <RainWetOverlay geometry={nodes.GiftBox_Box.geometry} />
-            <SnowOverlay
-                geometry={nodes.GiftBox_Strip.geometry}
-                {...snowPresets.giftBox}
-            />
-            <RainWetOverlay geometry={nodes.GiftBox_Strip.geometry} />
+                <RainWetOverlay
+                    geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
+                />
+            </group>
         </animated.group>
     );
 }
