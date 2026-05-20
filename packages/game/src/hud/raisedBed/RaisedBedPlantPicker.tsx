@@ -211,22 +211,25 @@ export function PlantPicker({
         });
         showShoppingCartTransientHub();
         setFlyToShoppingCart(true);
-        await setCartItem.mutateAsync({
-            entityTypeName: 'plantSort',
-            entityId: selectedSortId?.toString(),
-            amount: 1,
-            gardenId,
-            raisedBedId,
-            positionIndex,
-            additionalData: JSON.stringify({
-                scheduledDate: plantOptions?.scheduledDate?.toISOString(),
-            }),
-            currency: useInventoryItem ? 'inventory' : 'eur',
-        });
-        await new Promise((resolve) => setTimeout(resolve, 800)); // Wait for animation to finish
-        scheduleHideShoppingCartTransientHub();
-        setOpen(false);
-        setFlyToShoppingCart(false);
+        try {
+            await setCartItem.mutateAsync({
+                entityTypeName: 'plantSort',
+                entityId: selectedSortId?.toString(),
+                amount: 1,
+                gardenId,
+                raisedBedId,
+                positionIndex,
+                additionalData: JSON.stringify({
+                    scheduledDate: plantOptions?.scheduledDate?.toISOString(),
+                }),
+                currency: useInventoryItem ? 'inventory' : 'eur',
+            });
+            await new Promise((resolve) => setTimeout(resolve, 800)); // Wait for animation to finish
+        } finally {
+            scheduleHideShoppingCartTransientHub();
+            setOpen(false);
+            setFlyToShoppingCart(false);
+        }
     }
 
     function handleOpenChange(open: boolean) {
