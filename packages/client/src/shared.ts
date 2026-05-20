@@ -6,8 +6,7 @@ export function getServerGrediceApiOrigin() {
 
     const isDevelopment =
         process.env.NODE_ENV === 'development' ||
-        process.env.VERCEL_ENV === 'development' ||
-        process.env.NEXT_PUBLIC_VERCEL_ENV === 'development';
+        process.env.VERCEL_ENV === 'development';
     return isDevelopment ? 'http://localhost:3005' : 'https://api.gredice.com';
 }
 
