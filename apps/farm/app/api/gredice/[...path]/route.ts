@@ -7,10 +7,13 @@ import { type NextRequest, NextResponse } from 'next/server';
  * This eliminates the need for localStorage token storage and prevents tokens in URLs.
  */
 
+const isDevelopment =
+    process.env.NODE_ENV === 'development' ||
+    process.env.VERCEL_ENV === 'development' ||
+    process.env.NEXT_PUBLIC_VERCEL_ENV === 'development';
 const API_BASE_URL =
-    process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'
-        ? 'https://api.gredice.com'
-        : (process.env.GREDICE_API_HOST ?? 'http://localhost:3005');
+    process.env.GREDICE_API_HOST ??
+    (isDevelopment ? 'http://localhost:3005' : 'https://api.gredice.com');
 
 export async function GET(
     request: NextRequest,
