@@ -89,6 +89,7 @@ export type WinterMode = 'summer' | 'winter' | 'holiday';
 export type ActiveDragPreview = {
     sourceBlockId: string;
     attachedBlockId: string | null;
+    hoveredGardenBoxBlockId: string | null;
     relative: {
         x: number;
         z: number;
