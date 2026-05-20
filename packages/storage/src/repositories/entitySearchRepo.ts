@@ -111,6 +111,10 @@ function searchOffset(value: number | undefined) {
 }
 
 function searchPrefixQueryText(value: string) {
+    if (hasWebSearchOperators(value)) {
+        return null;
+    }
+
     const tokens = value.match(/[\p{L}\p{N}]+/gu) ?? [];
     const searchableTokens = tokens.filter(
         (token) => token.length >= minSearchQueryLength,
@@ -120,6 +124,12 @@ function searchPrefixQueryText(value: string) {
     }
 
     return searchableTokens.map((token) => `${token}:*`).join(' & ');
+}
+
+function hasWebSearchOperators(value: string) {
+    return (
+        /(^|\s)-\S/u.test(value) || value.includes('"') || /\bor\b/u.test(value)
+    );
 }
 
 function compactText(values: Array<string | null | undefined>) {

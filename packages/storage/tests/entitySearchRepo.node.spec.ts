@@ -607,6 +607,44 @@ test('directory entity search includes prefix matches after exact token matches'
     assert.ok(rowIds.indexOf(blockId) < rowIds.indexOf(sortId));
 });
 
+test('directory entity search preserves websearch operators without prefix fallback', async () => {
+    createTestDb();
+    const blockId = await createSearchableEntity({
+        entityTypeName: 'block',
+        entityTypeLabel: 'Block',
+        title: 'Snow block',
+    });
+    const exactPlantId = await createSearchableEntity({
+        entityTypeName: 'plant',
+        entityTypeLabel: 'Plant',
+        title: 'Snow pea',
+    });
+    const prefixPlantId = await createSearchableEntity({
+        entityTypeName: 'plant',
+        entityTypeLabel: 'Plant',
+        title: 'Snowball',
+    });
+
+    const exclusionRows = await searchDirectoryEntities({
+        query: 'snow -block',
+        limit: 10,
+    });
+    const exclusionRowIds = exclusionRows.map((row) => row.entityId);
+
+    assert.ok(exclusionRowIds.includes(exactPlantId));
+    assert.ok(!exclusionRowIds.includes(blockId));
+    assert.ok(!exclusionRowIds.includes(prefixPlantId));
+
+    const quotedRows = await searchDirectoryEntities({
+        query: '"snow"',
+        limit: 10,
+    });
+    const quotedRowIds = quotedRows.map((row) => row.entityId);
+
+    assert.ok(quotedRowIds.includes(exactPlantId));
+    assert.ok(!quotedRowIds.includes(prefixPlantId));
+});
+
 test('directory entity search falls back to plant URLs for seeds without plant sort data', async () => {
     createTestDb();
     const nonExistentPlantSortId = 999_999;
