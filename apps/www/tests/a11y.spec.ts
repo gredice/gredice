@@ -24,6 +24,9 @@ test.describe('accessibility axe smoke tests', () => {
 
             const results = await new AxeBuilder({ page })
                 .withTags(['wcag2a', 'wcag2aa'])
+                // Cross-origin embeds such as Google Maps expose third-party UI
+                // that can change independently of Gredice and fail CI.
+                .setLegacyMode()
                 .analyze();
 
             const seriousViolations = results.violations.filter(
