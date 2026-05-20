@@ -63,6 +63,10 @@ const nextConfig: NextConfig = {
 
         return [
             {
+                source: '/api/notifications/:path*',
+                destination: `${apiHost}/api/notifications/:path*`,
+            },
+            {
                 source: '/api/gredice/:path*',
                 destination: `${apiHost}/:path*`,
             },

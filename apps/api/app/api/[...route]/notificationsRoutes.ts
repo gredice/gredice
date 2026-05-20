@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
     cancelNotificationCampaign,
     createNotificationCampaign,
@@ -6,8 +7,10 @@ import {
     getNotificationCampaign,
     getNotificationsByAccount,
     getNotificationsByUser,
+    isDeliverablePushSubscription,
     notificationUserChannelPreferences,
     previewNotificationCampaignAudience,
+    recordNotificationDeliveryEvent,
     setAllNotificationsRead,
     setNotificationRead,
     sql,
@@ -26,6 +29,15 @@ import {
     sanitizeGrediceLinkUrl,
     validateHostedImageUrl,
 } from '../../../lib/http/safeUrls';
+import {
+    pushDeviceResponse,
+    pushDeviceUpsertSchema,
+} from '../../../lib/notifications/pushDevices';
+import {
+    pushNotificationEventMetadata,
+    pushNotificationEventSchema,
+} from '../../../lib/notifications/pushEvents';
+import { createAndSendTestWebPushNotification } from '../../../lib/notifications/webPushSender';
 
 const testNotificationRateLimit = new Map<string, number>();
 const TEST_NOTIFICATION_WINDOW_MS = 5 * 60 * 1000;
@@ -796,9 +808,99 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json({ success: true }, 200);
         },
     )
+    .post(
+        '/devices',
+        describeRoute({
+            description:
+                'Upsert the current authenticated user push device subscription.',
+            security: authSecurity,
+        }),
+        authValidator(['user', 'admin']),
+        zValidator('json', pushDeviceUpsertSchema),
+        async (context) => {
+            const payload = context.req.valid('json');
+            const { accountId, userId } = context.get('authContext');
+            const now = new Date();
+            const requestUserAgent = context.req.header('user-agent')?.trim();
+            const userAgent =
+                payload.userAgent ??
+                (requestUserAgent ? requestUserAgent.slice(0, 1024) : null);
+
+            const result = await storage()
+                .insert(webPushSubscriptions)
+                .values({
+                    id: randomUUID(),
+                    accountId,
+                    userId,
+                    endpoint: payload.endpoint,
+                    p256dh: payload.keys.p256dh,
+                    auth: payload.keys.auth,
+                    enabled: payload.permissionState === 'granted',
+                    deviceId: payload.deviceId ?? null,
+                    deviceLabel: payload.deviceLabel ?? null,
+                    browserName: payload.browserName ?? null,
+                    browserVersion: payload.browserVersion ?? null,
+                    platform: payload.platform ?? null,
+                    userAgent,
+                    locale: payload.locale ?? null,
+                    timezone: payload.timezone ?? null,
+                    permissionState: payload.permissionState,
+                    failCount: 0,
+                    lastSeenAt: now,
+                    lastFailureAt: null,
+                    lastFailureCode: null,
+                    lastFailureReason: null,
+                    revokedAt: null,
+                    revokedReason: null,
+                    updatedAt: now,
+                })
+                .onConflictDoUpdate({
+                    target: webPushSubscriptions.endpoint,
+                    set: {
+                        accountId,
+                        userId,
+                        p256dh: payload.keys.p256dh,
+                        auth: payload.keys.auth,
+                        enabled: payload.permissionState === 'granted',
+                        deviceId: payload.deviceId ?? null,
+                        deviceLabel: payload.deviceLabel ?? null,
+                        browserName: payload.browserName ?? null,
+                        browserVersion: payload.browserVersion ?? null,
+                        platform: payload.platform ?? null,
+                        userAgent,
+                        locale: payload.locale ?? null,
+                        timezone: payload.timezone ?? null,
+                        permissionState: payload.permissionState,
+                        failCount: 0,
+                        lastSeenAt: now,
+                        lastFailureAt: null,
+                        lastFailureCode: null,
+                        lastFailureReason: null,
+                        revokedAt: null,
+                        revokedReason: null,
+                        updatedAt: now,
+                    },
+                })
+                .returning();
+
+            const device = result[0];
+            if (!device) {
+                return context.json(
+                    { error: 'Push device was not saved' },
+                    500,
+                );
+            }
+
+            return context.json({ device: pushDeviceResponse(device) }, 200);
+        },
+    )
     .get(
         '/devices',
-        describeRoute({ description: 'List push devices for user/account' }),
+        describeRoute({
+            description:
+                'List push devices for the current authenticated user/account.',
+            security: authSecurity,
+        }),
         authValidator(['user', 'admin']),
         async (context) => {
             const { userId, accountId } = context.get('authContext');
@@ -815,7 +917,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 },
             );
 
-            return context.json({ devices }, 200);
+            return context.json(
+                {
+                    devices: devices.map((device) =>
+                        pushDeviceResponse(device),
+                    ),
+                },
+                200,
+            );
         },
     )
     .patch(
@@ -932,19 +1041,91 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     !subscription.revokedAt &&
                     subscription.permissionState === 'denied',
             );
-            const hasEnabledSubscription = subscriptions.some(
-                (subscription) =>
-                    !subscription.revokedAt && subscription.enabled,
+            const hasDeliverableSubscription = subscriptions.some(
+                isDeliverablePushSubscription,
             );
-            const status = !hasNonRevokedSubscription
-                ? 'unsubscribed'
-                : hasDeniedSubscription
-                  ? 'denied'
-                  : hasEnabledSubscription
-                    ? 'subscribed'
+            const status = hasDeliverableSubscription
+                ? 'subscribed'
+                : !hasNonRevokedSubscription
+                  ? 'unsubscribed'
+                  : hasDeniedSubscription
+                    ? 'denied'
                     : 'disabled';
             return context.json(
                 { status, hasDevices: subscriptions.length > 0 },
+                200,
+            );
+        },
+    )
+    .post(
+        '/events',
+        describeRoute({
+            description:
+                'Record authenticated Web Push click and dismissal events.',
+            security: authSecurity,
+        }),
+        authValidator(['user', 'admin']),
+        zValidator('json', pushNotificationEventSchema),
+        async (context) => {
+            const payload = context.req.valid('json');
+            const { accountId, userId } = context.get('authContext');
+            const attempt =
+                await storage().query.notificationDeliveryAttempts.findFirst({
+                    where: (deliveryAttempt, { and, eq }) =>
+                        and(
+                            eq(
+                                deliveryAttempt.notificationId,
+                                payload.notificationId,
+                            ),
+                            eq(deliveryAttempt.channel, 'push'),
+                            eq(deliveryAttempt.userId, userId),
+                            eq(deliveryAttempt.accountId, accountId),
+                            payload.deliveryAttemptId
+                                ? eq(
+                                      deliveryAttempt.id,
+                                      payload.deliveryAttemptId,
+                                  )
+                                : undefined,
+                        ),
+                    orderBy: (deliveryAttempt, { desc }) => [
+                        desc(deliveryAttempt.acceptedAt),
+                        desc(deliveryAttempt.attemptedAt),
+                        desc(deliveryAttempt.createdAt),
+                    ],
+                });
+
+            if (!attempt) {
+                console.warn(
+                    'Rejected Web Push event without matching attempt',
+                    {
+                        accountId,
+                        deliveryAttemptId: payload.deliveryAttemptId,
+                        notificationId: payload.notificationId,
+                        type: payload.type,
+                        userId,
+                    },
+                );
+                return context.json(
+                    { error: 'Delivery attempt not found' },
+                    404,
+                );
+            }
+
+            await recordNotificationDeliveryEvent({
+                deliveryAttemptId: attempt.id,
+                metadata: pushNotificationEventMetadata(payload),
+                notificationId: payload.notificationId,
+                occurredAt: payload.at ? new Date(payload.at) : undefined,
+                type: payload.type,
+            });
+
+            return context.json(
+                {
+                    success: true,
+                    deliveryAttemptId: attempt.id,
+                    notificationId: payload.notificationId,
+                    type: payload.type,
+                },
                 200,
             );
         },
@@ -957,14 +1138,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
         }),
         authValidator(['user', 'admin']),
         async (context) => {
-            const { userId } = context.get('authContext');
+            const { accountId, userId } = context.get('authContext');
             const now = Date.now();
             const last = testNotificationRateLimit.get(userId) ?? 0;
             if (now - last < TEST_NOTIFICATION_WINDOW_MS) {
                 return context.json({ error: 'Rate limit exceeded' }, 429);
             }
             testNotificationRateLimit.set(userId, now);
-            return context.json({ success: true, queued: true }, 200);
+            const result = await createAndSendTestWebPushNotification({
+                accountId,
+                userId,
+            });
+            return context.json({ success: true, ...result }, 200);
         },
     );
 

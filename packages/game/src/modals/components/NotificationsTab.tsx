@@ -33,6 +33,15 @@ type DigestPeriod = Exclude<DigestFrequency, 'off'>;
 
 type NotificationsView = 'notifications' | 'settings';
 type NotificationsFilter = 'unread' | 'all';
+type NotificationPreferenceItem = {
+    category: string;
+    channel: NotificationPreferenceUpdate['channel'];
+    defaultEnabled: boolean;
+    description: string;
+    digestEligible: boolean;
+    label: string;
+    quietHoursEligible: boolean;
+};
 
 const notificationPreferencesKey = ['notifications', 'preferences'];
 const notificationDevicesKey = ['notifications', 'devices'];
@@ -40,25 +49,65 @@ const notificationPushStatusKey = ['notifications', 'push-status'];
 const defaultQuietHoursStartMinute = 22 * 60;
 const defaultQuietHoursEndMinute = 7 * 60;
 
-const categoryPreferences: Array<{
+const requiredNotificationGroups: Array<{
     category: string;
+    description: string;
     label: string;
-    channel: NotificationPreferenceUpdate['channel'];
 }> = [
     {
-        category: 'garden_activity',
-        label: 'Aktivnosti vrta',
-        channel: 'push',
+        category: 'account_security',
+        description:
+            'Prijave, promjene lozinke, oporavak računa i važne pravne obavijesti.',
+        label: 'Sigurnost računa i pravne obavijesti',
     },
     {
-        category: 'orders',
-        label: 'Narudžbe i dostava',
+        category: 'billing_order_delivery',
+        description:
+            'Plaćanja, računi, povrati i potvrde narudžbi ostaju dostupni odmah.',
+        label: 'Plaćanja, računi i potvrde narudžbi',
+    },
+];
+
+const categoryPreferences: NotificationPreferenceItem[] = [
+    {
+        category: 'garden',
         channel: 'push',
+        defaultEnabled: true,
+        description:
+            'Radovi u vrtu, promjene termina i berba. Hitna upozorenja o vrtu ostaju odmah vidljiva.',
+        digestEligible: true,
+        label: 'Radovi i berba u vrtu',
+        quietHoursEligible: true,
     },
     {
-        category: 'promotions',
-        label: 'Promocije i preporuke',
-        channel: 'email',
+        category: 'reminders',
+        channel: 'push',
+        defaultEnabled: false,
+        description:
+            'Podsjetnici za zadatke, košaricu i obnovu pretplate kad ih uključiš.',
+        digestEligible: true,
+        label: 'Podsjetnici i zadaci',
+        quietHoursEligible: true,
+    },
+    {
+        category: 'admin_campaigns',
+        channel: 'push',
+        defaultEnabled: false,
+        description:
+            'Novosti o usluzi, nove mogućnosti i održavanje koje nije označeno kao obavezno.',
+        digestEligible: true,
+        label: 'Novosti o usluzi i održavanju',
+        quietHoursEligible: true,
+    },
+    {
+        category: 'promotional',
+        channel: 'push',
+        defaultEnabled: false,
+        description:
+            'Promotivne ponude, sezonske preporuke i povremene kampanje.',
+        digestEligible: true,
+        label: 'Promotivne ponude i sezonske preporuke',
+        quietHoursEligible: true,
     },
 ];
 
@@ -117,8 +166,12 @@ function permissionStatusLabel(status: string) {
             return 'odbijeno';
         case 'unsupported':
             return 'nije podržano';
+        case 'unconfigured':
+            return 'nije konfigurirano';
         case 'prompt-dismissed':
             return 'odgođeno';
+        case 'subscribed':
+            return 'uključeno';
         default:
             return 'nije odlučeno';
     }
@@ -258,6 +311,7 @@ export function NotificationsTab() {
             const response =
                 await clientAuthenticated().api.notifications.test.$post();
             if (!response.ok) throw new Error('Probna obavijest nije poslana');
+            return response.json();
         },
     });
 
@@ -268,6 +322,12 @@ export function NotificationsTab() {
 
         const quietHoursPreference = preferencesQuery.data.find(
             (preference) =>
+                categoryPreferences.some(
+                    (item) =>
+                        item.quietHoursEligible &&
+                        item.category === preference.category &&
+                        item.channel === preference.channel,
+                ) &&
                 preference.quietHoursStartMinute !== null &&
                 preference.quietHoursEndMinute !== null,
         );
@@ -286,6 +346,12 @@ export function NotificationsTab() {
 
         const digestPreference = preferencesQuery.data.find(
             (preference) =>
+                categoryPreferences.some(
+                    (item) =>
+                        item.digestEligible &&
+                        item.category === preference.category &&
+                        item.channel === preference.channel,
+                ) &&
                 preference.digestFrequency &&
                 preference.digestFrequency !== 'off',
         );
@@ -328,15 +394,18 @@ export function NotificationsTab() {
             category: item.category,
             channel: item.channel,
             enabled,
-            quietHoursStartMinute: nextQuietEnabled
-                ? (options.quietStart ?? quietHoursStartMinute)
-                : null,
-            quietHoursEndMinute: nextQuietEnabled
-                ? (options.quietEnd ?? quietHoursEndMinute)
-                : null,
-            digestFrequency: nextSummaryEnabled
-                ? (options.summaryFrequency ?? digestFrequency)
-                : 'off',
+            quietHoursStartMinute:
+                item.quietHoursEligible && nextQuietEnabled
+                    ? (options.quietStart ?? quietHoursStartMinute)
+                    : null,
+            quietHoursEndMinute:
+                item.quietHoursEligible && nextQuietEnabled
+                    ? (options.quietEnd ?? quietHoursEndMinute)
+                    : null,
+            digestFrequency:
+                item.digestEligible && nextSummaryEnabled
+                    ? (options.summaryFrequency ?? digestFrequency)
+                    : 'off',
         };
     }
 
@@ -347,7 +416,7 @@ export function NotificationsTab() {
             categoryPreferences.map((item) =>
                 buildPreferenceUpdate(
                     item,
-                    findPreference(item)?.enabled ?? false,
+                    findPreference(item)?.enabled ?? item.defaultEnabled,
                     options,
                 ),
             ),
@@ -360,6 +429,12 @@ export function NotificationsTab() {
             status: pushOnboarding.status,
         });
         const result = await pushOnboarding.requestPermission();
+        if (result === 'subscribed') {
+            queryClient.invalidateQueries({ queryKey: notificationDevicesKey });
+            queryClient.invalidateQueries({
+                queryKey: notificationPushStatusKey,
+            });
+        }
         track('game_push_permission_result', {
             source: 'overview_notifications_tab',
             result,
@@ -373,7 +448,13 @@ export function NotificationsTab() {
 
     const notificationsSupported =
         typeof window !== 'undefined' && 'Notification' in window;
-    const settingsBusy = savePreferencesMutation.isPending;
+    const settingsBusy =
+        savePreferencesMutation.isPending ||
+        preferencesQuery.isPending ||
+        preferencesQuery.isError;
+    const deviceMutationBusy =
+        updateDeviceMutation.isPending || revokeDeviceMutation.isPending;
+    const testNotificationResult = sendTestMutation.data;
 
     return (
         <Stack spacing={2}>
@@ -469,6 +550,11 @@ export function NotificationsTab() {
                                         pushStatusQuery.data?.status,
                                     )}
                                 </Typography>
+                                {pushStatusQuery.isError && (
+                                    <Typography level="body3" secondary>
+                                        Status obavijesti nije učitan.
+                                    </Typography>
+                                )}
                                 {pushOnboarding.status === 'denied' && (
                                     <Typography level="body3" secondary>
                                         Obavijesti su blokirane u pregledniku.
@@ -476,19 +562,64 @@ export function NotificationsTab() {
                                         obavijesti za ovu stranicu.
                                     </Typography>
                                 )}
-                                {pushOnboarding.canPrompt && (
-                                    <Row justifyContent="end">
-                                        <Button
-                                            size="sm"
-                                            onClick={handleEnablePush}
-                                            startDecorator={
-                                                <Megaphone className="size-4" />
-                                            }
+                                {pushOnboarding.canPrompt &&
+                                    pushStatusQuery.data?.status !==
+                                        'subscribed' && (
+                                        <Row justifyContent="end">
+                                            <Button
+                                                size="sm"
+                                                onClick={handleEnablePush}
+                                                startDecorator={
+                                                    <Megaphone className="size-4" />
+                                                }
+                                            >
+                                                Uključi obavijesti
+                                            </Button>
+                                        </Row>
+                                    )}
+                            </Stack>
+                        </Card>
+
+                        <Card className="bg-card p-2">
+                            <Stack spacing={1}>
+                                <Typography level="body1" semiBold>
+                                    Uvijek uključeno
+                                </Typography>
+                                <Typography level="body2" secondary>
+                                    Sigurnosne, pravne i naplatne obavijesti ne
+                                    koriste sažetak ni tihi period.
+                                </Typography>
+                                {requiredNotificationGroups.map((item) => (
+                                    <div
+                                        key={item.category}
+                                        className="rounded border border-border/60 p-2"
+                                    >
+                                        <Row
+                                            justifyContent="space-between"
+                                            alignItems="start"
+                                            spacing={2}
                                         >
-                                            Uključi obavijesti
-                                        </Button>
-                                    </Row>
-                                )}
+                                            <Stack spacing={0.25}>
+                                                <Typography semiBold>
+                                                    {item.label}
+                                                </Typography>
+                                                <Typography
+                                                    level="body3"
+                                                    secondary
+                                                >
+                                                    {item.description}
+                                                </Typography>
+                                            </Stack>
+                                            <Typography
+                                                level="body3"
+                                                semiBold
+                                                className="shrink-0"
+                                            >
+                                                Uvijek uključeno
+                                            </Typography>
+                                        </Row>
+                                    </div>
+                                ))}
                             </Stack>
                         </Card>
 
@@ -496,7 +627,7 @@ export function NotificationsTab() {
                             <Stack spacing={1}>
                                 <Row justifyContent="space-between">
                                     <Typography level="body1" semiBold>
-                                        Vrste obavijesti
+                                        Vrste koje možeš prilagoditi
                                     </Typography>
                                     <Button
                                         size="sm"
@@ -517,40 +648,70 @@ export function NotificationsTab() {
                                         Omogući sve
                                     </Button>
                                 </Row>
-                                {categoryPreferences.map((item) => {
-                                    const preference = findPreference(item);
-                                    return (
-                                        <Row
-                                            key={item.category}
-                                            justifyContent="space-between"
-                                            alignItems="center"
-                                        >
-                                            <Typography>
-                                                {item.label}
-                                            </Typography>
-                                            <Checkbox
-                                                checked={
-                                                    preference?.enabled ?? false
-                                                }
-                                                disabled={settingsBusy}
-                                                onCheckedChange={(
-                                                    checked: boolean,
-                                                ) =>
-                                                    savePreferencesMutation.mutate(
-                                                        [
-                                                            buildPreferenceUpdate(
-                                                                item,
-                                                                Boolean(
-                                                                    checked,
-                                                                ),
-                                                            ),
-                                                        ],
-                                                    )
-                                                }
-                                            />
-                                        </Row>
-                                    );
-                                })}
+                                {preferencesQuery.isPending ? (
+                                    <Typography level="body2" secondary>
+                                        Postavke se učitavaju.
+                                    </Typography>
+                                ) : preferencesQuery.isError ? (
+                                    <Typography level="body2" secondary>
+                                        Postavke obavijesti nisu učitane.
+                                    </Typography>
+                                ) : (
+                                    categoryPreferences.map((item) => {
+                                        const preference = findPreference(item);
+                                        const checked =
+                                            preference?.enabled ??
+                                            item.defaultEnabled;
+                                        return (
+                                            <div
+                                                key={item.category}
+                                                className="rounded border border-border/60 p-2"
+                                            >
+                                                <Row
+                                                    justifyContent="space-between"
+                                                    alignItems="start"
+                                                    spacing={2}
+                                                >
+                                                    <Stack spacing={0.25}>
+                                                        <Typography semiBold>
+                                                            {item.label}
+                                                        </Typography>
+                                                        <Typography
+                                                            level="body3"
+                                                            secondary
+                                                        >
+                                                            {item.description}
+                                                        </Typography>
+                                                    </Stack>
+                                                    <Checkbox
+                                                        aria-label={`Uključi ${item.label.toLowerCase()}`}
+                                                        checked={checked}
+                                                        disabled={settingsBusy}
+                                                        onCheckedChange={(
+                                                            checked: boolean,
+                                                        ) =>
+                                                            savePreferencesMutation.mutate(
+                                                                [
+                                                                    buildPreferenceUpdate(
+                                                                        item,
+                                                                        Boolean(
+                                                                            checked,
+                                                                        ),
+                                                                    ),
+                                                                ],
+                                                            )
+                                                        }
+                                                    />
+                                                </Row>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                                {savePreferencesMutation.isError && (
+                                    <Typography level="body3" secondary>
+                                        Postavke obavijesti nisu spremljene.
+                                    </Typography>
+                                )}
                             </Stack>
                         </Card>
 
@@ -568,6 +729,10 @@ export function NotificationsTab() {
                                         });
                                     }}
                                 />
+                                <Typography level="body3" secondary>
+                                    Vrijedi samo za prilagodljive obavijesti
+                                    koje podržavaju tihi period.
+                                </Typography>
                                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                     <Input
                                         label="Od"
@@ -635,6 +800,10 @@ export function NotificationsTab() {
                                         });
                                     }}
                                 />
+                                <Typography level="body3" secondary>
+                                    Sažetak vrijedi za prilagodljive kategorije;
+                                    obavezne poruke ne čekaju sažetak.
+                                </Typography>
                                 <Stack spacing={0.5}>
                                     <Typography level="body2" semiBold>
                                         Razdoblje sažetka
@@ -676,6 +845,7 @@ export function NotificationsTab() {
                                 </Typography>
                                 <Button
                                     size="sm"
+                                    disabled={sendTestMutation.isPending}
                                     onClick={() => sendTestMutation.mutate()}
                                     startDecorator={
                                         <Megaphone className="size-4" />
@@ -684,8 +854,31 @@ export function NotificationsTab() {
                                     Pošalji probnu obavijest
                                 </Button>
                             </Row>
+                            {sendTestMutation.isError && (
+                                <Typography level="body3" secondary>
+                                    Probna obavijest nije poslana.
+                                </Typography>
+                            )}
+                            {sendTestMutation.isSuccess && (
+                                <Typography level="body3" secondary>
+                                    Probna obavijest je poslana. Ciljano:{' '}
+                                    {testNotificationResult?.targeted ?? 0} ·
+                                    Prihvaćeno:{' '}
+                                    {testNotificationResult?.accepted ?? 0} ·
+                                    Neuspjelo:{' '}
+                                    {testNotificationResult?.failed ?? 0}
+                                </Typography>
+                            )}
                             <Stack spacing={1} className="pt-2">
-                                {devicesQuery.data?.length ? (
+                                {devicesQuery.isPending ? (
+                                    <Typography level="body2" secondary>
+                                        Uređaji se učitavaju.
+                                    </Typography>
+                                ) : devicesQuery.isError ? (
+                                    <Typography level="body2" secondary>
+                                        Uređaji za obavijesti nisu učitani.
+                                    </Typography>
+                                ) : devicesQuery.data?.length ? (
                                     devicesQuery.data.map((device) => (
                                         <Card
                                             key={device.id}
@@ -724,6 +917,9 @@ export function NotificationsTab() {
                                                     <Button
                                                         size="sm"
                                                         variant="plain"
+                                                        disabled={
+                                                            deviceMutationBusy
+                                                        }
                                                         onClick={() =>
                                                             updateDeviceMutation.mutate(
                                                                 {
@@ -743,6 +939,9 @@ export function NotificationsTab() {
                                                     <Button
                                                         size="sm"
                                                         variant="plain"
+                                                        disabled={
+                                                            deviceMutationBusy
+                                                        }
                                                         startDecorator={
                                                             <Close className="size-4" />
                                                         }

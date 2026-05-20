@@ -5,7 +5,9 @@ test('rejects too short search query', async ({ request }) => {
     expect(response.status()).toBe(400);
 });
 
-test('returns search payload shape for no-result query', async ({ request }) => {
+test('returns search payload shape for no-result query', async ({
+    request,
+}) => {
     const response = await request.get(
         '/api/directories/search?q=nonexistent-search-token-zz&limit=5&offset=0',
     );

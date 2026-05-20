@@ -32,26 +32,56 @@ Track each account/device through these states and expected routing behavior:
 | `revoked` | `revokedAt` set | `suppressed` | Revoked subscriptions excluded from queueing. |
 | `expired` | Endpoint rejected by provider | failure then disable/revoke path | Failure counters/retention cleanup disable stale endpoint. |
 
-## 3. Automated test harness (repository)
+## 3. Configuration
 
-Primary automated checks should cover:
+Use checked-in examples for names only. Keep real VAPID private keys in local
+`.env` files, Vercel environment variables, or the hosting secret manager.
 
-1. **API contracts**: payload and channel-policy shape validation for notification enqueue/send endpoints.
-2. **Preference filtering**: `required`, quiet hours, digest routing, channel overrides.
-3. **Delivery router behavior**: push suppressed with no subscription, push queued with active subscription, idempotent queueing.
-4. **Retention/revocation cleanup**: denied/default stale subscriptions disabled; old events/attempts cleaned safely.
-5. **Service worker payload handling**: unit tests for `showNotification`, click/action routing, and fallback behavior when optional fields are absent.
+| App | Variable | Purpose |
+|---|---|---|
+| `apps/api` | `GREDICE_WEB_PUSH_VAPID_SUBJECT` | VAPID contact subject, for example `mailto:dev@gredice.com`. |
+| `apps/api` | `GREDICE_WEB_PUSH_VAPID_PUBLIC_KEY` | Public VAPID key used by the API sender. Must match the Garden public key. |
+| `apps/api` | `GREDICE_WEB_PUSH_VAPID_PRIVATE_KEY` | Private VAPID key used only by the API sender. Never expose as `NEXT_PUBLIC_*`. |
+| `apps/api` | `CRON_SECRET` | Protects the internal queued Web Push cron route. |
+| `apps/garden` | `NEXT_PUBLIC_GREDICE_WEB_PUSH_VAPID_PUBLIC_KEY` | Browser subscription key compiled into the Garden client. |
 
-Current repository coverage anchors in `packages/storage/tests/notificationsRepo.node.spec.ts` and should be expanded as push-specific codepaths land.
+The same names are allowlisted in `apps/api/turbo.json` and
+`apps/garden/turbo.json`, and safe placeholders live in
+`apps/api/.env.example` and `apps/garden/.env.example`.
 
-## 4. Manual QA script (local + preview)
+## 4. Automated test harness (repository)
+
+Current automated coverage anchors:
+
+| Area | Coverage | Command |
+|---|---|---|
+| API contracts and sender behavior | `apps/api/lib/notifications/pushDevices.node.spec.ts`, `pushEvents.node.spec.ts`, and `webPushSender.node.spec.ts` cover subscription payload validation, event metadata filtering, Web Push payload shape, retry handling, invalid endpoint revocation, and the test-notification helper. | `pnpm --filter api test:node` |
+| Storage routing and preferences | `packages/storage/tests/notificationsRepo.node.spec.ts` covers preference filtering, quiet hours, digest routing, deliverable subscription filtering, idempotent push queueing, delivery events, and summaries. | `pnpm test --filter @gredice/storage` |
+| Browser subscription helper | `packages/game/src/hooks/pushSubscription.unit.ts` covers subscription reuse, base64 key conversion, and registration payload persistence. | `pnpm --filter @gredice/game test` |
+| Garden service worker | `apps/garden/tests/push-notifications-sw.node.spec.mjs` covers fallback payloads, invalid JSON, same-origin URL/action normalization, click routing, and dismissal analytics payloads. | `pnpm --filter garden test:sw` |
+| Garden settings UI | `apps/garden/tests/notifications-tab.spec.tsx` covers mocked preferences, devices, push status, loading/empty/error states, device lifecycle actions, and user-triggered test notification calls. | `pnpm test --filter garden` |
+
+When a Garden dev server is already running for local debugging, run the Garden
+package suite from `apps/garden` with:
+
+```bash
+GREDICE_PLAYWRIGHT_REUSE_SERVER=true pnpm run test
+```
+
+## 5. Manual QA script (local + preview)
 
 > Goal: run real push validation without exposing private VAPID keys in git history or screenshots.
 
 ### Setup
 
-1. Configure VAPID secrets through environment variables in local shell or hosting secret manager only.
-2. Start API/app with HTTPS-capable local origin where service workers can register.
+1. Configure `GREDICE_WEB_PUSH_VAPID_SUBJECT`,
+   `GREDICE_WEB_PUSH_VAPID_PUBLIC_KEY`, and
+   `GREDICE_WEB_PUSH_VAPID_PRIVATE_KEY` for `apps/api`.
+2. Configure the matching
+   `NEXT_PUBLIC_GREDICE_WEB_PUSH_VAPID_PUBLIC_KEY` for `apps/garden`.
+3. Start API/Garden with an HTTPS-capable local origin where service workers can
+   register. The default `pnpm dev` proxy provides the `gredice.test` HTTPS
+   domains when Docker and host entries are available.
 3. Register at least two test users and two devices/browsers per user.
 
 ### Test flow
@@ -73,16 +103,24 @@ Current repository coverage anchors in `packages/storage/tests/notificationsRepo
 
 - Never commit `.env` values or screenshots containing private keys.
 - Use sample endpoints and rotating test credentials for demos.
+- Treat real provider delivery, iOS/iPadOS Home Screen behavior, and OS-level
+  notification UI rendering as manual/preview checks; the repository tests avoid
+  real push provider credentials.
 
-## 5. Release checklist additions
+## 6. Release checklist additions
 
 Before shipping push changes:
 
 - [ ] Confirm browser/device matrix still matches current target versions.
 - [ ] Validate iOS/iPadOS Home Screen caveat in release notes and QA sign-off.
-- [ ] Confirm denied/default/revoked subscription cleanup behavior via automated tests.
-- [ ] Validate quiet-hours and digest routing for non-required notifications.
-- [ ] Run one preview-environment smoke test with real subscriptions and audited logs.
+- [ ] Run `pnpm --filter api test:node`,
+      `pnpm test --filter @gredice/storage`,
+      `pnpm --filter @gredice/game test`, and
+      `pnpm test --filter garden`.
+- [ ] Validate one preview-environment smoke test with real subscriptions,
+      queued sender logs, and delivery audit events.
+- [ ] Confirm screenshots or logs used for QA do not expose VAPID private keys,
+      endpoints, auth cookies, or subscription key material.
 
 ## References
 

@@ -17,6 +17,7 @@ import {
     notificationCampaigns,
     notificationDeliveryAttempts,
     notifications,
+    notificationUserChannelPreferences,
     previewNotificationCampaignAudience,
     recordNotificationDeliveryEvent,
     routeNotificationDelivery,
@@ -51,18 +52,196 @@ test('createNotification and getNotificationsByAccount basic usage', async () =>
     assert.ok(notifications.some((n) => n.id === notificationId));
 });
 
-test('routeNotificationDelivery returns default immediate email and suppressed push without subscription', async () => {
+test('createNotification routes and queues deliverable push by default', async () => {
     createTestDb();
-    const accountId = await createTestAccount();
+    await ensureFarmId();
+    const userName = `push-create-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(userName, 'password');
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+
+    const subscriptionId = randomUUID();
+    await storage()
+        .insert(webPushSubscriptions)
+        .values({
+            id: subscriptionId,
+            accountId,
+            userId,
+            endpoint: `https://example.com/${subscriptionId}`,
+            p256dh: 'k',
+            auth: 'a',
+            enabled: true,
+            permissionState: 'granted',
+        });
+
     const notificationId = await createNotification({
         accountId,
-        header: 'Routing',
-        content: 'Routing notification',
+        userId,
+        header: 'Push routed',
+        content: 'Route and queue push delivery',
         category: 'general',
         timestamp: new Date(),
     });
+
+    await routeNotificationDelivery(notificationId);
+    await enqueuePushDeliveryAttemptsForNotification({ notificationId });
+
+    const attempts = await storage()
+        .select({
+            channel: notificationDeliveryAttempts.channel,
+            provider: notificationDeliveryAttempts.provider,
+            providerResponseCode:
+                notificationDeliveryAttempts.providerResponseCode,
+            pushSubscriptionId: notificationDeliveryAttempts.pushSubscriptionId,
+            status: notificationDeliveryAttempts.status,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(eq(notificationDeliveryAttempts.notificationId, notificationId));
+
+    assert.equal(
+        attempts.filter((attempt) => attempt.provider === 'router').length,
+        3,
+    );
+    assert.ok(
+        attempts.some(
+            (attempt) =>
+                attempt.provider === 'router' &&
+                attempt.channel === 'in_app' &&
+                attempt.providerResponseCode === 'eligible_immediate',
+        ),
+    );
+    assert.ok(
+        attempts.some(
+            (attempt) =>
+                attempt.provider === 'router' &&
+                attempt.channel === 'push' &&
+                attempt.providerResponseCode === 'eligible_immediate',
+        ),
+    );
+    assert.deepEqual(
+        attempts
+            .filter((attempt) => attempt.provider === 'web_push_queue')
+            .map((attempt) => ({
+                pushSubscriptionId: attempt.pushSubscriptionId,
+                status: attempt.status,
+            })),
+        [{ pushSubscriptionId: subscriptionId, status: 'queued' }],
+    );
+});
+
+test('createNotification records preference decisions without queueing suppressed or digest push', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userName = `push-preferences-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(userName, 'password');
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+
+    await storage()
+        .insert(webPushSubscriptions)
+        .values({
+            id: randomUUID(),
+            accountId,
+            userId,
+            endpoint: `https://example.com/preferences-${randomUUID()}`,
+            p256dh: 'k',
+            auth: 'a',
+            enabled: true,
+            permissionState: 'granted',
+        });
+    await storage()
+        .insert(notificationUserChannelPreferences)
+        .values([
+            {
+                userId,
+                category: 'disabled',
+                channel: 'push',
+                enabled: false,
+            },
+            {
+                userId,
+                category: 'digest',
+                channel: 'push',
+                digestFrequency: 'daily',
+            },
+            {
+                userId,
+                category: 'quiet',
+                channel: 'push',
+                quietHoursStartMinute: 0,
+                quietHoursEndMinute: 1440,
+                timezone: 'UTC',
+            },
+        ]);
+
+    const cases = [
+        { category: 'disabled', reason: 'preference_disabled' },
+        { category: 'digest', reason: 'digest_daily' },
+        { category: 'quiet', reason: 'quiet_hours' },
+    ];
+
+    for (const testCase of cases) {
+        const notificationId = await createNotification({
+            accountId,
+            userId,
+            header: `Push ${testCase.category}`,
+            content: 'Preference-aware push routing',
+            category: testCase.category,
+            timestamp: new Date(),
+        });
+        const attempts = await storage()
+            .select({
+                channel: notificationDeliveryAttempts.channel,
+                provider: notificationDeliveryAttempts.provider,
+                providerResponseCode:
+                    notificationDeliveryAttempts.providerResponseCode,
+            })
+            .from(notificationDeliveryAttempts)
+            .where(
+                eq(notificationDeliveryAttempts.notificationId, notificationId),
+            );
+
+        assert.ok(
+            attempts.some(
+                (attempt) =>
+                    attempt.provider === 'router' &&
+                    attempt.channel === 'push' &&
+                    attempt.providerResponseCode === testCase.reason,
+            ),
+        );
+        assert.equal(
+            attempts.some((attempt) => attempt.provider === 'web_push_queue'),
+            false,
+        );
+    }
+});
+
+test('routeNotificationDelivery returns default immediate email and suppressed push without subscription', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const notificationId = await createNotification(
+        {
+            accountId,
+            header: 'Routing',
+            content: 'Routing notification',
+            category: 'general',
+            timestamp: new Date(),
+        },
+        { routeDelivery: false },
+    );
     const decisions = await routeNotificationDelivery(notificationId);
-    assert.equal(decisions.length, 2);
+    assert.equal(decisions.length, 3);
+    assert.ok(
+        decisions.some(
+            (decision) =>
+                decision.channel === 'in_app' &&
+                decision.outcome === 'immediate',
+        ),
+    );
     assert.ok(
         decisions.some(
             (decision) =>
@@ -91,18 +270,21 @@ test('enqueuePushDeliveryAttemptsForNotification queues enabled subscriptions id
 
     const subscriptionId = randomUUID();
     await storage().execute(
-        `insert into web_push_subscriptions (id, account_id, user_id, endpoint, p256dh, auth, enabled)
-         values ('${subscriptionId}', '${accountId}', '${userId}', 'https://example.com/sub', 'k', 'a', true)`,
+        `insert into web_push_subscriptions (id, account_id, user_id, endpoint, p256dh, auth, enabled, permission_state)
+         values ('${subscriptionId}', '${accountId}', '${userId}', 'https://example.com/sub', 'k', 'a', true, 'granted')`,
     );
 
-    const notificationId = await createNotification({
-        accountId,
-        userId,
-        header: 'Push queued',
-        content: 'Queue push delivery',
-        category: 'general',
-        timestamp: new Date(),
-    });
+    const notificationId = await createNotification(
+        {
+            accountId,
+            userId,
+            header: 'Push queued',
+            content: 'Queue push delivery',
+            category: 'general',
+            timestamp: new Date(),
+        },
+        { routeDelivery: false },
+    );
 
     const first = await enqueuePushDeliveryAttemptsForNotification({
         notificationId,
@@ -114,6 +296,200 @@ test('enqueuePushDeliveryAttemptsForNotification queues enabled subscriptions id
     });
     assert.equal(second.queued, 0);
     assert.equal(second.skipped, 1);
+});
+
+test('routeNotificationDelivery treats only granted active subscriptions as push eligible', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const cases: {
+        enabled: boolean;
+        expectedOutcome: 'immediate' | 'suppressed';
+        expectedReason: string;
+        permissionState: 'default' | 'denied' | 'granted';
+        revokedAt: Date | null;
+        suffix: string;
+    }[] = [
+        {
+            enabled: true,
+            permissionState: 'denied',
+            revokedAt: null,
+            suffix: 'denied',
+            expectedOutcome: 'suppressed',
+            expectedReason: 'missing_push_subscription',
+        },
+        {
+            enabled: true,
+            permissionState: 'default',
+            revokedAt: null,
+            suffix: 'default',
+            expectedOutcome: 'suppressed',
+            expectedReason: 'missing_push_subscription',
+        },
+        {
+            enabled: false,
+            permissionState: 'granted',
+            revokedAt: null,
+            suffix: 'disabled',
+            expectedOutcome: 'suppressed',
+            expectedReason: 'missing_push_subscription',
+        },
+        {
+            enabled: true,
+            permissionState: 'granted',
+            revokedAt: new Date(),
+            suffix: 'revoked',
+            expectedOutcome: 'suppressed',
+            expectedReason: 'missing_push_subscription',
+        },
+        {
+            enabled: true,
+            permissionState: 'granted',
+            revokedAt: null,
+            suffix: 'granted',
+            expectedOutcome: 'immediate',
+            expectedReason: 'eligible_immediate',
+        },
+    ];
+
+    for (const testCase of cases) {
+        const userName = `push-route-${testCase.suffix}-${randomUUID()}@example.com`;
+        const userId = await createUserWithPassword(userName, 'password');
+        const user = await getUser(userId);
+        assert.ok(user);
+        const accountId = user.accounts[0]?.accountId;
+        assert.ok(accountId);
+
+        await storage()
+            .insert(webPushSubscriptions)
+            .values({
+                id: randomUUID(),
+                accountId,
+                userId,
+                endpoint: `https://example.com/${testCase.suffix}-${randomUUID()}`,
+                p256dh: 'k',
+                auth: 'a',
+                enabled: testCase.enabled,
+                permissionState: testCase.permissionState,
+                revokedAt: testCase.revokedAt,
+            });
+
+        const notificationId = await createNotification(
+            {
+                accountId,
+                userId,
+                header: `Push ${testCase.suffix}`,
+                content: 'Route push delivery',
+                category: 'general',
+                timestamp: new Date(),
+            },
+            { routeDelivery: false },
+        );
+        const decisions = await routeNotificationDelivery(notificationId);
+        const pushDecision = decisions.find(
+            (decision) => decision.channel === 'push',
+        );
+
+        assert.equal(pushDecision?.outcome, testCase.expectedOutcome);
+        assert.equal(pushDecision?.reason, testCase.expectedReason);
+    }
+});
+
+test('enqueuePushDeliveryAttemptsForNotification queues only granted active subscriptions', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userName = `push-deliverable-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(userName, 'password');
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+
+    const grantedSubscriptionId = randomUUID();
+    await storage()
+        .insert(webPushSubscriptions)
+        .values([
+            {
+                id: grantedSubscriptionId,
+                accountId,
+                userId,
+                endpoint: `https://example.com/${grantedSubscriptionId}`,
+                p256dh: 'k',
+                auth: 'a',
+                enabled: true,
+                permissionState: 'granted',
+            },
+            {
+                id: randomUUID(),
+                accountId,
+                userId,
+                endpoint: `https://example.com/denied-${randomUUID()}`,
+                p256dh: 'k',
+                auth: 'a',
+                enabled: true,
+                permissionState: 'denied',
+            },
+            {
+                id: randomUUID(),
+                accountId,
+                userId,
+                endpoint: `https://example.com/default-${randomUUID()}`,
+                p256dh: 'k',
+                auth: 'a',
+                enabled: true,
+                permissionState: 'default',
+            },
+            {
+                id: randomUUID(),
+                accountId,
+                userId,
+                endpoint: `https://example.com/disabled-${randomUUID()}`,
+                p256dh: 'k',
+                auth: 'a',
+                enabled: false,
+                permissionState: 'granted',
+            },
+            {
+                id: randomUUID(),
+                accountId,
+                userId,
+                endpoint: `https://example.com/revoked-${randomUUID()}`,
+                p256dh: 'k',
+                auth: 'a',
+                enabled: true,
+                permissionState: 'granted',
+                revokedAt: new Date(),
+            },
+        ]);
+
+    const notificationId = await createNotification(
+        {
+            accountId,
+            userId,
+            header: 'Push deliverable',
+            content: 'Only deliverable subscriptions should queue',
+            category: 'general',
+            timestamp: new Date(),
+        },
+        { routeDelivery: false },
+    );
+
+    const result = await enqueuePushDeliveryAttemptsForNotification({
+        notificationId,
+    });
+    assert.equal(result.queued, 1);
+    assert.equal(result.skipped, 0);
+
+    const attempts = await storage()
+        .select({
+            pushSubscriptionId: notificationDeliveryAttempts.pushSubscriptionId,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(eq(notificationDeliveryAttempts.notificationId, notificationId));
+
+    assert.deepEqual(
+        attempts.map((attempt) => attempt.pushSubscriptionId),
+        [grantedSubscriptionId],
+    );
 });
 test('notification campaign enqueue records queue intent without synchronous fan-out', async () => {
     createTestDb();
@@ -338,14 +714,17 @@ test('notification delivery summary tracks attempts and engagement events', asyn
     const accountId = user.accounts[0]?.accountId;
     assert.ok(accountId);
 
-    const notificationId = await createNotification({
-        accountId,
-        userId,
-        header: 'Push analytics',
-        content: 'Track delivery analytics',
-        category: 'general',
-        timestamp: new Date(),
-    });
+    const notificationId = await createNotification(
+        {
+            accountId,
+            userId,
+            header: 'Push analytics',
+            content: 'Track delivery analytics',
+            category: 'general',
+            timestamp: new Date(),
+        },
+        { routeDelivery: false },
+    );
     const sub1Id = randomUUID();
     const sub2Id = randomUUID();
     await storage().execute(
@@ -454,22 +833,28 @@ test('recordNotificationDeliveryEvent rejects mismatched notification and attemp
     const secondAccountId = secondUser.accounts[0]?.accountId;
     assert.ok(secondAccountId);
 
-    const firstNotificationId = await createNotification({
-        accountId: firstAccountId,
-        userId: firstUserId,
-        header: 'First',
-        content: 'First notification',
-        category: 'general',
-        timestamp: new Date(),
-    });
-    const secondNotificationId = await createNotification({
-        accountId: secondAccountId,
-        userId: secondUserId,
-        header: 'Second',
-        content: 'Second notification',
-        category: 'general',
-        timestamp: new Date(),
-    });
+    const firstNotificationId = await createNotification(
+        {
+            accountId: firstAccountId,
+            userId: firstUserId,
+            header: 'First',
+            content: 'First notification',
+            category: 'general',
+            timestamp: new Date(),
+        },
+        { routeDelivery: false },
+    );
+    const secondNotificationId = await createNotification(
+        {
+            accountId: secondAccountId,
+            userId: secondUserId,
+            header: 'Second',
+            content: 'Second notification',
+            category: 'general',
+            timestamp: new Date(),
+        },
+        { routeDelivery: false },
+    );
 
     const secondAttempt = await storage()
         .insert(notificationDeliveryAttempts)
@@ -507,14 +892,17 @@ test('enqueuePushDeliveryAttemptsForNotification skips revoked subscriptions', a
          values ('${randomUUID()}', '${accountId}', '${userId}', 'https://example.com/revoked', 'k', 'a', true, now())`,
     );
 
-    const notificationId = await createNotification({
-        accountId,
-        userId,
-        header: 'Push revoked',
-        content: 'Revoked subscriptions should not queue',
-        category: 'general',
-        timestamp: new Date(),
-    });
+    const notificationId = await createNotification(
+        {
+            accountId,
+            userId,
+            header: 'Push revoked',
+            content: 'Revoked subscriptions should not queue',
+            category: 'general',
+            timestamp: new Date(),
+        },
+        { routeDelivery: false },
+    );
 
     const result = await enqueuePushDeliveryAttemptsForNotification({
         notificationId,
