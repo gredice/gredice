@@ -1,4 +1,4 @@
-import { expect, type Locator, test } from '@playwright/test';
+import { expect, type Locator, test } from './fixtures';
 
 async function typeSearch(locator: Locator, value: string) {
     await locator.click();
@@ -34,5 +34,37 @@ test.describe('public search filters', () => {
         ).toBeVisible();
         await expect(page).toHaveURL(/pretraga=ciscenje/);
         await expect(page.getByText('Nema dostupnih radnji.')).toBeHidden();
+    });
+
+    test('global search page supports category filtering and no-results state', async ({
+        page,
+    }) => {
+        await page.goto('/pretraga?pretraga=rajcica', {
+            waitUntil: 'domcontentloaded',
+        });
+        await expect(
+            page.getByRole('heading', { name: 'Pretraga' }),
+        ).toBeVisible();
+        await page.getByRole('button', { name: 'Radnje' }).click();
+        await expect(page).toHaveURL(/kategorija=operations/);
+
+        await page.goto('/pretraga?pretraga=zzzzzz-nema-rezultata', {
+            waitUntil: 'domcontentloaded',
+        });
+        await expect(
+            page.getByText('Nema rezultata za zadani pojam.'),
+        ).toBeVisible();
+    });
+
+    test('global search keeps keyboard submit flow on mobile', async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.goto('/pretraga', { waitUntil: 'domcontentloaded' });
+        const input = page.getByPlaceholder('Pretraži...');
+        await input.click();
+        await input.fill('bosiljak');
+        await page.keyboard.press('Enter');
+        await expect(page).toHaveURL(/pretraga=bosiljak/);
     });
 });

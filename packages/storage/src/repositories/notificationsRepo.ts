@@ -1,5 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { and, desc, eq, inArray, isNull, notExists, or } from 'drizzle-orm';
+import {
+    and,
+    desc,
+    eq,
+    inArray,
+    isNull,
+    notExists,
+    or,
+    sql,
+} from 'drizzle-orm';
 import { storage } from '..';
 import { isTargetHourInTimeZone } from '../helpers/timezoneUtils';
 import {
@@ -12,6 +21,7 @@ import {
     type NotificationCampaignDeliveryMetadata,
     notificationCampaigns,
     notificationDeliveryAttempts,
+    notificationDeliveryEvents,
     notificationEmailLog,
     notifications,
     notificationUserChannelPreferences,
@@ -47,6 +57,28 @@ export type NotificationCampaignAudiencePreview = {
     gardenCount: number;
     explicitRecipientCount: number;
     unmatchedRecipientCount: number;
+};
+
+export type NotificationDeliveryEventType =
+    (typeof notificationDeliveryEvents.$inferSelect)['type'];
+
+export type NotificationDeliveryRollup = {
+    sent: number;
+    accepted: number;
+    failed: number;
+    retried: number;
+    invalidated: number;
+    opened: number;
+    dismissed: number;
+    clicked: number;
+    unsubscribed: number;
+};
+
+export type NotificationRetentionCleanupResult = {
+    subscriptionsDisabled: number;
+    deliveryEventsDeleted: number;
+    deliveryAttemptsDeleted: number;
+    campaignsDeleted: number;
 };
 
 export type CreateNotificationCampaignInput = Omit<
@@ -709,6 +741,209 @@ export async function routeNotificationDelivery(notificationId: string) {
     }
 
     return decisions;
+}
+
+export async function recordNotificationDeliveryEvent({
+    notificationId,
+    deliveryAttemptId,
+    type,
+    metadata,
+    occurredAt,
+}: {
+    notificationId: string;
+    deliveryAttemptId: number;
+    type: NotificationDeliveryEventType;
+    metadata?: Record<string, unknown>;
+    occurredAt?: Date;
+}) {
+    const attempt = await storage()
+        .select({
+            notificationId: notificationDeliveryAttempts.notificationId,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(eq(notificationDeliveryAttempts.id, deliveryAttemptId))
+        .limit(1);
+
+    if (!attempt[0]) {
+        throw new Error('Delivery attempt not found.');
+    }
+
+    if (attempt[0].notificationId !== notificationId) {
+        throw new Error(
+            'Delivery attempt does not belong to the provided notification.',
+        );
+    }
+
+    const result = await storage()
+        .insert(notificationDeliveryEvents)
+        .values({
+            notificationId,
+            deliveryAttemptId,
+            type,
+            metadata: metadata ?? {},
+            occurredAt: occurredAt ?? new Date(),
+        })
+        .returning();
+    return result[0];
+}
+
+export async function getNotificationDeliverySummary(
+    notificationId: string,
+): Promise<NotificationDeliveryRollup> {
+    const attempts = await storage()
+        .select({
+            id: notificationDeliveryAttempts.id,
+            status: notificationDeliveryAttempts.status,
+            pushSubscriptionId: notificationDeliveryAttempts.pushSubscriptionId,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(
+            and(
+                eq(notificationDeliveryAttempts.notificationId, notificationId),
+                eq(notificationDeliveryAttempts.channel, 'push'),
+            ),
+        );
+
+    const events = await storage()
+        .select({
+            type: notificationDeliveryEvents.type,
+            deliveryAttemptId: notificationDeliveryEvents.deliveryAttemptId,
+        })
+        .from(notificationDeliveryEvents)
+        .where(eq(notificationDeliveryEvents.notificationId, notificationId));
+
+    const attemptsBySubscription = new Map<string, number>();
+    for (const attempt of attempts) {
+        if (!attempt.pushSubscriptionId) continue;
+        attemptsBySubscription.set(
+            attempt.pushSubscriptionId,
+            (attemptsBySubscription.get(attempt.pushSubscriptionId) ?? 0) + 1,
+        );
+    }
+
+    const retried = Array.from(attemptsBySubscription.values()).filter(
+        (count) => count > 1,
+    ).length;
+
+    const rollup: NotificationDeliveryRollup = {
+        sent: attempts.filter((attempt) => attempt.status === 'sent').length,
+        accepted: attempts.filter((attempt) => attempt.status === 'accepted')
+            .length,
+        failed: attempts.filter((attempt) => attempt.status === 'failed')
+            .length,
+        retried,
+        invalidated: 0,
+        opened: 0,
+        dismissed: 0,
+        clicked: 0,
+        unsubscribed: 0,
+    };
+
+    for (const event of events) {
+        if (event.type === 'opened') rollup.opened += 1;
+        if (event.type === 'dismissed') rollup.dismissed += 1;
+        if (event.type === 'clicked') rollup.clicked += 1;
+        if (event.type === 'failed') rollup.invalidated += 1;
+        if (event.type === 'unsubscribed') rollup.unsubscribed += 1;
+    }
+
+    return rollup;
+}
+
+export async function cleanupNotificationRetention({
+    disableFailCountAtOrAbove = 10,
+    disableInactiveSubscriptionDays = 90,
+    deleteDeliveryEventsOlderThanDays = 180,
+    deleteDeliveryAttemptsOlderThanDays = 180,
+    deleteTerminalCampaignsOlderThanDays = 365,
+}: {
+    disableFailCountAtOrAbove?: number;
+    disableInactiveSubscriptionDays?: number;
+    deleteDeliveryEventsOlderThanDays?: number;
+    deleteDeliveryAttemptsOlderThanDays?: number;
+    deleteTerminalCampaignsOlderThanDays?: number;
+} = {}): Promise<NotificationRetentionCleanupResult> {
+    const now = Date.now();
+    const staleSubscriptionCutoff = new Date(
+        now - disableInactiveSubscriptionDays * 24 * 60 * 60 * 1000,
+    );
+    const deliveryEventCutoff = new Date(
+        now - deleteDeliveryEventsOlderThanDays * 24 * 60 * 60 * 1000,
+    );
+    const deliveryAttemptCutoff = new Date(
+        now - deleteDeliveryAttemptsOlderThanDays * 24 * 60 * 60 * 1000,
+    );
+    const campaignCutoff = new Date(
+        now - deleteTerminalCampaignsOlderThanDays * 24 * 60 * 60 * 1000,
+    );
+
+    const disabledSubscriptions = await storage()
+        .update(webPushSubscriptions)
+        .set({
+            enabled: false,
+            revokedAt: new Date(),
+            revokedReason: 'retention_cleanup',
+            updatedAt: new Date(),
+        })
+        .where(
+            and(
+                eq(webPushSubscriptions.enabled, true),
+                isNull(webPushSubscriptions.revokedAt),
+                or(
+                    eq(webPushSubscriptions.permissionState, 'denied'),
+                    and(
+                        eq(webPushSubscriptions.permissionState, 'default'),
+                        eq(webPushSubscriptions.failCount, 0),
+                    ),
+                    sql`${webPushSubscriptions.failCount} >= ${disableFailCountAtOrAbove}`,
+                    sql`${webPushSubscriptions.lastSeenAt} < ${staleSubscriptionCutoff}`,
+                ),
+            ),
+        )
+        .returning({ id: webPushSubscriptions.id });
+
+    const deletedEvents = await storage()
+        .delete(notificationDeliveryEvents)
+        .where(
+            sql`${notificationDeliveryEvents.occurredAt} < ${deliveryEventCutoff}`,
+        )
+        .returning({ id: notificationDeliveryEvents.id });
+
+    const deletedAttempts = await storage()
+        .delete(notificationDeliveryAttempts)
+        .where(
+            and(
+                sql`${notificationDeliveryAttempts.createdAt} < ${deliveryAttemptCutoff}`,
+                sql`not exists (
+                    select 1
+                    from ${notificationDeliveryEvents}
+                    where ${notificationDeliveryEvents.deliveryAttemptId} = ${notificationDeliveryAttempts.id}
+                      and ${notificationDeliveryEvents.occurredAt} >= ${deliveryEventCutoff}
+                )`,
+            ),
+        )
+        .returning({ id: notificationDeliveryAttempts.id });
+
+    const deletedCampaigns = await storage()
+        .delete(notificationCampaigns)
+        .where(
+            and(
+                inArray(notificationCampaigns.status, [
+                    'sent',
+                    'cancelled',
+                    'failed',
+                ]),
+                sql`${notificationCampaigns.updatedAt} < ${campaignCutoff}`,
+            ),
+        )
+        .returning({ id: notificationCampaigns.id });
+
+    return {
+        subscriptionsDisabled: disabledSubscriptions.length,
+        deliveryEventsDeleted: deletedEvents.length,
+        deliveryAttemptsDeleted: deletedAttempts.length,
+        campaignsDeleted: deletedCampaigns.length,
+    };
 }
 
 export function getNotificationsByUser(

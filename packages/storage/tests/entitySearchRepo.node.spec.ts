@@ -564,3 +564,33 @@ test('rebuildDirectorySearchIndex is idempotent and supports empty no-op runs', 
     assert.ok(first.refreshedCount >= 1);
     assert.equal(second.refreshedCount, first.refreshedCount);
 });
+
+test('directory search ranking fixture keeps expected top matches per token', async () => {
+    createTestDb();
+
+    const fixtures = [
+        { query: 'rajcica', title: 'Rajčica premium' },
+        { query: 'ciscenje', title: 'Čišćenje alata' },
+        { query: 'sjetva', title: 'Sjetva salate' },
+        { query: 'bosiljak', title: 'Bosiljak Genovese' },
+    ] as const;
+
+    for (const fixture of fixtures) {
+        await createSearchableEntity({
+            entityTypeName: 'operation',
+            entityTypeLabel: 'Operation',
+            title: fixture.title,
+            description: `Opis za ${fixture.title}`,
+        });
+    }
+
+    for (const fixture of fixtures) {
+        const rows = await searchDirectoryEntities({
+            query: fixture.query,
+            entityTypeNames: ['operation'],
+            limit: 5,
+        });
+
+        assert.equal(rows[0]?.title, fixture.title);
+    }
+});

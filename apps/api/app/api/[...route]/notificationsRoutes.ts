@@ -124,6 +124,46 @@ const campaignDraftSchema = z.object({
     metadata: z.record(z.string(), z.unknown()).optional().default({}),
 });
 
+const sensitivePayloadFieldPattern =
+    /(pass(word)?|token|secret|auth|cookie|session|email|phone|address|iban|card|ssn|oib)/i;
+
+function isSafePayloadMetadataValue(
+    value: unknown,
+    depth = 0,
+): value is
+    | string
+    | number
+    | boolean
+    | null
+    | Record<string, unknown>
+    | unknown[] {
+    if (depth > 2) return false;
+    if (value === null) return true;
+    if (typeof value === 'string') return value.length <= 200;
+    if (typeof value === 'number') return Number.isFinite(value);
+    if (typeof value === 'boolean') return true;
+    if (Array.isArray(value)) {
+        return value.length <= 20
+            ? value.every((item) => isSafePayloadMetadataValue(item, depth + 1))
+            : false;
+    }
+    if (typeof value === 'object') {
+        const entries = Object.entries(value);
+        return entries.length <= 20
+            ? entries.every(([key, nestedValue]) => {
+                  if (
+                      key.length > 80 ||
+                      sensitivePayloadFieldPattern.test(key)
+                  ) {
+                      return false;
+                  }
+                  return isSafePayloadMetadataValue(nestedValue, depth + 1);
+              })
+            : false;
+    }
+    return false;
+}
+
 function canBypassCampaignPreferences(category: string, eventType: string) {
     return (
         allowedRequiredCampaignCategories.has(category) ||
@@ -160,6 +200,27 @@ function sanitizeCampaignLinkUrl(linkUrl: string | null | undefined) {
 function validateAndNormalizeCampaignDraft(
     draft: z.infer<typeof campaignDraftSchema>,
 ) {
+    if (
+        sensitivePayloadFieldPattern.test(draft.header) ||
+        sensitivePayloadFieldPattern.test(draft.content)
+    ) {
+        return {
+            error: 'Header/content cannot contain sensitive fields in push-safe payloads',
+        };
+    }
+
+    if (
+        Object.entries(draft.metadata).some(
+            ([key, value]) =>
+                sensitivePayloadFieldPattern.test(key) ||
+                !isSafePayloadMetadataValue(value),
+        )
+    ) {
+        return {
+            error: 'Metadata includes disallowed or unsafe push payload fields',
+        };
+    }
+
     const imageError =
         validateCampaignImageUrl(draft.imageUrl) ??
         validateCampaignImageUrl(draft.iconUrl);

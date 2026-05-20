@@ -8,6 +8,10 @@ import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
 import { KnownPages } from '../../src/KnownPages';
+import {
+    GrowthCalendarPreview,
+    SowingCalendarPreview,
+} from './SowingCalendarPreview';
 
 export const metadata: Metadata = {
     title: 'Sjetva biljaka',
@@ -64,7 +68,7 @@ export default async function SowingPage() {
                         nadolazeće radnje pregledavaš na istom mjestu u
                         aplikaciji.
                     </p>
-                    <h2>🗓️ Kalendar sjetve</h2>
+                    <h2 id="kalendar-sjetve">🗓️ Kalendar sjetve</h2>
                     <p>
                         Svaka biljka ima svoj kalendar sjetve. Za odabir
                         idealnog termina posjeti stranicu{' '}
@@ -72,6 +76,42 @@ export default async function SowingPage() {
                         pročitati detaljne informacije o vremenu sjetve,
                         razmacima i potrebnoj njezi za svaku biljku.
                     </p>
+                    <SowingCalendarPreview />
+                    <p>Legenda kalendara aktivnosti:</p>
+                    <ul>
+                        <li>
+                            <span
+                                aria-hidden
+                                className="mr-2 inline-block size-3 rounded-full bg-blue-400 align-middle"
+                            />
+                            <strong>Sijanje unutra</strong> — period sjetve u
+                            zatvorenom prije presađivanja.
+                        </li>
+                        <li>
+                            <span
+                                aria-hidden
+                                className="mr-2 inline-block size-3 rounded-full bg-yellow-400 align-middle"
+                            />
+                            <strong>Sijanje vani</strong> — period kada je
+                            najbolje sijati sjeme na otvorenom.
+                        </li>
+                        <li>
+                            <span
+                                aria-hidden
+                                className="mr-2 inline-block size-3 rounded-full bg-amber-600 align-middle"
+                            />
+                            <strong>Presađivanje</strong> — period presađivanja
+                            sadnica na stalno mjesto.
+                        </li>
+                        <li>
+                            <span
+                                aria-hidden
+                                className="mr-2 inline-block size-3 rounded-full bg-lime-400 align-middle"
+                            />
+                            <strong>Berba</strong> — period kada je biljka
+                            spremna za berbu.
+                        </li>
+                    </ul>
                     <p>
                         Imaj na umu da je kalendar sjetve orijentacijski i da se
                         može prilagoditi ovisno o vremenskim uvjetima i
@@ -79,6 +119,45 @@ export default async function SowingPage() {
                         nikakvih ograničenja u broju sjetvi, kombinacijama i
                         vremenu sjetve, pa slobodno eksperimentiraj i istražuj
                         nove biljke!
+                    </p>
+                    <h2 id="kalendar-rasta">🌿 Kalendar rasta</h2>
+                    <p>
+                        Kalendar rasta prikazuje očekivane faze biljke ako je
+                        posiješ danas. Pomaže ti vidjeti kada biljka obično
+                        klija, kada najviše raste i kada može doći do berbe,
+                        prema rasponima trajanja upisanima za svaku biljku.
+                    </p>
+                    <GrowthCalendarPreview />
+                    <p>Legenda kalendara rasta:</p>
+                    <ul>
+                        <li>
+                            <span
+                                aria-hidden
+                                className="mr-2 inline-block size-3 rounded-full bg-yellow-400 align-middle"
+                            />
+                            <strong>Klijanje</strong> — razdoblje od sjetve do
+                            pojave mlade biljke.
+                        </li>
+                        <li>
+                            <span
+                                aria-hidden
+                                className="mr-2 inline-block size-3 rounded-full bg-blue-400 align-middle"
+                            />
+                            <strong>Rast</strong> — razdoblje razvoja korijena,
+                            stabljike i listova.
+                        </li>
+                        <li>
+                            <span
+                                aria-hidden
+                                className="mr-2 inline-block size-3 rounded-full bg-lime-400 align-middle"
+                            />
+                            <strong>Berba</strong> — okvirni period kada se
+                            očekuje prinos ili berba.
+                        </li>
+                    </ul>
+                    <p>
+                        Ovaj kalendar je procjena, a stvarni razvoj može
+                        odstupati zbog vremena, sezone, njege i sorte biljke.
                     </p>
                     <h2>🌱 Proljetne pogodnosti</h2>
                     <p>

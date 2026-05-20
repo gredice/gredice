@@ -19,20 +19,20 @@ const plantCalendarMonths = [
 ];
 
 const calendarActivityTypes = {
-    sowing: {
-        name: 'Sijanje',
-        color: 'bg-yellow-400',
-    },
     propagating: {
-        name: 'Uzgoj',
+        name: 'Sijanje unutra',
         color: 'bg-blue-400',
     },
+    sowing: {
+        name: 'Sijanje vani',
+        color: 'bg-yellow-400',
+    },
     planting: {
-        name: 'Sadnja',
+        name: 'Presađivanje',
         color: 'bg-amber-600',
     },
     harvest: {
-        name: 'Branje',
+        name: 'Berba',
         color: 'bg-lime-400',
     },
 } as const;
@@ -50,110 +50,118 @@ export function PlantYearCalendar({ activities, now }: PlantYearCalendarProps) {
         new Date(currentDate.getFullYear(), currentMonth, 0).getDate();
 
     return (
-        <div className="grid grid-cols-[100px_repeat(12,1fr)] text-sm rounded-lg overflow-x-auto relative">
-            <div></div>
-            {plantCalendarMonths.map((month) => (
-                <Typography
-                    key={month}
-                    level="body2"
-                    center
-                    className="py-2 text-center min-w-8 border-l"
-                >
-                    {month}
-                </Typography>
-            ))}
-            {Object.keys(calendarActivityTypes).map((activityTypeName) => {
-                const activityType =
-                    calendarActivityTypes[
-                        activityTypeName as keyof typeof calendarActivityTypes
-                    ];
-                if (
-                    !Object.keys(activities).some((a) => a === activityTypeName)
-                )
-                    return null;
+        <div className="w-full overflow-x-auto">
+            <div className="grid min-w-[34rem] grid-cols-[clamp(124px,32%,150px)_repeat(12,minmax(0,1fr))] rounded-lg text-sm relative">
+                <div></div>
+                {plantCalendarMonths.map((month) => (
+                    <Typography
+                        key={month}
+                        level="body2"
+                        center
+                        className="min-w-0 overflow-hidden border-l py-2 text-center"
+                    >
+                        {month}
+                    </Typography>
+                ))}
+                {Object.keys(calendarActivityTypes).map((activityTypeName) => {
+                    const activityType =
+                        calendarActivityTypes[
+                            activityTypeName as keyof typeof calendarActivityTypes
+                        ];
+                    if (
+                        !Object.keys(activities).some(
+                            (a) => a === activityTypeName,
+                        )
+                    )
+                        return null;
 
-                return (
-                    <Fragment key={activityTypeName}>
-                        <Row
-                            justifyContent="space-between"
-                            spacing={1}
-                            className="mx-2"
-                        >
-                            <Typography level="body2">
-                                {activityType.name}
-                            </Typography>
-                            <div
-                                className={`size-4 rounded-full inline-block ml-2 ${activityType.color}`}
-                            ></div>
-                        </Row>
-                        {plantCalendarMonths.map((monthName, index) => {
-                            const month = index + 1;
-                            const currentActivities =
-                                activities[
-                                    activityTypeName as keyof typeof calendarActivityTypes
-                                ];
-                            if (!currentActivities) return null;
-                            const currentMonthActivities =
-                                currentActivities.filter(
-                                    (a) =>
-                                        month >= Math.floor(a.start ?? 0) &&
-                                        month <= Math.floor(a.end ?? 0),
-                                );
-                            const minStart = Math.min(
-                                ...currentMonthActivities.map(
-                                    (a) => (a.start ?? 0) % 1,
-                                ),
-                            );
-                            const maxEnd = Math.max(
-                                ...currentMonthActivities.map(
-                                    (a) => (a.end ?? 0) % 1,
-                                ),
-                            );
-                            const isActivityActive =
-                                currentMonthActivities.length > 0;
-                            const isActivityStart = currentActivities.some(
-                                (a) => month === Math.floor(a.start ?? 0),
-                            );
-                            const isActivityEnd = currentActivities.some(
-                                (a) => month === Math.floor(a.end ?? 0),
-                            );
-
-                            return (
-                                <div
-                                    key={monthName}
-                                    className="relative border-l"
+                    return (
+                        <Fragment key={activityTypeName}>
+                            <Row
+                                justifyContent="space-between"
+                                spacing={1}
+                                className="mx-2 min-w-0 overflow-hidden"
+                            >
+                                <Typography
+                                    level="body2"
+                                    title={activityType.name}
+                                    className="min-w-0 truncate whitespace-nowrap"
                                 >
-                                    {isActivityActive && (
-                                        <div
-                                            className={`absolute inset-y-1 left-[--activity-left] -ml-[1px] right-[--activity-right] ${activityType.color} ${isActivityStart ? 'rounded-l-full' : ''} ${isActivityEnd ? 'rounded-r-full' : ''}`}
-                                            style={
-                                                {
-                                                    '--activity-left':
-                                                        isActivityStart
-                                                            ? `${minStart * 100}%`
-                                                            : '0px',
-                                                    '--activity-right':
-                                                        isActivityEnd
-                                                            ? `${Math.min(75, (1 - maxEnd) * 100)}%`
-                                                            : '0px',
-                                                } as CSSProperties
-                                            }
-                                        ></div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </Fragment>
-                );
-            })}
-            <div className="grid grid-cols-subgrid [grid-column:2/-1] relative">
-                <div
-                    className="absolute bottom-0 w-0.5 bg-red-600"
-                    style={{
-                        top: `${-(Object.keys(calendarActivityTypes).length + 1) * 20}px`,
-                        left: `${((currentMonth + currentMonthProgress) / 12) * 100}%`,
-                    }}
-                />
+                                    {activityType.name}
+                                </Typography>
+                                <div
+                                    className={`size-4 rounded-full inline-block ml-2 ${activityType.color}`}
+                                ></div>
+                            </Row>
+                            {plantCalendarMonths.map((monthName, index) => {
+                                const month = index + 1;
+                                const currentActivities =
+                                    activities[
+                                        activityTypeName as keyof typeof calendarActivityTypes
+                                    ];
+                                if (!currentActivities) return null;
+                                const currentMonthActivities =
+                                    currentActivities.filter(
+                                        (a) =>
+                                            month >= Math.floor(a.start ?? 0) &&
+                                            month <= Math.floor(a.end ?? 0),
+                                    );
+                                const minStart = Math.min(
+                                    ...currentMonthActivities.map(
+                                        (a) => (a.start ?? 0) % 1,
+                                    ),
+                                );
+                                const maxEnd = Math.max(
+                                    ...currentMonthActivities.map(
+                                        (a) => (a.end ?? 0) % 1,
+                                    ),
+                                );
+                                const isActivityActive =
+                                    currentMonthActivities.length > 0;
+                                const isActivityStart = currentActivities.some(
+                                    (a) => month === Math.floor(a.start ?? 0),
+                                );
+                                const isActivityEnd = currentActivities.some(
+                                    (a) => month === Math.floor(a.end ?? 0),
+                                );
+
+                                return (
+                                    <div
+                                        key={monthName}
+                                        className="relative border-l"
+                                    >
+                                        {isActivityActive && (
+                                            <div
+                                                className={`absolute inset-y-1 left-[--activity-left] -ml-[1px] right-[--activity-right] ${activityType.color} ${isActivityStart ? 'rounded-l-full' : ''} ${isActivityEnd ? 'rounded-r-full' : ''}`}
+                                                style={
+                                                    {
+                                                        '--activity-left':
+                                                            isActivityStart
+                                                                ? `${minStart * 100}%`
+                                                                : '0px',
+                                                        '--activity-right':
+                                                            isActivityEnd
+                                                                ? `${Math.min(75, (1 - maxEnd) * 100)}%`
+                                                                : '0px',
+                                                    } as CSSProperties
+                                                }
+                                            ></div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </Fragment>
+                    );
+                })}
+                <div className="grid grid-cols-subgrid [grid-column:2/-1] relative">
+                    <div
+                        className="absolute bottom-0 w-0.5 bg-red-600"
+                        style={{
+                            top: `${-(Object.keys(calendarActivityTypes).length + 1) * 20}px`,
+                            left: `${((currentMonth + currentMonthProgress) / 12) * 100}%`,
+                        }}
+                    />
+                </div>
             </div>
         </div>
     );

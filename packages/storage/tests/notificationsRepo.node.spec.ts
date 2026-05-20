@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     cancelNotificationCampaign,
+    cleanupNotificationRetention,
     createNotification,
     createNotificationCampaign,
     createUserWithPassword,
@@ -10,12 +11,17 @@ import {
     enqueuePushDeliveryAttemptsForNotification,
     gardens,
     getNotificationCampaign,
+    getNotificationDeliverySummary,
     getNotificationsByAccount,
     getUser,
+    notificationCampaigns,
+    notificationDeliveryAttempts,
     notifications,
     previewNotificationCampaignAudience,
+    recordNotificationDeliveryEvent,
     routeNotificationDelivery,
     storage,
+    webPushSubscriptions,
 } from '@gredice/storage';
 import { eq } from 'drizzle-orm';
 import {
@@ -34,6 +40,7 @@ test('createNotification and getNotificationsByAccount basic usage', async () =>
         content: 'Test notification',
         timestamp: new Date(),
     });
+
     const notifications = await getNotificationsByAccount(
         accountId,
         false,
@@ -253,4 +260,305 @@ test('explicit notification campaign audience excludes deleted gardens', async (
     assert.equal(preview.userCount, 0);
     assert.equal(preview.gardenCount, 0);
     assert.equal(preview.unmatchedRecipientCount, 1);
+});
+
+test('notification retention cleanup deletes old terminal campaigns', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userName = `retention-campaign-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(userName, 'password');
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+
+    async function createCampaignWithStatus(
+        status: 'sent' | 'cancelled' | 'failed' | 'queued',
+        updatedAt: Date,
+    ) {
+        const id = await createNotificationCampaign({
+            name: `Retention ${status} ${randomUUID()}`,
+            audience: { type: 'accounts', accountIds: [accountId] },
+            channelPolicy: {
+                inApp: true,
+                email: false,
+                push: false,
+                digest: false,
+                required: false,
+                respectPreferences: true,
+            },
+            header: 'Retention cleanup',
+            content: 'Retention cleanup campaign',
+            category: 'admin_campaigns',
+            eventType: 'retention_cleanup',
+            primaryChannel: 'in_app',
+            priority: 'normal',
+            metadata: {},
+            deliveryMetadata: {},
+            scheduledAt: null,
+            createdByUserId: userId,
+            createdFromAccountId: accountId,
+        });
+
+        await storage()
+            .update(notificationCampaigns)
+            .set({ status, updatedAt })
+            .where(eq(notificationCampaigns.id, id));
+
+        return id;
+    }
+
+    const oldDate = new Date(Date.now() - 400 * 24 * 60 * 60 * 1000);
+    const freshDate = new Date();
+    const oldSentId = await createCampaignWithStatus('sent', oldDate);
+    const oldCancelledId = await createCampaignWithStatus('cancelled', oldDate);
+    const oldFailedId = await createCampaignWithStatus('failed', oldDate);
+    const oldQueuedId = await createCampaignWithStatus('queued', oldDate);
+    const freshSentId = await createCampaignWithStatus('sent', freshDate);
+
+    const result = await cleanupNotificationRetention({
+        deleteTerminalCampaignsOlderThanDays: 365,
+    });
+
+    assert.equal(result.campaignsDeleted, 3);
+    assert.equal(await getNotificationCampaign(oldSentId), undefined);
+    assert.equal(await getNotificationCampaign(oldCancelledId), undefined);
+    assert.equal(await getNotificationCampaign(oldFailedId), undefined);
+    assert.ok(await getNotificationCampaign(oldQueuedId));
+    assert.ok(await getNotificationCampaign(freshSentId));
+});
+
+test('notification delivery summary tracks attempts and engagement events', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userName = `delivery-summary-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(userName, 'password');
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+
+    const notificationId = await createNotification({
+        accountId,
+        userId,
+        header: 'Push analytics',
+        content: 'Track delivery analytics',
+        category: 'general',
+        timestamp: new Date(),
+    });
+    const sub1Id = randomUUID();
+    const sub2Id = randomUUID();
+    await storage().execute(
+        `insert into web_push_subscriptions (id, account_id, user_id, endpoint, p256dh, auth, enabled)
+         values ('${sub1Id}', '${accountId}', '${userId}', 'https://example.com/${sub1Id}', 'k', 'a', true),
+                ('${sub2Id}', '${accountId}', '${userId}', 'https://example.com/${sub2Id}', 'k', 'a', true)`,
+    );
+
+    const emailAttempt = await storage()
+        .insert(notificationDeliveryAttempts)
+        .values({
+            notificationId,
+            userId,
+            accountId,
+            channel: 'email',
+            status: 'failed',
+        })
+        .returning({ id: notificationDeliveryAttempts.id });
+
+    const attemptRows = await storage()
+        .insert(notificationDeliveryAttempts)
+        .values([
+            {
+                notificationId,
+                userId,
+                accountId,
+                channel: 'push',
+                status: 'accepted',
+                pushSubscriptionId: sub1Id,
+            },
+            {
+                notificationId,
+                userId,
+                accountId,
+                channel: 'push',
+                status: 'failed',
+                pushSubscriptionId: sub1Id,
+            },
+            {
+                notificationId,
+                userId,
+                accountId,
+                channel: 'push',
+                status: 'sent',
+                pushSubscriptionId: sub2Id,
+            },
+        ])
+        .returning({ id: notificationDeliveryAttempts.id });
+
+    await recordNotificationDeliveryEvent({
+        notificationId,
+        deliveryAttemptId: attemptRows[0].id,
+        type: 'opened',
+    });
+    await recordNotificationDeliveryEvent({
+        notificationId,
+        deliveryAttemptId: attemptRows[0].id,
+        type: 'clicked',
+    });
+    await recordNotificationDeliveryEvent({
+        notificationId,
+        deliveryAttemptId: attemptRows[1].id,
+        type: 'failed',
+    });
+    await recordNotificationDeliveryEvent({
+        notificationId,
+        deliveryAttemptId: attemptRows[2].id,
+        type: 'dismissed',
+    });
+    await recordNotificationDeliveryEvent({
+        notificationId,
+        deliveryAttemptId: attemptRows[2].id,
+        type: 'unsubscribed',
+    });
+
+    const summary = await getNotificationDeliverySummary(notificationId);
+    assert.equal(summary.sent, 1);
+    assert.equal(summary.accepted, 1);
+    assert.equal(summary.failed, 1);
+    assert.equal(summary.retried, 1);
+    assert.equal(summary.opened, 1);
+    assert.equal(summary.clicked, 1);
+    assert.equal(summary.dismissed, 1);
+    assert.equal(summary.invalidated, 1);
+    assert.equal(summary.unsubscribed, 1);
+    assert.notEqual(emailAttempt[0].id, attemptRows[0].id);
+});
+
+test('recordNotificationDeliveryEvent rejects mismatched notification and attempt ids', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const firstUserName = `delivery-event-first-${randomUUID()}@example.com`;
+    const firstUserId = await createUserWithPassword(firstUserName, 'password');
+    const firstUser = await getUser(firstUserId);
+    assert.ok(firstUser);
+    const firstAccountId = firstUser.accounts[0]?.accountId;
+    assert.ok(firstAccountId);
+
+    const secondUserName = `delivery-event-second-${randomUUID()}@example.com`;
+    const secondUserId = await createUserWithPassword(
+        secondUserName,
+        'password',
+    );
+    const secondUser = await getUser(secondUserId);
+    assert.ok(secondUser);
+    const secondAccountId = secondUser.accounts[0]?.accountId;
+    assert.ok(secondAccountId);
+
+    const firstNotificationId = await createNotification({
+        accountId: firstAccountId,
+        userId: firstUserId,
+        header: 'First',
+        content: 'First notification',
+        category: 'general',
+        timestamp: new Date(),
+    });
+    const secondNotificationId = await createNotification({
+        accountId: secondAccountId,
+        userId: secondUserId,
+        header: 'Second',
+        content: 'Second notification',
+        category: 'general',
+        timestamp: new Date(),
+    });
+
+    const secondAttempt = await storage()
+        .insert(notificationDeliveryAttempts)
+        .values({
+            notificationId: secondNotificationId,
+            userId: secondUserId,
+            accountId: secondAccountId,
+            channel: 'push',
+            status: 'accepted',
+        })
+        .returning({ id: notificationDeliveryAttempts.id });
+
+    await assert.rejects(
+        recordNotificationDeliveryEvent({
+            notificationId: firstNotificationId,
+            deliveryAttemptId: secondAttempt[0].id,
+            type: 'opened',
+        }),
+        /does not belong to the provided notification/u,
+    );
+});
+
+test('enqueuePushDeliveryAttemptsForNotification skips revoked subscriptions', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userName = `push-revoked-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(userName, 'password');
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+
+    await storage().execute(
+        `insert into web_push_subscriptions (id, account_id, user_id, endpoint, p256dh, auth, enabled, revoked_at)
+         values ('${randomUUID()}', '${accountId}', '${userId}', 'https://example.com/revoked', 'k', 'a', true, now())`,
+    );
+
+    const notificationId = await createNotification({
+        accountId,
+        userId,
+        header: 'Push revoked',
+        content: 'Revoked subscriptions should not queue',
+        category: 'general',
+        timestamp: new Date(),
+    });
+
+    const result = await enqueuePushDeliveryAttemptsForNotification({
+        notificationId,
+    });
+
+    assert.equal(result.queued, 0);
+    assert.equal(result.skipped, 0);
+});
+
+test('cleanupNotificationRetention disables denied and default subscriptions', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userName = `push-cleanup-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(userName, 'password');
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+
+    const deniedSubscriptionId = randomUUID();
+    const defaultSubscriptionId = randomUUID();
+    await storage().execute(
+        `insert into web_push_subscriptions (id, account_id, user_id, endpoint, p256dh, auth, enabled, permission_state, fail_count)
+         values ('${deniedSubscriptionId}', '${accountId}', '${userId}', 'https://example.com/denied', 'k', 'a', true, 'denied', 0)`,
+    );
+    await storage().execute(
+        `insert into web_push_subscriptions (id, account_id, user_id, endpoint, p256dh, auth, enabled, permission_state, fail_count)
+         values ('${defaultSubscriptionId}', '${accountId}', '${userId}', 'https://example.com/default', 'k', 'a', true, 'default', 0)`,
+    );
+
+    const cleanup = await cleanupNotificationRetention();
+    assert.ok(cleanup.subscriptionsDisabled >= 2);
+    const deniedSubscription =
+        await storage().query.webPushSubscriptions.findFirst({
+            where: eq(webPushSubscriptions.id, deniedSubscriptionId),
+        });
+    const defaultSubscription =
+        await storage().query.webPushSubscriptions.findFirst({
+            where: eq(webPushSubscriptions.id, defaultSubscriptionId),
+        });
+    assert.equal(deniedSubscription?.enabled, false);
+    assert.equal(deniedSubscription?.revokedReason, 'retention_cleanup');
+    assert.ok(deniedSubscription?.revokedAt);
+    assert.equal(defaultSubscription?.enabled, false);
+    assert.equal(defaultSubscription?.revokedReason, 'retention_cleanup');
+    assert.ok(defaultSubscription?.revokedAt);
 });

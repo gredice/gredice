@@ -1,4 +1,5 @@
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Alert } from '@signalco/ui/Alert';
 import { EditableInput } from '@signalco/ui/EditableInput';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
@@ -14,12 +15,6 @@ import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from '@signalco/ui-primitives/Tabs';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
 import { useAbandonRaisedBed } from '../../hooks/useAbandonRaisedBed';

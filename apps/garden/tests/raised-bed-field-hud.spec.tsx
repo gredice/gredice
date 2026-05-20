@@ -1,4 +1,5 @@
-import { expect, type Page, test } from '@playwright/experimental-ct-react';
+import { expect, test } from '@playwright/experimental-ct-react';
+import type { Page } from '@playwright/test';
 import { RaisedBedFieldHudStory } from './RaisedBedFieldHudStory';
 import {
     buildCartItem,

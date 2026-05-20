@@ -1,10 +1,10 @@
 'use client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Checkbox } from '@signalco/ui-primitives/Checkbox';
 import { Input } from '@signalco/ui-primitives/Input';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Tabs } from '@signalco/ui-primitives/Tabs';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useActionState, useState, useTransition } from 'react';
 import {
@@ -133,17 +133,30 @@ export function NotificationComposerClient() {
             </Card>
             <Card className="p-4">
                 <Typography level="h6">Preview</Typography>
-                <Tabs
-                    items={[
-                        { id: 'in-app', label: 'In-app' },
-                        { id: 'push', label: 'Push' },
-                        { id: 'email', label: 'Email' },
-                    ]}
-                >
-                    <Typography>
-                        Payload preview shown with browser fallback behavior for
-                        rich push fields.
-                    </Typography>
+                <Tabs defaultValue="in-app">
+                    <TabsList>
+                        <TabsTrigger value="in-app">In-app</TabsTrigger>
+                        <TabsTrigger value="push">Push</TabsTrigger>
+                        <TabsTrigger value="email">Email</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="in-app">
+                        <Typography>
+                            Payload preview shown with browser fallback behavior
+                            for rich push fields.
+                        </Typography>
+                    </TabsContent>
+                    <TabsContent value="push">
+                        <Typography>
+                            Push notification preview uses the same campaign
+                            payload.
+                        </Typography>
+                    </TabsContent>
+                    <TabsContent value="email">
+                        <Typography>
+                            Email preview uses campaign fields when email
+                            delivery is enabled.
+                        </Typography>
+                    </TabsContent>
                 </Tabs>
             </Card>
             <Card className="p-4">

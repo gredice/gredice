@@ -46,6 +46,7 @@ import { KnownPages } from '../../../src/KnownPages';
 import { NoDataPlaceholder } from '../../shared/placeholders/NoDataPlaceholder';
 import { CreateAttributeDefinitionButton } from '../buttons/CreateAttributeDefinitionButton';
 import { CreateAttributeDefinitionCategoryButton } from '../buttons/CreateAttributeDefinitionCategoryButton';
+import { SortableDragHandle } from './SortableDragHandle';
 import { TableAttributeOrderSection } from './TableAttributeOrderSection';
 
 function AttributeDataTypeIcon({
@@ -110,6 +111,7 @@ function AttributeDefinitionCard({
                 attributeDefinition.id,
             )}
             onClick={handleClick}
+            className="block"
         >
             <Card>
                 <Row spacing={1}>
@@ -162,6 +164,7 @@ function AttributeDefinitionCategoryCard({
                 attributeDefinitionCategory.id,
             )}
             onClick={handleClick}
+            className="block"
         >
             <Card>
                 <Row spacing={1} justifyContent="space-between">
@@ -196,11 +199,26 @@ function SortableCategory({
         transition,
     };
     return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-            <AttributeDefinitionCategoryCard
-                attributeDefinitionCategory={category}
-                isDragging={isDragging || preventClick}
+        <div
+            ref={setNodeRef}
+            style={style}
+            className="flex items-stretch gap-1"
+        >
+            <SortableDragHandle
+                {...attributes}
+                {...listeners}
+                aria-label="Promijeni poredak kategorije"
+                title="Promijeni poredak kategorije"
+                className={
+                    isDragging ? 'cursor-grabbing bg-muted text-foreground' : ''
+                }
             />
+            <div className="min-w-0 flex-1">
+                <AttributeDefinitionCategoryCard
+                    attributeDefinitionCategory={category}
+                    isDragging={isDragging || preventClick}
+                />
+            </div>
         </div>
     );
 }
@@ -225,11 +243,26 @@ function SortableAttributeDefinition({
         transition,
     };
     return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-            <AttributeDefinitionCard
-                attributeDefinition={attribute}
-                isDragging={isDragging || preventClick}
+        <div
+            ref={setNodeRef}
+            style={style}
+            className="flex items-stretch gap-1"
+        >
+            <SortableDragHandle
+                {...attributes}
+                {...listeners}
+                aria-label="Promijeni poredak atributa"
+                title="Promijeni poredak atributa"
+                className={
+                    isDragging ? 'cursor-grabbing bg-muted text-foreground' : ''
+                }
             />
+            <div className="min-w-0 flex-1">
+                <AttributeDefinitionCard
+                    attributeDefinition={attribute}
+                    isDragging={isDragging || preventClick}
+                />
+            </div>
         </div>
     );
 }

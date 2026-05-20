@@ -15,7 +15,7 @@
         "profile:game:start": "GAME_PROFILE_BASE_URL=http://localhost:3101 GAME_PROFILE_START_SERVER=1 node scripts/profile-game-scene.mjs",
         "profile:game:ci": "GAME_PROFILE_FAIL_ON_BUDGET=1 pnpm run profile:game",
         "test": "pnpm run test:run",
-        "test:prepare": "pnpm --dir ../.. exec turbo build --filter=garden",
+        "test:prepare": "turbo build --filter=garden",
         "test:run": "playwright test",
         "test-ui": "pnpm run test:prepare && playwright test --ui",
         "generate:models-types": "pnpm dlx gltfjsx ./public/assets/models/GameAssets.glb --types --typeonly --output ../../packages/game/src/models/GameAssets.tsx && node ../../scripts/fix-gltfjsx-output.mjs",

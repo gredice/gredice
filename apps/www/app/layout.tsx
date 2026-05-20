@@ -103,6 +103,10 @@ export default async function RootLayout({
                                 href: KnownPages.FAQ,
                                 text: 'Česta pitanja',
                             },
+                            {
+                                href: KnownPages.Search,
+                                text: 'Pretraga',
+                            },
                         ]}
                     >
                         <div className="absolute bg-background/80 w-full inset-0 -z-10" />

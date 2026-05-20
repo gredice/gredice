@@ -32,9 +32,22 @@ Gredice is a Turborepo monorepo for the Gredice platform. It includes the public
 
 ## Getting Started
 
-Use [Node.js](https://nodejs.org/en/) `>=24`, the [pnpm](https://pnpm.io/) version pinned by `packageManager`, [Docker](https://www.docker.com/), and the [Vercel CLI](https://vercel.com/download).
+Prerequirenments:
+
+- [nvm](https://github.com/nvm-sh/nvm)
+  - [Node.js](https://nodejs.org/) (managed through nvm)
+  - [corepack](https://github.com/nodejs/corepack) (managed through npm)
+  - [pnpm](https://pnpm.io/) (managed through corepack)
+  - [Vercel CLI](https://vercel.com/cli) (managed through pnpm)
+- [Docker](https://www.docker.com/)
 
 ```bash
+nvm use
+npm install corepack
+corepack enable
+pnpm i -g vercel
+pnpm install
+vercel login
 pnpm bootstrap
 pnpm doctor
 pnpm dev

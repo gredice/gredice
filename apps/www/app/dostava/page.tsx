@@ -52,7 +52,7 @@ export default function DeliveryPage() {
                     </p>
                     <Typography
                         level="body2"
-                        className="text-muted-foreground italic"
+                        className="text-foreground/85 italic"
                     >
                         Napomena: planiraj dostavu barem 48 sati unaprijed kako
                         bismo stigli pripremiti tvoje povrće i organizirati
