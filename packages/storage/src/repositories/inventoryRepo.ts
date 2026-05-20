@@ -29,6 +29,8 @@ export type InventoryItem = {
     updatedAt: Date;
 };
 
+export type InventoryItemInput = Omit<InventoryItemEventPayload, 'source'>;
+
 export async function addInventoryItem(
     accountId: string,
     payload: InventoryItemEventPayload,
@@ -41,6 +43,65 @@ export async function addInventoryItem(
         ),
         db,
     );
+}
+
+function getGardenBoxInventoryAggregateId({
+    accountId,
+    gardenId,
+    blockId,
+}: {
+    accountId: string;
+    gardenId: number;
+    blockId: string;
+}) {
+    return `${INVENTORY_PREFIX}${accountId}:gardenBox:${gardenId.toString()}:${blockId}`;
+}
+
+function inventoryItemKey(
+    item: Pick<InventoryItem, 'entityTypeName' | 'entityId'>,
+) {
+    return `${item.entityTypeName}-${item.entityId}`;
+}
+
+async function getInventoryForAggregateIds(aggregateIds: string[]) {
+    if (aggregateIds.length === 0) {
+        return [];
+    }
+
+    const inventoryEvents = await getEvents(
+        [knownEventTypes.inventory.add, knownEventTypes.inventory.consume],
+        aggregateIds,
+        0,
+        5000,
+    );
+
+    const totals = new Map<string, InventoryItem>();
+
+    for (const event of inventoryEvents) {
+        const data = event.data as InventoryItemEventPayload | null;
+        if (!data) continue;
+
+        const key = inventoryItemKey(data);
+        const existing = totals.get(key) ?? {
+            entityTypeName: data.entityTypeName,
+            entityId: data.entityId,
+            amount: 0,
+            updatedAt: event.createdAt,
+        };
+
+        const delta =
+            event.type === knownEventTypes.inventory.consume
+                ? -data.amount
+                : data.amount;
+
+        totals.set(key, {
+            ...existing,
+            amount: existing.amount + delta,
+            updatedAt: event.createdAt,
+        });
+    }
+
+    return Array.from(totals.values()).filter((item) => item.amount > 0);
 }
 
 export async function consumeInventoryItem(
@@ -70,41 +131,141 @@ export async function consumeInventoryItem(
 }
 
 export async function getInventory(accountId: string) {
-    const aggregateId = getInventoryAggregateId(accountId);
-    const inventoryEvents = await getEvents(
-        [knownEventTypes.inventory.add, knownEventTypes.inventory.consume],
-        [aggregateId],
-        0,
-        5000,
+    return getInventoryForAggregateIds([getInventoryAggregateId(accountId)]);
+}
+
+export async function getGardenBoxInventory(
+    accountId: string,
+    gardenId: number,
+    blockId: string,
+) {
+    return getInventoryForAggregateIds([
+        getGardenBoxInventoryAggregateId({ accountId, gardenId, blockId }),
+    ]);
+}
+
+export async function addGardenBoxInventoryItem(
+    accountId: string,
+    gardenId: number,
+    blockId: string,
+    payload: InventoryItemEventPayload,
+    db: DatabaseClient = storage(),
+) {
+    await createEvent(
+        knownEvents.inventory.addedV1(
+            getGardenBoxInventoryAggregateId({ accountId, gardenId, blockId }),
+            payload,
+        ),
+        db,
     );
+}
 
-    const totals = new Map<string, InventoryItem>();
+export async function consumeGardenBoxInventoryItem(
+    accountId: string,
+    gardenId: number,
+    blockId: string,
+    payload: InventoryItemEventPayload,
+    db: DatabaseClient = storage(),
+) {
+    const inventory = await getGardenBoxInventory(accountId, gardenId, blockId);
+    const currentAmount =
+        inventory.find(
+            (item) =>
+                item.entityTypeName === payload.entityTypeName &&
+                item.entityId === payload.entityId,
+        )?.amount ?? 0;
 
-    for (const event of inventoryEvents) {
-        const data = event.data as InventoryItemEventPayload | null;
-        if (!data) continue;
+    if (currentAmount < payload.amount) {
+        throw new Error('Nedovoljno predmeta u vrtnoj kutiji');
+    }
 
-        const key = `${data.entityTypeName}-${data.entityId}`;
-        const existing = totals.get(key) ?? {
-            entityTypeName: data.entityTypeName,
-            entityId: data.entityId,
-            amount: 0,
-            updatedAt: event.createdAt,
-        };
+    await createEvent(
+        knownEvents.inventory.consumedV1(
+            getGardenBoxInventoryAggregateId({ accountId, gardenId, blockId }),
+            payload,
+        ),
+        db,
+    );
+}
 
-        const delta =
-            event.type === knownEventTypes.inventory.consume
-                ? -data.amount
-                : data.amount;
+export async function setGardenBoxInventory(
+    accountId: string,
+    gardenId: number,
+    blockId: string,
+    items: InventoryItemInput[],
+) {
+    const currentInventory = await getGardenBoxInventory(
+        accountId,
+        gardenId,
+        blockId,
+    );
+    const requestedTotals = new Map<string, InventoryItemInput>();
 
-        totals.set(key, {
-            ...existing,
-            amount: existing.amount + delta,
-            updatedAt: event.createdAt,
+    for (const item of items) {
+        if (item.amount <= 0) {
+            continue;
+        }
+
+        const key = inventoryItemKey(item);
+        const existing = requestedTotals.get(key);
+        requestedTotals.set(key, {
+            entityTypeName: item.entityTypeName,
+            entityId: item.entityId,
+            amount: (existing?.amount ?? 0) + item.amount,
         });
     }
 
-    return Array.from(totals.values()).filter((item) => item.amount > 0);
+    const currentTotals = new Map(
+        currentInventory.map((item) => [inventoryItemKey(item), item]),
+    );
+    const inventoryKeys = new Set([
+        ...currentTotals.keys(),
+        ...requestedTotals.keys(),
+    ]);
+
+    await storage().transaction(async (tx) => {
+        for (const key of inventoryKeys) {
+            const current = currentTotals.get(key);
+            const requested = requestedTotals.get(key);
+            const currentAmount = current?.amount ?? 0;
+            const requestedAmount = requested?.amount ?? 0;
+            const delta = requestedAmount - currentAmount;
+
+            if (delta > 0 && requested) {
+                await addGardenBoxInventoryItem(
+                    accountId,
+                    gardenId,
+                    blockId,
+                    {
+                        entityTypeName: requested.entityTypeName,
+                        entityId: requested.entityId,
+                        amount: delta,
+                        source: 'gardenBox:set',
+                    },
+                    tx,
+                );
+            } else if (delta < 0 && current) {
+                await createEvent(
+                    knownEvents.inventory.consumedV1(
+                        getGardenBoxInventoryAggregateId({
+                            accountId,
+                            gardenId,
+                            blockId,
+                        }),
+                        {
+                            entityTypeName: current.entityTypeName,
+                            entityId: current.entityId,
+                            amount: Math.abs(delta),
+                            source: 'gardenBox:set',
+                        },
+                    ),
+                    tx,
+                );
+            }
+        }
+    });
+
+    return getGardenBoxInventory(accountId, gardenId, blockId);
 }
 
 export async function getLastInventoryUpdate(accountId: string) {
