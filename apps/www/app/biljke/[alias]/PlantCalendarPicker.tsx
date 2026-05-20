@@ -1,7 +1,6 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
 import { Calendar, Sprout } from '@signalco/ui-icons';
-import { Card } from '@signalco/ui-primitives/Card';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import {
     Tabs,
@@ -57,29 +56,25 @@ export function PlantCalendarPicker({
                             <CalendarInfoChip className="self-center" />
                         </div>
                         <TabsContent value="year">
-                            <Card className="overflow-hidden bg-white">
-                                <div className="rounded-md bg-white">
-                                    <PlantYearCalendar
-                                        activities={plant.calendar}
-                                    />
-                                </div>
-                            </Card>
+                            <div className="overflow-hidden rounded-md">
+                                <PlantYearCalendar
+                                    activities={plant.calendar}
+                                />
+                            </div>
                             <Typography
-                                level="body2"
-                                className="italic text-right text-balance"
+                                level="body3"
+                                className="italic text-right text-balance mt-1"
                             >
                                 Kalendar sijanja prikazuje smjernice za sjetvu i
                                 razvoj biljke kroz godinu.
                             </Typography>
                         </TabsContent>
                         <TabsContent value="growth">
-                            <Card className="overflow-hidden bg-white">
-                                <div className="rounded-md bg-white">
-                                    <PlantGrowthCalendar
-                                        windows={plant.attributes}
-                                    />
-                                </div>
-                            </Card>
+                            <div className="overflow-hidden rounded-md">
+                                <PlantGrowthCalendar
+                                    windows={plant.attributes}
+                                />
+                            </div>
                             <Typography
                                 level="body2"
                                 className="italic text-right text-balance"
