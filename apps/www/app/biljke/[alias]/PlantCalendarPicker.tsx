@@ -1,13 +1,8 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
 import { Calendar, Sprout } from '@signalco/ui-icons';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from '@signalco/ui-primitives/Tabs';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { CalendarInfoChip } from '../CalendarInfoChip';

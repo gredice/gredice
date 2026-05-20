@@ -1,10 +1,10 @@
 'use client';
 
+import { Tabs, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Alert } from '@signalco/ui/Alert';
 import { Card, CardContent } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Tabs, TabsList, TabsTrigger } from '@signalco/ui-primitives/Tabs';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
 import type { Recipe } from '../../../lib/recipes/getRecipesData';

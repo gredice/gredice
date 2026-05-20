@@ -6,17 +6,12 @@ import {
     GoogleLoginButton,
     useLastLoginProvider,
 } from '@gredice/ui/auth';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { usePostHog } from '@posthog/next';
 import { Alert } from '@signalco/ui/Alert';
 import { Divider } from '@signalco/ui-primitives/Divider';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from '@signalco/ui-primitives/Tabs';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
