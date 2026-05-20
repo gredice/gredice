@@ -45,6 +45,7 @@ type NotificationCampaignExplicitRecipient = Extract<
     { type: 'explicit' }
 >['recipients'][number];
 
+// Croatian fallback label for legacy web-push subscriptions without client device metadata.
 export const notificationRolloutDefaultDeviceLabel = 'Web preglednik';
 
 export type NotificationDeliveryDecision = {
