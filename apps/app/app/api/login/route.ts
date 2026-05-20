@@ -1,10 +1,8 @@
+import { getServerGrediceApiOrigin } from '@gredice/client';
 import { setCookie } from '../../../lib/auth/auth';
 import { setRefreshCookie } from '../../../lib/auth/refreshCookies';
 
-const API_BASE_URL =
-    process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'
-        ? 'https://api.gredice.com'
-        : (process.env.GREDICE_API_HOST ?? 'http://localhost:3005');
+const API_BASE_URL = getServerGrediceApiOrigin();
 
 function isLoginResponse(
     data: unknown,

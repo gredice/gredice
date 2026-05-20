@@ -5,3 +5,4 @@ export {
     type GrediceAppOrigin,
     getBrowserGrediceAppOrigin,
 } from './origins';
+export { getServerGrediceApiOrigin } from './shared';

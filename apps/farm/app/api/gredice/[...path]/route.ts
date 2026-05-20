@@ -1,3 +1,4 @@
+import { getServerGrediceApiOrigin } from '@gredice/client';
 import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -7,10 +8,7 @@ import { type NextRequest, NextResponse } from 'next/server';
  * This eliminates the need for localStorage token storage and prevents tokens in URLs.
  */
 
-const API_BASE_URL =
-    process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'
-        ? 'https://api.gredice.com'
-        : (process.env.GREDICE_API_HOST ?? 'http://localhost:3005');
+const API_BASE_URL = getServerGrediceApiOrigin();
 
 export async function GET(
     request: NextRequest,
