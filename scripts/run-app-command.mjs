@@ -11,6 +11,13 @@ import {
     getAppStartPort,
     localAppHostnameUrl,
 } from './app-registry.ts';
+import {
+    childProcessTreeOptions,
+    shutdownSignals,
+    signalExitCode,
+    terminateChildProcessTree,
+    waitForChildProcessTreeExit,
+} from './process-tree.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
@@ -92,15 +99,6 @@ function applyLocalServiceEnv() {
     );
 }
 
-function signalExitCode(signal) {
-    const signalNumber = signalNumbers?.[signal];
-    if (typeof signalNumber === 'number') {
-        return 128 + signalNumber;
-    }
-
-    return 1;
-}
-
 try {
     applyLocalServiceEnv();
     const appCommand = commandForApp();
@@ -108,20 +106,37 @@ try {
     const child = spawn(spawnOptions.command, spawnOptions.args, {
         stdio: 'inherit',
         env: process.env,
+        ...childProcessTreeOptions(),
     });
-    const signals = ['SIGINT', 'SIGTERM', 'SIGQUIT'];
-    const forwardSignal = (signal) => {
-        child.kill(signal);
+    let shutdownPromise = null;
+    let shutdownError = null;
+    let requestedSignal = null;
+    const signalHandlers = shutdownSignals.map((signal) => {
+        const handler = () => {
+            requestedSignal ??= signal;
+            shutdownPromise ??= terminateChildProcessTree(
+                child,
+                {
+                    signal,
+                    gracefulTimeoutMs: 8000,
+                },
+            ).catch((error) => {
+                shutdownError = error;
+                return false;
+            });
+        };
+        process.on(signal, handler);
+        return [signal, handler];
+    });
+
+    const removeSignalHandlers = () => {
+        for (const [signal, handler] of signalHandlers) {
+            process.off(signal, handler);
+        }
     };
 
-    for (const signal of signals) {
-        process.on(signal, forwardSignal);
-    }
-
     child.on('error', (error) => {
-        for (const signal of signals) {
-            process.off(signal, forwardSignal);
-        }
+        removeSignalHandlers();
 
         if (error?.code === 'ENOENT') {
             console.error(
@@ -137,16 +152,34 @@ try {
     });
 
     child.on('exit', (code, signal) => {
-        for (const signalName of signals) {
-            process.off(signalName, forwardSignal);
-        }
+        void (async () => {
+            removeSignalHandlers();
 
-        if (signal) {
-            process.exit(signalExitCode(signal));
-            return;
-        }
+            if (shutdownPromise) {
+                await shutdownPromise;
+                if (shutdownError) {
+                    throw shutdownError;
+                }
+            } else if (signal) {
+                await waitForChildProcessTreeExit(child, { timeoutMs: 2000 });
+            }
 
-        process.exit(code ?? 0);
+            const exitSignal = signal ?? requestedSignal;
+            if (exitSignal) {
+                process.exit(signalExitCode(exitSignal, signalNumbers));
+                return;
+            }
+
+            process.exit(code ?? 0);
+        })().catch((error) => {
+            if (error?.message) {
+                console.error(error.message);
+            } else {
+                console.error(error);
+            }
+
+            process.exit(1);
+        });
     });
 } catch (error) {
     if (error?.message) {

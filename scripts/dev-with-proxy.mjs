@@ -14,6 +14,13 @@ import {
     getWorktreeProxyHttpsPort,
     getWorktreeSlug,
 } from './app-registry.ts';
+import {
+    childProcessTreeOptions,
+    shutdownSignals,
+    signalExitCode,
+    terminateChildProcessTree,
+    waitForChildProcessTreeExit,
+} from './process-tree.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
@@ -286,15 +293,6 @@ function parseEnvFlag(value) {
     }
 
     return true;
-}
-
-function signalExitCode(signal) {
-    const signalNumber = signalNumbers?.[signal];
-    if (typeof signalNumber === 'number') {
-        return 128 + signalNumber;
-    }
-
-    return 1;
 }
 
 async function delay(milliseconds) {
@@ -1138,36 +1136,64 @@ async function runTurboDev() {
             stdio: 'inherit',
             env: process.env,
             shell: process.platform === 'win32',
+            ...childProcessTreeOptions(),
+        });
+        let shutdownPromise = null;
+        let shutdownError = null;
+        let requestedSignal = null;
+        const signalHandlers = shutdownSignals.map((signal) => {
+            const handler = () => {
+                requestedSignal ??= signal;
+                shutdownPromise ??= terminateChildProcessTree(
+                    turboProcess,
+                    {
+                        signal,
+                        gracefulTimeoutMs: 12000,
+                    },
+                ).catch((error) => {
+                    shutdownError = error;
+                    return false;
+                });
+            };
+            process.on(signal, handler);
+            return [signal, handler];
         });
 
-        const signals = ['SIGINT', 'SIGTERM', 'SIGQUIT'];
-        const forwardSignal = (signal) => {
-            turboProcess.kill(signal);
+        const removeSignalHandlers = () => {
+            for (const [signal, handler] of signalHandlers) {
+                process.off(signal, handler);
+            }
         };
 
-        for (const signal of signals) {
-            process.on(signal, forwardSignal);
-        }
-
         turboProcess.on('error', (error) => {
-            for (const signal of signals) {
-                process.off(signal, forwardSignal);
-            }
+            removeSignalHandlers();
 
             reject(error);
         });
 
         turboProcess.on('exit', (code, signal) => {
-            for (const signal of signals) {
-                process.off(signal, forwardSignal);
-            }
+            void (async () => {
+                removeSignalHandlers();
 
-            if (signal) {
-                resolve(signalExitCode(signal));
-                return;
-            }
+                if (shutdownPromise) {
+                    await shutdownPromise;
+                    if (shutdownError) {
+                        throw shutdownError;
+                    }
+                } else if (signal) {
+                    await waitForChildProcessTreeExit(turboProcess, {
+                        timeoutMs: 2000,
+                    });
+                }
 
-            resolve(code ?? 0);
+                const exitSignal = signal ?? requestedSignal;
+                if (exitSignal) {
+                    resolve(signalExitCode(exitSignal, signalNumbers));
+                    return;
+                }
+
+                resolve(code ?? 0);
+            })().catch(reject);
         });
     });
 }
