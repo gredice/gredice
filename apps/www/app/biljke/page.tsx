@@ -1,14 +1,9 @@
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { orderBy } from '@signalco/js';
 import { Calendar, LayoutGrid } from '@signalco/ui-icons';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from '@signalco/ui-primitives/Tabs';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -17,6 +12,7 @@ import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
+import { getPlantSortsData } from '../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
 import { KnownPages } from '../../src/KnownPages';
 import { merchantReturnPolicy } from '../../src/merchantReturnPolicy';
@@ -45,7 +41,10 @@ export default async function PlantsPage({
         ? (seedTimeFilter[0] ?? '')
         : (seedTimeFilter ?? '');
     const isSeedTimeFilterEnabled = seedTimeFilterValue === '1';
-    const entities = await getPlantsData();
+    const [entities, sorts] = await Promise.all([
+        getPlantsData(),
+        getPlantSortsData(),
+    ]);
     const isCanonicalView = !search && !isSeedTimeFilterEnabled;
     const sortedEntities = orderBy(entities ?? [], (a, b) =>
         a.information.name.localeCompare(b.information.name),
@@ -101,31 +100,36 @@ export default async function PlantsPage({
                 <Tabs value={view} defaultValue="popis" className="w-full">
                     <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
                         <TabsList className="grid grid-cols-2 w-fit border">
-                            <Link
-                                href={`?pregled=popis${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
-                                prefetch
+                            <TabsTrigger
+                                value="popis"
+                                className="w-full"
+                                asChild
                             >
-                                <TabsTrigger value="popis" className="w-full">
+                                <Link
+                                    href={`?pregled=popis${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
+                                    prefetch
+                                >
                                     <Row spacing={1} className="cursor-default">
                                         <LayoutGrid className="size-5" />
                                         <span>Popis</span>
                                     </Row>
-                                </TabsTrigger>
-                            </Link>
-                            <Link
-                                href={`?pregled=kalendar${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
-                                prefetch
+                                </Link>
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="kalendar"
+                                className="w-full"
+                                asChild
                             >
-                                <TabsTrigger
-                                    value="kalendar"
-                                    className="w-full"
+                                <Link
+                                    href={`?pregled=kalendar${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
+                                    prefetch
                                 >
                                     <Row spacing={1} className="cursor-default">
                                         <Calendar className="size-5" />
                                         <span>Kalendar</span>
                                     </Row>
-                                </TabsTrigger>
-                            </Link>
+                                </Link>
+                            </TabsTrigger>
                         </TabsList>
                         {view === 'kalendar' && <CalendarInfoChip />}
                         <div className="flex flex-col gap-2 md:ml-auto md:flex-row md:items-center">
@@ -139,6 +143,7 @@ export default async function PlantsPage({
                     <TabsContent value="popis" className="mt-2">
                         <PlantsGallery
                             plants={entities}
+                            sorts={sorts}
                             initialSearch={search}
                             initialSeedTimeFilter={seedTimeFilterValue}
                         />

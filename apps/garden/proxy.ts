@@ -14,8 +14,10 @@ import {
 } from './lib/posthog-server';
 
 const postHogApiKey =
-    process.env.NEXT_PUBLIC_POSTHOG_KEY ??
-    process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+    process.env.NODE_ENV === 'development'
+        ? undefined
+        : (process.env.NEXT_PUBLIC_POSTHOG_KEY ??
+          process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN);
 const postHogProxyHost =
     process.env.POSTHOG_PROXY_HOST ??
     process.env.NEXT_PUBLIC_POSTHOG_HOST?.replace(

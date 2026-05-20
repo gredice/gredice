@@ -1,4 +1,5 @@
 import { clientAuthenticated } from '@gredice/client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Approved, Close, Empty, Megaphone } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
@@ -7,12 +8,6 @@ import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
 import { SelectItems } from '@signalco/ui-primitives/SelectItems';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from '@signalco/ui-primitives/Tabs';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';

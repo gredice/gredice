@@ -160,13 +160,13 @@ importers:
         version: 0.1.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+        version: 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       '@signalco/ui-themes-minimal-app':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
@@ -471,13 +471,13 @@ importers:
         version: 0.1.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+        version: 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       '@signalco/ui-themes-minimal-app':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
@@ -583,7 +583,7 @@ importers:
         version: 0.1.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -592,7 +592,7 @@ importers:
         version: 0.2.0(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+        version: 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       '@signalco/ui-themes-minimal':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
@@ -619,7 +619,7 @@ importers:
         version: 19.1.0-rc.3
       nuqs:
         specifier: 2.8.9
-        version: 2.8.9(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react@19.2.6)
+        version: 2.8.9(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react@19.2.6)
       postcss:
         specifier: 8.5.14
         version: 8.5.14
@@ -689,13 +689,13 @@ importers:
         version: link:../../packages/ui
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+        version: 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       '@signalco/ui-themes-minimal-app':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
@@ -792,7 +792,7 @@ importers:
         version: 0.4.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       nuqs:
         specifier: 2.8.9
-        version: 2.8.9(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react@19.2.6)
+        version: 2.8.9(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react@19.2.6)
       react:
         specifier: 19.2.6
         version: 19.2.6
@@ -844,13 +844,13 @@ importers:
         version: 0.1.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+        version: 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       '@signalco/ui-themes-minimal':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
@@ -1064,7 +1064,7 @@ importers:
         version: 6.198.0
       nuqs:
         specifier: 2.8.9
-        version: 2.8.9(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react@19.2.6)
+        version: 2.8.9(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react@19.2.6)
     devDependencies:
       '@biomejs/biome':
         specifier: 2.4.15
@@ -1122,13 +1122,13 @@ importers:
         version: 0.1.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+        version: 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       '@signalco/ui-themes-minimal':
         specifier: 0.1.3
         version: 0.1.3(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
@@ -1432,6 +1432,9 @@ importers:
       '@gredice/js':
         specifier: workspace:*
         version: link:../js
+      '@radix-ui/react-tabs':
+        specifier: 1.1.13
+        version: 1.1.13(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@signalco/hooks':
         specifier: 0.2.1
         version: 0.2.1(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -1440,13 +1443,13 @@ importers:
         version: 0.1.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@signalco/ui':
         specifier: 0.2.10
-        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+        version: 0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       '@signalco/ui-icons':
         specifier: 0.2.2
         version: 0.2.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@signalco/ui-primitives':
         specifier: 0.6.5
-        version: 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+        version: 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       motion:
         specifier: 12.38.0
         version: 12.38.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -1455,7 +1458,7 @@ importers:
         version: 16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0)
       nuqs:
         specifier: 2.8.9
-        version: 2.8.9(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react@19.2.6)
+        version: 2.8.9(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react@19.2.6)
       react:
         specifier: 19.2.6
         version: 19.2.6
@@ -4021,6 +4024,19 @@ packages:
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
     peerDependenciesMeta:
       '@types/react':
+        optional: true
+
+  '@radix-ui/react-tabs@1.1.13':
+    resolution: {integrity: sha512-7xdcatg7/U+7+Udyoj2zodtI9H/IIopqo+YOIcZOq1nJwXWBZ9p8xiu5llXlekDbZkca79a/fozEYQXIA4sW6A==}
+    peerDependencies:
+      '@types/react': 19.2.14
+      '@types/react-dom': 19.2.3
+      react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+      react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      '@types/react-dom':
         optional: true
 
   '@radix-ui/react-toggle-group@1.1.11':
@@ -9763,7 +9779,7 @@ snapshots:
       '@babel/types': 7.29.0
       '@jridgewell/remapping': 2.3.5
       convert-source-map: 2.0.0
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@10.2.2)
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -9850,7 +9866,7 @@ snapshots:
       '@babel/parser': 7.29.3
       '@babel/template': 7.28.6
       '@babel/types': 7.29.0
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@10.2.2)
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -9863,7 +9879,7 @@ snapshots:
       '@babel/parser': 7.29.3
       '@babel/template': 7.28.6
       '@babel/types': 7.29.0
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -11974,6 +11990,22 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.14
 
+  '@radix-ui/react-tabs@1.1.13(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
+    dependencies:
+      '@radix-ui/primitive': 1.1.3
+      '@radix-ui/react-context': 1.1.2(@types/react@19.2.14)(react@19.2.6)
+      '@radix-ui/react-direction': 1.1.1(@types/react@19.2.14)(react@19.2.6)
+      '@radix-ui/react-id': 1.1.1(@types/react@19.2.14)(react@19.2.6)
+      '@radix-ui/react-presence': 1.1.5(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@radix-ui/react-primitive': 2.1.3(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@radix-ui/react-roving-focus': 1.1.11(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@radix-ui/react-use-controllable-state': 1.2.2(@types/react@19.2.14)(react@19.2.6)
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
+    optionalDependencies:
+      '@types/react': 19.2.14
+      '@types/react-dom': 19.2.3(@types/react@19.2.14)
+
   '@radix-ui/react-toggle-group@1.1.11(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
       '@radix-ui/primitive': 1.1.3
@@ -12772,7 +12804,7 @@ snapshots:
 
   '@signalco/auth-client@0.3.0(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(@tanstack/react-query@5.100.10(react@19.2.6))(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+      '@signalco/ui-primitives': 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       '@tanstack/react-query': 5.100.10(react@19.2.6)
       next: 16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0)
       react: 19.2.6
@@ -12812,7 +12844,7 @@ snapshots:
 
   '@signalco/cms-core@0.1.1(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+      '@signalco/ui-primitives': 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
 
@@ -12840,7 +12872,7 @@ snapshots:
 
   '@signalco/ui-notifications@0.2.0(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+      '@signalco/ui-primitives': 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
 
@@ -12852,7 +12884,7 @@ snapshots:
       tailwindcss: 3.4.19(tsx@4.22.0)(yaml@2.9.0)
       tailwindcss-animate: 1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
 
-  '@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))':
+  '@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))':
     dependencies:
       next: 16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0)
       react: 19.2.6
@@ -12880,7 +12912,15 @@ snapshots:
 
   '@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))':
     dependencies:
-      '@signalco/ui-primitives': 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+      '@signalco/ui-primitives': 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
+      tailwindcss: 3.4.19(tsx@4.22.0)(yaml@2.9.0)
+      tailwindcss-animate: 1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
+
+  '@signalco/ui@0.2.10(@signalco/ui-primitives@0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))':
+    dependencies:
+      '@signalco/ui-primitives': 0.6.5(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(tailwindcss-animate@1.0.7(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0)))(tailwindcss@3.4.19(tsx@4.22.0)(yaml@2.9.0))
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
       tailwindcss: 3.4.19(tsx@4.22.0)(yaml@2.9.0)
@@ -13453,7 +13493,7 @@ snapshots:
   '@typespec/ts-http-runtime@0.3.2':
     dependencies:
       http-proxy-agent: 7.0.2
-      https-proxy-agent: 7.0.6
+      https-proxy-agent: 7.0.6(supports-color@10.2.2)
       tslib: 2.8.1
     transitivePeerDependencies:
       - supports-color
@@ -13733,6 +13773,12 @@ snapshots:
 
   acorn@8.16.0: {}
 
+  agent-base@6.0.2:
+    dependencies:
+      debug: 4.4.3(supports-color@10.2.2)
+    transitivePeerDependencies:
+      - supports-color
+
   agent-base@6.0.2(supports-color@8.1.1):
     dependencies:
       debug: 4.4.3(supports-color@8.1.1)
@@ -13883,7 +13929,7 @@ snapshots:
     dependencies:
       follow-redirects: 1.16.0(debug@4.4.3)
       form-data: 4.0.5
-      https-proxy-agent: 5.0.1(supports-color@8.1.1)
+      https-proxy-agent: 5.0.1
       proxy-from-env: 2.1.0
     transitivePeerDependencies:
       - debug
@@ -13915,7 +13961,7 @@ snapshots:
     dependencies:
       bytes: 3.1.2
       content-type: 1.0.5
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@10.2.2)
       http-errors: 2.0.1
       iconv-lite: 0.7.2
       on-finished: 2.4.1
@@ -14401,7 +14447,7 @@ snapshots:
       base64id: 2.0.0
       cookie: 0.7.2
       cors: 2.8.6
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@10.2.2)
       engine.io-parser: 5.2.3
       ws: 8.18.3
     transitivePeerDependencies:
@@ -14622,7 +14668,7 @@ snapshots:
       content-type: 1.0.5
       cookie: 0.7.2
       cookie-signature: 1.2.2
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@10.2.2)
       depd: 2.0.0
       encodeurl: 2.0.0
       escape-html: 1.0.3
@@ -14697,7 +14743,7 @@ snapshots:
 
   finalhandler@2.1.1:
     dependencies:
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@10.2.2)
       encodeurl: 2.0.0
       escape-html: 1.0.3
       on-finished: 2.4.1
@@ -14738,7 +14784,7 @@ snapshots:
 
   follow-redirects@1.16.0(debug@4.4.3):
     optionalDependencies:
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@10.2.2)
 
   foreground-child@3.3.1:
     dependencies:
@@ -15079,7 +15125,7 @@ snapshots:
   http-proxy-agent@7.0.2:
     dependencies:
       agent-base: 7.1.4
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -15091,16 +15137,16 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  https-proxy-agent@5.0.1(supports-color@8.1.1):
+  https-proxy-agent@5.0.1:
     dependencies:
-      agent-base: 6.0.2(supports-color@8.1.1)
-      debug: 4.4.3(supports-color@8.1.1)
+      agent-base: 6.0.2
+      debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
 
-  https-proxy-agent@7.0.6:
+  https-proxy-agent@5.0.1(supports-color@8.1.1):
     dependencies:
-      agent-base: 7.1.4
+      agent-base: 6.0.2(supports-color@8.1.1)
       debug: 4.4.3(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
@@ -15942,7 +15988,7 @@ snapshots:
   micromark@4.0.2:
     dependencies:
       '@types/debug': 4.1.12
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@10.2.2)
       decode-named-character-reference: 1.3.0
       devlop: 1.1.0
       micromark-core-commonmark: 2.0.3
@@ -16130,7 +16176,7 @@ snapshots:
     dependencies:
       path-key: 3.1.1
 
-  nuqs@2.8.9(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react@19.2.6):
+  nuqs@2.8.9(next@16.2.6(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react@19.2.6):
     dependencies:
       '@standard-schema/spec': 1.0.0
       react: 19.2.6
@@ -16921,7 +16967,7 @@ snapshots:
 
   router@2.2.0:
     dependencies:
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@10.2.2)
       depd: 2.0.0
       is-promise: 4.0.0
       parseurl: 1.3.3
@@ -16971,7 +17017,7 @@ snapshots:
 
   send@1.2.1:
     dependencies:
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@10.2.2)
       encodeurl: 2.0.0
       escape-html: 1.0.3
       etag: 1.8.1
@@ -17077,7 +17123,7 @@ snapshots:
     dependencies:
       axios: 1.16.1(debug@4.4.3)
       axios-ntlm: 1.4.6(debug@4.4.3)
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@10.2.2)
       follow-redirects: 1.16.0(debug@4.4.3)
       formidable: 3.5.4
       sax: 1.6.0
@@ -17101,7 +17147,7 @@ snapshots:
 
   socket.io-adapter@2.5.6:
     dependencies:
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@10.2.2)
       ws: 8.18.3
     transitivePeerDependencies:
       - bufferutil
@@ -17111,7 +17157,7 @@ snapshots:
   socket.io-parser@4.2.6:
     dependencies:
       '@socket.io/component-emitter': 3.1.2
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -17120,7 +17166,7 @@ snapshots:
       accepts: 1.3.8
       base64id: 2.0.0
       cors: 2.8.6
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@10.2.2)
       engine.io: 6.6.7
       socket.io-adapter: 2.5.6
       socket.io-parser: 4.2.6
@@ -17667,7 +17713,7 @@ snapshots:
 
   vite-tsconfig-paths@5.1.4(typescript@6.0.3)(vite@8.0.13(@types/node@24.12.2)(esbuild@0.28.0)(jiti@2.4.2)(sass@1.99.0)(tsx@4.22.0)(yaml@2.9.0)):
     dependencies:
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@10.2.2)
       globrex: 0.1.2
       tsconfck: 3.1.6(typescript@6.0.3)
     optionalDependencies:
