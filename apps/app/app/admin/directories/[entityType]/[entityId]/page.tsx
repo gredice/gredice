@@ -13,6 +13,7 @@ import {
 import { getEntityCompleteness } from '@gredice/storage/entityCompleteness';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
+import { Calendar, Code } from '@signalco/ui-icons';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { revalidatePath } from 'next/cache';
@@ -32,8 +33,17 @@ import { auth } from '../../../../../lib/auth/auth';
 import { entityDisplayName } from '../../../../../src/entities/entityAttributes';
 import { KnownPages } from '../../../../../src/KnownPages';
 import { handleEntityDelete } from '../../../../(actions)/entityActions';
+import { AttributeDataTypeIcon } from '../attribute-definitions/AttributeDataTypes';
 import { AttributeCategoryDetails } from './AttributeCategoryDetails';
 import { EntityActions } from './EntityActions';
+import { EntityDetailsPropertiesLayout } from './EntityDetailsPropertiesLayout';
+import { EntityDetailsPropertiesPanel } from './EntityDetailsPropertiesPanel';
+import { EntityDetailsPropertiesProvider } from './EntityDetailsPropertiesProvider';
+import { EntityDetailsPropertiesToggle } from './EntityDetailsPropertiesToggle';
+import {
+    EntityDetailsPropertyList,
+    type EntityDetailsPropertyListItem,
+} from './EntityDetailsPropertyList';
 import { EntityDetailsSaveIndicator } from './EntityDetailsSaveIndicator';
 import { EntityDetailsSaveProvider } from './EntityDetailsSaveProvider';
 import { EntityDetailsStickyHeader } from './EntityDetailsStickyHeader';
@@ -209,188 +219,237 @@ export default async function EntityDetailsPage(props: {
             (definition) => definition.category,
         ),
     );
+    const propertyItems: EntityDetailsPropertyListItem[] = [
+        {
+            id: 'slug',
+            label: 'Slug',
+            value: slugify(entityTitle),
+            mono: true,
+            visual: <Code className="size-4" aria-hidden />,
+        },
+        {
+            id: 'created-at',
+            label: 'Datum kreiranja',
+            value: entity.createdAt,
+            visual: <Calendar className="size-4" aria-hidden />,
+        },
+        {
+            id: 'updated-at',
+            label: 'Datum zadnje izmjene',
+            value: entity.updatedAt,
+            visual: <Calendar className="size-4" aria-hidden />,
+        },
+        {
+            id: 'published-at',
+            label: 'Datum objave',
+            value: entity.publishedAt,
+            visual: <Calendar className="size-4" aria-hidden />,
+        },
+        ...displayDefinitions.map((d) => {
+            const value = entity.attributes.find(
+                (a) => a.attributeDefinitionId === d.id,
+            )?.value;
+            const dataTypeIcon = (
+                <AttributeDataTypeIcon
+                    key={`attribute-${d.id}-icon`}
+                    dataType={d.dataType}
+                    className="size-4"
+                    aria-hidden
+                />
+            );
+
+            if (!value) {
+                return {
+                    id: `attribute-${d.id}`,
+                    label: d.label,
+                    value: '-',
+                    visual: dataTypeIcon,
+                };
+            }
+
+            if (d.dataType === 'image') {
+                const imageUrl = imageAttributeValue(value);
+
+                return {
+                    id: `attribute-${d.id}`,
+                    label: d.label,
+                    value: imageUrl ? (
+                        <ImageViewer
+                            key={`attribute-${d.id}-image`}
+                            src={imageUrl}
+                            alt={d.label}
+                            previewWidth={40}
+                            previewHeight={40}
+                        />
+                    ) : (
+                        '-'
+                    ),
+                    visual: imageUrl ? undefined : dataTypeIcon,
+                };
+            }
+
+            if (d.dataType === 'barcode') {
+                return {
+                    id: `attribute-${d.id}`,
+                    label: d.label,
+                    value: (
+                        <BarcodeValue
+                            key={`attribute-${d.id}-barcode`}
+                            value={value}
+                        />
+                    ),
+                };
+            }
+
+            if (d.dataType.startsWith('ref:')) {
+                return {
+                    id: `attribute-${d.id}`,
+                    label: d.label,
+                    value: refLabelsByDefinitionId[d.id]?.[value] ?? value,
+                    visual: dataTypeIcon,
+                };
+            }
+
+            return {
+                id: `attribute-${d.id}`,
+                label: d.label,
+                value: formatAttributeValueWithUnit(value, d.unit),
+                visual: dataTypeIcon,
+            };
+        }),
+    ];
+    const propertiesPanel = (
+        <EntityDetailsPropertiesPanel>
+            <EntityDetailsPropertyList items={propertyItems} />
+            {inventoryConfig && (
+                <EntityInventoryCard
+                    inventoryConfigId={inventoryConfig.id}
+                    inventoryLowCountThreshold={
+                        inventoryConfig.lowCountThreshold
+                    }
+                    entityInventoryItem={entityInventoryItem}
+                    upsertInventoryAction={upsertInventoryAction}
+                />
+            )}
+        </EntityDetailsPropertiesPanel>
+    );
 
     return (
         <EntityDetailsSaveProvider>
-            <AdminPageTitle title={entityTitle} />
-            <AdminPageHeader
-                breadcrumbs={
-                    <Row spacing={2} className="min-w-0">
-                        <div className="min-w-0">
-                            <AdminDirectoryBreadcrumbs
-                                entityTypeName={params.entityType}
-                                entityTypeLabel={entity.entityType.label}
-                                items={[
-                                    {
-                                        label: entityDisplayName(entity),
-                                    },
-                                ]}
-                            />
-                        </div>
-                        <div className="w-20 shrink-0">
-                            <EntityAttributeProgress
-                                entity={entity}
-                                definitions={attributeDefinitions}
-                            />
-                        </div>
-                    </Row>
-                }
-                actions={
-                    <Row className="items-center" spacing={1}>
-                        <EntityDetailsSaveIndicator />
-                        <EntityLinksPanel entityId={entityId} />
-                        <EntityActions
-                            entity={entity}
-                            entityType={params.entityType}
-                            importAction={importAction}
-                            deleteAction={entityDeleteBound}
-                        />
-                    </Row>
-                }
-                heading={entityDisplayName(entity)}
-            />
-            <div className="mb-3">
-                <FieldSet className="max-w-sm">
-                    <Field name="Slug" value={slugify(entityTitle)} />
-                </FieldSet>
-            </div>
-            <Tabs defaultValue={attributeCategories.at(0)?.name}>
-                <EntityDetailsStickyHeader
-                    tabs={
-                        <TabsList>
-                            {[
-                                ...attributeCategories,
-                                { name: 'history', label: 'Povijest' },
-                            ].map((category) => (
-                                <TabsTrigger
-                                    key={category.name}
-                                    value={category.name}
-                                >
-                                    <Row spacing={1} className="items-center">
-                                        <span>{category.label}</span>
-                                        {categoriesWithMissingRequiredAttributes.has(
-                                            category.name,
-                                        ) && (
-                                            <>
-                                                <span
-                                                    className="size-2 rounded-full bg-red-500"
-                                                    aria-hidden
-                                                />
-                                                <span className="sr-only">
-                                                    Nedostaju obavezni atributi
-                                                </span>
-                                            </>
-                                        )}
-                                    </Row>
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
+            <EntityDetailsPropertiesProvider>
+                <AdminPageTitle title={entityTitle} />
+                <AdminPageHeader
+                    breadcrumbs={
+                        <Row spacing={2} className="min-w-0">
+                            <div className="min-w-0">
+                                <AdminDirectoryBreadcrumbs
+                                    entityTypeName={params.entityType}
+                                    entityTypeLabel={entity.entityType.label}
+                                    items={[
+                                        {
+                                            label: entityDisplayName(entity),
+                                        },
+                                    ]}
+                                />
+                            </div>
+                            <div className="w-20 shrink-0">
+                                <EntityAttributeProgress
+                                    entity={entity}
+                                    definitions={attributeDefinitions}
+                                />
+                            </div>
+                        </Row>
                     }
-                />
-                <Stack spacing={2}>
-                    <Stack spacing={2}>
-                        {inventoryConfig && (
-                            <EntityInventoryCard
-                                inventoryConfigId={inventoryConfig.id}
-                                inventoryLowCountThreshold={
-                                    inventoryConfig.lowCountThreshold
-                                }
-                                entityInventoryItem={entityInventoryItem}
-                                upsertInventoryAction={upsertInventoryAction}
-                            />
-                        )}
-                        <FieldSet>
-                            <Field
-                                name="Datum kreiranja"
-                                value={entity.createdAt}
-                            />
-                            <Field
-                                name="Datum zadnje izmjene"
-                                value={entity.updatedAt}
-                            />
-                            <Field
-                                name="Datum objave"
-                                value={entity.publishedAt}
-                            />
-                            {displayDefinitions.map((d) => (
-                                <Field
-                                    key={d.id}
-                                    name={d.label}
-                                    value={(() => {
-                                        const value = entity.attributes.find(
-                                            (a) =>
-                                                a.attributeDefinitionId ===
-                                                d.id,
-                                        )?.value;
-                                        if (!value) {
-                                            return '-';
-                                        }
-
-                                        if (d.dataType === 'image') {
-                                            const imageUrl =
-                                                imageAttributeValue(value);
-                                            if (imageUrl) {
-                                                return (
-                                                    <ImageViewer
-                                                        src={imageUrl}
-                                                        alt={d.label}
-                                                        previewWidth={40}
-                                                        previewHeight={40}
-                                                    />
-                                                );
-                                            }
-                                        }
-
-                                        if (d.dataType === 'barcode') {
-                                            return (
-                                                <BarcodeValue value={value} />
-                                            );
-                                        }
-
-                                        if (d.dataType.startsWith('ref:')) {
-                                            return (
-                                                refLabelsByDefinitionId[d.id]?.[
-                                                    value
-                                                ] ?? value
-                                            );
-                                        }
-
-                                        return formatAttributeValueWithUnit(
-                                            value,
-                                            d.unit,
-                                        );
-                                    })()}
-                                />
-                            ))}
-                        </FieldSet>
-                    </Stack>
-                    {[
-                        ...attributeCategories,
-                        { name: 'history', label: 'Povijest' },
-                    ].map((category) => (
-                        <TabsContent value={category.name} key={category.name}>
-                            <AttributeCategoryDetails
+                    actions={
+                        <Row className="items-center" spacing={1}>
+                            <EntityDetailsSaveIndicator />
+                            <EntityLinksPanel entityId={entityId} />
+                            <EntityDetailsPropertiesToggle />
+                            <EntityActions
                                 entity={entity}
-                                category={category}
-                                attributeDefinitions={attributeDefinitions}
+                                entityType={params.entityType}
+                                importAction={importAction}
+                                deleteAction={entityDeleteBound}
                             />
-                        </TabsContent>
-                    ))}
+                        </Row>
+                    }
+                    heading={entityDisplayName(entity)}
+                />
+                <EntityDetailsPropertiesLayout properties={propertiesPanel}>
+                    <Tabs defaultValue={attributeCategories.at(0)?.name}>
+                        <EntityDetailsStickyHeader
+                            tabs={
+                                <TabsList>
+                                    {[
+                                        ...attributeCategories,
+                                        { name: 'history', label: 'Povijest' },
+                                    ].map((category) => (
+                                        <TabsTrigger
+                                            key={category.name}
+                                            value={category.name}
+                                        >
+                                            <Row
+                                                spacing={1}
+                                                className="items-center"
+                                            >
+                                                <span>{category.label}</span>
+                                                {categoriesWithMissingRequiredAttributes.has(
+                                                    category.name,
+                                                ) && (
+                                                    <>
+                                                        <span
+                                                            className="size-2 rounded-full bg-red-500"
+                                                            aria-hidden
+                                                        />
+                                                        <span className="sr-only">
+                                                            Nedostaju obavezni
+                                                            atributi
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </Row>
+                                        </TabsTrigger>
+                                    ))}
+                                </TabsList>
+                            }
+                        />
+                        <Stack spacing={2}>
+                            {attributeCategories.map((category) => (
+                                <TabsContent
+                                    value={category.name}
+                                    key={category.name}
+                                >
+                                    <AttributeCategoryDetails
+                                        entity={entity}
+                                        category={category}
+                                        attributeDefinitions={
+                                            attributeDefinitions
+                                        }
+                                    />
+                                </TabsContent>
+                            ))}
 
-                    <TabsContent value="history" key="history">
-                        <FieldSet>
-                            {revisions.length === 0 ? (
-                                <Field name="Povijest" value="Nema promjena" />
-                            ) : (
-                                <HistoryRevisionListClient
-                                    revisions={revisions}
-                                    attributeDefinitions={attributeDefinitions}
-                                />
-                            )}
-                        </FieldSet>
-                    </TabsContent>
-                </Stack>
-            </Tabs>
+                            <TabsContent value="history" key="history">
+                                <FieldSet>
+                                    {revisions.length === 0 ? (
+                                        <Field
+                                            name="Povijest"
+                                            value="Nema promjena"
+                                        />
+                                    ) : (
+                                        <HistoryRevisionListClient
+                                            revisions={revisions}
+                                            attributeDefinitions={
+                                                attributeDefinitions
+                                            }
+                                        />
+                                    )}
+                                </FieldSet>
+                            </TabsContent>
+                        </Stack>
+                    </Tabs>
+                </EntityDetailsPropertiesLayout>
+            </EntityDetailsPropertiesProvider>
         </EntityDetailsSaveProvider>
     );
 }
