@@ -398,7 +398,11 @@ describe('app registry worktree ports', () => {
     });
 
     it('treats zombie-only process groups as stopped', () => {
+        assert.equal(processStatesIncludeLiveProcess(''), false);
+        assert.equal(processStatesIncludeLiveProcess('   '), false);
+        assert.equal(processStatesIncludeLiveProcess('Z'), false);
         assert.equal(processStatesIncludeLiveProcess('Z\nZ+\n'), false);
+        assert.equal(processStatesIncludeLiveProcess('S'), true);
         assert.equal(processStatesIncludeLiveProcess('Z\nS\n'), true);
     });
 });
