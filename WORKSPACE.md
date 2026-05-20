@@ -178,6 +178,8 @@ Recommended Codex maintenance script:
 
 Override the setup-time Node.js installer with `GREDICE_CODEX_NODE_VERSION=<major-or-full-version>` only when the Codex base image does not already provide Node.js `>=24` and a specific release is required.
 
+`./scripts/codex-cloud-setup.sh` installs the `www` Playwright Chromium browser. By default it tries `playwright install --with-deps chromium`, then falls back to browser-only `playwright install chromium` if Codex Cloud's Ubuntu package mirror or apt proxy is unavailable. Set `GREDICE_CODEX_PLAYWRIGHT_WITH_DEPS=browser-only` to skip apt entirely, or `GREDICE_CODEX_PLAYWRIGHT_WITH_DEPS=required` when a task must fail fast unless OS-level Playwright dependencies install successfully.
+
 Recommended Codex environment variables:
 
 ```bash
