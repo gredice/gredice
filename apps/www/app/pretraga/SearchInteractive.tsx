@@ -6,6 +6,7 @@ import { Card } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import type { Route } from 'next';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 
@@ -14,7 +15,7 @@ type SearchResult = {
     entityType: string;
     categoryLabel: string;
     title: string;
-    summary: string | null;
+    summary?: string | null;
     href: string;
 };
 
@@ -69,9 +70,10 @@ export function SearchInteractive({
         const nextParams = new URLSearchParams(params.toString());
         if (nextCategory === 'all') nextParams.delete('kategorija');
         else nextParams.set('kategorija', nextCategory);
-        router.replace(
-            nextParams.toString() ? `${pathname}?${nextParams}` : pathname,
-        );
+        const nextHref = (
+            nextParams.toString() ? `${pathname}?${nextParams}` : pathname
+        ) as Route;
+        router.replace(nextHref);
     };
 
     return (
