@@ -4,12 +4,12 @@ import {
     publicSearchCategoryByDirectoryEntityType,
 } from '@gredice/directory-types';
 import { Search, Warning } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
+import { SearchInteractive } from './SearchInteractive';
 
 const categoryOptions = [
     { slug: 'all', label: 'Sve' },
@@ -108,23 +108,6 @@ export default async function SearchPage({
                 navigateOnChange
             />
 
-            <Row spacing={2} className="flex-wrap">
-                {categoryOptions.map((option) => {
-                    const href = `/pretraga?pretraga=${encodeURIComponent(query)}${option.slug === 'all' ? '' : `&kategorija=${option.slug}`}`;
-                    const active = selectedCategory === option.slug;
-                    return (
-                        <Button
-                            key={option.slug}
-                            variant={active ? 'solid' : 'outlined'}
-                            size="sm"
-                            href={href}
-                        >
-                            {option.label}
-                        </Button>
-                    );
-                })}
-            </Row>
-
             {error ? (
                 <Card className="p-4">
                     <Row spacing={2} alignItems="center">
@@ -143,53 +126,22 @@ export default async function SearchPage({
                 <Card className="p-6 text-center">
                     <Typography>Upiši barem 2 znaka za pretragu.</Typography>
                 </Card>
-            ) : results.length === 0 && !error ? (
-                <Card className="p-6 text-center">
-                    <Typography>Nema rezultata za zadani pojam.</Typography>
-                </Card>
             ) : (
-                <Stack spacing={3}>
-                    {results.map((result) => (
-                        <Card
-                            key={`${result.entityType}-${result.entityId}`}
-                            className="p-4"
-                        >
-                            <Stack spacing={2}>
-                                <Row
-                                    spacing={2}
-                                    alignItems="center"
-                                    className="flex-wrap"
-                                >
-                                    <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium">
-                                        {result.categoryLabel}
-                                    </span>
-                                    <a
-                                        href={result.href.replace(
-                                            'https://www.gredice.com',
-                                            '',
-                                        )}
-                                    >
-                                        <Typography level="h5">
-                                            {result.title}
-                                        </Typography>
-                                    </a>
-                                </Row>
-                                {result.summary ? (
-                                    <Typography>{result.summary}</Typography>
-                                ) : null}
-                                <a
-                                    href={result.href.replace(
-                                        'https://www.gredice.com',
-                                        '',
-                                    )}
-                                    className="text-sm text-green-700"
-                                >
-                                    Otvori stranicu
-                                </a>
-                            </Stack>
+                <>
+                    <SearchInteractive
+                        categoryOptions={categoryOptions}
+                        query={query}
+                        selectedCategory={selectedCategory}
+                        results={results}
+                    />
+                    {results.length === 0 && !error ? (
+                        <Card className="p-6 text-center">
+                            <Typography>
+                                Nema rezultata za zadani pojam.
+                            </Typography>
                         </Card>
-                    ))}
-                </Stack>
+                    ) : null}
+                </>
             )}
         </Stack>
     );
