@@ -15,6 +15,7 @@
         "jsx": "react-jsx",
         "incremental": true,
         "target": "ESNext",
+        "types": ["vite/client"],
         "paths": {
             "@apps/app/*": ["../app/*"],
             "@apps/farm/*": ["../farm/*"],

@@ -14,6 +14,7 @@
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
+        "typecheck": "tsc --noEmit --pretty false",
         "test": "tsx --test \"src/**/*.unit.ts\""
     },
     "devDependencies": {

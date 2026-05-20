@@ -1,17 +1,23 @@
-import { ControlsVisualization } from '@packages/game/hud/controls-tooltip';
-import { DesktopMoveControls } from '@packages/game/hud/controls-tooltip';
-import { PinchGesture } from '@packages/game/hud/controls-tooltip';
-import { RotateControls } from '@packages/game/hud/controls-tooltip';
-import { ScrollWheelIndicator } from '@packages/game/hud/controls-tooltip';
-import { TouchIndicator } from '@packages/game/hud/controls-tooltip';
-import { VisualizationSection } from '@packages/game/hud/controls-tooltip';
-import { WireframeCube } from '@packages/game/hud/controls-tooltip';
+import {
+    ControlsVisualization,
+    DesktopMoveControls,
+    PinchGesture,
+    RotateControls,
+    ScrollWheelIndicator,
+    TouchIndicator,
+    VisualizationSection,
+    WireframeCube,
+} from '@packages/game/hud/controls-tooltip';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { useEffect, useState } from 'react';
 
 const TWO_PI = Math.PI * 2;
 
-function AnimatedVisualization({ deviceType }: { deviceType: 'desktop' | 'tablet' | 'mobile' }) {
+function AnimatedVisualization({
+    deviceType,
+}: {
+    deviceType: 'desktop' | 'tablet' | 'mobile';
+}) {
     const [phase, setPhase] = useState(0.75);
     useEffect(() => {
         const id = setInterval(() => setPhase((p) => (p + 0.12) % TWO_PI), 50);
@@ -24,6 +30,10 @@ const meta = {
     title: 'packages/game/hud/ControlsTooltip',
     component: ControlsVisualization,
     tags: ['autodocs'],
+    args: {
+        deviceType: 'desktop',
+        phase: 0.75,
+    },
     parameters: {
         docs: {
             description: {
@@ -121,7 +131,9 @@ export const RotateMobile: Story = {
             title="Rotacija"
             label="Tipke"
             cube={<WireframeCube rotateY={-40} />}
-            controls={<RotateControls activeDirection="ccw" showKeyHints={false} />}
+            controls={
+                <RotateControls activeDirection="ccw" showKeyHints={false} />
+            }
         />
     ),
 };

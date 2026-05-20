@@ -6,13 +6,21 @@ import {
     PlantGridIcon,
 } from '@gredice/ui/GridIcons';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import type { ComponentType } from 'react';
 
-const gridIcons = [
+function PlantGridIconPreview({ className }: { className?: string }) {
+    return <PlantGridIcon className={className} totalPlants={4} />;
+}
+
+const gridIcons: Array<{
+    Icon: ComponentType<{ className?: string }>;
+    label: string;
+}> = [
     { Icon: Grid1Icon, label: 'Grid1Icon' },
     { Icon: Grid4Icon, label: 'Grid4Icon' },
     { Icon: Grid9Icon, label: 'Grid9Icon' },
     { Icon: Grid16Icon, label: 'Grid16Icon' },
-    { Icon: PlantGridIcon, label: 'PlantGridIcon' },
+    { Icon: PlantGridIconPreview, label: 'PlantGridIcon' },
 ];
 
 function GridIconsShowcase() {

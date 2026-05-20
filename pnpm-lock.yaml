@@ -693,6 +693,9 @@ importers:
 
   apps/storybook:
     dependencies:
+      '@gredice/game':
+        specifier: workspace:*
+        version: link:../../packages/game
       '@gredice/ui':
         specifier: workspace:*
         version: link:../../packages/ui
