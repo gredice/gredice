@@ -45,6 +45,8 @@ type NotificationCampaignExplicitRecipient = Extract<
     { type: 'explicit' }
 >['recipients'][number];
 
+export const notificationRolloutDefaultDeviceLabel = 'Web preglednik';
+
 export type NotificationDeliveryDecision = {
     channel: DeliveryChannel;
     outcome: DeliveryOutcome;
@@ -539,7 +541,7 @@ export async function backfillNotificationRolloutDefaults({
     const backfilledDeviceLabels = await storage()
         .update(webPushSubscriptions)
         .set({
-            deviceLabel: 'Web preglednik',
+            deviceLabel: notificationRolloutDefaultDeviceLabel,
             updatedAt: now,
         })
         .where(scopeSubscriptionWhere(labelableSubscriptionWhere))

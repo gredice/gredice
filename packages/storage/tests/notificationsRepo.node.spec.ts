@@ -18,6 +18,7 @@ import {
     getUser,
     notificationCampaigns,
     notificationDeliveryAttempts,
+    notificationRolloutDefaultDeviceLabel,
     notifications,
     notificationUserChannelPreferences,
     previewNotificationCampaignAudience,
@@ -1047,7 +1048,9 @@ test('backfillNotificationRolloutDefaults limits subscription updates with batch
     );
     assert.equal(
         defaultSubscriptions.filter(
-            (subscription) => subscription.deviceLabel === 'Web preglednik',
+            (subscription) =>
+                subscription.deviceLabel ===
+                notificationRolloutDefaultDeviceLabel,
         ).length,
         1,
     );
