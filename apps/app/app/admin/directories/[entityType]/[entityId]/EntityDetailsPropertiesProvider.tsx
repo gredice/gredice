@@ -57,6 +57,10 @@ export function EntityDetailsPropertiesProvider({
         }
 
         const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.defaultPrevented) {
+                return;
+            }
+
             if (event.key === 'Escape') {
                 setIsOpen(false);
             }
