@@ -24,7 +24,10 @@ export function EntityDetailsPropertyList({
                 >
                     <dt className="flex min-w-0 items-center gap-2 text-muted-foreground">
                         {item.visual && (
-                            <span className="shrink-0 text-muted-foreground">
+                            <span
+                                className="shrink-0 text-muted-foreground"
+                                aria-hidden
+                            >
                                 {item.visual}
                             </span>
                         )}
@@ -58,7 +61,7 @@ function renderPropertyValue(value: EntityDetailsPropertyListItem['value']) {
     }
 
     if (typeof value === 'boolean') {
-        return value ? 'Da' : 'Ne';
+        return renderBooleanValueToggle(value);
     }
 
     return value ?? '-';
@@ -66,4 +69,27 @@ function renderPropertyValue(value: EntityDetailsPropertyListItem['value']) {
 
 function isCompactValue(value: EntityDetailsPropertyListItem['value']) {
     return typeof value === 'string' || typeof value === 'number';
+}
+
+function renderBooleanValueToggle(value: boolean) {
+    return (
+        <button
+            type="button"
+            role="switch"
+            aria-checked={value}
+            disabled
+            className={cx(
+                'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:cursor-default disabled:opacity-100',
+                value ? 'bg-primary' : 'bg-muted',
+            )}
+        >
+            <span
+                className={cx(
+                    'inline-block size-4 rounded-full bg-background shadow-sm transition-transform',
+                    value ? 'translate-x-4' : 'translate-x-0.5',
+                )}
+            />
+            <span className="sr-only">{value ? 'Da' : 'Ne'}</span>
+        </button>
+    );
 }

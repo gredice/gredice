@@ -1,12 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import {
     and,
+    asc,
     desc,
     eq,
     inArray,
     isNull,
     notExists,
     or,
+    type SQL,
     sql,
 } from 'drizzle-orm';
 import { storage } from '..';
@@ -37,10 +39,14 @@ type DeliveryChannel = 'email' | 'in_app' | 'push';
 type DeliveryOutcome = 'immediate' | 'digest' | 'suppressed' | 'required';
 type DeliveryAttemptStatus = 'accepted' | 'queued' | 'dropped';
 type NotificationCampaignQueueStatus = 'queued' | 'scheduled';
+type NotificationDigestFrequency = 'off' | 'hourly' | 'daily' | 'weekly';
 type NotificationCampaignExplicitRecipient = Extract<
     NotificationCampaignAudience,
     { type: 'explicit' }
 >['recipients'][number];
+
+// Croatian fallback label for legacy web-push subscriptions without client device metadata.
+export const notificationRolloutDefaultDeviceLabel = 'Web preglednik';
 
 export type NotificationDeliveryDecision = {
     channel: DeliveryChannel;
@@ -81,9 +87,193 @@ export type NotificationRetentionCleanupResult = {
     campaignsDeleted: number;
 };
 
+export type NotificationRolloutBackfillResult = {
+    dryRun: boolean;
+    usersScanned: number;
+    defaultPreferencesExpected: number;
+    defaultPreferencesInserted: number;
+    defaultPreferencesAlreadyPresent: number;
+    subscriptionsMarkedGranted: number;
+    deniedSubscriptionsDisabled: number;
+    deviceLabelsBackfilled: number;
+    orphanedSubscriptions: number;
+};
+
+export type NotificationRolloutDiagnostics = {
+    userId: string;
+    accountId: string | null;
+    preferenceCount: number;
+    missingDefaultPreferenceCount: number;
+    deviceCount: number;
+    deliverableDeviceCount: number;
+    deniedDeviceCount: number;
+    revokedDeviceCount: number;
+    staleDeviceCount: number;
+    lastSeenAt: Date | null;
+};
+
 export type CreateNotificationOptions = {
     routeDelivery?: boolean;
 };
+
+type NotificationRolloutPreferenceDefault = {
+    category: string;
+    channel: DeliveryChannel;
+    defaultEnabled: boolean;
+    digestEligible: boolean;
+    required: boolean;
+};
+
+const notificationRolloutPreferenceDefaults: NotificationRolloutPreferenceDefault[] =
+    [
+        {
+            category: 'account_security',
+            channel: 'in_app',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: true,
+        },
+        {
+            category: 'account_security',
+            channel: 'email',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: true,
+        },
+        {
+            category: 'account_security',
+            channel: 'push',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: true,
+        },
+        {
+            category: 'billing_order_delivery',
+            channel: 'in_app',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: true,
+        },
+        {
+            category: 'billing_order_delivery',
+            channel: 'email',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: true,
+        },
+        {
+            category: 'billing_order_delivery',
+            channel: 'push',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: true,
+        },
+        {
+            category: 'garden',
+            channel: 'in_app',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: false,
+        },
+        {
+            category: 'garden',
+            channel: 'email',
+            defaultEnabled: true,
+            digestEligible: true,
+            required: false,
+        },
+        {
+            category: 'garden',
+            channel: 'push',
+            defaultEnabled: true,
+            digestEligible: true,
+            required: false,
+        },
+        {
+            category: 'reminders',
+            channel: 'in_app',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: false,
+        },
+        {
+            category: 'reminders',
+            channel: 'email',
+            defaultEnabled: true,
+            digestEligible: true,
+            required: false,
+        },
+        {
+            category: 'reminders',
+            channel: 'push',
+            defaultEnabled: false,
+            digestEligible: true,
+            required: false,
+        },
+        {
+            category: 'admin_campaigns',
+            channel: 'in_app',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: false,
+        },
+        {
+            category: 'admin_campaigns',
+            channel: 'email',
+            defaultEnabled: true,
+            digestEligible: true,
+            required: false,
+        },
+        {
+            category: 'admin_campaigns',
+            channel: 'push',
+            defaultEnabled: false,
+            digestEligible: true,
+            required: false,
+        },
+        {
+            category: 'promotional',
+            channel: 'in_app',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: false,
+        },
+        {
+            category: 'promotional',
+            channel: 'email',
+            defaultEnabled: false,
+            digestEligible: true,
+            required: false,
+        },
+        {
+            category: 'promotional',
+            channel: 'push',
+            defaultEnabled: false,
+            digestEligible: true,
+            required: false,
+        },
+        {
+            category: 'digests',
+            channel: 'in_app',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: false,
+        },
+        {
+            category: 'digests',
+            channel: 'email',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: false,
+        },
+        {
+            category: 'digests',
+            channel: 'push',
+            defaultEnabled: false,
+            digestEligible: false,
+            required: false,
+        },
+    ];
 
 type PushSubscriptionDeliveryFields = Pick<
     typeof webPushSubscriptions.$inferSelect,
@@ -115,6 +305,338 @@ export function deliverablePushSubscriptionWhere(scope?: {
             ? eq(webPushSubscriptions.userId, scope.userId)
             : undefined,
     );
+}
+
+function notificationPreferenceKey(preference: {
+    category: string;
+    channel: DeliveryChannel;
+}) {
+    return `${preference.category}:${preference.channel}`;
+}
+
+function notificationRolloutPreferenceRows({
+    dailyDigest,
+    emailEnabled,
+    userId,
+}: {
+    dailyDigest: boolean | null;
+    emailEnabled: boolean | null;
+    userId: string;
+}): (typeof notificationUserChannelPreferences.$inferInsert)[] {
+    return notificationRolloutPreferenceDefaults.map((preference) => {
+        const enabled =
+            preference.required ||
+            (preference.channel === 'email' && emailEnabled === false
+                ? false
+                : preference.defaultEnabled);
+        const digestFrequency: NotificationDigestFrequency =
+            preference.channel === 'email' &&
+            preference.digestEligible &&
+            enabled &&
+            dailyDigest === true
+                ? 'daily'
+                : 'off';
+
+        return {
+            userId,
+            accountId: null,
+            scope: 'global',
+            category: preference.category,
+            channel: preference.channel,
+            enabled,
+            required: preference.required,
+            digestFrequency,
+            quietHoursStartMinute: null,
+            quietHoursEndMinute: null,
+        };
+    });
+}
+
+async function countWebPushSubscriptionsWhere(where: SQL | undefined) {
+    const result = await storage()
+        .select({ count: sql<number>`count(*)::int` })
+        .from(webPushSubscriptions)
+        .where(where);
+    return Number(result[0]?.count ?? 0);
+}
+
+export async function backfillNotificationRolloutDefaults({
+    dryRun = false,
+    limit,
+    now = new Date(),
+}: {
+    dryRun?: boolean;
+    limit?: number;
+    now?: Date;
+} = {}): Promise<NotificationRolloutBackfillResult> {
+    const userRowsQuery = storage()
+        .select({
+            userId: users.id,
+            emailEnabled: userNotificationSettings.emailEnabled,
+            dailyDigest: userNotificationSettings.dailyDigest,
+        })
+        .from(users)
+        .leftJoin(
+            userNotificationSettings,
+            eq(users.id, userNotificationSettings.userId),
+        )
+        .orderBy(asc(users.createdAt), asc(users.id));
+    const userRows =
+        typeof limit === 'number'
+            ? await userRowsQuery.limit(Math.max(1, limit))
+            : await userRowsQuery;
+    const limitedUserIds =
+        typeof limit === 'number'
+            ? userRows.map((user) => user.userId)
+            : undefined;
+    const scopeSubscriptionWhere = (where: SQL | undefined) => {
+        if (!limitedUserIds) {
+            return where;
+        }
+        if (limitedUserIds.length === 0) {
+            return sql`false`;
+        }
+        return and(where, inArray(webPushSubscriptions.userId, limitedUserIds));
+    };
+
+    let defaultPreferencesExpected = 0;
+    let defaultPreferencesInserted = 0;
+    let defaultPreferencesAlreadyPresent = 0;
+
+    for (const user of userRows) {
+        const rows = notificationRolloutPreferenceRows(user);
+        defaultPreferencesExpected += rows.length;
+
+        if (dryRun) {
+            const existingPreferences = await storage()
+                .select({
+                    category: notificationUserChannelPreferences.category,
+                    channel: notificationUserChannelPreferences.channel,
+                })
+                .from(notificationUserChannelPreferences)
+                .where(
+                    and(
+                        eq(
+                            notificationUserChannelPreferences.userId,
+                            user.userId,
+                        ),
+                        eq(notificationUserChannelPreferences.scope, 'global'),
+                        inArray(
+                            notificationUserChannelPreferences.category,
+                            notificationRolloutPreferenceDefaults.map(
+                                (preference) => preference.category,
+                            ),
+                        ),
+                    ),
+                );
+            const existingKeys = new Set(
+                existingPreferences.map((preference) =>
+                    notificationPreferenceKey({
+                        category: preference.category,
+                        channel: preference.channel as DeliveryChannel,
+                    }),
+                ),
+            );
+            const missingCount = rows.filter(
+                (row) =>
+                    !existingKeys.has(
+                        notificationPreferenceKey({
+                            category: row.category,
+                            channel: row.channel as DeliveryChannel,
+                        }),
+                    ),
+            ).length;
+            defaultPreferencesInserted += missingCount;
+            defaultPreferencesAlreadyPresent += rows.length - missingCount;
+            continue;
+        }
+
+        const insertedPreferences = await storage()
+            .insert(notificationUserChannelPreferences)
+            .values(rows)
+            .onConflictDoNothing()
+            .returning({ id: notificationUserChannelPreferences.id });
+        defaultPreferencesInserted += insertedPreferences.length;
+        defaultPreferencesAlreadyPresent +=
+            rows.length - insertedPreferences.length;
+    }
+
+    const grantableSubscriptionWhere = and(
+        eq(webPushSubscriptions.enabled, true),
+        eq(webPushSubscriptions.permissionState, 'default'),
+        isNull(webPushSubscriptions.revokedAt),
+        sql`${webPushSubscriptions.userId} is not null`,
+        sql`${webPushSubscriptions.accountId} is not null`,
+        sql`${webPushSubscriptions.endpoint} <> ''`,
+        sql`${webPushSubscriptions.p256dh} <> ''`,
+        sql`${webPushSubscriptions.auth} <> ''`,
+    );
+    const deniedSubscriptionWhere = and(
+        eq(webPushSubscriptions.enabled, true),
+        eq(webPushSubscriptions.permissionState, 'denied'),
+        isNull(webPushSubscriptions.revokedAt),
+    );
+    const labelableSubscriptionWhere = and(
+        isNull(webPushSubscriptions.deviceLabel),
+        isNull(webPushSubscriptions.revokedAt),
+        sql`${webPushSubscriptions.userId} is not null`,
+        sql`${webPushSubscriptions.accountId} is not null`,
+    );
+    const orphanedSubscriptionWhere = or(
+        isNull(webPushSubscriptions.userId),
+        isNull(webPushSubscriptions.accountId),
+    );
+
+    const [
+        grantableSubscriptions,
+        deniedSubscriptions,
+        labelableSubscriptions,
+        orphanedSubscriptions,
+    ] = await Promise.all([
+        countWebPushSubscriptionsWhere(
+            scopeSubscriptionWhere(grantableSubscriptionWhere),
+        ),
+        countWebPushSubscriptionsWhere(
+            scopeSubscriptionWhere(deniedSubscriptionWhere),
+        ),
+        countWebPushSubscriptionsWhere(
+            scopeSubscriptionWhere(labelableSubscriptionWhere),
+        ),
+        countWebPushSubscriptionsWhere(
+            scopeSubscriptionWhere(orphanedSubscriptionWhere),
+        ),
+    ]);
+
+    if (dryRun) {
+        return {
+            dryRun,
+            usersScanned: userRows.length,
+            defaultPreferencesExpected,
+            defaultPreferencesInserted,
+            defaultPreferencesAlreadyPresent,
+            subscriptionsMarkedGranted: grantableSubscriptions,
+            deniedSubscriptionsDisabled: deniedSubscriptions,
+            deviceLabelsBackfilled: labelableSubscriptions,
+            orphanedSubscriptions,
+        };
+    }
+
+    const markedGranted = await storage()
+        .update(webPushSubscriptions)
+        .set({
+            permissionState: 'granted',
+            updatedAt: now,
+        })
+        .where(scopeSubscriptionWhere(grantableSubscriptionWhere))
+        .returning({ id: webPushSubscriptions.id });
+    const disabledDeniedSubscriptions = await storage()
+        .update(webPushSubscriptions)
+        .set({
+            enabled: false,
+            revokedAt: now,
+            revokedReason: 'permission_denied_rollout_backfill',
+            updatedAt: now,
+        })
+        .where(scopeSubscriptionWhere(deniedSubscriptionWhere))
+        .returning({ id: webPushSubscriptions.id });
+    const backfilledDeviceLabels = await storage()
+        .update(webPushSubscriptions)
+        .set({
+            deviceLabel: notificationRolloutDefaultDeviceLabel,
+            updatedAt: now,
+        })
+        .where(scopeSubscriptionWhere(labelableSubscriptionWhere))
+        .returning({ id: webPushSubscriptions.id });
+
+    return {
+        dryRun,
+        usersScanned: userRows.length,
+        defaultPreferencesExpected,
+        defaultPreferencesInserted,
+        defaultPreferencesAlreadyPresent,
+        subscriptionsMarkedGranted: markedGranted.length,
+        deniedSubscriptionsDisabled: disabledDeniedSubscriptions.length,
+        deviceLabelsBackfilled: backfilledDeviceLabels.length,
+        orphanedSubscriptions,
+    };
+}
+
+export async function getNotificationRolloutDiagnostics({
+    accountId,
+    staleAfterDays = 90,
+    userId,
+}: {
+    accountId?: string | null;
+    staleAfterDays?: number;
+    userId: string;
+}): Promise<NotificationRolloutDiagnostics> {
+    const [legacySettings, preferences, devices] = await Promise.all([
+        storage().query.userNotificationSettings.findFirst({
+            where: eq(userNotificationSettings.userId, userId),
+        }),
+        storage().query.notificationUserChannelPreferences.findMany({
+            where: eq(notificationUserChannelPreferences.userId, userId),
+        }),
+        storage().query.webPushSubscriptions.findMany({
+            where: and(
+                eq(webPushSubscriptions.userId, userId),
+                accountId
+                    ? eq(webPushSubscriptions.accountId, accountId)
+                    : undefined,
+            ),
+        }),
+    ]);
+    const expectedPreferences = notificationRolloutPreferenceRows({
+        userId,
+        emailEnabled: legacySettings?.emailEnabled ?? null,
+        dailyDigest: legacySettings?.dailyDigest ?? null,
+    });
+    const existingPreferenceKeys = new Set(
+        preferences
+            .filter((preference) => preference.scope === 'global')
+            .map((preference) =>
+                notificationPreferenceKey({
+                    category: preference.category,
+                    channel: preference.channel as DeliveryChannel,
+                }),
+            ),
+    );
+    const staleCutoff = new Date(
+        Date.now() - staleAfterDays * 24 * 60 * 60 * 1000,
+    );
+    const lastSeenAt = devices.reduce<Date | null>((latest, device) => {
+        if (!latest || device.lastSeenAt > latest) return device.lastSeenAt;
+        return latest;
+    }, null);
+
+    return {
+        userId,
+        accountId: accountId ?? null,
+        preferenceCount: preferences.length,
+        missingDefaultPreferenceCount: expectedPreferences.filter(
+            (preference) =>
+                !existingPreferenceKeys.has(
+                    notificationPreferenceKey({
+                        category: preference.category,
+                        channel: preference.channel as DeliveryChannel,
+                    }),
+                ),
+        ).length,
+        deviceCount: devices.length,
+        deliverableDeviceCount: devices.filter(isDeliverablePushSubscription)
+            .length,
+        deniedDeviceCount: devices.filter(
+            (device) =>
+                device.permissionState === 'denied' && !device.revokedAt,
+        ).length,
+        revokedDeviceCount: devices.filter((device) =>
+            Boolean(device.revokedAt),
+        ).length,
+        staleDeviceCount: devices.filter(
+            (device) => !device.revokedAt && device.lastSeenAt < staleCutoff,
+        ).length,
+        lastSeenAt,
+    };
 }
 
 export type CreateNotificationCampaignInput = Omit<

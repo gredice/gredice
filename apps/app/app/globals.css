@@ -26,6 +26,11 @@
     }
 }
 
+button[role="combobox"][aria-autocomplete="none"].border,
+select:not([aria-hidden="true"]) {
+    background-color: hsl(var(--background));
+}
+
 *::-webkit-scrollbar {
     width: 8px;
     height: 8px;

@@ -10,6 +10,8 @@ import type { GLTF } from 'three-stdlib';
 
 export type GLTFResult = GLTF & {
     nodes: {
+        GardenBox_Body_Planks: THREE.Mesh;
+        GardenBox_Lid_HingeOrigin: THREE.Mesh;
         Block_Ground_1_1: THREE.Mesh;
         Block_Ground_1_2: THREE.Mesh;
         Block_Ground_2_1: THREE.Mesh;
@@ -85,6 +87,7 @@ export type GLTFResult = GLTF & {
         X_Half: THREE.Mesh;
     };
     materials: {
+        'Material.Planks': THREE.MeshStandardMaterial;
         'Material.Dirt': THREE.MeshStandardMaterial;
         'Material.Stone': THREE.MeshStandardMaterial;
         'Material.GrassPart': THREE.MeshStandardMaterial;
@@ -95,7 +98,6 @@ export type GLTFResult = GLTF & {
         'Material.Dirt.001': THREE.MeshStandardMaterial;
         'Material.Stone.003': THREE.MeshStandardMaterial;
         'Material.Sand.001': THREE.MeshStandardMaterial;
-        'Material.Planks': THREE.MeshStandardMaterial;
         'Material.Water': THREE.MeshStandardMaterial;
         'Material.Metal': THREE.MeshStandardMaterial;
         'Material.Stone.001': THREE.MeshStandardMaterial;
@@ -112,6 +114,15 @@ export function Model(props: React.JSX.IntrinsicElements['group']) {
     ) as unknown as GLTFResult;
     return (
         <group {...props} dispose={null}>
+            <mesh
+                geometry={nodes.GardenBox_Body_Planks.geometry}
+                material={materials['Material.Planks']}
+            />
+            <mesh
+                geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
+                material={materials['Material.Planks']}
+                position={[0, 0.6, -0.38]}
+            />
             <group position={[0, 1, 0]}>
                 <mesh
                     geometry={nodes.Block_Ground_1_1.geometry}

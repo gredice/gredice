@@ -6,6 +6,7 @@ import {
     getEntitiesRaw,
     getEntityRaw,
     getEntityRevisions,
+    getEntityTypeByName,
     getInventoryConfigByEntityTypeName,
     getInventoryItemsByConfig,
     updateInventoryItem,
@@ -13,7 +14,7 @@ import {
 import { getEntityCompleteness } from '@gredice/storage/entityCompleteness';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
-import { Calendar, Code } from '@signalco/ui-icons';
+import { Calendar, Code, ExternalLink } from '@signalco/ui-icons';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { revalidatePath } from 'next/cache';
@@ -21,6 +22,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { importEntityData } from '../../../../../app/admin/directories/(actions)/importEntityData';
 import { EntityAttributeProgress } from '../../../../../components/admin/directories/EntityAttributeProgress';
+import { EntityTypeIcon } from '../../../../../components/admin/directories/EntityTypeIcon';
 import {
     AdminDirectoryBreadcrumbs,
     AdminPageHeader,
@@ -86,6 +88,25 @@ function getEntityLabel(
                 attribute.attributeDefinition.name === 'name',
         )?.value
     );
+}
+
+function refEntityTypeName(dataType: string) {
+    return dataType.startsWith('ref:') ? dataType.substring(4) : null;
+}
+
+function booleanAttributeValue(value: string) {
+    if (value === 'true') {
+        return true;
+    }
+    if (value === 'false') {
+        return false;
+    }
+    return null;
+}
+
+function entityIdFromReferenceValue(value: string) {
+    const entityId = Number(value);
+    return Number.isInteger(entityId) && entityId > 0 ? entityId : null;
 }
 
 export default async function EntityDetailsPage(props: {
@@ -185,23 +206,37 @@ export default async function EntityDetailsPage(props: {
     );
     const refEntityTypes = Array.from(
         new Set(
-            refDefinitions.map(
-                (definition) => definition.dataType.split(':')[1],
-            ),
+            refDefinitions
+                .map((definition) => refEntityTypeName(definition.dataType))
+                .filter((name): name is string => Boolean(name)),
         ),
     );
     const refEntitiesByType = await Promise.all(
-        refEntityTypes.map(async (refEntityTypeName) => ({
-            refEntityTypeName,
-            entities: await getEntitiesRaw(refEntityTypeName, 'published'),
-        })),
+        refEntityTypes.map(async (refEntityType) => {
+            const [entities, entityType] = await Promise.all([
+                getEntitiesRaw(refEntityType, 'published'),
+                getEntityTypeByName(refEntityType),
+            ]);
+
+            return {
+                refEntityTypeName: refEntityType,
+                entityType,
+                entities,
+            };
+        }),
+    );
+    const refEntityTypesByName = Object.fromEntries(
+        refEntitiesByType.map((entry) => [
+            entry.refEntityTypeName,
+            entry.entityType,
+        ]),
     );
     const refLabelsByDefinitionId = Object.fromEntries(
         refDefinitions.map((definition) => {
-            const refEntityTypeName = definition.dataType.split(':')[1];
+            const refTypeName = refEntityTypeName(definition.dataType);
             const refEntities =
                 refEntitiesByType.find(
-                    (entry) => entry.refEntityTypeName === refEntityTypeName,
+                    (entry) => entry.refEntityTypeName === refTypeName,
                 )?.entities ?? [];
             return [
                 definition.id,
@@ -251,7 +286,14 @@ export default async function EntityDetailsPage(props: {
             const value = entity.attributes.find(
                 (a) => a.attributeDefinitionId === d.id,
             )?.value;
-            const dataTypeIcon = (
+            const refTypeName = refEntityTypeName(d.dataType);
+            const dataTypeIcon = refTypeName ? (
+                <EntityTypeIcon
+                    key={`attribute-${d.id}-icon`}
+                    icon={refEntityTypesByName[refTypeName]?.icon}
+                    className="size-4"
+                />
+            ) : (
                 <AttributeDataTypeIcon
                     key={`attribute-${d.id}-icon`}
                     dataType={d.dataType}
@@ -304,30 +346,44 @@ export default async function EntityDetailsPage(props: {
                 };
             }
 
-            if (d.dataType.startsWith('ref:')) {
-                const refEntityTypeName = d.dataType.split(':')[1];
-                const refEntityId = Number(value);
-                const refLabel =
+            if (d.dataType === 'boolean') {
+                return {
+                    id: `attribute-${d.id}`,
+                    label: d.label,
+                    value:
+                        booleanAttributeValue(value) ??
+                        formatAttributeValueWithUnit(value, d.unit),
+                    visual: dataTypeIcon,
+                };
+            }
+
+            if (refTypeName) {
+                const refEntityId = entityIdFromReferenceValue(value);
+                const refEntityLabel =
                     refLabelsByDefinitionId[d.id]?.[value] ?? value;
 
                 return {
                     id: `attribute-${d.id}`,
                     label: d.label,
-                    value:
-                        refEntityTypeName && Number.isInteger(refEntityId) ? (
-                            <Link
-                                href={KnownPages.DirectoryEntity(
-                                    refEntityTypeName,
-                                    refEntityId,
-                                )}
-                                title={`Otvori ${refLabel}`}
-                                className="inline-block max-w-full truncate rounded-sm text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            >
-                                {refLabel}
-                            </Link>
-                        ) : (
-                            refLabel
-                        ),
+                    value: refEntityId ? (
+                        <Link
+                            href={KnownPages.DirectoryEntity(
+                                refTypeName,
+                                refEntityId,
+                            )}
+                            className="inline-flex min-w-0 items-center gap-1.5 text-primary hover:underline"
+                        >
+                            <span className="min-w-0 truncate">
+                                {refEntityLabel}
+                            </span>
+                            <ExternalLink
+                                className="size-3.5 shrink-0"
+                                aria-hidden
+                            />
+                        </Link>
+                    ) : (
+                        refEntityLabel
+                    ),
                     visual: dataTypeIcon,
                 };
             }

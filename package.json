@@ -10,6 +10,7 @@
     "vercel:link": "node ./scripts/link-vercel.mjs",
     "lint": "turbo lint",
     "lint:migrate": "turbo lint:migrate",
+    "typecheck": "turbo typecheck",
     "lint:ci-filters": "node ./scripts/check-ci-filters.mjs",
     "db-generate": "turbo db-generate",
     "db-push": "turbo db-push",
