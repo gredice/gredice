@@ -158,3 +158,4 @@ To avoid a `www`-only contract:
 - GRE-365: finalize canonical URL strategy for included and future types.
 - GRE-366: expose API route + generated client types for this contract.
 - GRE-367: build `www` route and header integration with category filters.
+- GRE-370: document cross-app adoption path (`garden`, `app`, `farm`) and public/private boundary.
