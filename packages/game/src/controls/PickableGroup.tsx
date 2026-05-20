@@ -318,6 +318,8 @@ export function PickableGroup({
             return {
                 blockId: placement.blockId,
                 blockName: placement.blockName,
+                blockUnderId: blockUnder?.id ?? null,
+                blockUnderName: blockUnder?.name ?? null,
                 destination,
                 destinationIndex: destinationBlocks.length,
                 hoverHeight,
@@ -466,6 +468,10 @@ export function PickableGroup({
             sourceHoverHeight,
             attachedHoverHeight,
         );
+        const hoveredGardenBoxBlockId =
+            placementPreviews.find(
+                (preview) => preview.blockUnderName === 'GardenBox',
+            )?.blockUnderId ?? null;
         const heightsMismatch =
             attachedPlacement !== null &&
             Math.abs(sourceHoverHeight - attachedHoverHeight) > 0.0001;
@@ -598,6 +604,7 @@ export function PickableGroup({
             setActiveDragPreview({
                 sourceBlockId: block.id,
                 attachedBlockId: attachedPlacement?.candidateBlock.id ?? null,
+                hoveredGardenBoxBlockId,
                 relative: {
                     x: relative.x,
                     z: relative.z,
