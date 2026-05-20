@@ -9,6 +9,7 @@ import {
 } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import Image from 'next/image';
+import type { ComponentType, CSSProperties, SVGProps } from 'react';
 
 export type OperationImageProps = {
     operation: {
@@ -37,25 +38,16 @@ export type OperationImageProps = {
     className?: string;
 };
 
-type OperationCategoryIconProps = {
-    className?: string;
-    style?: React.CSSProperties;
+export type OperationCategoryIconProps = SVGProps<SVGSVGElement> & {
+    categoryName?: string | null;
 };
 
-const categoryIcons: Record<
-    string,
-    React.ComponentType<OperationCategoryIconProps>
-> = {
+const categoryIcons: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
     soilpreparation: function SoilPreparationIcon({
         className,
-        style,
-    }: {
-        className?: string;
-        style?: React.CSSProperties;
-    }) {
-        return (
-            <Tally3 style={style} className={cx('rotate-90 mt-1', className)} />
-        );
+        ...rest
+    }: SVGProps<SVGSVGElement>) {
+        return <Tally3 {...rest} className={cx('rotate-90 mt-1', className)} />;
     },
     sowing: Sprout,
     planting: Sprout,
@@ -71,6 +63,14 @@ function normalizeCategoryName(name: string | null | undefined) {
     return name?.toLowerCase().replace(/[\s_-]/g, '') ?? '';
 }
 
+export function OperationCategoryIcon({
+    categoryName,
+    ...props
+}: OperationCategoryIconProps) {
+    const Icon = categoryIcons[normalizeCategoryName(categoryName)] ?? Hammer;
+    return <Icon {...props} />;
+}
+
 export function OperationImage({
     operation,
     size,
@@ -79,7 +79,6 @@ export function OperationImage({
     const categoryName =
         operation.attributes?.category?.information?.name ??
         operation.attributes?.stage?.information?.name;
-    const Icon = categoryIcons[normalizeCategoryName(categoryName)] ?? Hammer;
 
     if (!operation.image?.cover?.url) {
         return (
@@ -93,11 +92,12 @@ export function OperationImage({
                     className,
                 )}
             >
-                <Icon
+                <OperationCategoryIcon
+                    categoryName={categoryName}
                     style={
                         {
                             '--imageSize': size ? `${size / 2}px` : '24px',
-                        } as React.CSSProperties
+                        } as CSSProperties
                     }
                     className="size-[--imageSize] shrink-0"
                 />

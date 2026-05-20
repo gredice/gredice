@@ -68,6 +68,7 @@ const app = new Hono()
                     summary: row.summary,
                     imageUrl: row.imageUrl,
                     imageAlt: row.imageAlt,
+                    visualKey: row.visualKey,
                     href: `https://www.gredice.com${row.publicUrl}`,
                     rank: row.score,
                     publishedAt: row.publishedAt,

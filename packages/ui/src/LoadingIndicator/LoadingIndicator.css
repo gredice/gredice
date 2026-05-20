@@ -1,0 +1,21 @@
+@keyframes gredice-loading-indicator {
+    0% {
+        transform: translateX(-50%);
+    }
+    50% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(50%);
+    }
+}
+
+.gredice-loading-indicator__bar {
+    animation: gredice-loading-indicator 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gredice-loading-indicator__bar {
+        animation: none;
+    }
+}
