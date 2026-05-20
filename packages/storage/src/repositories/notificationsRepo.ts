@@ -1,12 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import {
     and,
+    asc,
     desc,
     eq,
     inArray,
     isNull,
     notExists,
     or,
+    type SQL,
     sql,
 } from 'drizzle-orm';
 import { storage } from '..';
@@ -347,9 +349,7 @@ function notificationRolloutPreferenceRows({
     });
 }
 
-async function countWebPushSubscriptionsWhere(
-    where: ReturnType<typeof and> | ReturnType<typeof or>,
-) {
+async function countWebPushSubscriptionsWhere(where: SQL | undefined) {
     const result = await storage()
         .select({ count: sql<number>`count(*)::int` })
         .from(webPushSubscriptions)
@@ -376,11 +376,25 @@ export async function backfillNotificationRolloutDefaults({
         .leftJoin(
             userNotificationSettings,
             eq(users.id, userNotificationSettings.userId),
-        );
+        )
+        .orderBy(asc(users.createdAt), asc(users.id));
     const userRows =
         typeof limit === 'number'
             ? await userRowsQuery.limit(Math.max(1, limit))
             : await userRowsQuery;
+    const limitedUserIds =
+        typeof limit === 'number'
+            ? userRows.map((user) => user.userId)
+            : undefined;
+    const scopeSubscriptionWhere = (where: SQL | undefined) => {
+        if (!limitedUserIds) {
+            return where;
+        }
+        if (limitedUserIds.length === 0) {
+            return sql`false`;
+        }
+        return and(where, inArray(webPushSubscriptions.userId, limitedUserIds));
+    };
 
     let defaultPreferencesExpected = 0;
     let defaultPreferencesInserted = 0;
@@ -399,7 +413,10 @@ export async function backfillNotificationRolloutDefaults({
                 .from(notificationUserChannelPreferences)
                 .where(
                     and(
-                        eq(notificationUserChannelPreferences.userId, user.userId),
+                        eq(
+                            notificationUserChannelPreferences.userId,
+                            user.userId,
+                        ),
                         eq(notificationUserChannelPreferences.scope, 'global'),
                         inArray(
                             notificationUserChannelPreferences.category,
@@ -473,10 +490,18 @@ export async function backfillNotificationRolloutDefaults({
         labelableSubscriptions,
         orphanedSubscriptions,
     ] = await Promise.all([
-        countWebPushSubscriptionsWhere(grantableSubscriptionWhere),
-        countWebPushSubscriptionsWhere(deniedSubscriptionWhere),
-        countWebPushSubscriptionsWhere(labelableSubscriptionWhere),
-        countWebPushSubscriptionsWhere(orphanedSubscriptionWhere),
+        countWebPushSubscriptionsWhere(
+            scopeSubscriptionWhere(grantableSubscriptionWhere),
+        ),
+        countWebPushSubscriptionsWhere(
+            scopeSubscriptionWhere(deniedSubscriptionWhere),
+        ),
+        countWebPushSubscriptionsWhere(
+            scopeSubscriptionWhere(labelableSubscriptionWhere),
+        ),
+        countWebPushSubscriptionsWhere(
+            scopeSubscriptionWhere(orphanedSubscriptionWhere),
+        ),
     ]);
 
     if (dryRun) {
@@ -499,7 +524,7 @@ export async function backfillNotificationRolloutDefaults({
             permissionState: 'granted',
             updatedAt: now,
         })
-        .where(grantableSubscriptionWhere)
+        .where(scopeSubscriptionWhere(grantableSubscriptionWhere))
         .returning({ id: webPushSubscriptions.id });
     const disabledDeniedSubscriptions = await storage()
         .update(webPushSubscriptions)
@@ -509,7 +534,7 @@ export async function backfillNotificationRolloutDefaults({
             revokedReason: 'permission_denied_rollout_backfill',
             updatedAt: now,
         })
-        .where(deniedSubscriptionWhere)
+        .where(scopeSubscriptionWhere(deniedSubscriptionWhere))
         .returning({ id: webPushSubscriptions.id });
     const backfilledDeviceLabels = await storage()
         .update(webPushSubscriptions)
@@ -517,7 +542,7 @@ export async function backfillNotificationRolloutDefaults({
             deviceLabel: 'Web preglednik',
             updatedAt: now,
         })
-        .where(labelableSubscriptionWhere)
+        .where(scopeSubscriptionWhere(labelableSubscriptionWhere))
         .returning({ id: webPushSubscriptions.id });
 
     return {
@@ -598,10 +623,12 @@ export async function getNotificationRolloutDiagnostics({
         deliverableDeviceCount: devices.filter(isDeliverablePushSubscription)
             .length,
         deniedDeviceCount: devices.filter(
-            (device) => device.permissionState === 'denied' && !device.revokedAt,
+            (device) =>
+                device.permissionState === 'denied' && !device.revokedAt,
         ).length,
-        revokedDeviceCount: devices.filter((device) => Boolean(device.revokedAt))
-            .length,
+        revokedDeviceCount: devices.filter((device) =>
+            Boolean(device.revokedAt),
+        ).length,
         staleDeviceCount: devices.filter(
             (device) => !device.revokedAt && device.lastSeenAt < staleCutoff,
         ).length,

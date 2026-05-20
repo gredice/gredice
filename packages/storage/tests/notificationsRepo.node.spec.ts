@@ -20,11 +20,12 @@ import {
     notificationDeliveryAttempts,
     notifications,
     notificationUserChannelPreferences,
-    userNotificationSettings,
     previewNotificationCampaignAudience,
     recordNotificationDeliveryEvent,
     routeNotificationDelivery,
     storage,
+    userNotificationSettings,
+    users,
     webPushSubscriptions,
 } from '@gredice/storage';
 import { eq } from 'drizzle-orm';
@@ -952,4 +953,121 @@ test('cleanupNotificationRetention disables denied and default subscriptions', a
     assert.equal(defaultSubscription?.enabled, false);
     assert.equal(defaultSubscription?.revokedReason, 'retention_cleanup');
     assert.ok(defaultSubscription?.revokedAt);
+});
+
+test('backfillNotificationRolloutDefaults limits subscription updates with batch limit', async () => {
+    createTestDb();
+    const existingUsers = await storage().select({ id: users.id }).from(users);
+    const defaultSubscriptionIds: string[] = [];
+    const deniedSubscriptionIds: string[] = [];
+
+    for (const [index, suffix] of ['first', 'second'].entries()) {
+        const userId = await createUserWithPassword(
+            `rollout-limit-${suffix}-${randomUUID()}@example.com`,
+            'password',
+        );
+        await storage()
+            .update(users)
+            .set({ createdAt: new Date(`2099-01-0${index + 1}T00:00:00.000Z`) })
+            .where(eq(users.id, userId));
+        const user = await getUser(userId);
+        assert.ok(user);
+        const accountId = user.accounts[0]?.accountId;
+        assert.ok(accountId);
+
+        const defaultSubscriptionId = randomUUID();
+        const deniedSubscriptionId = randomUUID();
+        defaultSubscriptionIds.push(defaultSubscriptionId);
+        deniedSubscriptionIds.push(deniedSubscriptionId);
+        await storage()
+            .insert(webPushSubscriptions)
+            .values([
+                {
+                    id: defaultSubscriptionId,
+                    accountId,
+                    userId,
+                    endpoint: `https://example.com/${defaultSubscriptionId}`,
+                    p256dh: 'k',
+                    auth: 'a',
+                    enabled: true,
+                    permissionState: 'default',
+                },
+                {
+                    id: deniedSubscriptionId,
+                    accountId,
+                    userId,
+                    endpoint: `https://example.com/${deniedSubscriptionId}`,
+                    p256dh: 'k',
+                    auth: 'a',
+                    enabled: true,
+                    permissionState: 'denied',
+                    deviceLabel: 'Known device',
+                },
+            ]);
+    }
+
+    const result = await backfillNotificationRolloutDefaults({
+        limit: existingUsers.length + 1,
+        now: new Date('2026-01-01T00:00:00.000Z'),
+    });
+
+    assert.equal(result.usersScanned, existingUsers.length + 1);
+    assert.ok(result.subscriptionsMarkedGranted >= 1);
+    assert.ok(result.deniedSubscriptionsDisabled >= 1);
+    assert.ok(result.deviceLabelsBackfilled >= 1);
+
+    const subscriptions = await storage()
+        .select({
+            id: webPushSubscriptions.id,
+            deviceLabel: webPushSubscriptions.deviceLabel,
+            enabled: webPushSubscriptions.enabled,
+            permissionState: webPushSubscriptions.permissionState,
+            revokedAt: webPushSubscriptions.revokedAt,
+            revokedReason: webPushSubscriptions.revokedReason,
+        })
+        .from(webPushSubscriptions);
+    const defaultSubscriptions = subscriptions.filter((subscription) =>
+        defaultSubscriptionIds.includes(subscription.id),
+    );
+    const deniedSubscriptions = subscriptions.filter((subscription) =>
+        deniedSubscriptionIds.includes(subscription.id),
+    );
+
+    assert.equal(
+        defaultSubscriptions.filter(
+            (subscription) => subscription.permissionState === 'granted',
+        ).length,
+        1,
+    );
+    assert.equal(
+        defaultSubscriptions.filter(
+            (subscription) => subscription.permissionState === 'default',
+        ).length,
+        1,
+    );
+    assert.equal(
+        defaultSubscriptions.filter(
+            (subscription) => subscription.deviceLabel === 'Web preglednik',
+        ).length,
+        1,
+    );
+    assert.equal(
+        deniedSubscriptions.filter(
+            (subscription) =>
+                !subscription.enabled &&
+                subscription.revokedReason ===
+                    'permission_denied_rollout_backfill' &&
+                Boolean(subscription.revokedAt),
+        ).length,
+        1,
+    );
+    assert.equal(
+        deniedSubscriptions.filter(
+            (subscription) =>
+                subscription.enabled &&
+                subscription.permissionState === 'denied' &&
+                !subscription.revokedAt,
+        ).length,
+        1,
+    );
 });

@@ -48,9 +48,19 @@ const notificationDevicesKey = ['notifications', 'devices'];
 const notificationPushStatusKey = ['notifications', 'push-status'];
 const defaultQuietHoursStartMinute = 22 * 60;
 const defaultQuietHoursEndMinute = 7 * 60;
-const premiumNotificationControlsEnabled =
-    process.env.NEXT_PUBLIC_GREDICE_NOTIFICATIONS_PREMIUM_CONTROLS_ENABLED !==
-    '0';
+
+function readBooleanFlag(value: string | undefined, defaultValue: boolean) {
+    const normalizedValue = value?.trim().toLowerCase();
+    if (!normalizedValue) {
+        return defaultValue;
+    }
+    return ['1', 'true', 'yes', 'on', 'enabled'].includes(normalizedValue);
+}
+
+const premiumNotificationControlsEnabled = readBooleanFlag(
+    process.env.NEXT_PUBLIC_GREDICE_NOTIFICATIONS_PREMIUM_CONTROLS_ENABLED,
+    true,
+);
 
 const requiredNotificationGroups: Array<{
     category: string;
@@ -661,17 +671,11 @@ export function NotificationsTab() {
                                             </Button>
                                         </Row>
                                         {preferencesQuery.isPending ? (
-                                            <Typography
-                                                level="body2"
-                                                secondary
-                                            >
+                                            <Typography level="body2" secondary>
                                                 Postavke se učitavaju.
                                             </Typography>
                                         ) : preferencesQuery.isError ? (
-                                            <Typography
-                                                level="body2"
-                                                secondary
-                                            >
+                                            <Typography level="body2" secondary>
                                                 Postavke obavijesti nisu
                                                 učitane.
                                             </Typography>
@@ -738,10 +742,7 @@ export function NotificationsTab() {
                                             })
                                         )}
                                         {savePreferencesMutation.isError && (
-                                            <Typography
-                                                level="body3"
-                                                secondary
-                                            >
+                                            <Typography level="body3" secondary>
                                                 Postavke obavijesti nisu
                                                 spremljene.
                                             </Typography>
@@ -893,9 +894,7 @@ export function NotificationsTab() {
                                                             );
                                                         }
                                                     }}
-                                                    items={
-                                                        digestFrequencyItems
-                                                    }
+                                                    items={digestFrequencyItems}
                                                 />
                                             </div>
                                         </Stack>
