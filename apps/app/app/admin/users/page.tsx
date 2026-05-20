@@ -1,5 +1,6 @@
 import { getUsers } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Fence, Security, User } from '@signalco/ui-icons';
 import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Table } from '@signalco/ui-primitives/Table';
@@ -8,11 +9,34 @@ import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDat
 import { auth } from '../../../lib/auth/auth';
 import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
 import { KnownPages } from '../../../src/KnownPages';
-import { ButtonImpersonateUser } from './ButtonImpersonateUser';
-import { SelectUserRole } from './SelectUserRole';
 import { UsersFilters } from './UsersFilters';
 
 export const dynamic = 'force-dynamic';
+
+function getUserRoleMeta(role: string) {
+    switch (role) {
+        case 'admin':
+            return {
+                label: 'Administrator',
+                icon: <Security className="size-5" aria-hidden />,
+            };
+        case 'farmer':
+            return {
+                label: 'Poljoprivrednik',
+                icon: <Fence className="size-5" aria-hidden />,
+            };
+        case 'user':
+            return {
+                label: 'Korisnik',
+                icon: <User className="size-5" aria-hidden />,
+            };
+        default:
+            return {
+                label: role,
+                icon: <User className="size-5" aria-hidden />,
+            };
+    }
+}
 
 export default async function UsersPage({
     searchParams,
@@ -58,43 +82,51 @@ export default async function UsersPage({
                         <Table.Header>
                             <Table.Row>
                                 <Table.Head>Korisnicko ime</Table.Head>
-                                <Table.Head>Uloga</Table.Head>
                                 <Table.Head>Datum kreiranja</Table.Head>
-                                <Table.Head></Table.Head>
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
                             {filteredUsers.length === 0 && (
                                 <Table.Row>
-                                    <Table.Cell colSpan={3}>
+                                    <Table.Cell colSpan={2}>
                                         <NoDataPlaceholder>
                                             Nema korisnika
                                         </NoDataPlaceholder>
                                     </Table.Cell>
                                 </Table.Row>
                             )}
-                            {filteredUsers.map((user) => (
-                                <Table.Row key={user.id}>
-                                    <Table.Cell>
-                                        <Link href={KnownPages.User(user.id)}>
-                                            {user.userName}
-                                        </Link>
-                                    </Table.Cell>
-                                    <Table.Cell title={user.role}>
-                                        <SelectUserRole user={user} />
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <LocalDateTime time={false}>
-                                            {user.createdAt}
-                                        </LocalDateTime>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <ButtonImpersonateUser
-                                            userId={user.id}
-                                        />
-                                    </Table.Cell>
-                                </Table.Row>
-                            ))}
+                            {filteredUsers.map((user) => {
+                                const role = getUserRoleMeta(user.role);
+
+                                return (
+                                    <Table.Row key={user.id}>
+                                        <Table.Cell>
+                                            <div className="flex items-center gap-2">
+                                                <span
+                                                    title={role.label}
+                                                    role="img"
+                                                    aria-label={role.label}
+                                                    className="text-muted-foreground"
+                                                >
+                                                    {role.icon}
+                                                </span>
+                                                <Link
+                                                    href={KnownPages.User(
+                                                        user.id,
+                                                    )}
+                                                >
+                                                    {user.userName}
+                                                </Link>
+                                            </div>
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            <LocalDateTime time={false}>
+                                                {user.createdAt}
+                                            </LocalDateTime>
+                                        </Table.Cell>
+                                    </Table.Row>
+                                );
+                            })}
                         </Table.Body>
                     </Table>
                 </CardOverflow>
