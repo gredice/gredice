@@ -33,7 +33,7 @@ import {
     webPushSubscriptions,
 } from '../schema';
 
-type DeliveryChannel = 'email' | 'push';
+type DeliveryChannel = 'email' | 'in_app' | 'push';
 type DeliveryOutcome = 'immediate' | 'digest' | 'suppressed' | 'required';
 type DeliveryAttemptStatus = 'accepted' | 'queued' | 'dropped';
 type NotificationCampaignQueueStatus = 'queued' | 'scheduled';
@@ -80,6 +80,42 @@ export type NotificationRetentionCleanupResult = {
     deliveryAttemptsDeleted: number;
     campaignsDeleted: number;
 };
+
+export type CreateNotificationOptions = {
+    routeDelivery?: boolean;
+};
+
+type PushSubscriptionDeliveryFields = Pick<
+    typeof webPushSubscriptions.$inferSelect,
+    'enabled' | 'permissionState' | 'revokedAt'
+>;
+
+export function isDeliverablePushSubscription(
+    subscription: PushSubscriptionDeliveryFields,
+) {
+    return (
+        subscription.enabled &&
+        subscription.permissionState === 'granted' &&
+        !subscription.revokedAt
+    );
+}
+
+export function deliverablePushSubscriptionWhere(scope?: {
+    accountId?: string | null;
+    userId?: string | null;
+}) {
+    return and(
+        eq(webPushSubscriptions.enabled, true),
+        eq(webPushSubscriptions.permissionState, 'granted'),
+        isNull(webPushSubscriptions.revokedAt),
+        scope?.accountId
+            ? eq(webPushSubscriptions.accountId, scope.accountId)
+            : undefined,
+        scope?.userId
+            ? eq(webPushSubscriptions.userId, scope.userId)
+            : undefined,
+    );
+}
 
 export type CreateNotificationCampaignInput = Omit<
     InsertNotificationCampaign,
@@ -592,7 +628,19 @@ export async function getNotification(
     return result;
 }
 
-export async function createNotification(notification: InsertNotification) {
+function shouldQueuePushDelivery(decisions: NotificationDeliveryDecision[]) {
+    return decisions.some(
+        (decision) =>
+            decision.channel === 'push' &&
+            (decision.outcome === 'immediate' ||
+                decision.outcome === 'required'),
+    );
+}
+
+export async function createNotification(
+    notification: InsertNotification,
+    options: CreateNotificationOptions = {},
+) {
     const result = await storage()
         .insert(notifications)
         .values({
@@ -600,7 +648,18 @@ export async function createNotification(notification: InsertNotification) {
             ...notification,
         })
         .returning({ id: notifications.id });
-    return result[0].id;
+    const notificationId = result[0].id;
+
+    if (options.routeDelivery !== false) {
+        const decisions = await routeNotificationDelivery(notificationId);
+        if (shouldQueuePushDelivery(decisions)) {
+            await enqueuePushDeliveryAttemptsForNotification({
+                notificationId,
+            });
+        }
+    }
+
+    return notificationId;
 }
 
 export async function enqueuePushDeliveryAttemptsForNotification({
@@ -614,11 +673,10 @@ export async function enqueuePushDeliveryAttemptsForNotification({
     if (!notification?.userId) return { queued: 0, skipped: 0 };
 
     const subscriptions = await storage().query.webPushSubscriptions.findMany({
-        where: and(
-            eq(webPushSubscriptions.userId, notification.userId),
-            eq(webPushSubscriptions.enabled, true),
-            isNull(webPushSubscriptions.revokedAt),
-        ),
+        where: deliverablePushSubscriptionWhere({
+            accountId: notification.accountId,
+            userId: notification.userId,
+        }),
         limit: Math.max(1, batchSize),
     });
 
@@ -677,7 +735,7 @@ export async function routeNotificationDelivery(notificationId: string) {
     const notification = await getNotification(notificationId);
     if (!notification) return [];
     const now = new Date();
-    const targetChannels: DeliveryChannel[] = ['email', 'push'];
+    const targetChannels: DeliveryChannel[] = ['in_app', 'email', 'push'];
     const preferences = notification.userId
         ? await storage().query.notificationUserChannelPreferences.findMany({
               where: eq(
@@ -691,10 +749,10 @@ export async function routeNotificationDelivery(notificationId: string) {
               .select({ id: webPushSubscriptions.id })
               .from(webPushSubscriptions)
               .where(
-                  and(
-                      eq(webPushSubscriptions.userId, notification.userId),
-                      eq(webPushSubscriptions.enabled, true),
-                  ),
+                  deliverablePushSubscriptionWhere({
+                      accountId: notification.accountId,
+                      userId: notification.userId,
+                  }),
               )
               .limit(1)
         : [];
@@ -725,19 +783,42 @@ export async function routeNotificationDelivery(notificationId: string) {
     );
 
     if (notification.userId || notification.accountId) {
-        await storage()
-            .insert(notificationDeliveryAttempts)
-            .values(
-                decisions.map((decision) => ({
-                    notificationId,
-                    userId: notification.userId ?? null,
-                    accountId: notification.accountId,
-                    channel: decision.channel,
-                    status: deliveryAttemptStatusForOutcome(decision.outcome),
-                    provider: 'router',
-                    providerResponseCode: decision.reason,
-                })),
+        const existingRouterAttempts = await storage()
+            .select({ channel: notificationDeliveryAttempts.channel })
+            .from(notificationDeliveryAttempts)
+            .where(
+                and(
+                    eq(
+                        notificationDeliveryAttempts.notificationId,
+                        notificationId,
+                    ),
+                    eq(notificationDeliveryAttempts.provider, 'router'),
+                ),
             );
+        const routedChannels = new Set(
+            existingRouterAttempts.map((attempt) => attempt.channel),
+        );
+        const unroutedDecisions = decisions.filter(
+            (decision) => !routedChannels.has(decision.channel),
+        );
+
+        if (unroutedDecisions.length > 0) {
+            await storage()
+                .insert(notificationDeliveryAttempts)
+                .values(
+                    unroutedDecisions.map((decision) => ({
+                        notificationId,
+                        userId: notification.userId ?? null,
+                        accountId: notification.accountId,
+                        channel: decision.channel,
+                        status: deliveryAttemptStatusForOutcome(
+                            decision.outcome,
+                        ),
+                        provider: 'router',
+                        providerResponseCode: decision.reason,
+                    })),
+                );
+        }
     }
 
     return decisions;

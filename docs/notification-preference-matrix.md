@@ -68,9 +68,23 @@ Premium preferences should support:
 2. **Domain-level overrides** (for example, all `garden` push off).
 3. **Event-level overrides** for high-volume events (task reminders, delivery updates, campaigns).
 4. **Quiet hours** window and timezone; applies only when `quietHoursEligible=true`.
-5. **Digest cadence** (`daily` / `weekly` / `monthly`) for digest-eligible domains.
+5. **Digest cadence** (`hourly` / `daily` / `weekly`) for digest-eligible domains.
 6. **Frequency caps** for marketing and campaign traffic (for example max sends per week).
 7. **Required-message transparency**: UI labels events that cannot be disabled.
+
+Garden settings currently expose domain-level controls for the canonical
+preference categories that are safe to adjust from the customer UI:
+
+- `garden`
+- `reminders`
+- `admin_campaigns`
+- `promotional`
+
+`account_security` and the required portions of `billing_order_delivery` are
+shown as always-on explanatory rows instead of toggles. Event-level controls for
+mixed domains, such as delivery-status updates versus required billing/order
+messages, should be added only after the storage/API contract supports
+event-level overrides.
 
 ## 5) Separation of required/security vs promotional
 

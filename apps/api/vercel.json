@@ -10,6 +10,10 @@
             "schedule": "0 * * * *"
         },
         {
+            "path": "/api/internal/cron/web-push",
+            "schedule": "*/5 * * * *"
+        },
+        {
             "path": "/api/internal/cron/auto-close-slots",
             "schedule": "0 * * * *"
         },
