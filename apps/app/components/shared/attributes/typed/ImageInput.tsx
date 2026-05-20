@@ -1,10 +1,11 @@
 'use client';
 
 import { ImageEditor } from '@gredice/ui/ImageEditor';
-import { Button } from '@signalco/ui-primitives/Button';
+import { Upload } from '@signalco/ui-icons';
+import { cx } from '@signalco/ui-primitives/cx';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import Image from 'next/image';
-import { useRef, useState } from 'react';
+import { type ChangeEvent, type DragEvent, useRef, useState } from 'react';
 import { uploadAttributeImage } from '../../../../app/(actions)/entityActions';
 import type { AttributeInputProps } from '../AttributeInputProps';
 
@@ -15,6 +16,7 @@ export function ImageInput({
 }: AttributeInputProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [editorFile, setEditorFile] = useState<File | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
     let imageUrl: string | null = null;
     let urlText: string | null = null;
 
@@ -35,10 +37,34 @@ export function ImageInput({
         fileInputRef.current?.click();
     };
 
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    const handleFile = (file: File | undefined) => {
+        if (!file?.type.startsWith('image/')) {
+            return;
+        }
+
         setEditorFile(file);
+    };
+
+    const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+        handleFile(event.target.files?.[0]);
+        event.target.value = '';
+    };
+
+    const handleDragOver = (event: DragEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (event: DragEvent<HTMLButtonElement>) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            setIsDragging(false);
+        }
+    };
+
+    const handleDrop = (event: DragEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        setIsDragging(false);
+        handleFile(event.dataTransfer.files?.[0]);
     };
 
     const handleSave = async (file: File) => {
@@ -51,21 +77,47 @@ export function ImageInput({
 
     return (
         <Stack spacing={2}>
-            {imageUrl ? (
-                <Image
-                    src={imageUrl}
-                    alt={attributeDefinition?.label || 'attribute image'}
-                    width={200}
-                    height={200}
-                    className="object-contain"
-                />
-            ) : (
-                urlText && (
-                    <a href={urlText} className="text-blue-600 underline">
-                        {urlText}
-                    </a>
-                )
-            )}
+            <button
+                type="button"
+                aria-label={imageUrl ? 'Zamijeni sliku' : 'Dodaj sliku'}
+                onClick={triggerFileInput}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={cx(
+                    'group flex min-h-48 w-full items-center justify-center overflow-hidden rounded-md border border-dashed border-input bg-background text-left transition-colors',
+                    'hover:border-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                    imageUrl && 'border-solid',
+                    isDragging && 'border-primary bg-primary/10',
+                )}
+            >
+                {imageUrl ? (
+                    <Image
+                        src={imageUrl}
+                        alt={attributeDefinition?.label || 'attribute image'}
+                        width={640}
+                        height={360}
+                        className="max-h-80 w-full rounded-md object-contain p-2 transition-transform group-hover:scale-[1.01]"
+                    />
+                ) : (
+                    <span className="flex flex-col items-center gap-2 px-6 py-10 text-center text-muted-foreground">
+                        <span className="flex size-10 items-center justify-center rounded-full border border-input bg-muted/40">
+                            <Upload className="size-5" />
+                        </span>
+                        <span className="text-sm font-medium text-foreground">
+                            Povucite sliku ovdje
+                        </span>
+                        <span className="text-xs">
+                            ili kliknite za odabir datoteke
+                        </span>
+                        {urlText && (
+                            <span className="max-w-full truncate text-xs text-muted-foreground">
+                                {urlText}
+                            </span>
+                        )}
+                    </span>
+                )}
+            </button>
             <input
                 type="file"
                 accept="image/*"
@@ -73,9 +125,6 @@ export function ImageInput({
                 className="hidden"
                 onChange={handleFileChange}
             />
-            <Button onClick={triggerFileInput}>
-                {imageUrl ? 'Zamijeni sliku' : 'Dodaj sliku'}
-            </Button>
             {editorFile && (
                 <ImageEditor
                     file={editorFile}

@@ -6,18 +6,25 @@ import {
     CardOverflow,
     CardTitle,
 } from '@signalco/ui-primitives/Card';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
+import {
+    EntityDetailsPanelCard,
+    EntityDetailsPropertiesLayout,
+    EntityDetailsPropertiesPanel,
+    EntityDetailsPropertiesProvider,
+    EntityDetailsPropertiesToggle,
+    EntityDetailsPropertyList,
+    type EntityDetailsPropertyListItem,
+} from '../../../../components/admin/details';
 import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { NotificationsTableCard } from '../../../../components/notifications/NotificationsTableCard';
 import { RaisedBedEventsTable } from '../../../../components/raised-beds/RaisedBedEventsTable';
 import { RaisedBedFieldsTable } from '../../../../components/raised-beds/RaisedBedFieldsTable';
-import { Field } from '../../../../components/shared/fields/Field';
-import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { OperationsTableCard } from './OperationsTableCard';
@@ -40,104 +47,122 @@ export default async function RaisedBedPage({
     }
     const raisedBedTitle =
         raisedBed.name || `Gredica ${raisedBed.physicalId ?? raisedBed.id}`;
+    const propertyItems: EntityDetailsPropertyListItem[] = [
+        { id: 'id', label: 'ID', value: raisedBed.id, mono: true },
+        { id: 'name', label: 'Naziv', value: raisedBed.name },
+        {
+            id: 'created-at',
+            label: 'Datum kreiranja',
+            value: raisedBed.createdAt,
+        },
+    ];
+    const propertiesPanel = (
+        <EntityDetailsPropertiesPanel>
+            <EntityDetailsPanelCard title="Detalji">
+                <EntityDetailsPropertyList items={propertyItems} />
+            </EntityDetailsPanelCard>
+            <EntityDetailsPanelCard title="Uređivanje">
+                <Stack spacing={2} className="px-4 pb-4">
+                    <RaisedBedPhysicalIdInput
+                        raisedBedId={raisedBed.id}
+                        physicalId={raisedBed.physicalId}
+                    />
+                    <RaisedBedStatusSelect
+                        raisedBedId={raisedBed.id}
+                        status={raisedBed.status}
+                    />
+                </Stack>
+            </EntityDetailsPanelCard>
+        </EntityDetailsPropertiesPanel>
+    );
 
     return (
-        <Stack spacing={4}>
-            <AdminPageTitle title={raisedBedTitle} />
-            <AdminPageHeader
-                breadcrumbs={
-                    <Breadcrumbs
-                        items={[
-                            {
-                                label: <AdminBreadcrumbLevelSelector />,
-                                href: KnownPages.RaisedBeds,
-                            },
-                            { label: 'Računi', href: KnownPages.Accounts },
-                            {
-                                label: raisedBed.accountId ?? 'Nepoznato',
-                                href: raisedBed.accountId
-                                    ? KnownPages.Account(raisedBed.accountId)
-                                    : undefined,
-                            },
-                            { label: 'Vrtovi' },
-                            {
-                                label: raisedBed.gardenId ?? 'Nepoznato',
-                                href: raisedBed.gardenId
-                                    ? KnownPages.Garden(raisedBed.gardenId)
-                                    : undefined,
-                            },
-                            { label: 'Gredice' },
-                            { label: raisedBed?.id },
-                        ]}
-                    />
-                }
-                actions={
-                    <RaisedBedActionsMenu targetRaisedBedId={raisedBed.id} />
-                }
-                heading="Gredica"
-            />
-            <Stack spacing={2}>
-                <Stack spacing={2}>
-                    <Typography level="h1" semiBold>
-                        Gredica
-                    </Typography>
-                </Stack>
-                <Stack spacing={2}>
-                    <FieldSet>
-                        <Field name="ID" value={raisedBed?.id} mono />
-                        <Field name="Naziv" value={raisedBed?.name} />
-                        <RaisedBedPhysicalIdInput
-                            raisedBedId={raisedBed.id}
-                            physicalId={raisedBed.physicalId}
+        <EntityDetailsPropertiesProvider>
+            <Stack spacing={4}>
+                <AdminPageTitle title={raisedBedTitle} />
+                <AdminPageHeader
+                    breadcrumbs={
+                        <Breadcrumbs
+                            items={[
+                                {
+                                    label: <AdminBreadcrumbLevelSelector />,
+                                    href: KnownPages.RaisedBeds,
+                                },
+                                { label: 'Računi', href: KnownPages.Accounts },
+                                {
+                                    label: raisedBed.accountId ?? 'Nepoznato',
+                                    href: raisedBed.accountId
+                                        ? KnownPages.Account(
+                                              raisedBed.accountId,
+                                          )
+                                        : undefined,
+                                },
+                                { label: 'Vrtovi' },
+                                {
+                                    label: raisedBed.gardenId ?? 'Nepoznato',
+                                    href: raisedBed.gardenId
+                                        ? KnownPages.Garden(raisedBed.gardenId)
+                                        : undefined,
+                                },
+                                { label: 'Gredice' },
+                                { label: raisedBed?.id },
+                            ]}
                         />
-                        <RaisedBedStatusSelect
-                            raisedBedId={raisedBed.id}
-                            status={raisedBed.status}
-                        />
-                        <Field
-                            name="Datum kreiranja"
-                            value={raisedBed?.createdAt}
-                        />
-                    </FieldSet>
-                </Stack>
+                    }
+                    actions={
+                        <Row className="items-center" spacing={1}>
+                            <RaisedBedActionsMenu
+                                targetRaisedBedId={raisedBed.id}
+                            />
+                            <EntityDetailsPropertiesToggle />
+                        </Row>
+                    }
+                    heading="Gredica"
+                />
+                <EntityDetailsPropertiesLayout properties={propertiesPanel}>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <Card className="h-fit">
+                            <CardHeader>
+                                <CardTitle>Polja</CardTitle>
+                            </CardHeader>
+                            <CardOverflow className="mt-0">
+                                <Suspense>
+                                    <RaisedBedFieldsTable
+                                        raisedBedId={raisedBed.id}
+                                    />
+                                </Suspense>
+                            </CardOverflow>
+                        </Card>
+                        {raisedBed.accountId && raisedBed.gardenId && (
+                            <>
+                                <OperationsTableCard
+                                    accountId={raisedBed.accountId}
+                                    gardenId={raisedBed.gardenId}
+                                    raisedBedId={raisedBed.id}
+                                />
+                                <NotificationsTableCard
+                                    accountId={raisedBed.accountId}
+                                    gardenId={raisedBed.gardenId}
+                                    raisedBedId={raisedBed.id}
+                                    scroll
+                                />
+                            </>
+                        )}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Događaji</CardTitle>
+                            </CardHeader>
+                            <CardOverflow>
+                                <Suspense>
+                                    <RaisedBedEventsTable
+                                        raisedBedId={raisedBed.id}
+                                    />
+                                </Suspense>
+                            </CardOverflow>
+                        </Card>
+                    </div>
+                </EntityDetailsPropertiesLayout>
             </Stack>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <Card className="h-fit">
-                    <CardHeader>
-                        <CardTitle>Polja</CardTitle>
-                    </CardHeader>
-                    <CardOverflow className="mt-0">
-                        <Suspense>
-                            <RaisedBedFieldsTable raisedBedId={raisedBed.id} />
-                        </Suspense>
-                    </CardOverflow>
-                </Card>
-                {raisedBed.accountId && raisedBed.gardenId && (
-                    <>
-                        <OperationsTableCard
-                            accountId={raisedBed.accountId}
-                            gardenId={raisedBed.gardenId}
-                            raisedBedId={raisedBed.id}
-                        />
-                        <NotificationsTableCard
-                            accountId={raisedBed.accountId}
-                            gardenId={raisedBed.gardenId}
-                            raisedBedId={raisedBed.id}
-                            scroll
-                        />
-                    </>
-                )}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Događaji</CardTitle>
-                    </CardHeader>
-                    <CardOverflow>
-                        <Suspense>
-                            <RaisedBedEventsTable raisedBedId={raisedBed.id} />
-                        </Suspense>
-                    </CardOverflow>
-                </Card>
-            </div>
-        </Stack>
+        </EntityDetailsPropertiesProvider>
     );
 }

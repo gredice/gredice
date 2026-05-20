@@ -6,4 +6,5 @@ export type AttributeInputProps = {
     value: string | null | undefined;
     onChange: (value: string | null) => void;
     schema?: JsonSchema | string | null;
+    presentation?: 'default' | 'list-item';
 };

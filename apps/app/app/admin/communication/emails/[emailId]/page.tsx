@@ -13,6 +13,13 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
+import {
+    EntityDetailsPanelCard,
+    EntityDetailsPropertiesLayout,
+    EntityDetailsPropertiesPanel,
+    EntityDetailsPropertiesProvider,
+    EntityDetailsPropertiesToggle,
+} from '../../../../../components/admin/details';
 import { AdminPageHeader } from '../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { AdminPageTitle } from '../../../../../components/admin/navigation/AdminPageTitle';
@@ -93,292 +100,238 @@ export default async function EmailDetailPage({
     if (!email) {
         notFound();
     }
+    const propertiesPanel = (
+        <EntityDetailsPropertiesPanel>
+            <EntityDetailsPanelCard title="Detalji slanja">
+                <Stack spacing={2} className="px-4 pb-4">
+                    <DetailItem label="Šalje">
+                        <Typography>{email.fromAddress}</Typography>
+                    </DetailItem>
+                    <DetailItem label="Tip">
+                        {email.messageType ? (
+                            <Chip className="w-fit">{email.messageType}</Chip>
+                        ) : (
+                            <NoDataPlaceholder>Nije određeno</NoDataPlaceholder>
+                        )}
+                    </DetailItem>
+                    <DetailItem label="Predložak">
+                        {email.templateName ? (
+                            <Typography>{email.templateName}</Typography>
+                        ) : (
+                            <NoDataPlaceholder>Nije određeno</NoDataPlaceholder>
+                        )}
+                    </DetailItem>
+                    <DetailItem label="Provider ID">
+                        {email.providerMessageId ? (
+                            <code>{email.providerMessageId}</code>
+                        ) : (
+                            <NoDataPlaceholder>Nije dostupno</NoDataPlaceholder>
+                        )}
+                    </DetailItem>
+                    <DetailItem label="Status pružatelja">
+                        {email.providerStatus ? (
+                            <Typography>{email.providerStatus}</Typography>
+                        ) : (
+                            <NoDataPlaceholder>Nije dostupno</NoDataPlaceholder>
+                        )}
+                    </DetailItem>
+                    <DetailItem label="Kreirano">
+                        <LocalDateTime>{email.createdAt}</LocalDateTime>
+                    </DetailItem>
+                    <DetailItem label="Zadnji pokušaj">
+                        {email.lastAttemptAt ? (
+                            <LocalDateTime>{email.lastAttemptAt}</LocalDateTime>
+                        ) : (
+                            <NoDataPlaceholder>Nije dostupno</NoDataPlaceholder>
+                        )}
+                    </DetailItem>
+                    <DetailItem label="Poslano">
+                        {email.sentAt ? (
+                            <LocalDateTime>{email.sentAt}</LocalDateTime>
+                        ) : (
+                            <NoDataPlaceholder>Nije poslano</NoDataPlaceholder>
+                        )}
+                    </DetailItem>
+                    <DetailItem label="Dovršeno">
+                        {email.completedAt ? (
+                            <LocalDateTime>{email.completedAt}</LocalDateTime>
+                        ) : (
+                            <NoDataPlaceholder>Nije dovršeno</NoDataPlaceholder>
+                        )}
+                    </DetailItem>
+                    <DetailItem label="Odbijeno">
+                        {email.bouncedAt ? (
+                            <LocalDateTime>{email.bouncedAt}</LocalDateTime>
+                        ) : (
+                            <NoDataPlaceholder>Nije odbijeno</NoDataPlaceholder>
+                        )}
+                    </DetailItem>
+                    {email.errorMessage && (
+                        <DetailItem label="Greška">
+                            <Typography className="text-destructive">
+                                {email.errorMessage}
+                            </Typography>
+                            {email.errorCode && (
+                                <Typography
+                                    level="body2"
+                                    className="text-muted-foreground"
+                                >
+                                    Kod: {email.errorCode}
+                                </Typography>
+                            )}
+                        </DetailItem>
+                    )}
+                </Stack>
+            </EntityDetailsPanelCard>
+            <EntityDetailsPanelCard title="Primatelji">
+                <Stack spacing={2} className="px-4 pb-4">
+                    <DetailItem label="Za">
+                        {formatRecipients(email.recipients.to)}
+                    </DetailItem>
+                    <DetailItem label="CC">
+                        {formatRecipients(email.recipients.cc)}
+                    </DetailItem>
+                    <DetailItem label="BCC">
+                        {formatRecipients(email.recipients.bcc)}
+                    </DetailItem>
+                    <DetailItem label="Reply-To">
+                        {formatRecipients(email.recipients.replyTo)}
+                    </DetailItem>
+                </Stack>
+            </EntityDetailsPanelCard>
+            <EntityDetailsPanelCard title="Prilozi">
+                <div className="px-4 pb-4">
+                    {email.attachments.length === 0 ? (
+                        <NoDataPlaceholder>Nema priloga</NoDataPlaceholder>
+                    ) : (
+                        <Stack spacing={1}>
+                            {email.attachments.map((attachment) => (
+                                <Stack
+                                    key={`${attachment.name}-${attachment.contentType ?? ''}`}
+                                    spacing={0.5}
+                                >
+                                    <Typography>{attachment.name}</Typography>
+                                    <Typography
+                                        level="body2"
+                                        className="text-muted-foreground"
+                                    >
+                                        {attachment.contentType ?? 'Nepoznato'}
+                                        {attachment.size
+                                            ? ` · ${formatAttachmentSize(attachment.size)}`
+                                            : ''}
+                                    </Typography>
+                                </Stack>
+                            ))}
+                        </Stack>
+                    )}
+                </div>
+            </EntityDetailsPanelCard>
+            <EntityDetailsPanelCard title="Dodatni podaci">
+                <div className="px-4 pb-4">
+                    {email.metadata &&
+                    Object.keys(email.metadata).length > 0 ? (
+                        <pre className="text-sm whitespace-pre-wrap break-words rounded-md bg-muted p-4">
+                            {JSON.stringify(email.metadata, null, 2)}
+                        </pre>
+                    ) : (
+                        <NoDataPlaceholder>
+                            Nema dodatnih podataka
+                        </NoDataPlaceholder>
+                    )}
+                </div>
+            </EntityDetailsPanelCard>
+        </EntityDetailsPropertiesPanel>
+    );
 
     return (
-        <Stack spacing={3}>
-            <AdminPageTitle title={email.subject || `Email #${email.id}`} />
-            <AdminPageHeader
-                breadcrumbs={
-                    <Breadcrumbs
-                        items={[
-                            {
-                                label: <AdminBreadcrumbLevelSelector />,
-                                href: KnownPages.CommunicationEmails,
-                            },
-                            { label: `Email #${email.id}` },
-                        ]}
-                    />
-                }
-                actions={<EmailStatusBadge status={email.status} />}
-                heading={email.subject}
-            />
+        <EntityDetailsPropertiesProvider>
+            <Stack spacing={3}>
+                <AdminPageTitle title={email.subject || `Email #${email.id}`} />
+                <AdminPageHeader
+                    breadcrumbs={
+                        <Breadcrumbs
+                            items={[
+                                {
+                                    label: <AdminBreadcrumbLevelSelector />,
+                                    href: KnownPages.CommunicationEmails,
+                                },
+                                { label: `Email #${email.id}` },
+                            ]}
+                        />
+                    }
+                    actions={
+                        <Row className="items-center" spacing={1}>
+                            <EmailStatusBadge status={email.status} />
+                            <EntityDetailsPropertiesToggle />
+                        </Row>
+                    }
+                    heading={email.subject}
+                />
 
-            <Stack spacing={2}>
-                <Row spacing={2} alignItems="center">
-                    <Stack spacing={0.5} className="min-w-0">
-                        <Typography level="h1" className="text-2xl" semiBold>
-                            {email.subject}
-                        </Typography>
-                        {email.templateName && (
-                            <Typography
-                                level="body2"
-                                className="text-muted-foreground"
-                            >
-                                Predložak: {email.templateName}
-                            </Typography>
-                        )}
-                    </Stack>
-                </Row>
+                <EntityDetailsPropertiesLayout properties={propertiesPanel}>
+                    <Stack spacing={2}>
+                        <Row spacing={2} alignItems="center">
+                            <Stack spacing={0.5} className="min-w-0">
+                                <Typography
+                                    level="h1"
+                                    className="text-2xl"
+                                    semiBold
+                                >
+                                    {email.subject}
+                                </Typography>
+                                {email.templateName && (
+                                    <Typography
+                                        level="body2"
+                                        className="text-muted-foreground"
+                                    >
+                                        Predložak: {email.templateName}
+                                    </Typography>
+                                )}
+                            </Stack>
+                        </Row>
 
-                <Row spacing={2} className="flex-wrap" alignItems="stretch">
-                    <Stack spacing={2} className="flex-1 min-w-[18rem]">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Detalji slanja</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <Stack spacing={2}>
-                                    <DetailItem label="Šalje">
-                                        <Typography>
-                                            {email.fromAddress}
-                                        </Typography>
-                                    </DetailItem>
-                                    <DetailItem label="Tip">
-                                        {email.messageType ? (
-                                            <Chip className="w-fit">
-                                                {email.messageType}
-                                            </Chip>
-                                        ) : (
-                                            <NoDataPlaceholder>
-                                                Nije određeno
-                                            </NoDataPlaceholder>
-                                        )}
-                                    </DetailItem>
-                                    <DetailItem label="Predložak">
-                                        {email.templateName ? (
-                                            <Typography>
-                                                {email.templateName}
-                                            </Typography>
-                                        ) : (
-                                            <NoDataPlaceholder>
-                                                Nije određeno
-                                            </NoDataPlaceholder>
-                                        )}
-                                    </DetailItem>
-                                    <DetailItem label="Provider ID">
-                                        {email.providerMessageId ? (
-                                            <code>
-                                                {email.providerMessageId}
-                                            </code>
-                                        ) : (
-                                            <NoDataPlaceholder>
-                                                Nije dostupno
-                                            </NoDataPlaceholder>
-                                        )}
-                                    </DetailItem>
-                                    <DetailItem label="Status pružatelja">
-                                        {email.providerStatus ? (
-                                            <Typography>
-                                                {email.providerStatus}
-                                            </Typography>
-                                        ) : (
-                                            <NoDataPlaceholder>
-                                                Nije dostupno
-                                            </NoDataPlaceholder>
-                                        )}
-                                    </DetailItem>
-                                    <DetailItem label="Kreirano">
-                                        <LocalDateTime>
-                                            {email.createdAt}
-                                        </LocalDateTime>
-                                    </DetailItem>
-                                    <DetailItem label="Zadnji pokušaj">
-                                        {email.lastAttemptAt ? (
-                                            <LocalDateTime>
-                                                {email.lastAttemptAt}
-                                            </LocalDateTime>
-                                        ) : (
-                                            <NoDataPlaceholder>
-                                                Nije dostupno
-                                            </NoDataPlaceholder>
-                                        )}
-                                    </DetailItem>
-                                    <DetailItem label="Poslano">
-                                        {email.sentAt ? (
-                                            <LocalDateTime>
-                                                {email.sentAt}
-                                            </LocalDateTime>
-                                        ) : (
-                                            <NoDataPlaceholder>
-                                                Nije poslano
-                                            </NoDataPlaceholder>
-                                        )}
-                                    </DetailItem>
-                                    <DetailItem label="Dovršeno">
-                                        {email.completedAt ? (
-                                            <LocalDateTime>
-                                                {email.completedAt}
-                                            </LocalDateTime>
-                                        ) : (
-                                            <NoDataPlaceholder>
-                                                Nije dovršeno
-                                            </NoDataPlaceholder>
-                                        )}
-                                    </DetailItem>
-                                    <DetailItem label="Odbijeno">
-                                        {email.bouncedAt ? (
-                                            <LocalDateTime>
-                                                {email.bouncedAt}
-                                            </LocalDateTime>
-                                        ) : (
-                                            <NoDataPlaceholder>
-                                                Nije odbijeno
-                                            </NoDataPlaceholder>
-                                        )}
-                                    </DetailItem>
-                                    {email.errorMessage && (
-                                        <DetailItem label="Greška">
-                                            <Typography className="text-destructive">
-                                                {email.errorMessage}
-                                            </Typography>
-                                            {email.errorCode && (
-                                                <Typography
-                                                    level="body2"
-                                                    className="text-muted-foreground"
-                                                >
-                                                    Kod: {email.errorCode}
-                                                </Typography>
-                                            )}
-                                        </DetailItem>
+                        <Stack spacing={2}>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>HTML sadržaj</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    {email.htmlBody ? (
+                                        <div
+                                            className="rounded-md border bg-background p-4 shadow-inner"
+                                            // biome-ignore lint/security/noDangerouslySetInnerHtml: Email HTML is generated by our system.
+                                            dangerouslySetInnerHTML={{
+                                                __html: email.htmlBody,
+                                            }}
+                                        />
+                                    ) : (
+                                        <NoDataPlaceholder>
+                                            Nema HTML sadržaja
+                                        </NoDataPlaceholder>
                                     )}
-                                </Stack>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
 
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Primatelji</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <Stack spacing={2}>
-                                    <DetailItem label="Za">
-                                        {formatRecipients(email.recipients.to)}
-                                    </DetailItem>
-                                    <DetailItem label="CC">
-                                        {formatRecipients(email.recipients.cc)}
-                                    </DetailItem>
-                                    <DetailItem label="BCC">
-                                        {formatRecipients(email.recipients.bcc)}
-                                    </DetailItem>
-                                    <DetailItem label="Reply-To">
-                                        {formatRecipients(
-                                            email.recipients.replyTo,
-                                        )}
-                                    </DetailItem>
-                                </Stack>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Prilozi</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {email.attachments.length === 0 ? (
-                                    <NoDataPlaceholder>
-                                        Nema priloga
-                                    </NoDataPlaceholder>
-                                ) : (
-                                    <Stack spacing={1}>
-                                        {email.attachments.map((attachment) => (
-                                            <Stack
-                                                key={`${attachment.name}-${attachment.contentType ?? ''}`}
-                                                spacing={0.5}
-                                            >
-                                                <Typography>
-                                                    {attachment.name}
-                                                </Typography>
-                                                <Typography
-                                                    level="body2"
-                                                    className="text-muted-foreground"
-                                                >
-                                                    {attachment.contentType ??
-                                                        'Nepoznato'}
-                                                    {attachment.size
-                                                        ? ` · ${formatAttachmentSize(attachment.size)}`
-                                                        : ''}
-                                                </Typography>
-                                            </Stack>
-                                        ))}
-                                    </Stack>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Dodatni podaci</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {email.metadata &&
-                                Object.keys(email.metadata).length > 0 ? (
-                                    <pre className="text-sm whitespace-pre-wrap break-words rounded-md bg-muted p-4">
-                                        {JSON.stringify(
-                                            email.metadata,
-                                            null,
-                                            2,
-                                        )}
-                                    </pre>
-                                ) : (
-                                    <NoDataPlaceholder>
-                                        Nema dodatnih podataka
-                                    </NoDataPlaceholder>
-                                )}
-                            </CardContent>
-                        </Card>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Tekstualni sadržaj</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    {email.textBody ? (
+                                        <pre className="whitespace-pre-wrap break-words rounded-md bg-muted p-4 text-sm">
+                                            {email.textBody}
+                                        </pre>
+                                    ) : (
+                                        <NoDataPlaceholder>
+                                            Nema tekstualnog sadržaja
+                                        </NoDataPlaceholder>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </Stack>
                     </Stack>
-
-                    <Stack spacing={2} className="flex-1 min-w-[18rem]">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>HTML sadržaj</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {email.htmlBody ? (
-                                    <div
-                                        className="rounded-md border bg-background p-4 shadow-inner"
-                                        // biome-ignore lint/security/noDangerouslySetInnerHtml: Email HTML is generated by our system.
-                                        dangerouslySetInnerHTML={{
-                                            __html: email.htmlBody,
-                                        }}
-                                    />
-                                ) : (
-                                    <NoDataPlaceholder>
-                                        Nema HTML sadržaja
-                                    </NoDataPlaceholder>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Tekstualni sadržaj</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {email.textBody ? (
-                                    <pre className="whitespace-pre-wrap break-words rounded-md bg-muted p-4 text-sm">
-                                        {email.textBody}
-                                    </pre>
-                                ) : (
-                                    <NoDataPlaceholder>
-                                        Nema tekstualnog sadržaja
-                                    </NoDataPlaceholder>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </Stack>
-                </Row>
+                </EntityDetailsPropertiesLayout>
             </Stack>
-        </Stack>
+        </EntityDetailsPropertiesProvider>
     );
 }

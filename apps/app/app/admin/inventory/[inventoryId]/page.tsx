@@ -6,16 +6,23 @@ import {
 } from '@gredice/storage';
 import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { Add, Edit } from '@signalco/ui-icons';
-import { Card, CardContent, CardOverflow } from '@signalco/ui-primitives/Card';
+import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import {
+    EntityDetailsPanelCard,
+    EntityDetailsPropertiesLayout,
+    EntityDetailsPropertiesPanel,
+    EntityDetailsPropertiesProvider,
+    EntityDetailsPropertiesToggle,
+    EntityDetailsPropertyList,
+    type EntityDetailsPropertyListItem,
+} from '../../../../components/admin/details';
 import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
-import { Field } from '../../../../components/shared/fields/Field';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { InventoryItemsTable } from './InventoryItemsTable';
@@ -64,90 +71,99 @@ export default async function InventoryConfigPage({
         notes: item.notes,
         createdAt: item.createdAt.toISOString(),
     }));
+    const summaryItems: EntityDetailsPropertyListItem[] = [
+        {
+            id: 'total-items',
+            label: 'Ukupno stavki',
+            value: summary.totalItems,
+        },
+        {
+            id: 'total-quantity',
+            label: 'Ukupna količina',
+            value: summary.totalQuantity,
+        },
+        {
+            id: 'pieces',
+            label: 'Praćeno po komadima',
+            value: summary.byTrackingType.pieces,
+        },
+        {
+            id: 'serial-number',
+            label: 'Praćeno serijski',
+            value: summary.byTrackingType.serialNumber,
+        },
+    ];
+    const propertiesPanel = (
+        <EntityDetailsPropertiesPanel>
+            <EntityDetailsPanelCard title="Sažetak">
+                <EntityDetailsPropertyList items={summaryItems} />
+            </EntityDetailsPanelCard>
+            <EntityDetailsPanelCard title="Stanje">
+                <div className="px-4 pb-4">
+                    <InventoryStatusProgress
+                        items={items}
+                        defaultLowCountThreshold={config.lowCountThreshold}
+                    />
+                </div>
+            </EntityDetailsPanelCard>
+        </EntityDetailsPropertiesPanel>
+    );
 
     return (
-        <Stack spacing={2}>
-            <AdminPageTitle title={config.label} />
-            <AdminPageHeader
-                breadcrumbs={
-                    <Breadcrumbs
-                        items={[
-                            {
-                                label: <AdminBreadcrumbLevelSelector />,
-                            },
-                            { label: config.label },
-                        ]}
-                    />
-                }
-                actions={
-                    <Row spacing={1}>
-                        <Link href={KnownPages.InventoryItemCreate(id)}>
-                            <Row
-                                spacing={1}
-                                className="text-sm font-medium px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                            >
-                                <Add className="size-4" />
-                                <span>Dodaj stavku</span>
-                            </Row>
-                        </Link>
-                        <Link href={KnownPages.InventoryConfigEdit(id)}>
-                            <Row
-                                spacing={1}
-                                className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
-                            >
-                                <Edit className="size-4" />
-                                <span>Uredi</span>
-                            </Row>
-                        </Link>
-                    </Row>
-                }
-                heading={config.label}
-            />
-
-            <Typography level="h1" className="text-2xl" semiBold>
-                {config.label}
-            </Typography>
-
-            <Card>
-                <CardContent noHeader>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                            <Field
-                                name="Ukupno stavki"
-                                value={summary.totalItems}
-                            />
-                            <Field
-                                name="Ukupna količina"
-                                value={summary.totalQuantity}
-                            />
-                            <Field
-                                name="Praćeno po komadima"
-                                value={summary.byTrackingType.pieces}
-                            />
-                            <Field
-                                name="Praćeno serijski"
-                                value={summary.byTrackingType.serialNumber}
-                            />
-                        </div>
-                        <InventoryStatusProgress
-                            items={items}
-                            defaultLowCountThreshold={config.lowCountThreshold}
+        <EntityDetailsPropertiesProvider>
+            <Stack spacing={2}>
+                <AdminPageTitle title={config.label} />
+                <AdminPageHeader
+                    breadcrumbs={
+                        <Breadcrumbs
+                            items={[
+                                {
+                                    label: <AdminBreadcrumbLevelSelector />,
+                                },
+                                { label: config.label },
+                            ]}
                         />
-                    </div>
-                </CardContent>
-            </Card>
+                    }
+                    actions={
+                        <Row spacing={1}>
+                            <Link href={KnownPages.InventoryItemCreate(id)}>
+                                <Row
+                                    spacing={1}
+                                    className="text-sm font-medium px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                                >
+                                    <Add className="size-4" />
+                                    <span>Dodaj stavku</span>
+                                </Row>
+                            </Link>
+                            <Link href={KnownPages.InventoryConfigEdit(id)}>
+                                <Row
+                                    spacing={1}
+                                    className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
+                                >
+                                    <Edit className="size-4" />
+                                    <span>Uredi</span>
+                                </Row>
+                            </Link>
+                            <EntityDetailsPropertiesToggle />
+                        </Row>
+                    }
+                    heading={config.label}
+                />
 
-            <Card>
-                <CardOverflow>
-                    <InventoryItemsTable
-                        inventoryConfigId={id}
-                        entityTypeName={config.entityTypeName}
-                        items={tableItems}
-                        tracksSerialNumbers={tracksSerialNumbers}
-                    />
-                </CardOverflow>
-            </Card>
-        </Stack>
+                <EntityDetailsPropertiesLayout properties={propertiesPanel}>
+                    <Card>
+                        <CardOverflow>
+                            <InventoryItemsTable
+                                inventoryConfigId={id}
+                                entityTypeName={config.entityTypeName}
+                                items={tableItems}
+                                tracksSerialNumbers={tracksSerialNumbers}
+                            />
+                        </CardOverflow>
+                    </Card>
+                </EntityDetailsPropertiesLayout>
+            </Stack>
+        </EntityDetailsPropertiesProvider>
     );
 }
 

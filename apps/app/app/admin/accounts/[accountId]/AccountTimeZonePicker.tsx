@@ -35,6 +35,7 @@ export function AccountTimeZonePicker({
 
     return (
         <SelectItems
+            className="[&>label]:sr-only"
             label="Vremenska zona"
             value={currentTimeZone}
             onValueChange={handleTimeZoneChange}

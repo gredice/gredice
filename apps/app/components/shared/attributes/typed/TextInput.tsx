@@ -1,6 +1,7 @@
 import { Input } from '@signalco/ui-primitives/Input';
 import { useState } from 'react';
 import type { AttributeInputProps } from '../AttributeInputProps';
+import { attributeUnitDecorator } from './AttributeUnitDecorator';
 
 export function TextInput({
     value,
@@ -21,7 +22,8 @@ export function TextInput({
             onChange={(e) => handleOnChange(e.target.value)}
             onBlur={handleOnBlur}
             fullWidth
-            endDecorator={attributeDefinition?.unit}
+            className="max-w-xl"
+            endDecorator={attributeUnitDecorator(attributeDefinition?.unit)}
         />
     );
 }

@@ -14,6 +14,15 @@ import { Table } from '@signalco/ui-primitives/Table';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import {
+    EntityDetailsPanelCard,
+    EntityDetailsPropertiesLayout,
+    EntityDetailsPropertiesPanel,
+    EntityDetailsPropertiesProvider,
+    EntityDetailsPropertiesToggle,
+    EntityDetailsPropertyList,
+    type EntityDetailsPropertyListItem,
+} from '../../../../components/admin/details';
 import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
@@ -78,292 +87,215 @@ export default async function InvoicePage({
     if (!invoice) {
         notFound();
     }
+    const invoiceIsOverdue = isOverdue(invoice);
+    const statusValue = (
+        <Row spacing={1} className="flex-wrap">
+            <Chip color={getStatusColor(invoice.status)}>
+                {getStatusLabel(invoice.status)}
+            </Chip>
+            {invoiceIsOverdue && <Chip color="error">Dospio</Chip>}
+        </Row>
+    );
+    const invoiceItems: EntityDetailsPropertyListItem[] = [
+        {
+            id: 'invoice-number',
+            label: 'Broj ponude',
+            value: invoice.invoiceNumber,
+        },
+        { id: 'currency', label: 'Valuta', value: invoice.currency },
+        {
+            id: 'issue-date',
+            label: 'Datum izdavanja',
+            value: (
+                <LocalDateTime time={false}>{invoice.issueDate}</LocalDateTime>
+            ),
+        },
+        {
+            id: 'due-date',
+            label: 'Datum dospijeća',
+            value: (
+                <LocalDateTime time={false}>{invoice.dueDate}</LocalDateTime>
+            ),
+        },
+        ...(invoice.notes
+            ? [{ id: 'notes', label: 'Napomene', value: invoice.notes }]
+            : []),
+        { id: 'status', label: 'Status', value: statusValue },
+    ];
+    const customerItems: EntityDetailsPropertyListItem[] = [
+        { id: 'bill-to-name', label: 'Naziv', value: invoice.billToName },
+        ...(invoice.billToEmail
+            ? [
+                  {
+                      id: 'bill-to-email',
+                      label: 'Email',
+                      value: invoice.billToEmail,
+                  },
+              ]
+            : []),
+        ...(invoice.billToAddress
+            ? [
+                  {
+                      id: 'bill-to-address',
+                      label: 'Adresa',
+                      value: (
+                          <span className="whitespace-pre-line">
+                              {invoice.billToAddress}
+                          </span>
+                      ),
+                  },
+              ]
+            : []),
+    ];
+    const amountItems: EntityDetailsPropertyListItem[] = [
+        {
+            id: 'subtotal',
+            label: 'Osnovica',
+            value: `${invoice.subtotal}${invoice.currency === 'eur' ? '€' : invoice.currency}`,
+        },
+        {
+            id: 'tax',
+            label: 'PDV',
+            value: `${invoice.taxAmount}${invoice.currency === 'eur' ? '€' : invoice.currency}`,
+        },
+        {
+            id: 'total',
+            label: 'Ukupno',
+            value: `${invoice.totalAmount}${invoice.currency === 'eur' ? '€' : invoice.currency}`,
+        },
+    ];
+    const relatedItems: EntityDetailsPropertyListItem[] = [
+        {
+            id: 'transaction',
+            label: 'Transakcija',
+            value: invoice.transactionId ? (
+                <Link href={KnownPages.Transaction(invoice.transactionId)}>
+                    #{invoice.transactionId}
+                </Link>
+            ) : (
+                <NoDataPlaceholder>Nema povezanih stavki</NoDataPlaceholder>
+            ),
+        },
+    ];
+    const propertiesPanel = (
+        <EntityDetailsPropertiesPanel>
+            <EntityDetailsPanelCard title="Podaci o ponudi">
+                <EntityDetailsPropertyList items={invoiceItems} />
+            </EntityDetailsPanelCard>
+            <EntityDetailsPanelCard title="Podaci o kupcu">
+                <EntityDetailsPropertyList items={customerItems} />
+            </EntityDetailsPanelCard>
+            <EntityDetailsPanelCard title="Iznosi">
+                <EntityDetailsPropertyList items={amountItems} />
+            </EntityDetailsPanelCard>
+            <EntityDetailsPanelCard title="Povezano">
+                <EntityDetailsPropertyList items={relatedItems} />
+            </EntityDetailsPanelCard>
+        </EntityDetailsPropertiesPanel>
+    );
 
     return (
-        <Stack spacing={4}>
-            <AdminPageTitle title={`Ponuda ${invoice.invoiceNumber}`} />
-            <AdminPageHeader
-                breadcrumbs={
-                    <Breadcrumbs
-                        items={[
-                            {
-                                label: <AdminBreadcrumbLevelSelector />,
-                                href: KnownPages.Invoices,
-                            },
-                            { label: `${invoice.invoiceNumber}` },
-                        ]}
-                    />
-                }
-                actions={<InvoiceActions invoice={invoice} />}
-                heading={`Ponuda ${invoice.invoiceNumber}`}
-            />
-            <Stack spacing={2}>
-                <Typography level="h1">
-                    Ponuda {invoice.invoiceNumber}
-                </Typography>
-
-                <Row spacing={2} alignItems="stretch">
-                    <Stack spacing={2} className="flex-1">
-                        {/* Invoice Details */}
+        <EntityDetailsPropertiesProvider>
+            <Stack spacing={4}>
+                <AdminPageTitle title={`Ponuda ${invoice.invoiceNumber}`} />
+                <AdminPageHeader
+                    breadcrumbs={
+                        <Breadcrumbs
+                            items={[
+                                {
+                                    label: <AdminBreadcrumbLevelSelector />,
+                                    href: KnownPages.Invoices,
+                                },
+                                { label: `${invoice.invoiceNumber}` },
+                            ]}
+                        />
+                    }
+                    actions={
+                        <Row className="items-center" spacing={1}>
+                            <InvoiceActions invoice={invoice} />
+                            <EntityDetailsPropertiesToggle />
+                        </Row>
+                    }
+                    heading={`Ponuda ${invoice.invoiceNumber}`}
+                />
+                <EntityDetailsPropertiesLayout properties={propertiesPanel}>
+                    <Stack spacing={2}>
                         <Card>
                             <CardHeader>
-                                <CardTitle>Podaci o ponudi</CardTitle>
+                                <CardTitle>Stavke ponude</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <Stack spacing={2}>
-                                    <Row spacing={4}>
-                                        <Stack spacing={1} className="flex-1">
-                                            <Typography level="body2">
-                                                Broj ponude
-                                            </Typography>
-                                            <Typography>
-                                                {invoice.invoiceNumber}
-                                            </Typography>
-                                        </Stack>
-                                        <Stack spacing={1} className="flex-1">
-                                            <Typography level="body2">
-                                                Valuta
-                                            </Typography>
-                                            <Typography>
-                                                {invoice.currency}
-                                            </Typography>
-                                        </Stack>
-                                    </Row>
-                                    <Row spacing={4}>
-                                        <Stack spacing={1} className="flex-1">
-                                            <Typography level="body2">
-                                                Datum izdavanja
-                                            </Typography>
-                                            <LocalDateTime time={false}>
-                                                {invoice.issueDate}
-                                            </LocalDateTime>
-                                        </Stack>
-                                        <Stack spacing={1} className="flex-1">
-                                            <Typography level="body2">
-                                                Datum dospijeća
-                                            </Typography>
-                                            <LocalDateTime time={false}>
-                                                {invoice.dueDate}
-                                            </LocalDateTime>
-                                        </Stack>
-                                    </Row>
-                                    {invoice.notes && (
-                                        <Stack spacing={1}>
-                                            <Typography level="body2">
-                                                Napomene
-                                            </Typography>
-                                            <Typography>
-                                                {invoice.notes}
-                                            </Typography>
-                                        </Stack>
-                                    )}
-                                    <Stack spacing={1} className="flex-1">
-                                        <Typography level="body2">
-                                            Status
-                                        </Typography>
-                                        <Row spacing={2}>
-                                            <Chip
-                                                color={getStatusColor(
-                                                    invoice.status,
-                                                )}
-                                            >
-                                                {getStatusLabel(invoice.status)}
-                                            </Chip>
-                                            {isOverdue(invoice) && (
-                                                <Chip color="error">
-                                                    Dospio
-                                                </Chip>
+                                {invoice.invoiceItems &&
+                                invoice.invoiceItems.length > 0 ? (
+                                    <Table>
+                                        <Table.Header>
+                                            <Table.Row>
+                                                <Table.Head>Opis</Table.Head>
+                                                <Table.Head className="text-right">
+                                                    Količina
+                                                </Table.Head>
+                                                <Table.Head className="text-right">
+                                                    Jedinična cijena
+                                                </Table.Head>
+                                                <Table.Head className="text-right">
+                                                    Ukupno
+                                                </Table.Head>
+                                            </Table.Row>
+                                        </Table.Header>
+                                        <Table.Body>
+                                            {invoice.invoiceItems.map(
+                                                (item) => (
+                                                    <Table.Row key={item.id}>
+                                                        <Table.Cell>
+                                                            <Typography>
+                                                                {
+                                                                    item.description
+                                                                }
+                                                            </Typography>
+                                                        </Table.Cell>
+                                                        <Table.Cell className="text-right">
+                                                            <Typography>
+                                                                {item.quantity}{' '}
+                                                                kom
+                                                            </Typography>
+                                                        </Table.Cell>
+                                                        <Table.Cell className="text-right">
+                                                            <Typography>
+                                                                {Number(
+                                                                    item.unitPrice,
+                                                                ).toFixed(2)}
+                                                                {invoice.currency ===
+                                                                'eur'
+                                                                    ? '€'
+                                                                    : invoice.currency}
+                                                            </Typography>
+                                                        </Table.Cell>
+                                                        <Table.Cell className="text-right">
+                                                            <Typography>
+                                                                {Number(
+                                                                    item.totalPrice,
+                                                                ).toFixed(2)}
+                                                                {invoice.currency ===
+                                                                'eur'
+                                                                    ? '€'
+                                                                    : invoice.currency}
+                                                            </Typography>
+                                                        </Table.Cell>
+                                                    </Table.Row>
+                                                ),
                                             )}
-                                        </Row>
-                                    </Stack>
-                                </Stack>
-                            </CardContent>
-                        </Card>
-
-                        {/* Billing Information */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Podaci o kupcu</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <Stack spacing={2}>
-                                    <Stack spacing={1}>
-                                        <Typography level="body2">
-                                            Naziv
-                                        </Typography>
-                                        <Typography>
-                                            {invoice.billToName}
-                                        </Typography>
-                                    </Stack>
-                                    {invoice.billToEmail && (
-                                        <Stack spacing={1}>
-                                            <Typography level="body2">
-                                                Email
-                                            </Typography>
-                                            <Typography>
-                                                {invoice.billToEmail}
-                                            </Typography>
-                                        </Stack>
-                                    )}
-                                    {invoice.billToAddress && (
-                                        <Stack spacing={1}>
-                                            <Typography level="body2">
-                                                Adresa
-                                            </Typography>
-                                            <Typography className="whitespace-pre-line">
-                                                {invoice.billToAddress}
-                                            </Typography>
-                                        </Stack>
-                                    )}
-                                </Stack>
+                                        </Table.Body>
+                                    </Table>
+                                ) : (
+                                    <NoDataPlaceholder>
+                                        Nema stavki ponude
+                                    </NoDataPlaceholder>
+                                )}
                             </CardContent>
                         </Card>
                     </Stack>
-
-                    <Stack spacing={2} className="flex-1">
-                        {/* Amount Summary */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Iznosi</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <Stack spacing={2}>
-                                    <Row justifyContent="space-between">
-                                        <Typography level="body2">
-                                            Osnovica
-                                        </Typography>
-                                        <Typography>
-                                            {invoice.subtotal}
-                                            {invoice.currency === 'eur'
-                                                ? '€'
-                                                : invoice.currency}
-                                        </Typography>
-                                    </Row>
-                                    <Row justifyContent="space-between">
-                                        <Typography level="body2">
-                                            PDV
-                                        </Typography>
-                                        <Typography>
-                                            {invoice.taxAmount}
-                                            {invoice.currency === 'eur'
-                                                ? '€'
-                                                : invoice.currency}
-                                        </Typography>
-                                    </Row>
-                                    <Row
-                                        justifyContent="space-between"
-                                        className="border-t pt-2"
-                                    >
-                                        <Typography semiBold>Ukupno</Typography>
-                                        <Typography level="h3" semiBold>
-                                            {invoice.totalAmount}
-                                            {invoice.currency === 'eur'
-                                                ? '€'
-                                                : invoice.currency}
-                                        </Typography>
-                                    </Row>
-                                </Stack>
-                            </CardContent>
-                        </Card>
-
-                        {/* Related Links */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Povezano</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <Stack spacing={2}>
-                                    {!invoice.transactionId && (
-                                        <NoDataPlaceholder>
-                                            Nema povezanih stavki
-                                        </NoDataPlaceholder>
-                                    )}
-                                    {invoice.transactionId && (
-                                        <Row spacing={2}>
-                                            <Typography
-                                                level="body2"
-                                                className="w-20"
-                                            >
-                                                Transakcija:
-                                            </Typography>
-                                            <Link
-                                                href={KnownPages.Transaction(
-                                                    invoice.transactionId,
-                                                )}
-                                            >
-                                                #{invoice.transactionId}
-                                            </Link>
-                                        </Row>
-                                    )}
-                                </Stack>
-                            </CardContent>
-                        </Card>
-                    </Stack>
-                </Row>
-
-                {/* Invoice Items */}
-                {invoice.invoiceItems && invoice.invoiceItems.length > 0 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Stavke ponude</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <Table.Header>
-                                    <Table.Row>
-                                        <Table.Head>Opis</Table.Head>
-                                        <Table.Head className="text-right">
-                                            Količina
-                                        </Table.Head>
-                                        <Table.Head className="text-right">
-                                            Jedinična cijena
-                                        </Table.Head>
-                                        <Table.Head className="text-right">
-                                            Ukupno
-                                        </Table.Head>
-                                    </Table.Row>
-                                </Table.Header>
-                                <Table.Body>
-                                    {invoice.invoiceItems.map((item) => (
-                                        <Table.Row key={item.id}>
-                                            <Table.Cell>
-                                                <Typography>
-                                                    {item.description}
-                                                </Typography>
-                                            </Table.Cell>
-                                            <Table.Cell className="text-right">
-                                                <Typography>
-                                                    {item.quantity} kom
-                                                </Typography>
-                                            </Table.Cell>
-                                            <Table.Cell className="text-right">
-                                                <Typography>
-                                                    {Number(
-                                                        item.unitPrice,
-                                                    ).toFixed(2)}
-                                                    {invoice.currency === 'eur'
-                                                        ? '€'
-                                                        : invoice.currency}
-                                                </Typography>
-                                            </Table.Cell>
-                                            <Table.Cell className="text-right">
-                                                <Typography>
-                                                    {Number(
-                                                        item.totalPrice,
-                                                    ).toFixed(2)}
-                                                    {invoice.currency === 'eur'
-                                                        ? '€'
-                                                        : invoice.currency}
-                                                </Typography>
-                                            </Table.Cell>
-                                        </Table.Row>
-                                    ))}
-                                </Table.Body>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                )}
+                </EntityDetailsPropertiesLayout>
             </Stack>
-        </Stack>
+        </EntityDetailsPropertiesProvider>
     );
 }

@@ -56,7 +56,7 @@ export function SelectEntity({
     };
 
     return (
-        <div className="flex items-center gap-2">
+        <div className="flex w-full max-w-xl items-center gap-2">
             <div className="flex-1">
                 <SelectItems
                     items={items}

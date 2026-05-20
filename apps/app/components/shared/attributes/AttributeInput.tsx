@@ -4,7 +4,8 @@ import type {
     SelectAttributeDefinition,
     SelectAttributeValue,
 } from '@gredice/storage';
-import { Delete } from '@signalco/ui-icons';
+import { ModalConfirm } from '@signalco/ui/ModalConfirm';
+import { Delete, Remove } from '@signalco/ui-icons';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { Skeleton } from '@signalco/ui-primitives/Skeleton';
 import dynamic from 'next/dynamic';
@@ -40,11 +41,13 @@ export function AttributeInput({
     entityId,
     attributeDefinition,
     attributeValue,
+    presentation = 'default',
 }: {
     entityType: string;
     entityId: number;
     attributeDefinition: SelectAttributeDefinition;
     attributeValue: SelectAttributeValue | undefined | null;
+    presentation?: 'default' | 'list-item';
 }) {
     const { trackSave } = useEntityDetailsSave();
 
@@ -96,7 +99,13 @@ export function AttributeInput({
 
     let AttributeInputComponent: ComponentType<AttributeInputProps> = TextInput;
     let schema: string | null = null;
-    if (attributeDefinition.dataType.startsWith('ref:')) {
+    const isReferenceInput = attributeDefinition.dataType.startsWith('ref:');
+    const isTextInput = attributeDefinition.dataType === 'text';
+    const isComplexValueInput =
+        attributeDefinition.dataType === 'markdown' ||
+        attributeDefinition.dataType === 'image' ||
+        attributeDefinition.dataType.startsWith('json');
+    if (isReferenceInput) {
         AttributeInputComponent = SelectEntity;
     } else if (attributeDefinition.dataType === 'boolean') {
         AttributeInputComponent = BooleanInput;
@@ -119,23 +128,75 @@ export function AttributeInput({
         schema = attributeDefinition.dataType.substring(5);
     }
 
+    const canDelete = Boolean(attributeValue && attributeDefinition.multiple);
+    const shouldConfirmDelete = canDelete && isComplexValueInput;
+
+    if (canDelete && isReferenceInput) {
+        return (
+            <div className="grid w-full max-w-xl grid-cols-[minmax(0,1fr),auto] items-center gap-1">
+                <AttributeInputComponent
+                    attributeDefinition={attributeDefinition}
+                    value={attributeValue?.value}
+                    onChange={handleChange}
+                    schema={schema}
+                    presentation={presentation}
+                />
+                <IconButton
+                    className="shrink-0"
+                    onClick={handleDelete}
+                    variant="plain"
+                    title="Ukloni"
+                    type="button"
+                    size="xs"
+                >
+                    <Remove className="size-3.5" />
+                </IconButton>
+            </div>
+        );
+    }
+
     return (
-        <div className="grid grid-cols-[1fr,auto] gap-1 items-center">
+        <div className={isTextInput ? 'relative w-full max-w-xl' : 'relative'}>
             <AttributeInputComponent
                 attributeDefinition={attributeDefinition}
                 value={attributeValue?.value}
                 onChange={handleChange}
                 schema={schema}
+                presentation={presentation}
             />
-            {attributeValue && attributeDefinition.multiple && (
-                <IconButton
-                    onClick={handleDelete}
-                    variant="plain"
-                    title="Obriši"
-                >
-                    <Delete className="size-4" />
-                </IconButton>
-            )}
+            {canDelete &&
+                (shouldConfirmDelete ? (
+                    <ModalConfirm
+                        title="Potvrdi brisanje"
+                        header="Obrisati vrijednost atributa?"
+                        onConfirm={handleDelete}
+                        trigger={
+                            <IconButton
+                                className="absolute right-0 top-0 z-10"
+                                variant="plain"
+                                title="Obriši"
+                                type="button"
+                                size="xs"
+                            >
+                                <Delete className="size-3.5" />
+                            </IconButton>
+                        }
+                    >
+                        Ova vrijednost sadrži više podataka. Brisanje se ne može
+                        poništiti.
+                    </ModalConfirm>
+                ) : (
+                    <IconButton
+                        className="absolute right-0 top-0 z-10"
+                        onClick={handleDelete}
+                        variant="plain"
+                        title="Obriši"
+                        type="button"
+                        size="xs"
+                    >
+                        <Delete className="size-3.5" />
+                    </IconButton>
+                ))}
         </div>
     );
 }

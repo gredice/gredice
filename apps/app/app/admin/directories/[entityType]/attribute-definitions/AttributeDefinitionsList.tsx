@@ -41,7 +41,7 @@ function AttributeDefinitionCard({
                             <Typography level="body1">
                                 {attributeDefinition.label}
                                 {attributeDefinition.required && (
-                                    <span className="text-red-600/60 ml-1">
+                                    <span className="ml-0.5 text-red-600/60">
                                         *
                                     </span>
                                 )}
