@@ -74,10 +74,11 @@ export const TabsList = forwardRef<
             return;
         }
 
+        const tabsListElement = listElement;
         let frameId: number | undefined;
 
         function measureIndicator() {
-            const activeTrigger = listElement.querySelector<HTMLElement>(
+            const activeTrigger = tabsListElement.querySelector<HTMLElement>(
                 '[role="tab"][data-state="active"]',
             );
 
@@ -88,20 +89,20 @@ export const TabsList = forwardRef<
                 return;
             }
 
-            const listRect = listElement.getBoundingClientRect();
+            const listRect = tabsListElement.getBoundingClientRect();
             const activeRect = activeTrigger.getBoundingClientRect();
             const nextIndicator = {
                 height: activeRect.height,
                 left:
                     activeRect.left -
                     listRect.left +
-                    listElement.scrollLeft -
-                    listElement.clientLeft,
+                    tabsListElement.scrollLeft -
+                    tabsListElement.clientLeft,
                 top:
                     activeRect.top -
                     listRect.top +
-                    listElement.scrollTop -
-                    listElement.clientTop,
+                    tabsListElement.scrollTop -
+                    tabsListElement.clientTop,
                 width: activeRect.width,
             };
 
@@ -125,8 +126,8 @@ export const TabsList = forwardRef<
         function observeTabs() {
             if (resizeObserver) {
                 resizeObserver.disconnect();
-                resizeObserver.observe(listElement);
-                for (const tab of listElement.querySelectorAll<HTMLElement>(
+                resizeObserver.observe(tabsListElement);
+                for (const tab of tabsListElement.querySelectorAll<HTMLElement>(
                     '[role="tab"]',
                 )) {
                     resizeObserver.observe(tab);
@@ -143,13 +144,13 @@ export const TabsList = forwardRef<
         const mutationObserver = new MutationObserver(observeTabs);
 
         observeTabs();
-        mutationObserver.observe(listElement, {
+        mutationObserver.observe(tabsListElement, {
             attributeFilter: ['data-state', 'disabled'],
             attributes: true,
             childList: true,
             subtree: true,
         });
-        listElement.addEventListener('scroll', updateIndicator, {
+        tabsListElement.addEventListener('scroll', updateIndicator, {
             passive: true,
         });
         window.addEventListener('resize', updateIndicator);
@@ -161,7 +162,7 @@ export const TabsList = forwardRef<
 
             mutationObserver.disconnect();
             resizeObserver?.disconnect();
-            listElement.removeEventListener('scroll', updateIndicator);
+            tabsListElement.removeEventListener('scroll', updateIndicator);
             window.removeEventListener('resize', updateIndicator);
         };
     }, [listElement]);
