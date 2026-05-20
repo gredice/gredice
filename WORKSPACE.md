@@ -162,36 +162,21 @@ pnpm env:pull
 
 ### Codex environment setup
 
-Use a lean Codex environment for routine code tasks. Pin Node.js to `24.15.0` when the environment UI asks for an exact version, and use Corepack to install the pnpm version pinned by `packageManager`.
+Use a lean Codex environment for routine code tasks. Set Node.js to a current `24.x` release when the environment UI asks for an exact version. The repo-owned setup scripts also bootstrap Node.js `>=24` for their own run if the base image starts on an older Node.js release, then use Corepack to install the pnpm version pinned by `packageManager`.
 
 Recommended Codex setup script:
 
 ```bash
-set -euo pipefail
-
-corepack enable
-corepack install
-
-pnpm install --frozen-lockfile
-
-for f in apps/*/.env.example packages/*/.env.example; do
-  target="${f%.example}"
-  [ -f "$target" ] || cp "$f" "$target"
-done
-
-pnpm --filter www exec playwright install --with-deps chromium
-pnpm lint:ci-filters
+./scripts/codex-cloud-setup.sh
 ```
 
 Recommended Codex maintenance script:
 
 ```bash
-set -euo pipefail
-
-corepack enable
-corepack install
-pnpm install --frozen-lockfile --prefer-offline
+./scripts/codex-cloud-maintenance.sh
 ```
+
+Override the setup-time Node.js installer with `GREDICE_CODEX_NODE_VERSION=<major-or-full-version>` only when the Codex base image does not already provide Node.js `>=24` and a specific release is required.
 
 Recommended Codex environment variables:
 
