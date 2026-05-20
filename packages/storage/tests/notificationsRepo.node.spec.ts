@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
+    backfillNotificationRolloutDefaults,
     cancelNotificationCampaign,
     cleanupNotificationRetention,
     createNotification,
@@ -12,12 +13,14 @@ import {
     gardens,
     getNotificationCampaign,
     getNotificationDeliverySummary,
+    getNotificationRolloutDiagnostics,
     getNotificationsByAccount,
     getUser,
     notificationCampaigns,
     notificationDeliveryAttempts,
     notifications,
     notificationUserChannelPreferences,
+    userNotificationSettings,
     previewNotificationCampaignAudience,
     recordNotificationDeliveryEvent,
     routeNotificationDelivery,

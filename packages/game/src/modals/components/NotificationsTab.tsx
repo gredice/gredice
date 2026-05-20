@@ -48,6 +48,9 @@ const notificationDevicesKey = ['notifications', 'devices'];
 const notificationPushStatusKey = ['notifications', 'push-status'];
 const defaultQuietHoursStartMinute = 22 * 60;
 const defaultQuietHoursEndMinute = 7 * 60;
+const premiumNotificationControlsEnabled =
+    process.env.NEXT_PUBLIC_GREDICE_NOTIFICATIONS_PREMIUM_CONTROLS_ENABLED !==
+    '0';
 
 const requiredNotificationGroups: Array<{
     category: string;
@@ -580,260 +583,333 @@ export function NotificationsTab() {
                             </Stack>
                         </Card>
 
-                        <Card className="bg-card p-2">
-                            <Stack spacing={1}>
-                                <Typography level="body1" semiBold>
-                                    Uvijek uključeno
-                                </Typography>
-                                <Typography level="body2" secondary>
-                                    Sigurnosne, pravne i naplatne obavijesti ne
-                                    koriste sažetak ni tihi period.
-                                </Typography>
-                                {requiredNotificationGroups.map((item) => (
-                                    <div
-                                        key={item.category}
-                                        className="rounded border border-border/60 p-2"
-                                    >
-                                        <Row
-                                            justifyContent="space-between"
-                                            alignItems="start"
-                                            spacing={2}
-                                        >
-                                            <Stack spacing={0.25}>
-                                                <Typography semiBold>
-                                                    {item.label}
-                                                </Typography>
-                                                <Typography
-                                                    level="body3"
-                                                    secondary
+                        {premiumNotificationControlsEnabled ? (
+                            <>
+                                <Card className="bg-card p-2">
+                                    <Stack spacing={1}>
+                                        <Typography level="body1" semiBold>
+                                            Uvijek uključeno
+                                        </Typography>
+                                        <Typography level="body2" secondary>
+                                            Sigurnosne, pravne i naplatne
+                                            obavijesti ne koriste sažetak ni
+                                            tihi period.
+                                        </Typography>
+                                        {requiredNotificationGroups.map(
+                                            (item) => (
+                                                <div
+                                                    key={item.category}
+                                                    className="rounded border border-border/60 p-2"
                                                 >
-                                                    {item.description}
-                                                </Typography>
-                                            </Stack>
-                                            <Typography
-                                                level="body3"
-                                                semiBold
-                                                className="shrink-0"
-                                            >
-                                                Uvijek uključeno
-                                            </Typography>
-                                        </Row>
-                                    </div>
-                                ))}
-                            </Stack>
-                        </Card>
-
-                        <Card className="bg-card p-2">
-                            <Stack spacing={1}>
-                                <Row justifyContent="space-between">
-                                    <Typography level="body1" semiBold>
-                                        Vrste koje možeš prilagoditi
-                                    </Typography>
-                                    <Button
-                                        size="sm"
-                                        variant="plain"
-                                        disabled={settingsBusy}
-                                        onClick={() =>
-                                            savePreferencesMutation.mutate(
-                                                categoryPreferences.map(
-                                                    (item) =>
-                                                        buildPreferenceUpdate(
-                                                            item,
-                                                            true,
-                                                        ),
-                                                ),
-                                            )
-                                        }
-                                    >
-                                        Omogući sve
-                                    </Button>
-                                </Row>
-                                {preferencesQuery.isPending ? (
-                                    <Typography level="body2" secondary>
-                                        Postavke se učitavaju.
-                                    </Typography>
-                                ) : preferencesQuery.isError ? (
-                                    <Typography level="body2" secondary>
-                                        Postavke obavijesti nisu učitane.
-                                    </Typography>
-                                ) : (
-                                    categoryPreferences.map((item) => {
-                                        const preference = findPreference(item);
-                                        const checked =
-                                            preference?.enabled ??
-                                            item.defaultEnabled;
-                                        return (
-                                            <div
-                                                key={item.category}
-                                                className="rounded border border-border/60 p-2"
-                                            >
-                                                <Row
-                                                    justifyContent="space-between"
-                                                    alignItems="start"
-                                                    spacing={2}
-                                                >
-                                                    <Stack spacing={0.25}>
-                                                        <Typography semiBold>
-                                                            {item.label}
-                                                        </Typography>
+                                                    <Row
+                                                        justifyContent="space-between"
+                                                        alignItems="start"
+                                                        spacing={2}
+                                                    >
+                                                        <Stack spacing={0.25}>
+                                                            <Typography
+                                                                semiBold
+                                                            >
+                                                                {item.label}
+                                                            </Typography>
+                                                            <Typography
+                                                                level="body3"
+                                                                secondary
+                                                            >
+                                                                {
+                                                                    item.description
+                                                                }
+                                                            </Typography>
+                                                        </Stack>
                                                         <Typography
                                                             level="body3"
-                                                            secondary
+                                                            semiBold
+                                                            className="shrink-0"
                                                         >
-                                                            {item.description}
+                                                            Uvijek uključeno
                                                         </Typography>
-                                                    </Stack>
-                                                    <Checkbox
-                                                        aria-label={`Uključi ${item.label.toLowerCase()}`}
-                                                        checked={checked}
-                                                        disabled={settingsBusy}
-                                                        onCheckedChange={(
-                                                            checked: boolean,
-                                                        ) =>
-                                                            savePreferencesMutation.mutate(
-                                                                [
-                                                                    buildPreferenceUpdate(
-                                                                        item,
-                                                                        Boolean(
-                                                                            checked,
-                                                                        ),
-                                                                    ),
-                                                                ],
-                                                            )
-                                                        }
-                                                    />
-                                                </Row>
-                                            </div>
-                                        );
-                                    })
-                                )}
-                                {savePreferencesMutation.isError && (
-                                    <Typography level="body3" secondary>
-                                        Postavke obavijesti nisu spremljene.
-                                    </Typography>
-                                )}
-                            </Stack>
-                        </Card>
-
-                        <Card className="bg-card p-2">
-                            <Stack spacing={1}>
-                                <Checkbox
-                                    label="Ne ometaj"
-                                    checked={quietHoursEnabled}
-                                    disabled={settingsBusy}
-                                    onCheckedChange={(checked: boolean) => {
-                                        const enabled = Boolean(checked);
-                                        setQuietHoursEnabled(enabled);
-                                        saveAllPreferenceSettings({
-                                            quietEnabled: enabled,
-                                        });
-                                    }}
-                                />
-                                <Typography level="body3" secondary>
-                                    Vrijedi samo za prilagodljive obavijesti
-                                    koje podržavaju tihi period.
-                                </Typography>
-                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                    <Input
-                                        label="Od"
-                                        type="time"
-                                        value={minuteToTimeValue(
-                                            quietHoursStartMinute,
+                                                    </Row>
+                                                </div>
+                                            ),
                                         )}
-                                        disabled={
-                                            !quietHoursEnabled || settingsBusy
-                                        }
-                                        onChange={(event) => {
-                                            const minute = timeValueToMinute(
-                                                event.target.value,
-                                            );
-                                            if (minute === null) {
-                                                return;
-                                            }
-                                            setQuietHoursStartMinute(minute);
-                                            if (quietHoursEnabled) {
-                                                saveAllPreferenceSettings({
-                                                    quietStart: minute,
-                                                });
-                                            }
-                                        }}
-                                    />
-                                    <Input
-                                        label="Do"
-                                        type="time"
-                                        value={minuteToTimeValue(
-                                            quietHoursEndMinute,
-                                        )}
-                                        disabled={
-                                            !quietHoursEnabled || settingsBusy
-                                        }
-                                        onChange={(event) => {
-                                            const minute = timeValueToMinute(
-                                                event.target.value,
-                                            );
-                                            if (minute === null) {
-                                                return;
-                                            }
-                                            setQuietHoursEndMinute(minute);
-                                            if (quietHoursEnabled) {
-                                                saveAllPreferenceSettings({
-                                                    quietEnd: minute,
-                                                });
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            </Stack>
-                        </Card>
+                                    </Stack>
+                                </Card>
 
-                        <Card className="bg-card p-2">
-                            <Stack spacing={1}>
-                                <Checkbox
-                                    label="Primaj sažetak obavijesti"
-                                    checked={digestEnabled}
-                                    disabled={settingsBusy}
-                                    onCheckedChange={(checked: boolean) => {
-                                        const enabled = Boolean(checked);
-                                        setDigestEnabled(enabled);
-                                        saveAllPreferenceSettings({
-                                            summaryEnabled: enabled,
-                                        });
-                                    }}
-                                />
-                                <Typography level="body3" secondary>
-                                    Sažetak vrijedi za prilagodljive kategorije;
-                                    obavezne poruke ne čekaju sažetak.
-                                </Typography>
-                                <Stack spacing={0.5}>
-                                    <Typography level="body2" semiBold>
-                                        Razdoblje sažetka
-                                    </Typography>
-                                    <div
-                                        className={
-                                            digestEnabled
-                                                ? undefined
-                                                : 'pointer-events-none opacity-50'
-                                        }
-                                    >
-                                        <SelectItems
-                                            value={digestFrequency}
-                                            onValueChange={(value) => {
-                                                if (!isDigestPeriod(value)) {
-                                                    return;
+                                <Card className="bg-card p-2">
+                                    <Stack spacing={1}>
+                                        <Row justifyContent="space-between">
+                                            <Typography level="body1" semiBold>
+                                                Vrste koje možeš prilagoditi
+                                            </Typography>
+                                            <Button
+                                                size="sm"
+                                                variant="plain"
+                                                disabled={settingsBusy}
+                                                onClick={() =>
+                                                    savePreferencesMutation.mutate(
+                                                        categoryPreferences.map(
+                                                            (item) =>
+                                                                buildPreferenceUpdate(
+                                                                    item,
+                                                                    true,
+                                                                ),
+                                                        ),
+                                                    )
                                                 }
-                                                setDigestFrequency(value);
-                                                if (digestEnabled) {
-                                                    saveAllPreferenceSettings({
-                                                        summaryFrequency: value,
-                                                    });
-                                                }
+                                            >
+                                                Omogući sve
+                                            </Button>
+                                        </Row>
+                                        {preferencesQuery.isPending ? (
+                                            <Typography
+                                                level="body2"
+                                                secondary
+                                            >
+                                                Postavke se učitavaju.
+                                            </Typography>
+                                        ) : preferencesQuery.isError ? (
+                                            <Typography
+                                                level="body2"
+                                                secondary
+                                            >
+                                                Postavke obavijesti nisu
+                                                učitane.
+                                            </Typography>
+                                        ) : (
+                                            categoryPreferences.map((item) => {
+                                                const preference =
+                                                    findPreference(item);
+                                                const checked =
+                                                    preference?.enabled ??
+                                                    item.defaultEnabled;
+                                                return (
+                                                    <div
+                                                        key={item.category}
+                                                        className="rounded border border-border/60 p-2"
+                                                    >
+                                                        <Row
+                                                            justifyContent="space-between"
+                                                            alignItems="start"
+                                                            spacing={2}
+                                                        >
+                                                            <Stack
+                                                                spacing={0.25}
+                                                            >
+                                                                <Typography
+                                                                    semiBold
+                                                                >
+                                                                    {item.label}
+                                                                </Typography>
+                                                                <Typography
+                                                                    level="body3"
+                                                                    secondary
+                                                                >
+                                                                    {
+                                                                        item.description
+                                                                    }
+                                                                </Typography>
+                                                            </Stack>
+                                                            <Checkbox
+                                                                aria-label={`Uključi ${item.label.toLowerCase()}`}
+                                                                checked={
+                                                                    checked
+                                                                }
+                                                                disabled={
+                                                                    settingsBusy
+                                                                }
+                                                                onCheckedChange={(
+                                                                    checked: boolean,
+                                                                ) =>
+                                                                    savePreferencesMutation.mutate(
+                                                                        [
+                                                                            buildPreferenceUpdate(
+                                                                                item,
+                                                                                Boolean(
+                                                                                    checked,
+                                                                                ),
+                                                                            ),
+                                                                        ],
+                                                                    )
+                                                                }
+                                                            />
+                                                        </Row>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                        {savePreferencesMutation.isError && (
+                                            <Typography
+                                                level="body3"
+                                                secondary
+                                            >
+                                                Postavke obavijesti nisu
+                                                spremljene.
+                                            </Typography>
+                                        )}
+                                    </Stack>
+                                </Card>
+
+                                <Card className="bg-card p-2">
+                                    <Stack spacing={1}>
+                                        <Checkbox
+                                            label="Ne ometaj"
+                                            checked={quietHoursEnabled}
+                                            disabled={settingsBusy}
+                                            onCheckedChange={(
+                                                checked: boolean,
+                                            ) => {
+                                                const enabled =
+                                                    Boolean(checked);
+                                                setQuietHoursEnabled(enabled);
+                                                saveAllPreferenceSettings({
+                                                    quietEnabled: enabled,
+                                                });
                                             }}
-                                            items={digestFrequencyItems}
                                         />
-                                    </div>
-                                </Stack>
-                            </Stack>
-                        </Card>
+                                        <Typography level="body3" secondary>
+                                            Vrijedi samo za prilagodljive
+                                            obavijesti koje podržavaju tihi
+                                            period.
+                                        </Typography>
+                                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                            <Input
+                                                label="Od"
+                                                type="time"
+                                                value={minuteToTimeValue(
+                                                    quietHoursStartMinute,
+                                                )}
+                                                disabled={
+                                                    !quietHoursEnabled ||
+                                                    settingsBusy
+                                                }
+                                                onChange={(event) => {
+                                                    const minute =
+                                                        timeValueToMinute(
+                                                            event.target.value,
+                                                        );
+                                                    if (minute === null) {
+                                                        return;
+                                                    }
+                                                    setQuietHoursStartMinute(
+                                                        minute,
+                                                    );
+                                                    if (quietHoursEnabled) {
+                                                        saveAllPreferenceSettings(
+                                                            {
+                                                                quietStart:
+                                                                    minute,
+                                                            },
+                                                        );
+                                                    }
+                                                }}
+                                            />
+                                            <Input
+                                                label="Do"
+                                                type="time"
+                                                value={minuteToTimeValue(
+                                                    quietHoursEndMinute,
+                                                )}
+                                                disabled={
+                                                    !quietHoursEnabled ||
+                                                    settingsBusy
+                                                }
+                                                onChange={(event) => {
+                                                    const minute =
+                                                        timeValueToMinute(
+                                                            event.target.value,
+                                                        );
+                                                    if (minute === null) {
+                                                        return;
+                                                    }
+                                                    setQuietHoursEndMinute(
+                                                        minute,
+                                                    );
+                                                    if (quietHoursEnabled) {
+                                                        saveAllPreferenceSettings(
+                                                            {
+                                                                quietEnd:
+                                                                    minute,
+                                                            },
+                                                        );
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    </Stack>
+                                </Card>
+
+                                <Card className="bg-card p-2">
+                                    <Stack spacing={1}>
+                                        <Checkbox
+                                            label="Primaj sažetak obavijesti"
+                                            checked={digestEnabled}
+                                            disabled={settingsBusy}
+                                            onCheckedChange={(
+                                                checked: boolean,
+                                            ) => {
+                                                const enabled =
+                                                    Boolean(checked);
+                                                setDigestEnabled(enabled);
+                                                saveAllPreferenceSettings({
+                                                    summaryEnabled: enabled,
+                                                });
+                                            }}
+                                        />
+                                        <Typography level="body3" secondary>
+                                            Sažetak vrijedi za prilagodljive
+                                            kategorije; obavezne poruke ne
+                                            čekaju sažetak.
+                                        </Typography>
+                                        <Stack spacing={0.5}>
+                                            <Typography level="body2" semiBold>
+                                                Razdoblje sažetka
+                                            </Typography>
+                                            <div
+                                                className={
+                                                    digestEnabled
+                                                        ? undefined
+                                                        : 'pointer-events-none opacity-50'
+                                                }
+                                            >
+                                                <SelectItems
+                                                    value={digestFrequency}
+                                                    onValueChange={(value) => {
+                                                        if (
+                                                            !isDigestPeriod(
+                                                                value,
+                                                            )
+                                                        ) {
+                                                            return;
+                                                        }
+                                                        setDigestFrequency(
+                                                            value,
+                                                        );
+                                                        if (digestEnabled) {
+                                                            saveAllPreferenceSettings(
+                                                                {
+                                                                    summaryFrequency:
+                                                                        value,
+                                                                },
+                                                            );
+                                                        }
+                                                    }}
+                                                    items={
+                                                        digestFrequencyItems
+                                                    }
+                                                />
+                                            </div>
+                                        </Stack>
+                                    </Stack>
+                                </Card>
+                            </>
+                        ) : (
+                            <Card className="bg-card p-2">
+                                <Typography level="body2" secondary>
+                                    Napredne postavke obavijesti trenutno nisu
+                                    dostupne.
+                                </Typography>
+                            </Card>
+                        )}
 
                         <Card className="bg-card p-2">
                             <Row

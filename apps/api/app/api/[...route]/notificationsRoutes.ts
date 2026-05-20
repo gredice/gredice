@@ -33,6 +33,7 @@ import {
     pushDeviceResponse,
     pushDeviceUpsertSchema,
 } from '../../../lib/notifications/pushDevices';
+import { notificationRolloutFlags } from '../../../lib/notifications/notificationRollout';
 import {
     pushNotificationEventMetadata,
     pushNotificationEventSchema,
@@ -274,6 +275,30 @@ function validateAndNormalizeCampaignDraft(
     };
 }
 
+function bulkCampaignsDisabledResponse(context: {
+    json: (body: { error: string }, status: 403) => Response;
+}) {
+    if (notificationRolloutFlags.bulkCampaignsEnabled) return null;
+    return context.json(
+        {
+            error: 'Bulk notification campaigns are not enabled in this environment',
+        },
+        403,
+    );
+}
+
+function premiumControlsDisabledResponse(context: {
+    json: (body: { error: string }, status: 403) => Response;
+}) {
+    if (notificationRolloutFlags.premiumControlsEnabled) return null;
+    return context.json(
+        {
+            error: 'Premium notification controls are not enabled in this environment',
+        },
+        403,
+    );
+}
+
 const app = new Hono<{ Variables: AuthVariables }>()
     .post(
         '/campaigns/preview',
@@ -285,6 +310,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['admin']),
         zValidator('json', z.object({ audience: campaignAudienceSchema })),
         async (context) => {
+            const disabledResponse = bulkCampaignsDisabledResponse(context);
+            if (disabledResponse) return disabledResponse;
+
             const { audience } = context.req.valid('json');
             const preview = await previewNotificationCampaignAudience(audience);
             return context.json({ preview }, 200);
@@ -300,6 +328,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['admin']),
         zValidator('json', campaignDraftSchema),
         async (context) => {
+            const disabledResponse = bulkCampaignsDisabledResponse(context);
+            if (disabledResponse) return disabledResponse;
+
             const payload = context.req.valid('json');
             const normalized = validateAndNormalizeCampaignDraft(payload);
             if ('error' in normalized) {
@@ -352,6 +383,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['admin']),
         zValidator('param', z.object({ id: z.string().min(1) })),
         async (context) => {
+            const disabledResponse = bulkCampaignsDisabledResponse(context);
+            if (disabledResponse) return disabledResponse;
+
             const { id } = context.req.valid('param');
             const campaign = await getNotificationCampaign(id);
             if (!campaign) {
@@ -371,6 +405,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['admin']),
         zValidator('param', z.object({ id: z.string().min(1) })),
         async (context) => {
+            const disabledResponse = bulkCampaignsDisabledResponse(context);
+            if (disabledResponse) return disabledResponse;
+
             const { id } = context.req.valid('param');
             const campaign = await getNotificationCampaign(id);
             if (!campaign) {
@@ -402,6 +439,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 .default({}),
         ),
         async (context) => {
+            const disabledResponse = bulkCampaignsDisabledResponse(context);
+            if (disabledResponse) return disabledResponse;
+
             const { id } = context.req.valid('param');
             const { scheduledAt } = context.req.valid('json');
             const campaign = await getNotificationCampaign(id);
@@ -483,6 +523,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['admin']),
         zValidator('param', z.object({ id: z.string().min(1) })),
         async (context) => {
+            const disabledResponse = bulkCampaignsDisabledResponse(context);
+            if (disabledResponse) return disabledResponse;
+
             const { id } = context.req.valid('param');
             const campaign = await getNotificationCampaign(id);
             if (!campaign) {
@@ -750,6 +793,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }),
         ),
         async (context) => {
+            const disabledResponse = premiumControlsDisabledResponse(context);
+            if (disabledResponse) return disabledResponse;
+
             const { userId, accountId } = context.get('authContext');
             const { preferences } = context.req.valid('json');
             for (const preference of preferences) {
