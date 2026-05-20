@@ -172,6 +172,9 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                     account?.sunflowers.amount ?? 0
                                 }
                                 discountPrice={item.shopData.discountPrice}
+                                disabled={
+                                    changeCurrencyShoppingCartItem.isPending
+                                }
                             />
                         </Row>
                     )}
