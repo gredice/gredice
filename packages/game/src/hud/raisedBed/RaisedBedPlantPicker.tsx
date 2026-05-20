@@ -25,6 +25,10 @@ import {
     type ShoppingCartItemData,
     useShoppingCart,
 } from '../../hooks/useShoppingCart';
+import {
+    scheduleHideShoppingCartTransientHub,
+    showShoppingCartTransientHub,
+} from '../../hooks/useShoppingCartTransientHub';
 import { PlantsList } from './PlantsList';
 import { PlantsSortList } from './PlantsSortList';
 
@@ -205,6 +209,7 @@ export function PlantPicker({
             sort_id: selectedSortId,
             use_inventory: useInventoryItem,
         });
+        showShoppingCartTransientHub();
         setFlyToShoppingCart(true);
         await setCartItem.mutateAsync({
             entityTypeName: 'plantSort',
@@ -219,6 +224,7 @@ export function PlantPicker({
             currency: useInventoryItem ? 'inventory' : 'eur',
         });
         await new Promise((resolve) => setTimeout(resolve, 800)); // Wait for animation to finish
+        scheduleHideShoppingCartTransientHub();
         setOpen(false);
         setFlyToShoppingCart(false);
     }
