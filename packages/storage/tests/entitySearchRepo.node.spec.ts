@@ -636,12 +636,13 @@ test('directory entity search preserves websearch operators without prefix fallb
     assert.ok(!exclusionRowIds.includes(prefixPlantId));
 
     const quotedRows = await searchDirectoryEntities({
-        query: '"snow"',
+        query: '"snow pea"',
         limit: 10,
     });
     const quotedRowIds = quotedRows.map((row) => row.entityId);
 
     assert.ok(quotedRowIds.includes(exactPlantId));
+    assert.ok(!quotedRowIds.includes(blockId));
     assert.ok(!quotedRowIds.includes(prefixPlantId));
 });
 
