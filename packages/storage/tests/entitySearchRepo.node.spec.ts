@@ -82,6 +82,36 @@ async function createSearchableEntity({
     return entityId;
 }
 
+async function addImageAttribute({
+    entityTypeName,
+    entityId,
+    category,
+    name,
+    dataType,
+    value,
+}: {
+    entityTypeName: string;
+    entityId: number;
+    category: string;
+    name: string;
+    dataType: 'image' | 'json';
+    value: unknown;
+}) {
+    const imageDefinitionId = await createAttributeDefinition({
+        category,
+        name,
+        label: 'Image',
+        entityTypeName,
+        dataType,
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: imageDefinitionId,
+        entityTypeName,
+        entityId,
+        value: JSON.stringify(value),
+    });
+}
+
 test('directory entity search normalizes Croatian diacritics and ranks title matches first', async () => {
     createTestDb();
     const descriptionToken = uniqueToken('opis');
@@ -133,12 +163,230 @@ test('directory entity search finds published operations without diacritics', as
     assert.equal(rows[0]?.publicUrl, '/radnje/ciscenje-gredice');
 });
 
+test('directory entity search returns direct images for public entity results', async () => {
+    createTestDb();
+    const plantToken = uniqueToken('biljkaimg');
+    const operationToken = uniqueToken('radnjaimg');
+    const blockToken = uniqueToken('blokimg');
+
+    const plantId = await createSearchableEntity({
+        entityTypeName: 'plant',
+        entityTypeLabel: 'Plant',
+        title: `Rajčica ${plantToken}`,
+    });
+    await addImageAttribute({
+        entityTypeName: 'plant',
+        entityId: plantId,
+        category: 'image',
+        name: 'cover',
+        dataType: 'image',
+        value: {
+            url: 'https://cdn.gredice.com/search/plant.jpg',
+            alt: 'Rajčica na biljci',
+        },
+    });
+
+    const operationId = await createSearchableEntity({
+        entityTypeName: 'operation',
+        entityTypeLabel: 'Operation',
+        title: `Čišćenje ${operationToken}`,
+    });
+    await addImageAttribute({
+        entityTypeName: 'operation',
+        entityId: operationId,
+        category: 'image',
+        name: 'image',
+        dataType: 'json',
+        value: {
+            cover: {
+                url: 'https://cdn.gredice.com/search/operation.jpg',
+                alt: 'Čišćenje gredice',
+            },
+        },
+    });
+
+    const blockId = await createSearchableEntity({
+        entityTypeName: 'block',
+        entityTypeLabel: 'Block',
+        title: `Blok ${blockToken}`,
+    });
+    await addImageAttribute({
+        entityTypeName: 'block',
+        entityId: blockId,
+        category: 'images',
+        name: 'images',
+        dataType: 'json',
+        value: {
+            cover: {
+                url: 'https://cdn.gredice.com/search/block.jpg',
+                alt: 'Blok za sadnju',
+            },
+        },
+    });
+
+    const plantRows = await searchDirectoryEntities({
+        query: plantToken,
+        entityTypeNames: ['plant'],
+    });
+    assert.equal(plantRows[0]?.entityId, plantId);
+    assert.equal(
+        plantRows[0]?.imageUrl,
+        'https://cdn.gredice.com/search/plant.jpg',
+    );
+    assert.equal(plantRows[0]?.imageAlt, 'Rajčica na biljci');
+
+    const operationRows = await searchDirectoryEntities({
+        query: operationToken,
+        entityTypeNames: ['operation'],
+    });
+    assert.equal(operationRows[0]?.entityId, operationId);
+    assert.equal(
+        operationRows[0]?.imageUrl,
+        'https://cdn.gredice.com/search/operation.jpg',
+    );
+    assert.equal(operationRows[0]?.imageAlt, 'Čišćenje gredice');
+
+    const blockRows = await searchDirectoryEntities({
+        query: blockToken,
+        entityTypeNames: ['block'],
+    });
+    assert.equal(blockRows[0]?.entityId, blockId);
+    assert.equal(
+        blockRows[0]?.imageUrl,
+        'https://cdn.gredice.com/search/block.jpg',
+    );
+    assert.equal(blockRows[0]?.imageAlt, 'Blok za sadnju');
+});
+
+test('directory entity search derives block images from block names', async () => {
+    createTestDb();
+    const blockToken = uniqueToken('blokasset');
+    await ensurePublicEntityType('block', 'Block');
+
+    const nameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: 'block',
+        dataType: 'text',
+    });
+    const labelDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'label',
+        label: 'Label',
+        entityTypeName: 'block',
+        dataType: 'text',
+    });
+
+    const blockId = await createEntity('block');
+    await upsertAttributeValue({
+        attributeDefinitionId: nameDefinitionId,
+        entityTypeName: 'block',
+        entityId: blockId,
+        value: 'Block_Snow',
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: labelDefinitionId,
+        entityTypeName: 'block',
+        entityId: blockId,
+        value: `Snijeg ${blockToken}`,
+    });
+    await updateEntity({ id: blockId, state: 'published' });
+
+    const rows = await searchDirectoryEntities({
+        query: blockToken,
+        entityTypeNames: ['block'],
+    });
+
+    assert.equal(rows[0]?.entityId, blockId);
+    assert.equal(
+        rows[0]?.imageUrl,
+        'https://www.gredice.com/assets/blocks/Block_Snow.png',
+    );
+    assert.equal(rows[0]?.imageAlt, `Snijeg ${blockToken}`);
+});
+
+test('directory entity search exposes operation visual keys from stages', async () => {
+    createTestDb();
+    const operationToken = uniqueToken('radnjaicon');
+    await upsertEntityType({ name: 'plantStage', label: 'Plant stage' });
+
+    const stageNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: 'plantStage',
+        dataType: 'text',
+    });
+    const stageLabelDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'label',
+        label: 'Label',
+        entityTypeName: 'plantStage',
+        dataType: 'text',
+    });
+    const stageId = await createEntity('plantStage');
+    await upsertAttributeValue({
+        attributeDefinitionId: stageNameDefinitionId,
+        entityTypeName: 'plantStage',
+        entityId: stageId,
+        value: 'watering',
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: stageLabelDefinitionId,
+        entityTypeName: 'plantStage',
+        entityId: stageId,
+        value: 'Zalijevanje',
+    });
+    await updateEntity({ id: stageId, state: 'published' });
+
+    const operationId = await createSearchableEntity({
+        entityTypeName: 'operation',
+        entityTypeLabel: 'Operation',
+        title: `Zalijevanje ${operationToken}`,
+    });
+    const operationStageDefinitionId = await createAttributeDefinition({
+        category: 'attributes',
+        name: 'stage',
+        label: 'Stage',
+        entityTypeName: 'operation',
+        dataType: 'ref:plantStage',
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: operationStageDefinitionId,
+        entityTypeName: 'operation',
+        entityId: operationId,
+        value: String(stageId),
+    });
+
+    const rows = await searchDirectoryEntities({
+        query: operationToken,
+        entityTypeNames: ['operation'],
+    });
+
+    assert.equal(rows[0]?.entityId, operationId);
+    assert.equal(rows[0]?.visualKey, 'watering');
+});
+
 test('directory entity search returns canonical plant sort URLs through parent plant data', async () => {
     createTestDb();
     const plantId = await createSearchableEntity({
         entityTypeName: 'plant',
         entityTypeLabel: 'Plant',
         title: 'Rajčica',
+    });
+    await addImageAttribute({
+        entityTypeName: 'plant',
+        entityId: plantId,
+        category: 'images',
+        name: 'images',
+        dataType: 'json',
+        value: {
+            cover: {
+                url: 'https://cdn.gredice.com/search/sort-parent.jpg',
+                alt: 'Rajčica kao naslijeđena slika sorte',
+            },
+        },
     });
     await ensurePublicEntityType('plantSort', 'Sorta biljke');
 
@@ -178,6 +426,11 @@ test('directory entity search returns canonical plant sort URLs through parent p
 
     assert.equal(rows[0]?.entityId, sortId);
     assert.equal(rows[0]?.publicUrl, '/biljke/rajcica/sorte/cherry-rajcica');
+    assert.equal(
+        rows[0]?.imageUrl,
+        'https://cdn.gredice.com/search/sort-parent.jpg',
+    );
+    assert.equal(rows[0]?.imageAlt, 'Rajčica kao naslijeđena slika sorte');
 });
 
 test('directory entity search returns canonical seed URLs through plant sort data', async () => {
@@ -187,6 +440,19 @@ test('directory entity search returns canonical seed URLs through plant sort dat
         entityTypeName: 'plant',
         entityTypeLabel: 'Plant',
         title: 'Rajčica',
+    });
+    await addImageAttribute({
+        entityTypeName: 'plant',
+        entityId: plantId,
+        category: 'images',
+        name: 'images',
+        dataType: 'json',
+        value: {
+            cover: {
+                url: 'https://cdn.gredice.com/search/seed-parent.jpg',
+                alt: 'Rajčica kao naslijeđena slika sjemena',
+            },
+        },
     });
     await ensurePublicEntityType('plantSort', 'Sorta biljke');
     await ensurePublicEntityType('seed', 'Sjeme');
@@ -271,6 +537,11 @@ test('directory entity search returns canonical seed URLs through plant sort dat
     assert.equal(rows[0]?.publicCategory, 'seeds');
     assert.equal(rows[0]?.publicCategoryLabel, 'Sjeme');
     assert.equal(rows[0]?.publicUrl, '/biljke/rajcica/sorte/cherry-rajcica');
+    assert.equal(
+        rows[0]?.imageUrl,
+        'https://cdn.gredice.com/search/seed-parent.jpg',
+    );
+    assert.equal(rows[0]?.imageAlt, 'Rajčica kao naslijeđena slika sjemena');
 
     await deleteEntity(sortId);
 
@@ -280,6 +551,60 @@ test('directory entity search returns canonical seed URLs through plant sort dat
     });
     assert.equal(refreshedRows[0]?.entityId, seedId);
     assert.equal(refreshedRows[0]?.publicUrl, '/biljke/rajcica');
+});
+
+test('directory entity search includes prefix matches after exact token matches', async () => {
+    createTestDb();
+    const blockId = await createSearchableEntity({
+        entityTypeName: 'block',
+        entityTypeLabel: 'Block',
+        title: 'Snow block',
+    });
+    const plantId = await createSearchableEntity({
+        entityTypeName: 'plant',
+        entityTypeLabel: 'Plant',
+        title: 'Luk',
+    });
+    await ensurePublicEntityType('plantSort', 'Sorta biljke');
+
+    const sortNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: 'plantSort',
+        dataType: 'text',
+    });
+    const sortPlantDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'plant',
+        label: 'Plant',
+        entityTypeName: 'plantSort',
+        dataType: 'ref:plant',
+    });
+    const sortId = await createEntity('plantSort');
+    await upsertAttributeValue({
+        attributeDefinitionId: sortNameDefinitionId,
+        entityTypeName: 'plantSort',
+        entityId: sortId,
+        value: 'Snowball',
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: sortPlantDefinitionId,
+        entityTypeName: 'plantSort',
+        entityId: sortId,
+        value: String(plantId),
+    });
+    await updateEntity({ id: sortId, state: 'published' });
+
+    const rows = await searchDirectoryEntities({
+        query: 'snow',
+        limit: 10,
+    });
+    const rowIds = rows.map((row) => row.entityId);
+
+    assert.ok(rowIds.includes(blockId));
+    assert.ok(rowIds.includes(sortId));
+    assert.ok(rowIds.indexOf(blockId) < rowIds.indexOf(sortId));
 });
 
 test('directory entity search falls back to plant URLs for seeds without plant sort data', async () => {

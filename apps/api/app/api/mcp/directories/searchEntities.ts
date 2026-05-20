@@ -42,6 +42,7 @@ export async function handleSearchEntities(
         url: row.publicUrl,
         imageUrl: row.imageUrl,
         imageAlt: row.imageAlt,
+        visualKey: row.visualKey,
         relevance: row.score,
     }));
 

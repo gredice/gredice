@@ -27,7 +27,6 @@ export const KnownPages = {
     Recipe: (slug: string) => `/recepti/${encodeURIComponent(slug)}` as Route,
     AboutUs: '/o-nama',
     FAQ: PublicDirectoryPaths.FAQ as Route,
-    Search: '/pretraga' as Route,
     Contact: '/kontakt',
     Pricing: '/cjenik',
     Refunds: '/povrati-i-povrat-novca',

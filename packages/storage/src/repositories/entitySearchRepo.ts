@@ -43,6 +43,11 @@ type EntitySearchDocumentValues = {
     updatedAt: Date;
 };
 
+type ImageMetadata = {
+    url: string;
+    alt: string | null;
+};
+
 export type SearchDirectoryEntitiesOptions = {
     query: string;
     entityTypeNames?: string[];
@@ -61,6 +66,7 @@ export type DirectoryEntitySearchRow = {
     summary: string | null;
     imageUrl: string | null;
     imageAlt: string | null;
+    visualKey: string | null;
     state: string;
     publishedAt: Date | null;
     updatedAt: Date;
@@ -104,6 +110,18 @@ function searchOffset(value: number | undefined) {
     return Math.max(Math.trunc(value ?? 0), 0);
 }
 
+function searchPrefixQueryText(value: string) {
+    const tokens = value.match(/[\p{L}\p{N}]+/gu) ?? [];
+    const searchableTokens = tokens.filter(
+        (token) => token.length >= minSearchQueryLength,
+    );
+    if (searchableTokens.length === 0) {
+        return null;
+    }
+
+    return searchableTokens.map((token) => `${token}:*`).join(' & ');
+}
+
 function compactText(values: Array<string | null | undefined>) {
     return values
         .map((value) => value?.trim() ?? '')
@@ -135,6 +153,22 @@ function attributeRefId(
         return null;
     }
     return Number.parseInt(value, 10);
+}
+
+function blockImageMetadata(entity: EntitySearchSource): ImageMetadata | null {
+    if (entity.entityTypeName !== 'block') {
+        return null;
+    }
+
+    const blockName = attributeValue(entity, 'information', 'name')?.trim();
+    if (!blockName) {
+        return null;
+    }
+
+    return {
+        url: `https://www.gredice.com/assets/blocks/${encodeURIComponent(blockName)}.png`,
+        alt: entityTitle(entity),
+    };
 }
 
 function entityTitle(entity: EntitySearchSource) {
@@ -238,41 +272,116 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function normalizeImageUrl(value: unknown) {
+    return typeof value === 'string' && value.trim().length > 0
+        ? value.trim()
+        : null;
+}
+
+function normalizeImageAlt(value: unknown) {
+    return typeof value === 'string' && value.trim().length > 0
+        ? value.trim()
+        : null;
+}
+
+function imageMetadataFromParsed(value: unknown): ImageMetadata | null {
+    if (Array.isArray(value)) {
+        for (const item of value) {
+            const metadata = imageMetadataFromParsed(item);
+            if (metadata) {
+                return metadata;
+            }
+        }
+        return null;
+    }
+
+    if (!isRecord(value)) {
+        return null;
+    }
+
+    const url = normalizeImageUrl(value.url);
+    if (url) {
+        return {
+            url,
+            alt: normalizeImageAlt(value.alt),
+        };
+    }
+
+    const cover = imageMetadataFromParsed(value.cover);
+    if (cover) {
+        return {
+            url: cover.url,
+            alt: cover.alt ?? normalizeImageAlt(value.alt),
+        };
+    }
+
+    return (
+        imageMetadataFromParsed(value.image) ??
+        imageMetadataFromParsed(value.images)
+    );
+}
+
 function parseImageMetadata(value: string | null | undefined) {
     if (!value) {
         return null;
     }
+
     try {
         const parsed: unknown = JSON.parse(value);
-        if (!isRecord(parsed)) {
-            return null;
-        }
-        const url = parsed.url;
-        if (typeof url !== 'string' || url.trim().length === 0) {
-            return null;
-        }
-        const alt = parsed.alt;
-        return {
-            url: url.trim(),
-            alt: typeof alt === 'string' && alt.trim() ? alt.trim() : null,
-        };
+        return imageMetadataFromParsed(parsed);
     } catch {
         return null;
     }
 }
 
-function entityImageMetadata(entity: EntitySearchSource) {
+function isImageCandidateAttribute(attribute: EntitySearchAttribute) {
+    const dataType = attribute.attributeDefinition.dataType;
+    if (dataType === 'image') {
+        return true;
+    }
+
+    if (!dataType.startsWith('json')) {
+        return false;
+    }
+
+    const category =
+        attribute.attributeDefinition.category.toLocaleLowerCase('hr-HR');
+    const name = attribute.attributeDefinition.name.toLocaleLowerCase('hr-HR');
+    return (
+        category === 'image' ||
+        category === 'images' ||
+        name === 'image' ||
+        name === 'images'
+    );
+}
+
+function imageAttributePriority(attribute: EntitySearchAttribute) {
+    const dataType = attribute.attributeDefinition.dataType;
+    const category =
+        attribute.attributeDefinition.category.toLocaleLowerCase('hr-HR');
+    const name = attribute.attributeDefinition.name.toLocaleLowerCase('hr-HR');
+
+    if (dataType === 'image' && category === 'image') {
+        return 0;
+    }
+    if (dataType === 'image') {
+        return 1;
+    }
+    if (category === 'image' || name === 'image') {
+        return 2;
+    }
+    if (category === 'images' || name === 'images') {
+        return 3;
+    }
+    return 4;
+}
+
+function directEntityImageMetadata(entity: EntitySearchSource) {
     const imageAttributes = entity.attributes
-        .filter(
-            (attribute) => attribute.attributeDefinition.dataType === 'image',
-        )
+        .filter(isImageCandidateAttribute)
         .sort((left, right) => {
-            const leftPreferred =
-                left.attributeDefinition.category === 'image' ? 0 : 1;
-            const rightPreferred =
-                right.attributeDefinition.category === 'image' ? 0 : 1;
             return (
-                leftPreferred - rightPreferred ||
+                imageAttributePriority(left) - imageAttributePriority(right) ||
                 left.attributeDefinition.name.localeCompare(
                     right.attributeDefinition.name,
                     'hr',
@@ -287,6 +396,57 @@ function entityImageMetadata(entity: EntitySearchSource) {
         }
     }
     return null;
+}
+
+async function entityImageMetadata(
+    entity: EntitySearchSource,
+): Promise<ImageMetadata | null> {
+    const direct = directEntityImageMetadata(entity);
+    if (direct) {
+        return direct;
+    }
+
+    const blockImage = blockImageMetadata(entity);
+    if (blockImage) {
+        return blockImage;
+    }
+
+    if (entity.entityTypeName === 'plantSort') {
+        const parentPlantId = attributeRefId(entity, 'information', 'plant');
+        const parentPlant = parentPlantId
+            ? await getEntityRaw(parentPlantId)
+            : null;
+        return parentPlant ? directEntityImageMetadata(parentPlant) : null;
+    }
+
+    if (entity.entityTypeName === 'seed') {
+        const plantSortId = attributeRefId(entity, 'information', 'plantSort');
+        const plantSort = plantSortId ? await getEntityRaw(plantSortId) : null;
+        const plantSortImage = plantSort
+            ? directEntityImageMetadata(plantSort)
+            : null;
+        if (plantSortImage) {
+            return plantSortImage;
+        }
+
+        const plantId = attributeRefId(entity, 'information', 'plant');
+        const plant = plantId ? await getEntityRaw(plantId) : null;
+        return plant ? directEntityImageMetadata(plant) : null;
+    }
+
+    return null;
+}
+
+async function entityVisualKey(entity: EntitySearchSource) {
+    if (entity.entityTypeName !== 'operation') {
+        return null;
+    }
+
+    const categoryId =
+        attributeRefId(entity, 'attributes', 'category') ??
+        attributeRefId(entity, 'attributes', 'stage');
+    const category = categoryId ? await getEntityRaw(categoryId) : null;
+    return category ? attributeValue(category, 'information', 'name') : null;
 }
 
 function searchVectorSql(values: EntitySearchDocumentValues) {
@@ -314,7 +474,7 @@ async function buildEntitySearchDocumentValues(
 
     const title = entityTitle(entity);
     const summary = entitySummary(entity);
-    const image = entityImageMetadata(entity);
+    const image = await entityImageMetadata(entity);
     const subtitleSearchText = compactText([
         summary,
         entity.entityType.label,
@@ -538,11 +698,25 @@ export async function searchDirectoryEntities({
 
     const entityTypeFilter = normalizeFilterValues(entityTypeNames);
     const categoryFilter = normalizeFilterValues(publicCategories);
-    const tsQuery = sql`websearch_to_tsquery('simple', ${normalizedQuery})`;
-    const score = sql<number>`ts_rank_cd(${entitySearchDocuments.searchVector}, ${tsQuery})`;
+    const exactTsQuery = sql`websearch_to_tsquery('simple', ${normalizedQuery})`;
+    const prefixQueryText = searchPrefixQueryText(normalizedQuery);
+    const prefixTsQuery = prefixQueryText
+        ? sql`to_tsquery('simple', ${prefixQueryText})`
+        : null;
+    const score = prefixTsQuery
+        ? sql<number>`
+            ts_rank_cd(${entitySearchDocuments.searchVector}, ${exactTsQuery}) +
+            (ts_rank_cd(${entitySearchDocuments.searchVector}, ${prefixTsQuery}) * 0.5)
+        `
+        : sql<number>`ts_rank_cd(${entitySearchDocuments.searchVector}, ${exactTsQuery})`;
     const conditions = [
         eq(entitySearchDocuments.state, 'published'),
-        sql`${entitySearchDocuments.searchVector} @@ ${tsQuery}`,
+        prefixTsQuery
+            ? sql`(
+                ${entitySearchDocuments.searchVector} @@ ${exactTsQuery} or
+                ${entitySearchDocuments.searchVector} @@ ${prefixTsQuery}
+            )`
+            : sql`${entitySearchDocuments.searchVector} @@ ${exactTsQuery}`,
     ];
 
     if (entityTypeFilter.length > 0) {
@@ -584,15 +758,24 @@ export async function searchDirectoryEntities({
     const rowsWithPublicUrls: DirectoryEntitySearchRow[] = [];
     for (const row of rows) {
         const entity = await getEntityRaw(row.entityId);
-        const publicUrl = entity
-            ? await resolveEntitySearchPublicUrl(entity)
-            : null;
-        if (publicUrl) {
-            rowsWithPublicUrls.push({
-                ...row,
-                publicUrl,
-            });
+        if (!entity) {
+            continue;
         }
+
+        const publicUrl = await resolveEntitySearchPublicUrl(entity);
+        if (!publicUrl) {
+            continue;
+        }
+
+        const image = await entityImageMetadata(entity);
+        const visualKey = await entityVisualKey(entity);
+        rowsWithPublicUrls.push({
+            ...row,
+            publicUrl,
+            imageUrl: image?.url ?? null,
+            imageAlt: image?.alt ?? null,
+            visualKey,
+        });
     }
 
     return rowsWithPublicUrls;

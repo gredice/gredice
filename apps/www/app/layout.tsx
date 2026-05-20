@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { PageNav } from '@signalco/ui/Nav';
+import { Button } from '@signalco/ui-primitives/Button';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import { Montserrat } from 'next/font/google';
@@ -10,6 +11,7 @@ import Head from 'next/head';
 import type { ReactNode } from 'react';
 import { PageViewTracker } from '../components/analytics/PageViewTracker';
 import { Logotype } from '../components/Logotype';
+import { NavSearch } from '../components/NavSearch';
 import { NavUserButton } from '../components/NavUserButton';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 import { KnownPages } from '../src/KnownPages';
@@ -20,6 +22,32 @@ const montserrat = Montserrat({
     subsets: ['latin'],
     variable: '--font-montserrat',
 });
+
+function NavLinkButton({
+    href,
+    children,
+    className,
+}: Readonly<{
+    href: string;
+    children: ReactNode;
+    className?: string;
+}>) {
+    return (
+        <Button
+            href={href}
+            variant="plain"
+            size="sm"
+            className={[
+                'h-10 w-full justify-start whitespace-nowrap px-4 text-sm md:h-9 md:w-auto md:justify-center md:px-3',
+                className,
+            ]
+                .filter(Boolean)
+                .join(' ')}
+        >
+            {children}
+        </Button>
+    );
+}
 
 export function generateMetadata(): Metadata {
     return {
@@ -93,26 +121,34 @@ export default async function RootLayout({
                             />
                         }
                         links={[
-                            {
-                                href: KnownPages.RaisedBeds,
-                                text: 'Podignuta gredica',
-                            },
-                            {
-                                href: KnownPages.Plants,
-                                text: 'Biljke',
-                            },
-                            {
-                                href: KnownPages.FAQ,
-                                text: 'Česta pitanja',
-                            },
-                            {
-                                href: KnownPages.Search,
-                                text: 'Pretraga',
-                            },
+                            <NavLinkButton
+                                key="raised-beds"
+                                href={KnownPages.RaisedBeds}
+                            >
+                                Gredica
+                            </NavLinkButton>,
+                            <NavLinkButton
+                                key="plants"
+                                href={KnownPages.Plants}
+                            >
+                                Biljke
+                            </NavLinkButton>,
+                            <NavLinkButton
+                                key="operations"
+                                href={KnownPages.Operations}
+                            >
+                                Radnje
+                            </NavLinkButton>,
+                            <NavLinkButton key="faq" href={KnownPages.FAQ}>
+                                Česta pitanja
+                            </NavLinkButton>,
                         ]}
                     >
                         <div className="absolute bg-background/80 w-full inset-0 -z-10" />
-                        <NavUserButton href={KnownPages.GardenApp} />
+                        <div className="flex items-center gap-2">
+                            <NavSearch className="md:-ml-1 xl:absolute xl:left-1/2 xl:top-1/2 xl:ml-0 xl:-translate-x-1/2 xl:-translate-y-1/2" />
+                            <NavUserButton href={KnownPages.GardenApp} />
+                        </div>
                     </PageNav>
                 </div>
                 <main className="mt-16 relative">

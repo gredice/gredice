@@ -636,6 +636,7 @@ export async function openApiDocs(
                 summary: { type: ['string', 'null'] },
                 imageUrl: { type: ['string', 'null'] },
                 imageAlt: { type: ['string', 'null'] },
+                visualKey: { type: ['string', 'null'] },
                 href: { type: 'string', format: 'uri' },
                 rank: { type: 'number' },
                 publishedAt: { type: ['string', 'null'], format: 'date-time' },

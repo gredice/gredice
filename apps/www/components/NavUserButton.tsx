@@ -10,7 +10,7 @@ export function NavUserButton({ href }: { href: string }) {
     return (
         <NavigatingButton
             href={href}
-            className="bg-green-800 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 dark:text-white rounded-full"
+            className="whitespace-nowrap bg-green-800 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 dark:text-white rounded-full"
             startDecorator={
                 user ? (
                     <UserAvatar

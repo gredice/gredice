@@ -720,6 +720,7 @@ export interface components {
             summary?: string | null;
             imageUrl?: string | null;
             imageAlt?: string | null;
+            visualKey?: string | null;
             /** Format: uri */
             href: string;
             rank: number;

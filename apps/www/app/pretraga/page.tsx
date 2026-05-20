@@ -1,20 +1,16 @@
-import { directoriesClient } from '@gredice/client';
-import {
-    type DirectoryEntityTypeName,
-    publicSearchCategoryByDirectoryEntityType,
-} from '@gredice/directory-types';
+import { type components, directoriesClient } from '@gredice/client';
 import { Search, Warning } from '@signalco/ui-icons';
 import { Card } from '@signalco/ui-primitives/Card';
 import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
+import {
+    normalizeSearchCategory,
+    searchCategoryParam,
+    searchPageLimit,
+} from '../../components/search/searchCategories';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
 import { SearchInteractive } from './SearchInteractive';
-
-const categoryOptions = [
-    { slug: 'all', label: 'Sve' },
-    ...Object.values(publicSearchCategoryByDirectoryEntityType),
-] as const;
 
 export const revalidate = 300;
 
@@ -30,6 +26,8 @@ export const metadata = {
     },
 };
 
+type SearchResult = components['schemas']['directory-search-result'];
+
 function getStringParam(value: string | string[] | undefined) {
     if (Array.isArray(value)) {
         return value[0] ?? '';
@@ -37,32 +35,28 @@ function getStringParam(value: string | string[] | undefined) {
     return value ?? '';
 }
 
-type SearchResult = {
-    entityId: number;
-    entityType: DirectoryEntityTypeName;
-    category: string;
-    categoryLabel: string;
-    title: string;
-    summary: string | null;
-    imageUrl: string | null;
-    imageAlt: string | null;
-    href: string;
-};
+function getPageParam(value: string | string[] | undefined) {
+    const page = Number.parseInt(getStringParam(value), 10);
+    return Number.isFinite(page) && page > 1 ? page : 1;
+}
 
-async function loadResults(query: string, category: string) {
+async function loadResults(
+    query: string,
+    category: ReturnType<typeof normalizeSearchCategory>,
+    page: number,
+) {
     if (query.trim().length < 2) {
         return { results: [] as SearchResult[], error: null as string | null };
     }
-
-    const categoryParam = category !== 'all' ? category : undefined;
 
     try {
         const { data, error } = await directoriesClient().GET('/search', {
             params: {
                 query: {
                     q: query,
-                    category: categoryParam,
-                    limit: 20,
+                    category: searchCategoryParam(category),
+                    limit: searchPageLimit,
+                    offset: (page - 1) * searchPageLimit,
                 },
             },
         });
@@ -88,14 +82,11 @@ export default async function SearchPage({
 }: PageProps<'/pretraga'>) {
     const params = await searchParams;
     const query = getStringParam(params.pretraga);
-    const category = getStringParam(params.kategorija) || 'all';
-    const selectedCategory = categoryOptions.some(
-        (item) => item.slug === category,
-    )
-        ? category
-        : 'all';
-
-    const { results, error } = await loadResults(query, selectedCategory);
+    const selectedCategory = normalizeSearchCategory(params.kategorija);
+    const page = getPageParam(params.stranica);
+    const { results, error } = await loadResults(query, selectedCategory, page);
+    const trimmedQuery = query.trim();
+    const hasNextPage = results.length === searchPageLimit;
 
     return (
         <Stack spacing={4} className="py-4">
@@ -106,6 +97,8 @@ export default async function SearchPage({
                 initialValue={query}
                 className="w-full"
                 navigateOnChange
+                placeholder="Pretraga..."
+                resetSearchParamNamesOnChange={['stranica']}
             />
 
             {error ? (
@@ -117,32 +110,28 @@ export default async function SearchPage({
                 </Card>
             ) : null}
 
-            {!query.trim() ? (
+            <SearchInteractive
+                query={query}
+                selectedCategory={selectedCategory}
+                results={trimmedQuery.length >= 2 ? results : []}
+                page={page}
+                hasNextPage={trimmedQuery.length >= 2 && hasNextPage}
+            />
+
+            {!trimmedQuery ? (
                 <Card className="p-6 text-center">
-                    <Search className="size-8 mx-auto mb-2 text-muted-foreground" />
+                    <Search className="mx-auto mb-2 size-8 text-muted-foreground" />
                     <Typography>Upiši pojam za pretragu.</Typography>
                 </Card>
-            ) : query.trim().length < 2 ? (
+            ) : trimmedQuery.length < 2 ? (
                 <Card className="p-6 text-center">
                     <Typography>Upiši barem 2 znaka za pretragu.</Typography>
                 </Card>
-            ) : (
-                <>
-                    <SearchInteractive
-                        categoryOptions={categoryOptions}
-                        query={query}
-                        selectedCategory={selectedCategory}
-                        results={results}
-                    />
-                    {results.length === 0 && !error ? (
-                        <Card className="p-6 text-center">
-                            <Typography>
-                                Nema rezultata za zadani pojam.
-                            </Typography>
-                        </Card>
-                    ) : null}
-                </>
-            )}
+            ) : results.length === 0 && !error ? (
+                <Card className="p-6 text-center">
+                    <Typography>Nema rezultata za zadani pojam.</Typography>
+                </Card>
+            ) : null}
         </Stack>
     );
 }
