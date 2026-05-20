@@ -36,7 +36,7 @@ describe('getServerGrediceApiOrigin', () => {
             {
                 GREDICE_API_HOST: 'http://localhost:3125/',
                 NODE_ENV: 'production',
-                VERCEL_ENV: 'preview',
+                VERCEL_ENV: 'production',
             },
             () => {
                 assert.equal(
