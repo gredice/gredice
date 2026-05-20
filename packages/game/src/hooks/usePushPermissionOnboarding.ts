@@ -1,28 +1,82 @@
+import { clientAuthenticated } from '@gredice/client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+    type PushDeviceMetadata,
+    type PushDeviceRegistrationPayload,
+    subscribePushDevice,
+} from './pushSubscription';
 
 type PushSetupStatus =
     | 'unsupported'
+    | 'unconfigured'
     | 'default'
     | 'denied'
     | 'granted'
+    | 'subscribed'
     | 'prompt-dismissed';
 
 const pushPromptDismissedKey = 'game:push:prompt-dismissed';
+const pushDeviceIdKey = 'game:push:device-id';
 const pushServiceWorkerPath = '/push-notifications-sw.js';
+const webPushVapidPublicKey =
+    process.env.NEXT_PUBLIC_GREDICE_WEB_PUSH_VAPID_PUBLIC_KEY;
 
 function readPromptDismissed(): boolean {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(pushPromptDismissedKey) === '1';
 }
 
-async function ensurePushServiceWorkerRegistered() {
+function readOrCreatePushDeviceId(): string | undefined {
+    if (typeof window === 'undefined') return undefined;
+    const existing = window.localStorage.getItem(pushDeviceIdKey);
+    if (existing) return existing;
+
+    const id =
+        window.crypto.randomUUID?.() ??
+        `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    window.localStorage.setItem(pushDeviceIdKey, id);
+    return id;
+}
+
+function pushDeviceMetadata(): PushDeviceMetadata {
+    if (typeof window === 'undefined') {
+        return {};
+    }
+
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const platform = navigator.platform || undefined;
+
+    return {
+        deviceId: readOrCreatePushDeviceId(),
+        deviceLabel: platform ? `Ovaj uređaj (${platform})` : 'Ovaj uređaj',
+        locale: navigator.language || undefined,
+        platform,
+        timezone,
+        userAgent: navigator.userAgent || undefined,
+    };
+}
+
+async function persistPushSubscription(payload: PushDeviceRegistrationPayload) {
+    const response =
+        await clientAuthenticated().api.notifications.devices.$post({
+            json: payload,
+        });
+    if (!response.ok) {
+        throw new Error('Push subscription was not saved.');
+    }
+}
+
+async function ensurePushServiceWorkerRegistered(): Promise<
+    ServiceWorkerRegistration | undefined
+> {
     if (
         typeof window === 'undefined' ||
         !('serviceWorker' in navigator) ||
+        !('PushManager' in window) ||
         typeof window.isSecureContext !== 'boolean' ||
         !window.isSecureContext
     ) {
-        return;
+        return undefined;
     }
 
     const existing = await navigator.serviceWorker.getRegistration(
@@ -30,19 +84,28 @@ async function ensurePushServiceWorkerRegistered() {
     );
     if (existing) {
         await existing.update();
-        return;
+        return existing;
     }
 
     await navigator.serviceWorker.register(pushServiceWorkerPath, {
         scope: '/',
     });
+    return navigator.serviceWorker.ready;
 }
 
 function resolvePermissionStatus(): PushSetupStatus {
-    if (typeof window === 'undefined' || !('Notification' in window)) {
+    if (
+        typeof window === 'undefined' ||
+        !('Notification' in window) ||
+        !('serviceWorker' in navigator) ||
+        !('PushManager' in window) ||
+        typeof window.isSecureContext !== 'boolean' ||
+        !window.isSecureContext
+    ) {
         return 'unsupported';
     }
 
+    if (!webPushVapidPublicKey) return 'unconfigured';
     if (window.Notification.permission === 'denied') return 'denied';
     if (window.Notification.permission === 'granted') return 'granted';
     return readPromptDismissed() ? 'prompt-dismissed' : 'default';
@@ -65,16 +128,38 @@ export function usePushPermissionOnboarding() {
     }, []);
 
     const requestPermission = useCallback(async () => {
-        if (typeof window === 'undefined' || !('Notification' in window)) {
+        if (
+            typeof window === 'undefined' ||
+            !('Notification' in window) ||
+            !('PushManager' in window)
+        ) {
             setStatus('unsupported');
             return 'unsupported' as const;
         }
 
-        const permission = await window.Notification.requestPermission();
+        if (!webPushVapidPublicKey) {
+            setStatus('unconfigured');
+            return 'unconfigured' as const;
+        }
+
+        const permission =
+            window.Notification.permission === 'granted'
+                ? 'granted'
+                : await window.Notification.requestPermission();
         if (permission === 'granted') {
-            await ensurePushServiceWorkerRegistered();
-            setStatus('granted');
-            return 'granted' as const;
+            const registration = await ensurePushServiceWorkerRegistered();
+            if (!registration) {
+                setStatus('unsupported');
+                return 'unsupported' as const;
+            }
+            await subscribePushDevice({
+                applicationServerKey: webPushVapidPublicKey,
+                metadata: pushDeviceMetadata(),
+                persistSubscription: persistPushSubscription,
+                pushManager: registration.pushManager,
+            });
+            setStatus('subscribed');
+            return 'subscribed' as const;
         }
 
         if (permission === 'denied') {
@@ -86,7 +171,10 @@ export function usePushPermissionOnboarding() {
         return 'default' as const;
     }, []);
 
-    const canPrompt = useMemo(() => status === 'default', [status]);
+    const canPrompt = useMemo(
+        () => status === 'default' || status === 'granted',
+        [status],
+    );
 
     return {
         status,

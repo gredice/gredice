@@ -120,6 +120,12 @@ async function mockGardenApi(page: Page, signedIn: boolean) {
             };
         } else if (pathname.endsWith('/api/inventory')) {
             body = { items: [] };
+        } else if (pathname.endsWith('/api/notifications/preferences')) {
+            body = { preferences: [] };
+        } else if (pathname.endsWith('/api/notifications/devices')) {
+            body = { devices: [] };
+        } else if (pathname.endsWith('/api/notifications/push-status')) {
+            body = { hasDevices: false, status: 'unsubscribed' };
         } else if (pathname.endsWith('/api/notifications')) {
             body = [];
         }

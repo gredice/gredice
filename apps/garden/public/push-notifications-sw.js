@@ -12,6 +12,18 @@ function safeString(value) {
         : undefined;
 }
 
+function safePositiveInteger(value) {
+    const numberValue =
+        typeof value === 'number'
+            ? value
+            : typeof value === 'string'
+              ? Number(value)
+              : Number.NaN;
+    return Number.isSafeInteger(numberValue) && numberValue > 0
+        ? numberValue
+        : undefined;
+}
+
 function normalizeUrl(rawUrl) {
     const safe = safeString(rawUrl);
     if (!safe) return undefined;
@@ -26,7 +38,9 @@ function normalizeUrl(rawUrl) {
 }
 
 function normalizeActions(actions) {
-    if (!Array.isArray(actions)) return undefined;
+    if (!Array.isArray(actions)) {
+        return { actions: undefined, actionUrls: undefined };
+    }
     const normalized = actions
         .filter((action) => isObject(action))
         .map((action) => ({
@@ -38,7 +52,38 @@ function normalizeActions(actions) {
         .filter((action) => action.action && action.title)
         .slice(0, Number(self.Notification?.maxActions ?? 2));
 
-    return normalized.length > 0 ? normalized : undefined;
+    if (normalized.length === 0) {
+        return { actions: undefined, actionUrls: undefined };
+    }
+
+    const actionUrls = normalized.reduce((urls, action) => {
+        if (action.action && action.url) {
+            urls[action.action] = action.url;
+        }
+        return urls;
+    }, {});
+
+    return {
+        actions: normalized.map((action) => ({
+            action: action.action,
+            title: action.title,
+            icon: action.icon,
+        })),
+        actionUrls: Object.keys(actionUrls).length > 0 ? actionUrls : undefined,
+    };
+}
+
+function readPushData(event) {
+    if (!event.data || typeof event.data.json !== 'function') {
+        return {};
+    }
+
+    try {
+        const raw = event.data.json();
+        return isObject(raw) ? raw : {};
+    } catch {
+        return {};
+    }
 }
 
 function createPayload(rawData) {
@@ -69,11 +114,15 @@ function createPayload(rawData) {
             renotify: Boolean(source.renotify && tag),
             requireInteraction: Boolean(source.requireInteraction),
             silent: Boolean(source.silent),
-            actions,
+            actions: actions.actions,
             data: {
                 url,
+                actionUrls: actions.actionUrls,
                 analytics: {
                     notificationId: safeString(source.notificationId),
+                    deliveryAttemptId: safePositiveInteger(
+                        source.deliveryAttemptId,
+                    ),
                     campaignId: safeString(source.campaignId),
                     category: safeString(source.category),
                 },
@@ -90,6 +139,7 @@ async function emitAnalytics(type, notificationData, action) {
         type,
         action: safeString(action),
         notificationId: analytics.notificationId,
+        deliveryAttemptId: safePositiveInteger(analytics.deliveryAttemptId),
         campaignId: analytics.campaignId,
         category: analytics.category,
         at: new Date().toISOString(),
@@ -109,7 +159,7 @@ async function emitAnalytics(type, notificationData, action) {
 }
 
 self.addEventListener('push', (event) => {
-    const raw = event.data ? event.data.json() : {};
+    const raw = readPushData(event);
     const payload = createPayload(raw);
     event.waitUntil(
         self.registration.showNotification(payload.title, payload.options),
@@ -119,10 +169,14 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
     const data = event.notification?.data;
     const actionCandidate = safeString(event.action);
-    const actionMatch = event.notification?.actions?.find(
-        (action) => action.action === actionCandidate,
-    );
-    const targetUrl = actionMatch?.url ?? data?.url ?? self.location.origin;
+    const actionUrls = isObject(data?.actionUrls) ? data.actionUrls : {};
+    const actionUrl = actionCandidate
+        ? safeString(actionUrls[actionCandidate])
+        : undefined;
+    const targetUrl =
+        normalizeUrl(actionUrl) ??
+        normalizeUrl(data?.url) ??
+        self.location.origin;
     event.notification.close();
 
     event.waitUntil(
