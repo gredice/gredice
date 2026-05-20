@@ -16,10 +16,12 @@ export type PlantsGalleryItemProps = Pick<
 > &
     Partial<Pick<PlantData, 'prices'>> & {
         isRecommended?: boolean;
+        matchingSortName?: string;
     };
 
 export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
-    const { information, prices, attributes, isRecommended } = props;
+    const { information, prices, attributes, isRecommended, matchingSortName } =
+        props;
     return (
         <ItemCard
             label={
@@ -40,6 +42,11 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
                     <Typography level="body2" className="self-end">
                         {prices?.perPlant?.toFixed(2) ?? 'Nepoznato'}€
                     </Typography>
+                    {matchingSortName && (
+                        <Typography level="body3" secondary>
+                            Sorta: {matchingSortName}
+                        </Typography>
+                    )}
                 </Stack>
             }
             href={KnownPages.Plant(information.name)}

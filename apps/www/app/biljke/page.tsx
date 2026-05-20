@@ -17,6 +17,7 @@ import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
+import { getPlantSortsData } from '../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
 import { KnownPages } from '../../src/KnownPages';
 import { merchantReturnPolicy } from '../../src/merchantReturnPolicy';
@@ -45,7 +46,10 @@ export default async function PlantsPage({
         ? (seedTimeFilter[0] ?? '')
         : (seedTimeFilter ?? '');
     const isSeedTimeFilterEnabled = seedTimeFilterValue === '1';
-    const entities = await getPlantsData();
+    const [entities, sorts] = await Promise.all([
+        getPlantsData(),
+        getPlantSortsData(),
+    ]);
     const isCanonicalView = !search && !isSeedTimeFilterEnabled;
     const sortedEntities = orderBy(entities ?? [], (a, b) =>
         a.information.name.localeCompare(b.information.name),
@@ -139,6 +143,7 @@ export default async function PlantsPage({
                     <TabsContent value="popis" className="mt-2">
                         <PlantsGallery
                             plants={entities}
+                            sorts={sorts}
                             initialSearch={search}
                             initialSeedTimeFilter={seedTimeFilterValue}
                         />
