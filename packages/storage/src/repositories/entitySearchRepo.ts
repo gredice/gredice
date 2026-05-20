@@ -128,7 +128,9 @@ function searchPrefixQueryText(value: string) {
 
 function hasWebSearchOperators(value: string) {
     return (
-        /(^|\s)-\S/u.test(value) || value.includes('"') || /\bor\b/u.test(value)
+        /(^|\s)-\S/u.test(value) ||
+        value.includes('"') ||
+        /\bor\b/iu.test(value)
     );
 }
 
