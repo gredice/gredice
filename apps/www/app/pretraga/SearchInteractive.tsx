@@ -46,14 +46,12 @@ export function SearchInteractive({
         emitted.current = key;
         posthog?.capture('public_search_submitted', {
             category: selectedCategory,
-            query: normalizedQuery,
             queryLength: normalizedQuery.length,
             resultCount: results.length,
         });
         if (results.length === 0) {
             posthog?.capture('public_search_no_results', {
                 category: selectedCategory,
-                query: normalizedQuery,
                 queryLength: normalizedQuery.length,
             });
         }
@@ -96,27 +94,45 @@ export function SearchInteractive({
             </Row>
             <Stack spacing={3}>
                 {results.map((result, index) => (
-                    <Card key={`${result.entityType}-${result.entityId}`} className="p-4">
+                    <Card
+                        key={`${result.entityType}-${result.entityId}`}
+                        className="p-4"
+                    >
                         <Stack spacing={2}>
-                            <Row spacing={2} alignItems="center" className="flex-wrap">
+                            <Row
+                                spacing={2}
+                                alignItems="center"
+                                className="flex-wrap"
+                            >
                                 <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium">
                                     {result.categoryLabel}
                                 </span>
                                 <a
-                                    href={result.href.replace('https://www.gredice.com', '')}
+                                    href={result.href.replace(
+                                        'https://www.gredice.com',
+                                        '',
+                                    )}
                                     onClick={() =>
-                                        posthog?.capture('public_search_result_clicked', {
-                                            category: selectedCategory,
-                                            href: result.href,
-                                            rank: index + 1,
-                                            queryLength: query.trim().length,
-                                        })
+                                        posthog?.capture(
+                                            'public_search_result_clicked',
+                                            {
+                                                category: selectedCategory,
+                                                href: result.href,
+                                                rank: index + 1,
+                                                queryLength:
+                                                    query.trim().length,
+                                            },
+                                        )
                                     }
                                 >
-                                    <Typography level="h5">{result.title}</Typography>
+                                    <Typography level="h5">
+                                        {result.title}
+                                    </Typography>
                                 </a>
                             </Row>
-                            {result.summary ? <Typography>{result.summary}</Typography> : null}
+                            {result.summary ? (
+                                <Typography>{result.summary}</Typography>
+                            ) : null}
                         </Stack>
                     </Card>
                 ))}

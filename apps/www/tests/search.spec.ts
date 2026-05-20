@@ -42,7 +42,9 @@ test.describe('public search filters', () => {
         await page.goto('/pretraga?pretraga=rajcica', {
             waitUntil: 'domcontentloaded',
         });
-        await expect(page.getByRole('heading', { name: 'Pretraga' })).toBeVisible();
+        await expect(
+            page.getByRole('heading', { name: 'Pretraga' }),
+        ).toBeVisible();
         await page.getByRole('button', { name: 'Radnje' }).click();
         await expect(page).toHaveURL(/kategorija=operations/);
 
@@ -54,7 +56,9 @@ test.describe('public search filters', () => {
         ).toBeVisible();
     });
 
-    test('global search keeps keyboard submit flow on mobile', async ({ page }) => {
+    test('global search keeps keyboard submit flow on mobile', async ({
+        page,
+    }) => {
         await page.setViewportSize({ width: 390, height: 844 });
         await page.goto('/pretraga', { waitUntil: 'domcontentloaded' });
         const input = page.getByPlaceholder('Pretraži...');

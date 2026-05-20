@@ -126,17 +126,22 @@ export default async function SearchPage({
                 <Card className="p-6 text-center">
                     <Typography>Upiši barem 2 znaka za pretragu.</Typography>
                 </Card>
-            ) : results.length === 0 && !error ? (
-                <Card className="p-6 text-center">
-                    <Typography>Nema rezultata za zadani pojam.</Typography>
-                </Card>
             ) : (
-                <SearchInteractive
-                    categoryOptions={categoryOptions}
-                    query={query}
-                    selectedCategory={selectedCategory}
-                    results={results}
-                />
+                <>
+                    <SearchInteractive
+                        categoryOptions={categoryOptions}
+                        query={query}
+                        selectedCategory={selectedCategory}
+                        results={results}
+                    />
+                    {results.length === 0 && !error ? (
+                        <Card className="p-6 text-center">
+                            <Typography>
+                                Nema rezultata za zadani pojam.
+                            </Typography>
+                        </Card>
+                    ) : null}
+                </>
             )}
         </Stack>
     );
