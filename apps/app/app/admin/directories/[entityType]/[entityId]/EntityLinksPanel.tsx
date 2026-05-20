@@ -36,11 +36,16 @@ export function EntityLinksPanel({ entityId }: { entityId: number }) {
         }
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
                 setOpen(false);
             }
         };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        window.addEventListener('keydown', handleKeyDown, { capture: true });
+        return () =>
+            window.removeEventListener('keydown', handleKeyDown, {
+                capture: true,
+            });
     }, [open]);
 
     async function fetchLinks() {
