@@ -16,21 +16,21 @@ export function EntityDetailsPropertyList({
     items: EntityDetailsPropertyListItem[];
 }) {
     return (
-        <dl className="overflow-hidden rounded-lg border bg-background">
+        <dl className="space-y-1">
             {items.map((item) => (
                 <div
                     key={item.id}
-                    className="grid grid-cols-[minmax(6rem,0.85fr)_minmax(0,1.15fr)] gap-3 border-b px-3 py-2.5 text-sm last:border-b-0"
+                    className="grid grid-cols-[minmax(6rem,0.85fr)_minmax(0,1.15fr)] gap-3 px-3 py-2 text-sm"
                 >
-                    <dt className="min-w-0 truncate text-muted-foreground">
-                        {item.label}
-                    </dt>
-                    <dd className="flex min-w-0 items-center gap-2 text-foreground">
+                    <dt className="flex min-w-0 items-center gap-2 text-muted-foreground">
                         {item.visual && (
-                            <span className="shrink-0 text-muted-foreground">
+                            <span className="shrink-0" aria-hidden>
                                 {item.visual}
                             </span>
                         )}
+                        <span className="min-w-0 truncate">{item.label}</span>
+                    </dt>
+                    <dd className="flex min-w-0 items-center gap-2 text-foreground">
                         <span
                             className={cx(
                                 'min-w-0',
@@ -58,7 +58,7 @@ function renderPropertyValue(value: EntityDetailsPropertyListItem['value']) {
     }
 
     if (typeof value === 'boolean') {
-        return value ? 'Da' : 'Ne';
+        return renderBooleanValueToggle(value);
     }
 
     return value ?? '-';
@@ -66,4 +66,27 @@ function renderPropertyValue(value: EntityDetailsPropertyListItem['value']) {
 
 function isCompactValue(value: EntityDetailsPropertyListItem['value']) {
     return typeof value === 'string' || typeof value === 'number';
+}
+
+function renderBooleanValueToggle(value: boolean) {
+    return (
+        <button
+            type="button"
+            role="switch"
+            aria-checked={value}
+            disabled
+            className={cx(
+                'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:cursor-default disabled:opacity-100',
+                value ? 'bg-primary' : 'bg-muted',
+            )}
+        >
+            <span
+                className={cx(
+                    'inline-block size-4 rounded-full bg-background shadow-sm transition-transform',
+                    value ? 'translate-x-4' : 'translate-x-0.5',
+                )}
+            />
+            <span className="sr-only">{value ? 'Da' : 'Ne'}</span>
+        </button>
+    );
 }

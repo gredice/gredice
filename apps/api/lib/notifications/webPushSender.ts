@@ -12,6 +12,7 @@ import webPush, {
     type SendResult,
     type Urgency,
 } from 'web-push';
+import { notificationRolloutFlags } from './notificationRollout';
 
 const webPushQueueProvider = 'web_push_queue';
 const defaultBatchLimit = 50;
@@ -57,6 +58,10 @@ export type QueuedWebPushAttempt = {
 export type WebPushSend = (
     attempt: QueuedWebPushAttempt,
 ) => Promise<SendResult | undefined>;
+
+export type WebPushPayloadOptions = {
+    richPushEnabled?: boolean;
+};
 
 export type WebPushAttemptRecorders = {
     accepted?: (
@@ -143,9 +148,14 @@ function webPushSubscription(attempt: QueuedWebPushAttempt): PushSubscription {
     };
 }
 
-export function buildWebPushPayload(attempt: QueuedWebPushAttempt) {
+export function buildWebPushPayload(
+    attempt: QueuedWebPushAttempt,
+    options: WebPushPayloadOptions = {},
+) {
+    const richPushEnabled =
+        options.richPushEnabled ?? notificationRolloutFlags.richPushEnabled;
     const url = attempt.safeLinkUrl ?? attempt.linkUrl ?? '/';
-    const actionUrl = attempt.actionUrl;
+    const actionUrl = richPushEnabled ? attempt.actionUrl : null;
     return JSON.stringify({
         actions: actionUrl
             ? [
@@ -161,7 +171,9 @@ export function buildWebPushPayload(attempt: QueuedWebPushAttempt) {
         category: attempt.category,
         deliveryAttemptId: attempt.attemptId,
         icon: attempt.iconUrl ?? '/icon.png',
-        image: attempt.safeImageUrl ?? attempt.imageUrl ?? undefined,
+        image: richPushEnabled
+            ? (attempt.safeImageUrl ?? attempt.imageUrl ?? undefined)
+            : undefined,
         notificationId: attempt.notificationId,
         requireInteraction:
             attempt.priority === 'critical' || attempt.priority === 'high',
@@ -174,7 +186,10 @@ export function buildWebPushPayload(attempt: QueuedWebPushAttempt) {
     });
 }
 
-export function createWebPushSend(config: WebPushVapidConfig): WebPushSend {
+export function createWebPushSend(
+    config: WebPushVapidConfig,
+    options: WebPushPayloadOptions = {},
+): WebPushSend {
     webPush.setVapidDetails(
         config.subject,
         config.publicKey,
@@ -184,7 +199,7 @@ export function createWebPushSend(config: WebPushVapidConfig): WebPushSend {
     return async (attempt) =>
         await webPush.sendNotification(
             webPushSubscription(attempt),
-            buildWebPushPayload(attempt),
+            buildWebPushPayload(attempt, options),
             {
                 TTL: attempt.ttlSeconds ?? defaultTtlSeconds,
                 urgency: normalizeUrgency(attempt.urgency),
@@ -456,11 +471,13 @@ export async function sendQueuedWebPushAttempts({
     limit = defaultBatchLimit,
     maxRetryFailures = defaultMaxRetryFailures,
     notificationId,
+    richPushEnabled,
     send,
 }: {
     limit?: number;
     maxRetryFailures?: number;
     notificationId?: string;
+    richPushEnabled?: boolean;
     send?: WebPushSend;
 } = {}): Promise<WebPushBatchResult> {
     const config = readWebPushVapidConfig();
@@ -491,7 +508,12 @@ export async function sendQueuedWebPushAttempts({
     }
 
     const resolvedSend =
-        send ?? (config ? createWebPushSend(config) : undefined);
+        send ??
+        (config
+            ? createWebPushSend(config, {
+                  richPushEnabled,
+              })
+            : undefined);
     if (!resolvedSend) {
         return {
             accepted: 0,
