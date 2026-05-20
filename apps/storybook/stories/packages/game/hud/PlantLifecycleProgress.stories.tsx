@@ -308,10 +308,24 @@ function LifecycleGrid({ examples }: { examples: LifecycleExample[] }) {
     );
 }
 
+const defaultExample = valueExamples[5];
+const defaultLifecycleData = getPlantLifecycleProgressData({
+    field: defaultExample.field,
+    plantAttributes,
+    now,
+});
+
 const meta = {
     title: 'packages/game/hud/raisedBed/PlantLifecycleProgress',
     component: PlantLifecycleProgress,
     tags: ['autodocs'],
+    args: {
+        field: defaultExample.field,
+        plantAttributes,
+        lifecycleData: defaultLifecycleData,
+        plantDetailsUrl,
+        statusTrigger: <StatusTrigger field={defaultExample.field} />,
+    },
     parameters: {
         layout: 'fullscreen',
         docs: {

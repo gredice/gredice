@@ -18,6 +18,10 @@
             "cache": false
         },
         "lint": {},
+        "typecheck": {
+            "dependsOn": ["^typecheck"],
+            "outputs": []
+        },
         "lint:migrate": {
             "cache": false
         },

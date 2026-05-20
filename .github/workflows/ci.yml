@@ -99,6 +99,7 @@ jobs:
               - turbo.json
             app_storybook:
               - apps/storybook/**
+              - packages/game/**
               - packages/ui/**
               - .github/workflows/**
               - package.json
