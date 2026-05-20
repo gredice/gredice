@@ -13,11 +13,9 @@
     }
 }
 
-@layer components {
-    button[role="combobox"][aria-autocomplete="none"].border,
-    select:not([aria-hidden="true"]) {
-        background-color: hsl(var(--background));
-    }
+button[role="combobox"][aria-autocomplete="none"].border,
+select:not([aria-hidden="true"]) {
+    background-color: hsl(var(--background));
 }
 
 *::-webkit-scrollbar {
