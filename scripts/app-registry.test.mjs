@@ -59,14 +59,25 @@ function runAppCommandForTest(command, env = {}) {
         ...env,
         PATH: `${binDir}${delimiter}${process.env.PATH}`,
     };
-    if (!Object.hasOwn(env, 'GREDICE_API_HOST')) {
-        delete childEnv.GREDICE_API_HOST;
+    for (const key of [
+        'GREDICE_API_HOST',
+        'GREDICE_PROXY_HTTPS_PORT',
+        'GREDICE_WWW_REVALIDATE_URL',
+        'NEXT_PUBLIC_GREDICE_API_ORIGIN',
+        'NEXT_PUBLIC_GREDICE_APP_ORIGIN',
+        'NEXT_PUBLIC_GREDICE_FARM_ORIGIN',
+        'NEXT_PUBLIC_GREDICE_GARDEN_ORIGIN',
+        'NEXT_PUBLIC_GREDICE_WWW_ORIGIN',
+    ]) {
+        if (!Object.hasOwn(env, key)) {
+            delete childEnv[key];
+        }
     }
     writeFileSync(
         nextPath,
         [
             '#!/usr/bin/env node',
-            "console.log(JSON.stringify({ args: process.argv.slice(2), apiHost: process.env.GREDICE_API_HOST }));",
+            "console.log(JSON.stringify({ args: process.argv.slice(2), apiHost: process.env.GREDICE_API_HOST, publicApiOrigin: process.env.NEXT_PUBLIC_GREDICE_API_ORIGIN, publicGardenOrigin: process.env.NEXT_PUBLIC_GREDICE_GARDEN_ORIGIN, wwwRevalidateUrl: process.env.GREDICE_WWW_REVALIDATE_URL }));",
         ].join('\n'),
     );
     chmodSync(nextPath, 0o755);
@@ -270,6 +281,25 @@ describe('app registry worktree ports', () => {
         const output = JSON.parse(result.stdout);
         assert.deepEqual(output.args, ['dev', '-p', '3123']);
         assert.equal(output.apiHost, 'http://localhost:3125');
+        assert.equal(output.publicApiOrigin, 'http://localhost:3125');
+        assert.equal(output.publicGardenOrigin, 'http://localhost:3121');
+        assert.equal(output.wwwRevalidateUrl, 'http://localhost:3120');
+    });
+
+    it('points browser origins at the active worktree proxy when available', () => {
+        const result = runAppCommandForTest('dev', {
+            GREDICE_PORT_OFFSET: '12',
+            GREDICE_PROXY_HTTPS_PORT: '8121',
+        });
+        assert.equal(result.status, 0, result.stderr);
+
+        const output = JSON.parse(result.stdout);
+        assert.equal(output.apiHost, 'http://localhost:3125');
+        assert.equal(output.publicApiOrigin, 'https://api.gredice.test:8121');
+        assert.equal(
+            output.publicGardenOrigin,
+            'https://vrt.gredice.test:8121',
+        );
     });
 
     it('points local API calls at the API start port for start commands', () => {
@@ -282,6 +312,7 @@ describe('app registry worktree ports', () => {
         const output = JSON.parse(result.stdout);
         assert.deepEqual(output.args, ['start', '-p', '3003']);
         assert.equal(output.apiHost, 'http://localhost:13005');
+        assert.equal(output.publicApiOrigin, 'http://localhost:13005');
     });
 
     it('forwards SIGINT to the app command and exits with the interrupt code', async () => {

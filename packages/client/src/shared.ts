@@ -1,3 +1,15 @@
+export function getServerGrediceApiOrigin() {
+    const configuredApiHost = process.env.GREDICE_API_HOST?.trim();
+    if (configuredApiHost) {
+        return configuredApiHost.replace(/\/+$/, '');
+    }
+
+    const isDevelopment =
+        process.env.NODE_ENV === 'development' ||
+        process.env.VERCEL_ENV === 'development';
+    return isDevelopment ? 'http://localhost:3005' : 'https://api.gredice.com';
+}
+
 export function getAppUrl() {
     // Check if we're in a browser environment
     const isBrowser = typeof window !== 'undefined';
@@ -13,6 +25,11 @@ export function getAppUrl() {
         process.env.NODE_ENV === 'development' ||
         process.env.VERCEL_ENV === 'development'
     ) {
+        const configuredApiHost = process.env.GREDICE_API_HOST?.trim();
+        if (configuredApiHost) {
+            return configuredApiHost.replace(/\/+$/, '');
+        }
+
         return 'https://api.gredice.test';
     }
     return 'https://api.gredice.com';

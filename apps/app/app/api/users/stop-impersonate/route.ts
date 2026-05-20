@@ -6,27 +6,46 @@ import { setRefreshCookie } from '../../../../lib/auth/refreshCookies';
 import { impersonationRefreshCookieName } from '../../../../lib/auth/sessionConfig';
 
 const allowedOrigins = [
-    'https://app.gredice.com',
-    'https://app.gredice.test',
-    'https://www.gredice.com',
-    'https://www.gredice.test',
-    'https://vrt.gredice.com',
-    'https://vrt.gredice.test',
-    'https://farma.gredice.com',
-    'https://farma.gredice.test',
+    'app.gredice.com',
+    'app.gredice.test',
+    'www.gredice.com',
+    'www.gredice.test',
+    'vrt.gredice.com',
+    'vrt.gredice.test',
+    'farma.gredice.com',
+    'farma.gredice.test',
 ];
 
 function getAdminUrl(request: Request) {
     const url = new URL(request.url);
     if (url.hostname.includes('.test')) {
-        return 'https://app.gredice.test/admin/users';
+        url.hostname = 'app.gredice.test';
+        url.pathname = '/admin/users';
+        url.search = '';
+        url.hash = '';
+        return url.toString();
     }
     return 'https://app.gredice.com/admin/users';
 }
 
+function isAllowedOrigin(origin: string | null) {
+    if (!origin) {
+        return false;
+    }
+
+    try {
+        const url = new URL(origin);
+        return (
+            url.protocol === 'https:' && allowedOrigins.includes(url.hostname)
+        );
+    } catch {
+        return false;
+    }
+}
+
 export async function POST(request: Request) {
     const origin = request.headers.get('Origin');
-    if (!origin || !allowedOrigins.includes(origin)) {
+    if (!isAllowedOrigin(origin)) {
         return new Response(JSON.stringify({ error: 'Forbidden' }), {
             status: 403,
             headers: { 'Content-Type': 'application/json' },

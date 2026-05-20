@@ -1,0 +1,75 @@
+export type GrediceAppOrigin = 'api' | 'app' | 'farm' | 'garden' | 'www';
+
+const localHostnames: Record<GrediceAppOrigin, string> = {
+    api: 'api.gredice.test',
+    app: 'app.gredice.test',
+    farm: 'farma.gredice.test',
+    garden: 'vrt.gredice.test',
+    www: 'www.gredice.test',
+};
+
+const localPorts: Record<GrediceAppOrigin, number> = {
+    api: 3005,
+    app: 3003,
+    farm: 3002,
+    garden: 3001,
+    www: 3000,
+};
+
+const productionOrigins: Record<GrediceAppOrigin, string> = {
+    api: 'https://api.gredice.com',
+    app: 'https://app.gredice.com',
+    farm: 'https://farma.gredice.com',
+    garden: 'https://vrt.gredice.com',
+    www: 'https://www.gredice.com',
+};
+
+function configuredPublicOrigin(app: GrediceAppOrigin) {
+    switch (app) {
+        case 'api':
+            return process.env.NEXT_PUBLIC_GREDICE_API_ORIGIN;
+        case 'app':
+            return process.env.NEXT_PUBLIC_GREDICE_APP_ORIGIN;
+        case 'farm':
+            return process.env.NEXT_PUBLIC_GREDICE_FARM_ORIGIN;
+        case 'garden':
+            return process.env.NEXT_PUBLIC_GREDICE_GARDEN_ORIGIN;
+        case 'www':
+            return process.env.NEXT_PUBLIC_GREDICE_WWW_ORIGIN;
+    }
+}
+
+function trimTrailingSlash(value: string) {
+    return value.replace(/\/+$/, '');
+}
+
+function isLocalhost(hostname: string) {
+    return hostname === 'localhost' || hostname === '127.0.0.1';
+}
+
+function isLocalGrediceHostname(hostname: string) {
+    return hostname === 'gredice.test' || hostname.endsWith('.gredice.test');
+}
+
+export function getBrowserGrediceAppOrigin(app: GrediceAppOrigin) {
+    const configured = configuredPublicOrigin(app)?.trim();
+    if (configured) {
+        return trimTrailingSlash(configured);
+    }
+
+    if (typeof window === 'undefined') {
+        return productionOrigins[app];
+    }
+
+    const currentUrl = new URL(window.location.origin);
+    if (isLocalGrediceHostname(currentUrl.hostname)) {
+        currentUrl.hostname = localHostnames[app];
+        return currentUrl.origin;
+    }
+
+    if (isLocalhost(currentUrl.hostname)) {
+        return `http://localhost:${localPorts[app]}`;
+    }
+
+    return productionOrigins[app];
+}

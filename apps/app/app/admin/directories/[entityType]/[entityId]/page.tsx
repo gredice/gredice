@@ -39,6 +39,7 @@ import { handleEntityDelete } from '../../../../(actions)/entityActions';
 import { AttributeDataTypeIcon } from '../attribute-definitions/AttributeDataTypes';
 import { AttributeCategoryDetails } from './AttributeCategoryDetails';
 import { EntityActions } from './EntityActions';
+import { EntityDetailsPanelCard } from './EntityDetailsPanelCard';
 import { EntityDetailsPropertiesLayout } from './EntityDetailsPropertiesLayout';
 import { EntityDetailsPropertiesPanel } from './EntityDetailsPropertiesPanel';
 import { EntityDetailsPropertiesProvider } from './EntityDetailsPropertiesProvider';
@@ -397,7 +398,9 @@ export default async function EntityDetailsPage(props: {
     ];
     const propertiesPanel = (
         <EntityDetailsPropertiesPanel>
-            <EntityDetailsPropertyList items={propertyItems} />
+            <EntityDetailsPanelCard title="Detalji">
+                <EntityDetailsPropertyList items={propertyItems} />
+            </EntityDetailsPanelCard>
             {inventoryConfig && (
                 <EntityInventoryCard
                     inventoryConfigId={inventoryConfig.id}

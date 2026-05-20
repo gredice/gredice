@@ -2,9 +2,22 @@
 
 :root {
     color-scheme: light;
+    --admin-page-content-background: color-mix(
+        in srgb,
+        hsl(var(--background)) 40%,
+        hsl(var(--muted))
+    );
     scrollbar-width: thin;
     scrollbar-color: color-mix(in srgb, currentColor 20%, transparent)
         transparent;
+}
+
+.dark {
+    --admin-page-content-background: color-mix(
+        in srgb,
+        hsl(var(--background)) 40%,
+        hsl(var(--muted))
+    );
 }
 
 @media (prefers-color-scheme: dark) {

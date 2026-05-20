@@ -1,6 +1,6 @@
 'use client';
 
-import { clientPublic } from '@gredice/client';
+import { clientPublic, getBrowserGrediceAppOrigin } from '@gredice/client';
 import {
     FacebookLoginButton,
     GoogleLoginButton,
@@ -138,7 +138,11 @@ export default function LoginModal() {
             provider,
             surface: 'garden',
         });
-        window.location.href = `https://api.gredice.com/api/auth/${provider}`;
+        const authUrl = new URL(
+            `/api/auth/${provider}`,
+            getBrowserGrediceAppOrigin('api'),
+        );
+        window.location.href = authUrl.toString();
     };
 
     return (

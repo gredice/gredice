@@ -1,17 +1,12 @@
 'use client';
 
+import { getBrowserGrediceAppOrigin } from '@gredice/client';
 import { Ghost } from '@signalco/ui-icons';
 import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { useRouter } from 'next/navigation';
 
 function getGardenUrl() {
-    if (
-        typeof window !== 'undefined' &&
-        window.location.hostname.includes('.test')
-    ) {
-        return 'https://vrt.gredice.test';
-    }
-    return 'https://vrt.gredice.com';
+    return getBrowserGrediceAppOrigin('garden');
 }
 
 export function ButtonImpersonateUser({ userId }: { userId: string }) {

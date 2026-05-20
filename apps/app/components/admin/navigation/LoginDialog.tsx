@@ -1,5 +1,6 @@
 'use client';
 
+import { getBrowserGrediceAppOrigin } from '@gredice/client';
 import {
     FacebookLoginButton,
     GoogleLoginButton,
@@ -82,12 +83,7 @@ export function LoginDialog() {
                 ? '/prijava/google-prijava/povratak'
                 : '/prijava/facebook-prijava/povratak';
         const redirectUrl = `${window.location.origin}${callbackPath}`;
-        const apiBaseUrl =
-            window.location.hostname.endsWith('.test') ||
-            window.location.hostname === 'localhost' ||
-            window.location.hostname === '127.0.0.1'
-                ? 'https://api.gredice.test'
-                : 'https://api.gredice.com';
+        const apiBaseUrl = getBrowserGrediceAppOrigin('api');
         const authUrl = new URL(`/api/auth/${provider}`, apiBaseUrl);
         authUrl.searchParams.set('redirect', redirectUrl);
         authUrl.searchParams.set(

@@ -28,11 +28,17 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+function localWwwOriginFromHost(host: string) {
+    const hostUrl = new URL(`https://${host}`);
+    hostUrl.hostname = 'www.gredice.test';
+    return hostUrl.origin;
+}
+
 export default async function AdminLayout({ children }: PropsWithChildren) {
     const requestHeaders = await headers();
     const requestHost = requestHeaders.get('host') ?? '';
     const landingUrl = requestHost.includes('.test')
-        ? 'https://www.gredice.test'
+        ? localWwwOriginFromHost(requestHost)
         : 'https://www.gredice.com';
 
     const authAdmin = auth.bind(null, ['admin']);
@@ -94,7 +100,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                                 <DesktopNav />
                                 {/* Main Content */}
                                 <div className="min-h-full grow">
-                                    <div className="min-h-full border bg-background p-3 md:rounded-2xl md:p-4">
+                                    <div className="min-h-full border bg-[var(--admin-page-content-background)] p-3 md:rounded-2xl md:p-4">
                                         <AuthProtectedSection auth={authAdmin}>
                                             <Suspense>
                                                 <AdminPageHeaderProvider>

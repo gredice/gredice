@@ -1,5 +1,6 @@
 'use client';
 
+import { getBrowserGrediceAppOrigin } from '@gredice/client';
 import { authCurrentUserQueryKeys } from '@signalco/auth-client';
 import { Alert } from '@signalco/ui/Alert';
 import { Warning } from '@signalco/ui-icons';
@@ -11,10 +12,7 @@ import { useActionState } from 'react';
 import { queryClient } from '../../../components/providers/ClientAppProvider';
 
 function getLandingUrl() {
-    if (window.location.hostname.includes('.test')) {
-        return 'https://www.gredice.test';
-    }
-    return 'https://www.gredice.com';
+    return getBrowserGrediceAppOrigin('www');
 }
 
 function autoSubmitForm(form: HTMLFormElement | null) {

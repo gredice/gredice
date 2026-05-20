@@ -1,6 +1,9 @@
 'use client';
 
-import { clientAuthenticated } from '@gredice/client';
+import {
+    clientAuthenticated,
+    getBrowserGrediceAppOrigin,
+} from '@gredice/client';
 import { useTimeout } from '@signalco/hooks/useTimeout';
 import {
     Card,
@@ -21,7 +24,7 @@ export default function LogoutPage() {
     useTimeout(async () => {
         await queryClient.invalidateQueries();
         await clientAuthenticated().api.auth.logout.$post();
-        window.location.href = 'https://www.gredice.com';
+        window.location.href = getBrowserGrediceAppOrigin('www');
     }, 1300);
 
     return (

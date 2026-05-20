@@ -1,5 +1,6 @@
 'use client';
 
+import { getBrowserGrediceAppOrigin } from '@gredice/client';
 import { useEffect, useRef, useState } from 'react';
 
 const bannerPositionStorageKey = 'gredice:impersonation-banner-position:v1';
@@ -25,13 +26,7 @@ function getCookie(name: string): string | undefined {
 }
 
 function getStopImpersonateUrl() {
-    if (
-        typeof window !== 'undefined' &&
-        window.location.hostname.includes('.test')
-    ) {
-        return 'https://app.gredice.test/api/users/stop-impersonate';
-    }
-    return 'https://app.gredice.com/api/users/stop-impersonate';
+    return `${getBrowserGrediceAppOrigin('app')}/api/users/stop-impersonate`;
 }
 
 function clamp(value: number, min: number, max: number) {
