@@ -22,3 +22,9 @@ export function calculateSunflowerAmountFromPrices({
     const effectivePrice = getEffectiveEurPrice({ price, discountPrice });
     return Math.round(effectivePrice * 1000);
 }
+
+export function formatSunflowers(value: number) {
+    return value.toLocaleString('hr-HR', {
+        maximumFractionDigits: 0,
+    });
+}

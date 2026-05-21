@@ -34,6 +34,7 @@ export function GameHud({
     return (
         <>
             <div className="absolute top-2 left-2 flex flex-col items-start gap-2">
+                <ShoppingCartHud />
                 <AccountHud />
                 <div className={cx(isCloseup && 'hidden md:block')}>
                     <GameModeHud />
@@ -43,9 +44,6 @@ export function GameHud({
                 </div>
                 <div className={cx(isCloseup && 'hidden md:block')}>
                     <InventoryHud />
-                </div>
-                <div className={cx(isCloseup && 'hidden md:block')}>
-                    <ShoppingCartHud />
                 </div>
             </div>
             <div className="absolute top-2 right-2 flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2">

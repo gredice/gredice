@@ -3,6 +3,7 @@ import { Info, Navigate } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
 import type { useCheckout } from '../../../hooks/useCheckout';
 import type { useShoppingCart } from '../../../hooks/useShoppingCart';
+import { formatSunflowers } from '../../../utils/sunflowerPricing';
 import { SunflowerCheckoutBalance } from './SunflowerCheckoutBalance';
 
 type ButtonConfirmPaymentProps = {
@@ -23,7 +24,7 @@ export function ButtonConfirmPayment({
             {cart?.totalSunflowers ? (
                 <ModalConfirm
                     title="Potvrdi plaćanje"
-                    header={`Potvrđuješ plaćanje ${cart?.totalSunflowers ?? 0} 🌻 i ${cart?.total.toFixed(2) ?? 0} €?`}
+                    header={`Potvrđuješ plaćanje ${formatSunflowers(cart?.totalSunflowers ?? 0)} 🌻 i ${cart?.total.toFixed(2) ?? 0} €?`}
                     onConfirm={onConfirm}
                     trigger={
                         <Button
