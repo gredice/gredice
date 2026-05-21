@@ -35,8 +35,7 @@
                 "POSTGRES_USER",
                 "POSTHOG_SERVER_HOST",
                 "VERCEL_ENV",
-                "VERCEL_OIDC_TOKEN",
-                "VIZZLY_TOKEN"
+                "VERCEL_OIDC_TOKEN"
             ]
         }
     }

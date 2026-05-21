@@ -60,7 +60,7 @@ The default dev command starts the main apps through local HTTPS domains such as
 
 For local domains, certificates, environment files, generated assets, and detailed commands, see [WORKSPACE.md](./WORKSPACE.md).
 
-For fresh worktrees, copy each app's `.env.example` into `.env` before smoke testing. Real external secrets are only needed for explicit integration flows (for example payments, analytics, OAuth, and visual tests).
+For fresh worktrees, copy each app's `.env.example` into `.env` before smoke testing. Real external secrets are only needed for explicit integration flows (for example payments, analytics, and OAuth).
 
 ## Documentation
 
