@@ -1,15 +1,15 @@
 'use client';
 
 import { clientPublic } from '@gredice/client';
-import { Send, SmileHappy, SmileMeh, SmileSad } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Popper } from '@signalco/ui-primitives/Popper';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Input } from '@gredice/ui/Input';
+import { Send, SmileHappy, SmileMeh, SmileSad } from '@gredice/ui/icons';
+import { Popper } from '@gredice/ui/Popper';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { useState } from 'react';
 import { useCurrentUser } from '../../../hooks/useCurrentUser';
 import {
@@ -77,11 +77,11 @@ export function FeedbackModal({
             trigger={<FeedbackTrigger onFeedback={handleDisplay} {...rest} />}
         >
             <form action={handleFeedback}>
-                <Stack spacing={2} className="p-4">
+                <Stack spacing={4} className="p-4">
                     <Typography level="body1" secondary>
                         Kako ti se sviđa ovaj sadržaj?
                     </Typography>
-                    <Row spacing={0.5} justifyContent="center">
+                    <Row spacing={1} justifyContent="center">
                         <IconButton
                             type="button"
                             variant="plain"

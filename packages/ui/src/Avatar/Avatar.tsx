@@ -17,9 +17,9 @@ export type AvatarProps = HTMLAttributes<HTMLDivElement> & {
     );
 
 const sizeClassNames = {
-    sm: 'size-8 text-xs',
-    md: 'size-10 text-sm',
-    lg: 'size-12 text-base',
+    sm: 'h-6 min-w-[24px] max-w-[24px] text-xs',
+    md: 'h-9 min-w-[36px] max-w-[36px]',
+    lg: 'h-12 min-w-[48px] max-w-[48px] text-lg',
 };
 
 export function Avatar({
@@ -33,7 +33,7 @@ export function Avatar({
     return (
         <div
             className={cx(
-                'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted text-muted-foreground',
+                'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted',
                 sizeClassNames[size],
                 className,
             )}

@@ -1,7 +1,7 @@
 'use client';
 
+import { Check } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
-import { Check } from '@signalco/ui-icons';
 import { useState } from 'react';
 import { adventDayFont } from './fonts';
 

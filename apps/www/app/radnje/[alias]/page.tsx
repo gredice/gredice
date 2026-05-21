@@ -1,18 +1,18 @@
 import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
 import { decodeRouteParam } from '@gredice/js/uri';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Euro } from '@gredice/ui/icons';
 import { Markdown } from '@gredice/ui/Markdown';
 import { OperationImage } from '@gredice/ui/OperationImage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Euro } from '@signalco/ui-icons';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
-import { PageHeader } from '../../../components/shared/PageHeader';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { KnownPages } from '../../../src/KnownPages';
@@ -98,7 +98,7 @@ export default async function OperationPage(
                     },
                 }}
             />
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <Breadcrumbs
                     items={[
                         { label: 'Radnje', href: KnownPages.Operations },
@@ -114,7 +114,7 @@ export default async function OperationPage(
                         <Typography level="h5" component="h2" gutterBottom>
                             Informacije
                         </Typography>
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             <div className="grid grid-cols-2 gap-2">
                                 <AttributeCard
                                     icon={<Euro />}
@@ -149,7 +149,7 @@ export default async function OperationPage(
                         <Typography level="h5" component="h2" gutterBottom>
                             Svojstva
                         </Typography>
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             <OperationAttributesCards
                                 attributes={operation.attributes}
                             />
@@ -183,7 +183,7 @@ export default async function OperationPage(
                     Dostupno za
                 </Typography>
                 <OperationApplicationsList operationId={operation.id} />
-                <Row spacing={2}>
+                <Row spacing={4}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj radnji korisne?
                     </Typography>

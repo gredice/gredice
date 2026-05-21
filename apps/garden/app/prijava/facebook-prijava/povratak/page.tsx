@@ -1,13 +1,8 @@
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Spinner } from '@signalco/ui-primitives/Spinner';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Row } from '@gredice/ui/Row';
+import { Spinner } from '@gredice/ui/Spinner';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { Suspense } from 'react';
 import { UrlAuthForward } from '../../UrlAuthForward';
 
@@ -30,8 +25,8 @@ export default function FacebookCallbackPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Stack spacing={3}>
-                        <Row spacing={2} justifyContent="center">
+                    <Stack spacing={6}>
+                        <Row spacing={4} justifyContent="center">
                             <Spinner
                                 loading
                                 className="size-5"

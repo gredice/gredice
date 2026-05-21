@@ -36,42 +36,43 @@ export type TypographyProps = HTMLAttributes<HTMLParagraphElement> & {
 };
 
 const levelClassNames = {
-    h1: 'text-5xl leading-tight font-semibold',
-    h2: 'text-4xl leading-tight font-semibold',
-    h3: 'text-3xl leading-tight font-semibold',
-    h4: 'text-2xl leading-snug font-semibold',
-    h5: 'text-xl leading-snug font-semibold',
-    h6: 'text-lg leading-snug font-semibold',
-    body1: 'text-base leading-7',
-    body2: 'text-sm leading-6',
-    body3: 'text-xs leading-5',
+    h1: 'text-5xl text-balance',
+    h2: 'text-4xl text-balance',
+    h3: 'text-3xl text-balance',
+    h4: 'text-2xl text-balance',
+    h5: 'text-xl text-balance',
+    h6: 'text-lg text-balance',
+    body1: 'text-base text-primary',
+    body2: 'text-sm text-secondary-foreground',
+    body3: 'text-xs text-tertiary-foreground',
 };
 
-const defaultComponents = {
-    h1: 'h1',
-    h2: 'h2',
-    h3: 'h3',
-    h4: 'h4',
-    h5: 'h5',
-    h6: 'h6',
-    body1: 'p',
-    body2: 'p',
-    body3: 'p',
-} satisfies Record<
-    NonNullable<TypographyProps['level']>,
-    NonNullable<TypographyProps['component']>
->;
-
 const colorClassNames = {
-    success: 'text-green-700 dark:text-green-400',
-    warning: 'text-amber-700 dark:text-amber-400',
-    danger: 'text-red-700 dark:text-red-400',
-    neutral: 'text-muted-foreground',
-    info: 'text-blue-700 dark:text-blue-400',
+    success: 'text-green-500',
+    warning: 'text-yellow-500',
+    danger: 'text-red-500',
+    neutral: 'text-slate-500',
+    info: 'text-blue-500',
 } satisfies Record<ColorVariants, string>;
 
+function defaultComponent(
+    level: TypographyProps['level'],
+): NonNullable<TypographyProps['component']> {
+    switch (level) {
+        case 'h1':
+        case 'h2':
+        case 'h3':
+        case 'h4':
+        case 'h5':
+        case 'h6':
+            return level;
+        default:
+            return 'p';
+    }
+}
+
 export function Typography({
-    level = 'body1',
+    level,
     component,
     className,
     semiBold,
@@ -88,21 +89,22 @@ export function Typography({
     mono,
     ...rest
 }: TypographyProps) {
-    const Component = component ?? defaultComponents[level];
+    const Component = component ?? defaultComponent(level);
 
     return (
         <Component
             className={cx(
-                levelClassNames[level],
-                semiBold && 'font-semibold',
+                'm-0',
+                level && levelClassNames[level],
+                semiBold && 'font-medium',
                 bold && 'font-bold',
-                extraThin && 'font-extralight',
+                extraThin && 'font-thin',
                 thin && 'font-light',
                 uppercase && 'uppercase',
-                secondary && 'text-muted-foreground',
+                secondary && 'text-secondary-foreground',
                 tertiary && 'text-tertiary-foreground',
                 color && colorClassNames[color],
-                noWrap && 'truncate',
+                noWrap && 'overflow-x-hidden text-ellipsis whitespace-nowrap',
                 gutterBottom && 'mb-2',
                 center && 'text-center',
                 mono && 'font-mono',

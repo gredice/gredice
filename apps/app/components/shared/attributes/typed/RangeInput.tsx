@@ -1,5 +1,5 @@
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
+import { Input } from '@gredice/ui/Input';
+import { Row } from '@gredice/ui/Row';
 import { useMemo, useState } from 'react';
 import type { AttributeInputProps } from '../AttributeInputProps';
 import { attributeUnitDecorator } from './AttributeUnitDecorator';

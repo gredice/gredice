@@ -101,7 +101,7 @@ export const DropdownMenuItem = forwardRef<
 ) {
     const content =
         startDecorator || endDecorator ? (
-            <Row className="w-full" spacing={1}>
+            <Row className="w-full" spacing={2}>
                 {startDecorator}
                 {children}
                 {endDecorator}

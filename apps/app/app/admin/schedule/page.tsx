@@ -1,6 +1,6 @@
 import { DailySchedule } from '@gredice/ui/DailySchedule';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { Suspense } from 'react';
 import { auth } from '../../../lib/auth/auth';
 import { ScheduleDay } from './ScheduleDay';
@@ -51,7 +51,7 @@ export default async function AdminSchedulePage({
     const startDate = parseDateParam(resolvedSearchParams?.date);
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <Typography level="h4" component="h1">
                 Rasprored
             </Typography>
@@ -60,7 +60,7 @@ export default async function AdminSchedulePage({
                 renderDay={({ date, isToday }) => (
                     <Suspense
                         fallback={
-                            <Stack className="grow" spacing={2}>
+                            <Stack className="grow" spacing={4}>
                                 <ScheduleDayHeaderSkeleton />
                                 <ScheduleDayPlantingsSkeleton />
                                 <ScheduleDayOperationsSkeleton />

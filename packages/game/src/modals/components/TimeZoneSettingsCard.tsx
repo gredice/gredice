@@ -41,7 +41,7 @@ export function TimeZoneSettingsCard() {
     return (
         <Card>
             <CardContent noHeader>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="body2">
                         Odaberi vremensku zonu za svoj račun. Ovo će utjecati na
                         prikaz vremena.

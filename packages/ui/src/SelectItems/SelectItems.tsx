@@ -77,7 +77,7 @@ export function SelectItems<T extends string>({
     const labelId = label ? `label-${inputId}` : undefined;
 
     return (
-        <Stack className={className} spacing={0.5}>
+        <Stack className={className} spacing={1}>
             {label ? (
                 <label
                     className="text-sm font-medium"

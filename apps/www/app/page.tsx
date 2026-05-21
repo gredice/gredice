@@ -1,12 +1,12 @@
 import { clientPublic } from '@gredice/client';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { Container } from '@gredice/ui/Container';
 import { CountingNumber } from '@gredice/ui/CountingNumber';
-import type { SectionData } from '@signalco/cms-core/SectionData';
-import { SectionsView } from '@signalco/cms-core/SectionsView';
-import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Container } from '@signalco/ui-primitives/Container';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import type { SectionData } from '@gredice/ui/cms';
+import { SectionsView } from '@gredice/ui/cms';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { Suspense } from 'react';
 import DeliveryTruck from '../assets/DeliveryTruck.webp';
@@ -105,7 +105,7 @@ async function PlantsStatistics() {
 
 function StepsSection() {
     return (
-        <Stack spacing={4} className="mb-20">
+        <Stack spacing={8} className="mb-20">
             <div className="lg:flex lg:items-center lg:gap-8">
                 <Image
                     alt="Sjeme i presadnice"
@@ -116,8 +116,8 @@ function StepsSection() {
                 />
                 <Card className="border-tertiary border-b-4 lg:max-w-[40%]">
                     <CardContent noHeader>
-                        <Stack spacing={2}>
-                            <Stack spacing={2}>
+                        <Stack spacing={4}>
+                            <Stack spacing={4}>
                                 <Typography level="h4" component="h3">
                                     Zasadi
                                 </Typography>
@@ -150,8 +150,8 @@ function StepsSection() {
             <div className="flex flex-col-reverse lg:flex-row lg:justify-end lg:items-center lg:gap-8">
                 <Card className="border-tertiary border-b-4  lg:max-w-[40%]">
                     <CardContent noHeader>
-                        <Stack spacing={2}>
-                            <Stack spacing={2}>
+                        <Stack spacing={4}>
+                            <Stack spacing={4}>
                                 <Typography level="h4" component="h3">
                                     Održavaj
                                 </Typography>
@@ -200,7 +200,7 @@ function StepsSection() {
                 />
                 <Card className="border-tertiary border-b-4  lg:max-w-[40%]">
                     <CardContent noHeader>
-                        <Stack spacing={2}>
+                        <Stack spacing={4}>
                             <Typography level="h4" component="h3">
                                 Uberi i uživaj
                             </Typography>
@@ -278,7 +278,7 @@ export default function Home() {
                     <div className="flex flex-col items-end sm:flex-row sm:items-start sm:justify-between gap-4 mt-4">
                         <Card className="w-fit border-tertiary border-b-4">
                             <CardContent noHeader className="p-6 lg:pr-10">
-                                <Stack spacing={2}>
+                                <Stack spacing={4}>
                                     <Typography level="h2" component="h1">
                                         Vrt po tvom 🌱
                                     </Typography>
@@ -299,8 +299,8 @@ export default function Home() {
                     componentsRegistry={sectionsComponentRegistry}
                 />
                 <StepsSection />
-                <Stack spacing={4}>
-                    <Stack spacing={1}>
+                <Stack spacing={8}>
+                    <Stack spacing={2}>
                         <Typography level="body1" semiBold tertiary>
                             Povrće iz tvog vrta
                         </Typography>
@@ -318,8 +318,8 @@ export default function Home() {
                     </Suspense>
                     <PlantsShowcase />
                 </Stack>
-                <Stack spacing={4} className="mt-20">
-                    <Stack spacing={1}>
+                <Stack spacing={8} className="mt-20">
+                    <Stack spacing={2}>
                         <Typography level="body1" semiBold tertiary>
                             Zajednica za svakoga
                         </Typography>

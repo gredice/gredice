@@ -1,6 +1,6 @@
 'use client';
 
-import { Input } from '@signalco/ui-primitives/Input';
+import { Input } from '@gredice/ui/Input';
 import { type ChangeEvent, useState } from 'react';
 import { setRaisedBedPhysicalId } from '../../../(actions)/raisedBedActions';
 

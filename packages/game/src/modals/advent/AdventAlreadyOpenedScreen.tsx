@@ -86,12 +86,12 @@ export function AdventAlreadyOpenedScreen({
     const isLastDay = day === 24;
 
     return (
-        <Stack spacing={4} className="items-center text-center p-8">
+        <Stack spacing={8} className="items-center text-center p-8">
             {/* Checkmark icon */}
             <div className="text-6xl">✅</div>
 
             {/* Message */}
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="h4" className="font-bold">
                     Dan {day}
                 </Typography>
@@ -102,7 +102,7 @@ export function AdventAlreadyOpenedScreen({
 
             {/* Awards list */}
             {awards.length > 0 && (
-                <Stack spacing={2} className="w-full">
+                <Stack spacing={4} className="w-full">
                     <Typography
                         level="body2"
                         className="text-muted-foreground font-semibold"

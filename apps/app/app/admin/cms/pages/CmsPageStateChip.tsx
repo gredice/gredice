@@ -1,5 +1,5 @@
 import type { SelectCmsPage } from '@gredice/storage';
-import { Chip } from '@signalco/ui-primitives/Chip';
+import { Chip } from '@gredice/ui/Chip';
 
 export function CmsPageStateChip({ state }: { state: SelectCmsPage['state'] }) {
     return (

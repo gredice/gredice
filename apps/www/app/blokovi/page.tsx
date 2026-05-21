@@ -1,10 +1,10 @@
 import { directoriesClient } from '@gredice/client';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
-import { PageHeader } from '../../components/shared/PageHeader';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
 import { lSystemPlantsFlag } from '../flags';
 import { BlockGallery } from './BlockGallery';
@@ -57,7 +57,7 @@ export default async function BlocksPage() {
                 <BlockGallery blocks={blocks} />
             </Suspense>
             {lSystemPlants && (
-                <Stack spacing={2} className="mt-8">
+                <Stack spacing={4} className="mt-8">
                     <Typography level="h3" className="px-2">
                         Biljke
                     </Typography>

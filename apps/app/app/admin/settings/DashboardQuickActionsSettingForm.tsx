@@ -1,9 +1,9 @@
 'use client';
 
-import { Button } from '@signalco/ui-primitives/Button';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import type { DashboardQuickActionOption } from '../../../src/dashboardQuickActions';
@@ -35,7 +35,7 @@ export function DashboardQuickActionsSettingForm({
 
     return (
         <form action={formAction} className="space-y-3">
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 {options.map((option) => {
                     const inputId = `dashboard-quick-action-${option.id}`;
 

@@ -1,9 +1,9 @@
 'use client';
 
 import type { EntityStandardized } from '@gredice/storage';
-import { FileText, Search } from '@signalco/ui-icons';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { FileText, Search } from '@gredice/ui/icons';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { getOperationLabel, getOperationSearchText } from './operationUtils';
@@ -35,7 +35,7 @@ export function OperationsHandbook({
     );
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <label className="flex items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm text-foreground">
                 <Search className="size-4 shrink-0 text-muted-foreground" />
                 <input

@@ -1,6 +1,6 @@
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { cancelOperationAction } from '../../(actions)/operationActions';
 import { CancelRequestModal } from './CancelRequestModal';
 
@@ -36,7 +36,7 @@ export function CancelOperationModal({
                     : ''
             }`}
             additionalFields={
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     <input type="hidden" name="shouldRefund" value="false" />
                     <Checkbox
                         className="size-5"

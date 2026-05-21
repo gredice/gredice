@@ -4,8 +4,8 @@ import {
     getSetting,
     SettingsKeys,
 } from '@gredice/storage';
-import { SignedOut } from '@signalco/auth-client/components';
-import { AuthProtectedSection } from '@signalco/auth-server/components';
+import { SignedOut } from '@gredice/ui/auth';
+import { AuthProtectedSection } from '@gredice/ui/auth/server';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { type PropsWithChildren, Suspense } from 'react';

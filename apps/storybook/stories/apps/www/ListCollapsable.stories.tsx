@@ -1,5 +1,5 @@
 import { ListCollapsable } from '@apps/www/components/shared/ListCollapsable';
-import { Droplet, Leaf, Sprout } from '@signalco/ui-icons';
+import { Droplet, Leaf, Sprout } from '@gredice/ui/icons';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import {
     createNavigation,

@@ -3,21 +3,20 @@ import {
     getSunflowers,
     getSunflowersHistory,
 } from '@gredice/storage';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Add } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
+import { Button } from '@gredice/ui/Button';
 import {
     Card,
     CardContent,
     CardHeader,
     CardOverflow,
     CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { Input } from '@signalco/ui-primitives/Input';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
+} from '@gredice/ui/Card';
+import { Input } from '@gredice/ui/Input';
+import { Add } from '@gredice/ui/icons';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
+import { Table } from '@gredice/ui/Table';
 import { revalidatePath } from 'next/cache';
 import { Field } from '../../../../components/shared/fields/Field';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
@@ -48,14 +47,14 @@ export async function AccountSunflowersCard({
             </CardHeader>
             <CardContent className="pb-4">
                 <div className="grid grid-cols-2 gap-2">
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         <Field
                             name="Ukupno suncokreta"
                             value={currentSunflowers}
                         />
                     </Stack>
                     <form action={submitGiftSunflowers}>
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             <div className="grid grid-cols-2 gap-2">
                                 <Input
                                     label="Iznos"

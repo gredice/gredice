@@ -1,6 +1,6 @@
 'use client';
 
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { SelectItems } from '@gredice/ui/SelectItems';
 import { useMemo } from 'react';
 import { setRaisedBedStatus } from '../../../(actions)/raisedBedActions';
 import {

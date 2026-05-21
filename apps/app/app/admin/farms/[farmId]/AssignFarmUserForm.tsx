@@ -1,7 +1,7 @@
 'use client';
 
-import { Button } from '@signalco/ui-primitives/Button';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Button } from '@gredice/ui/Button';
+import { Stack } from '@gredice/ui/Stack';
 import { useActionState, useEffect, useMemo, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import {
@@ -59,7 +59,7 @@ export function AssignFarmUserForm({
 
     return (
         <form action={formAction} className="space-y-2">
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <UserPickerField
                     users={availableUsers}
                     value={selectedUser}

@@ -1,8 +1,8 @@
 'use client';
 
-import { Input } from '@signalco/ui-primitives/Input';
-import { Popper } from '@signalco/ui-primitives/Popper';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Input } from '@gredice/ui/Input';
+import { Popper } from '@gredice/ui/Popper';
+import { Typography } from '@gredice/ui/Typography';
 import { useMemo, useState } from 'react';
 import { availableIcons, EntityTypeIcon } from './EntityTypeIcon';
 

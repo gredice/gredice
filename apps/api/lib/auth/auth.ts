@@ -1,7 +1,7 @@
 import 'server-only';
 import { createHmac } from 'node:crypto';
+import { initAuth, initRbac } from '@gredice/auth';
 import { getUser as storageGetUser } from '@gredice/storage';
-import { initAuth, initRbac } from '@signalco/auth-server';
 import type { Context } from 'hono';
 import { deleteCookie, setCookie as honoSetCookie } from 'hono/cookie';
 import {

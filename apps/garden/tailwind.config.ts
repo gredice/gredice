@@ -1,7 +1,6 @@
-import { config } from '@signalco/ui-themes-minimal/config';
+import { grediceThemePreset } from '@gredice/ui/theme';
 import tailwindcssTypography from '@tailwindcss/typography';
 import type { Config } from 'tailwindcss';
-import tailwindcssAnimate from 'tailwindcss-animate';
 
 const tailwindConfig: Config = {
     content: [
@@ -9,12 +8,9 @@ const tailwindConfig: Config = {
         './app/**/*.{js,ts,jsx,tsx,mdx}',
         '../../packages/game/src/**/*.{ts,tsx}',
         '../../packages/ui/src/**/*.{ts,tsx}',
-        './node_modules/@signalco/auth-client/**/*.{js,ts,jsx,tsx,mdx}',
-        './node_modules/@signalco/ui/**/*.{js,ts,jsx,tsx,mdx}',
-        './node_modules/@signalco/ui-primitives/**/*.{js,ts,jsx,tsx,mdx}',
     ],
-    presets: [config],
-    plugins: [tailwindcssAnimate, tailwindcssTypography],
+    presets: [grediceThemePreset],
+    plugins: [tailwindcssTypography],
     theme: {
         extend: {
             keyframes: {

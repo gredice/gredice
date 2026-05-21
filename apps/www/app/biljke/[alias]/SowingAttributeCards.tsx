@@ -7,7 +7,7 @@ import {
     Sprout,
     Thermometer,
     Timer,
-} from '@signalco/ui-icons';
+} from '@gredice/ui/icons';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { KnownPages } from '../../../src/KnownPages';
 

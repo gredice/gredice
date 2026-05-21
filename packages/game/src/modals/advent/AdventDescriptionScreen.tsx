@@ -1,9 +1,9 @@
 'use client';
 
 import { Button } from '@gredice/ui/Button';
+import { Navigate } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { Navigate } from '@signalco/ui-icons';
 import Image from 'next/image';
 
 type AdventDescriptionScreenProps = {
@@ -14,7 +14,7 @@ export function AdventDescriptionScreen({
     onContinue,
 }: AdventDescriptionScreenProps) {
     return (
-        <Stack spacing={3} className="items-center text-center p-4">
+        <Stack spacing={6} className="items-center text-center p-4">
             {/* Placeholder for illustration */}
             <div className="w-40 h-40 dark:bg-tertiary-foreground rounded-lg dark:shadow-2xl flex items-center justify-center">
                 <Image
@@ -26,7 +26,7 @@ export function AdventDescriptionScreen({
             </div>
 
             {/* Description */}
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <Typography level="body2" className="max-w-xs">
                     Da bi pokupio svoj zadnji, najslađi poklončić, trebaš proći
                     cijeli put.

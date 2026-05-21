@@ -1,4 +1,3 @@
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import {
     Bank,
     Calendar,
@@ -30,8 +29,9 @@ import {
     UserCircle,
     Wallet,
     Warning,
-} from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
+} from '@gredice/ui/icons';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { cx } from '@gredice/ui/utils';
 import type { ReactNode } from 'react';
 
 export type EntityDetailsPropertyListItem = {

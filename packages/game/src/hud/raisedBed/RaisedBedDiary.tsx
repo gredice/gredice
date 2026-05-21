@@ -168,11 +168,11 @@ function DiaryList({
                                     className="cursor-pointer hover:bg-muted/50 transition-colors"
                                     label={
                                         <Row
-                                            spacing={2}
+                                            spacing={4}
                                             className="justify-between font-normal"
                                         >
                                             <Row
-                                                spacing={2}
+                                                spacing={4}
                                                 className="items-start flex-1"
                                             >
                                                 <DiaryEntryImages
@@ -207,11 +207,11 @@ function DiaryList({
                                 <ListItem
                                     label={
                                         <Row
-                                            spacing={2}
+                                            spacing={4}
                                             className="justify-between font-normal"
                                         >
                                             <Row
-                                                spacing={2}
+                                                spacing={4}
                                                 className="items-start flex-1"
                                             >
                                                 <DiaryEntryImages
@@ -286,7 +286,7 @@ function DiaryList({
                 className="md:max-w-3xl"
             >
                 {expandedAiEntry && (
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         <DiaryEntryImages
                             name={expandedAiEntry.name}
                             imageUrls={expandedAiEntry.imageUrls}

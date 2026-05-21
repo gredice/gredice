@@ -1,16 +1,16 @@
 'use client';
 
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { Collapse } from '@gredice/ui/Collapse';
+import { DotIndicator } from '@gredice/ui/DotIndicator';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Down } from '@gredice/ui/icons';
+import { ListItem } from '@gredice/ui/ListItem';
 import { Markdown } from '@gredice/ui/Markdown';
-import { Down } from '@signalco/ui-icons';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Collapse } from '@signalco/ui-primitives/Collapse';
-import { cx } from '@signalco/ui-primitives/cx';
-import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { ListItem } from '@signalco/ui-primitives/ListItem';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { useState } from 'react';
 import type { Recipe, RecipeStep } from '../../../lib/recipes/getRecipesData';
 import {
@@ -58,14 +58,14 @@ export function StepItem({
     }
 
     return (
-        <Stack spacing={1} className="grow">
+        <Stack spacing={2} className="grow">
             <Row>
                 <Row
-                    spacing={2}
+                    spacing={4}
                     justifyContent="space-between"
                     className="grow"
                 >
-                    <Row spacing={1}>
+                    <Row spacing={2}>
                         <div className="shrink-0 size-7">
                             <DotIndicator
                                 color={checked ? 'success' : 'warning'}

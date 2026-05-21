@@ -21,7 +21,7 @@ const meta = {
             {...args}
             trigger={<Button variant="outlined">Prikazi detalje</Button>}
         >
-            <Stack className="p-3" spacing={1}>
+            <Stack className="p-3" spacing={2}>
                 <Typography level="body2" semiBold>
                     Preporuceno vrijeme
                 </Typography>

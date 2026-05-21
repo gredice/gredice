@@ -5,7 +5,7 @@ import {
     type RaisedBedFieldPlantEventPayload,
 } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Stack } from '@gredice/ui/Stack';
 import type { ReactNode } from 'react';
 import { EventsTable } from '../shared/events/EventsTable';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
@@ -117,7 +117,7 @@ function renderEventDetails(event: StorageEvent) {
 
     if (details.length > 0) {
         return (
-            <Stack spacing={0.5} className="text-sm">
+            <Stack spacing={1} className="text-sm">
                 {details}
             </Stack>
         );

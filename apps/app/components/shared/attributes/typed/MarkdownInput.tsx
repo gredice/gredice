@@ -1,3 +1,4 @@
+import { cx } from '@gredice/ui/utils';
 import {
     BlockTypeSelect,
     BoldItalicUnderlineToggles,
@@ -16,7 +17,6 @@ import {
     toolbarPlugin,
     UndoRedo,
 } from '@mdxeditor/editor';
-import { cx } from '@signalco/ui-primitives/cx';
 import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import type { AttributeInputProps } from '../AttributeInputProps';

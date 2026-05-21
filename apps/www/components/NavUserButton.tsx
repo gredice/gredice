@@ -1,7 +1,7 @@
 'use client';
 
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
-import { NavigatingButton } from '@signalco/ui/NavigatingButton';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 
 export function NavUserButton({ href }: { href: string }) {

@@ -70,7 +70,7 @@ export function GiftBoxModal() {
             {reward ? (
                 <GiftBoxRewardScreen reward={reward} onClose={handleClose} />
             ) : (
-                <Stack spacing={3} className="relative">
+                <Stack spacing={6} className="relative">
                     {giftOpened && <Confetti mode="fall" particleCount={40} />}
                     <div className="flex justify-center">
                         {!giftBoxParam || isLoading ? (
@@ -87,7 +87,7 @@ export function GiftBoxModal() {
                         )}
                     </div>
 
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         <Typography level="body1" semiBold>
                             Sretan Božić! 🎄
                         </Typography>

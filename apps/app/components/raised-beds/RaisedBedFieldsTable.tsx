@@ -6,9 +6,9 @@ import {
 } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { RaisedBedFieldPlantSortSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantSortSelector';
 import { RaisedBedFieldPlantStatusSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantStatusSelector';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
@@ -111,7 +111,7 @@ export async function RaisedBedFieldsTable({
     }
 
     return (
-        <Stack spacing={3}>
+        <Stack spacing={6}>
             <div className="grid gap-3 grid-cols-3">
                 {orderedPositions.map((positionIndex) => {
                     const positionPlantCycles = [
@@ -316,7 +316,7 @@ function RaisedBedFieldTile({
                     plantSorts={plantSorts}
                 />
                 {field?.active && (
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         {field.plantStatus && (
                             <div className="flex items-center gap-2">
                                 <div className="min-w-0 flex-1">
@@ -356,7 +356,7 @@ function RaisedBedFieldTile({
                             {dateItems.map(({ label, value }) => (
                                 <Row
                                     key={label}
-                                    spacing={1}
+                                    spacing={2}
                                     alignItems="center"
                                 >
                                     <Typography

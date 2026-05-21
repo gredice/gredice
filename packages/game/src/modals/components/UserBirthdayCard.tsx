@@ -112,7 +112,7 @@ export function UserBirthdayCard() {
         <Card>
             <CardContent noHeader>
                 <form onSubmit={handleBirthdayUpdate}>
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         <div className="grid grid-cols-[1fr_1fr_2fr] gap-2">
                             <Input
                                 name="birthdayDay"
@@ -155,7 +155,7 @@ export function UserBirthdayCard() {
                                 }
                             />
                         </div>
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             <Typography level="body3">
                                 {birthdayLocked && nextChangeDisplay
                                     ? `Rođendan možeš ponovno promijeniti ${nextChangeDisplay}.`

@@ -21,8 +21,8 @@ const meta = {
     },
     render: (args) => (
         <Modal {...args} trigger={<Button>Otvori modal</Button>}>
-            <Stack spacing={2}>
-                <Stack spacing={0.5}>
+            <Stack spacing={4}>
+                <Stack spacing={1}>
                     <Typography level="h5">Potvrdi radnju</Typography>
                     <Typography level="body2" secondary>
                         Koristi se za kratke tokove koji traze jasnu potvrdu.

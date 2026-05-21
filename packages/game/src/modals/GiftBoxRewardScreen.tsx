@@ -41,7 +41,7 @@ export function GiftBoxRewardScreen({
     const operation = operations?.find((item) => item.id === operationId);
 
     return (
-        <Stack spacing={4} className="items-center text-center p-8 relative">
+        <Stack spacing={8} className="items-center text-center p-8 relative">
             <Confetti mode="fall" particleCount={60} />
 
             <div className="relative z-10">
@@ -59,7 +59,7 @@ export function GiftBoxRewardScreen({
                 )}
             </div>
 
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <Typography level="h4" className="font-bold">
                     {rewardTitle}
                 </Typography>

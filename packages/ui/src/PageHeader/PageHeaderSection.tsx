@@ -1,4 +1,4 @@
-import type { SectionData } from '@signalco/cms-core/SectionData';
+import type { SectionData } from '../cms';
 import { PageHeader } from './PageHeader';
 
 export function PageHeaderSection({ header, description }: SectionData) {

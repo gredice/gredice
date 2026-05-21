@@ -1,8 +1,4 @@
 import { Divider } from '@gredice/ui/Divider';
-import { Link } from '@gredice/ui/Link';
-import { Row } from '@gredice/ui/Row';
-import { Stack } from '@gredice/ui/Stack';
-import { Typography } from '@gredice/ui/Typography';
 import {
     ArrowDown,
     ArrowDownLeft,
@@ -14,7 +10,11 @@ import {
     ArrowUpRight,
     Empty,
     Wind,
-} from '@signalco/ui-icons';
+} from '@gredice/ui/icons';
+import { Link } from '@gredice/ui/Link';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import type React from 'react';
 import { useWeatherForecast } from '../../../hooks/useWeatherForecast';

@@ -1,12 +1,6 @@
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
-import { ModalConfirm } from '@gredice/ui/ModalConfirm';
-import { PlantOrSortImage } from '@gredice/ui/plants';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
-import { Row } from '@gredice/ui/Row';
-import { Stack } from '@gredice/ui/Stack';
-import { Typography } from '@gredice/ui/Typography';
 import {
     Close,
     Delete,
@@ -14,7 +8,13 @@ import {
     Hammer,
     Navigate,
     Timer,
-} from '@signalco/ui-icons';
+} from '@gredice/ui/icons';
+import { ModalConfirm } from '@gredice/ui/ModalConfirm';
+import { PlantOrSortImage } from '@gredice/ui/plants';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { CSSProperties } from 'react';
 import { useGameAnalytics } from '../../../analytics/GameAnalyticsContext';
 import { useCurrentAccount } from '../../../hooks/useCurrentAccount';
@@ -116,7 +116,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
         item.entityTypeName === 'operation' && !hasShopImage;
 
     return (
-        <Row spacing={2} alignItems="start">
+        <Row spacing={4} alignItems="start">
             {plantSort ? (
                 <PlantOrSortImage
                     className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0"
@@ -153,7 +153,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                         {item.shopData.name}
                     </Typography>
                     {!hasDiscount && (
-                        <Row spacing={1}>
+                        <Row spacing={2}>
                             {!usesInventory && availableFromInventory && (
                                 <IconButton
                                     title="Iskoristi iz ruksaka"
@@ -178,9 +178,9 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                             />
                         </Row>
                     )}
-                    <Row spacing={1} className="flex-wrap justify-end">
+                    <Row spacing={2} className="flex-wrap justify-end">
                         {usesInventory && (
-                            <Row spacing={0.5}>
+                            <Row spacing={1}>
                                 <BackpackIcon className="size-4 shrink-0" />
                                 <Typography level="body2">
                                     Iz ruksaka
@@ -200,7 +200,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                 {hasDiscount &&
                     typeof item.shopData.discountPrice === 'number' &&
                     typeof item.shopData.price === 'number' && (
-                        <Row justifyContent="space-between" spacing={1}>
+                        <Row justifyContent="space-between" spacing={2}>
                             <Typography
                                 level="body3"
                                 secondary
@@ -208,7 +208,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                             >
                                 {`Popust: ${(100 - (item.shopData.discountPrice / item.shopData.price) * 100).toFixed(0)}% - ${item.shopData.discountDescription}`}
                             </Typography>
-                            <Row spacing={0.5}>
+                            <Row spacing={1}>
                                 <Typography
                                     level="body1"
                                     bold
@@ -222,9 +222,9 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                         </Row>
                     )}
                 <Row justifyContent="space-between">
-                    <Stack spacing={0.5}>
-                        <Row spacing={1}>
-                            <Row spacing={0.5} className="flex-wrap gap-y-0">
+                    <Stack spacing={1}>
+                        <Row spacing={2}>
+                            <Row spacing={1} className="flex-wrap gap-y-0">
                                 {hasRaisedBed && (
                                     <Typography
                                         level="body3"
@@ -232,7 +232,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                         component="span"
                                     >
                                         {raisedBed?.physicalId ? (
-                                            <Row spacing={1}>
+                                            <Row spacing={2}>
                                                 <RaisedBedIcon
                                                     physicalId={
                                                         raisedBed.physicalId

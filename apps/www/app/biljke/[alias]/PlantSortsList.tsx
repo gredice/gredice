@@ -1,9 +1,9 @@
+import { slug } from '@gredice/js/slug';
+import { Card } from '@gredice/ui/Card';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { slug } from '@signalco/js';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { Suspense } from 'react';
 import { getPlantSortsData } from '../../../lib/plants/getPlantSortsData';
 import { KnownPages } from '../../../src/KnownPages';
@@ -23,7 +23,7 @@ async function PlantSortsListContent({
     ).sort((a, b) => a.information.name.localeCompare(b.information.name));
     if (!sorts.length) {
         return (
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="h2" className="text-2xl">
                     Sorte
                 </Typography>
@@ -34,7 +34,7 @@ async function PlantSortsListContent({
         );
     }
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <Typography level="h2" className="text-2xl" id={slug('Sorte')}>
                 Sorte
             </Typography>
@@ -54,7 +54,7 @@ async function PlantSortsListContent({
                             )}
                             className="border-tertiary border-b-4"
                         >
-                            <Row spacing={2}>
+                            <Row spacing={4}>
                                 <PlantOrSortImage
                                     plantSort={sort}
                                     width={72}

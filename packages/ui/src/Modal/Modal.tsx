@@ -1,7 +1,13 @@
 'use client';
 
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import type { HTMLAttributes, ReactNode } from 'react';
+import {
+    type HTMLAttributes,
+    type ReactNode,
+    useLayoutEffect,
+    useState,
+} from 'react';
+import { Drawer } from 'vaul';
 import { Close } from '../icons';
 import { cx } from '../utils';
 
@@ -23,14 +29,63 @@ export function Modal({
     dismissible = true,
     hideClose,
     modal,
-    mobileOverride: _mobileOverride,
-    disableMobile: _disableMobile,
+    mobileOverride,
+    disableMobile,
     onOpenChange,
     open,
     title,
     trigger,
     ...rest
 }: ModalProps) {
+    const viewport = useViewport();
+    const isMobile = viewport ? viewport.width < 768 : false;
+
+    if (mobileOverride || (isMobile && !disableMobile)) {
+        return (
+            <MobileModal
+                className={className}
+                dismissible={dismissible}
+                modal={modal}
+                onOpenChange={onOpenChange}
+                open={open}
+                title={title}
+                trigger={trigger}
+                {...rest}
+            >
+                {children}
+            </MobileModal>
+        );
+    }
+
+    return (
+        <DesktopModal
+            className={className}
+            dismissible={dismissible}
+            hideClose={hideClose}
+            modal={modal}
+            onOpenChange={onOpenChange}
+            open={open}
+            title={title}
+            trigger={trigger}
+            {...rest}
+        >
+            {children}
+        </DesktopModal>
+    );
+}
+
+function DesktopModal({
+    children,
+    className,
+    dismissible = true,
+    hideClose,
+    modal,
+    onOpenChange,
+    open,
+    title,
+    trigger,
+    ...rest
+}: Omit<ModalProps, 'disableMobile' | 'mobileOverride'>) {
     function preventDismiss(event: Event) {
         if (!dismissible) {
             event.preventDefault();
@@ -74,4 +129,65 @@ export function Modal({
             </DialogPrimitive.Portal>
         </DialogPrimitive.Root>
     );
+}
+
+function MobileModal({
+    children,
+    className,
+    dismissible = true,
+    modal,
+    onOpenChange,
+    open,
+    title,
+    trigger,
+    ...rest
+}: Omit<ModalProps, 'disableMobile' | 'hideClose' | 'mobileOverride'>) {
+    return (
+        <Drawer.Root
+            dismissible={dismissible}
+            modal={modal}
+            onOpenChange={onOpenChange}
+            open={open}
+            shouldScaleBackground
+        >
+            {trigger ? (
+                <Drawer.Trigger asChild>{trigger}</Drawer.Trigger>
+            ) : null}
+            <Drawer.Portal>
+                <Drawer.Overlay className="fixed inset-0 z-50 bg-black/50" />
+                <Drawer.Content
+                    className={cx(
+                        'fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background',
+                        className,
+                    )}
+                    {...rest}
+                >
+                    <Drawer.Title className="sr-only">{title}</Drawer.Title>
+                    <Drawer.Handle className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
+                    <div className="p-4">{children}</div>
+                </Drawer.Content>
+            </Drawer.Portal>
+        </Drawer.Root>
+    );
+}
+
+function useViewport() {
+    const [viewport, setViewport] = useState<
+        { width: number; height: number } | undefined
+    >(undefined);
+
+    useLayoutEffect(() => {
+        function updateViewport() {
+            setViewport({
+                width: window.innerWidth,
+                height: window.innerHeight,
+            });
+        }
+
+        updateViewport();
+        window.addEventListener('resize', updateViewport);
+        return () => window.removeEventListener('resize', updateViewport);
+    }, []);
+
+    return viewport;
 }

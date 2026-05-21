@@ -8,11 +8,11 @@ export type ContainerProps = HTMLAttributes<HTMLDivElement> & {
 };
 
 const maxWidthClassNames = {
-    xs: 'max-w-xs',
-    sm: 'max-w-screen-sm',
-    md: 'max-w-screen-md',
-    lg: 'max-w-screen-lg',
-    xl: 'max-w-screen-xl',
+    xs: 'max-w-md',
+    sm: 'max-w-xl',
+    md: 'max-w-4xl',
+    lg: 'max-w-[1280px]',
+    xl: 'max-w-[1536px]',
 };
 
 export function Container({
@@ -25,6 +25,7 @@ export function Container({
     return (
         <div
             className={cx(
+                'block w-full',
                 maxWidth && maxWidthClassNames[maxWidth],
                 centered && 'mx-auto',
                 padded && 'px-4',

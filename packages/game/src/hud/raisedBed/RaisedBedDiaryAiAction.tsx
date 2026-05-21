@@ -187,7 +187,7 @@ export function RaisedBedDiaryAiAction({
 
     return (
         <>
-            <Stack spacing={1} className="items-end">
+            <Stack spacing={2} className="items-end">
                 {latestHistoryEntry && (
                     <>
                         <button
@@ -240,7 +240,7 @@ export function RaisedBedDiaryAiAction({
                 className="md:max-w-4xl"
             >
                 <div className="grid gap-4 md:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         <div className="relative overflow-hidden rounded-3xl border bg-card shadow-sm">
                             <div className="relative aspect-square overflow-hidden bg-black/5">
                                 <Image
@@ -262,7 +262,7 @@ export function RaisedBedDiaryAiAction({
                             </div>
                         </div>
                         {imageUrls.length > 1 && (
-                            <Row spacing={1} className="flex-wrap">
+                            <Row spacing={2} className="flex-wrap">
                                 {imageUrls.map((imageUrl, imageIndex) => {
                                     const isSelected =
                                         imageUrl === selectedImageUrl;
@@ -295,16 +295,16 @@ export function RaisedBedDiaryAiAction({
                             </Row>
                         )}
                     </Stack>
-                    <Stack spacing={3}>
+                    <Stack spacing={6}>
                         {historyEntries && historyEntries.length > 1 && (
-                            <Stack spacing={1}>
+                            <Stack spacing={2}>
                                 <Typography
                                     level="body3"
                                     className="text-muted-foreground"
                                 >
                                     Prethodni odgovori
                                 </Typography>
-                                <Row spacing={1} className="flex-wrap">
+                                <Row spacing={2} className="flex-wrap">
                                     {historyEntries.map((historyEntry) => {
                                         const isSelected =
                                             selectedHistoryEntryId ===
@@ -334,7 +334,7 @@ export function RaisedBedDiaryAiAction({
                                 </Row>
                             </Stack>
                         )}
-                        <Row spacing={2} className="items-center">
+                        <Row spacing={4} className="items-center">
                             <div
                                 className={`${
                                     phase === 'thinking'
@@ -354,7 +354,7 @@ export function RaisedBedDiaryAiAction({
                                     }
                                 />
                             </div>
-                            <Stack spacing={0.5}>
+                            <Stack spacing={1}>
                                 <Typography level="body1" semiBold>
                                     {statusTitle}
                                 </Typography>
@@ -411,7 +411,7 @@ export function RaisedBedDiaryAiAction({
                             </div>
                         )}
                         <Row
-                            spacing={2}
+                            spacing={4}
                             className="justify-between items-center flex-wrap"
                         >
                             <Typography

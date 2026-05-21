@@ -1,8 +1,8 @@
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Stack } from '@gredice/ui/Stack';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { RecipeList } from '../../components/recipes/RecipeList';
-import { PageHeader } from '../../components/shared/PageHeader';
 import { getRecipesData } from '../../lib/recipes/getRecipesData';
 import { recipesFlag } from '../flags';
 
@@ -19,7 +19,7 @@ export default async function RecipesPage() {
 
     const recipes = await getRecipesData();
     return (
-        <Stack spacing={4} className="py-8">
+        <Stack spacing={8} className="py-8">
             <PageHeader
                 header="Recepti"
                 subHeader="Isprobaj neke od naših omiljenih jela."

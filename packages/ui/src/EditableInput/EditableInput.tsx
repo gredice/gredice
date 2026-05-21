@@ -40,7 +40,7 @@ export function EditableInput({
 
     if (editing) {
         return (
-            <Row className={className} spacing={1}>
+            <Row className={className} spacing={2}>
                 <Input
                     autoFocus
                     onChange={(event) => setDraft(event.target.value)}
@@ -55,7 +55,7 @@ export function EditableInput({
                     }}
                     value={draft}
                 />
-                <Row spacing={1}>
+                <Row spacing={2}>
                     <IconButton aria-label="Confirm edit" onClick={confirm}>
                         <Check className="size-4" />
                     </IconButton>

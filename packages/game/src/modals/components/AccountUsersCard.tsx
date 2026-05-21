@@ -1,12 +1,12 @@
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
+import { Add } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
-import { Add } from '@signalco/ui-icons';
 import { useCurrentAccountUsers } from '../../hooks/useCurrentAccountUsers';
 import { InviteUserForm } from './InviteUserForm';
 import { PendingInvitationsList } from './PendingInvitationsList';
@@ -17,13 +17,13 @@ export function AccountUsersCard() {
     return (
         <Card>
             <CardContent noHeader>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Row
-                        spacing={1}
+                        spacing={2}
                         justifyContent="space-between"
                         alignItems="start"
                     >
-                        <Stack spacing={0.5}>
+                        <Stack spacing={1}>
                             <Typography level="body1" semiBold>
                                 Korisnici na računu
                             </Typography>
@@ -44,7 +44,7 @@ export function AccountUsersCard() {
                             }
                             title="Pozovi korisnika"
                         >
-                            <Stack spacing={2}>
+                            <Stack spacing={4}>
                                 <Typography level="h5">
                                     Pozovi novog korisnika
                                 </Typography>
@@ -77,11 +77,11 @@ export function AccountUsersCard() {
                     )}
                     {accountUsers.isSuccess &&
                         (accountUsers.data?.length ?? 0) > 0 && (
-                            <Stack spacing={1}>
+                            <Stack spacing={2}>
                                 {accountUsers.data?.map((user) => (
                                     <Row
                                         key={user.id}
-                                        spacing={2}
+                                        spacing={4}
                                         className="items-center"
                                     >
                                         <UserAvatar

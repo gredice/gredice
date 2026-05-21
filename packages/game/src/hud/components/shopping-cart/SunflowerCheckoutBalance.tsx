@@ -12,7 +12,7 @@ export function SunflowerCheckoutBalance({
 
     return (
         <div aria-live="polite">
-            <Row justifyContent="space-between" spacing={2}>
+            <Row justifyContent="space-between" spacing={4}>
                 <Typography level="body1">Za plaćanje</Typography>
                 <Typography level="body1" bold>
                     {formatSunflowers(pendingSunflowers)}{' '}

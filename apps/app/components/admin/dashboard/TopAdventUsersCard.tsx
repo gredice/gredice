@@ -1,8 +1,8 @@
 import type { AdventCalendarTopUser } from '@gredice/storage';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Stack } from '@gredice/ui/Stack';
+import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import { NoDataPlaceholder } from '../../shared/placeholders/NoDataPlaceholder';
 
 type TopAdventUsersCardProps = {
@@ -14,7 +14,7 @@ export function TopAdventUsersCard({ users, year }: TopAdventUsersCardProps) {
     return (
         <Card>
             <CardOverflow>
-                <Stack spacing={1} className="p-4">
+                <Stack spacing={2} className="p-4">
                     <Typography level="h2" className="text-lg" semiBold>
                         Advent {year} - top korisnici
                     </Typography>

@@ -4,12 +4,12 @@ import {
     getRaisedBedSensors,
     type SelectRaisedBedSensor,
 } from '@gredice/storage';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Stack } from '@gredice/ui/Stack';
 import { Suspense } from 'react';
 import { SensorMiniChart } from '../../../components/admin/sensors/SensorMiniChart';
 import { CreateSensorModal } from './CreateSensorModal';
@@ -138,18 +138,18 @@ async function RaisedBedSensorsCard({
     return (
         <Card>
             <CardContent noHeader>
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     <RaisedBedLabel physicalId={raisedBed.physicalId} />
                     {hydratedSensors.length === 0 ? (
                         <Typography>Nema senzora za ovu gredicu.</Typography>
                     ) : (
                         hydratedSensors.map(
                             ({ sensor, moisture, temperature }) => (
-                                <Stack key={sensor.id} spacing={1}>
+                                <Stack key={sensor.id} spacing={2}>
                                     <SensorServiceForm sensor={sensor} />
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                                         <Stack>
-                                            <Row spacing={2}>
+                                            <Row spacing={4}>
                                                 <Typography semiBold>
                                                     💧 {moisture.value ?? 'N/A'}
                                                     %
@@ -171,7 +171,7 @@ async function RaisedBedSensorsCard({
                                             />
                                         </Stack>
                                         <Stack>
-                                            <Row spacing={2}>
+                                            <Row spacing={4}>
                                                 <Typography semiBold>
                                                     🔥{' '}
                                                     {temperature.value ?? 'N/A'}
@@ -242,8 +242,8 @@ export default async function SensorsPage() {
         }));
 
     return (
-        <Stack spacing={2}>
-            <Row spacing={1}>
+        <Stack spacing={4}>
+            <Row spacing={2}>
                 <Chip color="primary">{totalSensors}</Chip>
                 <CreateSensorModal raisedBeds={createFormRaisedBeds} />
             </Row>

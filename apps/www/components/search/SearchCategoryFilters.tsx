@@ -1,6 +1,6 @@
 'use client';
 
-import { cx } from '@signalco/ui-primitives/cx';
+import { cx } from '@gredice/ui/utils';
 import { type SearchCategoryValue, searchCategories } from './searchCategories';
 
 export function SearchCategoryFilters({

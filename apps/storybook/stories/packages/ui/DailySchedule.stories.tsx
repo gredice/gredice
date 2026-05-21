@@ -1,5 +1,5 @@
 import { DailySchedule } from '@gredice/ui/DailySchedule';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Typography } from '@gredice/ui/Typography';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 const meta = {

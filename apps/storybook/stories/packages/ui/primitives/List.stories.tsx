@@ -37,7 +37,7 @@ const meta = {
                     </IconButton>
                 }
                 label={
-                    <Stack spacing={0.25}>
+                    <Stack spacing={0.5}>
                         <Typography level="body2">Posadi rikolu</Typography>
                         <Typography level="body3" secondary>
                             Danas do 14:00

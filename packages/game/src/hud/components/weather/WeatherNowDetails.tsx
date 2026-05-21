@@ -1,9 +1,5 @@
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
-import { Link } from '@gredice/ui/Link';
-import { Row } from '@gredice/ui/Row';
-import { Stack } from '@gredice/ui/Stack';
-import { Typography } from '@gredice/ui/Typography';
 import {
     ArrowDown,
     ArrowDownLeft,
@@ -17,7 +13,11 @@ import {
     Navigate,
     Snowflake,
     Wind,
-} from '@signalco/ui-icons';
+} from '@gredice/ui/icons';
+import { Link } from '@gredice/ui/Link';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { type FC, useState } from 'react';
 import { useWeatherNow } from '../../../hooks/useWeatherNow';
@@ -67,7 +67,7 @@ export function WeatherNowDetails() {
             {showForecast && <WeatherForecastDays />}
             {!showForecast && (
                 <div className="grid grid-cols-[1fr_auto] gap-2">
-                    <Row spacing={1} className="p-4">
+                    <Row spacing={2} className="p-4">
                         <div className="my-1 mr-2">
                             {WeatherIcon && (
                                 <WeatherIcon.day className="size-12" />
@@ -93,7 +93,7 @@ export function WeatherNowDetails() {
                                 </Stack>
                             )}
                             {data.rain > 0 && (
-                                <Stack spacing={0.5}>
+                                <Stack spacing={1}>
                                     <Typography level="body3">
                                         Padaline
                                     </Typography>
@@ -106,7 +106,7 @@ export function WeatherNowDetails() {
                                 </Stack>
                             )}
                             {data.snowAccumulation > 0 && (
-                                <Stack spacing={0.5}>
+                                <Stack spacing={1}>
                                     <Typography level="body3">
                                         Snijeg
                                     </Typography>
@@ -120,7 +120,7 @@ export function WeatherNowDetails() {
                                 </Stack>
                             )}
                             {data.windSpeed > 0 && (
-                                <Stack spacing={0.5}>
+                                <Stack spacing={1}>
                                     <Typography level="body3">
                                         Vjetar
                                     </Typography>

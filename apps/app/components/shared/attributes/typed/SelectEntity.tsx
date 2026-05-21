@@ -1,6 +1,6 @@
-import { ExternalLink } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { Chip } from '@gredice/ui/Chip';
+import { ExternalLink } from '@gredice/ui/icons';
+import { SelectItems } from '@gredice/ui/SelectItems';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { KnownPages } from '../../../../src/KnownPages';

@@ -1,9 +1,9 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
+import { Calendar, Sprout } from '@gredice/ui/icons';
+import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
+import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
-import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
-import { Calendar, Sprout } from '@signalco/ui-icons';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Typography } from '@gredice/ui/Typography';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { CalendarInfoChip } from '../CalendarInfoChip';
 import { PlantGrowthCalendar } from './PlantGrowthCalendar';
@@ -20,7 +20,7 @@ export function PlantCalendarPicker({
         Boolean(plant.calendar) && Object.keys(plant.calendar).length > 0;
 
     return (
-        <Stack spacing={1} className="group">
+        <Stack spacing={2} className="group">
             <Stack
                 spacing={0}
                 className="bg-muted p-2 rounded-lg border shadow-sm"

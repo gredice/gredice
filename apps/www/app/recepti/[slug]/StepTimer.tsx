@@ -1,9 +1,9 @@
 'use client';
 
-import { Close, Pause, Play, Reset, Timer } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { cx } from '@signalco/ui-primitives/cx';
+import { Button } from '@gredice/ui/Button';
+import { Chip } from '@gredice/ui/Chip';
+import { Close, Pause, Play, Reset, Timer } from '@gredice/ui/icons';
+import { cx } from '@gredice/ui/utils';
 import { useEffect, useState } from 'react';
 
 interface StepTimerProps<T> {

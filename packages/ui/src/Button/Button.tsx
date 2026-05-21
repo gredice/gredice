@@ -3,6 +3,7 @@ import NextLink from 'next/link';
 import type {
     AnchorHTMLAttributes,
     ButtonHTMLAttributes,
+    ComponentProps,
     MouseEvent,
     ReactNode,
 } from 'react';
@@ -182,6 +183,7 @@ export function Button(props: ButtonProps) {
             disabled,
             endDecorator,
             fullWidth,
+            href,
             loading,
             onClick,
             size,
@@ -198,6 +200,8 @@ export function Button(props: ButtonProps) {
 
             onClick?.(event);
         };
+        const handleLinkClick =
+            disabled || loading || onClick ? handleClick : undefined;
 
         return (
             <NextLink
@@ -207,7 +211,8 @@ export function Button(props: ButtonProps) {
                     buttonColorClassName(variant, color),
                     className,
                 )}
-                onClick={handleClick}
+                href={href as ComponentProps<typeof NextLink>['href']}
+                onClick={handleLinkClick}
                 tabIndex={disabled || loading ? -1 : rest.tabIndex}
                 {...rest}
             >

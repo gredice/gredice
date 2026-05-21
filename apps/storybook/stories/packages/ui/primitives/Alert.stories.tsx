@@ -52,7 +52,7 @@ export const RichContent: Story = {
             color="danger"
             startDecorator={<Warning className="size-4" />}
         >
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <Typography level="body2" semiBold>
                     Nije moguce dovrsiti zahtjev
                 </Typography>

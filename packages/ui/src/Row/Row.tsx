@@ -17,6 +17,13 @@ function spacingStyle(spacing: number | undefined) {
     return `${spacing * 0.25}rem`;
 }
 
+const alignItemsClassNames = {
+    start: 'items-start',
+    center: 'items-center',
+    stretch: 'items-stretch',
+    end: 'items-end',
+} satisfies Record<NonNullable<RowProps['alignItems']>, string>;
+
 export const Row = forwardRef<HTMLDivElement, RowProps>(function Row(
     {
         spacing,
@@ -31,7 +38,6 @@ export const Row = forwardRef<HTMLDivElement, RowProps>(function Row(
 ) {
     const mergedStyle: CSSProperties = {
         gap: spacingStyle(spacing),
-        alignItems,
         justifyContent,
         justifyItems,
         ...style,
@@ -39,7 +45,11 @@ export const Row = forwardRef<HTMLDivElement, RowProps>(function Row(
 
     return (
         <div
-            className={cx('flex flex-row', className)}
+            className={cx(
+                'flex flex-row',
+                alignItemsClassNames[alignItems ?? 'center'],
+                className,
+            )}
             ref={ref}
             style={mergedStyle}
             {...rest}

@@ -1,11 +1,11 @@
 'use client';
 
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card } from '@gredice/ui/Card';
+import { Input } from '@gredice/ui/Input';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useMemo, useState } from 'react';
 
 export function AddFieldDefinitionForm({
@@ -26,15 +26,15 @@ export function AddFieldDefinitionForm({
 
     return (
         <Card className="max-w-2xl">
-            <Stack spacing={4} className="p-6">
+            <Stack spacing={8} className="p-6">
                 <Typography level="body1" semiBold>
                     Dodaj novo polje
                 </Typography>
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     <Typography level="body2" secondary>
                         Brze akcije za najčešća polja:
                     </Typography>
-                    <Stack direction="row" spacing={1}>
+                    <Stack direction="row" spacing={2}>
                         <form action={onSubmit}>
                             <input type="hidden" name="name" value="status" />
                             <input type="hidden" name="label" value="Status" />
@@ -91,7 +91,7 @@ export function AddFieldDefinitionForm({
                     </Stack>
                 </Stack>
                 <form action={onSubmit}>
-                    <Stack spacing={3}>
+                    <Stack spacing={6}>
                         <Input
                             name="name"
                             label="Naziv polja"

@@ -1,10 +1,5 @@
-import {
-    Card,
-    CardHeader,
-    CardOverflow,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
+import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
+import { Row } from '@gredice/ui/Row';
 import { OperationsTable } from '../../../../components/operations/OperationsTable';
 import { OperationCreateModal } from './OperationCreateModal';
 

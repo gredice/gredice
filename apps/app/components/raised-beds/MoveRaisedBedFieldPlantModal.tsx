@@ -1,13 +1,13 @@
 'use client';
 
-import { Replace } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Replace } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useEffect, useState, useTransition } from 'react';
 import { moveRaisedBedFieldPlantAction } from '../../app/(actions)/raisedBedFieldsActions';
 
@@ -96,7 +96,7 @@ export function MoveRaisedBedFieldPlantModal({
             open={open}
             onOpenChange={setOpen}
         >
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="body2">
                     Premještanje čuva postojeće datume događaja i prenosi samo
                     odabranu povijest biljke. Ako na ciljnom polju postoji
@@ -113,7 +113,7 @@ export function MoveRaisedBedFieldPlantModal({
                     disabled={isPending || targetOptions.length === 0}
                 />
 
-                <Row spacing={1}>
+                <Row spacing={2}>
                     <Button
                         variant="plain"
                         onClick={() => setOpen(false)}

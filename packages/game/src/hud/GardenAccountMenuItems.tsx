@@ -1,3 +1,4 @@
+import { Check, MapPinHouse } from '@gredice/ui/icons';
 import {
     DropdownMenuItem,
     DropdownMenuLabel,
@@ -5,7 +6,6 @@ import {
 } from '@gredice/ui/Menu';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { Check, MapPinHouse } from '@signalco/ui-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { Fragment } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';

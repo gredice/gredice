@@ -1,4 +1,4 @@
-import { Chip } from '@signalco/ui-primitives/Chip';
+import { Chip } from '@gredice/ui/Chip';
 import {
     getDeliveryRequestStatusColor,
     getDeliveryRequestStatusLabel,

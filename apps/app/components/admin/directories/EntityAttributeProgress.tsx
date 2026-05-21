@@ -5,15 +5,11 @@ import type {
     SelectAttributeDefinition,
 } from '@gredice/storage';
 import { getEntityCompleteness } from '@gredice/storage/entityCompleteness';
-import { Check } from '@signalco/ui-icons';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-} from '@signalco/ui-primitives/Tooltip';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Check } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@gredice/ui/Tooltip';
+import { Typography } from '@gredice/ui/Typography';
 
 export function EntityAttributeProgress({
     entity,
@@ -35,7 +31,7 @@ export function EntityAttributeProgress({
                         </span>
                     </span>
                 ) : (
-                    <Row spacing={1} className="group items-center">
+                    <Row spacing={2} className="group items-center">
                         <div className="h-1 bg-primary/10 rounded-full overflow-hidden grow">
                             <div
                                 className="h-full bg-red-400"
@@ -57,7 +53,7 @@ export function EntityAttributeProgress({
                 {completeness.isComplete &&
                     'Svi obavezni atributi su ispunjeni'}
                 {!completeness.isComplete && (
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         <Typography semiBold>
                             {`Manjak obaveznih atributa (${completeness.progress.toFixed(0)}%):`}
                         </Typography>

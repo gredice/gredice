@@ -27,8 +27,10 @@ export {
     CheckCircle as Success,
     ChevronDown as Down,
     ChevronDown as ExpandDown,
+    ChevronDown as Select,
     ChevronLeft as Left,
     ChevronRight as Navigate,
+    ChevronsRight as Right,
     ChevronUp as Up,
     Circle as Empty,
     CircleEqual,
@@ -86,11 +88,13 @@ export {
     Map,
     MapPin,
     MapPinHouse,
+    Megaphone,
     Meh as SmileMeh,
     Menu,
     MessageCircle as Comment,
     Minimize,
     Minus as Remove,
+    Monitor as Desktop,
     Moon,
     MoreHorizontal,
     Outdent as TextLinked,
@@ -157,6 +161,7 @@ export {
     Wind,
     X as Clear,
     X as Close,
+    Zap as Lightning,
 } from 'lucide-react';
 
 export { CompanyFacebook } from './CompanyFacebook';

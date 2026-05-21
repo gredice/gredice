@@ -6,7 +6,7 @@ import {
     Hash,
     Tally3,
     ToggleRight,
-} from '@signalco/ui-icons';
+} from '@gredice/ui/icons';
 import type { HTMLAttributes, ReactNode } from 'react';
 
 export type AttributeDataTypeItem = {

@@ -1,15 +1,10 @@
 import { getFarm } from '@gredice/storage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { ExternalLink } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { ExternalLink } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import { notFound } from 'next/navigation';
 import {
     EntityDetailsPanelCard,
@@ -77,7 +72,7 @@ export default async function FarmPage({
 
     return (
         <EntityDetailsPropertiesProvider>
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <AdminPageTitle title={farm.name} />
                 <AdminPageHeader
                     breadcrumbs={
@@ -92,7 +87,7 @@ export default async function FarmPage({
                         />
                     }
                     actions={
-                        <Row className="items-center" spacing={1}>
+                        <Row className="items-center" spacing={2}>
                             <Button
                                 href={`https://vrt.gredice.com/farme/${farm.id}`}
                                 target="_blank"

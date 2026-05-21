@@ -1,5 +1,5 @@
 import { listSocialAccounts } from '@gredice/storage';
-import { Button } from '@signalco/ui-primitives/Button';
+import { Button } from '@gredice/ui/Button';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { auth } from '../../../../../../../lib/auth/auth';

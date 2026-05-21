@@ -1,6 +1,6 @@
 import { getEntityRaw } from '@gredice/storage';
 import { transformEntityToSectionData } from '@gredice/storage/entityPageSections';
-import { SectionsView } from '@signalco/cms-core/SectionsView';
+import { SectionsView } from '@gredice/ui/cms';
 import { notFound } from 'next/navigation';
 import { sectionsComponentRegistry } from '../../../../../../components/shared/sectionsComponentRegistry';
 import { auth } from '../../../../../../lib/auth/auth';

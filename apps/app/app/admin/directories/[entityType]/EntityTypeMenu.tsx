@@ -1,14 +1,14 @@
 'use client';
 
 import type { SelectEntityType } from '@gredice/storage';
-import { BookA, Edit, MoreHorizontal } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { IconButton } from '@gredice/ui/IconButton';
+import { BookA, Edit, MoreHorizontal } from '@gredice/ui/icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-} from '@signalco/ui-primitives/Menu';
+} from '@gredice/ui/Menu';
 import { KnownPages } from '../../../../src/KnownPages';
 
 export function EntityTypeMenu({

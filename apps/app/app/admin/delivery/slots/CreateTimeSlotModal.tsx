@@ -1,6 +1,6 @@
 'use client';
 
-import { Modal } from '@signalco/ui-primitives/Modal';
+import { Modal } from '@gredice/ui/Modal';
 import { useState } from 'react';
 import { CreateTimeSlotForm } from './CreateTimeSlotForm';
 

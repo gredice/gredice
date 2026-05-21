@@ -1,13 +1,5 @@
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
-import { Modal } from '@gredice/ui/Modal';
-import { Row } from '@gredice/ui/Row';
-import { Skeleton } from '@gredice/ui/Skeleton';
-import { Spinner } from '@gredice/ui/Spinner';
-import { Stack } from '@gredice/ui/Stack';
-import { Tabs, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
-import { Typography } from '@gredice/ui/Typography';
-import { cx } from '@gredice/ui/utils';
 import {
     Check,
     Down,
@@ -17,7 +9,15 @@ import {
     Thermometer,
     Up,
     Warning,
-} from '@signalco/ui-icons';
+} from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Skeleton } from '@gredice/ui/Skeleton';
+import { Spinner } from '@gredice/ui/Spinner';
+import { Stack } from '@gredice/ui/Stack';
+import { Tabs, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { useState } from 'react';
 import {
     Area,
@@ -266,8 +266,8 @@ function SensorInfoModal({
                 <div className="w-full space-y-1 overflow-hidden">
                     {/* Mobile-Responsive Header */}
                     <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between space-y-1.5 sm:space-y-0">
-                        <Stack spacing={1}>
-                            <Row spacing={1}>
+                        <Stack spacing={2}>
+                            <Row spacing={2}>
                                 {icon}
                                 <div>
                                     <Typography level="h5">{header}</Typography>
@@ -514,7 +514,7 @@ function SensorInfoModal({
                                 <Typography level="body1">
                                     Nemaš postavljen senzor za ovu gredicu.
                                 </Typography>
-                                <Stack spacing={1}>
+                                <Stack spacing={2}>
                                     <Typography
                                         level="body2"
                                         className="max-w-md"
@@ -586,7 +586,7 @@ function SensorInfoModal({
                                     svoje gredice!
                                 </Typography>
                                 <div className="relative flex flex-col items-center justify-center">
-                                    <Row spacing={1}>
+                                    <Row spacing={2}>
                                         <Check className="absolute -right-1 -top-1 size-5 shrink-0 rounded-full bg-green-500" />
                                         <ShoppingCart className="size-8 shrink-0" />
                                     </Row>
@@ -718,7 +718,7 @@ export function RaisedBedSensorInfo({
                             className="rounded-full px-2"
                             fullWidth
                         >
-                            <Row spacing={0.5}>
+                            <Row spacing={1}>
                                 <Droplet
                                     className={cx(
                                         'size-5 shrink-0 stroke-blue-400',
@@ -762,7 +762,7 @@ export function RaisedBedSensorInfo({
                             className="rounded-full px-2"
                             fullWidth
                         >
-                            <Row spacing={0.5}>
+                            <Row spacing={1}>
                                 <Thermometer
                                     className={cx(
                                         'size-5 shrink-0 stroke-red-400',
@@ -792,7 +792,7 @@ export function RaisedBedSensorInfo({
     }
 
     return (
-        <Stack spacing={0.5}>
+        <Stack spacing={1}>
             {sensorGroups.map((group) => {
                 const moistureStatus =
                     group.soilMoisture?.status ?? group.status;
@@ -853,7 +853,7 @@ export function RaisedBedSensorInfo({
                             ]}
                             trigger={
                                 <ButtonGreen size="sm" className="rounded-full">
-                                    <Row spacing={0.5}>
+                                    <Row spacing={1}>
                                         <Droplet
                                             className={cx(
                                                 'size-5 shrink-0 stroke-blue-400',
@@ -910,7 +910,7 @@ export function RaisedBedSensorInfo({
                             }}
                             trigger={
                                 <ButtonGreen size="sm" className="rounded-full">
-                                    <Row spacing={0.5}>
+                                    <Row spacing={1}>
                                         <Thermometer
                                             className={cx(
                                                 'size-5 shrink-0 stroke-red-400',

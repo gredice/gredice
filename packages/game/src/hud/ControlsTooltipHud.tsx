@@ -1,7 +1,7 @@
 'use client';
 
 import { IconButton } from '@gredice/ui/IconButton';
-import { Check, Info } from '@signalco/ui-icons';
+import { Check, Info } from '@gredice/ui/icons';
 import { useEffect, useState } from 'react';
 import { useIsEditMode } from '../hooks/useIsEditMode';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';

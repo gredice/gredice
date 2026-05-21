@@ -1,6 +1,6 @@
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import type { ReactNode } from 'react';
 import { NoDataPlaceholder } from '../placeholders/NoDataPlaceholder';
 

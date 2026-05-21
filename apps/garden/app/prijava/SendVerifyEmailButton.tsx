@@ -1,9 +1,9 @@
 'use client';
 
 import { clientPublic } from '@gredice/client';
-import { showNotification } from '@signalco/ui-notifications';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { showNotification } from '@gredice/ui/notifications';
+import { Typography } from '@gredice/ui/Typography';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { errorMessages } from '../../misc/errorMessages';

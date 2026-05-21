@@ -1,9 +1,9 @@
-import { Verified } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Popper } from '@signalco/ui-primitives/Popper';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Chip } from '@gredice/ui/Chip';
+import { Verified } from '@gredice/ui/icons';
+import { Popper } from '@gredice/ui/Popper';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 
 export function VerifiedInformationBadge() {
     return (
@@ -21,15 +21,15 @@ export function VerifiedInformationBadge() {
             }
             className="p-6 min-w-96"
         >
-            <Stack spacing={2}>
-                <Row spacing={2}>
+            <Stack spacing={4}>
+                <Row spacing={4}>
                     <Verified className="size-10 text-secondary-foreground" />
                     <Typography level="body2" semiBold>
                         &quot;Odobreno&quot; označava da su informacije
                         provjerene.
                     </Typography>
                 </Row>
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     <Typography>
                         Da bismo osigurali točnost podataka, naši stručnjaci
                         provjeravaju sve informacije jednu po jednu.

@@ -1,5 +1,5 @@
-import { Check } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Check } from '@gredice/ui/icons';
 import { acceptOperationAction } from '../../(actions)/operationActions';
 import { AcceptRequestModal } from './AcceptRequestModal';
 

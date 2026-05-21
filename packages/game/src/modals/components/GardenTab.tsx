@@ -1,6 +1,7 @@
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { IconButton } from '@gredice/ui/IconButton';
+import { Add } from '@gredice/ui/icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -10,7 +11,6 @@ import { Row } from '@gredice/ui/Row';
 import { Skeleton } from '@gredice/ui/Skeleton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { Add } from '@signalco/ui-icons';
 import { useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
@@ -29,7 +29,7 @@ function NoGardensCard() {
         <>
             <Card>
                 <CardContent noHeader>
-                    <Stack spacing={2} alignItems="center">
+                    <Stack spacing={4} alignItems="center">
                         <Typography level="body2">
                             Trenutno nemaš svoj vrt.
                         </Typography>
@@ -76,7 +76,7 @@ function GardensSelector() {
                             className="bg-card rounded grow justify-start overflow-hidden"
                             variant="plain"
                         >
-                            <Row spacing={1} className="min-w-0">
+                            <Row spacing={2} className="min-w-0">
                                 <span>🏡</span>
                                 <Typography noWrap>
                                     {selectedGarden?.name ?? 'Odaberi vrt'}
@@ -126,11 +126,11 @@ export function GardenTab() {
     const isLoading = gardensLoading || accountGroupsLoading;
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <Typography level="h4" className="hidden md:block">
                 🏡 Vrt
             </Typography>
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 {isLoading && !hasAnyGarden ? (
                     <Skeleton className="h-10 w-full" />
                 ) : hasAnyGarden || gardensError ? (

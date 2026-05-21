@@ -17,7 +17,7 @@ export function LSystemTab({
 }: PlantControlsProps) {
     return (
         <div className="space-y-4">
-            <Row spacing={1} justifyContent="space-between" alignItems="center">
+            <Row spacing={2} justifyContent="space-between" alignItems="center">
                 <Typography level="body2" bold>
                     Pravila i simboli
                 </Typography>

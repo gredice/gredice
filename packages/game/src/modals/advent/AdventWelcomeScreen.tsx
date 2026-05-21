@@ -1,9 +1,9 @@
 'use client';
 
 import { Button } from '@gredice/ui/Button';
+import { Navigate } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { Navigate } from '@signalco/ui-icons';
 import Image from 'next/image';
 import { SantaCapIcon } from '../../icons/SantaCap';
 import { KnownPages } from '../../knownPages';
@@ -15,7 +15,7 @@ type AdventWelcomeScreenProps = {
 
 export function AdventWelcomeScreen({ onContinue }: AdventWelcomeScreenProps) {
     return (
-        <Stack spacing={2} className="items-center text-center p-4">
+        <Stack spacing={4} className="items-center text-center p-4">
             {/* Mascot with Santa cap */}
             <div className="relative">
                 <SantaCapIcon className="absolute top-[-10px] left-1/2 translate-x-[-8px] size-16 z-10 rotate-12" />

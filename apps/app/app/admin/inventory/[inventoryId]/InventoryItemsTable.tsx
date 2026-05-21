@@ -1,9 +1,9 @@
 'use client';
 
+import { Edit } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Edit } from '@signalco/ui-icons';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Table } from '@signalco/ui-primitives/Table';
+import { Row } from '@gredice/ui/Row';
+import { Table } from '@gredice/ui/Table';
 import Link from 'next/link';
 import { useState } from 'react';
 import { InventoryQuantityValue } from '../../../../components/shared/inventory/InventoryQuantityValue';
@@ -155,7 +155,7 @@ export function InventoryItemsTable({
                             </LocalDateTime>
                         </Table.Cell>
                         <Table.Cell>
-                            <Row spacing={1}>
+                            <Row spacing={2}>
                                 <Link
                                     href={KnownPages.InventoryItem(
                                         inventoryConfigId,

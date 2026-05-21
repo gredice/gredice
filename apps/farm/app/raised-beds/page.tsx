@@ -3,24 +3,16 @@ import {
     getEntitiesFormatted,
     getFarmUserRaisedBeds,
 } from '@gredice/storage';
+import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
+import { Sprout } from '@gredice/ui/icons';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIdentifierIcon } from '@gredice/ui/RaisedBedIdentifierIcon';
-import {
-    AuthProtectedSection,
-    SignedOut,
-} from '@signalco/auth-server/components';
-import { Sprout } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import LoginDialog from '../../components/auth/LoginDialog';
 import { HomeButton } from '../../components/HomeButton';
 import { auth } from '../../lib/auth/auth';
@@ -111,7 +103,7 @@ async function RaisedBedsPageContent() {
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
-            <Row spacing={1}>
+            <Row spacing={2}>
                 <HomeButton />
                 <Typography level="h4" component="h1">
                     Gredice
@@ -141,10 +133,10 @@ async function RaisedBedsPageContent() {
                         return (
                             <Card key={raisedBed.id}>
                                 <CardHeader>
-                                    <Stack spacing={1}>
+                                    <Stack spacing={2}>
                                         <CardTitle>
                                             <Row
-                                                spacing={1}
+                                                spacing={2}
                                                 alignItems="center"
                                             >
                                                 <RaisedBedIdentifierIcon
@@ -162,7 +154,7 @@ async function RaisedBedsPageContent() {
                                     </Stack>
                                 </CardHeader>
                                 <CardContent>
-                                    <Stack spacing={2}>
+                                    <Stack spacing={4}>
                                         {plants.length > 0 ? (
                                             <div className="grid grid-cols-3 gap-2">
                                                 {plants.map((plant) => (

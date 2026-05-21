@@ -3,17 +3,16 @@ import {
     getInventory,
     getLastInventoryUpdate,
 } from '@gredice/storage';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import {
     Card,
     CardContent,
     CardHeader,
     CardOverflow,
     CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
+} from '@gredice/ui/Card';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Stack } from '@gredice/ui/Stack';
+import { Table } from '@gredice/ui/Table';
 import { Field } from '../../../../components/shared/fields/Field';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
@@ -68,7 +67,7 @@ export async function AccountInventoryCard({
             </CardHeader>
             <CardContent className="pb-4">
                 <div className="grid grid-cols-2 gap-2">
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         <Field name="Ukupno predmeta" value={totalCount} />
                         <Field
                             name="Zadnja izmjena"

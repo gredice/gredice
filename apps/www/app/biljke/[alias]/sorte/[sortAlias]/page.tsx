@@ -1,8 +1,8 @@
 import { decodeRouteParam } from '@gredice/js/uri';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { FeedbackModal } from '../../../../../components/shared/feedback/FeedbackModal';
@@ -243,7 +243,7 @@ export default async function PlantSortPage(
                           }
                 }
             />
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <Breadcrumbs
                     items={[
                         { label: 'Biljke', href: KnownPages.Plants },
@@ -278,7 +278,7 @@ export default async function PlantSortPage(
                 {(basePlantData.information.tip?.length ?? 0) > 0 && (
                     <PlantTips plant={basePlantData} />
                 )}
-                <Row spacing={2}>
+                <Row spacing={4}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj biljci korisne?
                     </Typography>

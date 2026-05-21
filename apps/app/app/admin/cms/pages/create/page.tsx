@@ -1,6 +1,6 @@
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { AdminPageHeader } from '../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../lib/auth/auth';
@@ -14,7 +14,7 @@ export default async function CreateCmsPagePage() {
     await auth(['admin']);
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <AdminPageHeader
                 breadcrumbs={
                     <Breadcrumbs

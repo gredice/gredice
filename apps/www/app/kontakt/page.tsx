@@ -1,7 +1,7 @@
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
-import { Stack } from '@signalco/ui-primitives/Stack';
 import type { Metadata } from 'next';
-import { PageHeader } from '../../components/shared/PageHeader';
 import { FacebookCard } from '../../components/social/FacebookCard';
 import { InstagramCard } from '../../components/social/InstagramCard';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';

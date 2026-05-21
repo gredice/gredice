@@ -1,6 +1,6 @@
 'use client';
 
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { SelectItems } from '@gredice/ui/SelectItems';
 import { getTimeZones } from '@vvo/tzdb';
 import { useMemo, useTransition } from 'react';
 import { updateAccountTimeZoneAction } from '../../../(actions)/accountTimeZoneActions';

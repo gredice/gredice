@@ -1,5 +1,5 @@
-import { Row } from '@signalco/ui-primitives/Row';
-import { Skeleton } from '@signalco/ui-primitives/Skeleton';
+import { Row } from '@gredice/ui/Row';
+import { Skeleton } from '@gredice/ui/Skeleton';
 
 function SummaryItemSkeleton() {
     return (
@@ -12,7 +12,7 @@ function SummaryItemSkeleton() {
 
 export function ScheduleDaySummarySkeleton() {
     return (
-        <Row spacing={4}>
+        <Row spacing={8}>
             <SummaryItemSkeleton />
             <SummaryItemSkeleton />
             <SummaryItemSkeleton />

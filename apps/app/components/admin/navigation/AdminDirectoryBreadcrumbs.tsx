@@ -1,4 +1,4 @@
-import { type BreadcrumbItem, Breadcrumbs } from '@signalco/ui/Breadcrumbs';
+import { type BreadcrumbItem, Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { AdminBreadcrumbLevelSelector } from './AdminBreadcrumbLevelSelector';
 import { AdminDirectoryCategoryBreadcrumbSelector } from './AdminDirectoryCategoryBreadcrumbSelector';
 import { AdminDirectoryEntityTypeBreadcrumbSelector } from './AdminDirectoryEntityTypeBreadcrumbSelector';

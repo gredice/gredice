@@ -6,16 +6,11 @@ import {
     HARVEST_LABEL_PRINT_TASK_TYPE,
     type HarvestLabelData,
 } from '@gredice/label-printer';
-import { Button } from '@signalco/ui-primitives/Button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { HomeButton } from '../../../components/HomeButton';
 import { HarvestLabelPreviewCanvas } from '../../../components/labels/HarvestLabelPreviewCanvas';
@@ -75,10 +70,10 @@ export function HarvestLabelDebugPage() {
     return (
         <div className="min-h-[100dvh] w-full bg-muted">
             <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4">
-                <Row spacing={2} justifyContent="space-between">
-                    <Row spacing={1} className="items-start">
+                <Row spacing={4} justifyContent="space-between">
+                    <Row spacing={2} className="items-start">
                         <HomeButton />
-                        <Stack spacing={0.5}>
+                        <Stack spacing={1}>
                             <Typography level="h4" component="h1">
                                 Debug etiketa
                             </Typography>
@@ -95,10 +90,10 @@ export function HarvestLabelDebugPage() {
                 </Row>
 
                 <div className="grid gap-4 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
-                    <Stack spacing={4}>
+                    <Stack spacing={8}>
                         <Card>
                             <CardHeader>
-                                <Stack spacing={1}>
+                                <Stack spacing={2}>
                                     <CardTitle>Sadržaj etikete</CardTitle>
                                     <Typography className="text-sm text-muted-foreground">
                                         Mijenjaj podatke operacije i odmah vidi
@@ -145,7 +140,7 @@ export function HarvestLabelDebugPage() {
                                     }
                                 />
 
-                                <Stack spacing={1.5}>
+                                <Stack spacing={3}>
                                     <DebugFieldLabel title="Brzi primjeri" />
                                     <div className="flex flex-wrap gap-2">
                                         {LABEL_SAMPLES.map((sample) => (
@@ -167,7 +162,7 @@ export function HarvestLabelDebugPage() {
 
                         <Card>
                             <CardHeader>
-                                <Stack spacing={1}>
+                                <Stack spacing={2}>
                                     <CardTitle>Fiksni profil ispisa</CardTitle>
                                     <Typography className="text-sm text-muted-foreground">
                                         Farma koristi samo profil{' '}
@@ -224,10 +219,10 @@ export function HarvestLabelDebugPage() {
                         </Card>
                     </Stack>
 
-                    <Stack spacing={4}>
+                    <Stack spacing={8}>
                         <Card>
                             <CardHeader>
-                                <Stack spacing={1}>
+                                <Stack spacing={2}>
                                     <CardTitle>Pregled etikete</CardTitle>
                                     <Typography className="text-sm text-muted-foreground">
                                         Trenutni canvas: {canvasSize.width} ×{' '}
@@ -289,7 +284,7 @@ export function HarvestLabelDebugPage() {
                                 </div>
 
                                 <div className="rounded-lg border bg-background p-4">
-                                    <Stack spacing={1.5}>
+                                    <Stack spacing={3}>
                                         <DebugFieldLabel
                                             title="Stvarna veličina"
                                             description="Ovaj pregled koristi fizičke dimenzije canvasa bez dodatnog povećanja za provjeru omjera i gustoće sadržaja."

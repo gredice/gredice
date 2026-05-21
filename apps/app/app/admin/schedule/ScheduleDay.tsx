@@ -1,4 +1,4 @@
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Stack } from '@gredice/ui/Stack';
 import { Suspense } from 'react';
 import { ScheduleDayDeliveriesSection } from './ScheduleDayDeliveriesSection';
 import { ScheduleDayDeliveriesSkeleton } from './ScheduleDayDeliveriesSkeleton';
@@ -17,7 +17,7 @@ interface ScheduleDayProps {
 
 export function ScheduleDay({ isToday, date }: ScheduleDayProps) {
     return (
-        <Stack className="grow" spacing={2}>
+        <Stack className="grow" spacing={4}>
             <Suspense fallback={<ScheduleDayHeaderSkeleton />}>
                 <ScheduleDayHeaderSection isToday={isToday} date={date} />
             </Suspense>

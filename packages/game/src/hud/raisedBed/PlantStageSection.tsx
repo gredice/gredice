@@ -1,10 +1,10 @@
 import { Chip } from '@gredice/ui/Chip';
+import { ExternalLink } from '@gredice/ui/icons';
 import { Link } from '@gredice/ui/Link';
 import { Popper } from '@gredice/ui/Popper';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { ExternalLink } from '@signalco/ui-icons';
 
 export type PlantStageSectionProps = {
     label: string;
@@ -49,7 +49,7 @@ export function PlantStageSection({
     const hasDays = startDate && typeof daysCount === 'number' && dayPlural;
 
     return (
-        <Row spacing={0.5} alignItems="center" className="min-w-0 flex-wrap">
+        <Row spacing={1} alignItems="center" className="min-w-0 flex-wrap">
             <LegendDot
                 legendColorClass={legendColorClass}
                 legendBorderColorClass={legendBorderColorClass}
@@ -162,7 +162,7 @@ function StageDurationDetails({
                 </button>
             }
         >
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <Typography level="body2" semiBold>
                     {label}
                 </Typography>

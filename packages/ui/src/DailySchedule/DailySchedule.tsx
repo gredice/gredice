@@ -30,7 +30,7 @@ export function DailySchedule({
     });
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             {dates.map((date, index) => (
                 <Fragment key={date.toISOString()}>
                     {renderDay({

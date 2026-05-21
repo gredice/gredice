@@ -48,7 +48,7 @@ export function InviteUserForm() {
 
     return (
         <form onSubmit={handleSubmit}>
-            <Row spacing={1} className="items-end">
+            <Row spacing={2} className="items-end">
                 <Input
                     name="email"
                     type="email"

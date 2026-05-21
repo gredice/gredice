@@ -108,7 +108,7 @@ function InventoryItemModal({
             onOpenChange={(isOpen) => !isOpen && onClose()}
             title={displayName}
         >
-            <Stack spacing={3}>
+            <Stack spacing={6}>
                 <div className="flex gap-4 items-start">
                     {sortData ? (
                         <PlantOrSortImage
@@ -131,8 +131,8 @@ function InventoryItemModal({
                             </Typography>
                         </div>
                     )}
-                    <Stack spacing={1} className="min-w-0">
-                        <Row spacing={1} alignItems="center">
+                    <Stack spacing={2} className="min-w-0">
+                        <Row spacing={2} alignItems="center">
                             <Typography level="body1">{displayName}</Typography>
                         </Row>
                         {description && (
@@ -141,9 +141,9 @@ function InventoryItemModal({
                     </Stack>
                 </div>
 
-                <Stack spacing={1.5} className="bg-card rounded-lg p-3 border">
+                <Stack spacing={3} className="bg-card rounded-lg p-3 border">
                     <Typography level="body2">Kako koristiti:</Typography>
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         {item.entityTypeName === 'plantSort' ? (
                             <>
                                 <Typography level="body3">
@@ -284,8 +284,8 @@ export function InventoryHud() {
                     </IconButton>
                 }
             >
-                <Stack spacing={2}>
-                    <Row spacing={1}>
+                <Stack spacing={4}>
+                    <Row spacing={2}>
                         <BackpackIcon className="size-8 shrink-0" />
                         <Typography level="h6" className="font-bold">
                             Ruksak

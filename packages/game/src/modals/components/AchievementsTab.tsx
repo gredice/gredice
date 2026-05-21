@@ -4,7 +4,7 @@ import { AchievementsOverview } from '../../shared-ui/achievements/AchievementsO
 
 export function AchievementsTab() {
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <Typography level="h4" className="hidden md:block">
                 🏆 Postignuća
             </Typography>

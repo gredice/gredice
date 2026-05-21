@@ -2,16 +2,11 @@ import {
     getInventoryConfigs,
     getInventoryStatusItemsByConfigIds,
 } from '@gredice/storage';
-import { Add, File } from '@signalco/ui-icons';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Add, File } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { AdminPageHeader } from '../../../components/admin/navigation';
 import { auth } from '../../../lib/auth/auth';
@@ -39,12 +34,12 @@ export default async function InventoryPage() {
     }
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <AdminPageHeader
                 actions={
                     <Link href={KnownPages.InventoryCreate}>
                         <Row
-                            spacing={1}
+                            spacing={2}
                             className="text-sm font-medium px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                         >
                             <Add className="size-4" />
@@ -57,7 +52,7 @@ export default async function InventoryPage() {
             {configs.length === 0 ? (
                 <Card>
                     <CardContent className="py-12">
-                        <Stack spacing={2} className="items-center text-center">
+                        <Stack spacing={4} className="items-center text-center">
                             <File className="size-12 text-muted-foreground" />
                             <Typography level="body1" secondary>
                                 Nema konfiguriranih zaliha. Kreirajte prvu
@@ -78,7 +73,7 @@ export default async function InventoryPage() {
                                     <CardTitle>{config.label}</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <Stack spacing={1.5}>
+                                    <Stack spacing={3}>
                                         <Typography level="body2" secondary>
                                             Stanje zalihe
                                         </Typography>

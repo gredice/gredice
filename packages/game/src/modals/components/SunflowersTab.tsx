@@ -10,11 +10,11 @@ export function SunflowersTab() {
     const { data: currentAccount } = useCurrentAccount();
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <Typography level="h4" className="hidden md:block">
                 🌻 Suncokreti
             </Typography>
-            <Stack spacing={1} className="max-h-[calc(100dvh-12rem)]">
+            <Stack spacing={2} className="max-h-[calc(100dvh-12rem)]">
                 <div className="relative md:mt-0">
                     <span className="absolute text-5xl -top-12 right-6 hidden md:block">
                         <Image

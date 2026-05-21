@@ -1,7 +1,7 @@
 import { Card, CardContent } from '@gredice/ui/Card';
 import { IconButton } from '@gredice/ui/IconButton';
+import { Menu } from '@gredice/ui/icons';
 import { Popper } from '@gredice/ui/Popper';
-import { Menu } from '@signalco/ui-icons';
 import type { PlantControlsProps } from '../@types/plant-generator';
 import { PlantControls } from './PlantControl';
 

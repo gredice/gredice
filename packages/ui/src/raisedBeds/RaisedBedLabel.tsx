@@ -8,7 +8,7 @@ export function RaisedBedLabel({ physicalId }: { physicalId: string | null }) {
     }
 
     return (
-        <Row spacing={1} className="items-center">
+        <Row spacing={2} className="items-center">
             <RaisedBedIcon
                 className="size-6 shrink-0"
                 physicalId={physicalId}

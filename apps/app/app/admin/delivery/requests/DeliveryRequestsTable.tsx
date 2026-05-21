@@ -1,9 +1,9 @@
 import { getAllTimeSlots, getDeliveryRequestsSummary } from '@gredice/storage';
+import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { getDateFromTimeFilter } from '../../../../lib/utils/timeFilters';
 import {

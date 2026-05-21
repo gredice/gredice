@@ -1,6 +1,6 @@
 import { Button } from '@gredice/ui/Button';
+import { Info, Navigate } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
-import { Info, Navigate } from '@signalco/ui-icons';
 import type { useCheckout } from '../../../hooks/useCheckout';
 import type { useShoppingCart } from '../../../hooks/useShoppingCart';
 import { formatSunflowers } from '../../../utils/sunflowerPricing';

@@ -4,14 +4,9 @@ import {
     directoriesCachedInfo,
     grediceCachedInfo,
 } from '@gredice/storage';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { Fragment } from 'react';
 import { ServerActionButton } from '../../../components/shared/ServerActionButton';
 import { auth } from '../../../lib/auth/auth';
@@ -36,7 +31,7 @@ export default async function CachePage() {
     }
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <Typography level="h4" component="h1">
                 Cache
             </Typography>

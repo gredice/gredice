@@ -58,7 +58,7 @@ export function ButtonPricePickPaymentMethod({
     }
 
     return (
-        <Row spacing={1}>
+        <Row spacing={2}>
             {/* Price Display */}
             <Typography level="body1" semiBold>
                 {formattedDisplayPrice}

@@ -1,12 +1,12 @@
+import { orderBy } from '@gredice/js/arrays';
+import { Accordion } from '@gredice/ui/Accordion';
 import { Markdown } from '@gredice/ui/Markdown';
-import { orderBy } from '@signalco/js';
-import { Accordion } from '@signalco/ui/Accordion';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
-import { PageHeader } from '../../components/shared/PageHeader';
 import { NoDataPlaceholder } from '../../components/shared/placeholders/NoDataPlaceholder';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
 import { getFaqData } from '../../lib/plants/getFaqData';
@@ -37,7 +37,7 @@ export default async function FaqPage() {
                 subHeader="Odgovaramo na sva tvoja pitanja."
                 padded
             />
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 {!faq?.length && (
                     <div className=" border rounded py-4 md:col-span-2">
                         <NoDataPlaceholder>
@@ -46,7 +46,7 @@ export default async function FaqPage() {
                     </div>
                 )}
                 {categories.map((category) => (
-                    <Stack key={category} spacing={2}>
+                    <Stack key={category} spacing={4}>
                         <Typography level="h4">{category}</Typography>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {faq
@@ -73,12 +73,12 @@ export default async function FaqPage() {
                         </div>
                     </Stack>
                 ))}
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="h4">Nema tvojeg pitanja?</Typography>
                     <WhatsAppCard />
                 </Stack>
             </Stack>
-            <Row spacing={2} className="mt-8">
+            <Row spacing={4} className="mt-8">
                 <Typography level="body1">
                     Jesu li ti informacije korisne?
                 </Typography>

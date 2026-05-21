@@ -5,10 +5,10 @@ import {
     getInventoryConfigByEntityTypeName,
     getInventoryItemsByConfig,
 } from '@gredice/storage';
-import { Add } from '@signalco/ui-icons';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Add } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import Link from 'next/link';
 import { EntityTypeMenu } from '../../../../components/admin/directories';
 import {
@@ -114,7 +114,7 @@ export default async function EntitiesPage({
 
     return (
         <FilterProvider>
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <AdminPageHeader
                     breadcrumbs={
                         <AdminDirectoryBreadcrumbs
@@ -123,7 +123,7 @@ export default async function EntitiesPage({
                         />
                     }
                     actions={
-                        <Row spacing={1}>
+                        <Row spacing={2}>
                             {inventoryConfig && (
                                 <Link
                                     href={KnownPages.InventoryConfig(
@@ -131,7 +131,7 @@ export default async function EntitiesPage({
                                     )}
                                 >
                                     <Row
-                                        spacing={1}
+                                        spacing={2}
                                         className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
                                     >
                                         <span>Zaliha</span>

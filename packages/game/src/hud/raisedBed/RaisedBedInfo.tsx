@@ -3,19 +3,13 @@ import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardOverflow } from '@gredice/ui/Card';
 import { EditableInput } from '@gredice/ui/EditableInput';
+import { Book, Hammer, Info, MoreHorizontal, Warning } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import {
-    Book,
-    Hammer,
-    Info,
-    MoreHorizontal,
-    Warning,
-} from '@signalco/ui-icons';
 import { useState } from 'react';
 import { useAbandonRaisedBed } from '../../hooks/useAbandonRaisedBed';
 import type { useCurrentGarden } from '../../hooks/useCurrentGarden';
@@ -73,8 +67,8 @@ export function RaisedBedInfo({
     }
 
     return (
-        <Stack spacing={2}>
-            <Row spacing={3}>
+        <Stack spacing={4}>
+            <Row spacing={6}>
                 <BlockImage
                     blockName="Raised_Bed"
                     width={80}
@@ -100,19 +94,19 @@ export function RaisedBedInfo({
                 <div className="relative flex justify-center">
                     <TabsList className="border w-fit self-center">
                         <TabsTrigger value="diary">
-                            <Row spacing={1}>
+                            <Row spacing={2}>
                                 <Book className="size-4 shrink-0" />
                                 <Typography>Dnevnik</Typography>
                             </Row>
                         </TabsTrigger>
                         <TabsTrigger value="operations">
-                            <Row spacing={1}>
+                            <Row spacing={2}>
                                 <Hammer className="size-4 shrink-0" />
                                 <Typography>Radnje</Typography>
                             </Row>
                         </TabsTrigger>
                         <TabsTrigger value="info">
-                            <Row spacing={1}>
+                            <Row spacing={2}>
                                 <Info className="size-4 shrink-0" />
                                 <Typography>Informacije</Typography>
                             </Row>
@@ -140,7 +134,7 @@ export function RaisedBedInfo({
                     />
                 </TabsContent>
                 <TabsContent value="more">
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         {isAbandoned ? (
                             <Alert
                                 color="danger"
@@ -154,14 +148,14 @@ export function RaisedBedInfo({
                             </Alert>
                         ) : (
                             <Stack
-                                spacing={1.5}
+                                spacing={3}
                                 className="rounded-xl border border-red-200 bg-red-50/90 p-4 shadow-sm dark:border-red-900/60 dark:bg-red-950/90"
                             >
-                                <Row spacing={2} alignItems="center">
+                                <Row spacing={4} alignItems="center">
                                     <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-700 ring-4 ring-red-200/70 dark:bg-red-900/70 dark:text-red-100 dark:ring-red-800/70">
                                         <Warning className="size-5 shrink-0" />
                                     </div>
-                                    <Stack spacing={0.5}>
+                                    <Stack spacing={1}>
                                         <Typography level="body1" semiBold>
                                             Napusti gredicu
                                         </Typography>
@@ -211,7 +205,7 @@ export function RaisedBedInfo({
                                         </Button>
                                     }
                                 >
-                                    <Stack spacing={2}>
+                                    <Stack spacing={4}>
                                         <Typography>
                                             Napuštanjem gredice{' '}
                                             <strong>{raisedBed.name}</strong>{' '}

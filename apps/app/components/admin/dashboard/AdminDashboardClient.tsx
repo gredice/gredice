@@ -1,14 +1,15 @@
 'use client';
 
 import type { getAnalyticsTotals } from '@gredice/storage';
+import { Button } from '@gredice/ui/Button';
+import { Chip } from '@gredice/ui/Chip';
+import { Input } from '@gredice/ui/Input';
+import { Calendar, Euro, File, Hammer, Truck } from '@gredice/ui/icons';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
-import { Calendar, Euro, File, Hammer, Truck } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import type { DashboardQuickActionOption } from '../../../src/dashboardQuickActions';
@@ -195,24 +196,19 @@ export function AdminDashboardClient({
     } = initialAnalyticsData;
 
     return (
-        <Stack spacing={2}>
-            <Row spacing={1} className="flex-wrap">
+        <Stack spacing={4}>
+            <Row spacing={2} className="flex-wrap">
                 {initialQuickActions.map((quickAction) => (
-                    <Button
+                    <Chip
                         key={quickAction.id}
-                        variant="outlined"
-                        className="rounded-full"
-                        size="sm"
                         href={quickAction.href}
+                        startDecorator={quickActionIcon(quickAction)}
                     >
-                        <Row spacing={0.5} className="items-center">
-                            {quickActionIcon(quickAction)}
-                            <span>{quickAction.label}</span>
-                        </Row>
-                    </Button>
+                        {quickAction.label}
+                    </Chip>
                 ))}
             </Row>
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <Row justifyContent="space-between">
                     <DashboardDivider>Računi i korisnici</DashboardDivider>
                     <SelectItems
@@ -227,8 +223,8 @@ export function AdminDashboardClient({
                     />
                 </Row>
                 {selectedPeriod === 'custom' ? (
-                    <Stack spacing={0.5}>
-                        <Row spacing={1} className="items-end">
+                    <Stack spacing={1}>
+                        <Row spacing={2} className="items-end">
                             <Input
                                 type="date"
                                 value={customFrom}
@@ -336,7 +332,7 @@ export function AdminDashboardClient({
                     />
                 </div>
             </Stack>
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <DashboardDivider>AI</DashboardDivider>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
                     <FactCard
@@ -353,7 +349,7 @@ export function AdminDashboardClient({
                     />
                 </div>
             </Stack>
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <DashboardDivider>Registracije</DashboardDivider>
                 <div className="w-full lg:max-w-2xl">
                     <UsersRegistrationWeekdayCard
@@ -361,11 +357,11 @@ export function AdminDashboardClient({
                     />
                 </div>
             </Stack>
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <DashboardDivider>Radnje</DashboardDivider>
                 <OperationsDurationCard data={initialOperationsDurationData} />
             </Stack>
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <DashboardDivider>Zapisi</DashboardDivider>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
                     {initialEntitiesData.map(
@@ -380,7 +376,7 @@ export function AdminDashboardClient({
                                 key={entityTypeName}
                                 header={label}
                                 value={
-                                    <Stack spacing={0.5}>
+                                    <Stack spacing={1}>
                                         <Typography>{count}</Typography>
                                         <Button
                                             variant="plain"
@@ -410,7 +406,7 @@ export function AdminDashboardClient({
                     )}
                 </div>
             </Stack>
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <DashboardDivider>Suncokreti</DashboardDivider>
                 <SunflowersDailyCard data={initialSunflowersData} />
             </Stack>

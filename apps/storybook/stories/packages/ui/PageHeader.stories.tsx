@@ -1,9 +1,9 @@
-import { PageHeader } from '@apps/www/components/shared/PageHeader';
+import { PageHeader, PageHeaderSection } from '@gredice/ui/PageHeader';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 const meta = {
-    title: 'apps/www/Layout/PageHeader',
+    title: 'packages/ui/Layout/PageHeader',
     component: PageHeader,
     tags: ['autodocs'],
     args: {
@@ -44,3 +44,15 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const CmsSection: Story = {
+    render: () => (
+        <div className="mx-auto max-w-5xl px-6 py-8">
+            <PageHeaderSection
+                component="PageHeader"
+                description="The CMS section wrapper maps stored heading and description fields onto the shared page header."
+                header="CMS-rendered page title"
+            />
+        </div>
+    ),
+};

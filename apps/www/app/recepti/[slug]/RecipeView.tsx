@@ -1,10 +1,10 @@
 'use client';
 
-import { Share } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Share } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { Progress } from '../../../../../packages/game/src/controls/components/Progress';
 import type { Recipe } from '../../../lib/recipes/getRecipesData';
@@ -44,8 +44,8 @@ export function RecipeView({ recipe }: { recipe: Recipe }) {
     );
 
     return (
-        <Stack spacing={4} className="py-8">
-            <Row spacing={2} className="justify-end">
+        <Stack spacing={8} className="py-8">
+            <Row spacing={4} className="justify-end">
                 <WakeLock />
                 <Button
                     variant="plain"
@@ -55,7 +55,7 @@ export function RecipeView({ recipe }: { recipe: Recipe }) {
                     Podijeli
                 </Button>
             </Row>
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="h2" component="h1">
                     {recipe.title}
                 </Typography>
@@ -63,7 +63,7 @@ export function RecipeView({ recipe }: { recipe: Recipe }) {
             </Stack>
             <PortionPicker value={portions} onChange={setPortions} />
             <div className="grid gap-8 md:grid-cols-[1fr_2fr_1fr]">
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Stack alignItems="center">
                         <Typography level="h4">
                             {numberOfIngredients}
@@ -96,7 +96,7 @@ export function RecipeView({ recipe }: { recipe: Recipe }) {
                         />
                     ))}
                 </Stack>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Stack alignItems="center">
                         <Typography level="h4" component="h2">
                             {totalTime} min
@@ -126,7 +126,7 @@ export function RecipeView({ recipe }: { recipe: Recipe }) {
                         />
                     ))}
                 </Stack>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Stack alignItems="center">
                         <Typography level="h4" component="h2">
                             Nutrijenti

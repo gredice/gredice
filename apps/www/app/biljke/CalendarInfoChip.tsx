@@ -1,6 +1,6 @@
-import { Info } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { cx } from '@signalco/ui-primitives/cx';
+import { Chip } from '@gredice/ui/Chip';
+import { Info } from '@gredice/ui/icons';
+import { cx } from '@gredice/ui/utils';
 
 const sowingCalendarHref = '/sjetva#kalendar-sjetve';
 

@@ -6,14 +6,14 @@ import {
     getFarms,
     getGardens,
 } from '@gredice/storage';
+import { Chip } from '@gredice/ui/Chip';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Calendar, Check } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
-import { Calendar, Check } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
+import { Stack } from '@gredice/ui/Stack';
+import { Table } from '@gredice/ui/Table';
 import Link from 'next/link';
 import { VerifyOperationModal } from '../../app/admin/schedule/VerifyOperationModal';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
@@ -134,7 +134,7 @@ export async function OperationsTable({
                                             : operation.status}
                                     </Chip>
                                     {operation.status === 'planned' && (
-                                        <Row spacing={1}>
+                                        <Row spacing={2}>
                                             <Calendar className="size-4 shrink-0" />
                                             <LocalDateTime time={false}>
                                                 {operation.scheduledDate}
@@ -143,7 +143,7 @@ export async function OperationsTable({
                                     )}
                                     {operation.status ===
                                         'pendingVerification' && (
-                                        <Row spacing={1}>
+                                        <Row spacing={2}>
                                             <LocalDateTime time={false}>
                                                 {operation.completedAt
                                                     ? new Date(
@@ -154,7 +154,7 @@ export async function OperationsTable({
                                         </Row>
                                     )}
                                     {operation.status === 'completed' && (
-                                        <Row spacing={1}>
+                                        <Row spacing={2}>
                                             {/* <span>{operation.completedBy}</span> */}
                                             <LocalDateTime time={false}>
                                                 {operation.completedAt
@@ -231,7 +231,7 @@ export async function OperationsTable({
                                 </LocalDateTime>
                             </Table.Cell>
                             <Table.Cell>
-                                <Row spacing={1}>
+                                <Row spacing={2}>
                                     {operation.status ===
                                         'pendingVerification' && (
                                         <VerifyOperationModal

@@ -1,13 +1,8 @@
-import { Mail } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Mail } from '@gredice/ui/icons';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 
 export function EmailSentCard() {
     return (
@@ -19,7 +14,7 @@ export function EmailSentCard() {
                 <CardTitle className="text-center">Email poslan</CardTitle>
             </CardHeader>
             <CardContent>
-                <Stack spacing={3}>
+                <Stack spacing={6}>
                     <Typography center semiBold className="text-[#2f6e40]">
                         Provjeri svoj email za nastavak promjene zaporke
                     </Typography>

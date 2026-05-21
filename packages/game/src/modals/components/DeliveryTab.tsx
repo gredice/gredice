@@ -5,18 +5,18 @@ import { DeliveryRequestsSection } from '../../shared-ui/delivery/DeliveryReques
 
 export function DeliveryTab() {
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <Typography level="h4" className="hidden md:block">
                 🚚 Dostava
             </Typography>
             <Stack
-                spacing={2}
+                spacing={4}
                 className="overflow-y-auto max-h-[calc(100dvh-200px)]"
             >
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <DeliveryAddressesSection />
                 </Stack>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <DeliveryRequestsSection />
                 </Stack>
             </Stack>

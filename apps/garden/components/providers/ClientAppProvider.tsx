@@ -1,9 +1,9 @@
 'use client';
 
 import { useThemeManager } from '@gredice/game';
+import { AuthProvider } from '@gredice/ui/auth';
+import { NotificationsContainer } from '@gredice/ui/notifications';
 import { NuqsAdapter } from '@gredice/ui/nuqs';
-import { AuthProvider } from '@signalco/auth-client/components';
-import { NotificationsContainer } from '@signalco/ui-notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import type { PropsWithChildren } from 'react';

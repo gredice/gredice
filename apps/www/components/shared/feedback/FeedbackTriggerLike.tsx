@@ -1,7 +1,7 @@
-import { ThumbsDown, ThumbsUp } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Row } from '@signalco/ui-primitives/Row';
+import { IconButton } from '@gredice/ui/IconButton';
+import { ThumbsDown, ThumbsUp } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { cx } from '@gredice/ui/utils';
 import type { ButtonHTMLAttributes, HTMLAttributes } from 'react';
 
 export type FeedbackTriggerProps = {
@@ -35,7 +35,7 @@ export function FeedbackTrigger({
 
     return (
         <Row
-            spacing={0.5}
+            spacing={1}
             className={cx('w-fit', className)}
             {...(rest as HTMLAttributes<HTMLDivElement>)}
         >

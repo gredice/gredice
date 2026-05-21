@@ -21,8 +21,8 @@ export function EnvironmentSettingsCard() {
     return (
         <Card>
             <CardContent noHeader>
-                <Stack spacing={2}>
-                    <Stack spacing={1.5}>
+                <Stack spacing={4}>
+                    <Stack spacing={3}>
                         <Checkbox
                             label="Uvijek dan"
                             checked={dayNightCycleDisabled}
@@ -35,7 +35,7 @@ export function EnvironmentSettingsCard() {
                             vrta.
                         </Typography>
                     </Stack>
-                    <Stack spacing={1.5}>
+                    <Stack spacing={3}>
                         <Checkbox
                             label="Uvijek sunčano"
                             checked={weatherVisualizationDisabled}

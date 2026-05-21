@@ -58,7 +58,7 @@ export function RaisedBedFieldPlantHistoryModal({
                 modal={false}
                 className="md:border-tertiary md:border-b-4 max-w-xl"
             >
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="body2" className="text-muted-foreground">
                         Povijest biljaka na ovom polju.
                     </Typography>
@@ -105,7 +105,7 @@ export function RaisedBedFieldPlantHistoryModal({
                                         className="size-full object-cover"
                                     />
                                 </div>
-                                <Stack spacing={0.5} className="min-w-0">
+                                <Stack spacing={1} className="min-w-0">
                                     <Typography
                                         level="body1"
                                         semiBold

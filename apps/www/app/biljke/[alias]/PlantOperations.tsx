@@ -1,5 +1,5 @@
 import type { PlantData } from '@gredice/client';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Stack } from '@gredice/ui/Stack';
 import { OperationCard } from '../../radnje/OperationCard';
 
 export function operationFrequencyLabel(frequency: string | undefined) {
@@ -40,7 +40,7 @@ export function PlantOperations({
     });
 
     return (
-        <Stack spacing={1}>
+        <Stack spacing={2}>
             {orderedOperations?.map((operation, operationIndex) => (
                 <div
                     key={operation.information?.name ?? operationIndex}

@@ -1,8 +1,8 @@
 'use client';
 
 import type { IncomingEntityLinkGroup } from '@gredice/storage';
-import { ExternalLink, LoaderSpinner } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
+import { Button } from '@gredice/ui/Button';
+import { ExternalLink, LoaderSpinner } from '@gredice/ui/icons';
 import Link from 'next/link';
 import { useState } from 'react';
 import { KnownPages } from '../../../../../src/KnownPages';

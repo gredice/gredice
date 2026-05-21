@@ -39,7 +39,7 @@ export function QualitySettingsCard() {
     return (
         <Card>
             <CardContent noHeader>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <SelectItems
                         label="Kvaliteta prikaza"
                         value={gameQualitySetting}

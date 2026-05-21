@@ -5,7 +5,7 @@ import { SoundSettingsCard } from './SoundSettingsCard';
 
 export function SoundTab() {
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <Typography level="h4" className="hidden md:block">
                 🔊 Zvuk
             </Typography>

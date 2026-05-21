@@ -1,9 +1,9 @@
 'use client';
 
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
 import { useActionState, useEffect, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { createTimeSlotAction } from './actions';
@@ -52,7 +52,7 @@ export function CreateTimeSlotForm({ locations }: CreateTimeSlotFormProps) {
 
     return (
         <form action={formAction}>
-            <Stack spacing={3}>
+            <Stack spacing={6}>
                 <input type="hidden" name="timeZone" value={timeZone} />
 
                 <SelectItems

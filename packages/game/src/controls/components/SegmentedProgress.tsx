@@ -1,5 +1,5 @@
+import { Check, Close } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
-import { Check, Close } from '@signalco/ui-icons';
 import { Fragment, type HTMLAttributes, type ReactNode } from 'react';
 import { Progress } from './Progress';
 

@@ -108,8 +108,8 @@ export function ModalConfirm({
                     {...rest}
                 >
                     <form onSubmit={handleSubmit}>
-                        <Stack spacing={4}>
-                            <Stack spacing={2}>
+                        <Stack spacing={8}>
+                            <Stack spacing={4}>
                                 <AlertDialogPrimitive.Title asChild>
                                     {typeof header === 'string' ? (
                                         <Typography level="h5">
@@ -140,7 +140,7 @@ export function ModalConfirm({
                                     />
                                 ) : null}
                             </Stack>
-                            <Row justifyContent="end" spacing={1}>
+                            <Row justifyContent="end" spacing={2}>
                                 <AlertDialogPrimitive.Cancel asChild>
                                     <Button type="button" variant="plain">
                                         {cancelLabel}

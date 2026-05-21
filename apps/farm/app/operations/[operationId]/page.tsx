@@ -1,11 +1,8 @@
-import {
-    AuthProtectedSection,
-    SignedOut,
-} from '@signalco/auth-server/components';
-import { ArrowLeft } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
+import { Button } from '@gredice/ui/Button';
+import { ArrowLeft } from '@gredice/ui/icons';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { notFound } from 'next/navigation';
 import LoginDialog from '../../../components/auth/LoginDialog';
 import { auth } from '../../../lib/auth/auth';
@@ -32,7 +29,7 @@ async function OperationDetailPageContent({
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <Button
                     variant="outlined"
                     className="w-fit"

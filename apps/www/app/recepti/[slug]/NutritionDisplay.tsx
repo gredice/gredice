@@ -1,11 +1,11 @@
 'use client';
 
+import { Alert } from '@gredice/ui/Alert';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
-import { Alert } from '@signalco/ui/Alert';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import type { Recipe } from '../../../lib/recipes/getRecipesData';
 import { calculateRecipeNutrition } from '../../../lib/recipes/nutritionCalculator';
@@ -32,7 +32,7 @@ export function NutritionDisplay({
         : totalNutrition;
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <Tabs defaultValue="perPortion" className="self-center">
                 <TabsList>
                     <TabsTrigger
@@ -52,7 +52,7 @@ export function NutritionDisplay({
 
             {!displayNutrition.isComplete && (
                 <Alert color="warning">
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         <Typography level="body2" semiBold>
                             Podaci o nutrijentima nisu potpuni
                         </Typography>
@@ -69,7 +69,7 @@ export function NutritionDisplay({
 
             <Card>
                 <CardContent noHeader>
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         <NutrientRow
                             label="Kalorije"
                             value={displayNutrition.calories}

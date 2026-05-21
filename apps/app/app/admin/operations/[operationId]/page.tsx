@@ -6,21 +6,21 @@ import {
     getOperationById,
     getRaisedBed,
 } from '@gredice/storage';
-import { ImageGallery } from '@gredice/ui/ImageGallery';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import {
     Card,
     CardContent,
     CardHeader,
     CardOverflow,
     CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+} from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
+import { ImageGallery } from '@gredice/ui/ImageGallery';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Row } from '@gredice/ui/Row';
+import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
@@ -361,7 +361,7 @@ export default async function OperationDetailsPage({
 
     return (
         <EntityDetailsPropertiesProvider>
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <AdminPageTitle title={operationTitle} />
                 <AdminPageHeader
                     breadcrumbs={
@@ -376,14 +376,14 @@ export default async function OperationDetailsPage({
                         />
                     }
                     actions={
-                        <Row className="items-center" spacing={1}>
+                        <Row className="items-center" spacing={2}>
                             <EntityDetailsPropertiesToggle />
                         </Row>
                     }
                     heading="Detalji radnje"
                 />
                 <EntityDetailsPropertiesLayout properties={propertiesPanel}>
-                    <Stack spacing={4}>
+                    <Stack spacing={8}>
                         {operation.completionNotes && (
                             <Card>
                                 <CardHeader>
@@ -403,7 +403,7 @@ export default async function OperationDetailsPage({
                                         <CardTitle>Slike</CardTitle>
                                     </CardHeader>
                                     <CardOverflow>
-                                        <Row className="w-full" spacing={2}>
+                                        <Row className="w-full" spacing={4}>
                                             <ImageGallery
                                                 images={operation.imageUrls.map(
                                                     (url) => ({

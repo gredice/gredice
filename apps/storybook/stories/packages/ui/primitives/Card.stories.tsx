@@ -32,7 +32,7 @@ const meta = {
                 </Typography>
             </CardHeader>
             <CardContent>
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     <Typography level="body2">
                         3 sadnje cekaju potvrdu
                     </Typography>

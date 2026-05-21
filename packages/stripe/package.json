@@ -22,7 +22,7 @@
         "typescript": "6.0.3"
     },
     "dependencies": {
-        "@signalco/js": "0.1.0",
+        "@gredice/js": "workspace:*",
         "@stripe/stripe-js": "9.6.0",
         "react": "19.2.6",
         "stripe": "22.1.1"

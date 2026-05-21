@@ -1,13 +1,13 @@
 'use client';
 
-import { UserAvatar } from '@gredice/ui/UserAvatar';
-import { Bank, LogOut, User } from '@signalco/ui-icons';
+import { Bank, LogOut, User } from '@gredice/ui/icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-} from '@signalco/ui-primitives/Menu';
+} from '@gredice/ui/Menu';
+import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { useEffect, useMemo, useState } from 'react';
 import { KnownPages } from '../../../src/KnownPages';
 

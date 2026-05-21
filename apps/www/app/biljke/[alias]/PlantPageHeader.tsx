@@ -1,18 +1,18 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
 import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
+import { slug } from '@gredice/js/slug';
+import { Chip } from '@gredice/ui/Chip';
 import { PlantGridIcon } from '@gredice/ui/GridIcons';
+import { MapPinHouse, Sprout } from '@gredice/ui/icons';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
+import { PageHeader } from '@gredice/ui/PageHeader';
 import { PlantOrSortImage, SeedTimeInformationBadge } from '@gredice/ui/plants';
-import { slug } from '@signalco/js';
-import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { MapPinHouse, Sprout } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
-import { PageHeader } from '../../../components/shared/PageHeader';
 import { KnownPages } from '../../../src/KnownPages';
 import { getPlantInforationSections } from './getPlantInforationSections';
 import { PlantCalendarPicker } from './PlantCalendarPicker';
@@ -72,11 +72,11 @@ export function PlantPageHeader({
                 sort?.information.description ?? plant.information.description
             }
             headerChildren={
-                <Stack spacing={4} alignItems="start">
+                <Stack spacing={8} alignItems="start">
                     {(plant.information.origin || sort?.information.origin) && (
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             <Typography level="body2">Porijeklo</Typography>
-                            <Row spacing={1}>
+                            <Row spacing={2}>
                                 <MapPinHouse className="size-5 shrink-0" />
                                 <Typography>
                                     {sort?.information.origin ??
@@ -85,7 +85,7 @@ export function PlantPageHeader({
                             </Row>
                         </Stack>
                     )}
-                    <Row spacing={1}>
+                    <Row spacing={2}>
                         {plant.information.verified && (
                             <VerifiedInformationBadge />
                         )}
@@ -102,9 +102,9 @@ export function PlantPageHeader({
                     {informationSections.some(
                         (section) => section.avaialble,
                     ) && (
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             <Typography level="body2">Sadržaj</Typography>
-                            <Row spacing={1} className="flex-wrap">
+                            <Row spacing={2} className="flex-wrap">
                                 {informationSections
                                     .filter((section) => section.avaialble)
                                     .map((section) => (
@@ -130,7 +130,7 @@ export function PlantPageHeader({
         >
             <Stack>
                 <PlantCalendarPicker plant={plant} sort={sort} />
-                <Stack spacing={1} className="group">
+                <Stack spacing={2} className="group">
                     <Typography level="h5" component="h2">
                         Informacije
                     </Typography>

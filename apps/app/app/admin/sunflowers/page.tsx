@@ -4,12 +4,12 @@ import {
     knownEventTypes,
     storage,
 } from '@gredice/storage';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Table } from '@gredice/ui/Table';
 import { and, desc, gte, inArray } from 'drizzle-orm';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
@@ -147,8 +147,8 @@ export default async function SunflowersPage({
         }));
 
     return (
-        <Stack spacing={2}>
-            <Row spacing={1}>
+        <Stack spacing={4}>
+            <Row spacing={2}>
                 <Chip color="primary">{parsedEvents.length}</Chip>
                 <Chip color="success">+{totalEarned}</Chip>
                 <Chip color="error">-{totalSpent}</Chip>
@@ -204,7 +204,7 @@ export default async function SunflowersPage({
                                             </Link>
                                         </Table.Cell>
                                         <Table.Cell>
-                                            <Stack spacing={0.5}>
+                                            <Stack spacing={1}>
                                                 {accountUsers.length === 0 &&
                                                     '-'}
                                                 {accountUsers.map(

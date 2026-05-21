@@ -7,7 +7,7 @@ import {
     Sun,
     Tally3,
     Timer,
-} from '@signalco/ui-icons';
+} from '@gredice/ui/icons';
 import type { JSX } from 'react';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { operationFrequencyLabel } from '../../biljke/[alias]/PlantOperations';

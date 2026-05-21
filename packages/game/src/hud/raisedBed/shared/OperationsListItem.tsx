@@ -3,11 +3,11 @@ import { formatPrice } from '@gredice/js/currency';
 import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { Button } from '@gredice/ui/Button';
+import { Calendar } from '@gredice/ui/icons';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { Calendar } from '@signalco/ui-icons';
 import { useInventory } from '../../../hooks/useInventory';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
 import {

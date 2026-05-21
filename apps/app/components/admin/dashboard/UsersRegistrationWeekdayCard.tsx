@@ -1,8 +1,8 @@
 'use client';
 
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import {
     Bar,
     BarChart,
@@ -32,8 +32,8 @@ export function UsersRegistrationWeekdayCard({
     return (
         <Card>
             <CardOverflow>
-                <Stack spacing={2} className="p-4">
-                    <Stack spacing={0.5}>
+                <Stack spacing={4} className="p-4">
+                    <Stack spacing={1}>
                         <Typography level="body3">
                             Registracije korisnika po danu u tjednu
                         </Typography>

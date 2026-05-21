@@ -14,12 +14,12 @@ export function AdventMissedDayScreen({
     onClose,
 }: AdventMissedDayScreenProps) {
     return (
-        <Stack spacing={4} className="items-center text-center p-8">
+        <Stack spacing={8} className="items-center text-center p-8">
             {/* Sad emoji */}
             <div className="text-6xl">😢</div>
 
             {/* Message */}
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="h4" className="font-bold">
                     Dan {day}
                 </Typography>

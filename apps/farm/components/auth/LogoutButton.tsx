@@ -1,8 +1,8 @@
 'use client';
 
-import { authCurrentUserQueryKeys } from '@signalco/auth-client';
-import { LogOut } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { authCurrentUserQueryKeys } from '@gredice/ui/auth';
+import { IconButton } from '@gredice/ui/IconButton';
+import { LogOut } from '@gredice/ui/icons';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { queryClient } from '../providers/ClientAppProvider';

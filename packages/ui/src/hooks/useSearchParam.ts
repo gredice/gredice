@@ -25,7 +25,8 @@ export function useSetSearchParam(parameterName: string) {
             }
 
             const query = next.toString();
-            router.replace(`${pathname}${query ? `?${query}` : ''}`);
+            const nextUrl = `${pathname}${query ? `?${query}` : ''}`;
+            router.replace(nextUrl as Parameters<typeof router.replace>[0]);
         },
         [parameterName, pathname, router, searchParams],
     );

@@ -1,4 +1,4 @@
-import { cx } from '@signalco/ui-primitives/cx';
+import { cx } from '@gredice/ui/utils';
 import type { SVGProps } from 'react';
 
 export function Logotype({

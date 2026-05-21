@@ -2,10 +2,10 @@
 
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
+import { Navigate } from '@gredice/ui/icons';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { Navigate } from '@signalco/ui-icons';
 import Image from 'next/image';
 import Confetti from 'react-confetti-boom';
 import { usePlantSort } from '../../hooks/usePlantSorts';
@@ -91,7 +91,7 @@ export function AdventAwardScreen({
     onContinue,
 }: AdventAwardScreenProps) {
     return (
-        <Stack spacing={4} className="items-center text-center p-8 relative">
+        <Stack spacing={8} className="items-center text-center p-8 relative">
             <Confetti mode="fall" particleCount={50} />
 
             {/* Award image */}
@@ -110,7 +110,7 @@ export function AdventAwardScreen({
             )}
 
             {/* Description */}
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 {award.kind !== 'sunflowers' && (
                     <Typography level="h4" className="font-bold">
                         {description.title}

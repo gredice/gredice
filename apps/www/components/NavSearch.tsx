@@ -1,11 +1,11 @@
 'use client';
 
 import { type components, directoriesClient } from '@gredice/client';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Close, LoaderSpinner, Search } from '@gredice/ui/icons';
 import { LoadingIndicator } from '@gredice/ui/LoadingIndicator';
+import { cx } from '@gredice/ui/utils';
 import { usePostHog } from '@posthog/next';
-import { Close, LoaderSpinner, Search } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { useQuery } from '@tanstack/react-query';
 import {
     type ChangeEvent,

@@ -1,6 +1,7 @@
 import NextLink from 'next/link';
 import {
     Children,
+    type ComponentProps,
     type CSSProperties,
     type MouseEventHandler,
     type ReactElement,
@@ -49,11 +50,11 @@ export function ListHeader({
     return (
         <Stack
             className={cx('w-full select-none', className)}
-            spacing={spacing || 1}
+            spacing={spacing || 2}
             {...rest}
         >
             <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-1">
-                <Stack className="shrink-0" spacing={1}>
+                <Stack className="shrink-0" spacing={2}>
                     {icon ? <div>{icon}</div> : null}
                     {isLoading ? <Skeleton className="h-5 w-32" /> : null}
                     {typeof header === 'string' ? (
@@ -70,7 +71,7 @@ export function ListHeader({
                         header
                     )}
                 </Stack>
-                <Stack spacing={0.5}>
+                <Stack spacing={1}>
                     {Children.toArray(actions).filter(Boolean)}
                 </Stack>
             </div>
@@ -172,7 +173,7 @@ export function ListItem({
         return (
             <NextLink
                 className={mergedClassName}
-                href={href}
+                href={href as ComponentProps<typeof NextLink>['href']}
                 ref={buttonRef}
                 {...rest}
             >

@@ -1,6 +1,7 @@
 'use client';
 
 import type { SelectTimeSlot } from '@gredice/storage';
+import { Button } from '@gredice/ui/Button';
 import {
     Calendar,
     Check,
@@ -8,10 +9,9 @@ import {
     Navigate,
     ShoppingCart,
     Truck,
-} from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
+} from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import { useState, useTransition } from 'react';
 import {
     changeDeliveryRequestSlotAction,
@@ -76,7 +76,7 @@ export function DeliveryRequestActionButtons({
     };
 
     return (
-        <Stack spacing={1}>
+        <Stack spacing={2}>
             {request.state === 'pending' && (
                 <>
                     <Button
@@ -178,7 +178,7 @@ export function DeliveryRequestActionButtons({
                                     </option>
                                 ))}
                         </select>
-                        <Row spacing={1}>
+                        <Row spacing={2}>
                             <Button
                                 type="submit"
                                 size="sm"

@@ -3,13 +3,13 @@ import type {
     EntityStandardized,
     RaisedBedFieldAssignableFarmUser,
 } from '@gredice/storage';
+import { Checkbox } from '@gredice/ui/Checkbox';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { CompletePlantingModal } from './CompletePlantingModal';
 import type { FarmScheduleDayData } from './scheduleData';
 import {
@@ -76,7 +76,7 @@ export function FarmSchedulePlantingsSection({
     );
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             {raisedBedGroups.map(
                 ({ key, physicalId, raisedBeds: groupedRaisedBeds }) => {
                     const dayFields = scheduledFields
@@ -99,9 +99,9 @@ export function FarmSchedulePlantingsSection({
                         dayFields.length * PLANTING_TASK_DURATION_MINUTES;
 
                     return (
-                        <Stack key={key} spacing={1}>
+                        <Stack key={key} spacing={2}>
                             <Row
-                                spacing={1}
+                                spacing={2}
                                 className="items-center flex-wrap gap-y-1"
                             >
                                 {physicalId ? (
@@ -126,7 +126,7 @@ export function FarmSchedulePlantingsSection({
                                     </Typography>
                                 )}
                             </Row>
-                            <Stack spacing={1}>
+                            <Stack spacing={2}>
                                 {dayFields.map((field) => {
                                     const completed = isFieldCompleted(
                                         field.plantStatus,
@@ -149,11 +149,11 @@ export function FarmSchedulePlantingsSection({
                                             className={`rounded-lg border bg-white px-3 py-2 ${lockedByAssignment ? 'opacity-70' : ''}`}
                                         >
                                             <Row
-                                                spacing={1}
+                                                spacing={2}
                                                 className="items-start justify-between gap-3"
                                             >
                                                 <Row
-                                                    spacing={1}
+                                                    spacing={2}
                                                     className="min-w-0 grow items-start"
                                                 >
                                                     {completed ? (
@@ -181,7 +181,7 @@ export function FarmSchedulePlantingsSection({
                                                         </div>
                                                     )}
                                                     <Stack
-                                                        spacing={0.5}
+                                                        spacing={1}
                                                         className="min-w-0 grow"
                                                     >
                                                         <Typography
@@ -194,7 +194,7 @@ export function FarmSchedulePlantingsSection({
                                                             {field.label}
                                                         </Typography>
                                                         <Row
-                                                            spacing={1}
+                                                            spacing={2}
                                                             className="items-center flex-wrap gap-y-1"
                                                         >
                                                             <Typography

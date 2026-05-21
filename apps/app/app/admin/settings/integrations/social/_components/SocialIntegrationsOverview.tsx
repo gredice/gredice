@@ -3,9 +3,9 @@ import type {
     SocialAccountStatus,
     SocialProvider,
 } from '@gredice/storage';
-import { Add } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Chip } from '@signalco/ui-primitives/Chip';
+import { Button } from '@gredice/ui/Button';
+import { Chip } from '@gredice/ui/Chip';
+import { Add } from '@gredice/ui/icons';
 import Link from 'next/link';
 import { KnownPages } from '../../../../../../src/KnownPages';
 import { socialProviderDefinitions } from '../../../../../../src/social/providers/definitions';

@@ -1,0 +1,30 @@
+{
+    "name": "@gredice/auth",
+    "version": "0.0.0",
+    "private": true,
+    "sideEffects": false,
+    "type": "module",
+    "license": "MIT",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
+        "lint": "biome check --write",
+        "lint:migrate": "biome migrate --write",
+        "typecheck": "tsc --noEmit --pretty false"
+    },
+    "dependencies": {
+        "jose": "5.9.6",
+        "server-only": "0.0.1"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.4.15",
+        "@types/node": "24.12.2",
+        "next": "16.2.6",
+        "typescript": "6.0.3"
+    },
+    "peerDependencies": {
+        "next": "15.x || 16.x"
+    }
+}

@@ -1,6 +1,6 @@
 import { getAccounts } from '@gredice/storage';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Table } from '@signalco/ui-primitives/Table';
+import { Table } from '@gredice/ui/Table';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../src/KnownPages';

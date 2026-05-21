@@ -13,10 +13,10 @@ import {
 } from '@gredice/storage';
 import { getEntityCompleteness } from '@gredice/storage/entityCompleteness';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
+import { Calendar, Code, ExternalLink } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
-import { Calendar, Code, ExternalLink } from '@signalco/ui-icons';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
 import { revalidatePath } from 'next/cache';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -421,7 +421,7 @@ export default async function EntityDetailsPage(props: {
                 <AdminPageTitle title={entityTitle} />
                 <AdminPageHeader
                     breadcrumbs={
-                        <Row spacing={2} className="min-w-0">
+                        <Row spacing={4} className="min-w-0">
                             <div className="min-w-0">
                                 <AdminDirectoryBreadcrumbs
                                     entityTypeName={params.entityType}
@@ -442,7 +442,7 @@ export default async function EntityDetailsPage(props: {
                         </Row>
                     }
                     actions={
-                        <Row className="items-center" spacing={1}>
+                        <Row className="items-center" spacing={2}>
                             <EntityDetailsSaveIndicator />
                             <EntityDetailsPropertiesToggle />
                             <EntityActions
@@ -469,7 +469,7 @@ export default async function EntityDetailsPage(props: {
                                             value={category.name}
                                         >
                                             <Row
-                                                spacing={1}
+                                                spacing={2}
                                                 className="items-center"
                                             >
                                                 <span>{category.label}</span>
@@ -493,7 +493,7 @@ export default async function EntityDetailsPage(props: {
                                 </TabsList>
                             }
                         />
-                        <Stack spacing={2}>
+                        <Stack spacing={4}>
                             {attributeCategories.map((category) => (
                                 <TabsContent
                                     value={category.name}

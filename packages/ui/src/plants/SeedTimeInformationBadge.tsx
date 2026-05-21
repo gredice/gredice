@@ -45,15 +45,15 @@ export function SeedTimeInformationBadge({
             }
             className="p-6 min-w-96"
         >
-            <Stack spacing={2}>
-                <Row spacing={2}>
+            <Stack spacing={4}>
+                <Row spacing={4}>
                     <ThumbsUp className="size-10 text-secondary-foreground" />
                     <Typography level="body2" semiBold>
                         &quot;Vrijeme za sijanje&quot; označava da je upravo sad
                         optimalno vrijeme za sjetvu.
                     </Typography>
                 </Row>
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     <Typography>
                         Prema kalendaru sjetve, sijanje ove biljke u gredicama
                         je preporučeno.

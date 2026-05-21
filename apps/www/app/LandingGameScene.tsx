@@ -2,11 +2,11 @@
 
 import { GameScene } from '@gredice/game';
 import { getGardenBaseUrl } from '@gredice/js/urls';
-import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { Close, Navigate } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Close, Navigate } from '@gredice/ui/icons';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
+import { cx } from '@gredice/ui/utils';
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {

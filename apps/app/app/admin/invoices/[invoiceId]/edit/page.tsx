@@ -1,6 +1,6 @@
 import { getInvoice } from '@gredice/storage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Stack } from '@gredice/ui/Stack';
 import { notFound, redirect } from 'next/navigation';
 import { AdminPageHeader } from '../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
@@ -32,7 +32,7 @@ export default async function EditInvoicePage({
     }
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <AdminPageHeader
                 breadcrumbs={
                     <Breadcrumbs

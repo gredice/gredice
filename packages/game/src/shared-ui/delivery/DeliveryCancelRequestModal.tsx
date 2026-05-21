@@ -2,13 +2,13 @@ import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { Input } from '@gredice/ui/Input';
+import { Close, Info, ShoppingCart, Truck } from '@gredice/ui/icons';
 import { TimeRange } from '@gredice/ui/LocalDateTime';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { Close, Info, ShoppingCart, Truck } from '@signalco/ui-icons';
 import { useState } from 'react';
 import { useCancelDeliveryRequest } from '../../hooks/useDeliveryRequestMutations';
 import type { DeliveryRequestData } from '../../hooks/useDeliveryRequests';
@@ -76,7 +76,7 @@ export function DeliveryCancelRequestModal({
             title="Otkaži dostavu"
             trigger={trigger}
         >
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <Alert
                     color="warning"
                     startDecorator={<Info className="size-4" />}
@@ -88,9 +88,9 @@ export function DeliveryCancelRequestModal({
                 {/* Request Summary */}
                 <Card>
                     <CardContent>
-                        <Stack spacing={2}>
+                        <Stack spacing={4}>
                             <Typography level="h6">Detalji dostave</Typography>
-                            <Row spacing={2}>
+                            <Row spacing={4}>
                                 {request.mode === 'delivery' ? (
                                     <>
                                         <Truck className="size-4" />
@@ -109,7 +109,7 @@ export function DeliveryCancelRequestModal({
                             </Row>
 
                             {request.mode === 'delivery' && request.address && (
-                                <Stack spacing={0.5}>
+                                <Stack spacing={1}>
                                     <Typography level="body3" secondary>
                                         Adresa:
                                     </Typography>
@@ -125,7 +125,7 @@ export function DeliveryCancelRequestModal({
                             )}
 
                             {request.mode === 'pickup' && request.location && (
-                                <Stack spacing={0.5}>
+                                <Stack spacing={1}>
                                     <Typography level="body3" secondary>
                                         Lokacija:
                                     </Typography>
@@ -136,7 +136,7 @@ export function DeliveryCancelRequestModal({
                             )}
 
                             {request.slot && (
-                                <Stack spacing={0.5}>
+                                <Stack spacing={1}>
                                     <Typography level="body3" secondary>
                                         Termin:
                                     </Typography>
@@ -161,7 +161,7 @@ export function DeliveryCancelRequestModal({
                 )}
 
                 {/* Cancel Form */}
-                <Stack spacing={3}>
+                <Stack spacing={6}>
                     <SelectItems
                         value={cancelReason}
                         onValueChange={setCancelReason}
@@ -181,7 +181,7 @@ export function DeliveryCancelRequestModal({
                     />
                 </Stack>
 
-                <Row spacing={2} justifyContent="end">
+                <Row spacing={4} justifyContent="end">
                     <Button
                         variant="outlined"
                         onClick={() => setIsOpen(false)}

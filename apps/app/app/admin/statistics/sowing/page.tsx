@@ -3,11 +3,11 @@ import {
     getEntitiesFormatted,
     getRaisedBedFieldPlantCycles,
 } from '@gredice/storage';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
+import { Stack } from '@gredice/ui/Stack';
+import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
 import { auth } from '../../../../lib/auth/auth';
@@ -92,11 +92,11 @@ export default async function SowingStatisticsPage() {
     );
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <Typography level="h4" component="h1">
                 Statistika sijanja po sortama
             </Typography>
-            <Stack spacing={1} className="md:flex-row">
+            <Stack spacing={2} className="md:flex-row">
                 <Chip color="primary">Ukupno sijanja: {totalSowings}</Chip>
                 <Chip>Sorti sa sijanjem: {sortedSowingSummary.length}</Chip>
             </Stack>

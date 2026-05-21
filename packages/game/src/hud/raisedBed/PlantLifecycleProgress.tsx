@@ -216,7 +216,7 @@ export function PlantLifecycleProgress({
     return (
         <>
             {shouldShowPlantScheduledDate && (
-                <Row spacing={2}>
+                <Row spacing={4}>
                     <Typography level="body2">Planirani datum</Typography>
                     <div className="flex items-start">
                         <Chip>
@@ -226,7 +226,7 @@ export function PlantLifecycleProgress({
                     </div>
                 </Row>
             )}
-            <Row spacing={2}>
+            <Row spacing={4}>
                 <SegmentedCircularProgress
                     size={140}
                     strokeWidth={3}
@@ -234,7 +234,7 @@ export function PlantLifecycleProgress({
                 >
                     {statusTrigger}
                 </SegmentedCircularProgress>
-                <Stack spacing={0.75}>
+                <Stack spacing={1.5}>
                     <PlantStageSection
                         label="Klijanje"
                         legendColorClass="bg-yellow-500"

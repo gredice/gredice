@@ -5,7 +5,7 @@ import { Typography } from '@gredice/ui/Typography';
 export function RaisedBedFieldInvalidShape() {
     return (
         <div className="flex flex-col mt-4 items-center h-full">
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <Typography level="h5" semiBold center className="text-white">
                     Nevaljan oblik gredice
                 </Typography>

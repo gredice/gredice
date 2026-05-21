@@ -1,7 +1,7 @@
 'use client';
 
-import { Check, LoaderSpinner } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
+import { Chip } from '@gredice/ui/Chip';
+import { Check, LoaderSpinner } from '@gredice/ui/icons';
 import { useEffect, useState } from 'react';
 import { useEntityDetailsSave } from './EntityDetailsSaveContext';
 

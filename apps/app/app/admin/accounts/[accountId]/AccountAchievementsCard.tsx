@@ -1,17 +1,16 @@
 import { getAchievementDefinition } from '@gredice/js/achievements';
 import { getAccountAchievements } from '@gredice/storage';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import {
     Card,
     CardContent,
     CardHeader,
     CardOverflow,
     CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
+} from '@gredice/ui/Card';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Stack } from '@gredice/ui/Stack';
+import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 
 function statusLabel(status: string) {
@@ -43,7 +42,7 @@ export async function AccountAchievementsCard({
                 <CardTitle>Postignuća</CardTitle>
             </CardHeader>
             <CardContent>
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     <Typography level="body2">
                         Ukupno {achievements.length} postignuća evidentirano.
                     </Typography>
@@ -79,7 +78,7 @@ export async function AccountAchievementsCard({
                                 return (
                                     <Table.Row key={achievement.id}>
                                         <Table.Cell>
-                                            <Stack spacing={1}>
+                                            <Stack spacing={2}>
                                                 <Typography
                                                     level="body2"
                                                     semiBold

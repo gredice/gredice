@@ -1,4 +1,6 @@
-@import "@signalco/ui-themes-minimal-app/styles";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
     interpolate-size: allow-keywords;

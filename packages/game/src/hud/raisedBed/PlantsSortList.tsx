@@ -1,6 +1,7 @@
 import type { PlantSortData } from '@gredice/client';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
+import { Check } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { PlantOrSortImage } from '@gredice/ui/plants';
@@ -8,7 +9,6 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { Check } from '@signalco/ui-icons';
 import { useEffect } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { usePlantSorts } from '../../hooks/usePlantSorts';
@@ -70,7 +70,7 @@ function PlantSortListItem({
                     onChange(sort);
                 }}
             >
-                <Row spacing={1.5}>
+                <Row spacing={3}>
                     <AnimateFlyToItem {...animateFlyToShoppingCart.props}>
                         <PlantOrSortImage
                             plantSort={sort}

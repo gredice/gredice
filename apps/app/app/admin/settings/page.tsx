@@ -13,18 +13,13 @@ import {
     SettingsKeys,
     type SlackConfig,
 } from '@gredice/storage';
-import { Add, Check, Edit, Warning } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Add, Check, Edit, Warning } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { EntityTypeIcon } from '../../../components/admin/directories/EntityTypeIcon';
 import { auth } from '../../../lib/auth/auth';
@@ -133,7 +128,7 @@ export default async function SettingsPage() {
         adminGeneralConfig?.timeZone ?? DEFAULT_ADMIN_TIME_ZONE;
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
                 <nav className="lg:sticky self-start">
                     <Card>
@@ -141,7 +136,7 @@ export default async function SettingsPage() {
                             <CardTitle>Postavke</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <Stack spacing={1}>
+                            <Stack spacing={2}>
                                 {SETTINGS_SECTIONS.map((section) => (
                                     <Link
                                         key={section.id}
@@ -162,8 +157,8 @@ export default async function SettingsPage() {
                         className="scroll-mt-28"
                         aria-labelledby="general-settings-heading"
                     >
-                        <Stack spacing={3}>
-                            <Stack spacing={1}>
+                        <Stack spacing={6}>
+                            <Stack spacing={2}>
                                 <Typography
                                     id="general-settings-heading"
                                     level="h2"
@@ -194,8 +189,8 @@ export default async function SettingsPage() {
                         className="scroll-mt-28"
                         aria-labelledby="directory-settings-heading"
                     >
-                        <Stack spacing={3}>
-                            <Stack spacing={1}>
+                        <Stack spacing={6}>
+                            <Stack spacing={2}>
                                 <Typography
                                     id="directory-settings-heading"
                                     level="h2"
@@ -208,7 +203,7 @@ export default async function SettingsPage() {
                                     direktoriju.
                                 </Typography>
                             </Stack>
-                            <Row spacing={2}>
+                            <Row spacing={4}>
                                 <Link
                                     href={KnownPages.DirectoryEntityTypeCreate}
                                 >
@@ -235,7 +230,7 @@ export default async function SettingsPage() {
                                                 >
                                                     <CardTitle>
                                                         <Row
-                                                            spacing={1}
+                                                            spacing={2}
                                                             alignItems="center"
                                                         >
                                                             <EntityTypeIcon
@@ -287,8 +282,8 @@ export default async function SettingsPage() {
                         className="scroll-mt-28"
                         aria-labelledby="dashboard-settings-heading"
                     >
-                        <Stack spacing={3}>
-                            <Stack spacing={1}>
+                        <Stack spacing={6}>
+                            <Stack spacing={2}>
                                 <Typography
                                     id="dashboard-settings-heading"
                                     level="h2"
@@ -322,8 +317,8 @@ export default async function SettingsPage() {
                         className="scroll-mt-28"
                         aria-labelledby="integration-settings-heading"
                     >
-                        <Stack spacing={3}>
-                            <Stack spacing={1}>
+                        <Stack spacing={6}>
+                            <Stack spacing={2}>
                                 <Typography
                                     id="integration-settings-heading"
                                     level="h2"
@@ -432,8 +427,8 @@ export default async function SettingsPage() {
                         className="scroll-mt-28"
                         aria-labelledby="notification-settings-heading"
                     >
-                        <Stack spacing={3}>
-                            <Stack spacing={1}>
+                        <Stack spacing={6}>
+                            <Stack spacing={2}>
                                 <Typography
                                     id="notification-settings-heading"
                                     level="h2"

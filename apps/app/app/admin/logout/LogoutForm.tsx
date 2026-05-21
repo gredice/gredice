@@ -1,13 +1,13 @@
 'use client';
 
 import { getBrowserGrediceAppOrigin } from '@gredice/client';
-import { authCurrentUserQueryKeys } from '@signalco/auth-client';
-import { Alert } from '@signalco/ui/Alert';
-import { Warning } from '@signalco/ui-icons';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Spinner } from '@signalco/ui-primitives/Spinner';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Alert } from '@gredice/ui/Alert';
+import { authCurrentUserQueryKeys } from '@gredice/ui/auth';
+import { Warning } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Spinner } from '@gredice/ui/Spinner';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useActionState } from 'react';
 import { queryClient } from '../../../components/providers/ClientAppProvider';
 
@@ -40,9 +40,9 @@ export function LogoutForm() {
 
     return (
         <form ref={autoSubmitForm} action={submitAction}>
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 {!error && (
-                    <Row spacing={1} className="flex justify-center">
+                    <Row spacing={2} className="flex justify-center">
                         <Spinner loadingLabel={'Odjava...'} loading />
                         <Typography level="h6" semiBold>
                             Odjva u tijeku...

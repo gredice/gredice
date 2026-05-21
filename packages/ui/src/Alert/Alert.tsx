@@ -45,7 +45,7 @@ export function Alert({
                 className,
             )}
             role="alert"
-            spacing={2}
+            spacing={4}
             {...rest}
         >
             {startDecorator ? (

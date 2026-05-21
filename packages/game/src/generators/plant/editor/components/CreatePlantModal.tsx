@@ -2,10 +2,10 @@
 
 import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
+import { Add } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
-import { Add } from '@signalco/ui-icons';
 import { useState } from 'react';
 import type { CreatePlantDialogProps } from '../@types/plant-generator';
 

@@ -1,5 +1,5 @@
 import type { PlantData } from '@gredice/client';
-import { Droplet } from '@signalco/ui-icons';
+import { Droplet } from '@gredice/ui/icons';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 
 export function WateringAttributeCards({

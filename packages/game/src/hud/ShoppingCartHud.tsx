@@ -1,6 +1,12 @@
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
+import {
+    Delete,
+    Info,
+    Navigate,
+    ShoppingCart as ShoppingCartIcon,
+} from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
@@ -8,12 +14,6 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import {
-    Delete,
-    Info,
-    Navigate,
-    ShoppingCart as ShoppingCartIcon,
-} from '@signalco/ui-icons';
 import { useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { isCompleteDeliverySelection, useCheckout } from '../hooks/useCheckout';
@@ -132,8 +132,8 @@ export function ShoppingCart() {
     }
 
     return (
-        <Stack spacing={2}>
-            <Row spacing={2}>
+        <Stack spacing={4}>
+            <Row spacing={4}>
                 <div className="rounded-full bg-tertiary/40 p-3 flex items-center justify-center">
                     <ShoppingCartIcon className="size-7 shrink-0" />
                 </div>
@@ -156,7 +156,7 @@ export function ShoppingCart() {
                 </div>
                 <Stack>
                     <Stack
-                        spacing={2}
+                        spacing={4}
                         className="max-h-[50vh] overflow-x-visible overflow-y-scroll px-2 py-1 -mx-2"
                     >
                         {isLoading && (
@@ -182,11 +182,11 @@ export function ShoppingCart() {
                                 </NoDataPlaceholder>
                             ))}
                     </Stack>
-                    <Stack className="border-t mt-4 pt-2" spacing={1}>
+                    <Stack className="border-t mt-4 pt-2" spacing={2}>
                         <Row
                             justifyContent="space-between"
                             alignItems="start"
-                            spacing={2}
+                            spacing={4}
                         >
                             <Typography level="body1">Ukupno</Typography>
                             <Stack>
@@ -205,10 +205,10 @@ export function ShoppingCart() {
                                 )}
                             </Stack>
                         </Row>
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             {/* Display notes if present */}
                             {cart && (cart?.notes?.length ?? 0) > 0 && (
-                                <Stack spacing={1}>
+                                <Stack spacing={2}>
                                     {cart.notes.map((note) => (
                                         <Alert
                                             key={note}
@@ -298,7 +298,7 @@ export function ShoppingCartHud() {
 
     return (
         <HudCard open position="floating" className="static p-0.5">
-            <Row spacing={1}>
+            <Row spacing={2}>
                 <Modal
                     open={isOpen}
                     onOpenChange={(open) => {

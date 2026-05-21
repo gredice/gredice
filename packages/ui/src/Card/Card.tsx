@@ -160,9 +160,9 @@ export function CardCover({
 
 export function CardActions({ children, className, ...rest }: RowProps) {
     return (
-        <Stack className="-mx-4" spacing={2}>
+        <Stack className="-mx-4" spacing={4}>
             <Divider />
-            <Row className={cx('px-4 pb-0', className)} spacing={2} {...rest}>
+            <Row className={cx('px-4 pb-0', className)} spacing={4} {...rest}>
                 {children}
             </Row>
         </Stack>

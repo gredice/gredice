@@ -2,11 +2,11 @@ import type { OperationData } from '@gredice/client';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
+import { Close, Search } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Close, Search } from '@signalco/ui-icons';
 import { memo, useMemo, useState } from 'react';
 import { useOperations } from '../../../hooks/useOperations';
 import { usePlantSort } from '../../../hooks/usePlantSorts';
@@ -165,7 +165,7 @@ export function OperationsList({
     const sortedOperations = [...cartOperations, ...remainingOperations];
 
     return (
-        <Stack spacing={1}>
+        <Stack spacing={2}>
             <Row className="relative">
                 <Search className="size-5 shrink-0 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 <input

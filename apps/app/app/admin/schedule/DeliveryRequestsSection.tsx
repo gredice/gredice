@@ -1,8 +1,8 @@
-import { List } from '@signalco/ui-primitives/List';
-import { ListItem } from '@signalco/ui-primitives/ListItem';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { List } from '@gredice/ui/List';
+import { ListItem } from '@gredice/ui/ListItem';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { KnownPages } from '../../../src/KnownPages';
 import {
     DeliveryRequestModeChip,
@@ -23,7 +23,7 @@ export function DeliveryRequestsSection({
     const now = new Date();
 
     return (
-        <Stack spacing={1}>
+        <Stack spacing={2}>
             <Typography level="h6">Dostava</Typography>
             <List>
                 {requests.map((request) => {
@@ -44,7 +44,7 @@ export function DeliveryRequestsSection({
                             key={request.id}
                             href={KnownPages.DeliveryRequests}
                             label={
-                                <Row spacing={1}>
+                                <Row spacing={2}>
                                     <DeliveryRequestStatusChip
                                         status={request.state}
                                     />

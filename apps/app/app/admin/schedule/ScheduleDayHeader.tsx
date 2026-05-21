@@ -1,8 +1,8 @@
+import { Calendar } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Calendar } from '@signalco/ui-icons';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { CopySummaryButton } from './CopySummaryButton';
 import { formatMinutes } from './scheduleShared';
 
@@ -33,8 +33,8 @@ export function ScheduleDayHeader({
 
     return (
         <Stack>
-            <Row spacing={2} alignItems="start" justifyContent="space-between">
-                <Row spacing={1} alignItems="start">
+            <Row spacing={4} alignItems="start" justifyContent="space-between">
+                <Row spacing={2} alignItems="start">
                     <Calendar className="size-4 shrink-0 text-muted-foreground" />
                     <Stack>
                         <Typography level="body2">
@@ -56,7 +56,7 @@ export function ScheduleDayHeader({
                     </Stack>
                 </Row>
                 <Stack className="border p-4 py-3 rounded-lg">
-                    <Row spacing={0.5}>
+                    <Row spacing={1}>
                         <Typography level="body3">Zadaci:</Typography>
                         <Typography level="body1" semiBold>
                             {completedTasksCount}
@@ -69,7 +69,7 @@ export function ScheduleDayHeader({
                             ({totalTasksCount})
                         </Typography>
                     </Row>
-                    <Row spacing={0.5}>
+                    <Row spacing={1}>
                         <Typography level="body3">Vrijeme:</Typography>
                         <Typography level="body1" semiBold>
                             {formatMinutes(completedDuration, true)}

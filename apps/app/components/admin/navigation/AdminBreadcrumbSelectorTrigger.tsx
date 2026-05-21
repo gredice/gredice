@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowDown } from '@signalco/ui-icons';
+import { ArrowDown } from '@gredice/ui/icons';
 import { type ButtonHTMLAttributes, forwardRef, type ReactNode } from 'react';
 import { adminBreadcrumbSelectorTriggerClassName } from './adminBreadcrumbStyles';
 

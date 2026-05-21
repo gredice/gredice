@@ -1,7 +1,7 @@
 'use client';
 
-import { PanelRightClose } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { IconButton } from '@gredice/ui/IconButton';
+import { PanelRightClose } from '@gredice/ui/icons';
 import { useEntityDetailsProperties } from './EntityDetailsPropertiesContext';
 
 export function EntityDetailsPropertiesToggle() {

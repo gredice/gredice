@@ -8,9 +8,9 @@ Replace Signalco UI component usage with first-party Gredice components while
 keeping shared UI in `packages/ui`, app-specific workflows in their owning app,
 and Storybook coverage for reusable components.
 
-## Current inventory
+## Initial inventory
 
-Latest static scan found these Signalco UI dependencies in source files:
+The initial static scan found these Signalco UI dependencies in source files:
 
 | Package | Usage |
 | --- | ---: |
@@ -22,9 +22,15 @@ Latest static scan found these Signalco UI dependencies in source files:
 | `@signalco/ui-notifications` | 2 imports |
 
 Largest consumers are `apps/app`, `packages/game`, `apps/www`, `apps/farm`,
-and `apps/garden`. The shared `@gredice/ui` package also still imports
-Signalco internals, so the migration must start there before app imports can be
-fully removed.
+and `apps/garden`. The shared `@gredice/ui` package also imported Signalco
+internals initially, so the migration started there before app imports were
+removed.
+
+The current app/package source, package manifests, and lockfile no longer
+reference external `@signalco/*` UI, CMS, notification, or auth packages. The
+remaining Signalco-named surface is the internal `@gredice/signalco` package,
+which is an API integration package and not part of this UI/auth package
+migration.
 
 ## Migration decisions
 
@@ -80,6 +86,96 @@ fully removed.
   both in Storybook, moved all `packages/game` `SelectItems` imports to
   `@gredice/ui`, and removed the last `@signalco/ui/*` component import from
   `packages/game` source.
+- 2026-05-21: Replaced remaining `packages/game` Signalco primitive, icon,
+  theme, hook, and helper imports with Gredice-owned equivalents, added the
+  missing `Megaphone` icon compatibility export, and removed migrated Signalco
+  package entries from `@gredice/game`.
+- 2026-05-21: Removed remaining Storybook Signalco UI/icon/theme imports,
+  switched Storybook to the Gredice app theme preset and local Tailwind CSS,
+  and removed migrated Signalco UI packages from `apps/storybook`.
+- 2026-05-21: Migrated `apps/api` page/layout/not-found UI imports and
+  Tailwind theme setup to `@gredice/ui`, removed migrated Signalco UI packages
+  from the API workspace, removed a stale `@gredice/client` dependency from
+  `@gredice/ui` to avoid a workspace cycle, and validated the API build.
+- 2026-05-21: Migrated `apps/farm` source imports, Tailwind theme setup, and
+  Next.js package optimization entries to `@gredice/ui`, removed migrated
+  Signalco UI packages from the Farm workspace, and validated Farm lint/build.
+- 2026-05-21: Migrated the remaining small package refs in
+  `@gredice/transactional`, `@gredice/stripe`, and `@gredice/storage`: added a
+  Gredice-owned `isAbsoluteUrl` helper, switched Transactional to the local
+  theme preset, removed stale Signalco package dependencies, and validated the
+  touched package slice.
+- 2026-05-21: Migrated `apps/garden` direct primitive, icon, theme, hook, and
+  helper imports to Gredice-owned equivalents, added a reusable
+  `@gredice/js/arrays` `orderBy` helper, and validated Garden lint/build.
+  At that point Garden still intentionally kept `@signalco/ui-notifications`
+  and its `@signalco/ui-primitives` peer until the notification UI phase.
+- 2026-05-21: Fixed Gredice `Input` generated label ids and restored
+  Signalco-compatible mobile drawer behavior in `Modal` using `vaul`; focused
+  Garden notification/drawer tests and the full Garden Playwright assertion set
+  passed. The Garden test runner still required manual cleanup after an
+  orphaned `next-server` stayed alive after all tests reported pass.
+- 2026-05-21: Added first-party `Accordion`, `Gallery`, `GentleSlide`,
+  `SplitView`, and `PageNav` primitives with Storybook coverage, migrated
+  `apps/www` direct Signalco UI/icon/helper/theme imports to Gredice-owned
+  equivalents, added a `@gredice/js/slug` compatibility export, and validated
+  `www` lint/build.
+- 2026-05-21: Migrated `apps/app` direct Signalco primitive, component, icon,
+  hook, helper, and app-theme imports to Gredice-owned equivalents, added
+  `@gredice/js/strings` `camelToSentenceCase`, `@gredice/ui/hooks`
+  `useControllableState`, and the remaining Signalco-compatible Lucide icon
+  aliases. At that point `apps/app` still intentionally kept `@signalco/ui`
+  and `@signalco/ui-primitives` only for Signalco auth/CMS package internals.
+- 2026-05-21: Added a Gredice-owned CMS rendering surface in `@gredice/ui/cms`
+  with `SectionData`, parsers, `SectionsView`, and the `Heading1`, `Feature1`,
+  `Faq1`, and `Footer1` marketing sections. Migrated `apps/app`, `apps/www`,
+  and `apps/status` CMS rendering/preview imports, removed Signalco CMS/UI peer
+  packages from those app dependency lists where no longer needed, and
+  validated the affected builds.
+- 2026-05-21: Added `@gredice/ui/notifications` with Signalco-compatible
+  `NotificationsContainer`, `showNotification`, `showPrompt`, and
+  `hideNotification` exports backed by `sonner`. Migrated Garden notification
+  imports, removed `@signalco/ui-notifications` from `apps/garden`, refreshed
+  the lockfile, and validated `@gredice/ui` plus the Garden provider smoke
+  path.
+- 2026-05-21: Added Gredice-owned auth client wrappers in `@gredice/ui/auth`
+  and server visibility wrappers in `@gredice/ui/auth/server`. Migrated
+  `AuthProvider`, `SignedIn`, `SignedOut`, `authCurrentUserQueryKeys`, and
+  `AuthProtectedSection` imports in `apps/app`, `apps/farm`, and
+  `apps/garden`, removed `@signalco/auth-client` and `@signalco/ui-primitives`
+  from those apps, removed stale Signalco Tailwind content paths, and refreshed
+  the lockfile.
+- 2026-05-21: Added the Gredice-owned `@gredice/auth` runtime package with
+  `initAuth`, `initRbac`, JWT verification, cookie helpers, and request auth
+  wrappers. Migrated `apps/api`, `apps/app`, and `apps/farm` from
+  `@signalco/auth-server`, removed the final external `@signalco/*` package
+  dependencies from app/package manifests and `pnpm-lock.yaml`, and validated
+  API, app, farm, and garden builds plus the API node test suite.
+- 2026-05-21: Promoted the duplicated public `PageHeader` and CMS
+  `PageHeaderSection` components from `apps/app` and `apps/www` into
+  `@gredice/ui/PageHeader`, migrated app and public-site consumers to the
+  shared component, and moved the Storybook coverage under `packages/ui`.
+- 2026-05-21: Reviewed the remaining app-owned component promotion candidates.
+  Kept `Logotype` variants app-owned because public/garden/status use different
+  rendering and asset strategies, kept server-action buttons and field display
+  helpers app-owned because they are internal admin patterns, and removed the
+  unused app-local skeleton helpers instead of promoting dead API.
+- 2026-05-21: Added Storybook coverage for the promoted `PageHeader` and a
+  compact `CorePrimitives` foundation story covering the remaining small shared
+  UI primitives. Updated contributor docs to remove stale `@signalco/*`
+  guidance and include `@gredice/auth` in the workspace package map.
+- 2026-05-21: Completed the targeted visual sweep. Added Storybook render
+  coverage for app admin tables/forms and the farm schedule shell, rebuilt
+  Storybook, rebuilt `farm`, `garden`, and `status`, and smoke-rendered the
+  live `www`, `farm`, `status`, and `garden` surfaces plus the relevant
+  Storybook stories with Playwright screenshots and body-size checks.
+- 2026-05-21: Tightened post-migration visual parity for the shared primitives
+  after browser comparison: restored default Row centering, Signalco-like
+  Container widths, Typography weights, Avatar sizes, Input placeholder
+  opacity, Chip decorator sizing, and normalized CMS footer social icon sizing.
+- 2026-05-21: Kept the new `Stack` and `Row` spacing contract at
+  `spacing={n}` equals Tailwind gap `n`, then doubled migrated `spacing` call
+  site values so layouts keep their pre-migration visual rhythm.
 
 ### 1. Define the first-party UI foundation
 
@@ -93,8 +189,12 @@ fully removed.
 - [x] Preserve compatible Signalco prop names where they are useful
       (`variant`, `size`, `color`, `startDecorator`, `endDecorator`,
       `loading`, `fullWidth`, `spacing`, `level`, etc.).
-- [ ] Consolidate unclear or duplicate props into one Gredice API before wide
+- [x] Consolidate unclear or duplicate props into one Gredice API before wide
       app replacement.
+      Progress: compatibility props were preserved where they were already
+      clear and widely used (`variant`, `size`, `color`, decorators, loading,
+      full-width/layout props), while promoted shared components use one
+      Gredice-owned prop surface instead of app-local duplicates.
 - [x] Create `@gredice/ui/icons` compatibility exports backed by `lucide-react`
       where possible.
 - [x] Copy or adapt custom Signalco icons that do not map cleanly to Lucide.
@@ -161,15 +261,15 @@ Signalco overlays and data-display components.
       depending on current option grouping/search needs.
 - [x] `Alert` using a shadcn-style owned source component.
 - [x] `Breadcrumbs` as a Gredice-owned navigation component.
-- [ ] `Accordion` using shadcn as the base.
+- [x] `Accordion` as a Gredice-owned Signalco-compatible collapsible card.
 - [x] `List`, `ListHeader`, `ListItem`
 - [x] `NavigatingButton`
 - [x] `NoDataPlaceholder`
-- [ ] `Gallery`
-- [ ] `SplitView`
+- [x] `Gallery`
+- [x] `SplitView`
 - [x] `EditableInput`
-- [ ] `GentleSlide`
-- [ ] `PageNav`
+- [x] `GentleSlide`
+- [x] `PageNav`
 
 Validation after this phase:
 
@@ -219,22 +319,36 @@ pnpm build --filter storybook
 These already exist in app code and should be promoted once their Signalco
 dependencies are gone.
 
-- [ ] Move duplicated `PageHeader` from `apps/app/components/shared` and
+- [x] Move duplicated `PageHeader` from `apps/app/components/shared` and
       `apps/www/components/shared` into `@gredice/ui`.
-- [ ] Move duplicated `PageHeaderSection` into `@gredice/ui` or a CMS-facing
+- [x] Move duplicated `PageHeaderSection` into `@gredice/ui` or a CMS-facing
       shared module.
+      Progress: both are exported from `@gredice/ui/PageHeader`; `apps/app`
+      and `apps/www` CMS registries use the shared `PageHeaderSection`, and
+      public `apps/www` pages import `PageHeader` from `@gredice/ui`.
 - [x] Move duplicated `NoDataPlaceholder` into `@gredice/ui`.
-- [ ] Review `Logotype` variants in `apps/www`, `apps/garden`, and
+- [x] Review `Logotype` variants in `apps/www`, `apps/garden`, and
       `apps/status`; move shared brand pieces only if the variants can share one
       API without hiding app-specific behavior.
-- [ ] Review `ServerActionButton` and `ServerActionIconButton`; keep in
+      Progress: reviewed and kept app-owned. `apps/www` and `apps/garden` use
+      app-specific inline SVG variants with different fill/className behavior,
+      while `apps/status` uses a CDN image via `next/image`.
+- [x] Review `ServerActionButton` and `ServerActionIconButton`; keep in
       `apps/app` unless `farm` or another app adopts the same server-action
       pattern.
-- [ ] Review `Field`, `FieldSet`, and `FormFields`; keep admin-only fields in
+      Progress: reviewed and kept app-owned because only internal admin code
+      imports these server-action wrappers.
+- [x] Review `Field`, `FieldSet`, and `FormFields`; keep admin-only fields in
       `apps/app` unless they are reused outside internal admin.
-- [ ] Move reusable skeleton helpers only after `Card` and `Skeleton` are
+      Progress: reviewed and kept app-owned because the display helpers are only
+      used by internal admin/detail pages and encode admin formatting choices
+      such as `LocalDateTime`, boolean labels, and no-wrap values.
+- [x] Move reusable skeleton helpers only after `Card` and `Skeleton` are
       first-party.
-- [ ] Add or update Storybook stories for every component promoted to
+      Progress: `Card` and `Skeleton` are first-party, but the app-local
+      skeleton helpers had no remaining imports, so they were deleted instead
+      of promoted.
+- [x] Add or update Storybook stories for every component promoted to
       `packages/ui`.
 
 Validation after this phase:
@@ -250,25 +364,52 @@ pnpm build --filter www
 
 Use small app/package slices so visual and type regressions are easier to catch.
 
-- [ ] Replace `@signalco/ui-primitives/*` imports in `apps/api`.
-- [ ] Replace `@signalco/ui-primitives/*` imports in `apps/farm`.
-- [ ] Replace `@signalco/ui-primitives/*` imports in `apps/garden`.
-- [ ] Replace `@signalco/ui-primitives/*` imports in `apps/www`.
-- [ ] Replace `@signalco/ui-primitives/*` imports in `packages/game`.
-      Progress: `@signalco/ui/Alert`, `@signalco/ui/ModalConfirm`, and
-      `@signalco/ui/NoDataPlaceholder` are replaced with `@gredice/ui`
-      equivalents. All `@signalco/ui-primitives/SelectItems` imports and the
-      remaining `@signalco/ui/EditableInput` component import are also replaced
-      in `packages/game` source.
-- [ ] Replace `@signalco/ui-primitives/*` imports in `apps/app`.
-- [ ] Replace `@signalco/ui/*` imports with `@gredice/ui` equivalents.
-- [ ] Replace `@signalco/ui-icons` imports with the chosen Gredice icon layer.
-- [ ] Replace `@signalco/hooks/useSearchParam` and other Signalco hooks with
+- [x] Replace `@signalco/ui-primitives/*` imports in `apps/api`.
+- [x] Replace `@signalco/ui-primitives/*` imports in `apps/farm`.
+      Progress: `apps/farm` source now uses `@gredice/ui` primitives,
+      `@gredice/ui/icons`, and local Gredice theme config; migrated Signalco
+      UI/icon/theme packages were removed from the Farm workspace.
+- [x] Replace `@signalco/ui-primitives/*` imports in `apps/garden`.
+      Progress: direct Garden source imports now use `@gredice/ui`; the
+      Signalco primitive package and Tailwind content paths were removed after
+      the auth client wrapper moved to `@gredice/ui/auth`.
+- [x] Replace `@signalco/ui-primitives/*` imports in `apps/www`.
+      Progress: direct `apps/www` source now uses `@gredice/ui`,
+      `@gredice/ui/icons`, `@gredice/js/arrays`, and `@gredice/js/slug`.
+      Signalco UI primitive peers were removed after the CMS phase.
+- [x] Replace `@signalco/ui-primitives/*` imports in `packages/game`.
+      Progress: `packages/game` source now uses `@gredice/ui` primitives,
+      `@gredice/ui/icons`, and `@gredice/ui/hooks`; migrated Signalco UI/icon
+      packages were removed from `@gredice/game`.
+- [x] Replace `@signalco/ui-primitives/*` imports in `apps/app`.
+      Progress: direct admin source imports now use `@gredice/ui`,
+      `@gredice/ui/icons`, `@gredice/ui/hooks`, and `@gredice/js/strings`.
+      Signalco UI/primitives packages were removed after the CMS and auth
+      component phases.
+- [x] Replace `@signalco/ui/*` imports with `@gredice/ui` equivalents.
+      Progress: complete for `apps/api`, `apps/farm`, `apps/garden`,
+      `apps/www`, `apps/app`, and `packages/game`, excluding CMS package
+      internals.
+- [x] Replace `@signalco/ui-icons` imports with the chosen Gredice icon layer.
+      Progress: complete for `apps/farm`, `apps/garden`, `apps/www`,
+      `apps/app`, and `packages/game`.
+- [x] Replace `@signalco/hooks/useSearchParam` and other Signalco hooks with
       app-local hooks, `nuqs`, or Gredice-owned hooks.
-- [ ] Replace `@signalco/js` helpers (`orderBy`, `slug`, `initials`,
+      Progress: complete for `apps/garden`, `apps/www`, `apps/app`, and
+      `packages/game`.
+- [x] Replace `@signalco/js` helpers (`orderBy`, `slug`, `initials`,
       `camelToSentenceCase`, `isAbsoluteUrl`) with `@gredice/js` equivalents.
-- [ ] Copy Signalco implementation details directly where a compatibility
+      Progress: `initials`, `isAbsoluteUrl`, `orderBy`, `slug`, and
+      `camelToSentenceCase` now have Gredice-owned equivalents;
+      `isAbsoluteUrl` is used by `@gredice/stripe`, `orderBy`/`slug` are used
+      by `apps/garden` and `apps/www`, and `camelToSentenceCase` is used by
+      `apps/app`.
+- [x] Copy Signalco implementation details directly where a compatibility
       component would otherwise take longer to re-create safely.
+      Progress: copied/adapted compatibility behavior for primitives including
+      `Card`, `Modal`, `Gallery`, `GentleSlide`, `PageNav`, auth wrappers,
+      notifications, and promoted page headers where preserving the existing
+      prop surface reduced app churn.
 
 Suggested validation per slice:
 
@@ -290,20 +431,22 @@ pnpm build --filter www
 
 ### 7. Rebuild CMS rendering and marketing sections
 
-Current CMS rendering depends on `@signalco/cms-core` and
-`@signalco/cms-components-marketing`.
+CMS rendering used to depend on `@signalco/cms-core` and
+`@signalco/cms-components-marketing`; the supported Gredice sections now live
+in `@gredice/ui/cms`.
 
-- [ ] Define a Gredice `SectionData` type and parser.
-- [ ] Build a Gredice `SectionsView`.
-- [ ] Rebuild `Heading1`.
-- [ ] Rebuild `Feature1`.
-- [ ] Rebuild `Faq1`.
-- [ ] Rebuild `Footer1`.
-- [ ] Update `apps/app/components/shared/sectionsComponentRegistry.ts`.
-- [ ] Update `apps/www/components/shared/sectionsComponentRegistry.ts`.
-- [ ] Update `apps/status/components/StatusFooter.tsx`.
-- [ ] Update CMS page validation and tests in `packages/storage` only if the
-      supported section contract changes.
+- [x] Define a Gredice `SectionData` type and parser.
+- [x] Build a Gredice `SectionsView`.
+- [x] Rebuild `Heading1`.
+- [x] Rebuild `Feature1`.
+- [x] Rebuild `Faq1`.
+- [x] Rebuild `Footer1`.
+- [x] Update `apps/app/components/shared/sectionsComponentRegistry.ts`.
+- [x] Update `apps/www/components/shared/sectionsComponentRegistry.ts`.
+- [x] Update `apps/status/components/StatusFooter.tsx`.
+- [x] Update CMS page validation and tests in `packages/storage` only if the
+      supported section contract changes. No storage update was needed because
+      the section component names and stored JSON contract stayed stable.
 
 Validation after this phase:
 
@@ -319,15 +462,26 @@ pnpm build --filter status
 Keep this after the component migration because auth screens rely on modals,
 inputs, buttons, alerts, dividers, and provider wrappers.
 
-- [ ] Replace `AuthProvider`, `SignedIn`, and `SignedOut` from
+- [x] Replace `AuthProvider`, `SignedIn`, and `SignedOut` from
       `@signalco/auth-client/components` with Gredice-owned equivalents.
-- [ ] Replace `authCurrentUserQueryKeys` usage with a Gredice-owned query key.
-- [ ] Replace `AuthProtectedSection` and `SignedOut` from
+      Progress: client auth components now come from `@gredice/ui/auth` in
+      `apps/app`, `apps/farm`, and `apps/garden`.
+- [x] Replace `authCurrentUserQueryKeys` usage with a Gredice-owned query key.
+      Progress: app and farm login/logout forwarding now invalidates
+      `@gredice/ui/auth` query keys.
+- [x] Replace `AuthProtectedSection` and `SignedOut` from
       `@signalco/auth-server/components`.
-- [ ] Replace `initAuth` and `initRbac` only after the auth boundary is reviewed
+      Progress: server visibility wrappers now come from
+      `@gredice/ui/auth/server`.
+- [x] Replace `initAuth` and `initRbac` only after the auth boundary is reviewed
       separately from visual component work.
-- [ ] Replace `NotificationsContainer` and `showNotification` from
+      Progress: runtime auth helpers now come from `@gredice/auth` in
+      `apps/api`, `apps/app`, and `apps/farm`.
+- [x] Replace `NotificationsContainer` and `showNotification` from
       `@signalco/ui-notifications`.
+      Progress: `apps/garden` now imports notification APIs from
+      `@gredice/ui/notifications`, which also provides compatibility exports
+      for `showPrompt` and `hideNotification`.
 
 Validation after this phase:
 
@@ -362,14 +516,41 @@ longer needs Signalco package paths.
 - [x] Preserve local CSS helpers from the Signalco styles: `--light-display`,
       `--dark-display`, `.image--light`, `.image--dark`, selection colors, and
       `svg.lucide { stroke-width: 1.75px; }`.
-- [ ] Replace imports of `@signalco/ui-themes-minimal/config`.
-- [ ] Replace imports of `@signalco/ui-themes-minimal-app/config`.
-- [ ] Replace `@import "@signalco/ui-themes-minimal-app/styles"` in app CSS.
-- [ ] Remove Signalco paths from app Tailwind `content` arrays.
-- [ ] Remove Signalco packages from app/package `package.json` files.
-- [ ] Run `pnpm install` to update `pnpm-lock.yaml`.
-- [ ] Remove `transpilePackages` entries for Signalco UI packages from Next.js
-      configs where no longer needed.
+- [x] Replace imports of `@signalco/ui-themes-minimal/config`.
+      Progress: complete for `apps/garden`, `apps/www`, and
+      `@gredice/transactional`.
+- [x] Replace imports of `@signalco/ui-themes-minimal-app/config`.
+      Progress: complete for `apps/api`, `apps/farm`, `apps/app`, and
+      `apps/storybook`.
+- [x] Replace `@import "@signalco/ui-themes-minimal-app/styles"` in app CSS.
+      Progress: complete for `apps/api`, `apps/app`, and `apps/storybook`.
+- [x] Remove Signalco paths from app Tailwind `content` arrays.
+      Progress: complete for `packages/game`, `apps/api`, `apps/app`,
+      `apps/farm`, `apps/garden`, `apps/storybook`, `apps/www`, and
+      `apps/status`.
+- [x] Remove Signalco packages from app/package `package.json` files.
+      Progress: UI/icon/theme/hook/helper packages removed from
+      `@gredice/game`; UI/icon/theme packages removed from `apps/api`,
+      `apps/farm`, `apps/storybook`, and `@gredice/transactional`; stale
+      `@signalco/js` dependencies removed from `@gredice/storage` and
+      `@gredice/stripe`; `apps/garden` no longer declares Signalco packages;
+      `apps/www` and `apps/status` Signalco CMS/UI packages removed; `apps/app`
+      and `apps/farm` removed Signalco auth-client/UI peer packages; `apps/api`,
+      `apps/app`, and `apps/farm` now use `@gredice/auth` instead of
+      `@signalco/auth-server`.
+- [x] Run `pnpm install` to update `pnpm-lock.yaml`.
+      Progress: run after the `apps/farm`, `@gredice/transactional`,
+      `@gredice/storage`, `@gredice/stripe`, `apps/garden`, and `apps/www`
+      dependency changes, again after the `apps/app` dependency changes, and
+      again after the CMS dependency removals from `apps/app`, `apps/www`, and
+      `apps/status`, after the Garden notification dependency removal, and
+      after the auth-client/UI peer dependency removals from `apps/app`,
+      `apps/farm`, and `apps/garden`, and again after replacing
+      `@signalco/auth-server` with `@gredice/auth`.
+- [x] Remove `transpilePackages` or `optimizePackageImports` entries for
+      Signalco UI packages from Next.js configs where no longer needed.
+      Progress: complete for `apps/farm`, `apps/garden`, `apps/www`,
+      `apps/app`, and the remaining app/package config scan.
 
 Validation after this phase:
 
@@ -381,19 +562,32 @@ pnpm build
 
 ### 10. Final verification and cleanup
 
-- [ ] Confirm no UI-related Signalco imports remain:
+- [x] Confirm no external Signalco imports remain:
 
 ```bash
-rg "@signalco/(ui|ui-primitives|ui-icons|cms-core|cms-components-marketing|ui-notifications)" apps packages
+rg "@signalco" apps packages pnpm-lock.yaml
 ```
 
-- [ ] Confirm app/package dependencies no longer include migrated Signalco
+- [x] Confirm app/package dependencies no longer include migrated Signalco
       packages.
-- [ ] Confirm Storybook has stories for all reusable first-party primitives and
+- [x] Confirm Storybook has stories for all reusable first-party primitives and
       promoted components.
-- [ ] Run targeted visual checks for the highest-risk surfaces:
+      Progress: reusable migration surfaces are covered by package UI stories,
+      including promoted `PageHeader`/`PageHeaderSection` and a
+      `CorePrimitives` story for buttons, icon buttons, inputs, chips,
+      avatars, layout helpers, links, progress, skeleton, and spinner.
+- [x] Run targeted visual checks for the highest-risk surfaces:
       `apps/app` admin tables/forms, `apps/farm` schedule flows,
       `apps/garden` login/HUD flows, `apps/www` public pages, and `apps/status`
       footer/status cards.
-- [ ] Update contributor docs if commands, package boundaries, or Storybook
+      Progress: visual smoke passed for live `apps/www` public pages
+      (`/cjenik`, `/biljke`), live `apps/farm` schedule signed-out state
+      (`/schedule`), live `apps/status` overview/footer (`/`), live
+      `apps/garden` signed-in HUD (`/` with mocked API), and Storybook-rendered
+      app admin tables/forms, farm schedule shell, shared `PageHeader`, and
+      `CorePrimitives` stories.
+- [x] Update contributor docs if commands, package boundaries, or Storybook
       expectations changed during the migration.
+      Progress: `WORKSPACE.md` now includes `@gredice/auth` in the shared
+      package map and `FRONTEND.md` points contributors to `@gredice/*`
+      primitives instead of stale Signalco primitives.

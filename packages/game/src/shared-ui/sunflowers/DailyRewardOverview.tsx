@@ -1,8 +1,8 @@
 import { Button } from '@gredice/ui/Button';
+import { Approved, Empty } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { Approved, Empty } from '@signalco/ui-icons';
 import { useClaimDailyReward } from '../../hooks/useClaimDailyReward';
 import { useDailyReward } from '../../hooks/useDailyReward';
 
@@ -31,14 +31,14 @@ export function DailyRewardOverview() {
     });
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <Typography level="body2" bold>
                 Dnevna aktivnost
             </Typography>
             <div className="grid md:grid-cols-7 grid-cols-4 gap-2">
                 {columns.map((col) => {
                     const content = (
-                        <Stack spacing={1} alignItems="center">
+                        <Stack spacing={2} alignItems="center">
                             {col.isClaimed ? (
                                 <Approved className="size-5 text-green-600" />
                             ) : (

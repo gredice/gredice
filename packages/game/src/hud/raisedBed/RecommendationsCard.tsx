@@ -2,11 +2,11 @@ import type { OperationData } from '@gredice/client';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Navigate } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { Skeleton } from '@gredice/ui/Skeleton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { Navigate } from '@signalco/ui-icons';
 import { useMemo } from 'react';
 import { useOperations } from '../../hooks/useOperations';
 import { usePlantSort } from '../../hooks/usePlantSorts';
@@ -165,7 +165,7 @@ export function RecommendationsCard({
     }
 
     return (
-        <Stack spacing={0.5}>
+        <Stack spacing={1}>
             <Typography
                 level="body3"
                 className="leading-tight font-semibold uppercase"
@@ -182,7 +182,7 @@ export function RecommendationsCard({
                             </Alert>
                         )}
                         {isLoadingFeaturedOperations ? (
-                            <Stack spacing={1}>
+                            <Stack spacing={2}>
                                 {skeletonKeys.map((skeletonKey) => (
                                     <Skeleton
                                         key={skeletonKey}

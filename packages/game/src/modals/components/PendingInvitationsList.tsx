@@ -33,14 +33,14 @@ export function PendingInvitationsList() {
     }
 
     return (
-        <Stack spacing={1}>
+        <Stack spacing={2}>
             <Typography level="body2" semiBold>
                 Poslane pozivnice
             </Typography>
             {invitations.data.map((invitation) => (
                 <Row
                     key={invitation.id}
-                    spacing={2}
+                    spacing={4}
                     className="items-center justify-between"
                 >
                     <Stack spacing={0}>

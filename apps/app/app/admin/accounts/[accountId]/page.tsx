@@ -1,9 +1,9 @@
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { ModalConfirm } from '@signalco/ui/ModalConfirm';
-import { Delete } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Button } from '@gredice/ui/Button';
+import { Delete } from '@gredice/ui/icons';
+import { ModalConfirm } from '@gredice/ui/ModalConfirm';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import {
     EntityDetailsPanelCard,
     EntityDetailsPropertiesLayout,
@@ -67,7 +67,7 @@ export default async function AccountPage({
 
     return (
         <EntityDetailsPropertiesProvider>
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <AdminPageTitle title={`Račun ${accountId}`} />
                 <AdminPageHeader
                     breadcrumbs={
@@ -82,7 +82,7 @@ export default async function AccountPage({
                         />
                     }
                     actions={
-                        <Row className="items-center" spacing={1}>
+                        <Row className="items-center" spacing={2}>
                             <ModalConfirm
                                 title="Potvrda brisanja računa"
                                 header="Jeste li sigurni da želite izbrisati račun?"

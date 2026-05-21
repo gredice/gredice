@@ -1,11 +1,11 @@
 'use client';
 
-import { Button } from '@signalco/ui-primitives/Button';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { completeFarmPlanting } from './actions';
 
@@ -48,12 +48,12 @@ export function CompletePlantingModal({
                 />
             }
         >
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography>
                     Jeste li sigurni da želite označiti da je posijano:{' '}
                     <strong>{label}</strong>?
                 </Typography>
-                <Row spacing={1} justifyContent="end">
+                <Row spacing={2} justifyContent="end">
                     <Button
                         variant="outlined"
                         onClick={() => setOpen(false)}

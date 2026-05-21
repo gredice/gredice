@@ -1,8 +1,8 @@
-import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Container } from '@signalco/ui-primitives/Container';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { Container } from '@gredice/ui/Container';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -171,7 +171,7 @@ export default function DevelopmentPage() {
 
     return (
         <Container className="py-10">
-            <Stack spacing={3} className="mb-8">
+            <Stack spacing={6} className="mb-8">
                 <Typography level="h2" component="h1">
                     Razvojni centar
                 </Typography>
@@ -181,10 +181,10 @@ export default function DevelopmentPage() {
                 </Typography>
             </Stack>
 
-            <Stack spacing={8}>
+            <Stack spacing={16}>
                 {developmentSections.map((section) => (
                     <section key={section.title}>
-                        <Stack spacing={2} className="mb-4">
+                        <Stack spacing={4} className="mb-4">
                             <Typography level="h4" component="h2">
                                 {section.title}
                             </Typography>
@@ -201,10 +201,10 @@ export default function DevelopmentPage() {
                                 >
                                     <CardContent noHeader>
                                         <Stack
-                                            spacing={2}
+                                            spacing={4}
                                             className="h-full justify-between"
                                         >
-                                            <Stack spacing={2}>
+                                            <Stack spacing={4}>
                                                 <span
                                                     className="text-3xl"
                                                     role="img"

@@ -1,6 +1,6 @@
 'use client';
 
-import { Down } from '@signalco/ui-icons';
+import { Down } from '@gredice/ui/icons';
 import {
     type PropsWithChildren,
     type ReactElement,

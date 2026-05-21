@@ -3,15 +3,15 @@ import {
     getInventoryItem,
     getInventoryItemEvents,
 } from '@gredice/storage';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Button } from '@gredice/ui/Button';
+import { Card } from '@gredice/ui/Card';
+import { Input } from '@gredice/ui/Input';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
+import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import { notFound } from 'next/navigation';
 import { AdminPageHeader } from '../../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
@@ -122,7 +122,7 @@ export default async function InventoryItemPage({
         : '';
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <AdminPageTitle title={itemTitle} />
             <AdminPageHeader
                 breadcrumbs={
@@ -149,10 +149,10 @@ export default async function InventoryItemPage({
             </Typography>
 
             <Card className="max-w-2xl">
-                <Stack spacing={4} className="p-6">
+                <Stack spacing={8} className="p-6">
                     <form action={updateItemBound}>
-                        <Stack spacing={4}>
-                            <Stack spacing={3}>
+                        <Stack spacing={8}>
+                            <Stack spacing={6}>
                                 <SelectItems
                                     name="entityId"
                                     label="Entitet (opcionalno)"
@@ -200,7 +200,7 @@ export default async function InventoryItemPage({
                                 />
 
                                 {config.fieldDefinitions.length > 0 && (
-                                    <Stack spacing={3}>
+                                    <Stack spacing={6}>
                                         <Typography level="body1" semiBold>
                                             Dodatna polja
                                         </Typography>
@@ -318,12 +318,12 @@ export default async function InventoryItemPage({
             </Card>
 
             <Card className="max-w-2xl">
-                <Stack spacing={4} className="p-6">
+                <Stack spacing={8} className="p-6">
                     <Typography level="h3" semiBold>
                         Brza promjena stanja/količine
                     </Typography>
                     <form action={quickAdjustItemBound}>
-                        <Stack spacing={3}>
+                        <Stack spacing={6}>
                             <Input
                                 name="quantity"
                                 label="Nova količina (opcionalno)"
@@ -366,7 +366,7 @@ export default async function InventoryItemPage({
             </Card>
 
             <Card>
-                <Stack spacing={2} className="p-6 pb-0">
+                <Stack spacing={4} className="p-6 pb-0">
                     <Typography level="h3" semiBold>
                         Povijest promjena
                     </Typography>

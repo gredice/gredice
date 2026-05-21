@@ -1,10 +1,10 @@
 'use client';
 
 import { clientPublic } from '@gredice/client';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import { errorMessages } from '../../../misc/errorMessages';
@@ -38,7 +38,7 @@ export function ForgotPasswordForm() {
 
     return (
         <form onSubmit={handleSubmit}>
-            <Stack spacing={3}>
+            <Stack spacing={6}>
                 <Typography level="body2" center>
                     Unesi svoj email za promjenu zaporke
                 </Typography>

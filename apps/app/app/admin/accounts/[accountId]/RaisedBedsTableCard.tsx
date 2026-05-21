@@ -3,18 +3,13 @@ import {
     getAllRaisedBedsFiltered,
     getRaisedBeds,
 } from '@gredice/storage';
+import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
+import { Row } from '@gredice/ui/Row';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
-import {
-    Card,
-    CardHeader,
-    CardOverflow,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Table } from '@signalco/ui-primitives/Table';
+import { Table } from '@gredice/ui/Table';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../../src/KnownPages';
@@ -107,7 +102,7 @@ export async function RaisedBedsTableCard({
                                         <Link
                                             href={KnownPages.RaisedBed(bed.id)}
                                         >
-                                            <Row spacing={1}>
+                                            <Row spacing={2}>
                                                 <RaisedBedIcon
                                                     className="size-6 shrink-0"
                                                     physicalId={bed.physicalId}

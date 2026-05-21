@@ -1,9 +1,9 @@
 import type { OperationData, PlantData } from '@gredice/client';
+import { slug } from '@gredice/js/slug';
 import { Markdown } from '@gredice/ui/Markdown';
-import { slug } from '@signalco/js';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import type { ReactNode } from 'react';
 import { ExpandableText } from '../../../components/shared/ExpandableText';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
@@ -86,7 +86,7 @@ export async function InformationSection({
             >
                 {header}
             </Typography>
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 {hasTextContent ? (
                     <>
                         {hasSortContent && sortContent && (
@@ -152,7 +152,7 @@ export async function InformationSection({
                     </div>
                 )}
             </Stack>
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 {attributeCards}
                 <Stack
                     className={cx(

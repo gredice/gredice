@@ -1,17 +1,17 @@
 'use client';
 
 import { clientPublic, getBrowserGrediceAppOrigin } from '@gredice/client';
+import { Alert } from '@gredice/ui/Alert';
 import {
     FacebookLoginButton,
     GoogleLoginButton,
     useLastLoginProvider,
 } from '@gredice/ui/auth';
+import { Divider } from '@gredice/ui/Divider';
+import { Modal } from '@gredice/ui/Modal';
+import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { usePostHog } from '@posthog/next';
-import { Alert } from '@signalco/ui/Alert';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Stack } from '@signalco/ui-primitives/Stack';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
@@ -163,10 +163,10 @@ export default function LoginModal() {
                             </TabsTrigger>
                         </TabsList>
                     </div>
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         <TabsContent value="login" className="mt-4">
                             <div className="space-y-4 px-1">
-                                <Stack spacing={2}>
+                                <Stack spacing={4}>
                                     <EmailPasswordForm
                                         onSubmit={handleLogin}
                                         submitText="Prijava"
@@ -189,7 +189,7 @@ export default function LoginModal() {
                         </TabsContent>
                         <TabsContent value="register" className="mt-4">
                             <div className="space-y-4 px-1">
-                                <Stack spacing={2}>
+                                <Stack spacing={4}>
                                     <EmailPasswordForm
                                         onSubmit={handleRegister}
                                         submitText="Registriraj se"
@@ -211,7 +211,7 @@ export default function LoginModal() {
                                 </div>
                             </div>
                         </TabsContent>
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             <FacebookLoginButton
                                 onClick={() => handleOAuthLogin('facebook')}
                                 lastUsed={lastLoginProvider === 'facebook'}

@@ -143,7 +143,7 @@ export function RaisedBedFieldLifecycleTab({
     );
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <PlantLifecycleProgress
                 field={field}
                 plantAttributes={plantAttributes}

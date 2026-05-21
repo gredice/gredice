@@ -1,8 +1,8 @@
 'use client';
 
+import { useSearchParam } from '@gredice/ui/hooks';
 import { Modal } from '@gredice/ui/Modal';
 import { Spinner } from '@gredice/ui/Spinner';
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { useCallback, useEffect, useState } from 'react';
 import { useAdventCalendar } from '../../hooks/useAdventCalendar';
 import { useOpenAdventDay } from '../../hooks/useOpenAdventDay';

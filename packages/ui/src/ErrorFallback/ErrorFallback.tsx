@@ -32,7 +32,7 @@ export function ErrorFallback({
                     width={200}
                     height={200}
                 />
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="h1">{title}</Typography>
                     <Typography level="body1">
                         Oprosti, nešto je pošlo po krivu. Možeš pokušati ponovno
@@ -43,7 +43,7 @@ export function ErrorFallback({
                     </Typography>
                     <Row
                         className="justify-center md:justify-start"
-                        spacing={1}
+                        spacing={2}
                     >
                         <Button type="button" onClick={onRetry}>
                             Pokušaj ponovno

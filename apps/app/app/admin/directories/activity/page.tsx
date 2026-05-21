@@ -1,7 +1,7 @@
 import { getLatestEntityRevisions } from '@gredice/storage';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import {
     AdminPageHeader,
@@ -39,12 +39,12 @@ export default async function DirectoryActivityPage() {
     const revisions = await getLatestEntityRevisions(200);
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <AdminPageHeader>
                 <AdminPageTitle title="Aktivnosti" />
             </AdminPageHeader>
 
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 {revisions.length === 0 ? (
                     <Typography level="body2">Nema aktivnosti.</Typography>
                 ) : (
@@ -58,9 +58,9 @@ export default async function DirectoryActivityPage() {
                             >
                                 <Row
                                     className="items-center justify-between"
-                                    spacing={2}
+                                    spacing={4}
                                 >
-                                    <Stack spacing={0.5}>
+                                    <Stack spacing={1}>
                                         <Typography level="body2" semiBold>
                                             {formatAction(revision.action)}
                                         </Typography>

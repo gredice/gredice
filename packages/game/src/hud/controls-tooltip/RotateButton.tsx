@@ -1,4 +1,4 @@
-import { Redo, Undo } from '@signalco/ui-icons';
+import { Redo, Undo } from '@gredice/ui/icons';
 import type { RotateDirection } from './types';
 
 export type RotateButtonProps = {

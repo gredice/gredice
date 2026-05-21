@@ -1,12 +1,4 @@
 import { Card, CardOverflow } from '@gredice/ui/Card';
-import { Link } from '@gredice/ui/Link';
-import { Modal } from '@gredice/ui/Modal';
-import { PlantOrSortImage } from '@gredice/ui/plants';
-import { Row } from '@gredice/ui/Row';
-import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
-import { Stack } from '@gredice/ui/Stack';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
-import { Typography } from '@gredice/ui/Typography';
 import {
     Book,
     Check,
@@ -16,7 +8,15 @@ import {
     MoreHorizontal,
     Sprout,
     Warning,
-} from '@signalco/ui-icons';
+} from '@gredice/ui/icons';
+import { Link } from '@gredice/ui/Link';
+import { Modal } from '@gredice/ui/Modal';
+import { PlantOrSortImage } from '@gredice/ui/plants';
+import { Row } from '@gredice/ui/Row';
+import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
+import { Stack } from '@gredice/ui/Stack';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
+import { Typography } from '@gredice/ui/Typography';
 import { type ReactElement, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
@@ -309,14 +309,14 @@ export function RaisedBedFieldItemPlanted({
             className="md:border-tertiary md:border-b-4 max-w-xl"
             trigger={trigger ?? undefined}
         >
-            <Stack spacing={2}>
-                <Row spacing={2}>
+            <Stack spacing={4}>
+                <Row spacing={4}>
                     <PlantOrSortImage
                         plantSort={plantSort}
                         width={60}
                         height={60}
                     />
-                    <Stack spacing={0.5} className="min-w-0 flex-1">
+                    <Stack spacing={1} className="min-w-0 flex-1">
                         <Typography
                             level="h4"
                             component="h1"
@@ -358,20 +358,20 @@ export function RaisedBedFieldItemPlanted({
                 >
                     <TabsList className="border w-fit self-center">
                         <TabsTrigger value="lifecycle">
-                            <Row spacing={1}>
+                            <Row spacing={2}>
                                 <Sprout className="size-4 shrink-0" />
                                 <Typography>Biljka</Typography>
                             </Row>
                         </TabsTrigger>
                         <TabsTrigger value="diary">
-                            <Row spacing={1}>
+                            <Row spacing={2}>
                                 <Book className="size-4 shrink-0" />
                                 <Typography>Dnevnik</Typography>
                             </Row>
                         </TabsTrigger>
                         {!isHistorical && (
                             <TabsTrigger value="operations">
-                                <Row spacing={1}>
+                                <Row spacing={2}>
                                     <Hammer className="size-4 shrink-0" />
                                     <Typography>Radnje</Typography>
                                 </Row>

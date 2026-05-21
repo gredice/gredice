@@ -1,16 +1,16 @@
 'use client';
 
 import type { SelectEntity } from '@gredice/storage';
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Input } from '@gredice/ui/Input';
 import {
     Delete,
     Edit,
     ExternalLink,
     Megaphone,
     MoreHorizontal,
-} from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
+} from '@gredice/ui/icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -18,8 +18,8 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from '@signalco/ui-primitives/Menu';
-import { Row } from '@signalco/ui-primitives/Row';
+} from '@gredice/ui/Menu';
+import { Row } from '@gredice/ui/Row';
 import Link from 'next/link';
 import { startTransition, useState } from 'react';
 import { KnownPages } from '../../../../../src/KnownPages';
@@ -84,7 +84,7 @@ export function EntityActions({
     const isPublished = state === 'published';
 
     return (
-        <Row spacing={1} className="items-center">
+        <Row spacing={2} className="items-center">
             {publishError && (
                 <span className="text-sm text-red-600">{publishError}</span>
             )}
@@ -163,7 +163,7 @@ export function EntityActions({
                         disabled={isDeleting}
                         className="text-red-600 focus:bg-red-50 focus:text-red-700"
                     >
-                        <Row spacing={1} className="items-center">
+                        <Row spacing={2} className="items-center">
                             <Delete className="size-4 shrink-0" />
                             <span>{isDeleting ? 'Brisanje...' : 'Obriši'}</span>
                         </Row>

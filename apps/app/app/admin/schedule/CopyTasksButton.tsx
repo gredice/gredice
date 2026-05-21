@@ -1,8 +1,8 @@
 'use client';
 
-import { Duplicate } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Row } from '@signalco/ui-primitives/Row';
+import { Button } from '@gredice/ui/Button';
+import { Duplicate } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
 import { useState } from 'react';
 
 type TaskItem = {
@@ -52,7 +52,7 @@ export function CopyTasksButton({ physicalId, tasks }: CopyTasksButtonProps) {
     };
 
     return (
-        <Row spacing={1}>
+        <Row spacing={2}>
             <Button
                 title="Kopiraj zadatke u međuspremnik"
                 onClick={handleCopy}

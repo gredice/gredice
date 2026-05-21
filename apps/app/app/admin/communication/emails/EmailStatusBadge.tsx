@@ -1,5 +1,5 @@
 import type { EmailStatus } from '@gredice/storage';
-import { Chip } from '@signalco/ui-primitives/Chip';
+import { Chip } from '@gredice/ui/Chip';
 
 function getStatusMetadata(status: EmailStatus) {
     switch (status) {

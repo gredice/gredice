@@ -1,5 +1,17 @@
 'use client';
 
+import { Avatar } from '@gredice/ui/Avatar';
+import { Button } from '@gredice/ui/Button';
+import {
+    Card,
+    CardActions,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '@gredice/ui/Card';
+import { Input } from '@gredice/ui/Input';
+import { Clear, Mail, Send } from '@gredice/ui/icons';
+import { Typography } from '@gredice/ui/Typography';
 import {
     BlockTypeSelect,
     BoldItalicUnderlineToggles,
@@ -16,25 +28,13 @@ import {
     toolbarPlugin,
     UndoRedo,
 } from '@mdxeditor/editor';
-import { Clear, Mail, Send } from '@signalco/ui-icons';
-import { Avatar } from '@signalco/ui-primitives/Avatar';
-import { Button } from '@signalco/ui-primitives/Button';
-import {
-    Card,
-    CardActions,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import '@mdxeditor/editor/style.css';
-import { File, Paperclip } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Progress } from '@signalco/ui-primitives/Progress';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { IconButton } from '@gredice/ui/IconButton';
+import { File, Paperclip } from '@gredice/ui/icons';
+import { Progress } from '@gredice/ui/Progress';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { cx } from '@gredice/ui/utils';
 import {
     type ChangeEvent,
     useActionState,
@@ -110,20 +110,20 @@ export function EmailSendForm({ from }: { from: string }) {
     return (
         <Card>
             <CardHeader>
-                <Row spacing={1}>
+                <Row spacing={2}>
                     <Mail className="size-6" />
                     <CardTitle>Novi email</CardTitle>
                 </Row>
             </CardHeader>
             <form action={formAction}>
                 <CardContent>
-                    <Stack spacing={2}>
-                        <Stack spacing={1}>
-                            <Stack spacing={1}>
+                    <Stack spacing={4}>
+                        <Stack spacing={2}>
+                            <Stack spacing={2}>
                                 <Typography className="text-sm" bold>
                                     Od
                                 </Typography>
-                                <Row spacing={1}>
+                                <Row spacing={2}>
                                     <Avatar>U</Avatar>
                                     <div className="flex-grow">
                                         <Input
@@ -152,7 +152,7 @@ export function EmailSendForm({ from }: { from: string }) {
                                 placeholder="Unesite naslov..."
                                 required
                             />
-                            <Stack spacing={1}>
+                            <Stack spacing={2}>
                                 <input
                                     type="hidden"
                                     name="message"
@@ -213,7 +213,7 @@ export function EmailSendForm({ from }: { from: string }) {
                                                     key={index}
                                                     className="border p-3 rounded-md text-sm flex items-center justify-between"
                                                 >
-                                                    <Row spacing={1}>
+                                                    <Row spacing={2}>
                                                         <File className="size-5" />
                                                         <Typography>
                                                             {file.name} (

@@ -1,16 +1,11 @@
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Container } from '@signalco/ui-primitives/Container';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Container } from '@gredice/ui/Container';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
-import { PageHeader } from '../../components/shared/PageHeader';
 import { formatPrice } from '../../lib/formatPrice';
 import { getHqLocationsData } from '../../lib/getHqLocationsData';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
@@ -50,7 +45,7 @@ export default async function PricingPage() {
 
     return (
         <Container maxWidth="lg">
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <PageHeader
                     padded
                     header="💶 Cjenik"

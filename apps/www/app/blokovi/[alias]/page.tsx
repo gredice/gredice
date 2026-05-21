@@ -1,18 +1,18 @@
 import { type BlockData, directoriesClient } from '@gredice/client';
 import { decodeRouteParam } from '@gredice/js/uri';
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { Layers, Ruler } from '@gredice/ui/icons';
+import { ListHeader } from '@gredice/ui/List';
 import { Markdown } from '@gredice/ui/Markdown';
-import { SplitView } from '@signalco/ui/SplitView';
-import { Layers, Ruler } from '@signalco/ui-icons';
-import { ListHeader } from '@signalco/ui-primitives/List';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { SplitView } from '@gredice/ui/SplitView';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
-import { PageHeader } from '../../../components/shared/PageHeader';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
 import { BlocksList } from './BlocksList';
 
@@ -109,11 +109,11 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
     return (
         <div className="border-b">
             <SplitView>
-                <Stack spacing={1} className="md:p-4 py-2 md:py-10">
+                <Stack spacing={2} className="md:p-4 py-2 md:py-10">
                     <ListHeader header="Blokovi" />
                     <BlocksList blockData={blockData} />
                 </Stack>
-                <Stack spacing={4} className="md:p-4 py-2 md:py-10">
+                <Stack spacing={8} className="md:p-4 py-2 md:py-10">
                     <PageHeader
                         visual={
                             <BlockImage
@@ -126,11 +126,11 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
                         subHeader={entity.information.shortDescription}
                     />
                     <Markdown>{entity.information.fullDescription}</Markdown>
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         <Typography level="h5">Svojstva</Typography>
                         <BlockAttributes {...entity} />
                     </Stack>
-                    <Row spacing={2}>
+                    <Row spacing={4}>
                         <Typography level="body1">
                             Jesu li ti informacije korisne?
                         </Typography>

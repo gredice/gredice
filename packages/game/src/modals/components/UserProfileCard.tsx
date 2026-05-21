@@ -38,10 +38,10 @@ export function UserProfileCard() {
     return (
         <Card>
             <CardContent noHeader>
-                <Stack spacing={4}>
+                <Stack spacing={8}>
                     <form onSubmit={handleProfileUpdate}>
-                        <Stack spacing={2}>
-                            <Row spacing={2}>
+                        <Stack spacing={4}>
+                            <Row spacing={4}>
                                 <AvatarSelectionMenu
                                     displayName={currentUser.data?.displayName}
                                     onChange={handleAvatarChange}
@@ -57,7 +57,7 @@ export function UserProfileCard() {
                                         />
                                     </button>
                                 </AvatarSelectionMenu>
-                                <Stack spacing={1}>
+                                <Stack spacing={2}>
                                     <Input
                                         name="displayName"
                                         label="Prikazano ime"

@@ -1,9 +1,9 @@
 import type { OperationData } from '@gredice/client';
+import { Card, CardContent } from '@gredice/ui/Card';
 import { OperationImage } from '@gredice/ui/OperationImage';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { KnownPages } from '../../src/KnownPages';
 
 type OperationCardData = Pick<
@@ -18,8 +18,8 @@ export function OperationCard({ operation }: { operation: OperationCardData }) {
             className="border-tertiary border-b-4"
         >
             <CardContent noHeader>
-                <Row justifyContent="space-between" spacing={1}>
-                    <Row spacing={2}>
+                <Row justifyContent="space-between" spacing={2}>
+                    <Row spacing={4}>
                         <OperationImage operation={operation} size={72} />
                         <Stack>
                             <Typography semiBold>

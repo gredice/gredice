@@ -44,7 +44,7 @@ export function CreateGardenModal({
     return (
         <Modal open={open} onOpenChange={onOpenChange} title="Kreiraj novi vrt">
             <form onSubmit={handleCreateGarden}>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Input
                         name="newGardenName"
                         label="Naziv novog vrta"

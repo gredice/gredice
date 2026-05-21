@@ -1,13 +1,13 @@
 'use client';
 
 import type { PlantData, PlantSortData } from '@gredice/client';
-import { Edit } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Edit } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { useCallback, useState } from 'react';
 import { KnownPages } from '../../../../src/KnownPages';
 import { PlantBlockImage } from '../../PlantBlockImage';
@@ -78,8 +78,8 @@ export function PlantGrowthViewer({
                     </div>
                 </CardOverflow>
             </Card>
-            <Stack spacing={4}>
-                <Row spacing={2} alignItems="start">
+            <Stack spacing={8}>
+                <Row spacing={4} alignItems="start">
                     <Card className="shrink-0">
                         <CardOverflow>
                             <PlantBlockImage
@@ -89,7 +89,7 @@ export function PlantGrowthViewer({
                             />
                         </CardOverflow>
                     </Card>
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         <Typography level="h4" component="h1">
                             {plant.information.name}
                         </Typography>
@@ -106,7 +106,7 @@ export function PlantGrowthViewer({
                     onSliderChange={handleSliderChange}
                 />
                 {sorts.length > 0 && (
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         <Typography level="h5">Sorta</Typography>
                         <div className="flex flex-wrap gap-2">
                             {sorts.map((sort) => (

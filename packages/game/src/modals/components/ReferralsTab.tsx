@@ -11,7 +11,7 @@ export function ReferralsTab() {
     const [useCode, setUseCode] = useState('');
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <div className="text-sm">
                 💮 Nagrada preporuke: {data?.rewardAmount ?? 10000} suncokreta
             </div>

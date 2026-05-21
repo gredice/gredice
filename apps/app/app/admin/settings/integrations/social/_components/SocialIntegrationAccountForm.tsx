@@ -5,8 +5,8 @@ import type {
     SocialAccountStatus,
     SocialProvider,
 } from '@gredice/storage';
-import { Input } from '@signalco/ui-primitives/Input';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { Input } from '@gredice/ui/Input';
+import { SelectItems } from '@gredice/ui/SelectItems';
 import { useRouter } from 'next/navigation';
 import { useActionState, useEffect } from 'react';
 import { KnownPages } from '../../../../../../src/KnownPages';

@@ -1,5 +1,5 @@
 import { Button, type ButtonProps } from '@gredice/ui/Button';
-import { CompanyFacebook } from '@signalco/ui-icons';
+import { CompanyFacebook } from '@gredice/ui/icons';
 
 export function FacebookLoginButton({ ...props }: ButtonProps) {
     return (

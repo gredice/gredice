@@ -93,7 +93,7 @@ export function PlantsList({
                                 />
                                 <Stack>
                                     <Row
-                                        spacing={1}
+                                        spacing={2}
                                         justifyContent="space-between"
                                     >
                                         <Typography level="body1" semiBold>

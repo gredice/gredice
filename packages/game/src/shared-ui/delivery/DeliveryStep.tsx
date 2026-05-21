@@ -2,6 +2,13 @@ import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { IconButton } from '@gredice/ui/IconButton';
+import {
+    Edit,
+    Map as MapIcon,
+    Navigate,
+    ShoppingCart,
+    Truck,
+} from '@gredice/ui/icons';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
@@ -9,13 +16,6 @@ import { Skeleton } from '@gredice/ui/Skeleton';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
-import {
-    Edit,
-    Map as MapIcon,
-    Navigate,
-    ShoppingCart,
-    Truck,
-} from '@signalco/ui-icons';
 import { useEffect, useState } from 'react';
 import type { useCheckout } from '../../hooks/useCheckout';
 import { useDeliveryAddresses } from '../../hooks/useDeliveryAddresses';
@@ -146,8 +146,8 @@ export function DeliveryStep({
 
     if (manageAddresses) {
         return (
-            <Stack spacing={4}>
-                <Row spacing={1}>
+            <Stack spacing={8}>
+                <Row spacing={2}>
                     <IconButton
                         title="Natrag na dostavu"
                         variant="plain"
@@ -169,7 +169,7 @@ export function DeliveryStep({
     );
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <Typography level="h3">Način dostave</Typography>
 
             <Alert color="info">
@@ -178,7 +178,7 @@ export function DeliveryStep({
             </Alert>
 
             {/* Mode Selection */}
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Tabs
                     value={selection.mode}
                     onValueChange={(value: string) =>
@@ -203,10 +203,10 @@ export function DeliveryStep({
                     </TabsList>
 
                     <TabsContent value="delivery" className="mt-4">
-                        <Stack spacing={3}>
-                            <Stack spacing={2}>
-                                <Stack spacing={1}>
-                                    <Row spacing={1}>
+                        <Stack spacing={6}>
+                            <Stack spacing={4}>
+                                <Stack spacing={2}>
+                                    <Row spacing={2}>
                                         {isLoadingAddresses ? (
                                             <Skeleton className="h-10 w-full rounded-md" />
                                         ) : addresses &&
@@ -278,9 +278,9 @@ export function DeliveryStep({
                         </Stack>
                     </TabsContent>
                     <TabsContent value="pickup" className="mt-4">
-                        <Stack spacing={3}>
+                        <Stack spacing={6}>
                             {pickupLocations && pickupLocations.length > 0 ? (
-                                <Stack spacing={2}>
+                                <Stack spacing={4}>
                                     <SelectItems
                                         label="Lokacija dostave"
                                         placeholder="Odaberi lokaciju za preuzimanje..."
@@ -312,11 +312,11 @@ export function DeliveryStep({
                                                     >
                                                         <CardContent className="p-3">
                                                             <Row
-                                                                spacing={2}
+                                                                spacing={4}
                                                                 justifyContent="space-between"
                                                             >
                                                                 <Stack
-                                                                    spacing={1}
+                                                                    spacing={2}
                                                                 >
                                                                     <Typography
                                                                         level="body1"
@@ -372,11 +372,11 @@ export function DeliveryStep({
 
             {/* Time Slot Selection */}
             {(selection.addressId || selection.locationId) && (
-                <Stack spacing={3}>
+                <Stack spacing={6}>
                     {slotsLoading ? (
                         <Typography>Učitavanje termina...</Typography>
                     ) : timeSlots && timeSlots.length > 0 ? (
-                        <Stack spacing={2}>
+                        <Stack spacing={4}>
                             <SelectItems
                                 label="Termin dostave"
                                 placeholder="Odaberi termin dostave..."
@@ -400,7 +400,7 @@ export function DeliveryStep({
             )}
 
             {/* Action Buttons */}
-            <Row spacing={2} justifyContent="end">
+            <Row spacing={4} justifyContent="end">
                 <Button variant="outlined" onClick={onBack}>
                     Natrag
                 </Button>

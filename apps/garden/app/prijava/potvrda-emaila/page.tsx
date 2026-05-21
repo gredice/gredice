@@ -1,10 +1,5 @@
-import { MailCheck } from '@signalco/ui-icons';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { MailCheck } from '@gredice/ui/icons';
 import { Suspense } from 'react';
 import { VerifyEmail } from './VerifyEmail';
 

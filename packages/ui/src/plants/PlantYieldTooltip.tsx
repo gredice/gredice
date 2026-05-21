@@ -52,12 +52,12 @@ export function PlantYieldTooltip({
             </TooltipTrigger>
             <TooltipContent>
                 <div className="text-sm">
-                    <Stack spacing={1} alignItems="center">
+                    <Stack spacing={2} alignItems="center">
                         <Typography level="body2" bold>
                             Očekivani prinos
                         </Typography>
                         <Divider className="w-20" />
-                        <Stack spacing={1} alignItems="center">
+                        <Stack spacing={2} alignItems="center">
                             <span>
                                 ~
                                 <strong>
@@ -73,7 +73,7 @@ export function PlantYieldTooltip({
                             </span>
                             <Stack alignItems="center">
                                 {yieldType === 'perPlant' && (
-                                    <Row spacing={1}>
+                                    <Row spacing={2}>
                                         <Typography level="body3">
                                             <strong>{yieldMin}</strong> g
                                         </Typography>
@@ -84,7 +84,7 @@ export function PlantYieldTooltip({
                                         </Typography>
                                     </Row>
                                 )}
-                                <Row spacing={1}>
+                                <Row spacing={2}>
                                     <Typography level="body3">
                                         <strong>{minYieldPerField}</strong> g
                                     </Typography>

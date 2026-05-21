@@ -4,11 +4,11 @@ import {
     getInventoryConfig,
     getInventoryItemsByConfig,
 } from '@gredice/storage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Add, Edit } from '@signalco/ui-icons';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Add, Edit } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
@@ -111,7 +111,7 @@ export default async function InventoryConfigPage({
 
     return (
         <EntityDetailsPropertiesProvider>
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <AdminPageTitle title={config.label} />
                 <AdminPageHeader
                     breadcrumbs={
@@ -125,10 +125,10 @@ export default async function InventoryConfigPage({
                         />
                     }
                     actions={
-                        <Row spacing={1}>
+                        <Row spacing={2}>
                             <Link href={KnownPages.InventoryItemCreate(id)}>
                                 <Row
-                                    spacing={1}
+                                    spacing={2}
                                     className="text-sm font-medium px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                                 >
                                     <Add className="size-4" />
@@ -137,7 +137,7 @@ export default async function InventoryConfigPage({
                             </Link>
                             <Link href={KnownPages.InventoryConfigEdit(id)}>
                                 <Row
-                                    spacing={1}
+                                    spacing={2}
                                     className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
                                 >
                                     <Edit className="size-4" />

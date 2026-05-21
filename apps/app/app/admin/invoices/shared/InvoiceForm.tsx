@@ -1,23 +1,18 @@
 'use client';
 
 import type { getInvoice } from '@gredice/storage';
-import { Add, Delete } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { Chip } from '@gredice/ui/Chip';
+import { DotIndicator } from '@gredice/ui/DotIndicator';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Input } from '@gredice/ui/Input';
+import { Add, Delete } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { KnownPages } from '../../../../src/KnownPages';
@@ -448,14 +443,14 @@ export default function InvoiceForm({
     return (
         <>
             <form onSubmit={handleSubmit}>
-                <Stack spacing={2}>
-                    <Row spacing={2} justifyContent="space-between">
+                <Stack spacing={4}>
+                    <Row spacing={4} justifyContent="space-between">
                         <Typography level="h1" className="text-2xl" semiBold>
                             {mode === 'create'
                                 ? 'Nova ponuda'
                                 : `Uredi ponudu ${invoice?.invoiceNumber}`}
                         </Typography>
-                        <Row spacing={2}>
+                        <Row spacing={4}>
                             <Button
                                 type="button"
                                 variant="outlined"
@@ -486,18 +481,18 @@ export default function InvoiceForm({
                         </Row>
                     </Row>
 
-                    <Row spacing={2} alignItems="stretch">
-                        <Stack spacing={2} className="flex-1">
+                    <Row spacing={4} alignItems="stretch">
+                        <Stack spacing={4} className="flex-1">
                             {/* Invoice Information */}
                             <Card>
                                 <CardHeader>
                                     <Row
-                                        spacing={2}
+                                        spacing={4}
                                         justifyContent="space-between"
                                     >
                                         <CardTitle>Osnovni podaci</CardTitle>
                                         {mode === 'create' && (
-                                            <Row spacing={2}>
+                                            <Row spacing={4}>
                                                 <Button
                                                     type="button"
                                                     variant="outlined"
@@ -545,9 +540,9 @@ export default function InvoiceForm({
                                     </Row>
                                 </CardHeader>
                                 <CardContent>
-                                    <Stack spacing={1}>
+                                    <Stack spacing={2}>
                                         {mode === 'create' && (
-                                            <Row spacing={2}>
+                                            <Row spacing={4}>
                                                 <Input
                                                     label="Account ID"
                                                     value={formData.accountId}
@@ -576,7 +571,7 @@ export default function InvoiceForm({
                                                 />
                                             </Row>
                                         )}
-                                        <Row spacing={2}>
+                                        <Row spacing={4}>
                                             <SelectItems
                                                 label="Valuta"
                                                 className="w-full"
@@ -602,7 +597,7 @@ export default function InvoiceForm({
                                                 }
                                             />
                                         </Row>
-                                        <Row spacing={2}>
+                                        <Row spacing={4}>
                                             <Input
                                                 label="Datum izdavanja"
                                                 type="date"
@@ -630,7 +625,7 @@ export default function InvoiceForm({
                                                 required
                                             />
                                         </Row>
-                                        <Row spacing={2}>
+                                        <Row spacing={4}>
                                             <div className="flex-1">
                                                 <div className="flex items-center space-x-2 p-3 border border-input bg-background rounded-md cursor-pointer">
                                                     <Checkbox
@@ -682,10 +677,10 @@ export default function InvoiceForm({
                                     </Row>
                                 </CardHeader>
                                 <CardContent>
-                                    <Stack spacing={1}>
-                                        <Row spacing={2}>
+                                    <Stack spacing={2}>
+                                        <Row spacing={4}>
                                             <Stack
-                                                spacing={1}
+                                                spacing={2}
                                                 className="w-full"
                                             >
                                                 <Input
@@ -709,7 +704,7 @@ export default function InvoiceForm({
                                                 )}
                                             </Stack>
                                             <Stack
-                                                spacing={1}
+                                                spacing={2}
                                                 className="w-full"
                                             >
                                                 <Input
@@ -733,7 +728,7 @@ export default function InvoiceForm({
                                                 )}
                                             </Stack>
                                         </Row>
-                                        <Stack spacing={1}>
+                                        <Stack spacing={2}>
                                             <Typography level="body2">
                                                 Adresa
                                             </Typography>
@@ -755,14 +750,14 @@ export default function InvoiceForm({
                             </Card>
                         </Stack>
 
-                        <Stack spacing={2} className="flex-1">
+                        <Stack spacing={4} className="flex-1">
                             {/* Summary and Invoice Details */}
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Sažetak</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <Stack spacing={2}>
+                                    <Stack spacing={4}>
                                         <Row justifyContent="space-between">
                                             <Typography level="body2">
                                                 Osnovica
@@ -800,8 +795,8 @@ export default function InvoiceForm({
                                     <CardTitle>Napomene i uvjeti</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <Stack spacing={1}>
-                                        <Stack spacing={1}>
+                                    <Stack spacing={2}>
+                                        <Stack spacing={2}>
                                             <Typography level="body2">
                                                 Napomene
                                             </Typography>
@@ -818,7 +813,7 @@ export default function InvoiceForm({
                                                 rows={3}
                                             />
                                         </Stack>
-                                        <Stack spacing={1}>
+                                        <Stack spacing={2}>
                                             <Typography level="body2">
                                                 Uvjeti
                                             </Typography>
@@ -858,20 +853,20 @@ export default function InvoiceForm({
                             </Row>
                         </CardHeader>
                         <CardContent>
-                            <Stack spacing={2}>
+                            <Stack spacing={4}>
                                 {items.map((item, index) => (
                                     <Card
                                         key={item.id || index}
                                         className="border-l-4 border-l-primary"
                                     >
                                         <CardContent className="pt-4">
-                                            <Stack spacing={2}>
+                                            <Stack spacing={4}>
                                                 <Row
-                                                    spacing={2}
+                                                    spacing={4}
                                                     alignItems="start"
                                                 >
                                                     <Stack
-                                                        spacing={1}
+                                                        spacing={2}
                                                         className="flex-1"
                                                     >
                                                         <Typography level="body2">
@@ -906,9 +901,9 @@ export default function InvoiceForm({
                                                         <Delete />
                                                     </IconButton>
                                                 </Row>
-                                                <Row spacing={2}>
+                                                <Row spacing={4}>
                                                     <Stack
-                                                        spacing={1}
+                                                        spacing={2}
                                                         className="flex-1"
                                                     >
                                                         <Typography level="body2">
@@ -933,7 +928,7 @@ export default function InvoiceForm({
                                                         />
                                                     </Stack>
                                                     <Stack
-                                                        spacing={1}
+                                                        spacing={2}
                                                         className="flex-1"
                                                     >
                                                         <Typography level="body2">
@@ -958,7 +953,7 @@ export default function InvoiceForm({
                                                         />
                                                     </Stack>
                                                     <Stack
-                                                        spacing={1}
+                                                        spacing={2}
                                                         className="flex-1"
                                                     >
                                                         <Typography level="body2">
@@ -988,7 +983,7 @@ export default function InvoiceForm({
                 <div className="fixed inset-0 bg-black backdrop-blur bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-card rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
                         <div className="p-6 border-b">
-                            <Row spacing={2} justifyContent="space-between">
+                            <Row spacing={4} justifyContent="space-between">
                                 <Typography level="h3" semiBold>
                                     Odaberite transakciju
                                 </Typography>
@@ -1015,7 +1010,7 @@ export default function InvoiceForm({
                                     Nema dostupnih transakcija
                                 </Typography>
                             ) : (
-                                <Stack spacing={2}>
+                                <Stack spacing={4}>
                                     {transactions.map((transaction) => (
                                         <Card
                                             key={transaction.id}
@@ -1027,10 +1022,10 @@ export default function InvoiceForm({
                                         >
                                             <CardContent>
                                                 <Row
-                                                    spacing={2}
+                                                    spacing={4}
                                                     justifyContent="space-between"
                                                 >
-                                                    <Stack spacing={1}>
+                                                    <Stack spacing={2}>
                                                         <Typography semiBold>
                                                             #{transaction.id}
                                                         </Typography>
@@ -1047,7 +1042,7 @@ export default function InvoiceForm({
                                                         </Typography>
                                                     </Stack>
                                                     <Stack
-                                                        spacing={1}
+                                                        spacing={2}
                                                         alignItems="start"
                                                     >
                                                         <Typography semiBold>
@@ -1088,8 +1083,8 @@ export default function InvoiceForm({
                 <div className="fixed inset-0 bg-black backdrop-blur bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-card rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
                         <div className="p-6 border-b">
-                            <Row spacing={2} justifyContent="space-between">
-                                <Stack spacing={1}>
+                            <Row spacing={4} justifyContent="space-between">
+                                <Stack spacing={2}>
                                     <Typography level="h3" semiBold>
                                         Odaberite košaricu
                                     </Typography>
@@ -1121,7 +1116,7 @@ export default function InvoiceForm({
                             ) : shoppingCarts.length === 0 ? (
                                 <Typography>Nema dostupnih košarica</Typography>
                             ) : (
-                                <Stack spacing={2}>
+                                <Stack spacing={4}>
                                     {shoppingCarts.map((cart) => (
                                         <Card
                                             key={cart.id}
@@ -1131,10 +1126,10 @@ export default function InvoiceForm({
                                         >
                                             <CardContent>
                                                 <Row
-                                                    spacing={2}
+                                                    spacing={4}
                                                     justifyContent="space-between"
                                                 >
-                                                    <Stack spacing={1}>
+                                                    <Stack spacing={2}>
                                                         <Typography semiBold>
                                                             Košarica #{cart.id}
                                                         </Typography>
@@ -1149,7 +1144,7 @@ export default function InvoiceForm({
                                                         </Typography>
                                                     </Stack>
                                                     <Stack
-                                                        spacing={1}
+                                                        spacing={2}
                                                         alignItems="start"
                                                     >
                                                         <Typography semiBold>

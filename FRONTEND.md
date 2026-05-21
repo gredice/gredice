@@ -18,7 +18,7 @@ Use this guide for React, Next.js, TypeScript, UI components, and frontend app s
 - Do not create multiple components in the same file. Split each component into its own file.
 - Keep app-specific components inside their owning app unless reuse is real.
 - When adding or changing a reusable UI component, add or update a Storybook story under `apps/storybook/stories` in the same change.
-- Prefer established `@signalco/*` and `@gredice/*` primitives already used in the app before introducing a new dependency.
+- Prefer established `@gredice/*` primitives already used in the app before introducing a new dependency.
 
 ## Next.js and React
 

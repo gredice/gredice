@@ -80,7 +80,7 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
                                 variant="plain"
                                 className="rounded-full px-2 justify-between pr-4 md:pr-2 hidden md:flex"
                             >
-                                <Row spacing={1}>
+                                <Row spacing={2}>
                                     {forecastData.slice(0, 3).map((day) => {
                                         const ForecastIcon =
                                             weatherIcons[day.symbol];

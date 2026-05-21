@@ -1,13 +1,13 @@
 import { slugify } from '@gredice/js/slug';
+import { Container } from '@gredice/ui/Container';
+import { Navigate, Timer } from '@gredice/ui/icons';
 import { Markdown } from '@gredice/ui/Markdown';
-import { Navigate, Timer } from '@signalco/ui-icons';
-import { Container } from '@signalco/ui-primitives/Container';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { PageHeader } from '../../../../components/shared/PageHeader';
 import { getOccasionsData } from '../../../../lib/occasions/getOccasionsData';
 
 type OccasionPageProps = {
@@ -77,7 +77,7 @@ export default async function OccasionPage({ params }: OccasionPageProps) {
                     header={`Pravila natječaja - ${occasion.information.name}`}
                     alternativeName={`Saznaj kako sudjelovati, osvojiti nagrade i koje su obveze organizatora natječaja - ${occasion.information.name}.`}
                     headerChildren={
-                        <Row spacing={1}>
+                        <Row spacing={2}>
                             <Timer className="size-5 shrink-0 opacity-60" />
                             <Typography level="body2">{startDate}</Typography>
                             {endDate && (

@@ -1,8 +1,8 @@
 'use client';
 
 import { ArchiveIcon } from '@gredice/ui/ArchiveIcon';
-import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { DotIndicator } from '@gredice/ui/DotIndicator';
+import { IconButton } from '@gredice/ui/IconButton';
 import { useTransition } from 'react';
 import { archiveClosedTimeSlotsAction } from './actions';
 

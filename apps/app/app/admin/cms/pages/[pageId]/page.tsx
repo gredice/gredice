@@ -4,15 +4,15 @@ import {
     getCmsPageRevisions,
     type SelectCmsPage,
 } from '@gredice/storage';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Button } from '@gredice/ui/Button';
+import { Card } from '@gredice/ui/Card';
+import { Divider } from '@gredice/ui/Divider';
+import { Delete, Edit, ExternalLink, Megaphone } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Delete, Edit, ExternalLink, Megaphone } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
@@ -167,7 +167,7 @@ export default async function CmsPageDetailsPage({
 
     return (
         <EntityDetailsPropertiesProvider>
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <AdminPageHeader
                     breadcrumbs={
                         <Breadcrumbs
@@ -184,10 +184,10 @@ export default async function CmsPageDetailsPage({
                         />
                     }
                     actions={
-                        <Row spacing={1} className="items-center">
+                        <Row spacing={2} className="items-center">
                             <Link href={KnownPages.CmsPageEdit(id)}>
                                 <Row
-                                    spacing={1}
+                                    spacing={2}
                                     className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
                                 >
                                     <Edit className="size-4" />
@@ -199,7 +199,7 @@ export default async function CmsPageDetailsPage({
                                 target="_blank"
                             >
                                 <Row
-                                    spacing={1}
+                                    spacing={2}
                                     className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
                                 >
                                     <ExternalLink className="size-4" />
@@ -241,14 +241,14 @@ export default async function CmsPageDetailsPage({
                     heading={page.title}
                 />
                 <EntityDetailsPropertiesLayout properties={propertiesPanel}>
-                    <Stack spacing={4}>
+                    <Stack spacing={8}>
                         {resolvedSearchParams.publishError && (
                             <Card className="border-red-200 bg-red-50 px-4 py-3 text-red-700">
                                 {resolvedSearchParams.publishError}
                             </Card>
                         )}
                         <Card className="max-w-4xl p-6">
-                            <Stack spacing={2}>
+                            <Stack spacing={4}>
                                 <Typography level="h3" semiBold>
                                     Sekcije stranice
                                 </Typography>
@@ -259,7 +259,7 @@ export default async function CmsPageDetailsPage({
                                 ) : (
                                     pageSections.map(
                                         ({ key, section }, index) => (
-                                            <Stack spacing={1} key={key}>
+                                            <Stack spacing={2} key={key}>
                                                 <Typography level="body2">
                                                     {index + 1}.{' '}
                                                     {section.component}
@@ -281,7 +281,7 @@ export default async function CmsPageDetailsPage({
                                         name={`${revision.action} • ${revision.actorName ?? 'Nepoznat korisnik'}`}
                                         value={
                                             <Row
-                                                spacing={2}
+                                                spacing={4}
                                                 className="items-center"
                                             >
                                                 <span>

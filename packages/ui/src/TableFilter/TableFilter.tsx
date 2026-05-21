@@ -75,7 +75,7 @@ export function TableFilter({
 
     return (
         <div className={className}>
-            <Row spacing={2} className="items-center flex-wrap">
+            <Row spacing={4} className="items-center flex-wrap">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button
@@ -119,7 +119,7 @@ export function TableFilter({
                                         className="justify-between cursor-pointer pl-6"
                                     >
                                         <Row
-                                            spacing={2}
+                                            spacing={4}
                                             className="items-center"
                                         >
                                             {option.icon}
@@ -163,7 +163,7 @@ export function TableFilter({
                             size="sm"
                             onClick={() => onFilterChange(key, '')}
                         >
-                            <Row spacing={1} className="items-center">
+                            <Row spacing={2} className="items-center">
                                 {filter.icon}
                                 <span>
                                     {filter.label}:{' '}

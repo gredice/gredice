@@ -1,7 +1,7 @@
 'use client';
 
-import { ThumbsUp } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
+import { ThumbsUp } from '@gredice/ui/icons';
+import { cx } from '@gredice/ui/utils';
 import { useClientSearchParam } from '../../hooks/useClientSearchParam';
 
 const filterParamName = 'vrijemeZaSijanje';

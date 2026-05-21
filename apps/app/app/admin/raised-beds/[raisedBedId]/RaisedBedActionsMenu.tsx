@@ -1,12 +1,12 @@
 'use client';
 
-import { MoreHorizontal } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { IconButton } from '@gredice/ui/IconButton';
+import { MoreHorizontal } from '@gredice/ui/icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuTrigger,
-} from '@signalco/ui-primitives/Menu';
+} from '@gredice/ui/Menu';
 import { MergeRaisedBedsForm } from './MergeRaisedBedsForm';
 
 export function RaisedBedActionsMenu({

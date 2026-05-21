@@ -49,7 +49,7 @@ export function RaisedBedGreenhouseSuggestion({
                 </ButtonGreen>
             }
         >
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="h5">Radnje zalijevanja</Typography>
                 <Typography>
                     Odaberite radnju zalijevanja za ovu gredicu.

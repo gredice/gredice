@@ -1,9 +1,6 @@
-import { Faq1 } from '@signalco/cms-components-marketing/Faq';
-import { Feature1 } from '@signalco/cms-components-marketing/Feature';
-import { Footer1 } from '@signalco/cms-components-marketing/Footer';
-import { Heading1 } from '@signalco/cms-components-marketing/Heading';
+import { Faq1, Feature1, Footer1, Heading1 } from '@gredice/ui/cms';
+import { PageHeaderSection } from '@gredice/ui/PageHeader';
 import { memo } from 'react';
-import { PageHeaderSection } from './PageHeaderSection';
 
 export const sectionsComponentRegistry = {
     Heading1: memo(Heading1),

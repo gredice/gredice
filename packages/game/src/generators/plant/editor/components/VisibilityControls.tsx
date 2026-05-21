@@ -16,7 +16,7 @@ export function VisibilityControls({
     onVisibilityChange,
 }: VisibilityControlsProps) {
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <Divider />
             <Typography className="text-sm font-medium">Prikaz</Typography>
             <Checkbox

@@ -1,10 +1,10 @@
+import { useSearchParam } from '@gredice/ui/hooks';
 import { List } from '@gredice/ui/List';
 import { ListItem } from '@gredice/ui/ListItem';
 import { Modal } from '@gredice/ui/Modal';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Fragment, useEffect } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
@@ -134,7 +134,7 @@ export function OverviewModal() {
             title="Profil"
         >
             <div className="grid max-h-[calc(90dvh-5rem)] grid-rows-[auto_1fr] gap-4 overflow-y-auto pr-1 md:max-h-none md:gap-0 md:grid-rows-1 md:grid-cols-[minmax(230px,auto)_1fr] md:overflow-hidden md:pr-0">
-                <Stack spacing={2} className="md:border-r md:pl-2">
+                <Stack spacing={4} className="md:border-r md:pl-2">
                     <ProfileInfo />
                     <SelectItems
                         className="md:hidden bg-card rounded-lg"

@@ -15,7 +15,7 @@ export function ReferralsManagementCard() {
         <Card>
             <CardHeader title="💮 Referral račun" />
             <CardContent>
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     <Typography level="body2">
                         Vaš kod: {data?.myCode}
                     </Typography>

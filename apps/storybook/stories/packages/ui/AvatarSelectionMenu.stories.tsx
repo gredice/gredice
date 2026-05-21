@@ -1,5 +1,5 @@
+import { Avatar } from '@gredice/ui/Avatar';
 import { AvatarSelectionMenu } from '@gredice/ui/AvatarSelectionMenu';
-import { Avatar } from '@signalco/ui-primitives/Avatar';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 const meta = {

@@ -1,20 +1,15 @@
+import { Alert } from '@gredice/ui/Alert';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Container } from '@gredice/ui/Container';
+import { Calendar, Warning } from '@gredice/ui/icons';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
-import { Alert } from '@signalco/ui/Alert';
-import { Calendar, Warning } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Container } from '@signalco/ui-primitives/Container';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
-import { PageHeader } from '../../components/shared/PageHeader';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
 import { formatPrice } from '../../lib/formatPrice';
 import { KnownPages } from '../../src/KnownPages';
@@ -335,7 +330,7 @@ export default function DeliveryPage() {
                         <CardTitle>📅 Termini dostave</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <Stack spacing={3}>
+                        <Stack spacing={6}>
                             <Typography>
                                 Želiš vidjeti koji su termini dostupni za
                                 dostavu tvojeg povrća?
@@ -351,11 +346,11 @@ export default function DeliveryPage() {
                     </CardContent>
                 </Card>
             </div>
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="h5">Imaš dodatna pitanja?</Typography>
                 <WhatsAppCard />
             </Stack>
-            <Row spacing={2} className="mt-8">
+            <Row spacing={4} className="mt-8">
                 <Typography level="body1">
                     Jesu li ti informacije korisne?
                 </Typography>

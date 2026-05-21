@@ -1,4 +1,4 @@
-import type { SectionData } from '@signalco/cms-core/SectionData';
+import { parseSectionData } from '@gredice/ui/cms';
 
 export function normalizeCmsRouteSlug(segments: string[]) {
     return segments
@@ -7,25 +7,7 @@ export function normalizeCmsRouteSlug(segments: string[]) {
         .join('/');
 }
 
-function isSectionData(section: unknown): section is SectionData {
-    if (!section || typeof section !== 'object') {
-        return false;
-    }
-
-    if (!('component' in section)) {
-        return false;
-    }
-
-    return typeof section.component === 'string';
-}
-
-export function parseCmsSectionData(value: unknown): SectionData[] {
-    if (!Array.isArray(value)) {
-        return [];
-    }
-
-    return value.filter(isSectionData);
-}
+export const parseCmsSectionData = parseSectionData;
 
 const reservedFirstSegments = new Set([
     'biljke',

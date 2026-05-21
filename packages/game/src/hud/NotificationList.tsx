@@ -1,6 +1,7 @@
 import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
 import { Alert } from '@gredice/ui/Alert';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
+import { Check } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { ListItem } from '@gredice/ui/ListItem';
 import { Markdown } from '@gredice/ui/Markdown';
@@ -10,7 +11,6 @@ import { Skeleton } from '@gredice/ui/Skeleton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { Check } from '@signalco/ui-icons';
 import type { Route } from 'next';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -116,7 +116,7 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
                 onSelected={handleNotificationSelected}
                 className="rounded-none p-4"
                 label={
-                    <Row spacing={2}>
+                    <Row spacing={4}>
                         {notification.iconUrl ? (
                             <Image
                                 src={notification.iconUrl}
@@ -195,10 +195,10 @@ export function NotificationList({ read, short }: NotificationProps) {
     const isLoading = false;
     if (isLoading) {
         return (
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 {[...Array(3)].map((_, i) => (
                     // biome-ignore lint/suspicious/noArrayIndexKey: Allowed, skeleton
-                    <Stack key={i} spacing={1} className="p-4">
+                    <Stack key={i} spacing={2} className="p-4">
                         <Skeleton className="h-5 w-2/3" />
                         <Skeleton className="h-12 w-full" />
                         <Skeleton className="h-5 w-20" />

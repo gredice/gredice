@@ -1,5 +1,5 @@
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Stack } from '@gredice/ui/Stack';
 import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../lib/auth/auth';
@@ -10,7 +10,7 @@ export default async function CreateInvoicePage() {
     await auth(['admin']);
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <AdminPageHeader
                 breadcrumbs={
                     <Breadcrumbs

@@ -1,7 +1,7 @@
+import { MoreHorizontal, ShoppingCart } from '@gredice/ui/icons';
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { cx } from '@gredice/ui/utils';
-import { MoreHorizontal, ShoppingCart } from '@signalco/ui-icons';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';
 import type { RaisedBedFieldPlantHistoryEntry } from '../../utils/raisedBedFields';

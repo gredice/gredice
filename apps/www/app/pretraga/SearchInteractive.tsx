@@ -1,9 +1,9 @@
 'use client';
 
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { usePostHog } from '@posthog/next';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import type { Route } from 'next';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef } from 'react';
@@ -124,7 +124,7 @@ export function SearchInteractive({
                 className="px-0 py-0"
                 withBorder={false}
             />
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 {results.map((result, index) => (
                     <a
                         key={`${result.entityType}-${result.entityId}`}

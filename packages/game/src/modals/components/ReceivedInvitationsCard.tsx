@@ -28,14 +28,14 @@ export function ReceivedInvitationsCard() {
     return (
         <Card>
             <CardContent noHeader>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="body1" semiBold>
                         📬 Pozivnice
                     </Typography>
                     {pendingInvitations.data.map((invitation) => (
                         <Row
                             key={invitation.id}
-                            spacing={2}
+                            spacing={4}
                             className="items-center justify-between"
                         >
                             <Stack spacing={0}>

@@ -6,23 +6,18 @@ import {
     getNotificationsByAccount,
     getNotificationsByUser,
 } from '@gredice/storage';
+import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
+import { Delete } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Markdown } from '@gredice/ui/Markdown';
+import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
-import { Delete } from '@signalco/ui-icons';
-import {
-    Card,
-    CardHeader,
-    CardOverflow,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import Link from 'next/link';
 import { KnownPages } from '../../src/KnownPages';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
@@ -137,7 +132,7 @@ export async function NotificationsTableCard({
                     return (
                         <Table.Row key={notification.id}>
                             <Table.Cell className="max-w-xs whitespace-pre-wrap">
-                                <Row spacing={2}>
+                                <Row spacing={4}>
                                     {notification.imageUrl && (
                                         <div className="shrink-0 aspect-square">
                                             <ImageViewer

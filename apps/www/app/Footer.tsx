@@ -1,11 +1,11 @@
-import type { SectionData } from '@signalco/cms-core/SectionData';
-import { SectionsView } from '@signalco/cms-core/SectionsView';
+import type { SectionData } from '@gredice/ui/cms';
+import { SectionsView } from '@gredice/ui/cms';
 import {
     CompanyFacebook,
     CompanyGitHub,
     CompanyReddit,
     CompanyX,
-} from '@signalco/ui-icons';
+} from '@gredice/ui/icons';
 import { Logotype } from '../components/Logotype';
 import { sectionsComponentRegistry } from '../components/shared/sectionsComponentRegistry';
 import { KnownPages } from '../src/KnownPages';

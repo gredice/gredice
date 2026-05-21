@@ -134,8 +134,8 @@ export function WelcomeMessage() {
             dismissible={false}
         >
             <div className="grid md:grid-cols-2 [grid-template-areas:'sunflower'_'content'] md:[grid-template-areas:'content_sunflower'] md:p-4 gap-4">
-                <Stack spacing={3} className="[grid-area:content]">
-                    <Stack spacing={1.5}>
+                <Stack spacing={6} className="[grid-area:content]">
+                    <Stack spacing={3}>
                         <Typography level="h2" gutterBottom>
                             {title}
                         </Typography>

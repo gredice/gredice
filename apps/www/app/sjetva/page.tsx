@@ -1,11 +1,11 @@
+import { Container } from '@gredice/ui/Container';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
-import { Container } from '@signalco/ui-primitives/Container';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
-import { PageHeader } from '../../components/shared/PageHeader';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
 import { KnownPages } from '../../src/KnownPages';
 import {
@@ -31,7 +31,7 @@ export default async function SowingPage() {
 
     return (
         <Container maxWidth="md">
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <PageHeader
                     header="Sjetva biljaka"
                     subHeader="Sve o naručivanju sjetve, cijeni i dodatnim pogodnostima tijekom ljeta."
@@ -220,7 +220,7 @@ export default async function SowingPage() {
                         <a href={KnownPages.Operations}>radnji</a>.
                     </p>
                 </StyledHtml>
-                <Row spacing={2} className="mt-4">
+                <Row spacing={4} className="mt-4">
                     <Typography level="body1">
                         Jesu li ti informacije o sjetvi bile korisne?
                     </Typography>

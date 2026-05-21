@@ -1,8 +1,8 @@
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import type { PropsWithChildren, ReactNode } from 'react';
+import { Card, CardOverflow } from '../Card';
+import { Stack } from '../Stack';
+import { Typography } from '../Typography';
+import { cx } from '../utils';
 
 export type PageHeaderProps = {
     padded?: boolean;
@@ -24,6 +24,7 @@ export function PageHeader({
 }: PropsWithChildren<PageHeaderProps>) {
     const hasVisual = Boolean(visual);
     const hasChildren = Boolean(children);
+
     return (
         <div
             className={cx(
@@ -36,18 +37,18 @@ export function PageHeader({
         >
             <div
                 className={cx(
-                    'flex flex-col md:flex-row gap-4',
+                    'flex flex-col gap-4 md:flex-row',
                     !visual && 'md:col-span-2',
                 )}
             >
                 {visual && (
-                    <Card className="min-w-48 min-h-48 border-tertiary border-b-4 rounded-none md:rounded-lg -mx-4 md:mx-0 md:size-48 overflow-hidden">
+                    <Card className="-mx-4 min-h-48 min-w-48 overflow-hidden rounded-none border-tertiary border-b-4 md:mx-0 md:size-48 md:rounded-lg">
                         <CardOverflow className="flex justify-center">
                             {visual}
                         </CardOverflow>
                     </Card>
                 )}
-                <Stack spacing={2} className="md:max-w-96">
+                <Stack spacing={4} className="md:max-w-96">
                     <Typography level="h2" component="h1">
                         {header}
                     </Typography>

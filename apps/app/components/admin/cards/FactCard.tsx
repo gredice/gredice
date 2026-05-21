@@ -1,13 +1,9 @@
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-} from '@signalco/ui-primitives/Tooltip';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@gredice/ui/Tooltip';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import type { ReactNode } from 'react';
 
 export function FactCard({
@@ -46,7 +42,7 @@ export function FactCard({
     return (
         <Card href={href}>
             <CardOverflow>
-                <Row className="p-2" spacing={1} justifyContent="space-between">
+                <Row className="p-2" spacing={2} justifyContent="space-between">
                     <Stack>
                         <Typography level="body3">{header}</Typography>
                         <Typography level="h4" semiBold>

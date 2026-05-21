@@ -1,4 +1,4 @@
-import { cx } from '@signalco/ui-primitives/cx';
+import { cx } from '@gredice/ui/utils';
 import { useState } from 'react';
 import type { AttributeInputProps } from '../AttributeInputProps';
 

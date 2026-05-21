@@ -1,7 +1,7 @@
 import { getAssignableFarmUsersByRaisedBedFieldIds } from '@gredice/storage';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { RaisedBedPlantingScheduleSection } from './RaisedBedPlantingScheduleSection';
 import { ScheduleDayPlantingsBulkActions } from './ScheduleDayPlantingsBulkActions';
 import { getScheduleDayData, getSchedulePlantSorts } from './scheduleData';
@@ -71,8 +71,8 @@ export async function ScheduleDayPlantingsSection({
 
     return (
         <OptimisticScheduleActionsProvider>
-            <Stack spacing={2}>
-                <Row spacing={1} alignItems="center">
+            <Stack spacing={4}>
+                <Row spacing={2} alignItems="center">
                     <Typography level="h6">Sijanje</Typography>
                     <ScheduleDayPlantingsBulkActions
                         fieldsToApprove={dayFieldsToApprove}

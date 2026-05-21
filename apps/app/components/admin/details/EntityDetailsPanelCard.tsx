@@ -1,7 +1,7 @@
 'use client';
 
-import { Down } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
+import { Down } from '@gredice/ui/icons';
+import { cx } from '@gredice/ui/utils';
 import type { ReactNode } from 'react';
 import { useId, useState } from 'react';
 

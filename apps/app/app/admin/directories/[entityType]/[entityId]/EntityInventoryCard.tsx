@@ -1,6 +1,6 @@
-import { Error as ErrorIcon, ExternalLink, Warning } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { Error as ErrorIcon, ExternalLink, Warning } from '@gredice/ui/icons';
 import Link from 'next/link';
 import { KnownPages } from '../../../../../src/KnownPages';
 import { EntityDetailsPanelCard } from './EntityDetailsPanelCard';

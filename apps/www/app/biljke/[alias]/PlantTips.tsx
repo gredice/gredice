@@ -1,7 +1,7 @@
 import type { PlantData } from '@gredice/client';
-import { Accordion } from '@signalco/ui/Accordion';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Accordion } from '@gredice/ui/Accordion';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 
 export function PlantTips({
@@ -13,7 +13,7 @@ export function PlantTips({
     };
 }) {
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <Typography level="h2" className="text-2xl">
                 Savjeti
             </Typography>
@@ -32,7 +32,7 @@ export function PlantTips({
                         >
                             {tip.header}
                         </Typography>
-                        <Stack spacing={2}>
+                        <Stack spacing={4}>
                             <Typography>{tip.content}</Typography>
                             <FeedbackModal
                                 className="self-end"

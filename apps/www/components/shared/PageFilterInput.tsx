@@ -1,8 +1,8 @@
 'use client';
 
-import { Close, Search } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Close, Search } from '@gredice/ui/icons';
+import { cx } from '@gredice/ui/utils';
 import type { Route } from 'next';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { ChangeEvent, HTMLAttributes } from 'react';

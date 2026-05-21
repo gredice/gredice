@@ -1,6 +1,6 @@
 'use client';
 
-import { authCurrentUserQueryKeys } from '@signalco/auth-client';
+import { authCurrentUserQueryKeys } from '@gredice/ui/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
 import { queryClient } from '../../components/providers/ClientAppProvider';

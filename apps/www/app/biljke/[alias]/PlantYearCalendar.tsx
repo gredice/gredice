@@ -1,6 +1,6 @@
 import type { PlantData } from '@gredice/client';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
 import { type CSSProperties, Fragment } from 'react';
 
 const plantCalendarMonths = [
@@ -79,7 +79,7 @@ export function PlantYearCalendar({ activities, now }: PlantYearCalendarProps) {
                         <Fragment key={activityTypeName}>
                             <Row
                                 justifyContent="space-between"
-                                spacing={1}
+                                spacing={2}
                                 className="mx-2 min-w-0 overflow-hidden"
                             >
                                 <Typography

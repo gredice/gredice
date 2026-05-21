@@ -1,10 +1,10 @@
 'use client';
 
 import { IconButton } from '@gredice/ui/IconButton';
+import { Info } from '@gredice/ui/icons';
 import { Popper } from '@gredice/ui/Popper';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { Info } from '@signalco/ui-icons';
 import type { ReactNode } from 'react';
 
 interface InfoHintProps {

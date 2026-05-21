@@ -1,13 +1,13 @@
 import { getFarmUsers, getUsers } from '@gredice/storage';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import {
     Card,
     CardContent,
     CardHeader,
     CardOverflow,
     CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Table } from '@signalco/ui-primitives/Table';
+} from '@gredice/ui/Card';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Table } from '@gredice/ui/Table';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../../src/KnownPages';

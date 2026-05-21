@@ -1,8 +1,6 @@
 'use client';
 
-import { useDocumentEvent } from '@signalco/hooks/useDocumentEvent';
-import { useWindowEvent } from '@signalco/hooks/useWindowEvent';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export function useWindowFocus() {
     const [isFocused, setIsFocused] = useState(
@@ -26,8 +24,18 @@ export function useWindowFocus() {
         setIsFocused(!document.hidden || document.hasFocus());
     }
 
-    useWindowEvent('focus', handleFocusChange);
-    useDocumentEvent('visibilitychange', handleVisibilityChange);
+    useEffect(() => {
+        window.addEventListener('focus', handleFocusChange);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            window.removeEventListener('focus', handleFocusChange);
+            document.removeEventListener(
+                'visibilitychange',
+                handleVisibilityChange,
+            );
+        };
+    });
 
     return isFocused;
 }

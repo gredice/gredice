@@ -1,6 +1,6 @@
-import { List } from '@signalco/ui-primitives/List';
-import { ListItem } from '@signalco/ui-primitives/ListItem';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { List } from '@gredice/ui/List';
+import { ListItem } from '@gredice/ui/ListItem';
+import { SelectItems } from '@gredice/ui/SelectItems';
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import type { ReactElement } from 'react';

@@ -4,11 +4,11 @@ import type {
     SelectAttributeDefinition,
     SelectEntityRevision,
 } from '@gredice/storage';
+import { Down } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Stack } from '@gredice/ui/Stack';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
-import { Down } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { cx } from '@gredice/ui/utils';
 import { useMemo, useState } from 'react';
 
 const actionLabels: Record<string, string> = {
@@ -319,9 +319,9 @@ export function HistoryRevisionListClient({
             >
                 {selectedRevision && (
                     <div className="p-4">
-                        <Stack spacing={3}>
+                        <Stack spacing={6}>
                             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                                <Stack spacing={1}>
+                                <Stack spacing={2}>
                                     <h4 className="font-medium">Original</h4>
                                     <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-md border p-3 text-xs">
                                         {selectedRevision.previousValue ??
@@ -329,7 +329,7 @@ export function HistoryRevisionListClient({
                                             '-'}
                                     </pre>
                                 </Stack>
-                                <Stack spacing={1}>
+                                <Stack spacing={2}>
                                     <h4 className="font-medium">Novo</h4>
                                     <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-md border p-3 text-xs">
                                         {selectedRevision.nextValue ??

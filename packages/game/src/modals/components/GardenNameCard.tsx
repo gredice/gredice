@@ -57,8 +57,8 @@ export function GardenNameCard({
         <Card>
             <form onSubmit={handleRenameGarden}>
                 <CardContent noHeader>
-                    <Stack spacing={3}>
-                        <Stack spacing={1}>
+                    <Stack spacing={6}>
+                        <Stack spacing={2}>
                             <Input
                                 name="gardenName"
                                 label="Naziv vrta"
