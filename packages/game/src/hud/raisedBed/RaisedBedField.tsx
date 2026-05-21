@@ -219,6 +219,8 @@ export function RaisedBedField({
     );
 
     function handleDragEnd(event: DragEndEvent) {
+        if (isHudDialogOpen) return;
+
         const { active, over } = event;
         if (!over || active.id === over.id) return;
 
@@ -277,7 +279,7 @@ export function RaisedBedField({
             <div></div>
             <DndContext
                 id={`raised-bed-field-${gardenId}-${raisedBedId}`}
-                sensors={isHudDialogOpen ? [] : sensors}
+                sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
             >
@@ -320,7 +322,9 @@ export function RaisedBedField({
                                     const isPlanted =
                                         plantedPositions.has(positionIndex);
                                     const isDragDisabled =
-                                        !isInCart || isPlanted;
+                                        isHudDialogOpen ||
+                                        !isInCart ||
+                                        isPlanted;
 
                                     return (
                                         <div

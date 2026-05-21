@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
-import { RaisedBedFieldHudStory } from './RaisedBedFieldHudStory';
+import {
+    RaisedBedFieldDndDialogStory,
+    RaisedBedFieldHudStory,
+} from './RaisedBedFieldHudStory';
 import {
     buildCartItem,
     buildOperation,
@@ -220,6 +223,32 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(stack).toHaveAttribute('data-touch-expanded', 'false');
         const fieldButton = page.getByRole('button').first();
         await expect(fieldButton).toContainText('20');
+    });
+
+    test('opening a HUD dialog keeps drag sensors stable', async ({
+        mount,
+        page,
+    }) => {
+        const dragSensorErrors: string[] = [];
+        page.on('console', (message) => {
+            if (
+                message.type() === 'error' &&
+                message
+                    .text()
+                    .includes(
+                        'The final argument passed to useEffect changed size between renders',
+                    )
+            ) {
+                dragSensorErrors.push(message.text());
+            }
+        });
+
+        await mount(<RaisedBedFieldDndDialogStory scenario={cartScenario()} />);
+        await page.getByRole('button', { name: 'Toggle dialog' }).click();
+
+        await expect(page.getByRole('dialog')).toBeVisible();
+        await page.waitForTimeout(100);
+        expect(dragSensorErrors).toEqual([]);
     });
 
     test('planted growing field renders lifecycle progress and no indicator stack', async ({

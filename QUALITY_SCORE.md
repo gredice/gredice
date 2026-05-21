@@ -62,7 +62,7 @@ If a required command cannot run because of missing secrets, unavailable service
 
 - Unit-test pure domain logic, parsing, validation, and repository behavior.
 - Use Playwright for app flows, accessibility, and user-visible regressions.
-- For `apps/www`, preserve sitemap-driven tests and visual test workflows when public pages change.
+- For `apps/www`, preserve sitemap-driven public route, accessibility, and metadata tests when public pages change.
 - For storage changes, run the relevant storage tests. Remember that storage tests manage their own test database scripts.
 - For API route changes, test validation, auth, success, and failure responses.
 - For shared UI, add or update Storybook stories and test the consuming app when behavior changes.

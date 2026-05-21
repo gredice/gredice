@@ -5,7 +5,7 @@ Use this guide for repo layout, setup, commands, package boundaries, and local d
 ## Repository layout
 
 - `apps/api`: Next.js app exposing API routes, OpenAPI documentation, Stripe cron routes, internal cron routes, and API Playwright tests.
-- `apps/www`: public marketing and commerce site. It owns SEO-heavy public pages, sitemap generation, accessibility tests, and visual tests.
+- `apps/www`: public marketing and commerce site. It owns SEO-heavy public pages, sitemap generation, accessibility tests, and public route tests.
 - `apps/garden`: customer garden experience and game-facing UI.
 - `apps/farm`: farm back-office application.
 - `apps/app`: internal operations/admin application.
@@ -195,7 +195,7 @@ Do not use `pnpm dev` as the default Codex validation path. It starts the local 
 
 Avoid `pnpm bootstrap` in Codex unless Vercel auth and project access are configured. It links projects and pulls real environment variables. For most Codex tasks, the checked-in `.env.example` files provide enough safe smoke-test configuration.
 
-For secret-backed integration or visual tests, create a separate Codex environment with the required Vercel credentials, then run:
+For secret-backed integration tests, create a separate Codex environment with the required Vercel credentials, then run:
 
 ```bash
 npm i -g vercel@latest
@@ -218,7 +218,7 @@ Use Docker or local Postgres when validating behavior that depends on exact Post
 Each app now includes a checked-in `.env.example` (or `.env.test.example` where needed) with safe local defaults for smoke tests. Copy the file to `.env` in each app when starting from a fresh worktree.
 
 - Local smoke tests should run with placeholders for analytics, email, payment, and similar nonessential integrations.
-- Integration or visual tests that validate those providers still require real secrets pulled from Vercel (`pnpm env:pull`) or another secure secret source.
+- Integration tests that validate those providers still require real secrets pulled from Vercel (`pnpm env:pull`) or another secure secret source.
 - Never commit real secrets; keep examples sanitized and use them as shape documentation only.
 
 ## Asset generation

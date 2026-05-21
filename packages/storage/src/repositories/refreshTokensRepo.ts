@@ -48,7 +48,10 @@ export async function createRefreshToken(userId: string) {
     return token;
 }
 
-export async function doUseRefreshToken(token: string) {
+async function findRefreshTokenRecord(
+    token: string,
+    { deleteExpired }: { deleteExpired: boolean },
+) {
     const parsed = parseRefreshToken(token);
     if (!parsed) {
         console.warn('Invalid refresh token format received');
@@ -65,9 +68,11 @@ export async function doUseRefreshToken(token: string) {
     // Use a 1-second buffer to prevent edge cases where token expires during processing
     const expiryBuffer = 1000;
     if (record.expiresAt.getTime() <= Date.now() + expiryBuffer) {
-        await storage()
-            .delete(refreshTokens)
-            .where(eq(refreshTokens.id, record.id));
+        if (deleteExpired) {
+            await storage()
+                .delete(refreshTokens)
+                .where(eq(refreshTokens.id, record.id));
+        }
         return null;
     }
 
@@ -76,6 +81,30 @@ export async function doUseRefreshToken(token: string) {
             'Invalid refresh token hash attempt for token ID:',
             parsed.tokenId,
         );
+        return null;
+    }
+
+    return record;
+}
+
+export async function getRefreshTokenUserId(token: string) {
+    const record = await findRefreshTokenRecord(token, {
+        deleteExpired: false,
+    });
+    if (!record) {
+        return null;
+    }
+
+    return {
+        userId: record.userId,
+    };
+}
+
+export async function doUseRefreshToken(token: string) {
+    const record = await findRefreshTokenRecord(token, {
+        deleteExpired: true,
+    });
+    if (!record) {
         return null;
     }
 

@@ -1,6 +1,7 @@
 import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
 import type { useShoppingCart } from '../../../hooks/useShoppingCart';
+import { formatSunflowers } from '../../../utils/sunflowerPricing';
 
 export function SunflowerCheckoutBalance({
     cart,
@@ -20,8 +21,4 @@ export function SunflowerCheckoutBalance({
             </Row>
         </div>
     );
-}
-
-function formatSunflowers(value: number) {
-    return value.toLocaleString('hr-HR');
 }

@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { useSunflowerTransferAnimation } from '../../../indicators/SunflowerTransfer/useSunflowerTransferAnimation';
 import {
     calculateSunflowerAmountFromPrices,
+    formatSunflowers,
     getEffectiveEurPrice,
 } from '../../../utils/sunflowerPricing';
 
@@ -35,6 +36,9 @@ export function ButtonPricePickPaymentMethod({
         discountPrice,
     });
     const displayPrice = isSunflower ? requiredSunflowers : effectivePrice;
+    const formattedDisplayPrice = isSunflower
+        ? formatSunflowers(displayPrice)
+        : displayPrice.toFixed(2);
     const canAffordSunflowers =
         availableSunflowers !== undefined
             ? availableSunflowers >= requiredSunflowers
@@ -57,7 +61,7 @@ export function ButtonPricePickPaymentMethod({
         <Row spacing={1}>
             {/* Price Display */}
             <Typography level="body1" semiBold>
-                {displayPrice.toFixed(2)}
+                {formattedDisplayPrice}
             </Typography>
 
             {/* Custom Switch */}
@@ -78,8 +82,8 @@ export function ButtonPricePickPaymentMethod({
                 aria-checked={isSunflower}
                 aria-label={
                     isSunflower
-                        ? `Plaćanje suncokretima, ${requiredSunflowers.toLocaleString('hr-HR')} suncokreta`
-                        : `Plaćanje eurima, prebaci na ${requiredSunflowers.toLocaleString('hr-HR')} suncokreta`
+                        ? `Plaćanje suncokretima, ${formatSunflowers(requiredSunflowers)} suncokreta`
+                        : `Plaćanje eurima, prebaci na ${formatSunflowers(requiredSunflowers)} suncokreta`
                 }
                 title={
                     isToggleDisabled && !isSunflower

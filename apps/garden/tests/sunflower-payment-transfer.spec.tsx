@@ -68,4 +68,13 @@ test.describe('sunflower payment transfer', () => {
             page.locator('[data-sunflower-transfer-layer]'),
         ).toHaveCount(0);
     });
+
+    test('shows sunflower prices without cents', async ({ mount, page }) => {
+        await mount(
+            <SunflowerPaymentTransferStory initialIsSunflower={true} />,
+        );
+
+        await expect(page.getByText('2.500')).toBeVisible();
+        await expect(page.getByText('2500.00')).toHaveCount(0);
+    });
 });

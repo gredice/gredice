@@ -5,9 +5,10 @@ import { ListItem } from '@gredice/ui/ListItem';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { Empty } from '@signalco/ui-icons';
+import { Empty, ShoppingCart as ShoppingCartIcon } from '@signalco/ui-icons';
 import Image from 'next/image';
 import { useCurrentAccount } from '../../hooks/useCurrentAccount';
+import { formatSunflowers } from '../../utils/sunflowerPricing';
 import { NoSunflowersPlaceholder } from './NoSunflowersPlaceholder';
 
 function sunflowerReasonToDescription(reason: string) {
@@ -118,10 +119,18 @@ function sunflowerReasonToDescription(reason: string) {
     return { icon: <Empty className="size-10" />, label: 'Nepoznato' };
 }
 
-export function SunflowersList({ limit }: { limit?: number }) {
+export function SunflowersList({
+    limit,
+    pendingSunflowers = 0,
+}: {
+    limit?: number;
+    pendingSunflowers?: number;
+}) {
     const { data: account } = useCurrentAccount();
-    const history = account?.sunflowers.history;
-    if (!history?.length) {
+    const history = account?.sunflowers.history ?? [];
+    const hasPendingSunflowers = pendingSunflowers > 0;
+
+    if (!history.length && !hasPendingSunflowers) {
         return (
             <div className="px-2 py-4">
                 <NoSunflowersPlaceholder />
@@ -159,10 +168,37 @@ export function SunflowersList({ limit }: { limit?: number }) {
         (typeof history)[0] & { count: number; totalAmount: number }
     >());
     const historyGroupedArray = Array.from(historyGrouped.values());
-    const actualLimit = limit ?? historyGroupedArray.length;
+    const actualLimit =
+        typeof limit === 'number' && hasPendingSunflowers
+            ? Math.max(limit - 1, 0)
+            : (limit ?? historyGroupedArray.length);
 
     return (
         <List>
+            {hasPendingSunflowers && (
+                <ListItem
+                    label={
+                        <Row spacing={1} justifyContent="space-between">
+                            <Row spacing={2}>
+                                <div className="size-10 flex items-center justify-center rounded-full bg-yellow-100 text-yellow-800">
+                                    <ShoppingCartIcon className="size-5 shrink-0" />
+                                </div>
+                                <Stack>
+                                    <Typography level="body2">
+                                        U košari
+                                    </Typography>
+                                    <Typography level="body3">
+                                        Privremeno rezervirano
+                                    </Typography>
+                                </Stack>
+                            </Row>
+                            <Typography color="danger">
+                                {formatSunflowers(-pendingSunflowers)}
+                            </Typography>
+                        </Row>
+                    }
+                />
+            )}
             {historyGroupedArray.slice(0, actualLimit).map((event) => {
                 const description = sunflowerReasonToDescription(
                     typeof event.reason === 'string' ? event.reason : '',
@@ -204,8 +240,8 @@ export function SunflowersList({ limit }: { limit?: number }) {
                                     }
                                 >
                                     {event.totalAmount > 0
-                                        ? `+${event.totalAmount}`
-                                        : event.totalAmount}
+                                        ? `+${formatSunflowers(event.totalAmount)}`
+                                        : formatSunflowers(event.totalAmount)}
                                 </Typography>
                             </Row>
                         }

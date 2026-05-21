@@ -4,7 +4,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { Check } from '@signalco/ui-icons';
+import { Check, Navigate } from '@signalco/ui-icons';
 import { type CSSProperties, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
@@ -104,7 +104,12 @@ export function RaisedBedFieldHud(_props: {
                         modal={false}
                         className="md:border-tertiary md:border-b-4"
                         trigger={
-                            <ButtonGreen fullWidth>
+                            <ButtonGreen
+                                fullWidth
+                                endDecorator={
+                                    <Navigate className="size-4 shrink-0" />
+                                }
+                            >
                                 <Row spacing={1}>
                                     <RaisedBedIcon
                                         physicalId={raisedBed.physicalId}

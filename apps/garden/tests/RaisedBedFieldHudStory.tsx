@@ -1,8 +1,9 @@
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
-import { type PropsWithChildren, useMemo } from 'react';
+import { type PropsWithChildren, useMemo, useState } from 'react';
 import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/GameAnalyticsContext';
 import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
+import { RaisedBedField } from '../../../packages/game/src/hud/raisedBed/RaisedBedField';
 import { RaisedBedFieldItem } from '../../../packages/game/src/hud/raisedBed/RaisedBedFieldItem';
 import {
     createGameState,
@@ -149,6 +150,36 @@ export function RaisedBedFieldHudStory({
                     isCartPending={false}
                     raisedBedId={TEST_RAISED_BED_ID}
                     positionIndex={positionIndex}
+                />
+            </div>
+        </RaisedBedHudTestProviders>
+    );
+}
+
+export function RaisedBedFieldDndDialogStory({
+    scenario,
+}: {
+    scenario: RaisedBedScenario;
+}) {
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+    return (
+        <RaisedBedHudTestProviders scenario={scenario}>
+            <button
+                type="button"
+                onClick={() => setIsDialogOpen((open) => !open)}
+            >
+                Toggle dialog
+            </button>
+            {isDialogOpen && (
+                <div role="dialog" data-state="open">
+                    Test dialog
+                </div>
+            )}
+            <div className="size-60">
+                <RaisedBedField
+                    gardenId={TEST_GARDEN_ID}
+                    raisedBedId={TEST_RAISED_BED_ID}
                 />
             </div>
         </RaisedBedHudTestProviders>

@@ -6,12 +6,18 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
-import { Info, Navigate } from '@signalco/ui-icons';
+import {
+    Info,
+    Navigate,
+    ShoppingCart as ShoppingCartIcon,
+} from '@signalco/ui-icons';
 import Image from 'next/image';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
 import { useDailyReward } from '../hooks/useDailyReward';
+import { useShoppingCart } from '../hooks/useShoppingCart';
 import { KnownPages } from '../knownPages';
 import { SunflowersList } from '../shared-ui/sunflowers/SunflowersList';
+import { formatSunflowers } from '../utils/sunflowerPricing';
 import { HudCard } from './components/HudCard';
 
 function DailyRewardInfo() {
@@ -106,7 +112,7 @@ export function SunflowersInfoTooltipContent() {
     );
 }
 
-function SunflowersCard() {
+function SunflowersCard({ pendingSunflowers }: { pendingSunflowers: number }) {
     const [, setProfileModalOpen] = useSearchParam('pregled');
 
     return (
@@ -132,7 +138,7 @@ function SunflowersCard() {
             <Divider />
             <DailyRewardInfo />
             <Divider />
-            <SunflowersList limit={5} />
+            <SunflowersList limit={5} pendingSunflowers={pendingSunflowers} />
             <Divider />
             <Stack>
                 <Button
@@ -151,7 +157,13 @@ function SunflowersCard() {
 
 function SunflowersAmount() {
     const { data: account, isLoading } = useCurrentAccount();
+    const { data: cart } = useShoppingCart();
     const sunflowerCount = account?.sunflowers.amount;
+    const pendingSunflowers = cart?.totalSunflowers ?? 0;
+    const displayedSunflowerCount =
+        typeof sunflowerCount === 'number'
+            ? sunflowerCount - pendingSunflowers
+            : undefined;
 
     if (isLoading) {
         return null;
@@ -176,15 +188,27 @@ function SunflowersAmount() {
                             height={24}
                         />
                     }
-                    className="rounded-full px-2 md:min-w-20 justify-between pr-4"
+                    className="relative rounded-full px-2 md:min-w-20 justify-between pr-4"
                 >
                     <Typography level="body2" className="text-base pl-0.5">
-                        {sunflowerCount}
+                        {typeof displayedSunflowerCount === 'number'
+                            ? formatSunflowers(displayedSunflowerCount)
+                            : sunflowerCount}
                     </Typography>
+                    {pendingSunflowers > 0 && (
+                        <span
+                            aria-hidden="true"
+                            title={`U košari: ${formatSunflowers(pendingSunflowers)} 🌻`}
+                            data-sunflowers-cart-indicator
+                            className="pointer-events-none absolute -right-1 -top-1 flex size-6 items-center justify-center rounded-full border border-background bg-neutral-100 text-neutral-900 shadow-sm"
+                        >
+                            <ShoppingCartIcon className="size-[18px] shrink-0" />
+                        </span>
+                    )}
                 </Button>
             }
         >
-            <SunflowersCard />
+            <SunflowersCard pendingSunflowers={pendingSunflowers} />
         </Popper>
     );
 }

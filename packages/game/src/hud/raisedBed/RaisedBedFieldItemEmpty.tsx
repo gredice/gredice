@@ -198,7 +198,7 @@ export function RaisedBedFieldItemEmpty({
                                 }
                                 onKeyDown={(event) => event.stopPropagation()}
                             >
-                                <ShoppingCart className="size-[18px] stroke-tertiary" />
+                                <ShoppingCart className="size-[18px] text-foreground dark:text-[hsl(28_47.4%_11.2%)]" />
                             </button>
                         }
                         {...plantPickerProps}
