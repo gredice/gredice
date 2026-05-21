@@ -1,6 +1,7 @@
 import { Row } from '@signalco/ui-primitives/Row';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import type { useShoppingCart } from '../../../hooks/useShoppingCart';
+import { formatSunflowers } from '../../../utils/sunflowerPricing';
 
 export function SunflowerCheckoutBalance({
     cart,
@@ -20,8 +21,4 @@ export function SunflowerCheckoutBalance({
             </Row>
         </div>
     );
-}
-
-function formatSunflowers(value: number) {
-    return value.toLocaleString('hr-HR');
 }

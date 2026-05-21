@@ -26,11 +26,13 @@ import {
     DeliveryStep,
 } from '../shared-ui/delivery/DeliveryStep';
 import { useShoppingCartOpenParam } from '../useUrlState';
-import { calculateSunflowerAmountFromPrices } from '../utils/sunflowerPricing';
+import {
+    calculateSunflowerAmountFromPrices,
+    formatSunflowers,
+} from '../utils/sunflowerPricing';
 import { HudCard } from './components/HudCard';
 import { ButtonConfirmPayment } from './components/shopping-cart/ButtonConfirmPayment';
 import { ShoppingCartItem } from './components/shopping-cart/ShoppingCartItem';
-import { SunflowerCheckoutBalance } from './components/shopping-cart/SunflowerCheckoutBalance';
 
 export function ShoppingCart() {
     const { data: account } = useCurrentAccount();
@@ -181,7 +183,6 @@ export function ShoppingCart() {
                             ))}
                     </Stack>
                     <Stack className="border-t mt-4 pt-2" spacing={1}>
-                        <SunflowerCheckoutBalance cart={cart} />
                         <Row
                             justifyContent="space-between"
                             alignItems="start"
@@ -195,7 +196,9 @@ export function ShoppingCart() {
                                 {(cart?.totalSunflowers ?? 0) > 0 && (
                                     <Typography level="body1" bold>
                                         {(cart?.totalSunflowers ?? 0) > 0
-                                            ? `${cart?.totalSunflowers ?? 0}`
+                                            ? formatSunflowers(
+                                                  cart?.totalSunflowers ?? 0,
+                                              )
                                             : '0'}{' '}
                                         <span className={'text-lg'}>🌻</span>
                                     </Typography>

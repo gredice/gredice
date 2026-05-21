@@ -1,5 +1,5 @@
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
-import { Check } from '@signalco/ui-icons';
+import { Check, Navigate } from '@signalco/ui-icons';
 import { cx } from '@signalco/ui-primitives/cx';
 import { Modal } from '@signalco/ui-primitives/Modal';
 import { Row } from '@signalco/ui-primitives/Row';
@@ -104,7 +104,12 @@ export function RaisedBedFieldHud(_props: {
                         modal={false}
                         className="md:border-tertiary md:border-b-4"
                         trigger={
-                            <ButtonGreen fullWidth>
+                            <ButtonGreen
+                                fullWidth
+                                endDecorator={
+                                    <Navigate className="size-4 shrink-0" />
+                                }
+                            >
                                 <Row spacing={1}>
                                     <RaisedBedIcon
                                         physicalId={raisedBed.physicalId}
