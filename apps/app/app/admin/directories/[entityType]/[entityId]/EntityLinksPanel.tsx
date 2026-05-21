@@ -1,23 +1,13 @@
 'use client';
 
 import type { IncomingEntityLinkGroup } from '@gredice/storage';
-import { Close, Link as LinkIcon, LoaderSpinner } from '@signalco/ui-icons';
-import {
-    Card,
-    CardHeader,
-    CardOverflow,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { ExternalLink, LoaderSpinner } from '@signalco/ui-icons';
+import { Button } from '@signalco/ui-primitives/Button';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { KnownPages } from '../../../../../src/KnownPages';
 import { getEntityIncomingLinksAction } from '../../../../(actions)/entityActions';
+import { EntityDetailsPanelCard } from './EntityDetailsPanelCard';
 
 type LoadState =
     | { status: 'idle' }
@@ -26,29 +16,9 @@ type LoadState =
     | { status: 'error'; message: string };
 
 export function EntityLinksPanel({ entityId }: { entityId: number }) {
-    const [open, setOpen] = useState(false);
     const [loadState, setLoadState] = useState<LoadState>({ status: 'idle' });
-    const hasFetchedRef = useRef(false);
 
-    useEffect(() => {
-        if (!open) {
-            return;
-        }
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
-                event.preventDefault();
-                event.stopPropagation();
-                setOpen(false);
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown, { capture: true });
-        return () =>
-            window.removeEventListener('keydown', handleKeyDown, {
-                capture: true,
-            });
-    }, [open]);
-
-    async function fetchLinks() {
+    async function loadLinks() {
         setLoadState({ status: 'loading' });
         try {
             const links = await getEntityIncomingLinksAction(entityId);
@@ -63,178 +33,116 @@ export function EntityLinksPanel({ entityId }: { entityId: number }) {
         }
     }
 
-    function handleOpen() {
-        setOpen(true);
-        if (!hasFetchedRef.current) {
-            hasFetchedRef.current = true;
-            void fetchLinks();
-        }
-    }
-
-    function handleRetry() {
-        void fetchLinks();
-    }
-
     return (
-        <>
-            <IconButton
-                variant="plain"
-                title="Povezani zapisi"
-                onClick={handleOpen}
-            >
-                <LinkIcon className="size-5" />
-            </IconButton>
-            <div
-                className={cx(
-                    'fixed inset-0 z-50 transition-opacity duration-200',
-                    open ? 'opacity-100' : 'pointer-events-none opacity-0',
-                )}
-                aria-hidden={!open}
-            >
-                <button
-                    type="button"
-                    aria-label="Zatvori panel"
-                    tabIndex={open ? 0 : -1}
-                    className="absolute inset-0 bg-background/60 backdrop-blur-sm"
-                    onClick={() => setOpen(false)}
+        <EntityDetailsPanelCard title="Povezani zapisi">
+            <div className="space-y-3 px-4 pt-2">
+                <EntityLinksContent
+                    state={loadState}
+                    onLoad={() => {
+                        void loadLinks();
+                    }}
                 />
-                <aside
-                    role="dialog"
-                    aria-label="Povezani zapisi"
-                    className={cx(
-                        'absolute right-0 top-0 h-full w-full max-w-md transform border-l bg-background shadow-2xl transition-transform duration-200',
-                        open ? 'translate-x-0' : 'translate-x-full',
-                    )}
-                >
-                    <Stack className="h-full">
-                        <Row
-                            justifyContent="space-between"
-                            className="items-center border-b px-4 py-3"
-                        >
-                            <Typography level="h5" semiBold>
-                                Povezani zapisi
-                            </Typography>
-                            <IconButton
-                                variant="plain"
-                                title="Zatvori"
-                                onClick={() => setOpen(false)}
-                            >
-                                <Close className="size-5" />
-                            </IconButton>
-                        </Row>
-                        <div className="grow overflow-y-auto p-4">
-                            <EntityLinksContent
-                                state={loadState}
-                                onRetry={handleRetry}
-                            />
-                        </div>
-                    </Stack>
-                </aside>
             </div>
-        </>
+        </EntityDetailsPanelCard>
     );
 }
 
 function EntityLinksContent({
     state,
-    onRetry,
+    onLoad,
 }: {
     state: LoadState;
-    onRetry: () => void;
+    onLoad: () => void;
 }) {
-    if (state.status === 'idle' || state.status === 'loading') {
+    if (state.status === 'idle') {
         return (
-            <Row spacing={2} className="items-center">
+            <div className="flex justify-center">
+                <Button type="button" size="sm" onClick={onLoad}>
+                    Učitaj
+                </Button>
+            </div>
+        );
+    }
+
+    if (state.status === 'loading') {
+        return (
+            <div className="flex items-center gap-2 rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
                 <LoaderSpinner className="size-4 animate-spin" />
-                <Typography secondary>Učitavanje...</Typography>
-            </Row>
+                <span>Učitavanje...</span>
+            </div>
         );
     }
 
     if (state.status === 'error') {
         return (
-            <Card className="p-4">
-                <Stack spacing={2}>
-                    <Typography>{state.message}</Typography>
-                    <button
-                        type="button"
-                        onClick={onRetry}
-                        className="self-start text-sm text-primary underline"
-                    >
-                        Pokušaj ponovno
-                    </button>
-                </Stack>
-            </Card>
+            <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">{state.message}</p>
+                <div className="flex justify-center">
+                    <Button type="button" size="sm" onClick={onLoad}>
+                        Ponovno
+                    </Button>
+                </div>
+            </div>
         );
     }
 
     if (state.links.length === 0) {
         return (
-            <Card className="p-4">
-                <Typography secondary>
-                    Nema zapisa koji trenutno referenciraju ovaj zapis.
-                </Typography>
-            </Card>
+            <p className="rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+                Nema zapisa koji trenutno referenciraju ovaj zapis.
+            </p>
         );
     }
 
     return (
-        <Stack spacing={2}>
+        <div className="space-y-4">
             {state.links.map((group) => (
-                <IncomingLinksGroupTable
-                    key={group.entityTypeName}
-                    group={group}
-                />
+                <IncomingLinksGroup key={group.entityTypeName} group={group} />
             ))}
-        </Stack>
+        </div>
     );
 }
 
-function IncomingLinksGroupTable({
-    group,
-}: {
-    group: IncomingEntityLinkGroup;
-}) {
+function IncomingLinksGroup({ group }: { group: IncomingEntityLinkGroup }) {
     return (
-        <Card className="p-4">
-            <CardHeader>
-                <CardTitle>{group.entityTypeLabel}</CardTitle>
-            </CardHeader>
-            <CardOverflow>
-                <Table>
-                    <Table.Header>
-                        <Table.Row>
-                            <Table.Head>Zapis</Table.Head>
-                            <Table.Head>Povezani atributi</Table.Head>
-                        </Table.Row>
-                    </Table.Header>
-                    <Table.Body>
-                        {group.entities.map((sourceEntity) => (
-                            <Table.Row key={sourceEntity.id}>
-                                <Table.Cell>
-                                    <Link
-                                        href={KnownPages.DirectoryEntity(
-                                            group.entityTypeName,
-                                            sourceEntity.id,
-                                        )}
-                                    >
-                                        <Typography>
-                                            {sourceEntity.displayName}
-                                        </Typography>
-                                    </Link>
-                                </Table.Cell>
-                                <Table.Cell>
-                                    <Typography secondary>
-                                        {sourceEntity.linkedBy
-                                            .map((attribute) => attribute.label)
-                                            .join(', ')}
-                                    </Typography>
-                                </Table.Cell>
-                            </Table.Row>
-                        ))}
-                    </Table.Body>
-                </Table>
-            </CardOverflow>
-        </Card>
+        <section className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+                <h4 className="min-w-0 truncate text-sm font-medium text-foreground">
+                    {group.entityTypeLabel}
+                </h4>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                    {group.entities.length}
+                </span>
+            </div>
+            <div className="overflow-hidden rounded-md border border-border/70 bg-background/40">
+                {group.entities.map((sourceEntity) => (
+                    <Link
+                        key={sourceEntity.id}
+                        href={KnownPages.DirectoryEntity(
+                            group.entityTypeName,
+                            sourceEntity.id,
+                        )}
+                        className="block border-border/70 border-b px-3 py-2 transition-colors last:border-b-0 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                        <span className="flex items-start justify-between gap-2">
+                            <span className="min-w-0">
+                                <span className="block truncate text-sm font-medium text-foreground">
+                                    {sourceEntity.displayName}
+                                </span>
+                                <span className="mt-1 block text-xs leading-snug text-muted-foreground">
+                                    {sourceEntity.linkedBy
+                                        .map((attribute) => attribute.label)
+                                        .join(', ')}
+                                </span>
+                            </span>
+                            <ExternalLink
+                                className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
+                                aria-hidden
+                            />
+                        </span>
+                    </Link>
+                ))}
+            </div>
+        </section>
     );
 }

@@ -26,18 +26,14 @@ test('transformEntityToSectionData maps supported entity type to deterministic s
 
     assert.deepStrictEqual(transformEntityToSectionData(entity), [
         {
-            component: 'header',
-            data: {
-                title: 'Mulching',
-                subtitle: 'Protects soil moisture.',
-                image: 'https://cdn.gredice.com/operation/mulching.jpg',
-            },
+            component: 'PageHeader',
+            header: 'Mulching',
+            description: 'Protects soil moisture.',
         },
         {
-            component: 'richtext',
-            data: {
-                content: 'Apply mulch around plants to reduce water loss.',
-            },
+            component: 'Heading1',
+            header: 'Opis',
+            description: 'Apply mulch around plants to reduce water loss.',
         },
     ]);
 });
@@ -60,19 +56,94 @@ test('transformEntityToSectionData throws validation error when required field i
     );
 });
 
-test('transformEntityToSectionData fails for unsupported entity type', () => {
+test('transformEntityToSectionData falls back for unsupported entity type', () => {
     const entity: EntitySectionTransformInput = {
         id: 7,
         entityType: {
-            name: 'plant',
+            name: 'farmSupply',
+            label: 'Materijali i potrošni inventar',
         },
         information: {
-            label: 'Tomato',
+            label: 'BR Garden Zaštita za biljke od hladnoće 3.2x10m',
+            description: 'Zaštita za osjetljive biljke tijekom hladnijih dana.',
+            supplier: 'BR Garden',
+        },
+        attributes: {
+            category: 'odrzavanje',
+            unit: 'm',
+            price: 9.95,
         },
     };
 
-    assert.throws(
-        () => transformEntityToSectionData(entity),
-        /Unsupported entity type for page transformation: plant/,
-    );
+    assert.deepStrictEqual(transformEntityToSectionData(entity), [
+        {
+            component: 'PageHeader',
+            header: 'BR Garden Zaštita za biljke od hladnoće 3.2x10m',
+            description: 'Zaštita za osjetljive biljke tijekom hladnijih dana.',
+        },
+        {
+            component: 'Heading1',
+            header: 'Detalji',
+            description:
+                'supplier: BR Garden · category: odrzavanje · unit: m · price: 9.95',
+        },
+    ]);
+});
+
+test('transformEntityToSectionData falls back for raw plant entity attributes', () => {
+    const entity: EntitySectionTransformInput = {
+        id: 12,
+        entityType: {
+            name: 'plant',
+            label: 'Biljka',
+        },
+        attributes: [
+            {
+                value: 'Kelj pupčar',
+                attributeDefinition: {
+                    category: 'information',
+                    name: 'label',
+                    label: 'Naziv',
+                },
+            },
+            {
+                value: 'Brassica oleracea var. gemmifera',
+                attributeDefinition: {
+                    category: 'information',
+                    name: 'latinName',
+                    label: 'Latinsko ime',
+                },
+            },
+            {
+                value: 'Europa',
+                attributeDefinition: {
+                    category: 'information',
+                    name: 'origin',
+                    label: 'Porijeklo',
+                },
+            },
+            {
+                value: 'Kelj pupčar razvija stabljiku visoku oko 60-80 cm.',
+                attributeDefinition: {
+                    category: 'information',
+                    name: 'description',
+                    label: 'Opis',
+                },
+            },
+        ],
+    };
+
+    assert.deepStrictEqual(transformEntityToSectionData(entity), [
+        {
+            component: 'PageHeader',
+            header: 'Kelj pupčar',
+            description: 'Kelj pupčar razvija stabljiku visoku oko 60-80 cm.',
+        },
+        {
+            component: 'Heading1',
+            header: 'Detalji',
+            description:
+                'Latinsko ime: Brassica oleracea var. gemmifera · Porijeklo: Europa',
+        },
+    ]);
 });

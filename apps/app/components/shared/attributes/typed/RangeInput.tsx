@@ -2,6 +2,7 @@ import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
 import { useMemo, useState } from 'react';
 import type { AttributeInputProps } from '../AttributeInputProps';
+import { attributeUnitDecorator } from './AttributeUnitDecorator';
 
 function parseRangeDefinition(dataType: string | undefined): {
     minBound: number;
@@ -82,7 +83,7 @@ export function RangeInput({
                 value={rangeMinValue}
                 onChange={(event) => setRangeMinValue(event.target.value)}
                 onBlur={handleBlur}
-                endDecorator={attributeDefinition?.unit}
+                endDecorator={attributeUnitDecorator(attributeDefinition?.unit)}
             />
             <Input
                 className="w-24"
@@ -94,7 +95,7 @@ export function RangeInput({
                 value={rangeMaxValue}
                 onChange={(event) => setRangeMaxValue(event.target.value)}
                 onBlur={handleBlur}
-                endDecorator={attributeDefinition?.unit}
+                endDecorator={attributeUnitDecorator(attributeDefinition?.unit)}
             />
         </Row>
     );

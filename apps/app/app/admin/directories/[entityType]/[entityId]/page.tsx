@@ -411,6 +411,7 @@ export default async function EntityDetailsPage(props: {
                     upsertInventoryAction={upsertInventoryAction}
                 />
             )}
+            <EntityLinksPanel entityId={entityId} />
         </EntityDetailsPropertiesPanel>
     );
 
@@ -443,7 +444,6 @@ export default async function EntityDetailsPage(props: {
                     actions={
                         <Row className="items-center" spacing={1}>
                             <EntityDetailsSaveIndicator />
-                            <EntityLinksPanel entityId={entityId} />
                             <EntityDetailsPropertiesToggle />
                             <EntityActions
                                 entity={entity}
@@ -510,21 +510,21 @@ export default async function EntityDetailsPage(props: {
                             ))}
 
                             <TabsContent value="history" key="history">
-                                <FieldSet>
-                                    {revisions.length === 0 ? (
+                                {revisions.length === 0 ? (
+                                    <FieldSet>
                                         <Field
                                             name="Povijest"
                                             value="Nema promjena"
                                         />
-                                    ) : (
-                                        <HistoryRevisionListClient
-                                            revisions={revisions}
-                                            attributeDefinitions={
-                                                attributeDefinitions
-                                            }
-                                        />
-                                    )}
-                                </FieldSet>
+                                    </FieldSet>
+                                ) : (
+                                    <HistoryRevisionListClient
+                                        revisions={revisions}
+                                        attributeDefinitions={
+                                            attributeDefinitions
+                                        }
+                                    />
+                                )}
                             </TabsContent>
                         </Stack>
                     </Tabs>

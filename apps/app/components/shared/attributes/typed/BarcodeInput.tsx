@@ -2,6 +2,7 @@ import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
 import { useState } from 'react';
 import type { AttributeInputProps } from '../AttributeInputProps';
+import { attributeUnitDecorator } from './AttributeUnitDecorator';
 import { BarcodeScanButton } from './BarcodeScanButton';
 
 export function BarcodeInput({
@@ -28,7 +29,7 @@ export function BarcodeInput({
                 onChange={(e) => handleOnChange(e.target.value)}
                 onBlur={handleOnBlur}
                 fullWidth
-                endDecorator={attributeDefinition?.unit}
+                endDecorator={attributeUnitDecorator(attributeDefinition?.unit)}
             />
             <BarcodeScanButton onScan={handleScan} />
         </Row>

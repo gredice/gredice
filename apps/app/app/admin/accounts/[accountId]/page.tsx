@@ -2,14 +2,21 @@ import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
 import { ModalConfirm } from '@signalco/ui/ModalConfirm';
 import { Delete } from '@signalco/ui-icons';
 import { Button } from '@signalco/ui-primitives/Button';
+import { Row } from '@signalco/ui-primitives/Row';
 import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import {
+    EntityDetailsPanelCard,
+    EntityDetailsPropertiesLayout,
+    EntityDetailsPropertiesPanel,
+    EntityDetailsPropertiesProvider,
+    EntityDetailsPropertiesToggle,
+    EntityDetailsPropertyList,
+    type EntityDetailsPropertyListItem,
+} from '../../../../components/admin/details';
 import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { NotificationsTableCard } from '../../../../components/notifications/NotificationsTableCard';
-import { Field } from '../../../../components/shared/fields/Field';
-import { FieldSet } from '../../../../components/shared/fields/FieldSet';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { sendDeleteAccountEmail } from '../../../(actions)/accountsActions';
@@ -37,69 +44,80 @@ export default async function AccountPage({
 
     const actionBound = sendDeleteAccountEmail.bind(null, accountId);
     const currentTimeZone = await getAccountTimeZone(accountId);
+    const propertyItems: EntityDetailsPropertyListItem[] = [
+        { id: 'account-id', label: 'ID računa', value: accountId, mono: true },
+        {
+            id: 'time-zone',
+            label: 'Vremenska zona',
+            value: (
+                <AccountTimeZonePicker
+                    accountId={accountId}
+                    currentTimeZone={currentTimeZone}
+                />
+            ),
+        },
+    ];
+    const propertiesPanel = (
+        <EntityDetailsPropertiesPanel>
+            <EntityDetailsPanelCard title="Detalji">
+                <EntityDetailsPropertyList items={propertyItems} />
+            </EntityDetailsPanelCard>
+        </EntityDetailsPropertiesPanel>
+    );
 
     return (
-        <Stack spacing={4}>
-            <AdminPageTitle title={`Račun ${accountId}`} />
-            <AdminPageHeader
-                breadcrumbs={
-                    <Breadcrumbs
-                        items={[
-                            {
-                                label: <AdminBreadcrumbLevelSelector />,
-                                href: KnownPages.Accounts,
-                            },
-                            { label: accountId },
-                        ]}
-                    />
-                }
-                actions={
-                    <ModalConfirm
-                        title="Potvrda brisanja računa"
-                        header="Jeste li sigurni da želite izbrisati račun?"
-                        expectedConfirm="Da"
-                        onConfirm={actionBound}
-                        trigger={
-                            <Button
-                                startDecorator={
-                                    <Delete className="size-5 shrink-0" />
+        <EntityDetailsPropertiesProvider>
+            <Stack spacing={4}>
+                <AdminPageTitle title={`Račun ${accountId}`} />
+                <AdminPageHeader
+                    breadcrumbs={
+                        <Breadcrumbs
+                            items={[
+                                {
+                                    label: <AdminBreadcrumbLevelSelector />,
+                                    href: KnownPages.Accounts,
+                                },
+                                { label: accountId },
+                            ]}
+                        />
+                    }
+                    actions={
+                        <Row className="items-center" spacing={1}>
+                            <ModalConfirm
+                                title="Potvrda brisanja računa"
+                                header="Jeste li sigurni da želite izbrisati račun?"
+                                expectedConfirm="Da"
+                                onConfirm={actionBound}
+                                trigger={
+                                    <Button
+                                        startDecorator={
+                                            <Delete className="size-5 shrink-0" />
+                                        }
+                                    >
+                                        Brisanje računa
+                                    </Button>
                                 }
-                            >
-                                Brisanje računa
-                            </Button>
-                        }
-                    />
-                }
-                heading="Račun"
-            />
-            <Stack spacing={2}>
-                <Stack spacing={2}>
-                    <Typography level="h1" semiBold>
-                        Račun
-                    </Typography>
-                </Stack>
-                <Stack spacing={2}>
-                    <FieldSet>
-                        <Field name="ID računa" value={accountId} />
-                    </FieldSet>
-                    <AccountTimeZonePicker
-                        accountId={accountId}
-                        currentTimeZone={currentTimeZone}
-                    />
-                </Stack>
+                            />
+                            <EntityDetailsPropertiesToggle />
+                        </Row>
+                    }
+                    heading="Račun"
+                />
+                <EntityDetailsPropertiesLayout properties={propertiesPanel}>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <AccountUsersCard accountId={accountId} />
+                        <AccountGardensCard accountId={accountId} />
+                        <AccountSunflowersCard accountId={accountId} />
+                        <AccountAchievementsCard accountId={accountId} />
+                        <AccountTransactionsCard accountId={accountId} />
+                        <RaisedBedsTableCard accountId={accountId} />
+                        <AccountEventsCard accountId={accountId} />
+                        <NotificationsTableCard accountId={accountId} scroll />
+                        <AccountInventoryCard accountId={accountId} />
+                        <AccountShoppingCartsCard accountId={accountId} />
+                    </div>
+                </EntityDetailsPropertiesLayout>
             </Stack>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <AccountUsersCard accountId={accountId} />
-                <AccountGardensCard accountId={accountId} />
-                <AccountSunflowersCard accountId={accountId} />
-                <AccountAchievementsCard accountId={accountId} />
-                <AccountTransactionsCard accountId={accountId} />
-                <RaisedBedsTableCard accountId={accountId} />
-                <AccountEventsCard accountId={accountId} />
-                <NotificationsTableCard accountId={accountId} scroll />
-                <AccountInventoryCard accountId={accountId} />
-                <AccountShoppingCartsCard accountId={accountId} />
-            </div>
-        </Stack>
+        </EntityDetailsPropertiesProvider>
     );
 }

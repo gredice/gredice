@@ -4,6 +4,7 @@ import { Input } from '@signalco/ui-primitives/Input';
 import { Row } from '@signalco/ui-primitives/Row';
 import { useState } from 'react';
 import type { AttributeInputProps } from '../AttributeInputProps';
+import { attributeUnitDecorator } from './AttributeUnitDecorator';
 
 export function NumberInput({
     value,
@@ -46,7 +47,7 @@ export function NumberInput({
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onBlur={() => onChange(inputValue || null)}
-                endDecorator={attributeDefinition?.unit}
+                endDecorator={attributeUnitDecorator(attributeDefinition?.unit)}
             />
             <Button
                 className="rounded-l-none h-auto border-l-0"

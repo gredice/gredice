@@ -23,7 +23,12 @@ const MarkdownInput = dynamic(
     },
 );
 
-export function JsonInput({ value, onChange, schema }: AttributeInputProps) {
+export function JsonInput({
+    value,
+    onChange,
+    schema,
+    presentation = 'default',
+}: AttributeInputProps) {
     const [inputValue, setInputValue] = useState<Record<string, unknown>>(
         !value?.length ? {} : JSON.parse(value ?? '{}'),
     );
@@ -38,58 +43,63 @@ export function JsonInput({ value, onChange, schema }: AttributeInputProps) {
             ? unwrapSchema(schema ?? '')
             : (schema ?? {});
 
-    return (
-        <Card>
-            <Stack spacing={1}>
-                {Object.keys(schemaUnwrapped).map((key) => {
-                    let InputComponent: ComponentType<AttributeInputProps> =
-                        TextInput;
-                    if (schemaUnwrapped[key] === 'string') {
-                        InputComponent = TextInput;
-                    } else if (schemaUnwrapped[key] === 'number') {
-                        InputComponent = NumberInput;
-                    } else if (schemaUnwrapped[key] === 'boolean') {
-                        InputComponent = BooleanInput;
-                    } else if (schemaUnwrapped[key] === 'markdown') {
-                        InputComponent = MarkdownInput;
-                    } else if (schemaUnwrapped[key] === 'barcode') {
-                        InputComponent = BarcodeInput;
-                    } else if (typeof schemaUnwrapped[key] === 'object') {
-                        InputComponent = JsonInput;
-                    } else {
-                        return (
-                            <Typography
-                                key={key}
-                                level="body2"
-                                className="bg-red-600 text-white rounded-md p-4"
-                            >
-                                Type {typeof schemaUnwrapped[key]} not supported
-                            </Typography>
-                        );
-                    }
-
+    const content = (
+        <Stack spacing={1}>
+            {Object.keys(schemaUnwrapped).map((key) => {
+                let InputComponent: ComponentType<AttributeInputProps> =
+                    TextInput;
+                if (schemaUnwrapped[key] === 'string') {
+                    InputComponent = TextInput;
+                } else if (schemaUnwrapped[key] === 'number') {
+                    InputComponent = NumberInput;
+                } else if (schemaUnwrapped[key] === 'boolean') {
+                    InputComponent = BooleanInput;
+                } else if (schemaUnwrapped[key] === 'markdown') {
+                    InputComponent = MarkdownInput;
+                } else if (schemaUnwrapped[key] === 'barcode') {
+                    InputComponent = BarcodeInput;
+                } else if (typeof schemaUnwrapped[key] === 'object') {
+                    InputComponent = JsonInput;
+                } else {
                     return (
-                        <Stack spacing={0.5} key={key}>
-                            <Typography level="body2">
-                                {camelToSentenceCase(key)}
-                            </Typography>
-                            <InputComponent
-                                value={
-                                    typeof inputValue[key] === 'string'
-                                        ? inputValue[key]
-                                        : JSON.stringify(inputValue[key])
-                                }
-                                onChange={(newValue: string | null) => {
-                                    handleOnChange({
-                                        ...inputValue,
-                                        [key]: newValue,
-                                    });
-                                }}
-                            />
-                        </Stack>
+                        <Typography
+                            key={key}
+                            level="body2"
+                            className="bg-red-600 text-white rounded-md p-4"
+                        >
+                            Type {typeof schemaUnwrapped[key]} not supported
+                        </Typography>
                     );
-                })}
-            </Stack>
-        </Card>
+                }
+
+                return (
+                    <Stack spacing={0.5} key={key}>
+                        <Typography level="body2">
+                            {camelToSentenceCase(key)}
+                        </Typography>
+                        <InputComponent
+                            value={
+                                typeof inputValue[key] === 'string'
+                                    ? inputValue[key]
+                                    : JSON.stringify(inputValue[key])
+                            }
+                            onChange={(newValue: string | null) => {
+                                handleOnChange({
+                                    ...inputValue,
+                                    [key]: newValue,
+                                });
+                            }}
+                            presentation={presentation}
+                        />
+                    </Stack>
+                );
+            })}
+        </Stack>
     );
+
+    if (presentation === 'list-item') {
+        return content;
+    }
+
+    return <Card>{content}</Card>;
 }

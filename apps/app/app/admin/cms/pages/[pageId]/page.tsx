@@ -15,6 +15,15 @@ import { Stack } from '@signalco/ui-primitives/Stack';
 import { Typography } from '@signalco/ui-primitives/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import {
+    EntityDetailsPanelCard,
+    EntityDetailsPropertiesLayout,
+    EntityDetailsPropertiesPanel,
+    EntityDetailsPropertiesProvider,
+    EntityDetailsPropertiesToggle,
+    EntityDetailsPropertyList,
+    type EntityDetailsPropertyListItem,
+} from '../../../../../components/admin/details';
 import { AdminPageHeader } from '../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { Field } from '../../../../../components/shared/fields/Field';
@@ -108,157 +117,200 @@ export default async function CmsPageDetailsPage({
     const unpublishAction = unpublishCmsPageAction.bind(null, id);
     const deleteAction = deleteCmsPageAction.bind(null, id);
     const isPublished = page.state === 'published';
+    const propertyItems: EntityDetailsPropertyListItem[] = [
+        { id: 'path', label: 'Putanja', value: cmsPagePublicPath(page) },
+        {
+            id: 'status',
+            label: 'Status',
+            value: <CmsPageStateChip state={page.state} />,
+        },
+        {
+            id: 'published-at',
+            label: 'Datum objave',
+            value: publishedAtValue(page),
+        },
+        { id: 'created-at', label: 'Datum kreiranja', value: page.createdAt },
+        {
+            id: 'updated-at',
+            label: 'Datum zadnje izmjene',
+            value: page.updatedAt,
+        },
+        {
+            id: 'meta-title',
+            label: 'Meta naslov',
+            value: page.metaTitle ?? '-',
+        },
+        {
+            id: 'meta-description',
+            label: 'Meta opis',
+            value: page.metaDescription ? (
+                <span className="whitespace-pre-line">
+                    {page.metaDescription}
+                </span>
+            ) : (
+                '-'
+            ),
+        },
+        {
+            id: 'meta-image',
+            label: 'Meta slika',
+            value: page.metaImageUrl ?? '-',
+        },
+    ];
+    const propertiesPanel = (
+        <EntityDetailsPropertiesPanel>
+            <EntityDetailsPanelCard title="Detalji">
+                <EntityDetailsPropertyList items={propertyItems} />
+            </EntityDetailsPanelCard>
+        </EntityDetailsPropertiesPanel>
+    );
 
     return (
-        <Stack spacing={4}>
-            <AdminPageHeader
-                breadcrumbs={
-                    <Breadcrumbs
-                        items={[
-                            {
-                                label: <AdminBreadcrumbLevelSelector />,
-                            },
-                            {
-                                label: 'Stranice',
-                                href: KnownPages.CmsPages,
-                            },
-                            { label: page.title },
-                        ]}
-                    />
-                }
-                actions={
-                    <Row spacing={1} className="items-center">
-                        <Link href={KnownPages.CmsPageEdit(id)}>
-                            <Row
-                                spacing={1}
-                                className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
+        <EntityDetailsPropertiesProvider>
+            <Stack spacing={4}>
+                <AdminPageHeader
+                    breadcrumbs={
+                        <Breadcrumbs
+                            items={[
+                                {
+                                    label: <AdminBreadcrumbLevelSelector />,
+                                },
+                                {
+                                    label: 'Stranice',
+                                    href: KnownPages.CmsPages,
+                                },
+                                { label: page.title },
+                            ]}
+                        />
+                    }
+                    actions={
+                        <Row spacing={1} className="items-center">
+                            <Link href={KnownPages.CmsPageEdit(id)}>
+                                <Row
+                                    spacing={1}
+                                    className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
+                                >
+                                    <Edit className="size-4" />
+                                    <span>Uredi</span>
+                                </Row>
+                            </Link>
+                            <Link
+                                href={KnownPages.CmsPagePreview(id)}
+                                target="_blank"
                             >
-                                <Edit className="size-4" />
-                                <span>Uredi</span>
-                            </Row>
-                        </Link>
-                        <Link
-                            href={KnownPages.CmsPagePreview(id)}
-                            target="_blank"
-                        >
-                            <Row
-                                spacing={1}
-                                className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
-                            >
-                                <ExternalLink className="size-4" />
-                                <span>Preview</span>
-                            </Row>
-                        </Link>
-                        <form
-                            action={
-                                isPublished ? unpublishAction : publishAction
-                            }
-                        >
-                            <Button
-                                variant={isPublished ? 'outlined' : 'solid'}
-                                type="submit"
-                                startDecorator={
-                                    <Megaphone className="size-4" />
+                                <Row
+                                    spacing={1}
+                                    className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
+                                >
+                                    <ExternalLink className="size-4" />
+                                    <span>Preview</span>
+                                </Row>
+                            </Link>
+                            <form
+                                action={
+                                    isPublished
+                                        ? unpublishAction
+                                        : publishAction
                                 }
                             >
-                                {isPublished ? 'Vrati u izradu' : 'Objavi'}
-                            </Button>
-                        </form>
-                        <form action={deleteAction}>
-                            <Button
-                                variant="solid"
-                                color="danger"
-                                type="submit"
-                                startDecorator={<Delete className="size-4" />}
-                            >
-                                Obriši
-                            </Button>
-                        </form>
-                    </Row>
-                }
-                heading={page.title}
-            />
-            <Stack spacing={2}>
-                {resolvedSearchParams.publishError && (
-                    <Card className="border-red-200 bg-red-50 px-4 py-3 text-red-700">
-                        {resolvedSearchParams.publishError}
-                    </Card>
-                )}
-                <Typography level="h2" className="text-2xl" semiBold>
-                    {page.title}
-                </Typography>
-                <FieldSet>
-                    <Field name="Putanja" value={cmsPagePublicPath(page)} />
-                    <Field
-                        name="Status"
-                        value={<CmsPageStateChip state={page.state} />}
-                    />
-                    <Field name="Datum objave" value={publishedAtValue(page)} />
-                    <Field name="Datum kreiranja" value={page.createdAt} />
-                    <Field name="Datum zadnje izmjene" value={page.updatedAt} />
-                    <Field name="Meta naslov" value={page.metaTitle ?? '-'} />
-                    <Field
-                        name="Meta opis"
-                        value={page.metaDescription ?? '-'}
-                    />
-                    <Field name="Meta slika" value={page.metaImageUrl ?? '-'} />
-                </FieldSet>
-            </Stack>
-            <Card className="max-w-4xl p-6">
-                <Stack spacing={2}>
-                    <Typography level="h3" semiBold>
-                        Sekcije stranice
-                    </Typography>
-                    {pageSections.length === 0 ? (
-                        <Typography level="body2" secondary>
-                            Nema konfiguriranih sekcija.
-                        </Typography>
-                    ) : (
-                        pageSections.map(({ key, section }, index) => (
-                            <Stack spacing={1} key={key}>
-                                <Typography level="body2">
-                                    {index + 1}. {section.component}
+                                <Button
+                                    variant={isPublished ? 'outlined' : 'solid'}
+                                    type="submit"
+                                    startDecorator={
+                                        <Megaphone className="size-4" />
+                                    }
+                                >
+                                    {isPublished ? 'Vrati u izradu' : 'Objavi'}
+                                </Button>
+                            </form>
+                            <form action={deleteAction}>
+                                <Button
+                                    variant="solid"
+                                    color="danger"
+                                    type="submit"
+                                    startDecorator={
+                                        <Delete className="size-4" />
+                                    }
+                                >
+                                    Obriši
+                                </Button>
+                            </form>
+                            <EntityDetailsPropertiesToggle />
+                        </Row>
+                    }
+                    heading={page.title}
+                />
+                <EntityDetailsPropertiesLayout properties={propertiesPanel}>
+                    <Stack spacing={4}>
+                        {resolvedSearchParams.publishError && (
+                            <Card className="border-red-200 bg-red-50 px-4 py-3 text-red-700">
+                                {resolvedSearchParams.publishError}
+                            </Card>
+                        )}
+                        <Card className="max-w-4xl p-6">
+                            <Stack spacing={2}>
+                                <Typography level="h3" semiBold>
+                                    Sekcije stranice
                                 </Typography>
-                                <Divider />
+                                {pageSections.length === 0 ? (
+                                    <Typography level="body2" secondary>
+                                        Nema konfiguriranih sekcija.
+                                    </Typography>
+                                ) : (
+                                    pageSections.map(
+                                        ({ key, section }, index) => (
+                                            <Stack spacing={1} key={key}>
+                                                <Typography level="body2">
+                                                    {index + 1}.{' '}
+                                                    {section.component}
+                                                </Typography>
+                                                <Divider />
+                                            </Stack>
+                                        ),
+                                    )
+                                )}
                             </Stack>
-                        ))
-                    )}
-                </Stack>
-            </Card>
-            <FieldSet>
-                {revisions.length === 0 ? (
-                    <Field name="Historija" value="Nema promjena" />
-                ) : (
-                    revisions.map((revision) => (
-                        <Field
-                            key={revision.id}
-                            name={`${revision.action} • ${revision.actorName ?? 'Nepoznat korisnik'}`}
-                            value={
-                                <Row spacing={2} className="items-center">
-                                    <span>
-                                        {revision.createdAt.toISOString()}
-                                    </span>
-                                    <form
-                                        action={restoreCmsPageRevisionAction.bind(
-                                            null,
-                                            id,
-                                            revision.id,
-                                        )}
-                                    >
-                                        <Button
-                                            variant="plain"
-                                            type="submit"
-                                            className="text-xs"
-                                        >
-                                            Vrati ovu verziju
-                                        </Button>
-                                    </form>
-                                </Row>
-                            }
-                        />
-                    ))
-                )}
-            </FieldSet>
-        </Stack>
+                        </Card>
+                        <FieldSet>
+                            {revisions.length === 0 ? (
+                                <Field name="Historija" value="Nema promjena" />
+                            ) : (
+                                revisions.map((revision) => (
+                                    <Field
+                                        key={revision.id}
+                                        name={`${revision.action} • ${revision.actorName ?? 'Nepoznat korisnik'}`}
+                                        value={
+                                            <Row
+                                                spacing={2}
+                                                className="items-center"
+                                            >
+                                                <span>
+                                                    {revision.createdAt.toISOString()}
+                                                </span>
+                                                <form
+                                                    action={restoreCmsPageRevisionAction.bind(
+                                                        null,
+                                                        id,
+                                                        revision.id,
+                                                    )}
+                                                >
+                                                    <Button
+                                                        variant="plain"
+                                                        type="submit"
+                                                        className="text-xs"
+                                                    >
+                                                        Vrati ovu verziju
+                                                    </Button>
+                                                </form>
+                                            </Row>
+                                        }
+                                    />
+                                ))
+                            )}
+                        </FieldSet>
+                    </Stack>
+                </EntityDetailsPropertiesLayout>
+            </Stack>
+        </EntityDetailsPropertiesProvider>
     );
 }
