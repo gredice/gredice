@@ -106,7 +106,10 @@ async function authFromToken(token: string, roles: string[]) {
 
 export async function auth(...args: Parameters<typeof baseAuth>) {
     const [roles] = args;
-    const accessToken = await refreshSessionIfNeeded();
+    const accessToken = await refreshSessionIfNeeded({
+        // auth() is used during Server Component rendering, where cookies are read-only.
+        persistCookies: false,
+    });
     if (accessToken) {
         return await authFromToken(accessToken, roles);
     }
