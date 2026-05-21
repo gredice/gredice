@@ -30,24 +30,28 @@ export function GameHud({
     noWeather?: boolean;
 }) {
     const isCloseup = useGameState((state) => state.view) === 'closeup';
+    const closeupHiddenHudClassName = cx(
+        'empty:hidden',
+        isCloseup && 'hidden md:block',
+    );
 
     return (
         <>
             <div className="absolute top-2 left-2 flex flex-col items-start gap-2">
-                <ShoppingCartHud />
                 <AccountHud />
-                <div className={cx(isCloseup && 'hidden md:block')}>
+                <ShoppingCartHud />
+                <div className={closeupHiddenHudClassName}>
                     <GameModeHud />
                 </div>
-                <div className={cx(isCloseup && 'hidden md:block')}>
+                <div className={closeupHiddenHudClassName}>
                     <AdventHud />
                 </div>
-                <div className={cx(isCloseup && 'hidden md:block')}>
+                <div className={closeupHiddenHudClassName}>
                     <InventoryHud />
                 </div>
             </div>
             <div className="absolute top-2 right-2 flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2">
-                <div className={cx(isCloseup && 'hidden md:block')}>
+                <div className={closeupHiddenHudClassName}>
                     <WeatherHud noWeather={noWeather} />
                 </div>
                 <SunflowersHud />
