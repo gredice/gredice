@@ -1,5 +1,5 @@
-import { cx } from '@signalco/ui-primitives/cx';
 import type { HTMLAttributes } from 'react';
+import { cx } from '../utils';
 import './StyledHtml.css';
 
 export function StyledHtml({

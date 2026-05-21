@@ -1,7 +1,7 @@
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useGameState } from '../../useGameState';
 
 export function EnvironmentSettingsCard() {

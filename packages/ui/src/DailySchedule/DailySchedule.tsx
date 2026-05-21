@@ -1,6 +1,6 @@
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { Stack } from '@signalco/ui-primitives/Stack';
 import { Fragment, type ReactNode } from 'react';
+import { Divider } from '../Divider';
+import { Stack } from '../Stack';
 
 interface DailyScheduleProps {
     days?: number;

@@ -1,6 +1,6 @@
-import { ModalConfirm } from '@signalco/ui/ModalConfirm';
+import { Button } from '@gredice/ui/Button';
+import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { Info, Navigate } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
 import type { useCheckout } from '../../../hooks/useCheckout';
 import type { useShoppingCart } from '../../../hooks/useShoppingCart';
 import { SunflowerCheckoutBalance } from './SunflowerCheckoutBalance';

@@ -1,6 +1,6 @@
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { RaisedBedIcon } from '../RaisedBedIcon';
+import { Row } from '../Row';
+import { Typography } from '../Typography';
 
 export function RaisedBedLabel({ physicalId }: { physicalId: string | null }) {
     if (!physicalId) {

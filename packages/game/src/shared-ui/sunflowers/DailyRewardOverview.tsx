@@ -1,8 +1,8 @@
+import { Button } from '@gredice/ui/Button';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { Approved, Empty } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { useClaimDailyReward } from '../../hooks/useClaimDailyReward';
 import { useDailyReward } from '../../hooks/useDailyReward';
 

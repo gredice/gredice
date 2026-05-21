@@ -1,11 +1,11 @@
+import { Card, CardContent } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { TimeRange } from '@gredice/ui/LocalDateTime';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { MapPin, ShoppingCart, Timer, Truck } from '@signalco/ui-icons';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import type { DeliveryRequestData } from '../../hooks/useDeliveryRequests';
 import { DeliveryRequestRow } from './DeliveryRequestRow';
 

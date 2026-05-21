@@ -1,5 +1,5 @@
+import { cx } from '@gredice/ui/utils';
 import { animated, type SpringValue, to } from '@react-spring/web';
-import { cx } from '@signalco/ui-primitives/cx';
 import type React from 'react';
 import { createPortal } from 'react-dom';
 

@@ -1,7 +1,12 @@
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
+import { Chip } from '@gredice/ui/Chip';
+import { IconButton } from '@gredice/ui/IconButton';
+import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
-import { ModalConfirm } from '@signalco/ui/ModalConfirm';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import {
     Close,
     Delete,
@@ -10,11 +15,6 @@ import {
     Navigate,
     Timer,
 } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import type { CSSProperties } from 'react';
 import { useGameAnalytics } from '../../../analytics/GameAnalyticsContext';
 import { useCurrentAccount } from '../../../hooks/useCurrentAccount';

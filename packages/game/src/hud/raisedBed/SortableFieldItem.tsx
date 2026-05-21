@@ -4,7 +4,7 @@ import {
     useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { cx } from '@signalco/ui-primitives/cx';
+import { cx } from '@gredice/ui/utils';
 import type { CSSProperties, ReactNode } from 'react';
 import { DragGripIndicator } from './DragHandle';
 

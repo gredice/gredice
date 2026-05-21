@@ -1,14 +1,14 @@
 import type { PlantSortData } from '@gredice/client';
+import { Alert } from '@gredice/ui/Alert';
+import { Button } from '@gredice/ui/Button';
+import { List } from '@gredice/ui/List';
+import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { Alert } from '@signalco/ui/Alert';
-import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { Check } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { cx } from '@signalco/ui-primitives/cx';
-import { List } from '@signalco/ui-primitives/List';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { useEffect } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { usePlantSorts } from '../../hooks/usePlantSorts';
@@ -93,7 +93,9 @@ function PlantSortListItem({
                     </Stack>
                 </Row>
                 {selectedSortId === sort.id && (
-                    <Check className="size-5 shrink-0" title="Odabrano" />
+                    <span title="Odabrano">
+                        <Check aria-hidden className="size-5 shrink-0" />
+                    </span>
                 )}
             </Button>
             <Row justifyContent="end" className="px-4">

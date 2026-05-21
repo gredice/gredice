@@ -1,6 +1,6 @@
+import { IconButton } from '@gredice/ui/IconButton';
 import { ShovelIcon } from '@gredice/ui/ShovelIcon';
 import { Check } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { useEffect } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useGameState } from '../useGameState';

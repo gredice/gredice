@@ -1,11 +1,11 @@
 'use client';
 
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '../Button';
+import { Input } from '../Input';
+import { Modal } from '../Modal';
+import { Row } from '../Row';
+import { Stack } from '../Stack';
 
 interface ImageEditorProps {
     file: File;

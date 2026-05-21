@@ -1,7 +1,7 @@
 'use client';
 
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Input } from '@signalco/ui-primitives/Input';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { Input } from '@gredice/ui/Input';
 import { defaultThornDefinition } from '../../lib/plant-definitions';
 import type { PlantControlsProps } from '../@types/plant-generator';
 import { PlantSlider } from './PlantSlider';

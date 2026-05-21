@@ -1,5 +1,5 @@
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { HapticSettingsCard } from './HapticSettingsCard';
 import { SoundSettingsCard } from './SoundSettingsCard';
 

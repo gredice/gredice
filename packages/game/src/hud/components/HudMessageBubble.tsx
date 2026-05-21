@@ -1,6 +1,6 @@
 'use client';
 
-import { cx } from '@signalco/ui-primitives/cx';
+import { cx } from '@gredice/ui/utils';
 import type { ReactNode } from 'react';
 
 export type HudMessageBubblePosition = 'left' | 'right' | 'top' | 'bottom';

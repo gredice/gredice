@@ -1,4 +1,4 @@
-import { Button, type ButtonProps } from '@signalco/ui-primitives/Button';
+import { Button, type ButtonProps } from '@gredice/ui/Button';
 import { CompanyGoogle } from './CompanyGoogle';
 
 export function GoogleLoginButton({ ...props }: ButtonProps) {

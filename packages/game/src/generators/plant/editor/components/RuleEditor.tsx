@@ -1,10 +1,10 @@
 'use client';
 
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Input } from '@gredice/ui/Input';
+import { Row } from '@gredice/ui/Row';
 import { Add, Delete } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
 import type { Rule, RuleOption } from '../../lib/plant-definitions';
 import { RulePreview } from './RulePreview';
 

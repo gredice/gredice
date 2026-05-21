@@ -1,5 +1,5 @@
+import { IconButton } from '@gredice/ui/IconButton';
 import { Mute, Volume2 } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { useCallback } from 'react';
 import { useGameAudio } from '../hooks/useGameAudio';
 

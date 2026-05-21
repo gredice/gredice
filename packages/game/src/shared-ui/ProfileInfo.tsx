@@ -1,6 +1,6 @@
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { ProfileAvatar } from './ProfileAvatar';
 

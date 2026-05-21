@@ -1,13 +1,13 @@
 'use client';
 
-import { ThumbsUp } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Popper } from '@signalco/ui-primitives/Popper';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
+import { Chip } from '../Chip';
+import { ThumbsUp } from '../icons';
+import { Popper } from '../Popper';
+import { Row } from '../Row';
+import { Stack } from '../Stack';
+import { Typography } from '../Typography';
+import { cx } from '../utils';
 
 export function SeedTimeInformationBadge({
     size = 'md',

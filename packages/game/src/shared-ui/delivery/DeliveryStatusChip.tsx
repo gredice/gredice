@@ -1,5 +1,5 @@
+import { Chip } from '@gredice/ui/Chip';
 import { Approved, Close, Info, Timer } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
 
 function getStatusColor(state: string) {
     switch (state) {

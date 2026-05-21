@@ -1,10 +1,9 @@
 'use client';
 
-import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '../Button';
+import { Row } from '../Row';
+import { Stack } from '../Stack';
+import { Typography } from '../Typography';
 
 type ErrorFallbackProps = {
     correlationId: string;
@@ -49,9 +48,9 @@ export function ErrorFallback({
                         <Button type="button" onClick={onRetry}>
                             Pokušaj ponovno
                         </Button>
-                        <NavigatingButton href="/">
+                        <Button href="/" variant="outlined">
                             Idi na početnu
-                        </NavigatingButton>
+                        </Button>
                     </Row>
                 </Stack>
             </div>

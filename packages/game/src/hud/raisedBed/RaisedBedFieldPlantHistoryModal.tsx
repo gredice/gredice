@@ -1,8 +1,8 @@
 import { plantFieldStatusLabel } from '@gredice/js/plants';
+import { Modal } from '@gredice/ui/Modal';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { type ReactElement, useMemo, useState } from 'react';
 import { useSorts } from '../../hooks/usePlantSorts';
 import type { RaisedBedFieldPlantHistoryEntry } from '../../utils/raisedBedFields';

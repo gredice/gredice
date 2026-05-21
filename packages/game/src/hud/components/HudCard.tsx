@@ -1,7 +1,7 @@
 'use client';
 
+import { cx } from '@gredice/ui/utils';
 import { animated, useSpring } from '@react-spring/web';
-import { cx } from '@signalco/ui-primitives/cx';
 import { type HTMLAttributes, useMemo } from 'react';
 
 type HudCardProps = HTMLAttributes<HTMLDivElement> & {

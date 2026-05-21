@@ -1,11 +1,11 @@
 'use client';
 
+import { Button } from '@gredice/ui/Button';
+import { Modal } from '@gredice/ui/Modal';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
 import { Navigate } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
 import { useState } from 'react';
 import Confetti from 'react-confetti-boom';

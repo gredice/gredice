@@ -1,8 +1,14 @@
+import { Alert } from '@gredice/ui/Alert';
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { EditableInput } from '@gredice/ui/EditableInput';
+import { ModalConfirm } from '@gredice/ui/ModalConfirm';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
-import { Alert } from '@signalco/ui/Alert';
-import { EditableInput } from '@signalco/ui/EditableInput';
-import { ModalConfirm } from '@signalco/ui/ModalConfirm';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import {
     Book,
     Hammer,
@@ -10,12 +16,6 @@ import {
     MoreHorizontal,
     Warning,
 } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
 import { useAbandonRaisedBed } from '../../hooks/useAbandonRaisedBed';
 import type { useCurrentGarden } from '../../hooks/useCurrentGarden';

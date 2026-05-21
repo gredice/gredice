@@ -1,8 +1,8 @@
 import type { OperationData } from '@gredice/client';
+import { Modal } from '@gredice/ui/Modal';
 import { OperationImage } from '@gredice/ui/OperationImage';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { useOperations } from '../../hooks/useOperations';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';

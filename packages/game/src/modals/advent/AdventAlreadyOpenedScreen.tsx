@@ -1,10 +1,10 @@
 'use client';
 
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { Button } from '@gredice/ui/Button';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 

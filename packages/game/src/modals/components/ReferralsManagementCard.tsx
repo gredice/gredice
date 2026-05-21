@@ -1,14 +1,9 @@
 import { clientAuthenticated } from '@gredice/client';
-import { Button } from '@signalco/ui-primitives/Button';
-import {
-    Card,
-    CardActions,
-    CardContent,
-    CardHeader,
-} from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardActions, CardContent, CardHeader } from '@gredice/ui/Card';
+import { Input } from '@gredice/ui/Input';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { useReferrals } from '../../hooks/useReferrals';
 

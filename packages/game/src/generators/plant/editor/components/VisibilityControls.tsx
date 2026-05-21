@@ -1,9 +1,9 @@
 'use client';
 
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { Divider } from '@gredice/ui/Divider';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { VisibilityState } from '../@types/plant-generator';
 
 interface VisibilityControlsProps {

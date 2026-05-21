@@ -1,8 +1,8 @@
+import { Chip } from '@gredice/ui/Chip';
+import { Row } from '@gredice/ui/Row';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { ReactNode } from 'react';
 import type { RaisedBedFieldPlantHistoryEntry } from '../../utils/raisedBedFields';
 import { PlantStageSection } from './PlantStageSection';

@@ -1,18 +1,18 @@
 import type { PlantData } from '@gredice/client';
 import { calculatePlantsPerField } from '@gredice/js/plants';
+import { Alert } from '@gredice/ui/Alert';
+import { Button } from '@gredice/ui/Button';
+import { Chip } from '@gredice/ui/Chip';
+import { List } from '@gredice/ui/List';
+import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import {
     PlantOrSortImage,
     PlantYieldTooltip,
     SeedTimeInformationBadge,
 } from '@gredice/ui/plants';
-import { Alert } from '@signalco/ui/Alert';
-import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { List } from '@signalco/ui-primitives/List';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { usePlants } from '../../hooks/usePlants';
 import { KnownPages } from '../../knownPages';

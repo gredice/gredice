@@ -1,15 +1,7 @@
-import {
-    Droplet,
-    Hammer,
-    Leaf,
-    Sprout,
-    Store,
-    Tally3,
-    Upload,
-} from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
 import Image from 'next/image';
 import type { ComponentType, CSSProperties, SVGProps } from 'react';
+import { Droplet, Hammer, Leaf, Sprout, Store, Tally3, Upload } from '../icons';
+import { cx } from '../utils';
 
 export type OperationImageProps = {
     operation: {

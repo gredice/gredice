@@ -1,6 +1,6 @@
+import { IconButton } from '@gredice/ui/IconButton';
+import { Row } from '@gredice/ui/Row';
 import { Redo, Undo } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Row } from '@signalco/ui-primitives/Row';
 import { useGameState } from '../useGameState';
 
 export function CameraHud() {

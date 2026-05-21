@@ -1,11 +1,11 @@
 'use client';
 
+import { Button } from '@gredice/ui/Button';
+import { Checkbox } from '@gredice/ui/Checkbox';
 import { DebugPanel, DebugPanelSection } from '@gredice/ui/DebugControls';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Slider } from '@signalco/ui-primitives/Slider';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Row } from '@gredice/ui/Row';
+import { Slider } from '@gredice/ui/Slider';
+import { Stack } from '@gredice/ui/Stack';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLiveTime } from '../hooks/useLiveTime';

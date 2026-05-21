@@ -1,11 +1,11 @@
-import { Check, MapPinHouse } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
 import {
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
-} from '@signalco/ui-primitives/Menu';
-import { Typography } from '@signalco/ui-primitives/Typography';
+} from '@gredice/ui/Menu';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
+import { Check, MapPinHouse } from '@signalco/ui-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { Fragment } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';

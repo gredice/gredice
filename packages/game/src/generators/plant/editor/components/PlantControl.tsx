@@ -1,9 +1,9 @@
 'use client';
 
+import { IconButton } from '@gredice/ui/IconButton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
+import { Typography } from '@gredice/ui/Typography';
 import { Edit, Leaf, Redo, Settings, Sprout, Undo } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import type { PlantControlsProps } from '../@types/plant-generator';
 import { ExportDialog } from './ExportDialog';
 import { FlowerTab } from './FlowersTab';

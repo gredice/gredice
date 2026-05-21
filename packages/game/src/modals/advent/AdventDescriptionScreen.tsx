@@ -1,9 +1,9 @@
 'use client';
 
+import { Button } from '@gredice/ui/Button';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { Navigate } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
 
 type AdventDescriptionScreenProps = {

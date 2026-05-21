@@ -1,5 +1,5 @@
+import { cx } from '@gredice/ui/utils';
 import * as ProgressPrimitive from '@radix-ui/react-progress';
-import { cx } from '@signalco/ui-primitives/cx';
 import React from 'react';
 
 export interface ProgressProps

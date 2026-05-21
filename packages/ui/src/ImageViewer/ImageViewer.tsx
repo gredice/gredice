@@ -1,13 +1,13 @@
 'use client';
 
-import { Add, Close, Remove, Save, Search } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Modal } from '@signalco/ui-primitives/Modal';
 import Image from 'next/image';
 import type React from 'react';
 import { useRef, useState } from 'react';
+import { Chip } from '../Chip';
+import { IconButton } from '../IconButton';
+import { Add, Close, Remove, Save, Search } from '../icons';
+import { Modal } from '../Modal';
+import { cx } from '../utils';
 
 interface ImageViewerProps {
     src: string;

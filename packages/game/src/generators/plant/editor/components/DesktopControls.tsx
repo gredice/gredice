@@ -1,4 +1,4 @@
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
+import { Card, CardContent } from '@gredice/ui/Card';
 import type { PlantControlsProps } from '../@types/plant-generator';
 import { PlantControls } from './PlantControl';
 

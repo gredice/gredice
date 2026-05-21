@@ -1,20 +1,13 @@
 'use client';
 
-import {
-    Add,
-    ArrowLeft,
-    ArrowRight,
-    Close,
-    Remove,
-    Save,
-} from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Modal } from '@signalco/ui-primitives/Modal';
 import Image from 'next/image';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Chip } from '../Chip';
+import { IconButton } from '../IconButton';
+import { Add, ArrowLeft, ArrowRight, Close, Remove, Save } from '../icons';
+import { Modal } from '../Modal';
+import { cx } from '../utils';
 
 interface ImageGalleryItem {
     src: string;

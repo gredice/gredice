@@ -1,5 +1,5 @@
-import { Button, type ButtonProps } from '@signalco/ui-primitives/Button';
-import { Chip } from '@signalco/ui-primitives/Chip';
+import { Button, type ButtonProps } from '../Button';
+import { Chip } from '../Chip';
 
 export function GoogleLoginButton({
     lastUsed,

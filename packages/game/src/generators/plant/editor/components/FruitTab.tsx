@@ -1,7 +1,7 @@
 'use client';
 
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { SelectItems } from '@gredice/ui/SelectItems';
 import {
     MAX_PLANT_GENERATION,
     vegetableTypeOptions,

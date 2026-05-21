@@ -1,8 +1,10 @@
 'use client';
 
-import { Calendar, Close, Filter } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Chip } from '@signalco/ui-primitives/Chip';
+import type { ReactNode } from 'react';
+import { useCallback, useMemo } from 'react';
+import { Button } from '../Button';
+import { Chip } from '../Chip';
+import { Calendar, Close, Filter } from '../icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -10,10 +12,8 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from '@signalco/ui-primitives/Menu';
-import { Row } from '@signalco/ui-primitives/Row';
-import type { ReactNode } from 'react';
-import { useCallback, useMemo } from 'react';
+} from '../Menu';
+import { Row } from '../Row';
 
 export interface FilterOption {
     key: string;

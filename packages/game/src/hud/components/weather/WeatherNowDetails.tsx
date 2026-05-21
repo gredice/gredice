@@ -1,3 +1,9 @@
+import { Button } from '@gredice/ui/Button';
+import { Divider } from '@gredice/ui/Divider';
+import { Link } from '@gredice/ui/Link';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import {
     ArrowDown,
     ArrowDownLeft,
@@ -12,12 +18,6 @@ import {
     Snowflake,
     Wind,
 } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { Link } from '@signalco/ui-primitives/Link';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
 import { type FC, useState } from 'react';
 import { useWeatherNow } from '../../../hooks/useWeatherNow';

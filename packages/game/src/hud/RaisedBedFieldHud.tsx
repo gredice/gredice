@@ -1,10 +1,10 @@
+import { Modal } from '@gredice/ui/Modal';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { Check } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { type CSSProperties, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';

@@ -1,8 +1,8 @@
 'use client';
 
+import { Modal } from '@gredice/ui/Modal';
+import { Spinner } from '@gredice/ui/Spinner';
 import { useSearchParam } from '@signalco/hooks/useSearchParam';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Spinner } from '@signalco/ui-primitives/Spinner';
 import { useCallback, useEffect, useState } from 'react';
 import { useAdventCalendar } from '../../hooks/useAdventCalendar';
 import { useOpenAdventDay } from '../../hooks/useOpenAdventDay';

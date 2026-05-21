@@ -1,10 +1,10 @@
 'use client';
 
+import { Button } from '@gredice/ui/Button';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Confetti from 'react-confetti-boom';
 import { useOperations } from '../hooks/useOperations';
 import { usePlantSort } from '../hooks/usePlantSorts';

@@ -1,8 +1,8 @@
 'use client';
 
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Input } from '@gredice/ui/Input';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
 import type { PlantControlsProps } from '../@types/plant-generator';
 import { InfoHint } from './InfoHint';
 import { LSystemLegend } from './LSystemLegend';

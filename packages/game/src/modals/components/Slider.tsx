@@ -1,5 +1,5 @@
+import { cx } from '@gredice/ui/utils';
 import * as SliderPrimitive from '@radix-ui/react-slider';
-import { cx } from '@signalco/ui-primitives/cx';
 import type { ComponentProps } from 'react';
 
 export function Slider({

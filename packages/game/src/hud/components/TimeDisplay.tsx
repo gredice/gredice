@@ -1,9 +1,9 @@
 'use client';
 
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Divider } from '@gredice/ui/Divider';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useLiveTime } from '../../hooks/useLiveTime';
 import { useGameState } from '../../useGameState';
 import { DayNightVisualization } from './DayNightVisualization';

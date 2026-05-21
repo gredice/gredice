@@ -1,10 +1,10 @@
+import { Chip } from '@gredice/ui/Chip';
+import { Link } from '@gredice/ui/Link';
+import { Popper } from '@gredice/ui/Popper';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { ExternalLink } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Link } from '@signalco/ui-primitives/Link';
-import { Popper } from '@signalco/ui-primitives/Popper';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 
 export type PlantStageSectionProps = {
     label: string;

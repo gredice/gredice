@@ -1,5 +1,5 @@
-import { cx } from '@signalco/ui-primitives/cx';
 import type { SVGProps } from 'react';
+import { cx } from '../utils';
 
 export type RaisedBedIconProps = SVGProps<SVGSVGElement> & {
     physicalId: string | number | null;
