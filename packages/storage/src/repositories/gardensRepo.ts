@@ -1070,6 +1070,28 @@ export async function getGardenBlocks(gardenId: number) {
     });
 }
 
+export async function getGardenBoxBlocksForAccount(accountId: string) {
+    return storage()
+        .select({
+            blockId: gardenBlocks.id,
+            gardenId: gardenBlocks.gardenId,
+            gardenName: gardens.name,
+            createdAt: gardenBlocks.createdAt,
+            updatedAt: gardenBlocks.updatedAt,
+        })
+        .from(gardenBlocks)
+        .innerJoin(gardens, eq(gardenBlocks.gardenId, gardens.id))
+        .where(
+            and(
+                eq(gardens.accountId, accountId),
+                eq(gardens.isDeleted, false),
+                eq(gardenBlocks.name, 'GardenBox'),
+                eq(gardenBlocks.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(gardens.createdAt), asc(gardenBlocks.createdAt));
+}
+
 export async function getGardenBlock(gardenId: number, blockId: string) {
     return (
         (await storage().query.gardenBlocks.findFirst({
