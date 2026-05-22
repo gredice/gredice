@@ -30,6 +30,7 @@ export const KnownPages = {
     Contact: '/kontakt',
     Pricing: '/cjenik',
     Refunds: '/povrati-i-povrat-novca',
+    Referrals: '/preporuke',
 
     LegalPrivacy: '/legalno/politika-privatnosti',
     LegalTerms: '/legalno/uvjeti-koristenja',
@@ -40,6 +41,7 @@ export const KnownPages = {
     LegalOccasions: PublicDirectoryPaths.LegalOccasions as Route,
 
     GardenApp: 'https://vrt.gredice.com',
+    GardenReferrals: 'https://vrt.gredice.com/?pregled=preporuke',
     Status: 'https://status.gredice.com',
     GoogleMapsGrediceHQ: 'https://maps.app.goo.gl/hJbidDQzhHWGCZwS6',
 } as const;
