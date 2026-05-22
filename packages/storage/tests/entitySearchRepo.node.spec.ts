@@ -5,13 +5,16 @@ import {
     createAttributeDefinition,
     createEntity,
     deleteEntity,
+    entities,
     normalizeDirectorySearchText,
     rebuildDirectorySearchIndex,
     searchDirectoryEntities,
+    storage,
     updateEntity,
     upsertAttributeValue,
     upsertEntityType,
 } from '@gredice/storage';
+import { eq } from 'drizzle-orm';
 import { createTestDb } from './testDb';
 
 const ensuredEntityTypes = new Set<string>();
@@ -142,6 +145,92 @@ test('directory entity search normalizes Croatian diacritics and ranks title mat
         normalizeDirectorySearchText('Čišćenje gredice'),
         'ciscenje gredice',
     );
+});
+
+test('directory entity search includes legacy published plants without publishedAt', async () => {
+    createTestDb();
+    const kupusId = await createSearchableEntity({
+        entityTypeName: 'plant',
+        entityTypeLabel: 'Plant',
+        title: 'Kupus',
+        state: 'draft',
+    });
+    const cesnjakId = await createSearchableEntity({
+        entityTypeName: 'plant',
+        entityTypeLabel: 'Plant',
+        title: 'Češnjak',
+        state: 'draft',
+    });
+
+    await storage()
+        .update(entities)
+        .set({ state: 'published', publishedAt: null })
+        .where(eq(entities.id, kupusId));
+    await storage()
+        .update(entities)
+        .set({ state: 'published', publishedAt: null })
+        .where(eq(entities.id, cesnjakId));
+    await rebuildDirectorySearchIndex();
+
+    const kupusRows = await searchDirectoryEntities({
+        query: 'kupus',
+        entityTypeNames: ['plant'],
+    });
+    const cesnjakRows = await searchDirectoryEntities({
+        query: 'cesnjak',
+        entityTypeNames: ['plant'],
+    });
+    const diacriticCesnjakRows = await searchDirectoryEntities({
+        query: 'češnjak',
+        entityTypeNames: ['plant'],
+    });
+
+    assert.equal(kupusRows[0]?.entityId, kupusId);
+    assert.equal(kupusRows[0]?.publishedAt, null);
+    assert.equal(cesnjakRows[0]?.entityId, cesnjakId);
+    assert.equal(diacriticCesnjakRows[0]?.entityId, cesnjakId);
+});
+
+test('directory entity search includes multiple plant alternative names', async () => {
+    createTestDb();
+    const kupusId = await createSearchableEntity({
+        entityTypeName: 'plant',
+        entityTypeLabel: 'Plant',
+        title: 'Kupus',
+    });
+    const alternativeNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'alternativeName',
+        label: 'Alternative name',
+        entityTypeName: 'plant',
+        dataType: 'text',
+        multiple: true,
+    });
+
+    await upsertAttributeValue({
+        attributeDefinitionId: alternativeNameDefinitionId,
+        entityTypeName: 'plant',
+        entityId: kupusId,
+        value: 'Zelje',
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: alternativeNameDefinitionId,
+        entityTypeName: 'plant',
+        entityId: kupusId,
+        value: 'Kapus',
+    });
+
+    const zeljeRows = await searchDirectoryEntities({
+        query: 'zelje',
+        entityTypeNames: ['plant'],
+    });
+    const kapusRows = await searchDirectoryEntities({
+        query: 'kapus',
+        entityTypeNames: ['plant'],
+    });
+
+    assert.equal(zeljeRows[0]?.entityId, kupusId);
+    assert.equal(kapusRows[0]?.entityId, kupusId);
 });
 
 test('directory entity search finds published operations without diacritics', async () => {

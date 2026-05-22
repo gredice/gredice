@@ -7,6 +7,7 @@ import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
 import { ItemCard } from '../../components/shared/ItemCard';
 import { useClientSearchParam } from '../../hooks/useClientSearchParam';
+import { plantMatchesSearch } from '../../lib/plants/plantSearch';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { KnownPages } from '../../src/KnownPages';
 import { PlantBlockImage } from './PlantBlockImage';
@@ -44,13 +45,7 @@ export function PlantBlockGallery({
         .filter((plant) =>
             plantNamesWithLSystem.has(plant.information.name.toLowerCase()),
         )
-        .filter(
-            (plant) =>
-                !normalizedSearch ||
-                normalizeSearchText(plant.information.name).includes(
-                    normalizedSearch,
-                ),
-        )
+        .filter((plant) => plantMatchesSearch(plant, normalizedSearch))
         .map((plant) => ({ ...plant, id: plant.id.toString() }));
 
     if (filteredPlants.length === 0) {

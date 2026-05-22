@@ -6,10 +6,12 @@ import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
-import { type CSSProperties, Fragment } from 'react';
+import { Fragment } from 'react';
 import { useClientSearchParam } from '../../hooks/useClientSearchParam';
+import { plantMatchesSearch } from '../../lib/plants/plantSearch';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { KnownPages } from '../../src/KnownPages';
+import { getCalendarRangePosition } from './calendarRangePosition';
 
 const calendarMonths = [
     'I',
@@ -65,13 +67,7 @@ export function PlantsCalendar({
         a.information.name.localeCompare(b.information.name),
     )
         .filter((plant) => !onlySeedTimePlants || plant.isRecommended)
-        .filter(
-            (plant) =>
-                !normalizedSearch ||
-                normalizeSearchText(plant.information.name).includes(
-                    normalizedSearch,
-                ),
-        )
+        .filter((plant) => plantMatchesSearch(plant, normalizedSearch))
         .map((plant) => ({ ...plant, id: plant.id.toString() }));
 
     const currentDate = new Date();
@@ -100,130 +96,97 @@ export function PlantsCalendar({
                     </Typography>
                 </div>
             )}
-            {Object.keys(calendarActivityTypes).map((activityTypeName) => {
-                const activityType =
-                    calendarActivityTypes[
-                        activityTypeName as keyof typeof calendarActivityTypes
-                    ];
-                return filteredPlants
-                    .filter(
-                        (p) =>
-                            p.calendar &&
-                            Object.keys(p.calendar).some(
-                                (a) => a === activityTypeName,
-                            ),
-                    )
-                    .map((plant, plantIndex) => {
-                        const activities = plant.calendar;
-                        if (!activities) return null;
+            {Object.entries(calendarActivityTypes).map(
+                ([activityTypeName, activityType]) => {
+                    return filteredPlants
+                        .filter(
+                            (p) =>
+                                p.calendar &&
+                                Object.keys(p.calendar).some(
+                                    (a) => a === activityTypeName,
+                                ),
+                        )
+                        .map((plant, plantIndex) => {
+                            const activities = plant.calendar;
+                            if (!activities) return null;
 
-                        return (
-                            <Fragment key={`${plant.id}-${activityTypeName}`}>
-                                <Link
-                                    href={KnownPages.Plant(
-                                        plant.information.name,
-                                    )}
-                                    prefetch
+                            return (
+                                <Fragment
+                                    key={`${plant.id}-${activityTypeName}`}
                                 >
-                                    <Row
-                                        justifyContent="space-between"
-                                        spacing={2}
-                                        className="mx-2"
+                                    <Link
+                                        href={KnownPages.Plant(
+                                            plant.information.name,
+                                        )}
+                                        prefetch
                                     >
-                                        <Row spacing={2}>
-                                            <PlantOrSortImage
-                                                plant={plant}
-                                                width={20}
-                                                height={20}
-                                            />
-                                            <Typography level="body2">
-                                                {plant.information.name}
-                                            </Typography>
-                                        </Row>
-                                        <Row>
-                                            {plantIndex === 0 && (
-                                                <Typography
-                                                    level="body2"
-                                                    title={activityType.name}
-                                                    className="whitespace-nowrap"
-                                                >
-                                                    {activityType.name}
-                                                </Typography>
-                                            )}
-                                            <div
-                                                className={`size-4 rounded-full inline-block ml-2 ${activityType.color}`}
-                                            ></div>
-                                        </Row>
-                                    </Row>
-                                </Link>
-                                {calendarMonths.map((monthName, index) => {
-                                    const month = index + 1;
-                                    const currentActivities =
-                                        activities[
-                                            activityTypeName as keyof typeof calendarActivityTypes
-                                        ];
-                                    if (!currentActivities) return null;
-                                    const currentMonthActivities =
-                                        currentActivities.filter(
-                                            (a) =>
-                                                month >=
-                                                    Math.floor(a.start ?? 0) &&
-                                                month <= Math.floor(a.end ?? 0),
-                                        );
-                                    const minStart = Math.min(
-                                        ...currentMonthActivities.map(
-                                            (a) => (a.start ?? 0) % 1,
-                                        ),
-                                    );
-                                    const maxEnd = Math.max(
-                                        ...currentMonthActivities.map(
-                                            (a) => (a.end ?? 0) % 1,
-                                        ),
-                                    );
-                                    const isActivityActive =
-                                        currentMonthActivities.length > 0;
-                                    const isActivityStart =
-                                        currentActivities.some(
-                                            (a) =>
-                                                month ===
-                                                Math.floor(a.start ?? 0),
-                                        );
-                                    const isActivityEnd =
-                                        currentActivities.some(
-                                            (a) =>
-                                                month ===
-                                                Math.floor(a.end ?? 0),
-                                        );
-
-                                    return (
-                                        <div
-                                            key={monthName}
-                                            className="relative border-l"
+                                        <Row
+                                            justifyContent="space-between"
+                                            spacing={2}
+                                            className="mx-2"
                                         >
-                                            {isActivityActive && (
+                                            <Row spacing={2}>
+                                                <PlantOrSortImage
+                                                    plant={plant}
+                                                    width={20}
+                                                    height={20}
+                                                />
+                                                <Typography level="body2">
+                                                    {plant.information.name}
+                                                </Typography>
+                                            </Row>
+                                            <Row>
+                                                {plantIndex === 0 && (
+                                                    <Typography
+                                                        level="body2"
+                                                        title={
+                                                            activityType.name
+                                                        }
+                                                        className="whitespace-nowrap"
+                                                    >
+                                                        {activityType.name}
+                                                    </Typography>
+                                                )}
                                                 <div
-                                                    className={`absolute inset-y-1 left-[--activity-left] -ml-[1px] right-[--activity-right] ${activityType.color} ${isActivityStart ? 'rounded-l-full' : ''} ${isActivityEnd ? 'rounded-r-full' : ''}`}
-                                                    style={
-                                                        {
-                                                            '--activity-left':
-                                                                isActivityStart
-                                                                    ? `${minStart * 100}%`
-                                                                    : '0px',
-                                                            '--activity-right':
-                                                                isActivityEnd
-                                                                    ? `${Math.min(75, (1 - maxEnd) * 100)}%`
-                                                                    : '0px',
-                                                        } as CSSProperties
-                                                    }
+                                                    className={`size-4 rounded-full inline-block ml-2 ${activityType.color}`}
                                                 ></div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </Fragment>
-                        );
-                    });
-            })}
+                                            </Row>
+                                        </Row>
+                                    </Link>
+                                    {calendarMonths.map((monthName, index) => {
+                                        const month = index + 1;
+                                        const currentActivities =
+                                            activities[
+                                                activityTypeName as keyof typeof calendarActivityTypes
+                                            ];
+                                        const position =
+                                            getCalendarRangePosition(
+                                                currentActivities,
+                                                month,
+                                            );
+
+                                        return (
+                                            <div
+                                                key={monthName}
+                                                className="relative border-l"
+                                            >
+                                                {position && (
+                                                    <div
+                                                        className={`absolute inset-y-1 -ml-[1px] ${activityType.color} ${position.isStart ? 'rounded-l-full' : ''} ${position.isEnd ? 'rounded-r-full' : ''}`}
+                                                        style={{
+                                                            left: position.left,
+                                                            right: position.right,
+                                                        }}
+                                                    ></div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </Fragment>
+                            );
+                        });
+                },
+            )}
             <div className="grid grid-cols-subgrid [grid-column:2/-1] relative">
                 <div
                     className="absolute bottom-0 w-0.5 bg-red-600"

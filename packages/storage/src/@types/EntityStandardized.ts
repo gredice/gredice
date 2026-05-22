@@ -8,6 +8,7 @@ export type EntityStandardized = {
     information?: {
         name?: string;
         label?: string;
+        alternativeName?: string[];
         shortDescription?: string;
         description?: string;
         instructions?: string;

@@ -1,14 +1,13 @@
 'use client';
 
+import { Markdown } from '@gredice/ui/Markdown';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { usePostHog } from '@posthog/next';
 import type { Route } from 'next';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { DirectorySearchResultVisual } from '../../components/search/DirectorySearchResultVisual';
-import { SearchCategoryFilters } from '../../components/search/SearchCategoryFilters';
 import {
     type SearchCategoryValue,
     searchPageHref,
@@ -54,10 +53,6 @@ export function SearchInteractive({
     hasNextPage: boolean;
 }) {
     const posthog = usePostHog();
-    const router = useRouter();
-    const pathname = usePathname();
-    const params = useSearchParams();
-    const previousCategory = useRef(selectedCategory);
     const emitted = useRef<string | null>(null);
 
     useEffect(() => {
@@ -81,25 +76,6 @@ export function SearchInteractive({
         }
     }, [page, posthog, query, results.length, selectedCategory]);
 
-    const navigateCategory = (nextCategory: SearchCategoryValue) => {
-        if (previousCategory.current !== nextCategory) {
-            posthog?.capture('public_search_category_filter_changed', {
-                category: nextCategory,
-                previousCategory: previousCategory.current,
-                queryLength: query.trim().length,
-            });
-        }
-        previousCategory.current = nextCategory;
-        const nextParams = new URLSearchParams(params.toString());
-        if (nextCategory === 'all') nextParams.delete('kategorija');
-        else nextParams.set('kategorija', nextCategory);
-        nextParams.delete('stranica');
-        const nextHref = (
-            nextParams.toString() ? `${pathname}?${nextParams}` : pathname
-        ) as Route;
-        router.replace(nextHref);
-    };
-
     const previousHref =
         page > 1
             ? searchPageHref({
@@ -118,52 +94,56 @@ export function SearchInteractive({
 
     return (
         <>
-            <SearchCategoryFilters
-                activeCategory={selectedCategory}
-                onSelect={navigateCategory}
-                className="px-0 py-0"
-                withBorder={false}
-            />
-            <Stack spacing={4}>
-                {results.map((result, index) => (
-                    <a
-                        key={`${result.entityType}-${result.entityId}`}
-                        href={localHref(result.href)}
-                        className="flex gap-3 rounded-lg border border-border/70 bg-card p-3 outline-hidden transition-colors hover:bg-muted/60 focus-visible:bg-muted/60"
-                        onClick={() =>
-                            posthog?.capture('public_search_result_clicked', {
-                                category: selectedCategory,
-                                href: result.href,
-                                page,
-                                rank: (page - 1) * searchPageLimit + index + 1,
-                                queryLength: query.trim().length,
-                            })
-                        }
-                    >
-                        <DirectorySearchResultVisual
-                            result={result}
-                            imageSize={56}
-                            className="size-14 rounded-lg"
-                            iconClassName="size-6"
-                        />
-                        <span className="min-w-0 flex-1">
-                            <span className="flex items-center gap-2">
-                                <span className="truncate text-base font-medium">
-                                    {result.title}
-                                </span>
-                                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                                    {result.categoryLabel}
-                                </span>
-                            </span>
-                            {result.summary ? (
-                                <span className="mt-1 line-clamp-2 block text-sm text-muted-foreground">
-                                    {result.summary}
-                                </span>
-                            ) : null}
-                        </span>
-                    </a>
-                ))}
-            </Stack>
+            {results.length > 0 ? (
+                <Stack spacing={2}>
+                    {results.map((result, index) => (
+                        <a
+                            key={`${result.entityType}-${result.entityId}`}
+                            href={localHref(result.href)}
+                            className="group flex gap-3 rounded-lg border border-border/70 bg-card p-3 outline-hidden transition-colors hover:bg-muted/60 focus-visible:bg-muted/60"
+                            onClick={() =>
+                                posthog?.capture(
+                                    'public_search_result_clicked',
+                                    {
+                                        category: selectedCategory,
+                                        href: result.href,
+                                        page,
+                                        rank:
+                                            (page - 1) * searchPageLimit +
+                                            index +
+                                            1,
+                                        queryLength: query.trim().length,
+                                    },
+                                )
+                            }
+                        >
+                            <DirectorySearchResultVisual
+                                result={result}
+                                imageSize={56}
+                                className="size-14 rounded-lg"
+                                iconClassName="size-6"
+                            />
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="truncate text-base font-medium">
+                                        {result.title}
+                                    </span>
+                                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                                        {result.categoryLabel}
+                                    </span>
+                                </div>
+                                {result.summary ? (
+                                    <div className="relative mt-1 max-h-28 overflow-hidden after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-8 after:bg-gradient-to-b after:from-transparent after:to-card group-hover:after:to-muted group-focus-visible:after:to-muted">
+                                        <Markdown className="text-sm text-muted-foreground prose-headings:my-1 prose-headings:text-sm prose-headings:font-medium prose-headings:text-muted-foreground prose-li:my-0 prose-ol:my-1 prose-p:my-1 prose-strong:text-muted-foreground prose-ul:my-1">
+                                            {result.summary}
+                                        </Markdown>
+                                    </div>
+                                ) : null}
+                            </div>
+                        </a>
+                    ))}
+                </Stack>
+            ) : null}
             {previousHref || nextHref ? (
                 <nav
                     className="flex items-center justify-between gap-3"

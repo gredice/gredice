@@ -1,7 +1,8 @@
 import type { PlantData } from '@gredice/client';
 import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
-import { type CSSProperties, Fragment } from 'react';
+import { Fragment } from 'react';
+import { getCalendarRangePosition } from '../calendarRangePosition';
 
 const plantCalendarMonths = [
     'I',
@@ -63,96 +64,65 @@ export function PlantYearCalendar({ activities, now }: PlantYearCalendarProps) {
                         {month}
                     </Typography>
                 ))}
-                {Object.keys(calendarActivityTypes).map((activityTypeName) => {
-                    const activityType =
-                        calendarActivityTypes[
-                            activityTypeName as keyof typeof calendarActivityTypes
-                        ];
-                    if (
-                        !Object.keys(activities).some(
-                            (a) => a === activityTypeName,
+                {Object.entries(calendarActivityTypes).map(
+                    ([activityTypeName, activityType]) => {
+                        if (
+                            !Object.keys(activities).some(
+                                (a) => a === activityTypeName,
+                            )
                         )
-                    )
-                        return null;
+                            return null;
 
-                    return (
-                        <Fragment key={activityTypeName}>
-                            <Row
-                                justifyContent="space-between"
-                                spacing={2}
-                                className="mx-2 min-w-0 overflow-hidden"
-                            >
-                                <Typography
-                                    level="body2"
-                                    title={activityType.name}
-                                    className="min-w-0 truncate whitespace-nowrap"
+                        return (
+                            <Fragment key={activityTypeName}>
+                                <Row
+                                    justifyContent="space-between"
+                                    spacing={2}
+                                    className="mx-2 min-w-0 overflow-hidden"
                                 >
-                                    {activityType.name}
-                                </Typography>
-                                <div
-                                    className={`size-4 rounded-full inline-block ml-2 ${activityType.color}`}
-                                ></div>
-                            </Row>
-                            {plantCalendarMonths.map((monthName, index) => {
-                                const month = index + 1;
-                                const currentActivities =
-                                    activities[
-                                        activityTypeName as keyof typeof calendarActivityTypes
-                                    ];
-                                if (!currentActivities) return null;
-                                const currentMonthActivities =
-                                    currentActivities.filter(
-                                        (a) =>
-                                            month >= Math.floor(a.start ?? 0) &&
-                                            month <= Math.floor(a.end ?? 0),
-                                    );
-                                const minStart = Math.min(
-                                    ...currentMonthActivities.map(
-                                        (a) => (a.start ?? 0) % 1,
-                                    ),
-                                );
-                                const maxEnd = Math.max(
-                                    ...currentMonthActivities.map(
-                                        (a) => (a.end ?? 0) % 1,
-                                    ),
-                                );
-                                const isActivityActive =
-                                    currentMonthActivities.length > 0;
-                                const isActivityStart = currentActivities.some(
-                                    (a) => month === Math.floor(a.start ?? 0),
-                                );
-                                const isActivityEnd = currentActivities.some(
-                                    (a) => month === Math.floor(a.end ?? 0),
-                                );
-
-                                return (
-                                    <div
-                                        key={monthName}
-                                        className="relative border-l"
+                                    <Typography
+                                        level="body2"
+                                        title={activityType.name}
+                                        className="min-w-0 truncate whitespace-nowrap"
                                     >
-                                        {isActivityActive && (
-                                            <div
-                                                className={`absolute inset-y-1 left-[--activity-left] -ml-[1px] right-[--activity-right] ${activityType.color} ${isActivityStart ? 'rounded-l-full' : ''} ${isActivityEnd ? 'rounded-r-full' : ''}`}
-                                                style={
-                                                    {
-                                                        '--activity-left':
-                                                            isActivityStart
-                                                                ? `${minStart * 100}%`
-                                                                : '0px',
-                                                        '--activity-right':
-                                                            isActivityEnd
-                                                                ? `${Math.min(75, (1 - maxEnd) * 100)}%`
-                                                                : '0px',
-                                                    } as CSSProperties
-                                                }
-                                            ></div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </Fragment>
-                    );
-                })}
+                                        {activityType.name}
+                                    </Typography>
+                                    <div
+                                        className={`size-4 rounded-full inline-block ml-2 ${activityType.color}`}
+                                    ></div>
+                                </Row>
+                                {plantCalendarMonths.map((monthName, index) => {
+                                    const month = index + 1;
+                                    const currentActivities =
+                                        activities[
+                                            activityTypeName as keyof typeof calendarActivityTypes
+                                        ];
+                                    const position = getCalendarRangePosition(
+                                        currentActivities,
+                                        month,
+                                    );
+
+                                    return (
+                                        <div
+                                            key={monthName}
+                                            className="relative border-l"
+                                        >
+                                            {position && (
+                                                <div
+                                                    className={`absolute inset-y-1 -ml-[1px] ${activityType.color} ${position.isStart ? 'rounded-l-full' : ''} ${position.isEnd ? 'rounded-r-full' : ''}`}
+                                                    style={{
+                                                        left: position.left,
+                                                        right: position.right,
+                                                    }}
+                                                ></div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </Fragment>
+                        );
+                    },
+                )}
                 <div className="grid grid-cols-subgrid [grid-column:2/-1] relative">
                     <div
                         className="absolute bottom-0 w-0.5 bg-red-600"

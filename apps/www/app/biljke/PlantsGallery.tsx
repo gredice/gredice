@@ -6,6 +6,10 @@ import { Gallery } from '@gredice/ui/Gallery';
 import { Typography } from '@gredice/ui/Typography';
 import { useClientSearchParam } from '../../hooks/useClientSearchParam';
 import type { PlantSortData } from '../../lib/plants/getPlantSortsData';
+import {
+    matchingPlantAlternativeName,
+    plantMatchesSearch,
+} from '../../lib/plants/plantSearch';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { PlantsGalleryItem } from './PlantsGalleryItem';
 
@@ -45,10 +49,7 @@ export function PlantsGallery({
         .filter((plant) => !onlySeedTimePlants || plant.isRecommended)
         .filter(
             (plant) =>
-                !normalizedSearch ||
-                normalizeSearchText(plant.information.name).includes(
-                    normalizedSearch,
-                ) ||
+                plantMatchesSearch(plant, normalizedSearch) ||
                 (normalizedSortNamesByPlantId
                     .get(plant.id)
                     ?.some((sortName) => sortName.includes(normalizedSearch)) ??
@@ -67,6 +68,10 @@ export function PlantsGallery({
             return {
                 ...plant,
                 id: plant.id.toString(),
+                matchingAlternativeName: matchingPlantAlternativeName(
+                    plant,
+                    normalizedSearch,
+                ),
                 matchingSortName,
             };
         });

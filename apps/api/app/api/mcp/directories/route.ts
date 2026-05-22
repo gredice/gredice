@@ -1,4 +1,7 @@
-import { getEntitiesFormatted } from '@gredice/storage';
+import {
+    getEntitiesFormatted,
+    normalizeDirectorySearchText,
+} from '@gredice/storage';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -329,6 +332,7 @@ type EntityStandardized = {
     information?: {
         name?: string;
         label?: string;
+        alternativeName?: string[];
         shortDescription?: string;
         description?: string;
         plant?: EntityStandardized;
@@ -447,15 +451,16 @@ async function handleGetPlant(input: z.infer<typeof GetPlantSchema>) {
 
     const allPlants = await getDirectoryEntities<EntityStandardized>('plant');
 
-    // Search for plant by name (case-insensitive, partial match)
-    const searchName = input.plantName.toLowerCase();
+    const searchName = normalizeDirectorySearchText(input.plantName);
     plant =
-        allPlants.find(
-            (p) =>
-                p.information?.name?.toLowerCase().includes(searchName) ||
-                p.information?.label?.toLowerCase().includes(searchName) ||
-                p.information?.name?.toLowerCase() === searchName ||
-                p.information?.label?.toLowerCase() === searchName,
+        allPlants.find((p) =>
+            [
+                p.information?.name,
+                p.information?.label,
+                ...(p.information?.alternativeName ?? []),
+            ].some((value) =>
+                normalizeDirectorySearchText(value).includes(searchName),
+            ),
         ) || null;
 
     if (!plant) {
