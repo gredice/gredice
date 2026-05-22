@@ -2,6 +2,7 @@ import { tz } from '@date-fns/tz';
 import { sendEmail } from '@gredice/email/acs';
 import {
     acceptAccountInvitation,
+    accounts as accountRecords,
     cancelAccountInvitation,
     createAccountInvitation,
     createEvent,
@@ -20,10 +21,14 @@ import {
     getSunflowersHistory,
     getUser,
     knownEventTypes,
+    sql,
+    storage,
+    events as storedEvents,
     updateAccountTimeZone,
 } from '@gredice/storage';
 import AccountDeleteConfirmationTemplate from '@gredice/transactional/emails/Account/delete-confirmation';
 import { addDays, differenceInCalendarDays, startOfDay } from 'date-fns';
+import { asc, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { setCookie as honoSetCookie } from 'hono/cookie';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
@@ -43,6 +48,8 @@ import { getPostHogClient } from '../../../lib/posthog-server';
 
 const dailyRewards = [5, 10, 15, 20, 25, 50];
 const DAILY_REWARD_TIME_ZONE = 'Europe/Zagreb';
+const GARDEN_APP_URL =
+    process.env.GREDICE_GARDEN_APP_URL ?? 'https://vrt.gredice.com';
 
 function rewardForDay(day: number) {
     return dailyRewards[Math.min(day, dailyRewards.length) - 1] ?? 0;
@@ -52,6 +59,12 @@ function getEmailDomain(email: string) {
     const normalizedEmail = email.trim().toLowerCase();
     const [, domain] = normalizedEmail.split('@');
     return domain ?? 'unknown';
+}
+
+function getReferralLink(code: string) {
+    const url = new URL(GARDEN_APP_URL);
+    url.searchParams.set('ref', code);
+    return url.toString();
 }
 
 async function getDailyRewardState(accountId: string) {
@@ -182,12 +195,67 @@ async function getDailyRewardState(accountId: string) {
 const REFERRAL_REWARD = 10000;
 const REFERRAL_EVENT_TYPE = 'account.referral.v1';
 
+class ReferralCodeAlreadyExistsError extends Error {}
+
 function normalizeReferralCode(code: string) {
     return code
         .trim()
         .toLowerCase()
         .replace(/[^a-z0-9_-]/g, '')
         .slice(0, 32);
+}
+
+function codeFromCodeSetEventData(data: unknown) {
+    if (!data || typeof data !== 'object') {
+        return null;
+    }
+    if (!('action' in data) || data.action !== 'code_set') {
+        return null;
+    }
+    if (!('code' in data) || typeof data.code !== 'string') {
+        return null;
+    }
+    return normalizeReferralCode(data.code);
+}
+
+async function getReferralCodeOwnerAccountId(
+    code: string,
+    db: Pick<ReturnType<typeof storage>, 'select'>,
+) {
+    const [accounts, events] = await Promise.all([
+        db.select({ id: accountRecords.id }).from(accountRecords),
+        db
+            .select({
+                aggregateId: storedEvents.aggregateId,
+                data: storedEvents.data,
+            })
+            .from(storedEvents)
+            .where(eq(storedEvents.type, REFERRAL_EVENT_TYPE))
+            .orderBy(asc(storedEvents.createdAt), asc(storedEvents.id)),
+    ]);
+
+    const currentCodes = new Map<string, string>();
+    for (const account of accounts) {
+        currentCodes.set(
+            account.id,
+            normalizeReferralCode(account.id.slice(0, 12)),
+        );
+    }
+
+    for (const event of events) {
+        const eventCode = codeFromCodeSetEventData(event.data);
+        if (eventCode) {
+            currentCodes.set(event.aggregateId, eventCode);
+        }
+    }
+
+    for (const [accountId, currentCode] of currentCodes) {
+        if (currentCode === code) {
+            return accountId;
+        }
+    }
+
+    return null;
 }
 
 async function hasActiveRaisedBed(accountId: string) {
@@ -332,7 +400,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 usedReferralCode,
                 referredAccounts,
                 rewardAmount: REFERRAL_REWARD,
-                referralLink: `https://www.gredice.com/preporuke?ref=${encodeURIComponent(myCode)}`,
+                referralLink: getReferralLink(myCode),
             });
         },
     )
@@ -350,12 +418,38 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     400,
                 );
             }
-            await createEvent({
-                type: REFERRAL_EVENT_TYPE,
-                version: 1,
-                aggregateId: accountId,
-                data: { action: 'code_set', code },
-            });
+
+            try {
+                await storage().transaction(async (tx) => {
+                    await tx.execute(
+                        sql`select pg_advisory_xact_lock(hashtext(${`referral-code:${code}`}));`,
+                    );
+
+                    const ownerAccountId = await getReferralCodeOwnerAccountId(
+                        code,
+                        tx,
+                    );
+                    if (ownerAccountId && ownerAccountId !== accountId) {
+                        throw new ReferralCodeAlreadyExistsError();
+                    }
+
+                    await tx.insert(storedEvents).values({
+                        type: REFERRAL_EVENT_TYPE,
+                        version: 1,
+                        aggregateId: accountId,
+                        data: { action: 'code_set', code },
+                    });
+                });
+            } catch (error) {
+                if (error instanceof ReferralCodeAlreadyExistsError) {
+                    return context.json(
+                        { error: 'Kod preporuke je već zauzet' },
+                        409,
+                    );
+                }
+                throw error;
+            }
+
             return context.json({ code });
         },
     )
@@ -367,12 +461,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const body = await context.req.json<{ code?: string }>();
             const code = normalizeReferralCode(body.code ?? '');
             if (!code) return context.json({ error: 'Neispravan kod' }, 400);
-            if (await hasActiveRaisedBed(accountId)) {
-                return context.json(
-                    { error: 'Kod se ne može unijeti nakon aktivne gredice' },
-                    400,
-                );
-            }
 
             const myEvents = await getEvents(
                 REFERRAL_EVENT_TYPE,

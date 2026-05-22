@@ -483,7 +483,7 @@ export function NotificationsTab() {
                 }}
                 className="flex flex-col"
             >
-                <TabsList className="grid w-full grid-cols-2 border">
+                <TabsList className="w-fit self-center border">
                     <TabsTrigger value="notifications">Obavijesti</TabsTrigger>
                     <TabsTrigger value="settings">Postavke</TabsTrigger>
                 </TabsList>
