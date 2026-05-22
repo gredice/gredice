@@ -4,8 +4,32 @@ export const shutdownSignals = ['SIGINT', 'SIGTERM', 'SIGQUIT'];
 
 export const supportsProcessGroups = process.platform !== 'win32';
 
+export function shouldDetachChildProcessTree() {
+    if (!supportsProcessGroups) {
+        return false;
+    }
+
+    const detachOverride = process.env.GREDICE_DETACH_CHILD_PROCESS?.trim();
+    if (!detachOverride) {
+        return true;
+    }
+
+    const normalizedOverride = detachOverride.toLowerCase();
+    if (['0', 'false', 'no', 'off'].includes(normalizedOverride)) {
+        return false;
+    }
+
+    if (['1', 'true', 'yes', 'on'].includes(normalizedOverride)) {
+        return true;
+    }
+
+    throw new Error(
+        `Invalid GREDICE_DETACH_CHILD_PROCESS value: ${detachOverride}`,
+    );
+}
+
 export function childProcessTreeOptions() {
-    return supportsProcessGroups ? { detached: true } : {};
+    return shouldDetachChildProcessTree() ? { detached: true } : {};
 }
 
 export function signalExitCode(signal, signalNumbers) {
@@ -53,7 +77,7 @@ export function signalChildProcessTree(child, signal) {
     }
 
     try {
-        if (supportsProcessGroups) {
+        if (shouldDetachChildProcessTree()) {
             process.kill(-child.pid, signal);
             return true;
         }
@@ -122,7 +146,7 @@ function isChildProcessTreeRunning(child) {
         return false;
     }
 
-    if (!supportsProcessGroups) {
+    if (!shouldDetachChildProcessTree()) {
         return child.exitCode === null && child.signalCode === null;
     }
 
