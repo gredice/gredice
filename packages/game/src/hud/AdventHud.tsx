@@ -1,8 +1,8 @@
 'use client';
 
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { useSearchParam } from '@gredice/ui/hooks';
+import { IconButton } from '@gredice/ui/IconButton';
+import { cx } from '@gredice/ui/utils';
 import { useCallback, useEffect, useState } from 'react';
 import { useAdventCalendar } from '../hooks/useAdventCalendar';
 import { SantaCapIcon } from '../icons/SantaCap';

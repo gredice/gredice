@@ -1,12 +1,12 @@
 'use client';
 
-import { Alert } from '@signalco/ui/Alert';
-import { GentleSlide } from '@signalco/ui/GentleSlide';
-import { MailCheck, Warning } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Alert } from '@gredice/ui/Alert';
+import { Button } from '@gredice/ui/Button';
+import { GentleSlide } from '@gredice/ui/GentleSlide';
+import { Input } from '@gredice/ui/Input';
+import { MailCheck, Warning } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useActionState } from 'react';
 import NewsletterImage from '../assets/NewsletterVisual.webp';
@@ -32,7 +32,7 @@ export function NewsletterSignUp() {
                     događanjima i zanimljivostima iz svijeta gredica.
                 </Typography>
                 <form action={submitAction}>
-                    <Row spacing={1} className="mt-2">
+                    <Row spacing={2} className="mt-2">
                         <Input
                             name="email"
                             placeholder="Unesi svoj email"

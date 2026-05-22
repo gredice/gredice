@@ -1,11 +1,11 @@
 'use client';
+import { Button } from '@gredice/ui/Button';
+import { Card } from '@gredice/ui/Card';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { Input } from '@gredice/ui/Input';
+import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Typography } from '@gredice/ui/Typography';
 import { useActionState, useState, useTransition } from 'react';
 import {
     cancelCampaignAction,
@@ -30,7 +30,7 @@ export function NotificationComposerClient() {
     const [isPending, startTransition] = useTransition();
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             {/* content */}
             <Card className="p-4">
                 <Typography level="h5">Notification composer</Typography>
@@ -95,7 +95,7 @@ export function NotificationComposerClient() {
                     </Typography>
                 )}
                 {state.campaign && (
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         <Typography>
                             Campaign {state.campaign.id} (
                             {state.campaign.status})

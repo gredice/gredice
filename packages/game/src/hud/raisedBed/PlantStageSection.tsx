@@ -1,10 +1,10 @@
-import { ExternalLink } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Link } from '@signalco/ui-primitives/Link';
-import { Popper } from '@signalco/ui-primitives/Popper';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Chip } from '@gredice/ui/Chip';
+import { ExternalLink } from '@gredice/ui/icons';
+import { Link } from '@gredice/ui/Link';
+import { Popper } from '@gredice/ui/Popper';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 
 export type PlantStageSectionProps = {
     label: string;
@@ -49,7 +49,7 @@ export function PlantStageSection({
     const hasDays = startDate && typeof daysCount === 'number' && dayPlural;
 
     return (
-        <Row spacing={0.5} alignItems="center" className="min-w-0 flex-wrap">
+        <Row spacing={1} alignItems="center" className="min-w-0 flex-wrap">
             <LegendDot
                 legendColorClass={legendColorClass}
                 legendBorderColorClass={legendBorderColorClass}
@@ -152,7 +152,7 @@ function StageDurationDetails({
             trigger={
                 <button
                     type="button"
-                    className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
+                    className="inline-flex rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
                     aria-label={`${label}: ${durationText}`}
                     title={`${label}: ${durationText}`}
                 >
@@ -162,7 +162,7 @@ function StageDurationDetails({
                 </button>
             }
         >
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <Typography level="body2" semiBold>
                     {label}
                 </Typography>

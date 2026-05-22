@@ -2,11 +2,11 @@
 
 import { GameScene } from '@gredice/game';
 import { getGardenBaseUrl } from '@gredice/js/urls';
-import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { Close, Navigate } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Close, Navigate } from '@gredice/ui/icons';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
+import { cx } from '@gredice/ui/utils';
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -238,7 +238,7 @@ export function LandingGameScene() {
                                 : 'translate-y-3 opacity-0',
                         )}
                     >
-                        <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-tertiary border-b-4 bg-background/90 p-1 shadow-lg backdrop-blur-sm">
+                        <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-tertiary border-b-4 bg-background/90 p-1 shadow-lg backdrop-blur-xs">
                             <IconButton
                                 title="Zatvori prikaz"
                                 variant="plain"
@@ -279,7 +279,7 @@ export function LandingGameScene() {
                     <NavigatingButton
                         href={gardenBaseUrl}
                         variant="outlined"
-                        className="rounded-full bg-background/90 shadow-lg backdrop-blur-sm"
+                        className="rounded-full bg-background/90 shadow-lg backdrop-blur-xs"
                     >
                         Otvori aplikaciju
                     </NavigatingButton>

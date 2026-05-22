@@ -1,8 +1,8 @@
 import { decodeRouteParam } from '@gredice/js/uri';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { FeedbackModal } from '../../../../components/shared/feedback/FeedbackModal';
@@ -102,7 +102,7 @@ export default async function BlockPlantDetailPage(
 
     return (
         <div className="py-8">
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <Breadcrumbs
                     items={[
                         { label: 'Blokovi', href: KnownPages.Blocks },
@@ -111,7 +111,7 @@ export default async function BlockPlantDetailPage(
                     ]}
                 />
                 <PlantGrowthViewer plant={plant} sorts={sorts} />
-                <Row spacing={2}>
+                <Row spacing={4}>
                     <Typography level="body1">
                         Jesu li ti informacije korisne?
                     </Typography>

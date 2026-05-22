@@ -1,15 +1,15 @@
 'use client';
 
 import type { RaisedBedFieldAssignableFarmUser } from '@gredice/storage';
+import { Button } from '@gredice/ui/Button';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { IconButton } from '@gredice/ui/IconButton';
+import { User } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
-import { User } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { useEffect, useMemo, useState } from 'react';
 import { assignRaisedBedFieldUserAction } from '../../(actions)/raisedBedFieldsActions';
 
@@ -143,7 +143,7 @@ export function AssignRaisedBedFieldModal({
                 aria-label={`Dodijeljeno korisnika: ${selectedUsers.length}`}
                 disabled={!canOpen}
             >
-                <Row spacing={-1}>
+                <Row spacing={-2}>
                     {selectedUsers.slice(0, 2).map((selectedUser) => (
                         <UserAvatar
                             key={selectedUser.id}
@@ -188,7 +188,7 @@ export function AssignRaisedBedFieldModal({
             open={open}
             onOpenChange={setOpen}
         >
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="h5">Dodjela sijanja</Typography>
                 <Typography>
                     Odaberi korisnike kojima želiš dodijeliti zadatak{' '}
@@ -196,7 +196,7 @@ export function AssignRaisedBedFieldModal({
                 </Typography>
 
                 {selectableUsers.length > 0 ? (
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         <Button
                             variant="plain"
                             className="justify-start px-0"
@@ -231,7 +231,7 @@ export function AssignRaisedBedFieldModal({
                     </Typography>
                 )}
 
-                <Row spacing={1} justifyContent="end">
+                <Row spacing={2} justifyContent="end">
                     <Button
                         variant="outlined"
                         onClick={() => setOpen(false)}

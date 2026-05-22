@@ -1,21 +1,8 @@
 import { getCmsPage } from '@gredice/storage';
-import { SectionsView } from '@signalco/cms-core/SectionsView';
+import { parseSectionDataJson, SectionsView } from '@gredice/ui/cms';
 import { notFound } from 'next/navigation';
 import { sectionsComponentRegistry } from '../../../../../../components/shared/sectionsComponentRegistry';
 import { auth } from '../../../../../../lib/auth/auth';
-
-function parseCmsSectionData(value: string | null) {
-    if (!value) {
-        return [];
-    }
-
-    try {
-        const parsed = JSON.parse(value);
-        return Array.isArray(parsed) ? parsed : [];
-    } catch {
-        return [];
-    }
-}
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +27,7 @@ export default async function CmsPagePreviewPage({
     return (
         <main>
             <SectionsView
-                sectionsData={parseCmsSectionData(page.content)}
+                sectionsData={parseSectionDataJson(page.content)}
                 componentsRegistry={sectionsComponentRegistry}
             />
         </main>

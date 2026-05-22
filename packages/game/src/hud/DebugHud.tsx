@@ -1,11 +1,11 @@
 'use client';
 
+import { Button } from '@gredice/ui/Button';
+import { Checkbox } from '@gredice/ui/Checkbox';
 import { DebugPanel, DebugPanelSection } from '@gredice/ui/DebugControls';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Slider } from '@signalco/ui-primitives/Slider';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Row } from '@gredice/ui/Row';
+import { Slider } from '@gredice/ui/Slider';
+import { Stack } from '@gredice/ui/Stack';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLiveTime } from '../hooks/useLiveTime';
@@ -586,10 +586,10 @@ export function DebugHud() {
                     dragging={isDraggingPanel}
                     onDragHandlePointerDown={handlePanelPointerDown}
                 >
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         <DebugPanelSection title="Performance">
                             <Stack
-                                spacing={1}
+                                spacing={2}
                                 className="text-xs font-mono leading-5"
                             >
                                 <div>
@@ -656,7 +656,7 @@ export function DebugHud() {
                                 checked={overrideWeather}
                                 onCheckedChange={handleOverrideChange}
                             />
-                            <Stack spacing={1} className="pt-1">
+                            <Stack spacing={2} className="pt-1">
                                 <Slider
                                     label={`Cloud ${formatPercent(cloudy)}`}
                                     min={0}
@@ -769,7 +769,7 @@ export function DebugHud() {
                                         }
                                     }}
                                 />
-                                <Row spacing={1} className="flex-wrap">
+                                <Row spacing={2} className="flex-wrap">
                                     {SNOW_ACCUMULATION_PRESETS.map((preset) => (
                                         <Button
                                             key={preset.label}

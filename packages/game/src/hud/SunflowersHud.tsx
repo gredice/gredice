@@ -1,16 +1,16 @@
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
+import { Button } from '@gredice/ui/Button';
+import { Divider } from '@gredice/ui/Divider';
+import { useSearchParam } from '@gredice/ui/hooks';
+import { IconButton } from '@gredice/ui/IconButton';
 import {
     Info,
     Navigate,
     ShoppingCart as ShoppingCartIcon,
-} from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Popper } from '@signalco/ui-primitives/Popper';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+} from '@gredice/ui/icons';
+import { Popper } from '@gredice/ui/Popper';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
 import { useDailyReward } from '../hooks/useDailyReward';
@@ -43,8 +43,8 @@ function DailyRewardInfo() {
 
 export function SunflowersInfoTooltipContent() {
     return (
-        <Stack className="p-4" spacing={2}>
-            <Row spacing={2} alignItems="start">
+        <Stack className="p-4" spacing={4}>
+            <Row spacing={4} alignItems="start">
                 <Image
                     src="https://cdn.gredice.com/sunflower-large.svg"
                     alt="Suncokret"
@@ -52,7 +52,7 @@ export function SunflowersInfoTooltipContent() {
                     height={72}
                     className="size-16 shrink-0"
                 />
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     <Typography level="body2" bold>
                         Što su suncokreti?
                     </Typography>
@@ -62,10 +62,10 @@ export function SunflowersInfoTooltipContent() {
                     </Typography>
                 </Stack>
             </Row>
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <Stack
-                        spacing={0.5}
+                        spacing={1}
                         className="rounded-md border bg-muted/40 p-3"
                     >
                         <Typography
@@ -79,7 +79,7 @@ export function SunflowersInfoTooltipContent() {
                         </Typography>
                     </Stack>
                     <Stack
-                        spacing={0.5}
+                        spacing={1}
                         className="rounded-md border bg-muted/40 p-3"
                     >
                         <Typography
@@ -200,7 +200,7 @@ function SunflowersAmount() {
                             aria-hidden="true"
                             title={`U košari: ${formatSunflowers(pendingSunflowers)} 🌻`}
                             data-sunflowers-cart-indicator
-                            className="pointer-events-none absolute -right-1 -top-1 flex size-6 items-center justify-center rounded-full border border-background bg-neutral-100 text-neutral-900 shadow-sm"
+                            className="pointer-events-none absolute -right-1 -top-1 flex size-6 items-center justify-center rounded-full border border-background bg-neutral-100 text-neutral-900 shadow-xs"
                         >
                             <ShoppingCartIcon className="size-[18px] shrink-0" />
                         </span>

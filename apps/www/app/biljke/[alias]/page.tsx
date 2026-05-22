@@ -1,8 +1,8 @@
 import { decodeRouteParam } from '@gredice/js/uri';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -124,7 +124,7 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                             : undefined,
                 }}
             />
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <Breadcrumbs
                     items={[
                         { label: 'Biljke', href: KnownPages.Plants },
@@ -155,7 +155,7 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                     basePlantId={plant.id}
                 />
                 {recipes.length > 0 && (
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         <Typography level="h2">
                             Recepti s {plant.information.name}
                         </Typography>
@@ -170,7 +170,7 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                     </Link>{' '}
                     za detalje o sjetvi, rasporedu i pogodnostima.
                 </Typography>
-                <Row spacing={2}>
+                <Row spacing={4}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj biljci korisne?
                     </Typography>

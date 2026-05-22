@@ -1,4 +1,6 @@
-@import "@signalco/ui-themes-minimal-app/styles";
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+@source "../../../packages/ui/src";
 
 :root {
     color-scheme: light;

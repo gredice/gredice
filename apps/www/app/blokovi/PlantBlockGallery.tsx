@@ -1,10 +1,10 @@
 'use client';
 
 import type { PlantData } from '@gredice/client';
-import { orderBy } from '@signalco/js';
-import { Gallery } from '@signalco/ui/Gallery';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { orderBy } from '@gredice/js/arrays';
+import { Gallery } from '@gredice/ui/Gallery';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
 import { ItemCard } from '../../components/shared/ItemCard';
 import { useClientSearchParam } from '../../hooks/useClientSearchParam';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
@@ -16,7 +16,7 @@ function PlantBlockGalleryItem(props: Omit<PlantData, 'id'> & { id: string }) {
     return (
         <ItemCard
             label={
-                <Row spacing={1} justifyContent="center">
+                <Row spacing={2} justifyContent="center">
                     <Typography>{props.information.name}</Typography>
                 </Row>
             }

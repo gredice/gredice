@@ -1,6 +1,6 @@
 'use client';
 
-import { Slider } from '@signalco/ui-primitives/Slider';
+import { Slider } from '@gredice/ui/Slider';
 
 interface PlantSliderProps {
     label: string;

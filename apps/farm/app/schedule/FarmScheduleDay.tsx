@@ -1,4 +1,4 @@
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Stack } from '@gredice/ui/Stack';
 import { Suspense } from 'react';
 import { FarmScheduleEmptyState } from './FarmScheduleEmptyState';
 import { FarmScheduleOperationsSectionContent } from './FarmScheduleOperationsSectionContent';
@@ -25,7 +25,7 @@ export function FarmScheduleDay({
     const plantSortsPromise = getFarmSchedulePlantSorts();
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <Suspense fallback={null}>
                 <FarmScheduleEmptyState dayDataPromise={dayDataPromise} />
             </Suspense>

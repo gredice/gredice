@@ -1,5 +1,5 @@
 import { getEntityTypeByName } from '@gredice/storage';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Stack } from '@gredice/ui/Stack';
 import { notFound } from 'next/navigation';
 import { AttributeDefinitionsList } from '../../../../../components/admin/directories';
 import {
@@ -21,7 +21,7 @@ export default async function AttributesPage({
     }
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <AdminPageHeader
                 breadcrumbs={
                     <AdminDirectoryBreadcrumbs

@@ -1,3 +1,5 @@
+import { Button } from '@gredice/ui/Button';
+import { Divider } from '@gredice/ui/Divider';
 import {
     ArrowDown,
     ArrowDownLeft,
@@ -11,13 +13,11 @@ import {
     Navigate,
     Snowflake,
     Wind,
-} from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { Link } from '@signalco/ui-primitives/Link';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+} from '@gredice/ui/icons';
+import { Link } from '@gredice/ui/Link';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { type FC, useState } from 'react';
 import { useWeatherNow } from '../../../hooks/useWeatherNow';
@@ -67,7 +67,7 @@ export function WeatherNowDetails() {
             {showForecast && <WeatherForecastDays />}
             {!showForecast && (
                 <div className="grid grid-cols-[1fr_auto] gap-2">
-                    <Row spacing={1} className="p-4">
+                    <Row spacing={2} className="p-4">
                         <div className="my-1 mr-2">
                             {WeatherIcon && (
                                 <WeatherIcon.day className="size-12" />
@@ -93,7 +93,7 @@ export function WeatherNowDetails() {
                                 </Stack>
                             )}
                             {data.rain > 0 && (
-                                <Stack spacing={0.5}>
+                                <Stack spacing={1}>
                                     <Typography level="body3">
                                         Padaline
                                     </Typography>
@@ -106,7 +106,7 @@ export function WeatherNowDetails() {
                                 </Stack>
                             )}
                             {data.snowAccumulation > 0 && (
-                                <Stack spacing={0.5}>
+                                <Stack spacing={1}>
                                     <Typography level="body3">
                                         Snijeg
                                     </Typography>
@@ -120,7 +120,7 @@ export function WeatherNowDetails() {
                                 </Stack>
                             )}
                             {data.windSpeed > 0 && (
-                                <Stack spacing={0.5}>
+                                <Stack spacing={1}>
                                     <Typography level="body3">
                                         Vjetar
                                     </Typography>
@@ -181,7 +181,7 @@ export function WeatherNowDetails() {
                         className="flex gap-1 items-center"
                     >
                         <Image
-                            className="inline rounded-sm"
+                            className="inline rounded-xs"
                             width={18}
                             height={18}
                             alt="Signalco logo"

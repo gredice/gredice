@@ -1,8 +1,8 @@
 import { plantFieldStatusLabel } from '@gredice/js/plants';
+import { Modal } from '@gredice/ui/Modal';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { type ReactElement, useMemo, useState } from 'react';
 import { useSorts } from '../../hooks/usePlantSorts';
 import type { RaisedBedFieldPlantHistoryEntry } from '../../utils/raisedBedFields';
@@ -58,7 +58,7 @@ export function RaisedBedFieldPlantHistoryModal({
                 modal={false}
                 className="md:border-tertiary md:border-b-4 max-w-xl"
             >
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="body2" className="text-muted-foreground">
                         Povijest biljaka na ovom polju.
                     </Typography>
@@ -90,7 +90,7 @@ export function RaisedBedFieldPlantHistoryModal({
                             <button
                                 key={entryKey}
                                 type="button"
-                                className="flex w-full items-center gap-2 rounded-md border bg-card p-2 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700"
+                                className="flex w-full items-center gap-2 rounded-md border bg-card p-2 text-left transition-colors hover:bg-muted/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700"
                                 aria-label={`Otvori detalje biljke ${plantName}`}
                                 onClick={() => {
                                     setSelectedEntry(entry);
@@ -105,7 +105,7 @@ export function RaisedBedFieldPlantHistoryModal({
                                         className="size-full object-cover"
                                     />
                                 </div>
-                                <Stack spacing={0.5} className="min-w-0">
+                                <Stack spacing={1} className="min-w-0">
                                     <Typography
                                         level="body1"
                                         semiBold

@@ -1,7 +1,7 @@
 'use client';
 
-import { List } from '@signalco/ui-primitives/List';
-import { ListItem } from '@signalco/ui-primitives/ListItem';
+import { List } from '@gredice/ui/List';
+import { ListItem } from '@gredice/ui/ListItem';
 import { usePathname } from 'next/navigation';
 import { KnownPages } from '../../src/KnownPages';
 

@@ -1,9 +1,9 @@
 'use client';
 
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import {
     Bar,
     BarChart,
@@ -116,8 +116,8 @@ export function OperationsDurationCard({
     return (
         <Card>
             <CardOverflow>
-                <Stack spacing={2} className="p-4">
-                    <Stack spacing={0.5}>
+                <Stack spacing={4} className="p-4">
+                    <Stack spacing={1}>
                         <Typography level="body3">
                             Ukupno trajanje radnji
                         </Typography>
@@ -125,8 +125,8 @@ export function OperationsDurationCard({
                             {formatTotalDuration(data.totalMinutes)}
                         </Typography>
                         <Row className="gap-4 text-xs text-muted-foreground">
-                            <Row spacing={0.5} className="items-center">
-                                <span className="h-2 w-2 rounded-sm bg-primary/60" />
+                            <Row spacing={1} className="items-center">
+                                <span className="h-2 w-2 rounded-xs bg-primary/60" />
                                 <Typography level="body3">
                                     Radnje{' '}
                                     {formatTooltipDuration(
@@ -134,8 +134,8 @@ export function OperationsDurationCard({
                                     )}
                                 </Typography>
                             </Row>
-                            <Row spacing={0.5} className="items-center">
-                                <span className="h-2 w-2 rounded-sm bg-emerald-500/60" />
+                            <Row spacing={1} className="items-center">
+                                <span className="h-2 w-2 rounded-xs bg-emerald-500/60" />
                                 <Typography level="body3">
                                     Sijanje{' '}
                                     {formatTooltipDuration(data.sowingMinutes)}
@@ -268,7 +268,7 @@ export function OperationsDurationCard({
 
                                             return (
                                                 <Stack
-                                                    spacing={0.5}
+                                                    spacing={1}
                                                     className="text-xs"
                                                 >
                                                     <Typography level="body2">
@@ -348,11 +348,11 @@ export function OperationsDurationCard({
                         </div>
                     )}
                     {data.byUser.length > 0 ? (
-                        <Stack spacing={1.5} className="pt-2">
+                        <Stack spacing={3} className="pt-2">
                             <Typography level="body3" className="font-medium">
                                 Po korisniku (dodijeljene radnje)
                             </Typography>
-                            <Stack spacing={1}>
+                            <Stack spacing={2}>
                                 {data.byUser.map((user) => (
                                     <Row
                                         key={user.userId}

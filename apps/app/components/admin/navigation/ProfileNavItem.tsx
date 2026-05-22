@@ -1,13 +1,13 @@
 'use client';
 
-import { UserAvatar } from '@gredice/ui/UserAvatar';
-import { Bank, LogOut, User } from '@signalco/ui-icons';
+import { Bank, LogOut, User } from '@gredice/ui/icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-} from '@signalco/ui-primitives/Menu';
+} from '@gredice/ui/Menu';
+import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { useEffect, useMemo, useState } from 'react';
 import { KnownPages } from '../../../src/KnownPages';
 
@@ -82,7 +82,7 @@ export function ProfileNavItem({
             ? ''
             : "before:absolute before:-left-3 before:top-1/2 before:h-px before:w-3 before:bg-border/55 before:content-['']";
     const triggerClassName = [
-        'group/nav-item relative flex w-full items-center gap-2 rounded-md text-foreground text-sm outline-none transition-colors hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'group/nav-item relative flex w-full items-center gap-2 rounded-md text-foreground text-sm outline-hidden transition-colors hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         compact ? 'h-9 justify-center px-0' : 'h-8 px-2',
         guideLineClassName,
     ]

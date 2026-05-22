@@ -1,4 +1,4 @@
-import { SignedIn, SignedOut } from '@signalco/auth-client/components';
+import { SignedIn, SignedOut } from '@gredice/ui/auth';
 import type { ComponentProps } from 'react';
 import LoginModal from '../components/auth/LoginModal';
 import { GameSceneWithAnalytics } from '../components/game/GameSceneWithAnalytics';

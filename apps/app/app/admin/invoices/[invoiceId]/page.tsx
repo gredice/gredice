@@ -1,17 +1,12 @@
 import { getInvoice } from '@gredice/storage';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
@@ -89,7 +84,7 @@ export default async function InvoicePage({
     }
     const invoiceIsOverdue = isOverdue(invoice);
     const statusValue = (
-        <Row spacing={1} className="flex-wrap">
+        <Row spacing={2} className="flex-wrap">
             <Chip color={getStatusColor(invoice.status)}>
                 {getStatusLabel(invoice.status)}
             </Chip>
@@ -196,7 +191,7 @@ export default async function InvoicePage({
 
     return (
         <EntityDetailsPropertiesProvider>
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <AdminPageTitle title={`Ponuda ${invoice.invoiceNumber}`} />
                 <AdminPageHeader
                     breadcrumbs={
@@ -211,7 +206,7 @@ export default async function InvoicePage({
                         />
                     }
                     actions={
-                        <Row className="items-center" spacing={1}>
+                        <Row className="items-center" spacing={2}>
                             <InvoiceActions invoice={invoice} />
                             <EntityDetailsPropertiesToggle />
                         </Row>
@@ -219,7 +214,7 @@ export default async function InvoicePage({
                     heading={`Ponuda ${invoice.invoiceNumber}`}
                 />
                 <EntityDetailsPropertiesLayout properties={propertiesPanel}>
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         <Card>
                             <CardHeader>
                                 <CardTitle>Stavke ponude</CardTitle>

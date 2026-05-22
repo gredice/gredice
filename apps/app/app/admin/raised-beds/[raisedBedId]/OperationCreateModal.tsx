@@ -1,12 +1,12 @@
 'use client';
 
-import { Add } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Input } from '@gredice/ui/Input';
+import { Add } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { createOperationAction } from '../../../(actions)/operationActions';
 import { SelectEntity } from './SelectEntity';
@@ -50,10 +50,10 @@ export function OperationCreateModal({
                 </IconButton>
             }
         >
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <Typography level="h5">Nova operacija</Typography>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         <div className="grid grid-cols-2 gap-4">
                             <Input
                                 name="entityTypeName"

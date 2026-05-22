@@ -4,9 +4,9 @@ import {
     PlantYieldTooltip,
     SeedTimeInformationBadge,
 } from '@gredice/ui/plants';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { ItemCard } from '../../components/shared/ItemCard';
 import { KnownPages } from '../../src/KnownPages';
 

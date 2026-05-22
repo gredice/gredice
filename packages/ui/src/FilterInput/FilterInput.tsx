@@ -1,11 +1,11 @@
 'use client';
 
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
-import { Close, Search } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
 import type { HTMLAttributes } from 'react';
+import { useSearchParam } from '../hooks';
+import { IconButton } from '../IconButton';
+import { Input } from '../Input';
+import { Close, Search } from '../icons';
+import { cx } from '../utils';
 
 export type FilterInputProps = Omit<
     HTMLAttributes<HTMLFormElement>,

@@ -1,9 +1,9 @@
 import { type components, directoriesClient } from '@gredice/client';
-import { Search, Warning } from '@signalco/ui-icons';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card } from '@gredice/ui/Card';
+import { Search, Warning } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import {
     normalizeSearchCategory,
     searchCategoryParam,
@@ -89,7 +89,7 @@ export default async function SearchPage({
     const hasNextPage = results.length === searchPageLimit;
 
     return (
-        <Stack spacing={4} className="py-4">
+        <Stack spacing={8} className="py-4">
             <Typography level="h1">Pretraga</Typography>
             <PageFilterInputNoSSR
                 searchParamName="pretraga"
@@ -103,7 +103,7 @@ export default async function SearchPage({
 
             {error ? (
                 <Card className="p-4">
-                    <Row spacing={2} alignItems="center">
+                    <Row spacing={4} alignItems="center">
                         <Warning className="size-5 text-orange-500" />
                         <Typography>{error}</Typography>
                     </Row>

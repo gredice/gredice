@@ -1,7 +1,7 @@
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { Modal } from '@gredice/ui/Modal';
+import { Stack } from '@gredice/ui/Stack';
 import { type SubmitEvent, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCreateGarden } from '../../hooks/useCreateGarden';
@@ -44,7 +44,7 @@ export function CreateGardenModal({
     return (
         <Modal open={open} onOpenChange={onOpenChange} title="Kreiraj novi vrt">
             <form onSubmit={handleCreateGarden}>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Input
                         name="newGardenName"
                         label="Naziv novog vrta"

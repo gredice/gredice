@@ -1,7 +1,7 @@
 'use client';
 
-import { ArrowLeft } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { IconButton } from '@gredice/ui/IconButton';
+import { ArrowLeft } from '@gredice/ui/icons';
 import { useRouter } from 'next/navigation';
 
 export function HomeButton() {

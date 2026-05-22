@@ -1,7 +1,7 @@
 'use client';
 
-import { useControllableState } from '@signalco/hooks/useControllableState';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { useControllableState } from '@gredice/ui/hooks';
+import { SelectItems } from '@gredice/ui/SelectItems';
 import { useEffect, useState } from 'react';
 import { getRaisedBedFields } from '../../../(actions)/gardenDataActions';
 

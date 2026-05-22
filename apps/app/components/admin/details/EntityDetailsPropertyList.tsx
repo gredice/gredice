@@ -1,4 +1,3 @@
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import {
     Bank,
     Calendar,
@@ -30,8 +29,9 @@ import {
     UserCircle,
     Wallet,
     Warning,
-} from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
+} from '@gredice/ui/icons';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { cx } from '@gredice/ui/utils';
 import type { ReactNode } from 'react';
 
 export type EntityDetailsPropertyListItem = {
@@ -353,7 +353,7 @@ function renderBooleanValueToggle(value: boolean) {
         >
             <span
                 className={cx(
-                    'inline-block size-4 rounded-full shadow-sm transition-transform',
+                    'inline-block size-4 rounded-full shadow-xs transition-transform',
                     value ? 'bg-primary-foreground' : 'bg-muted-foreground',
                     value ? 'translate-x-4' : 'translate-x-0.5',
                 )}

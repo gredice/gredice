@@ -1,18 +1,13 @@
 import { userIdToPublicId } from '@gredice/js/publicId';
 import { getUser, getUserWithLogins } from '@gredice/storage';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
+import { Check, Disabled, Warning } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Check, Disabled, Warning } from '@signalco/ui-icons';
-import {
-    Card,
-    CardHeader,
-    CardOverflow,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
@@ -110,7 +105,7 @@ export default async function UserPage({
 
     return (
         <EntityDetailsPropertiesProvider>
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <AdminPageTitle title={userTitle} />
                 <AdminPageHeader
                     breadcrumbs={
@@ -125,7 +120,7 @@ export default async function UserPage({
                         />
                     }
                     actions={
-                        <Row className="items-center" spacing={1}>
+                        <Row className="items-center" spacing={2}>
                             <ButtonImpersonateUser userId={user.id} />
                             <EntityDetailsPropertiesToggle />
                         </Row>
@@ -239,7 +234,7 @@ export default async function UserPage({
                                                         {userLogin.blockedUntil &&
                                                         userLogin.blockedUntil >
                                                             new Date() ? (
-                                                            <Row spacing={1}>
+                                                            <Row spacing={2}>
                                                                 <Disabled className="text-red-500" />
                                                                 <Typography>
                                                                     {
@@ -263,7 +258,7 @@ export default async function UserPage({
                                                             </Row>
                                                         ) : userLogin.failedAttempts >
                                                           0 ? (
-                                                            <Row spacing={1}>
+                                                            <Row spacing={2}>
                                                                 <Warning className="text-amber-500" />
                                                                 <Stack>
                                                                     <Typography>

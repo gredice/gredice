@@ -1,6 +1,6 @@
-import { Error as ErrorIcon, ExternalLink, Warning } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { Error as ErrorIcon, ExternalLink, Warning } from '@gredice/ui/icons';
 import Link from 'next/link';
 import { KnownPages } from '../../../../../src/KnownPages';
 import { EntityDetailsPanelCard } from './EntityDetailsPanelCard';
@@ -42,7 +42,7 @@ export function EntityInventoryCard({
             href={inventoryHref}
             title={inventoryActionLabel}
             aria-label={inventoryActionLabel}
-            className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
             <ExternalLink className="size-3.5" aria-hidden />
         </Link>

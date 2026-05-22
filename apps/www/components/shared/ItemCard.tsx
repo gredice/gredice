@@ -1,4 +1,4 @@
-import { Card, CardHeader, CardOverflow } from '@signalco/ui-primitives/Card';
+import { Card, CardHeader, CardOverflow } from '@gredice/ui/Card';
 import type { Route } from 'next';
 import type { PropsWithChildren, ReactElement } from 'react';
 

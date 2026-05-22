@@ -1,16 +1,16 @@
+import { orderBy } from '@gredice/js/arrays';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Calendar, LayoutGrid } from '@gredice/ui/icons';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
-import { orderBy } from '@signalco/js';
-import { Calendar, LayoutGrid } from '@signalco/ui-icons';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
-import { PageHeader } from '../../components/shared/PageHeader';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
 import { getPlantSortsData } from '../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
@@ -109,7 +109,7 @@ export default async function PlantsPage({
                                     href={`?pregled=popis${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
                                     prefetch
                                 >
-                                    <Row spacing={1} className="cursor-default">
+                                    <Row spacing={2} className="cursor-default">
                                         <LayoutGrid className="size-5" />
                                         <span>Popis</span>
                                     </Row>
@@ -124,7 +124,7 @@ export default async function PlantsPage({
                                     href={`?pregled=kalendar${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
                                     prefetch
                                 >
-                                    <Row spacing={1} className="cursor-default">
+                                    <Row spacing={2} className="cursor-default">
                                         <Calendar className="size-5" />
                                         <span>Kalendar</span>
                                     </Row>
@@ -161,7 +161,7 @@ export default async function PlantsPage({
                     </TabsContent>
                 </Tabs>
             </Suspense>
-            <Row spacing={2} className="mt-12">
+            <Row spacing={4} className="mt-12">
                 <Typography level="body1">
                     Sviđa ti se odabir ili nema biljke koja te zanima?
                 </Typography>

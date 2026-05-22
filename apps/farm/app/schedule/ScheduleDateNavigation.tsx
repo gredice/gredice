@@ -1,6 +1,6 @@
-import { Left, Navigate } from '@signalco/ui-icons';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Left, Navigate } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 
 function formatDateParam(date: Date) {
@@ -37,7 +37,7 @@ export function ScheduleDateNavigation({ date }: ScheduleDateNavigationProps) {
     const nextDateParam = formatDateParam(getOffsetDate(date, 1));
 
     return (
-        <Row spacing={1}>
+        <Row spacing={2}>
             <Link
                 href={`/schedule?date=${prevDateParam}`}
                 title="Prethodni dan"

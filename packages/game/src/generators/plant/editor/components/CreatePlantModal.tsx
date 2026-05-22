@@ -1,11 +1,11 @@
 'use client';
 
-import { Add } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { Add } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import type { CreatePlantDialogProps } from '../@types/plant-generator';
 

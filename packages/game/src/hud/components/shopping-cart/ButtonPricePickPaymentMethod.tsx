@@ -1,5 +1,5 @@
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
 import { useRef } from 'react';
 import { useSunflowerTransferAnimation } from '../../../indicators/SunflowerTransfer/useSunflowerTransferAnimation';
 import {
@@ -58,7 +58,7 @@ export function ButtonPricePickPaymentMethod({
     }
 
     return (
-        <Row spacing={1}>
+        <Row spacing={2}>
             {/* Price Display */}
             <Typography level="body1" semiBold>
                 {formattedDisplayPrice}

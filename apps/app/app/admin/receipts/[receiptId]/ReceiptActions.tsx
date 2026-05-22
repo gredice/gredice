@@ -1,10 +1,10 @@
 'use client';
 
-import { ModalConfirm } from '@signalco/ui/ModalConfirm';
-import { Delete } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Delete } from '@gredice/ui/icons';
+import { ModalConfirm } from '@gredice/ui/ModalConfirm';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
 import { useState, useTransition } from 'react';
 import { deleteReceiptAction } from './actions';
 
@@ -37,7 +37,7 @@ export function ReceiptActions({ receipt }: ReceiptActionsProps) {
     };
 
     return (
-        <Row spacing={2} className="flex-wrap">
+        <Row spacing={4} className="flex-wrap">
             {error && (
                 <Typography
                     level="body2"

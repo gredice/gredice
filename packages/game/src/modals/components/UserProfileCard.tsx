@@ -1,10 +1,10 @@
 import { AvatarSelectionMenu } from '@gredice/ui/AvatarSelectionMenu';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardActions, CardContent } from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardActions, CardContent } from '@gredice/ui/Card';
+import { Input } from '@gredice/ui/Input';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { FormEvent } from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { useUpdateUser } from '../../hooks/useUpdateUser';
@@ -38,10 +38,10 @@ export function UserProfileCard() {
     return (
         <Card>
             <CardContent noHeader>
-                <Stack spacing={4}>
+                <Stack spacing={8}>
                     <form onSubmit={handleProfileUpdate}>
-                        <Stack spacing={2}>
-                            <Row spacing={2}>
+                        <Stack spacing={4}>
+                            <Row spacing={4}>
                                 <AvatarSelectionMenu
                                     displayName={currentUser.data?.displayName}
                                     onChange={handleAvatarChange}
@@ -57,7 +57,7 @@ export function UserProfileCard() {
                                         />
                                     </button>
                                 </AvatarSelectionMenu>
-                                <Stack spacing={1}>
+                                <Stack spacing={2}>
                                     <Input
                                         name="displayName"
                                         label="Prikazano ime"

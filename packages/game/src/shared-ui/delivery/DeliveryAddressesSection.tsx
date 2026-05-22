@@ -1,16 +1,16 @@
-import { ModalConfirm } from '@signalco/ui/ModalConfirm';
-import { NoDataPlaceholder } from '@signalco/ui/NoDataPlaceholder';
-import { Add, Delete, Edit } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { Chip } from '@gredice/ui/Chip';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Input } from '@gredice/ui/Input';
+import { Add, Delete, Edit } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { ModalConfirm } from '@gredice/ui/ModalConfirm';
+import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import {
     type DeliveryAddressData,
@@ -80,8 +80,8 @@ function AddressForm({
 
     return (
         <form onSubmit={handleSubmit}>
-            <Stack spacing={4}>
-                <Stack spacing={2}>
+            <Stack spacing={8}>
+                <Stack spacing={4}>
                     <Input
                         label="Naziv adrese"
                         className="bg-card"
@@ -146,7 +146,7 @@ function AddressForm({
                         }
                         placeholder="Dodatne informacije (opciono)"
                     />
-                    <Row spacing={2}>
+                    <Row spacing={4}>
                         <Input
                             label="Grad"
                             className="bg-card"
@@ -186,7 +186,7 @@ function AddressForm({
                         label="Postavi kao zadanu adresu"
                     />
                 </Stack>
-                <Row spacing={2} justifyContent="end">
+                <Row spacing={4} justifyContent="end">
                     <Button
                         type="button"
                         variant="outlined"
@@ -253,10 +253,10 @@ export function AddressCard({
     return (
         <Card>
             <CardContent>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Row justifyContent="space-between" alignItems="start">
-                        <Stack spacing={1}>
-                            <Row spacing={2}>
+                        <Stack spacing={2}>
+                            <Row spacing={4}>
                                 <Typography level="h6">
                                     {address.label}
                                 </Typography>
@@ -276,7 +276,7 @@ export function AddressCard({
                             </Stack>
                         </Stack>
                         {!readonly && (
-                            <Row spacing={1}>
+                            <Row spacing={2}>
                                 <IconButton
                                     title="Uredi adresu"
                                     variant="outlined"
@@ -309,7 +309,7 @@ export function AddressCard({
                             </Row>
                         )}
                     </Row>
-                    <Stack spacing={0.5}>
+                    <Stack spacing={1}>
                         <Typography level="body3" secondary>
                             {address.street1}
                             {address.street2 && `, ${address.street2}`}
@@ -339,7 +339,7 @@ export function DeliveryAddressesSection() {
     };
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <Row justifyContent="space-between">
                 <Typography level="h5">Adrese za dostavu</Typography>
                 <Modal
@@ -366,7 +366,7 @@ export function DeliveryAddressesSection() {
             {isLoading ? (
                 <Typography>Učitavanje adresa...</Typography>
             ) : addresses && addresses.length > 0 ? (
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     {addresses.map((address) => (
                         <AddressCard key={address.id} address={address} />
                     ))}

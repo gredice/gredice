@@ -1,11 +1,6 @@
 import { getAccount, getEvents, knownEventTypes } from '@gredice/storage';
-import {
-    Card,
-    CardHeader,
-    CardOverflow,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
+import { Stack } from '@gredice/ui/Stack';
 import type { ReactNode } from 'react';
 import { EventsTable } from '../../../../components/shared/events/EventsTable';
 
@@ -70,7 +65,7 @@ function renderEventDetails(
 
         if (details.length > 0) {
             return (
-                <Stack spacing={0.5} className="text-sm">
+                <Stack spacing={1} className="text-sm">
                     {details}
                 </Stack>
             );

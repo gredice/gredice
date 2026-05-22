@@ -1,11 +1,6 @@
-import { Navigate } from '@signalco/ui-icons';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { cx } from '@signalco/ui-primitives/cx';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Navigate } from '@gredice/ui/icons';
+import { cx } from '@gredice/ui/utils';
 import Link from 'next/link';
 import { CompanyInstagram } from '../../app/Footer';
 

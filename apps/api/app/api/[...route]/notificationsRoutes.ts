@@ -29,11 +29,11 @@ import {
     sanitizeGrediceLinkUrl,
     validateHostedImageUrl,
 } from '../../../lib/http/safeUrls';
+import { notificationRolloutFlags } from '../../../lib/notifications/notificationRollout';
 import {
     pushDeviceResponse,
     pushDeviceUpsertSchema,
 } from '../../../lib/notifications/pushDevices';
-import { notificationRolloutFlags } from '../../../lib/notifications/notificationRollout';
 import {
     pushNotificationEventMetadata,
     pushNotificationEventSchema,

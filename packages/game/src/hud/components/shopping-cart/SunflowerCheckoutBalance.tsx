@@ -1,5 +1,5 @@
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
 import type { useShoppingCart } from '../../../hooks/useShoppingCart';
 import { formatSunflowers } from '../../../utils/sunflowerPricing';
 
@@ -12,7 +12,7 @@ export function SunflowerCheckoutBalance({
 
     return (
         <div aria-live="polite">
-            <Row justifyContent="space-between" spacing={2}>
+            <Row justifyContent="space-between" spacing={4}>
                 <Typography level="body1">Za plaćanje</Typography>
                 <Typography level="body1" bold>
                     {formatSunflowers(pendingSunflowers)}{' '}

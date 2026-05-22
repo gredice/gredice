@@ -1,4 +1,8 @@
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
+import { Button } from '@gredice/ui/Button';
+import { Divider } from '@gredice/ui/Divider';
+import { DotIndicator } from '@gredice/ui/DotIndicator';
+import { useSearchParam } from '@gredice/ui/hooks';
+import { IconButton } from '@gredice/ui/IconButton';
 import {
     Approved,
     Comment,
@@ -8,23 +12,19 @@ import {
     LogOut,
     Sprout,
     User,
-} from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+} from '@gredice/ui/icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from '@signalco/ui-primitives/Menu';
-import { Popper } from '@signalco/ui-primitives/Popper';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Skeleton } from '@signalco/ui-primitives/Skeleton';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+} from '@gredice/ui/Menu';
+import { Popper } from '@gredice/ui/Popper';
+import { Row } from '@gredice/ui/Row';
+import { Skeleton } from '@gredice/ui/Skeleton';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentUser } from '../hooks/useCurrentUser';
@@ -145,7 +145,7 @@ function ProfileCard() {
                     })
                 }
             >
-                <Row spacing={1.5}>
+                <Row spacing={3}>
                     <Sprout className="size-4" />
                     <span>Baza biljaka</span>
                 </Row>
@@ -161,7 +161,7 @@ function ProfileCard() {
                     })
                 }
             >
-                <Row spacing={1.5}>
+                <Row spacing={3}>
                     <Comment className="size-4" />
                     <span>Kontaktiraj nas</span>
                 </Row>
@@ -187,7 +187,7 @@ export function AccountHud() {
 
     return (
         <HudCard open position="floating" className="p-0.5 md:px-2 static">
-            <Row spacing={1}>
+            <Row spacing={2}>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <IconButton

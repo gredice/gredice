@@ -1,13 +1,13 @@
 import type { OperationData, PlantSortData } from '@gredice/client';
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Modal } from '@gredice/ui/Modal';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { useMemo, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useInventory } from '../hooks/useInventory';
@@ -70,7 +70,7 @@ function InventoryItemCell({
             )}
 
             <div className="absolute -top-1.5 -right-1.5">
-                <div className="size-[18px] rounded-full bg-tertiary text-tertiary-foreground text-[10px] font-semibold leading-none flex items-center justify-center shadow-sm border border-tertiary-foreground/30">
+                <div className="size-[18px] rounded-full bg-tertiary text-tertiary-foreground text-[10px] font-semibold leading-none flex items-center justify-center shadow-xs border border-tertiary-foreground/30">
                     {item.amount?.toString()}
                 </div>
             </div>
@@ -108,7 +108,7 @@ function InventoryItemModal({
             onOpenChange={(isOpen) => !isOpen && onClose()}
             title={displayName}
         >
-            <Stack spacing={3}>
+            <Stack spacing={6}>
                 <div className="flex gap-4 items-start">
                     {sortData ? (
                         <PlantOrSortImage
@@ -131,8 +131,8 @@ function InventoryItemModal({
                             </Typography>
                         </div>
                     )}
-                    <Stack spacing={1} className="min-w-0">
-                        <Row spacing={1} alignItems="center">
+                    <Stack spacing={2} className="min-w-0">
+                        <Row spacing={2} alignItems="center">
                             <Typography level="body1">{displayName}</Typography>
                         </Row>
                         {description && (
@@ -141,9 +141,9 @@ function InventoryItemModal({
                     </Stack>
                 </div>
 
-                <Stack spacing={1.5} className="bg-card rounded-lg p-3 border">
+                <Stack spacing={3} className="bg-card rounded-lg p-3 border">
                     <Typography level="body2">Kako koristiti:</Typography>
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         {item.entityTypeName === 'plantSort' ? (
                             <>
                                 <Typography level="body3">
@@ -284,8 +284,8 @@ export function InventoryHud() {
                     </IconButton>
                 }
             >
-                <Stack spacing={2}>
-                    <Row spacing={1}>
+                <Stack spacing={4}>
+                    <Row spacing={2}>
                         <BackpackIcon className="size-8 shrink-0" />
                         <Typography level="h6" className="font-bold">
                             Ruksak

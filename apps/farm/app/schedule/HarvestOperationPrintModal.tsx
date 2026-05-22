@@ -7,11 +7,11 @@ import {
     type HarvestLabelData,
     type LabelPrinterSnapshot,
 } from '@gredice/label-printer';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useEffect, useState } from 'react';
 import { HarvestLabelPreviewCanvas } from '../../components/labels/HarvestLabelPreviewCanvas';
 
@@ -155,7 +155,7 @@ export function HarvestOperationPrintModal({
                 </Button>
             }
         >
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography>
                     Etiketa za <strong>{operationLabel}</strong> sadržavat će
                     gredicu <strong>{labelData.raisedBedPhysicalId}</strong>,
@@ -166,7 +166,7 @@ export function HarvestOperationPrintModal({
                 <div className="rounded-lg border bg-muted/20 p-3">
                     <HarvestLabelPreviewCanvas
                         labelData={labelData}
-                        className="mx-auto block w-full max-w-sm rounded border bg-white shadow-sm"
+                        className="mx-auto block w-full max-w-sm rounded border bg-white shadow-xs"
                     />
                 </div>
 
@@ -175,10 +175,10 @@ export function HarvestOperationPrintModal({
                         {availabilityMessage}
                     </Typography>
                 ) : (
-                    <Stack spacing={1.5}>
-                        <Stack spacing={1}>
+                    <Stack spacing={3}>
+                        <Stack spacing={2}>
                             <Typography semiBold>Stanje pisača</Typography>
-                            <Row spacing={1} className="flex-wrap gap-y-2">
+                            <Row spacing={2} className="flex-wrap gap-y-2">
                                 <span
                                     className={getStatusPillClassName(
                                         snapshot.isConnected
@@ -241,7 +241,7 @@ export function HarvestOperationPrintModal({
                             {(snapshot.deviceName ||
                                 snapshot.modelName ||
                                 snapshot.serial) && (
-                                <Stack spacing={0.5}>
+                                <Stack spacing={1}>
                                     {snapshot.deviceName && (
                                         <Typography level="body2">
                                             Uređaj: {snapshot.deviceName}

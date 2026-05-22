@@ -1,11 +1,11 @@
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { HapticSettingsCard } from './HapticSettingsCard';
 import { SoundSettingsCard } from './SoundSettingsCard';
 
 export function SoundTab() {
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <Typography level="h4" className="hidden md:block">
                 🔊 Zvuk
             </Typography>

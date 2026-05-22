@@ -11,7 +11,7 @@ Use this guide for repo layout, setup, commands, package boundaries, and local d
 - `apps/app`: internal operations/admin application.
 - `apps/storybook`: public Storybook documentation for shared and app-adjacent UI.
 - `apps/status`: public status page. It is not started by the default root dev command.
-- `packages/*`: shared libraries such as `@gredice/ui`, `@gredice/client`, `@gredice/storage`, `@gredice/email`, `@gredice/transactional`, `@gredice/stripe`, `@gredice/game`, and integration helpers.
+- `packages/*`: shared libraries such as `@gredice/ui`, `@gredice/auth`, `@gredice/client`, `@gredice/storage`, `@gredice/email`, `@gredice/transactional`, `@gredice/stripe`, `@gredice/game`, and integration helpers.
 - `assets`: source files for brand and 3D/game assets.
 - `scripts`: repo automation for development proxy, environment pull, Vercel linking, and generated assets.
 

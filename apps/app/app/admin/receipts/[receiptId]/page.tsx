@@ -1,16 +1,11 @@
 import { getReceipt } from '@gredice/storage';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
@@ -108,14 +103,14 @@ export default async function ReceiptPage({
 
     return (
         <EntityDetailsPropertiesProvider>
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <AdminPageTitle
                     title={`Fiskalni račun ${receipt.receiptNumber || `#${receipt.id}`}`}
                 />
                 <h1 className="sr-only">Fiskalni račun #{receipt.id}</h1>
                 <AdminPageHeader
                     breadcrumbs={
-                        <Row spacing={2} className="flex-wrap">
+                        <Row spacing={4} className="flex-wrap">
                             <Breadcrumbs
                                 items={[
                                     {
@@ -131,7 +126,7 @@ export default async function ReceiptPage({
                         </Row>
                     }
                     actions={
-                        <Row className="items-center" spacing={1}>
+                        <Row className="items-center" spacing={2}>
                             <ReceiptActions receipt={receipt} />
                             <EntityDetailsPropertiesToggle />
                         </Row>
@@ -140,13 +135,13 @@ export default async function ReceiptPage({
                 />
 
                 <EntityDetailsPropertiesLayout properties={propertiesPanel}>
-                    <Row spacing={2} alignItems="stretch">
-                        <Stack spacing={2} className="flex-1">
+                    <Row spacing={4} alignItems="stretch">
+                        <Stack spacing={4} className="flex-1">
                             {/* Receipt Details */}
                             <Card>
                                 <CardHeader>
                                     <Row
-                                        spacing={2}
+                                        spacing={4}
                                         justifyContent="space-between"
                                     >
                                         <CardTitle>Fiskalni podaci</CardTitle>
@@ -160,7 +155,7 @@ export default async function ReceiptPage({
                                     </Row>
                                 </CardHeader>
                                 <CardContent>
-                                    <Stack spacing={2}>
+                                    <Stack spacing={4}>
                                         <FieldSet>
                                             <Field
                                                 name="JIR"
@@ -230,7 +225,7 @@ export default async function ReceiptPage({
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <Stack spacing={2}>
+                                    <Stack spacing={4}>
                                         <FieldSet>
                                             <Field
                                                 name="Naziv tvrtke"
@@ -258,14 +253,14 @@ export default async function ReceiptPage({
                             </Card>
                         </Stack>
 
-                        <Stack spacing={2} className="flex-1">
+                        <Stack spacing={4} className="flex-1">
                             {/* Amount Summary */}
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Iznosi</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <Stack spacing={1}>
+                                    <Stack spacing={2}>
                                         <Row justifyContent="space-between">
                                             <Typography level="body2">
                                                 Osnovica
@@ -312,8 +307,8 @@ export default async function ReceiptPage({
                                     <CardTitle>Povezano</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <Stack spacing={1}>
-                                        <Row spacing={2}>
+                                    <Stack spacing={2}>
+                                        <Row spacing={4}>
                                             <Typography
                                                 level="body2"
                                                 className="w-20"
@@ -331,7 +326,7 @@ export default async function ReceiptPage({
                                             </Link>
                                         </Row>
                                         {receipt.invoice?.transactionId && (
-                                            <Row spacing={2}>
+                                            <Row spacing={4}>
                                                 <Typography
                                                     level="body2"
                                                     className="w-20"

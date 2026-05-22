@@ -1,9 +1,9 @@
-import { Alert } from '@signalco/ui/Alert';
-import { Leaf, Play, Reset } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Alert } from '@gredice/ui/Alert';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { Leaf, Play, Reset } from '@gredice/ui/icons';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useGameAudio } from '../../hooks/useGameAudio';
 import { SoundSlider } from './SoundSlider';
 
@@ -74,7 +74,7 @@ export function SoundSettingsCard() {
     return (
         <Card>
             <CardContent className="pt-6">
-                <Stack spacing={6}>
+                <Stack spacing={12}>
                     {isSuspended && (
                         <Alert
                             color="success"
@@ -97,7 +97,7 @@ export function SoundSettingsCard() {
                             </Typography>
                         </Alert>
                     )}
-                    <Stack spacing={4}>
+                    <Stack spacing={8}>
                         <SoundSlider
                             value={Math.round(masterVolume * 100)}
                             muted={isMasterMuted}

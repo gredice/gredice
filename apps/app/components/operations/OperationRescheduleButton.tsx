@@ -1,7 +1,7 @@
 'use client';
 
-import { Calendar } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Calendar } from '@gredice/ui/icons';
 import { RescheduleOperationModal } from '../../app/admin/schedule/RescheduleOperationModal';
 
 interface OperationRescheduleButtonProps {

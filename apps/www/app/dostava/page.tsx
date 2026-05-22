@@ -1,20 +1,15 @@
+import { Alert } from '@gredice/ui/Alert';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Container } from '@gredice/ui/Container';
+import { Calendar, Warning } from '@gredice/ui/icons';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
-import { Alert } from '@signalco/ui/Alert';
-import { Calendar, Warning } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Container } from '@signalco/ui-primitives/Container';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
-import { PageHeader } from '../../components/shared/PageHeader';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
 import { formatPrice } from '../../lib/formatPrice';
 import { KnownPages } from '../../src/KnownPages';
@@ -89,15 +84,17 @@ export default function DeliveryPage() {
                     </p>
                     <p>Vidi mapu zona dostave i tablicu s cijenama ispod:</p>
                     <div>
-                        <figure className="w-full aspect-[4/3] mb-4 text-center">
-                            <iframe
-                                title="Zone dostave"
-                                src="https://www.google.com/maps/d/u/4/embed?mid=1hya16VbRWVVdH4G-8-iCHHrLl8pAISA&ehbc=2E312F&ll=45.778793753891875%2C15.983640700842331&z=9"
-                                className="w-full h-full border-0 rounded-lg"
-                                sandbox="allow-scripts allow-same-origin"
-                                loading="lazy"
-                            ></iframe>
-                            <figcaption>
+                        <figure className="mb-4 w-full text-center">
+                            <div className="aspect-[4/3] w-full">
+                                <iframe
+                                    title="Zone dostave"
+                                    src="https://www.google.com/maps/d/u/4/embed?mid=1hya16VbRWVVdH4G-8-iCHHrLl8pAISA&ehbc=2E312F&ll=45.778793753891875%2C15.983640700842331&z=9"
+                                    className="h-full w-full rounded-lg border-0"
+                                    sandbox="allow-scripts allow-same-origin"
+                                    loading="lazy"
+                                ></iframe>
+                            </div>
+                            <figcaption className="not-prose mt-2 text-sm text-foreground">
                                 <strong>Zone dostave</strong> -{' '}
                                 <em>
                                     zone su okvirne, a stvarne zone dostave mogu
@@ -130,6 +127,7 @@ export default function DeliveryPage() {
                                         border: '1px solid #ddd',
                                         padding: '8px',
                                         backgroundColor: '#faf4e3',
+                                        color: 'hsl(28 47.4% 11.2%)',
                                         borderTopLeftRadius: '12px',
                                     }}
                                 >
@@ -140,6 +138,7 @@ export default function DeliveryPage() {
                                         border: '1px solid #ddd',
                                         padding: '8px',
                                         backgroundColor: '#faf4e3',
+                                        color: 'hsl(28 47.4% 11.2%)',
                                     }}
                                 >
                                     Cijena dostave
@@ -149,6 +148,7 @@ export default function DeliveryPage() {
                                         border: '1px solid #ddd',
                                         padding: '8px',
                                         backgroundColor: '#faf4e3',
+                                        color: 'hsl(28 47.4% 11.2%)',
                                         borderTopRightRadius: '12px',
                                     }}
                                 >
@@ -335,7 +335,7 @@ export default function DeliveryPage() {
                         <CardTitle>📅 Termini dostave</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <Stack spacing={3}>
+                        <Stack spacing={6}>
                             <Typography>
                                 Želiš vidjeti koji su termini dostupni za
                                 dostavu tvojeg povrća?
@@ -351,11 +351,11 @@ export default function DeliveryPage() {
                     </CardContent>
                 </Card>
             </div>
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="h5">Imaš dodatna pitanja?</Typography>
                 <WhatsAppCard />
             </Stack>
-            <Row spacing={2} className="mt-8">
+            <Row spacing={4} className="mt-8">
                 <Typography level="body1">
                     Jesu li ti informacije korisne?
                 </Typography>

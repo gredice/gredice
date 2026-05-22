@@ -1,10 +1,9 @@
 'use client';
 
-import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '../Button';
+import { Row } from '../Row';
+import { Stack } from '../Stack';
+import { Typography } from '../Typography';
 
 type ErrorFallbackProps = {
     correlationId: string;
@@ -33,7 +32,7 @@ export function ErrorFallback({
                     width={200}
                     height={200}
                 />
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="h1">{title}</Typography>
                     <Typography level="body1">
                         Oprosti, nešto je pošlo po krivu. Možeš pokušati ponovno
@@ -44,14 +43,14 @@ export function ErrorFallback({
                     </Typography>
                     <Row
                         className="justify-center md:justify-start"
-                        spacing={1}
+                        spacing={2}
                     >
                         <Button type="button" onClick={onRetry}>
                             Pokušaj ponovno
                         </Button>
-                        <NavigatingButton href="/">
+                        <Button href="/" variant="outlined">
                             Idi na početnu
-                        </NavigatingButton>
+                        </Button>
                     </Row>
                 </Stack>
             </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import type { SelectTimeSlot } from '@gredice/storage';
+import { Button } from '@gredice/ui/Button';
 import {
     Calendar,
     Check,
@@ -8,15 +8,25 @@ import {
     Navigate,
     ShoppingCart,
     Truck,
-} from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { useState, useTransition } from 'react';
+} from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import {
+    createContext,
+    type PropsWithChildren,
+    useContext,
+    useState,
+    useTransition,
+} from 'react';
 import {
     changeDeliveryRequestSlotAction,
     updateDeliveryRequestStatusAction,
 } from './actions';
+
+export type DeliveryRequestSlotOption = {
+    id: number;
+    startAt: Date | string;
+};
 
 type DeliveryRequest = {
     id: string;
@@ -26,15 +36,29 @@ type DeliveryRequest = {
     slot?: { id: number };
 };
 
+const DeliveryRequestSlotsContext = createContext<DeliveryRequestSlotOption[]>(
+    [],
+);
+
+export function DeliveryRequestSlotsProvider({
+    children,
+    slots,
+}: PropsWithChildren<{ slots: DeliveryRequestSlotOption[] }>) {
+    return (
+        <DeliveryRequestSlotsContext.Provider value={slots}>
+            {children}
+        </DeliveryRequestSlotsContext.Provider>
+    );
+}
+
 type DeliveryRequestActionButtonsProps = {
     request: DeliveryRequest;
-    slots: SelectTimeSlot[];
 };
 
 export function DeliveryRequestActionButtons({
     request,
-    slots,
 }: DeliveryRequestActionButtonsProps) {
+    const slots = useContext(DeliveryRequestSlotsContext);
     const [loading, setLoading] = useState<string | null>(null);
     const [showSlotForm, setShowSlotForm] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState(
@@ -76,7 +100,7 @@ export function DeliveryRequestActionButtons({
     };
 
     return (
-        <Stack spacing={1}>
+        <Stack spacing={2}>
             {request.state === 'pending' && (
                 <>
                     <Button
@@ -168,17 +192,15 @@ export function DeliveryRequestActionButtons({
                             }
                             className="border rounded p-1 text-sm"
                         >
-                            {slots
-                                .filter((s) => s.status !== 'archived')
-                                .map((slot) => (
-                                    <option key={slot.id} value={slot.id}>
-                                        {new Date(slot.startAt).toLocaleString(
-                                            'hr-HR',
-                                        )}
-                                    </option>
-                                ))}
+                            {slots.map((slot) => (
+                                <option key={slot.id} value={slot.id}>
+                                    {new Date(slot.startAt).toLocaleString(
+                                        'hr-HR',
+                                    )}
+                                </option>
+                            ))}
                         </select>
-                        <Row spacing={1}>
+                        <Row spacing={2}>
                             <Button
                                 type="submit"
                                 size="sm"

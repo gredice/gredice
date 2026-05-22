@@ -1,8 +1,8 @@
 import { getFarms } from '@gredice/storage';
+import { Card, CardOverflow } from '@gredice/ui/Card';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
+import { Stack } from '@gredice/ui/Stack';
+import { Table } from '@gredice/ui/Table';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
@@ -15,7 +15,7 @@ export default async function FarmsPage() {
     const farms = await getFarms();
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <Card>
                 <CardOverflow>
                     <Table>

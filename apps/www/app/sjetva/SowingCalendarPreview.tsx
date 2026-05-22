@@ -1,8 +1,8 @@
 import type { PlantData } from '@gredice/client';
-import { Card } from '@signalco/ui-primitives/Card';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card } from '@gredice/ui/Card';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import type { ReactNode } from 'react';
 import {
     PlantGrowthCalendar,
@@ -49,8 +49,8 @@ function CalendarPreviewFrame({
                 className,
             )}
         >
-            <Stack spacing={1}>
-                <Stack spacing={0.5}>
+            <Stack spacing={2}>
+                <Stack spacing={1}>
                     <Typography level="body2" semiBold>
                         {title}
                     </Typography>

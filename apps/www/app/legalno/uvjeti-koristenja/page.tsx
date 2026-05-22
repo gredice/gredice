@@ -1,9 +1,9 @@
+import { Container } from '@gredice/ui/Container';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
-import { Container } from '@signalco/ui-primitives/Container';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
-import { PageHeader } from '../../../components/shared/PageHeader';
 
 export const metadata: Metadata = {
     title: 'Uvjeti korištenja',

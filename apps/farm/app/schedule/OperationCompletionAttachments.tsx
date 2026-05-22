@@ -1,12 +1,12 @@
 'use client';
 
+import { IconButton } from '@gredice/ui/IconButton';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
-import { FileText } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { FileText } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 
 const THUMBNAIL_SIZE = 36;
 
@@ -41,7 +41,7 @@ export function OperationCompletionAttachments({
 
     return (
         <Row
-            spacing={0.5}
+            spacing={1}
             className={['shrink-0 items-center', className]
                 .filter(Boolean)
                 .join(' ')}
@@ -58,7 +58,7 @@ export function OperationCompletionAttachments({
                         </IconButton>
                     }
                 >
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         <Typography
                             level="body2"
                             className="text-muted-foreground"

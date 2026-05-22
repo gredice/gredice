@@ -1,10 +1,10 @@
 'use client';
 
 import type { PlantData } from '@gredice/client';
+import { orderBy } from '@gredice/js/arrays';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { orderBy } from '@signalco/js';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { type CSSProperties, Fragment } from 'react';
 import { useClientSearchParam } from '../../hooks/useClientSearchParam';
@@ -127,10 +127,10 @@ export function PlantsCalendar({
                                 >
                                     <Row
                                         justifyContent="space-between"
-                                        spacing={1}
+                                        spacing={2}
                                         className="mx-2"
                                     >
-                                        <Row spacing={1}>
+                                        <Row spacing={2}>
                                             <PlantOrSortImage
                                                 plant={plant}
                                                 width={20}

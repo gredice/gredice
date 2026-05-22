@@ -1,12 +1,12 @@
 'use client';
 
-import { Calendar } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { Calendar } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 
 function formatLocalDate(date: Date): string {
@@ -74,7 +74,7 @@ export function RescheduleModal({
             onOpenChange={setOpen}
         >
             <form onSubmit={handleSubmit}>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="h5">
                         {isRescheduling
                             ? 'Preraspoređivanje zadatka'
@@ -100,7 +100,7 @@ export function RescheduleModal({
                         required
                     />
 
-                    <Row spacing={1}>
+                    <Row spacing={2}>
                         <Button
                             variant="plain"
                             onClick={() => setOpen(false)}

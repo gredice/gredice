@@ -1,13 +1,13 @@
 'use client';
 
 import type { SelectEntityTypeCategory } from '@gredice/storage';
-import { ModalConfirm } from '@signalco/ui/ModalConfirm';
-import { Delete } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card } from '@gredice/ui/Card';
+import { Delete } from '@gredice/ui/icons';
+import { ModalConfirm } from '@gredice/ui/ModalConfirm';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import {
     AdminDirectoryBreadcrumbs,
@@ -37,7 +37,7 @@ export function EditEntityTypeCategoryPage({
     };
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <AdminPageHeader
                 breadcrumbs={
                     <AdminDirectoryBreadcrumbs
@@ -60,8 +60,8 @@ export function EditEntityTypeCategoryPage({
                 heading={`Uredi kategoriju: ${category.label}`}
             />
 
-            <Row spacing={4} alignItems="start">
-                <Stack spacing={2}>
+            <Row spacing={8} alignItems="start">
+                <Stack spacing={4}>
                     <Typography level="h2" className="text-2xl" semiBold>
                         Uredi kategoriju: {category.label}
                     </Typography>
@@ -85,9 +85,9 @@ export function EditEntityTypeCategoryPage({
             </Row>
 
             <Card className="max-w-2xl">
-                <Stack spacing={4} className="p-6">
+                <Stack spacing={8} className="p-6">
                     <form action={handleUpdate}>
-                        <Stack spacing={4}>
+                        <Stack spacing={8}>
                             <EntityTypeCategoryFormFields
                                 defaults={{
                                     name: category.name,

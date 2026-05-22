@@ -1,15 +1,15 @@
 'use client';
 
 import type { OperationAssignableFarmUser } from '@gredice/storage';
+import { Button } from '@gredice/ui/Button';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { Chip } from '@gredice/ui/Chip';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Calendar, Close } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Calendar, Close } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { KnownPages } from '../../../src/KnownPages';
@@ -117,8 +117,8 @@ export function FarmOperationsScheduleSection({
     );
 
     return (
-        <Stack spacing={1}>
-            <Row spacing={1} className="w-full items-center flex-wrap gap-y-1">
+        <Stack spacing={2}>
+            <Row spacing={2} className="w-full items-center flex-wrap gap-y-1">
                 <Link href={KnownPages.Farm(farm.id)}>
                     <Typography semiBold>{farm.name}</Typography>
                 </Link>
@@ -131,7 +131,7 @@ export function FarmOperationsScheduleSection({
                     </Typography>
                 )}
             </Row>
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 {dayOperations.map((operation) => {
                     const operationData = operationDataById.get(
                         operation.entityId,
@@ -206,14 +206,14 @@ export function FarmOperationsScheduleSection({
                     return (
                         <Row
                             key={operation.id}
-                            spacing={1}
+                            spacing={2}
                             className={
                                 operation.isAccepted && !operationLocked
                                     ? 'rounded bg-muted/60 text-foreground hover:bg-muted/80'
                                     : 'rounded hover:bg-muted'
                             }
                         >
-                            <Row spacing={1} className="grow">
+                            <Row spacing={2} className="grow">
                                 {isOperationCompleted(operation.status) ? (
                                     <Checkbox
                                         className="size-5 mx-2"
@@ -250,7 +250,7 @@ export function FarmOperationsScheduleSection({
                                             defaultTrigger,
                                         }) => (
                                             <Row
-                                                spacing={0.5}
+                                                spacing={1}
                                                 className="items-center"
                                             >
                                                 {defaultTrigger}

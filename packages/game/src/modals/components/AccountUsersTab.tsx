@@ -1,15 +1,15 @@
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { AccountUsersCard } from './AccountUsersCard';
 import { ReceivedInvitationsCard } from './ReceivedInvitationsCard';
 
 export function AccountUsersTab() {
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <Typography level="h4" className="hidden md:block">
                 👥 Korisnici
             </Typography>
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <AccountUsersCard />
                 <ReceivedInvitationsCard />
             </Stack>

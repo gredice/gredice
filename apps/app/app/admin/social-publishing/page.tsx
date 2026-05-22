@@ -1,5 +1,5 @@
 import { listSocialAccounts, listSocialPosts } from '@gredice/storage';
-import { Button } from '@signalco/ui-primitives/Button';
+import { Button } from '@gredice/ui/Button';
 import Link from 'next/link';
 import { auth } from '../../../lib/auth/auth';
 import { KnownPages } from '../../../src/KnownPages';

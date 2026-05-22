@@ -1,15 +1,15 @@
 import type { OperationData } from '@gredice/client';
 import { formatPrice } from '@gredice/js/currency';
 import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { Input } from '@gredice/ui/Input';
+import { Calendar } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
 import { OperationImage } from '@gredice/ui/OperationImage';
-import { Calendar } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { formatLocalDate } from '../RaisedBedPlantPicker';
 
@@ -70,14 +70,14 @@ export function OperationScheduleModal({
             onOpenChange={setOpen}
         >
             <form onSubmit={handleSubmit}>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="h5">Zakazivanje radnje</Typography>
                     <Typography>
                         Ova radnja će biti zakazana za odabrani datum.
                     </Typography>
                     <Card>
                         <CardContent noHeader>
-                            <Row spacing={2}>
+                            <Row spacing={4}>
                                 <div>
                                     <OperationImage
                                         operation={operation}
@@ -119,7 +119,7 @@ export function OperationScheduleModal({
                         max={max}
                         required
                     />
-                    <Row spacing={1}>
+                    <Row spacing={2}>
                         <Button
                             variant="plain"
                             onClick={() => setOpen(false)}

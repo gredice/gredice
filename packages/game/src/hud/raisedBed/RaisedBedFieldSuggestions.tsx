@@ -1,5 +1,5 @@
-import { cx } from '@signalco/ui-primitives/cx';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { useEffect } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useAllSorts } from '../../hooks/usePlantSorts';

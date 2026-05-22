@@ -7,8 +7,7 @@ const tailwindConfig: Config = {
         './components/**/*.{js,ts,jsx,tsx,mdx}',
         './lib/**/*.{js,ts,jsx,tsx,mdx}',
         '../www/components/**/*.{js,ts,jsx,tsx,mdx}',
-        './node_modules/@signalco/cms-components-marketing/dist/**/*.{js,mjs}',
-        './node_modules/@signalco/cms-core/dist/**/*.{js,mjs}',
+        '../../packages/ui/src/**/*.{ts,tsx}',
     ],
     theme: {
         extend: {

@@ -47,11 +47,11 @@ export function NavItem({
             ? ''
             : "before:absolute before:-left-3 before:top-1/2 before:h-px before:w-3 before:bg-border/55 before:content-['']";
     const itemClassName = [
-        'group/nav-item relative flex w-full items-center gap-2 rounded-md text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'group/nav-item relative flex w-full items-center gap-2 rounded-md text-sm outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         compact ? 'h-9 justify-center px-0' : 'h-8 px-2',
         guideLineClassName,
         selected
-            ? 'bg-muted text-foreground shadow-sm ring-1 ring-border/40'
+            ? 'bg-muted text-foreground shadow-xs ring-1 ring-border/40'
             : 'text-foreground hover:bg-muted/70',
     ].join(' ');
     const iconClassName = 'flex size-6 shrink-0 items-center justify-center';

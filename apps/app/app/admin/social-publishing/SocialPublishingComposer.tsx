@@ -6,11 +6,11 @@ import type {
     SocialPostType,
     SocialProvider,
 } from '@gredice/storage';
+import { Chip } from '@gredice/ui/Chip';
+import { Input } from '@gredice/ui/Input';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Input } from '@signalco/ui-primitives/Input';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Table } from '@signalco/ui-primitives/Table';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Table } from '@gredice/ui/Table';
 import { useActionState, useState } from 'react';
 import {
     getSocialProviderDefinition,

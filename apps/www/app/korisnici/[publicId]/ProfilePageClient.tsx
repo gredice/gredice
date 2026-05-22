@@ -2,7 +2,7 @@
 
 import { clientPublic } from '@gredice/client';
 import { getAchievementDefinition } from '@gredice/js/achievements';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Stack } from '@gredice/ui/Stack';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { PublicGardenViewerDynamic } from './PublicGardenViewerDynamic';
@@ -101,7 +101,7 @@ export function ProfilePageClient({ publicId }: ProfilePageClientProps) {
     const { user, gardens } = profileQuery.data;
 
     return (
-        <Stack spacing={6} className="pb-12">
+        <Stack spacing={12} className="pb-12">
             <section className="rounded-2xl border border-black/10 bg-background/90 p-6">
                 <h1 className="text-3xl font-semibold">{user.displayName}</h1>
                 <p className="text-sm text-muted-foreground">

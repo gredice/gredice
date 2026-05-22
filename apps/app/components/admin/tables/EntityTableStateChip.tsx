@@ -1,14 +1,14 @@
 'use client';
 
 import type { SelectEntity } from '@gredice/storage';
-import { Check, Megaphone } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
+import { Chip } from '@gredice/ui/Chip';
+import { Check, Megaphone } from '@gredice/ui/icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-} from '@signalco/ui-primitives/Menu';
+} from '@gredice/ui/Menu';
 import { useId, useState } from 'react';
 
 export function EntityTableStateChip({

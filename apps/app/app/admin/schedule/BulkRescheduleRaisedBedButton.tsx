@@ -1,13 +1,13 @@
 'use client';
 
-import { Calendar } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Input } from '@gredice/ui/Input';
+import { Calendar } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { rescheduleOperationAction } from '../../(actions)/operationActions';
 import { rescheduleRaisedBedFieldAction } from '../../(actions)/raisedBedFieldsActions';
@@ -126,7 +126,7 @@ export function BulkRescheduleRaisedBedButton({
             }
         >
             <form onSubmit={handleSubmit}>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="h5">Skupno zakazivanje</Typography>
                     <Typography>
                         Odaberite datum za sve nepotvrđene zadatke ({totalItems}
@@ -145,7 +145,7 @@ export function BulkRescheduleRaisedBedButton({
                         disabled={isSubmitting}
                     />
 
-                    <Row spacing={1} justifyContent="end">
+                    <Row spacing={2} justifyContent="end">
                         <Button
                             variant="outlined"
                             onClick={() => setOpen(false)}

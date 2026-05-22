@@ -23,6 +23,7 @@
     "dependencies": {
         "@date-fns/tz": "1.4.1",
         "@gredice/google": "workspace:*",
+        "@gredice/ui": "workspace:*",
         "@hono/mcp": "0.3.0",
         "@hono/standard-validator": "0.2.2",
         "@modelcontextprotocol/sdk": "1.29.0",
@@ -56,6 +57,7 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.4.15",
+        "@gredice/auth": "workspace:*",
         "@gredice/directory-types": "workspace:*",
         "@gredice/email": "workspace:*",
         "@gredice/js": "workspace:*",
@@ -65,13 +67,7 @@
         "@gredice/stripe": "workspace:*",
         "@gredice/transactional": "workspace:*",
         "@playwright/test": "1.60.0",
-        "@signalco/auth-server": "0.5.3",
-        "@signalco/hooks": "0.2.1",
-        "@signalco/js": "0.1.0",
-        "@signalco/ui": "0.2.10",
-        "@signalco/ui-icons": "0.2.2",
-        "@signalco/ui-primitives": "0.6.5",
-        "@signalco/ui-themes-minimal-app": "0.1.3",
+        "@tailwindcss/postcss": "4.3.0",
         "@types/jsonwebtoken": "9.0.10",
         "@types/node": "24.12.2",
         "@types/pg": "8.20.0",
@@ -83,7 +79,7 @@
         "jsonwebtoken": "9.0.3",
         "openapi-types": "12.1.3",
         "postcss": "8.5.15",
-        "tailwindcss": "3.4.19",
+        "tailwindcss": "4.3.0",
         "tsx": "4.22.3",
         "typescript": "6.0.3"
     }

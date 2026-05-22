@@ -1,7 +1,7 @@
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
 import { type FormEvent, useState } from 'react';
 import {
     InvitationError,
@@ -48,7 +48,7 @@ export function InviteUserForm() {
 
     return (
         <form onSubmit={handleSubmit}>
-            <Row spacing={1} className="items-end">
+            <Row spacing={2} className="items-end">
                 <Input
                     name="email"
                     type="email"

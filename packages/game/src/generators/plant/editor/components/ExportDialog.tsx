@@ -1,8 +1,8 @@
-import { Save } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Save } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { PlantDefinition } from '../../lib/plant-definitions';
 
 interface ExportDialogProps {
@@ -19,7 +19,7 @@ export function ExportDialog({ definition }: ExportDialogProps) {
                 </IconButton>
             }
         >
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography>Export Plant Definition</Typography>
                 <Typography level="body2">
                     Copy this JSON and paste it into the{' '}

@@ -1,8 +1,8 @@
 'use client';
 
-import { Clear, Upload } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Clear, Upload } from '@gredice/ui/icons';
 import { upload } from '@vercel/blob/client';
 import { type ChangeEvent, useId, useRef, useState } from 'react';
 

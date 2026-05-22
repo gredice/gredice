@@ -1,10 +1,10 @@
-import { Alert } from '@signalco/ui/Alert';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Alert } from '@gredice/ui/Alert';
+import { Button } from '@gredice/ui/Button';
+import { Chip } from '@gredice/ui/Chip';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -187,7 +187,7 @@ export function RaisedBedDiaryAiAction({
 
     return (
         <>
-            <Stack spacing={1} className="items-end">
+            <Stack spacing={2} className="items-end">
                 {latestHistoryEntry && (
                     <>
                         <button
@@ -240,8 +240,8 @@ export function RaisedBedDiaryAiAction({
                 className="md:max-w-4xl"
             >
                 <div className="grid gap-4 md:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-                    <Stack spacing={2}>
-                        <div className="relative overflow-hidden rounded-3xl border bg-card shadow-sm">
+                    <Stack spacing={4}>
+                        <div className="relative overflow-hidden rounded-3xl border bg-card shadow-xs">
                             <div className="relative aspect-square overflow-hidden bg-black/5">
                                 <Image
                                     src={selectedImageUrl}
@@ -262,7 +262,7 @@ export function RaisedBedDiaryAiAction({
                             </div>
                         </div>
                         {imageUrls.length > 1 && (
-                            <Row spacing={1} className="flex-wrap">
+                            <Row spacing={2} className="flex-wrap">
                                 {imageUrls.map((imageUrl, imageIndex) => {
                                     const isSelected =
                                         imageUrl === selectedImageUrl;
@@ -273,7 +273,7 @@ export function RaisedBedDiaryAiAction({
                                             type="button"
                                             className={`overflow-hidden rounded-2xl border transition-all ${
                                                 isSelected
-                                                    ? 'border-lime-400 shadow-sm ring-2 ring-lime-200'
+                                                    ? 'border-lime-400 shadow-xs ring-2 ring-lime-200'
                                                     : 'border-black/10 opacity-80 hover:opacity-100'
                                             }`}
                                             onClick={() =>
@@ -295,16 +295,16 @@ export function RaisedBedDiaryAiAction({
                             </Row>
                         )}
                     </Stack>
-                    <Stack spacing={3}>
+                    <Stack spacing={6}>
                         {historyEntries && historyEntries.length > 1 && (
-                            <Stack spacing={1}>
+                            <Stack spacing={2}>
                                 <Typography
                                     level="body3"
                                     className="text-muted-foreground"
                                 >
                                     Prethodni odgovori
                                 </Typography>
-                                <Row spacing={1} className="flex-wrap">
+                                <Row spacing={2} className="flex-wrap">
                                     {historyEntries.map((historyEntry) => {
                                         const isSelected =
                                             selectedHistoryEntryId ===
@@ -334,7 +334,7 @@ export function RaisedBedDiaryAiAction({
                                 </Row>
                             </Stack>
                         )}
-                        <Row spacing={2} className="items-center">
+                        <Row spacing={4} className="items-center">
                             <div
                                 className={`${
                                     phase === 'thinking'
@@ -354,7 +354,7 @@ export function RaisedBedDiaryAiAction({
                                     }
                                 />
                             </div>
-                            <Stack spacing={0.5}>
+                            <Stack spacing={1}>
                                 <Typography level="body1" semiBold>
                                     {statusTitle}
                                 </Typography>
@@ -386,7 +386,7 @@ export function RaisedBedDiaryAiAction({
                                 </Typography>
                             </Alert>
                         ) : (
-                            <div className="min-h-72 rounded-3xl border bg-background/80 p-4 shadow-sm">
+                            <div className="min-h-72 rounded-3xl border bg-background/80 p-4 shadow-xs">
                                 {visibleMarkdown ? (
                                     <div className="prose prose-sm max-w-none dark:prose-invert">
                                         <ReactMarkdown>
@@ -411,7 +411,7 @@ export function RaisedBedDiaryAiAction({
                             </div>
                         )}
                         <Row
-                            spacing={2}
+                            spacing={4}
                             className="justify-between items-center flex-wrap"
                         >
                             <Typography

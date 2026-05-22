@@ -1,6 +1,6 @@
 import type { EntityStandardized } from '@gredice/storage';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
 import type { FarmScheduleDayData } from './scheduleData';
 import {
     getOperationDurationMinutes,
@@ -54,7 +54,7 @@ export function ScheduleDaySummary({
         scheduledFields.length * PLANTING_TASK_DURATION_MINUTES;
 
     return (
-        <Row spacing={4}>
+        <Row spacing={8}>
             <SummaryItem label="Zadataka" value={taskCount} />
             <SummaryItem label="Gredica" value={raisedBedCount} />
             {totalMinutes > 0 && (

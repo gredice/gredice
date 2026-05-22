@@ -1,4 +1,4 @@
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Typography } from '@gredice/ui/Typography';
 
 interface DebugTextInputProps {
     label: string;
@@ -28,7 +28,7 @@ export function DebugTextInput({
                 step={step}
                 min={min}
                 onChange={(event) => onChange(event.target.value)}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/30"
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm shadow-xs outline-hidden transition focus:border-ring focus:ring-2 focus:ring-ring/30"
             />
         </label>
     );

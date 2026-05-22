@@ -4,10 +4,10 @@ import type {
     SelectAttributeDefinition,
     SelectAttributeValue,
 } from '@gredice/storage';
-import { ModalConfirm } from '@signalco/ui/ModalConfirm';
-import { Delete, Remove } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Skeleton } from '@signalco/ui-primitives/Skeleton';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Delete, Remove } from '@gredice/ui/icons';
+import { ModalConfirm } from '@gredice/ui/ModalConfirm';
+import { Skeleton } from '@gredice/ui/Skeleton';
 import dynamic from 'next/dynamic';
 import type { ComponentType } from 'react';
 import {

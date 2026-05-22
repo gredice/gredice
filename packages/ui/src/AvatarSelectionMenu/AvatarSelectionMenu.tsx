@@ -1,7 +1,8 @@
 'use client';
 
-import { initials } from '@signalco/js';
-import { Avatar } from '@signalco/ui-primitives/Avatar';
+import { initials } from '@gredice/js/initials';
+import type { ReactElement } from 'react';
+import { Avatar } from '../Avatar';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -9,8 +10,7 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from '@signalco/ui-primitives/Menu';
-import type { ReactElement } from 'react';
+} from '../Menu';
 import { AVATAR_OPTIONS } from './avatarOptions';
 
 export type AvatarSelectionMenuProps = {

@@ -1,16 +1,11 @@
-import { Down, Up } from '@signalco/ui-icons';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import type { PointerEvent, PropsWithChildren } from 'react';
 import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../Card';
+import { IconButton } from '../IconButton';
+import { Down, Up } from '../icons';
+import { Stack } from '../Stack';
+import { Typography } from '../Typography';
+import { cx } from '../utils';
 
 interface DebugPanelProps extends PropsWithChildren {
     title: string;
@@ -98,9 +93,9 @@ export function DebugPanelSection({
 
     return (
         <Stack
-            spacing={1.5}
+            spacing={3}
             className={cx(
-                'rounded-lg border border-border/40 bg-background/80 p-3 shadow-sm backdrop-blur-sm',
+                'rounded-lg border border-border/40 bg-background/80 p-3 shadow-xs backdrop-blur-xs',
                 className,
             )}
         >

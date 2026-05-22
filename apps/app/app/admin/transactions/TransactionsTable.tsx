@@ -1,10 +1,10 @@
 import { getAllTransactions } from '@gredice/storage';
+import { Chip } from '@gredice/ui/Chip';
+import { ExternalLink } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { ExternalLink } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
@@ -98,7 +98,7 @@ export async function TransactionsTable({ accountId }: { accountId?: string }) {
                                 </Chip>
                             </Table.Cell>
                             <Table.Cell>
-                                <Row spacing={1}>
+                                <Row spacing={2}>
                                     {hasNoInvoices ? (
                                         <Chip color="error" className="w-fit">
                                             <Typography noWrap>

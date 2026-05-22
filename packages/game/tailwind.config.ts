@@ -1,14 +1,10 @@
-import { config } from '@signalco/ui-themes-minimal/config';
+import { grediceThemePreset } from '@gredice/ui/theme';
 import tailwindcssTypography from '@tailwindcss/typography';
 import type { Config } from 'tailwindcss';
 
 const tailwindConfig: Config = {
-    content: [
-        './src/**/*.{js,ts,jsx,tsx,mdx}',
-        './node_modules/@signalco/ui-primitives/**/*.{js,ts,jsx,tsx,mdx}',
-        './node_modules/@signalco/ui/**/*.{js,ts,jsx,tsx,mdx}',
-    ],
-    presets: [config],
+    content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
+    presets: [grediceThemePreset],
     theme: {
         extend: {
             keyframes: {

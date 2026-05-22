@@ -1,6 +1,6 @@
 'use client';
 
-import { cx } from '@signalco/ui-primitives/cx';
+import { cx } from '@gredice/ui/utils';
 import { type HTMLAttributes, useEffect } from 'react';
 import { Controls } from './controls/Controls';
 import { EntityFactory } from './entities/EntityFactory';

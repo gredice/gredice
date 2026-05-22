@@ -1,8 +1,8 @@
 import type { components } from '@gredice/client';
+import { FileText, Layers, Leaf, Sprout } from '@gredice/ui/icons';
 import { OperationCategoryIcon } from '@gredice/ui/OperationImage';
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
-import { FileText, Layers, Leaf, Sprout } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
+import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
 import type { ComponentType, SVGProps } from 'react';
 

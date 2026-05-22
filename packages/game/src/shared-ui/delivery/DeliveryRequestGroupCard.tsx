@@ -1,11 +1,11 @@
+import { Card, CardContent } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
+import { MapPin, ShoppingCart, Timer, Truck } from '@gredice/ui/icons';
 import { TimeRange } from '@gredice/ui/LocalDateTime';
-import { MapPin, ShoppingCart, Timer, Truck } from '@signalco/ui-icons';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import type { DeliveryRequestData } from '../../hooks/useDeliveryRequests';
 import { DeliveryRequestRow } from './DeliveryRequestRow';
 
@@ -39,10 +39,10 @@ export function DeliveryRequestGroupCard({
     return (
         <Card>
             <CardContent noHeader>
-                <Stack spacing={2}>
-                    <Stack spacing={1}>
-                        <Row spacing={1} justifyContent="space-between">
-                            <Row spacing={1}>
+                <Stack spacing={4}>
+                    <Stack spacing={2}>
+                        <Row spacing={2} justifyContent="space-between">
+                            <Row spacing={2}>
                                 {groupIcon}
                                 <Typography>{groupLabel}</Typography>
                             </Row>
@@ -52,7 +52,7 @@ export function DeliveryRequestGroupCard({
                         </Row>
 
                         {firstRequest.slot && (
-                            <Row spacing={1}>
+                            <Row spacing={2}>
                                 <Timer className="size-4 shrink-0" />
                                 <Typography level="body2">
                                     <TimeRange
@@ -66,9 +66,9 @@ export function DeliveryRequestGroupCard({
                         {/* Show shared address for delivery mode */}
                         {firstRequest.mode === 'delivery' &&
                             firstRequest.address && (
-                                <Row spacing={1}>
+                                <Row spacing={2}>
                                     <MapPin className="size-4" />
-                                    <Stack spacing={0.5}>
+                                    <Stack spacing={1}>
                                         <Typography level="body2">
                                             {firstRequest.address.label}
                                         </Typography>
@@ -87,7 +87,7 @@ export function DeliveryRequestGroupCard({
                         {/* Show shared location for pickup mode */}
                         {firstRequest.mode === 'pickup' &&
                             firstRequest.location && (
-                                <Row spacing={1}>
+                                <Row spacing={2}>
                                     <MapPin className="size-4 shrink-0" />
                                     <Typography level="body2">
                                         {firstRequest.location.name}

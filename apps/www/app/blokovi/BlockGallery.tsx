@@ -1,12 +1,12 @@
 'use client';
 
 import type { BlockData } from '@gredice/client';
+import { orderBy } from '@gredice/js/arrays';
 import { BlockImage } from '@gredice/ui/BlockImage';
-import { orderBy } from '@signalco/js';
-import { Gallery } from '@signalco/ui/Gallery';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Gallery } from '@gredice/ui/Gallery';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { ItemCard } from '../../components/shared/ItemCard';
 import { useClientSearchParam } from '../../hooks/useClientSearchParam';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
@@ -20,7 +20,7 @@ function BlockGalleryItem(
         <ItemCard
             label={
                 <Row
-                    spacing={1}
+                    spacing={2}
                     justifyContent={cx(showPrices ? 'space-between' : 'center')}
                 >
                     <Typography>{entity.information.label}</Typography>

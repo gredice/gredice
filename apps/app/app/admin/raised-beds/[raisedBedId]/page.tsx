@@ -1,13 +1,8 @@
 import { getRaisedBed } from '@gredice/storage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import {
-    Card,
-    CardHeader,
-    CardOverflow,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import {
@@ -62,7 +57,7 @@ export default async function RaisedBedPage({
                 <EntityDetailsPropertyList items={propertyItems} />
             </EntityDetailsPanelCard>
             <EntityDetailsPanelCard title="Uređivanje">
-                <Stack spacing={2} className="px-4 pb-4">
+                <Stack spacing={4} className="px-4 pb-4">
                     <RaisedBedPhysicalIdInput
                         raisedBedId={raisedBed.id}
                         physicalId={raisedBed.physicalId}
@@ -78,7 +73,7 @@ export default async function RaisedBedPage({
 
     return (
         <EntityDetailsPropertiesProvider>
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <AdminPageTitle title={raisedBedTitle} />
                 <AdminPageHeader
                     breadcrumbs={
@@ -110,7 +105,7 @@ export default async function RaisedBedPage({
                         />
                     }
                     actions={
-                        <Row className="items-center" spacing={1}>
+                        <Row className="items-center" spacing={2}>
                             <RaisedBedActionsMenu
                                 targetRaisedBedId={raisedBed.id}
                             />

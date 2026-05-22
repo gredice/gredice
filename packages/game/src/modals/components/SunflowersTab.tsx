@@ -1,6 +1,6 @@
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useCurrentAccount } from '../../hooks/useCurrentAccount';
 import { DailyRewardOverview } from '../../shared-ui/sunflowers/DailyRewardOverview';
@@ -10,11 +10,11 @@ export function SunflowersTab() {
     const { data: currentAccount } = useCurrentAccount();
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <Typography level="h4" className="hidden md:block">
                 🌻 Suncokreti
             </Typography>
-            <Stack spacing={1} className="max-h-[calc(100dvh-12rem)]">
+            <Stack spacing={2} className="max-h-[calc(100dvh-12rem)]">
                 <div className="relative md:mt-0">
                     <span className="absolute text-5xl -top-12 right-6 hidden md:block">
                         <Image
@@ -42,7 +42,7 @@ export function SunflowersTab() {
                         <DailyRewardOverview />
                     </CardContent>
                 </Card>
-                <div className="overflow-y-auto max-h-[calc(100dvh-20rem)] md:max-h-[calc(100dvh-24rem)] rounded-lg text-card-foreground bg-card border shadow-sm p-4">
+                <div className="overflow-y-auto max-h-[calc(100dvh-20rem)] md:max-h-[calc(100dvh-24rem)] rounded-lg text-card-foreground bg-card border shadow-xs p-4">
                     <SunflowersList />
                 </div>
             </Stack>

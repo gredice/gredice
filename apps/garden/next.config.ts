@@ -76,8 +76,6 @@ const nextConfig: NextConfig = {
         turbopackFileSystemCacheForDev: true,
         typedEnv: true,
         optimizePackageImports: [
-            '@signalco/ui-primitives',
-            '@signalco/ui-icons',
             'three',
             '@react-three/drei',
             '@react-three/fiber',

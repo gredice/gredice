@@ -1,14 +1,14 @@
 import { FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { Container } from '@gredice/ui/Container';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
-import { Container } from '@signalco/ui-primitives/Container';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
-import { PageHeader } from '../../components/shared/PageHeader';
 import { KnownPages } from '../../src/KnownPages';
 
 export const metadata: Metadata = {
@@ -416,7 +416,7 @@ export default function RaisedBedPage() {
                         podignute gredice.
                     </p>
                 </StyledHtml>
-                <Row spacing={2} className="mt-12">
+                <Row spacing={4} className="mt-12">
                     <Typography level="body1">
                         Jesu li ti informacije o podignutim gredicama korisne?
                     </Typography>

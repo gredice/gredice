@@ -1,5 +1,5 @@
 import { TimeRange } from '@gredice/ui/LocalDateTime';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Typography } from '@gredice/ui/Typography';
 
 export interface TimeSlotData {
     startAt: Date;

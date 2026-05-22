@@ -1,14 +1,14 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
-import { Close, Left, Search, ShoppingCart } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Input } from '@gredice/ui/Input';
+import { Close, Left, Search, ShoppingCart } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import {
     type ChangeEvent,
     type ReactElement,
@@ -293,7 +293,7 @@ export function PlantPicker({
             modal={false}
             className="md:border-tertiary md:border-b-4 md:max-w-2xl"
         >
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <SegmentedProgress
                     className="pb-4 pr-8 w-full md:w-80 self-center"
                     segments={steps.map((step, stepIndex) => ({
@@ -361,7 +361,7 @@ export function PlantPicker({
                 )}
                 {currentStep === 1 && selectedPlantId && (
                     <>
-                        <Stack spacing={2}>
+                        <Stack spacing={4}>
                             <PlantsSortList
                                 plantId={selectedPlantId}
                                 selectedSortId={selectedSortId}
@@ -369,7 +369,7 @@ export function PlantPicker({
                                 search={search}
                                 flyToShoppingCart={flyToShoppingCart}
                             />
-                            <Row spacing={1} className="flex-wrap">
+                            <Row spacing={2} className="flex-wrap">
                                 <Button
                                     variant={
                                         availableFromInventory &&
@@ -422,7 +422,7 @@ export function PlantPicker({
                             >
                                 Odabir biljke
                             </Button>
-                            <Row spacing={1}>
+                            <Row spacing={2}>
                                 {inShoppingCart && (
                                     <Button
                                         variant="plain"

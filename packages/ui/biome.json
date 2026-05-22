@@ -41,5 +41,10 @@
                 "organizeImports": "on"
             }
         }
+    },
+    "css": {
+        "parser": {
+            "tailwindDirectives": true
+        }
     }
 }

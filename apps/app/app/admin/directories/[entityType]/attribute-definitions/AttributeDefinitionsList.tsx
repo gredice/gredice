@@ -4,13 +4,13 @@ import {
     getAttributeDefinitions,
     type SelectAttributeDefinitionCategory,
 } from '@gredice/storage';
-import { SplitView } from '@signalco/ui/SplitView';
-import { BookA, Bookmark } from '@signalco/ui-icons';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
+import { BookA, Bookmark } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { SplitView } from '@gredice/ui/SplitView';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../../../src/KnownPages';
@@ -31,13 +31,13 @@ function AttributeDefinitionCard({
             )}
         >
             <Card>
-                <Row spacing={1}>
+                <Row spacing={2}>
                     <AttributeDataTypeIcon
                         dataType={attributeDefinition.dataType}
                         className="size-5 text-muted-foreground"
                     />
                     <Stack>
-                        <Row spacing={1}>
+                        <Row spacing={2}>
                             <Typography level="body1">
                                 {attributeDefinition.label}
                                 {attributeDefinition.required && (
@@ -73,7 +73,7 @@ function AttributeDefinitionCategoryCard({
             )}
         >
             <Card>
-                <Row spacing={1} justifyContent="space-between">
+                <Row spacing={2} justifyContent="space-between">
                     <Stack>
                         <Typography level="body2">
                             {attributeDefinitionCategory.label}
@@ -96,9 +96,9 @@ export async function AttributeDefinitionsList({
 
     return (
         <SplitView minSize={220}>
-            <Stack spacing={2} className="mr-4">
-                <Row spacing={1} justifyContent="space-between">
-                    <Row spacing={1}>
+            <Stack spacing={4} className="mr-4">
+                <Row spacing={2} justifyContent="space-between">
+                    <Row spacing={2}>
                         <Bookmark className="size-5 text-tertiary-foreground" />
                         <Typography level="body2" className="">
                             Kategorije
@@ -108,7 +108,7 @@ export async function AttributeDefinitionsList({
                         entityTypeName={entityTypeName}
                     />
                 </Row>
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     {attributeDefinitionCategories.length <= 0 && (
                         <NoDataPlaceholder />
                     )}
@@ -120,12 +120,12 @@ export async function AttributeDefinitionsList({
                     ))}
                 </Stack>
             </Stack>
-            <Stack spacing={2} className="ml-4">
+            <Stack spacing={4} className="ml-4">
                 {attributeDefinitions.length <= 0 && <NoDataPlaceholder />}
                 {attributeDefinitionCategories.map((category) => (
-                    <Stack spacing={1} key={category.id}>
-                        <Row spacing={1} justifyContent="space-between">
-                            <Row spacing={1}>
+                    <Stack spacing={2} key={category.id}>
+                        <Row spacing={2} justifyContent="space-between">
+                            <Row spacing={2}>
                                 <BookA className="size-5 text-tertiary-foreground" />
                                 <Typography level="body2" className="">
                                     {category.label}

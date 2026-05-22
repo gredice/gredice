@@ -1,6 +1,6 @@
-import { Card } from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card } from '@gredice/ui/Card';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import type { Recipe } from '../../lib/recipes/getRecipesData';
 import { KnownPages } from '../../src/KnownPages';
@@ -15,7 +15,7 @@ export function RecipeList({ recipes }: { recipes: Recipe[] }) {
                     prefetch
                 >
                     <Card className="p-4 hover:bg-slate-50">
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             <Typography level="h4" component="h3">
                                 {recipe.title}
                             </Typography>

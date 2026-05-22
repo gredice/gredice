@@ -1,17 +1,12 @@
 'use client';
 
 import type { EntityStandardized } from '@gredice/storage';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Search, Sprout } from '@gredice/ui/icons';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { Search, Sprout } from '@signalco/ui-icons';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { type ReactNode, useMemo, useState } from 'react';
 
 interface PlantsHandbookProps {
@@ -202,7 +197,7 @@ export function PlantsHandbook({ plantSortsData }: PlantsHandbookProps) {
         ) ?? null;
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <label className="flex items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm text-foreground">
                 <Search className="size-4 shrink-0 text-muted-foreground" />
                 <input
@@ -212,7 +207,7 @@ export function PlantsHandbook({ plantSortsData }: PlantsHandbookProps) {
                         setSelectedPlantSortId(null);
                     }}
                     placeholder="Pretraži biljke"
-                    className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+                    className="min-w-0 flex-1 bg-transparent outline-hidden placeholder:text-muted-foreground"
                 />
             </label>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -262,7 +257,7 @@ export function PlantsHandbook({ plantSortsData }: PlantsHandbookProps) {
                         </CardTitle>
                     </CardHeader>
                     <CardContent noHeader>
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             {selectedPlantSort.information
                                 ?.shortDescription && (
                                 <Typography className="text-muted-foreground">

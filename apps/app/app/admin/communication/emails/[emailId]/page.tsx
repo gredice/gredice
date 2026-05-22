@@ -1,16 +1,11 @@
 import { getEmailMessage } from '@gredice/storage';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 import {
@@ -37,7 +32,7 @@ type DetailItemProps = {
 
 function DetailItem({ label, children }: DetailItemProps) {
     return (
-        <Stack spacing={0.5}>
+        <Stack spacing={1}>
             <Typography level="body2" className="text-muted-foreground">
                 {label}
             </Typography>
@@ -54,7 +49,7 @@ function formatRecipients(
     }
 
     return (
-        <Stack spacing={0.5}>
+        <Stack spacing={1}>
             {recipients.map((recipient) => (
                 <Typography
                     key={`${recipient.address}-${recipient.displayName ?? ''}`}
@@ -103,7 +98,7 @@ export default async function EmailDetailPage({
     const propertiesPanel = (
         <EntityDetailsPropertiesPanel>
             <EntityDetailsPanelCard title="Detalji slanja">
-                <Stack spacing={2} className="px-4 pb-4">
+                <Stack spacing={4} className="px-4 pb-4">
                     <DetailItem label="Šalje">
                         <Typography>{email.fromAddress}</Typography>
                     </DetailItem>
@@ -184,7 +179,7 @@ export default async function EmailDetailPage({
                 </Stack>
             </EntityDetailsPanelCard>
             <EntityDetailsPanelCard title="Primatelji">
-                <Stack spacing={2} className="px-4 pb-4">
+                <Stack spacing={4} className="px-4 pb-4">
                     <DetailItem label="Za">
                         {formatRecipients(email.recipients.to)}
                     </DetailItem>
@@ -204,11 +199,11 @@ export default async function EmailDetailPage({
                     {email.attachments.length === 0 ? (
                         <NoDataPlaceholder>Nema priloga</NoDataPlaceholder>
                     ) : (
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             {email.attachments.map((attachment) => (
                                 <Stack
                                     key={`${attachment.name}-${attachment.contentType ?? ''}`}
-                                    spacing={0.5}
+                                    spacing={1}
                                 >
                                     <Typography>{attachment.name}</Typography>
                                     <Typography
@@ -245,7 +240,7 @@ export default async function EmailDetailPage({
 
     return (
         <EntityDetailsPropertiesProvider>
-            <Stack spacing={3}>
+            <Stack spacing={6}>
                 <AdminPageTitle title={email.subject || `Email #${email.id}`} />
                 <AdminPageHeader
                     breadcrumbs={
@@ -260,7 +255,7 @@ export default async function EmailDetailPage({
                         />
                     }
                     actions={
-                        <Row className="items-center" spacing={1}>
+                        <Row className="items-center" spacing={2}>
                             <EmailStatusBadge status={email.status} />
                             <EntityDetailsPropertiesToggle />
                         </Row>
@@ -269,9 +264,9 @@ export default async function EmailDetailPage({
                 />
 
                 <EntityDetailsPropertiesLayout properties={propertiesPanel}>
-                    <Stack spacing={2}>
-                        <Row spacing={2} alignItems="center">
-                            <Stack spacing={0.5} className="min-w-0">
+                    <Stack spacing={4}>
+                        <Row spacing={4} alignItems="center">
+                            <Stack spacing={1} className="min-w-0">
                                 <Typography
                                     level="h1"
                                     className="text-2xl"
@@ -290,7 +285,7 @@ export default async function EmailDetailPage({
                             </Stack>
                         </Row>
 
-                        <Stack spacing={2}>
+                        <Stack spacing={4}>
                             <Card>
                                 <CardHeader>
                                     <CardTitle>HTML sadržaj</CardTitle>

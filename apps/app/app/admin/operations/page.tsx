@@ -5,8 +5,8 @@ import {
     getUniqueAssignableFarmUsersByFarmIds,
     getUniqueAssignableFarmUsersByGardenIds,
 } from '@gredice/storage';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Stack } from '@gredice/ui/Stack';
 import { AdminPageHeader } from '../../../components/admin/navigation';
 import { OperationsTable } from '../../../components/operations/OperationsTable';
 import { auth } from '../../../lib/auth/auth';
@@ -58,7 +58,7 @@ export default async function OperationsPage({
     const fromDate = getDateFromTimeFilter(fromFilter);
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <AdminPageHeader
                 actions={
                     <div className="flex gap-2">

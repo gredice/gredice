@@ -1,12 +1,12 @@
+import { Card, CardContent } from '@gredice/ui/Card';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Info } from '@gredice/ui/icons';
 import { Markdown } from '@gredice/ui/Markdown';
-import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { Info } from '@signalco/ui-icons';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Modal } from '@gredice/ui/Modal';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { ReactNode } from 'react';
 
 export type AttributeCardProps = {
@@ -45,9 +45,9 @@ export function AttributeCard({
 
     return (
         <Card className="flex items-center gap-1 justify-between border-tertiary border-b-4">
-            <Row spacing={2}>
+            <Row spacing={4}>
                 <div className="shrink-0 ml-2">{icon}</div>
-                <Stack spacing={subheader ? 0.5 : 0}>
+                <Stack spacing={subheader ? 1 : 0}>
                     <Stack>
                         <Typography level="body2" component="h3">
                             {header}
@@ -73,10 +73,10 @@ export function AttributeCard({
                         </IconButton>
                     }
                 >
-                    <Stack spacing={2}>
-                        <Row spacing={2}>
+                    <Stack spacing={4}>
+                        <Row spacing={4}>
                             {icon}
-                            <Stack spacing={1}>
+                            <Stack spacing={2}>
                                 <Typography level="h4">{header}</Typography>
                             </Stack>
                         </Row>

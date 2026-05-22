@@ -1,10 +1,10 @@
-import { Container } from '@signalco/ui-primitives/Container';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Container } from '@gredice/ui/Container';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
-import { PageHeader } from '../../components/shared/PageHeader';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
 
 export const metadata: Metadata = {
@@ -47,7 +47,7 @@ function ValueCard({
 }) {
     return (
         <Stack
-            spacing={2}
+            spacing={4}
             className="bg-card border border-tertiary border-b-4 rounded-xl p-6 shadow"
         >
             <Typography level="h5" component="h3">
@@ -64,7 +64,7 @@ function ValueCard({
 export default function AboutUsPage() {
     return (
         <Container maxWidth="md">
-            <Stack spacing={8}>
+            <Stack spacing={16}>
                 <PageHeader
                     header="O nama"
                     subHeader="Tvoj vrt, gdje god bio 🌱"
@@ -72,7 +72,7 @@ export default function AboutUsPage() {
                 />
 
                 {/* Ideja */}
-                <Stack spacing={3}>
+                <Stack spacing={6}>
                     <SectionHeader subheader="Vrt bez selidbe na selo.">
                         Ideja
                     </SectionHeader>
@@ -94,7 +94,7 @@ export default function AboutUsPage() {
                 </Stack>
 
                 {/* Kako se ideja razvila */}
-                <Stack spacing={3}>
+                <Stack spacing={6}>
                     <SectionHeader subheader="Jedan vrt. Više mogućnosti.">
                         Kako se ideja razvila
                     </SectionHeader>
@@ -129,7 +129,7 @@ export default function AboutUsPage() {
                 </Stack>
 
                 {/* Kako Gredice funkcioniraju */}
-                <Stack spacing={3}>
+                <Stack spacing={6}>
                     <SectionHeader subheader="Ti biraš vrt. Mi pazimo da uspije.">
                         Kako Gredice funkcioniraju
                     </SectionHeader>
@@ -157,7 +157,7 @@ export default function AboutUsPage() {
                 </Stack>
 
                 {/* Naš tim */}
-                <Stack spacing={3}>
+                <Stack spacing={6}>
                     <SectionHeader subheader="Malo ljudi. Puno zemlje pod noktima.">
                         Naš tim
                     </SectionHeader>
@@ -177,7 +177,7 @@ export default function AboutUsPage() {
                 </Stack>
 
                 {/* Naša vizija */}
-                <Stack spacing={3}>
+                <Stack spacing={6}>
                     <SectionHeader subheader="Vrtovi bez granica.">
                         Naša vizija
                     </SectionHeader>
@@ -197,7 +197,7 @@ export default function AboutUsPage() {
                 </Stack>
 
                 {/* Naše vrijednosti */}
-                <Stack spacing={4}>
+                <Stack spacing={8}>
                     <SectionHeader>Naše vrijednosti</SectionHeader>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <ValueCard
@@ -228,7 +228,7 @@ export default function AboutUsPage() {
                 </Stack>
 
                 {/* CTA - Contact */}
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="h5">
                         Imaš pitanja ili želiš surađivati?
                     </Typography>
@@ -236,7 +236,7 @@ export default function AboutUsPage() {
                 </Stack>
 
                 {/* Feedback */}
-                <Row spacing={2} className="mt-4">
+                <Row spacing={4} className="mt-4">
                     <Typography level="body1">
                         Jesu li ti informacije korisne?
                     </Typography>

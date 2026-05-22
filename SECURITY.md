@@ -4,7 +4,7 @@ Use this guide for auth, secrets, validation, payments, private data, and unsafe
 
 ## Auth and authorization
 
-- Use the existing Signalco auth helpers and app-local `auth` wrappers.
+- Use `@gredice/auth`, `@gredice/ui/auth`, and app-local `auth` wrappers.
 - Enforce authorization on the server for pages, route handlers, and Server Actions.
 - Do not rely on hidden UI, disabled buttons, or client checks for access control.
 - Admin workflows must require the appropriate role before reading or mutating data.

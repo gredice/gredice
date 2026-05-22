@@ -1,11 +1,11 @@
 'use client';
 
-import { useSearchParam } from '@signalco/hooks/useSearchParam';
-import { Navigate } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { useSearchParam } from '@gredice/ui/hooks';
+import { Navigate } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useState } from 'react';
 import Confetti from 'react-confetti-boom';
@@ -42,8 +42,8 @@ export function PaymentSuccessfulMessage() {
             className="max-w-screen-md border-tertiary border-b-4"
         >
             <div className="grid md:grid-cols-2 [grid-template-areas:'sunflower'_'content'] md:[grid-template-areas:'content_sunflower'] md:p-4 gap-4">
-                <Stack spacing={3} className="[grid-area:content]">
-                    <Stack spacing={1.5}>
+                <Stack spacing={6} className="[grid-area:content]">
+                    <Stack spacing={3}>
                         <Typography level="h2" gutterBottom>
                             {title}
                         </Typography>

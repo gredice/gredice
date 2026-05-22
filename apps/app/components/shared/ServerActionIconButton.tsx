@@ -1,9 +1,6 @@
 'use client';
 
-import {
-    IconButton,
-    type IconButtonProps,
-} from '@signalco/ui-primitives/IconButton';
+import { IconButton, type IconButtonProps } from '@gredice/ui/IconButton';
 import { startTransition, useState } from 'react';
 
 export type ServerActionIconButtonProps = Omit<IconButtonProps, 'onClick'> & {

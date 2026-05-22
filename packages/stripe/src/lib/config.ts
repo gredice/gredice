@@ -1,4 +1,4 @@
-import { isAbsoluteUrl } from '@signalco/js';
+import { isAbsoluteUrl } from '@gredice/js/urls';
 import Stripe from 'stripe';
 
 let stripe: Stripe | null = null;

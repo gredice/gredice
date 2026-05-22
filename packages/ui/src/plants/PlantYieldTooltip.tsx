@@ -1,15 +1,11 @@
 import { calculatePlantsPerField } from '@gredice/js/plants';
-import { Info } from '@signalco/ui-icons';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-} from '@signalco/ui-primitives/Tooltip';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import type { PropsWithChildren } from 'react';
+import { Divider } from '../Divider';
+import { Info } from '../icons';
+import { Row } from '../Row';
+import { Stack } from '../Stack';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
+import { Typography } from '../Typography';
 
 export function PlantYieldTooltip({
     plant,
@@ -56,12 +52,12 @@ export function PlantYieldTooltip({
             </TooltipTrigger>
             <TooltipContent>
                 <div className="text-sm">
-                    <Stack spacing={1} alignItems="center">
+                    <Stack spacing={2} alignItems="center">
                         <Typography level="body2" bold>
                             Očekivani prinos
                         </Typography>
                         <Divider className="w-20" />
-                        <Stack spacing={1} alignItems="center">
+                        <Stack spacing={2} alignItems="center">
                             <span>
                                 ~
                                 <strong>
@@ -77,7 +73,7 @@ export function PlantYieldTooltip({
                             </span>
                             <Stack alignItems="center">
                                 {yieldType === 'perPlant' && (
-                                    <Row spacing={1}>
+                                    <Row spacing={2}>
                                         <Typography level="body3">
                                             <strong>{yieldMin}</strong> g
                                         </Typography>
@@ -88,7 +84,7 @@ export function PlantYieldTooltip({
                                         </Typography>
                                     </Row>
                                 )}
-                                <Row spacing={1}>
+                                <Row spacing={2}>
                                     <Typography level="body3">
                                         <strong>{minYieldPerField}</strong> g
                                     </Typography>

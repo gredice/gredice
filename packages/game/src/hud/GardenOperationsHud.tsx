@@ -1,5 +1,6 @@
-import { OperationImage } from '@gredice/ui/OperationImage';
-import { PlantOrSortImage } from '@gredice/ui/plants';
+import { Button } from '@gredice/ui/Button';
+import { Divider } from '@gredice/ui/Divider';
+import { DotIndicator } from '@gredice/ui/DotIndicator';
 import {
     Approved,
     Calendar,
@@ -11,16 +12,15 @@ import {
     ListTodo,
     MailCheck,
     ShoppingCart,
-} from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { DotIndicator } from '@signalco/ui-primitives/DotIndicator';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Popper } from '@signalco/ui-primitives/Popper';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+} from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { OperationImage } from '@gredice/ui/OperationImage';
+import { Popper } from '@gredice/ui/Popper';
+import { PlantOrSortImage } from '@gredice/ui/plants';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { type ComponentType, useCallback, useMemo, useRef } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { SegmentedProgress } from '../controls/components/SegmentedProgress';
@@ -206,7 +206,7 @@ function StatusBadge({
     const iconSize = size === 'md' ? 'size-4' : 'size-3.5';
     const textLevel = size === 'md' ? 'body2' : 'body3';
     return (
-        <Row spacing={0.5} className={config.colorClass}>
+        <Row spacing={1} className={config.colorClass}>
             <Icon className={cx(iconSize, 'shrink-0')} />
             <Typography level={textLevel} semiBold>
                 {config.label}
@@ -359,11 +359,11 @@ function OperationProgress({ operation }: { operation: GardenOperationItem }) {
     const segments = useMemo(() => buildSegments(operation), [operation]);
 
     return (
-        <Stack spacing={1}>
+        <Stack spacing={2}>
             <SegmentedProgress className="pb-5 pr-4" segments={segments} />
             <Row
                 justifyContent="space-between"
-                spacing={1}
+                spacing={2}
                 className="flex-wrap"
             >
                 <StatusBadge status={operation.status} />
@@ -380,7 +380,7 @@ function OperationDates({ operation }: { operation: GardenOperationItem }) {
     const scheduledDate = formatDate(operation.scheduledDate);
 
     return (
-        <Row spacing={1} className="flex-wrap">
+        <Row spacing={2} className="flex-wrap">
             {createdAt && (
                 <Typography level="body3" secondary>
                     Kreirano: {createdAt}
@@ -406,7 +406,7 @@ function OperationCard({
 }) {
     return (
         <div className="rounded-xl border p-3">
-            <Row spacing={1.5} alignItems="start">
+            <Row spacing={3} alignItems="start">
                 <div className="size-12 rounded-lg bg-card flex items-center justify-center overflow-hidden shrink-0">
                     {operationData ? (
                         <OperationImage operation={operationData} size={40} />
@@ -416,8 +416,8 @@ function OperationCard({
                         </Typography>
                     )}
                 </div>
-                <Stack spacing={0.75} className="min-w-0 flex-1">
-                    <Stack spacing={0.25}>
+                <Stack spacing={1.5} className="min-w-0 flex-1">
+                    <Stack spacing={0.5}>
                         <Typography level="body2" semiBold noWrap>
                             {operationName ?? `Radnja #${operation.id}`}
                         </Typography>
@@ -460,8 +460,8 @@ function CartOperationCard({
               `Radnja #${item.entityId}`);
 
     return (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3">
-            <Row spacing={1.5} alignItems="start">
+        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-400/60 dark:bg-amber-900/30">
+            <Row spacing={3} alignItems="start">
                 <div className="size-12 rounded-lg bg-card flex items-center justify-center overflow-hidden shrink-0">
                     {plantSort ? (
                         <PlantOrSortImage
@@ -473,37 +473,61 @@ function CartOperationCard({
                     ) : operationData ? (
                         <OperationImage operation={operationData} size={40} />
                     ) : (
-                        <ShoppingCart className="size-5 text-amber-600" />
+                        <ShoppingCart className="size-5 text-amber-600 dark:text-amber-300" />
                     )}
                 </div>
-                <Stack spacing={0.75} className="min-w-0 flex-1">
-                    <Stack spacing={0.25}>
-                        <Typography level="body2" semiBold noWrap>
+                <Stack spacing={1.5} className="min-w-0 flex-1">
+                    <Stack spacing={0.5}>
+                        <Typography
+                            level="body2"
+                            semiBold
+                            noWrap
+                            className="dark:text-amber-50"
+                        >
                             {operationName}
                         </Typography>
-                        <Typography level="body3" secondary>
+                        <Typography
+                            level="body3"
+                            secondary
+                            className="dark:text-amber-100/85"
+                        >
                             {targetLabel}
                         </Typography>
                     </Stack>
-                    <Row spacing={1} className="flex-wrap">
-                        <Typography level="body3" secondary>
+                    <Row spacing={2} className="flex-wrap">
+                        <Typography
+                            level="body3"
+                            secondary
+                            className="dark:text-amber-100/80"
+                        >
                             U košari, još nije kupljeno
                         </Typography>
-                        <Typography level="body3" secondary>
+                        <Typography
+                            level="body3"
+                            secondary
+                            className="dark:text-amber-100/80"
+                        >
                             Zakazano: {scheduledDateLabel}
                         </Typography>
                     </Row>
-                    <Row justifyContent="space-between" spacing={1}>
-                        <Row spacing={0.5} className="text-amber-600">
+                    <Row justifyContent="space-between" spacing={2}>
+                        <Row
+                            spacing={1}
+                            className="text-amber-600 dark:text-amber-300"
+                        >
                             <ShoppingCart className="size-3.5 shrink-0" />
-                            <Typography level="body3" semiBold>
+                            <Typography
+                                level="body3"
+                                semiBold
+                                className="dark:text-amber-200"
+                            >
                                 U košari
                             </Typography>
                         </Row>
                         <Button
                             variant="link"
                             size="sm"
-                            className="px-0"
+                            className="px-0 dark:text-amber-50 dark:hover:text-white"
                             onClick={onOpenCart}
                         >
                             Otvori košaru
@@ -532,8 +556,8 @@ function HistoryModal({
             trigger={trigger}
             className="md:max-w-4xl"
         >
-            <Stack spacing={2}>
-                <Stack spacing={0.5}>
+            <Stack spacing={4}>
+                <Stack spacing={1}>
                     <Typography level="h5">Povijest radnji</Typography>
                     <Typography level="body2" secondary>
                         Pregled svih radnji u tvom vrtu. Zadrži pokazivač iznad
@@ -542,7 +566,7 @@ function HistoryModal({
                 </Stack>
                 <Divider />
                 <Stack
-                    spacing={1.5}
+                    spacing={3}
                     data-infinite-scroll-root
                     className="max-h-[70vh] overflow-y-auto pr-1"
                 >
@@ -736,7 +760,7 @@ export function GardenOperationsHud() {
                 </Row>
                 <Divider />
                 <Stack
-                    spacing={1}
+                    spacing={2}
                     data-infinite-scroll-root
                     className="max-h-[50vh] overflow-y-auto p-3"
                 >
@@ -747,7 +771,7 @@ export function GardenOperationsHud() {
                     ) : (
                         <>
                             {cartOperations.length > 0 && (
-                                <Stack spacing={1}>
+                                <Stack spacing={2}>
                                     <Row
                                         justifyContent="space-between"
                                         alignItems="center"

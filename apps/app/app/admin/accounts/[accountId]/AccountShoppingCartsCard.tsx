@@ -1,9 +1,4 @@
-import {
-    Card,
-    CardHeader,
-    CardOverflow,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
+import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
 import { auth } from '../../../../lib/auth/auth';
 import { ShoppingCartsTable } from '../../shopping-carts/ShoppingCartsTable';
 

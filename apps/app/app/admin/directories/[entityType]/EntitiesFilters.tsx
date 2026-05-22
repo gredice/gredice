@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Edit, Megaphone, Warning } from '@signalco/ui-icons';
+import { Check, Edit, Megaphone, Warning } from '@gredice/ui/icons';
 import {
     type FilterOption,
     TableFilter,

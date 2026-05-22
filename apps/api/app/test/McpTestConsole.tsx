@@ -153,7 +153,7 @@ export function McpTestConsole({
                         Bearer token
                         <input
                             autoComplete="off"
-                            className="rounded-md border border-input bg-background px-3 py-2 font-mono text-sm font-normal outline-none focus:ring-2 focus:ring-ring"
+                            className="rounded-md border border-input bg-background px-3 py-2 font-mono text-sm font-normal outline-hidden focus:ring-2 focus:ring-ring"
                             onChange={(event) =>
                                 setBearerToken(event.currentTarget.value)
                             }
@@ -166,7 +166,7 @@ export function McpTestConsole({
                         Account ID
                         <input
                             autoComplete="off"
-                            className="rounded-md border border-input bg-background px-3 py-2 font-mono text-sm font-normal outline-none focus:ring-2 focus:ring-ring"
+                            className="rounded-md border border-input bg-background px-3 py-2 font-mono text-sm font-normal outline-hidden focus:ring-2 focus:ring-ring"
                             onChange={(event) =>
                                 setAccountId(event.currentTarget.value)
                             }
@@ -199,7 +199,7 @@ export function McpTestConsole({
                         </button>
                     </div>
                     <textarea
-                        className="min-h-[260px] resize-y rounded-md border border-input bg-background p-3 font-mono text-sm outline-none focus:ring-2 focus:ring-ring"
+                        className="min-h-[260px] resize-y rounded-md border border-input bg-background p-3 font-mono text-sm outline-hidden focus:ring-2 focus:ring-ring"
                         onChange={(event) =>
                             setRequestBody(event.currentTarget.value)
                         }

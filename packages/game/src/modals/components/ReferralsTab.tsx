@@ -1,7 +1,7 @@
 import { clientAuthenticated } from '@gredice/client';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { Stack } from '@gredice/ui/Stack';
 import { useState } from 'react';
 import { useReferrals } from '../../hooks/useReferrals';
 
@@ -11,7 +11,7 @@ export function ReferralsTab() {
     const [useCode, setUseCode] = useState('');
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <div className="text-sm">
                 💮 Nagrada preporuke: {data?.rewardAmount ?? 10000} suncokreta
             </div>

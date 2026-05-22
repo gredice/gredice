@@ -2,14 +2,14 @@ import {
     plantFieldStatusLabel,
     userAllowedPlantStatusTransitions,
 } from '@gredice/js/plants';
-import { Calendar, Navigate } from '@signalco/ui-icons';
-import { Input } from '@signalco/ui-primitives/Input';
-import { List } from '@signalco/ui-primitives/List';
-import { ListItem } from '@signalco/ui-primitives/ListItem';
-import { Popper } from '@signalco/ui-primitives/Popper';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Input } from '@gredice/ui/Input';
+import { Calendar, Navigate } from '@gredice/ui/icons';
+import { List } from '@gredice/ui/List';
+import { ListItem } from '@gredice/ui/ListItem';
+import { Popper } from '@gredice/ui/Popper';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { type ReactNode, useCallback, useState } from 'react';
 import { useRaisedBedFieldUpdateStatus } from '../../hooks/useRaisedBedFieldUpdateStatus';
 import { plantFieldStatusEmoji } from './PlantFieldStatusEmoji';
@@ -87,9 +87,9 @@ export function RaisedBedFieldStatusChange({
             sideOffset={12}
             className="w-80 border-tertiary border-b-4 p-4"
         >
-            <Stack spacing={2} className="relative">
+            <Stack spacing={4} className="relative">
                 <Row
-                    spacing={1}
+                    spacing={2}
                     justifyContent="space-between"
                     alignItems="center"
                     ref={handleDatePickerContainerRef}
@@ -113,7 +113,7 @@ export function RaisedBedFieldStatusChange({
                                     type="button"
                                     title="Odaberi datum promjene"
                                     aria-label={`Odaberi datum promjene: ${formatStatusChangeDate(selectedDate)}`}
-                                    className="inline-flex items-center gap-1 rounded-xl border bg-card px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-card-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
+                                    className="inline-flex items-center gap-1 rounded-xl border bg-card px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-card-foreground/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
                                 >
                                     <Calendar
                                         className="size-3.5 shrink-0"
@@ -186,8 +186,8 @@ export function RaisedBedFieldStatusChange({
                         })}
                     </List>
                 ) : (
-                    <Stack spacing={1}>
-                        <Row spacing={1} alignItems="center">
+                    <Stack spacing={2}>
+                        <Row spacing={2} alignItems="center">
                             <span
                                 className="text-xl leading-none"
                                 aria-hidden="true"

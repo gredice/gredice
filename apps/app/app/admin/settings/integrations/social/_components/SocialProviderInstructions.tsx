@@ -1,5 +1,5 @@
 import type { SocialProvider } from '@gredice/storage';
-import { Button } from '@signalco/ui-primitives/Button';
+import { Button } from '@gredice/ui/Button';
 import Link from 'next/link';
 import { getSocialProviderSetupGuide } from '../../../../../../src/social/providers/setupGuide';
 

@@ -1,8 +1,8 @@
+import { Chip } from '@gredice/ui/Chip';
+import { Row } from '@gredice/ui/Row';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { ReactNode } from 'react';
 import type { RaisedBedFieldPlantHistoryEntry } from '../../utils/raisedBedFields';
 import { PlantStageSection } from './PlantStageSection';
@@ -216,7 +216,7 @@ export function PlantLifecycleProgress({
     return (
         <>
             {shouldShowPlantScheduledDate && (
-                <Row spacing={2}>
+                <Row spacing={4}>
                     <Typography level="body2">Planirani datum</Typography>
                     <div className="flex items-start">
                         <Chip>
@@ -226,7 +226,7 @@ export function PlantLifecycleProgress({
                     </div>
                 </Row>
             )}
-            <Row spacing={2}>
+            <Row spacing={4}>
                 <SegmentedCircularProgress
                     size={140}
                     strokeWidth={3}
@@ -234,7 +234,7 @@ export function PlantLifecycleProgress({
                 >
                     {statusTrigger}
                 </SegmentedCircularProgress>
-                <Stack spacing={0.75}>
+                <Stack spacing={1.5}>
                     <PlantStageSection
                         label="Klijanje"
                         legendColorClass="bg-yellow-500"

@@ -8,7 +8,7 @@ export function DragGripIndicator() {
             className="absolute bottom-0.5 left-1/2 -translate-x-1/2 z-10 pointer-events-none"
             aria-hidden="true"
         >
-            <div className="rounded-full px-1.5 py-0.5 shadow-sm">
+            <div className="rounded-full px-1.5 py-0.5 shadow-xs">
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 20 6"

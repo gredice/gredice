@@ -1,8 +1,8 @@
-import { Approved, Empty } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Approved, Empty } from '@gredice/ui/icons';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { useClaimDailyReward } from '../../hooks/useClaimDailyReward';
 import { useDailyReward } from '../../hooks/useDailyReward';
 
@@ -31,14 +31,14 @@ export function DailyRewardOverview() {
     });
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <Typography level="body2" bold>
                 Dnevna aktivnost
             </Typography>
             <div className="grid md:grid-cols-7 grid-cols-4 gap-2">
                 {columns.map((col) => {
                     const content = (
-                        <Stack spacing={1} alignItems="center">
+                        <Stack spacing={2} alignItems="center">
                             {col.isClaimed ? (
                                 <Approved className="size-5 text-green-600" />
                             ) : (
@@ -75,7 +75,7 @@ export function DailyRewardOverview() {
                                 className={cx(
                                     'border',
                                     'rounded-lg p-2 flex justify-center items-center h-full relative',
-                                    'focus:ring-2 focus:outline-none',
+                                    'focus:ring-2 focus:outline-hidden',
                                 )}
                                 onClick={() => claimDailyReward.mutate()}
                                 disabled={claimDailyReward.isPending}

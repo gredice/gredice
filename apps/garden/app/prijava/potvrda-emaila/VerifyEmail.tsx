@@ -1,12 +1,12 @@
 'use client';
 
 import { clientPublic } from '@gredice/client';
-import { Warning } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Spinner } from '@signalco/ui-primitives/Spinner';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Warning } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Spinner } from '@gredice/ui/Spinner';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -52,9 +52,9 @@ export function VerifyEmail() {
 
     if (error) {
         return (
-            <Stack spacing={3}>
+            <Stack spacing={6}>
                 <Row
-                    spacing={2}
+                    spacing={4}
                     justifyContent="center"
                     className="text-red-500"
                 >
@@ -71,8 +71,8 @@ export function VerifyEmail() {
     }
 
     return (
-        <Stack spacing={3}>
-            <Row spacing={2} justifyContent="center">
+        <Stack spacing={6}>
+            <Row spacing={4} justifyContent="center">
                 <Spinner
                     loading
                     className="size-5"

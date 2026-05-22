@@ -1,9 +1,6 @@
-import {
-    AuthProtectedSection,
-    SignedOut,
-} from '@signalco/auth-server/components';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
 import { Suspense } from 'react';
 import LoginDialog from '../../components/auth/LoginDialog';
 import { HomeButton } from '../../components/HomeButton';
@@ -28,8 +25,8 @@ async function FarmScheduleContent({ date }: { date: Date }) {
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
-            <Row spacing={2} justifyContent="space-between">
-                <Row spacing={1}>
+            <Row spacing={4} justifyContent="space-between">
+                <Row spacing={2}>
                     <HomeButton />
                     <Typography level="h4" component="h1">
                         Raspored

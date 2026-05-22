@@ -1,9 +1,9 @@
-import type { SectionData } from '@signalco/cms-core/SectionData';
-import { SectionsView } from '@signalco/cms-core/SectionsView';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import type { SectionData } from '@gredice/ui/cms';
+import { SectionsView } from '@gredice/ui/cms';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Stack } from '@gredice/ui/Stack';
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import { PageHeader } from '../../components/shared/PageHeader';
 import { sectionsComponentRegistry } from '../../components/shared/sectionsComponentRegistry';
 
 export const metadata: Metadata = {

@@ -3,20 +3,19 @@ import {
     getAchievementDefinitions,
 } from '@gredice/js/achievements';
 import { getAchievements } from '@gredice/storage';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Button } from '@signalco/ui-primitives/Button';
+import { Button } from '@gredice/ui/Button';
 import {
     Card,
     CardContent,
     CardHeader,
     CardOverflow,
     CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
+} from '@gredice/ui/Card';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
@@ -75,13 +74,13 @@ export default async function AchievementsPage({
     );
 
     return (
-        <Stack spacing={4}>
-            <Stack spacing={2}>
+        <Stack spacing={8}>
+            <Stack spacing={4}>
                 <Typography level="body2">
                     Pregled najnovijih postignuća i ručno odobravanje nagrada.
                 </Typography>
             </Stack>
-            <Row spacing={2}>
+            <Row spacing={4}>
                 {statusFilters.map((filter) => {
                     const isActive = status === filter.value;
                     const href =
@@ -153,7 +152,7 @@ export default async function AchievementsPage({
                                     return (
                                         <Table.Row key={achievement.id}>
                                             <Table.Cell>
-                                                <Stack spacing={1}>
+                                                <Stack spacing={2}>
                                                     <Typography
                                                         level="body2"
                                                         semiBold
@@ -216,7 +215,7 @@ export default async function AchievementsPage({
                                             <Table.Cell>
                                                 {achievement.status ===
                                                 'pending' ? (
-                                                    <Row spacing={1}>
+                                                    <Row spacing={2}>
                                                         <form
                                                             action={approveAchievementAction.bind(
                                                                 null,

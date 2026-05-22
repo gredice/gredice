@@ -1,6 +1,6 @@
 'use client';
 
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { SelectItems } from '@gredice/ui/SelectItems';
 import { raisedBedFieldUpdatePlant } from '../../../(actions)/raisedBedFieldsActions';
 
 export const dynamic = 'force-dynamic';

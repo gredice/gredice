@@ -1,9 +1,9 @@
 'use client';
 
 import { ImageEditor } from '@gredice/ui/ImageEditor';
-import { Upload } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Upload } from '@gredice/ui/icons';
+import { Stack } from '@gredice/ui/Stack';
+import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
 import { type ChangeEvent, type DragEvent, useRef, useState } from 'react';
 import { uploadAttributeImage } from '../../../../app/(actions)/entityActions';
@@ -76,7 +76,7 @@ export function ImageInput({
     };
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <button
                 type="button"
                 aria-label={imageUrl ? 'Zamijeni sliku' : 'Dodaj sliku'}
@@ -86,7 +86,7 @@ export function ImageInput({
                 onDrop={handleDrop}
                 className={cx(
                     'group flex min-h-48 w-full items-center justify-center overflow-hidden rounded-md border border-dashed border-input bg-background text-left transition-colors',
-                    'hover:border-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                    'hover:border-foreground/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                     imageUrl && 'border-solid',
                     isDragging && 'border-primary bg-primary/10',
                 )}

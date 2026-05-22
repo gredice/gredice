@@ -1,10 +1,10 @@
 import { getEntityTypeCategories } from '@gredice/storage';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card } from '@gredice/ui/Card';
+import { Input } from '@gredice/ui/Input';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { availableIcons } from '../../../../../components/admin/directories/EntityTypeIcon';
 import {
     AdminDirectoryBreadcrumbs,
@@ -36,7 +36,7 @@ export default async function CreateEntityTypePage() {
     ];
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <AdminPageHeader
                 breadcrumbs={
                     <AdminDirectoryBreadcrumbs
@@ -46,7 +46,7 @@ export default async function CreateEntityTypePage() {
                 heading="Novi tip zapisa"
             />
 
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography level="h2" className="text-2xl" semiBold>
                     Novi tip zapisa
                 </Typography>
@@ -57,10 +57,10 @@ export default async function CreateEntityTypePage() {
             </Stack>
 
             <Card className="max-w-2xl">
-                <Stack spacing={4} className="p-6">
+                <Stack spacing={8} className="p-6">
                     <form action={submitCreateForm}>
-                        <Stack spacing={4}>
-                            <Stack spacing={3}>
+                        <Stack spacing={8}>
+                            <Stack spacing={6}>
                                 <Input
                                     name="name"
                                     label="Naziv"

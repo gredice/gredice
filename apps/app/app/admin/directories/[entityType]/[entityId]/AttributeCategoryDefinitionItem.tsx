@@ -4,11 +4,11 @@ import type {
     SelectAttributeDefinition,
     SelectAttributeValue,
 } from '@gredice/storage';
-import { Add } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Add } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { AttributeInput } from '../../../../../components/shared/attributes/AttributeInput';
 import { handleValueSave } from '../../../../(actions)/entityActions';
 import { useEntityDetailsSave } from './EntityDetailsSaveContext';
@@ -48,7 +48,7 @@ export function AttributeCategoryDefinitionItem({
     }
 
     return (
-        <Stack key={attributeDefinition.id} spacing={1}>
+        <Stack key={attributeDefinition.id} spacing={2}>
             <Row justifyContent="space-between" alignItems="start">
                 <Stack>
                     <Typography level="body1" semiBold>

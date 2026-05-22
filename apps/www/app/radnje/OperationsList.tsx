@@ -2,9 +2,9 @@
 
 import type { OperationData } from '@gredice/client';
 import type { PlantStageName } from '@gredice/game';
-import { ShovelIcon } from '@gredice/ui/ShovelIcon';
-import { slug } from '@signalco/js';
-import { Accordion } from '@signalco/ui/Accordion';
+import { slug } from '@gredice/js/slug';
+import { Accordion } from '@gredice/ui/Accordion';
+import { Chip } from '@gredice/ui/Chip';
 import {
     Droplet,
     Leaf,
@@ -12,11 +12,11 @@ import {
     Store,
     Tally3,
     Upload,
-} from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+} from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { ShovelIcon } from '@gredice/ui/ShovelIcon';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useMemo } from 'react';
 import { NoDataPlaceholder } from '../../components/shared/placeholders/NoDataPlaceholder';
 import { useClientSearchParam } from '../../hooks/useClientSearchParam';
@@ -99,9 +99,9 @@ export function OperationsList({
     return (
         <>
             {availableStages.length > 0 && (
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     <Typography level="body3">Kategorije</Typography>
-                    <Row spacing={1} className="flex-wrap">
+                    <Row spacing={2} className="flex-wrap">
                         {availableStages.map((stage) => {
                             const Icon = stageIcons[stage.name];
                             return (
@@ -118,7 +118,7 @@ export function OperationsList({
                     </Row>
                 </Stack>
             )}
-            <Stack spacing={6}>
+            <Stack spacing={12}>
                 {!publicOperations.length && !internalOperations.length && (
                     <div className="border rounded py-4">
                         <NoDataPlaceholder>
@@ -133,11 +133,11 @@ export function OperationsList({
                     return (
                         <Stack
                             key={stage.name}
-                            spacing={2}
+                            spacing={4}
                             id={slug(stage.label)}
                             className="scroll-mt-24"
                         >
-                            <Row spacing={2}>
+                            <Row spacing={4}>
                                 <Icon className="size-5 shrink-0" />
                                 <Typography level="h5" component="h2">
                                     {stage.label}
@@ -156,7 +156,7 @@ export function OperationsList({
                 })}
                 {internalOperations.length > 0 && (
                     <Accordion className="h-min border-tertiary border-b-4">
-                        <Row spacing={2} className="px-3">
+                        <Row spacing={4} className="px-3">
                             <Store className="size-5 shrink-0" />
                             <Typography level="h5" component="h2">
                                 Za OPG partnere

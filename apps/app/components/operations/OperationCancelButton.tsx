@@ -1,7 +1,7 @@
 'use client';
 
-import { Close } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Close } from '@gredice/ui/icons';
 import { CancelOperationModal } from '../../app/admin/schedule/CancelOperationModal';
 
 interface OperationCancelButtonProps {

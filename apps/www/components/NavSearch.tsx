@@ -1,11 +1,11 @@
 'use client';
 
 import { type components, directoriesClient } from '@gredice/client';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Close, LoaderSpinner, Search } from '@gredice/ui/icons';
 import { LoadingIndicator } from '@gredice/ui/LoadingIndicator';
+import { cx } from '@gredice/ui/utils';
 import { usePostHog } from '@posthog/next';
-import { Close, LoaderSpinner, Search } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
 import { useQuery } from '@tanstack/react-query';
 import {
     type ChangeEvent,
@@ -350,7 +350,7 @@ export function NavSearch({ className }: NavSearchProps) {
                                       : undefined
                             }
                             placeholder="Pretraga..."
-                            className="h-full min-w-0 flex-1 bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+                            className="h-full min-w-0 flex-1 bg-transparent px-2 text-sm outline-hidden placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
                         />
                         {query ? (
                             <IconButton
@@ -405,7 +405,7 @@ export function NavSearch({ className }: NavSearchProps) {
                                     aria-controls={resultsId}
                                     aria-autocomplete="list"
                                     placeholder="Pretraga..."
-                                    className="h-full min-w-0 flex-1 bg-transparent px-3 text-base outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+                                    className="h-full min-w-0 flex-1 bg-transparent px-3 text-base outline-hidden placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
                                 />
                                 <IconButton
                                     className={cx(
@@ -468,7 +468,7 @@ export function NavSearch({ className }: NavSearchProps) {
                                             role="option"
                                             aria-selected={isActive}
                                             className={cx(
-                                                'flex gap-3 rounded-lg px-3 py-2 outline-none transition-colors',
+                                                'flex gap-3 rounded-lg px-3 py-2 outline-hidden transition-colors',
                                                 isActive
                                                     ? 'bg-primary/10'
                                                     : 'hover:bg-muted/70 focus-visible:bg-muted/70',
@@ -515,7 +515,7 @@ export function NavSearch({ className }: NavSearchProps) {
                                 {hasMoreResults ? (
                                     <a
                                         href={moreResultsHref}
-                                        className="mt-1 flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:bg-primary/10 focus-visible:outline-none"
+                                        className="mt-1 flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:bg-primary/10 focus-visible:outline-hidden"
                                         onClick={() => {
                                             posthog?.capture(
                                                 'public_nav_search_more_results_clicked',

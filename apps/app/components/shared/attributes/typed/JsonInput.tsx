@@ -1,9 +1,9 @@
 import { unwrapSchema } from '@gredice/js/jsonSchema';
-import { camelToSentenceCase } from '@signalco/js';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Skeleton } from '@signalco/ui-primitives/Skeleton';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { camelToSentenceCase } from '@gredice/js/strings';
+import { Card } from '@gredice/ui/Card';
+import { Skeleton } from '@gredice/ui/Skeleton';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import dynamic from 'next/dynamic';
 import { type ComponentType, useState } from 'react';
 import type { AttributeInputProps } from '../AttributeInputProps';
@@ -44,7 +44,7 @@ export function JsonInput({
             : (schema ?? {});
 
     const content = (
-        <Stack spacing={1}>
+        <Stack spacing={2}>
             {Object.keys(schemaUnwrapped).map((key) => {
                 let InputComponent: ComponentType<AttributeInputProps> =
                     TextInput;
@@ -73,7 +73,7 @@ export function JsonInput({
                 }
 
                 return (
-                    <Stack spacing={0.5} key={key}>
+                    <Stack spacing={1} key={key}>
                         <Typography level="body2">
                             {camelToSentenceCase(key)}
                         </Typography>

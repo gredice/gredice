@@ -19,7 +19,8 @@ import type {
     ExtendedAttributeDefinition,
     SelectAttributeDefinitionCategory,
 } from '@gredice/storage';
-import { SplitView } from '@signalco/ui/SplitView';
+import { Card } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import {
     Binary,
     BookA,
@@ -29,12 +30,11 @@ import {
     Hash,
     Tally3,
     ToggleRight,
-} from '@signalco/ui-icons';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+} from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { SplitView } from '@gredice/ui/SplitView';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import type { CSSProperties, HTMLAttributes, MouseEvent } from 'react';
 import { useEffect, useState } from 'react';
@@ -114,13 +114,13 @@ function AttributeDefinitionCard({
             className="block"
         >
             <Card>
-                <Row spacing={1}>
+                <Row spacing={2}>
                     <AttributeDataTypeIcon
                         dataType={attributeDefinition.dataType}
                         className="size-5 text-muted-foreground"
                     />
                     <Stack>
-                        <Row spacing={1}>
+                        <Row spacing={2}>
                             <Typography level="body1">
                                 {attributeDefinition.label}
                                 {attributeDefinition.required && (
@@ -167,7 +167,7 @@ function AttributeDefinitionCategoryCard({
             className="block"
         >
             <Card>
-                <Row spacing={1} justifyContent="space-between">
+                <Row spacing={2} justifyContent="space-between">
                     <Stack>
                         <Typography level="body2">
                             {attributeDefinitionCategory.label}
@@ -307,9 +307,9 @@ function CategorySection({
     }
 
     return (
-        <Stack spacing={1} key={category.id}>
-            <Row spacing={1} justifyContent="space-between">
-                <Row spacing={1}>
+        <Stack spacing={2} key={category.id}>
+            <Row spacing={2} justifyContent="space-between">
+                <Row spacing={2}>
                     <BookA className="size-5 text-tertiary-foreground" />
                     <Typography level="body2" className="">
                         {category.label}
@@ -388,9 +388,9 @@ export function AttributeDefinitionsListClient({
 
     return (
         <SplitView minSize={220}>
-            <Stack spacing={2} className="mr-4">
-                <Row spacing={1} justifyContent="space-between">
-                    <Row spacing={1}>
+            <Stack spacing={4} className="mr-4">
+                <Row spacing={2} justifyContent="space-between">
+                    <Row spacing={2}>
                         <Bookmark className="size-5 text-tertiary-foreground" />
                         <Typography level="body2" className="">
                             Kategorije
@@ -410,7 +410,7 @@ export function AttributeDefinitionsListClient({
                         items={categories.map((c) => c.id.toString())}
                         strategy={verticalListSortingStrategy}
                     >
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             {categories.length <= 0 && <NoDataPlaceholder />}
                             {categories.map((c) => (
                                 <SortableCategory
@@ -423,7 +423,7 @@ export function AttributeDefinitionsListClient({
                     </SortableContext>
                 </DndContext>
             </Stack>
-            <Stack spacing={2} className="ml-4">
+            <Stack spacing={4} className="ml-4">
                 <TableAttributeOrderSection
                     entityTypeName={entityTypeName}
                     attributeDefinitions={attributeDefinitions}

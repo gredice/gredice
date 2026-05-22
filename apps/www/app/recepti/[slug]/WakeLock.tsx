@@ -1,6 +1,6 @@
 'use client';
 
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
+import { Checkbox } from '@gredice/ui/Checkbox';
 import { useState } from 'react';
 
 export function WakeLock() {

@@ -4,14 +4,14 @@ import {
     getRaisedBed,
     getShoppingCart,
 } from '@gredice/storage';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
@@ -241,7 +241,7 @@ export default async function ShoppingCartDetailsPage({
 
     return (
         <EntityDetailsPropertiesProvider>
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <AdminPageTitle title={`Košarica ${cartIdNumber}`} />
                 <AdminPageHeader
                     breadcrumbs={
@@ -256,7 +256,7 @@ export default async function ShoppingCartDetailsPage({
                         />
                     }
                     actions={
-                        <Row className="items-center" spacing={1}>
+                        <Row className="items-center" spacing={2}>
                             <EntityDetailsPropertiesToggle />
                         </Row>
                     }

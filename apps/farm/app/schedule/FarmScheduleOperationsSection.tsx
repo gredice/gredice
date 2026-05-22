@@ -1,11 +1,11 @@
 import type { EntityStandardized } from '@gredice/storage';
+import { Checkbox } from '@gredice/ui/Checkbox';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { HarvestOperationPrintModal } from './HarvestOperationPrintModal';
 import { OperationCompletionAttachments } from './OperationCompletionAttachments';
@@ -216,8 +216,8 @@ export function FarmScheduleOperationsSection({
                 key={operation.id}
                 className="rounded-lg border bg-white px-3 py-2"
             >
-                <Row spacing={1} className="items-start justify-between gap-3">
-                    <Row spacing={1} className="min-w-0 grow items-start">
+                <Row spacing={2} className="items-start justify-between gap-3">
+                    <Row spacing={2} className="min-w-0 grow items-start">
                         {completed ? (
                             <Checkbox className="size-5" checked disabled />
                         ) : canComplete ? (
@@ -231,7 +231,7 @@ export function FarmScheduleOperationsSection({
                                 <Checkbox className="size-5" disabled />
                             </div>
                         )}
-                        <Stack spacing={0.5} className="min-w-0 grow">
+                        <Stack spacing={1} className="min-w-0 grow">
                             <Typography
                                 className={
                                     completed
@@ -242,7 +242,7 @@ export function FarmScheduleOperationsSection({
                                 {operation.label}
                             </Typography>
                             <Row
-                                spacing={1}
+                                spacing={2}
                                 className="items-center flex-wrap gap-y-1"
                             >
                                 <Typography
@@ -301,7 +301,7 @@ export function FarmScheduleOperationsSection({
                         </Stack>
                     </Row>
                     {(completed || operation.assignedUser) && (
-                        <Row spacing={0.5} className="shrink-0 items-center">
+                        <Row spacing={1} className="shrink-0 items-center">
                             {completed && (
                                 <OperationCompletionAttachments
                                     operationId={operation.id}
@@ -335,10 +335,10 @@ export function FarmScheduleOperationsSection({
     }
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             {farmOperations.length > 0 && (
-                <Stack spacing={1}>
-                    <Row spacing={1} className="items-center flex-wrap gap-y-1">
+                <Stack spacing={2}>
+                    <Row spacing={2} className="items-center flex-wrap gap-y-1">
                         <Typography semiBold>Farma</Typography>
                         <Typography
                             level="body2"
@@ -347,7 +347,7 @@ export function FarmScheduleOperationsSection({
                             {farmOperations.length} zadataka
                         </Typography>
                     </Row>
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         {farmOperations.map((operation) =>
                             renderOperationCard(operation, raisedBeds),
                         )}
@@ -394,9 +394,9 @@ export function FarmScheduleOperationsSection({
                     );
 
                     return (
-                        <Stack key={key} spacing={1}>
+                        <Stack key={key} spacing={2}>
                             <Row
-                                spacing={1}
+                                spacing={2}
                                 className="items-center flex-wrap gap-y-1"
                             >
                                 {physicalId ? (
@@ -421,7 +421,7 @@ export function FarmScheduleOperationsSection({
                                     </Typography>
                                 )}
                             </Row>
-                            <Stack spacing={1}>
+                            <Stack spacing={2}>
                                 {dayOperations.map((operation) => {
                                     const completed = isOperationCompleted(
                                         operation.status,
@@ -484,11 +484,11 @@ export function FarmScheduleOperationsSection({
                                             className="rounded-lg border bg-white px-3 py-2"
                                         >
                                             <Row
-                                                spacing={1}
+                                                spacing={2}
                                                 className="items-start justify-between gap-3"
                                             >
                                                 <Row
-                                                    spacing={1}
+                                                    spacing={2}
                                                     className="min-w-0 grow items-start"
                                                 >
                                                     {completed ? (
@@ -520,7 +520,7 @@ export function FarmScheduleOperationsSection({
                                                         </div>
                                                     )}
                                                     <Stack
-                                                        spacing={0.5}
+                                                        spacing={1}
                                                         className="min-w-0 grow"
                                                     >
                                                         <Typography
@@ -533,7 +533,7 @@ export function FarmScheduleOperationsSection({
                                                             {operation.label}
                                                         </Typography>
                                                         <Row
-                                                            spacing={1}
+                                                            spacing={2}
                                                             className="items-center flex-wrap gap-y-1"
                                                         >
                                                             <Typography
@@ -608,7 +608,7 @@ export function FarmScheduleOperationsSection({
                                                 {(completed ||
                                                     operation.assignedUser) && (
                                                     <Row
-                                                        spacing={0.5}
+                                                        spacing={1}
                                                         className="shrink-0 items-center"
                                                     >
                                                         {completed && (

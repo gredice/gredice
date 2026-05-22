@@ -1,13 +1,13 @@
 import { slugify } from '@gredice/js/slug';
-import { Navigate, Timer } from '@signalco/ui-icons';
-import { Card, CardContent, CardHeader } from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Container } from '@signalco/ui-primitives/Container';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardContent, CardHeader } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
+import { Container } from '@gredice/ui/Container';
+import { Navigate, Timer } from '@gredice/ui/icons';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata, Route } from 'next';
-import { PageHeader } from '../../../components/shared/PageHeader';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { getOccasionsData } from '../../../lib/occasions/getOccasionsData';
 
@@ -30,7 +30,7 @@ export default async function OccasionsListPage() {
 
     return (
         <Container maxWidth="sm">
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <PageHeader
                     padded
                     header="Natječaji"
@@ -42,7 +42,7 @@ export default async function OccasionsListPage() {
                         Trenutno nema dostupnih natječaja.
                     </NoDataPlaceholder>
                 ) : (
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         {occasions.map((occasion) => {
                             const endDate = occasion.information.endDate
                                 ? new Date(occasion.information.endDate)
@@ -71,7 +71,7 @@ export default async function OccasionsListPage() {
                                 >
                                     <CardHeader>
                                         <Row
-                                            spacing={2}
+                                            spacing={4}
                                             justifyContent="space-between"
                                         >
                                             <Typography semiBold>
@@ -95,7 +95,7 @@ export default async function OccasionsListPage() {
                                         </Row>
                                     </CardHeader>
                                     <CardContent>
-                                        <Row spacing={1}>
+                                        <Row spacing={2}>
                                             <Timer className="size-5 shrink-0 opacity-60" />
                                             <Typography level="body2">
                                                 {formattedStartDate}

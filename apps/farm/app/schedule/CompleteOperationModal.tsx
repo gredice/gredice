@@ -1,12 +1,12 @@
 'use client';
 
 import type { EntityStandardized } from '@gredice/storage';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { upload } from '@vercel/blob/client';
 import { useRef, useState } from 'react';
 import {
@@ -326,13 +326,13 @@ export function CompleteOperationModal({
                 />
             }
         >
-            <Stack spacing={2}>
+            <Stack spacing={4}>
                 <Typography>
                     Jeste li sigurni da želite označiti operaciju kao završenu:{' '}
                     <strong>{label}</strong>?
                 </Typography>
                 {attachImages && (
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         {imageRequirementText && (
                             <Typography level="body2" className="italic">
                                 {imageRequirementText}
@@ -379,7 +379,7 @@ export function CompleteOperationModal({
                             </Typography>
                         )}
                         {uploadItems.length > 0 && (
-                            <Stack spacing={1}>
+                            <Stack spacing={2}>
                                 {uploadItems.map((uploadItem) => {
                                     const progress =
                                         uploadItem.status === 'uploaded'
@@ -454,7 +454,7 @@ export function CompleteOperationModal({
                     </Stack>
                 )}
                 {attachNotes && (
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         {notesRequirementText && (
                             <Typography level="body2" className="italic">
                                 {notesRequirementText}
@@ -467,7 +467,7 @@ export function CompleteOperationModal({
                                 setErrorMessage(null);
                             }}
                             placeholder="Upišite napomenu o završetku..."
-                            className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-base focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                             rows={3}
                             maxLength={MAX_COMPLETION_NOTES_LENGTH}
                             disabled={isSubmitting}
@@ -486,7 +486,7 @@ export function CompleteOperationModal({
                         {errorMessage}
                     </Typography>
                 )}
-                <Row spacing={1} justifyContent="end">
+                <Row spacing={2} justifyContent="end">
                     <Button
                         variant="outlined"
                         onClick={() => handleOpenChange(false)}

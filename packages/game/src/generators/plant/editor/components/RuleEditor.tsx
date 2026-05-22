@@ -1,10 +1,10 @@
 'use client';
 
-import { Add, Delete } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Input } from '@gredice/ui/Input';
+import { Add, Delete } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
 import type { Rule, RuleOption } from '../../lib/plant-definitions';
 import { RulePreview } from './RulePreview';
 
@@ -124,7 +124,7 @@ export function RuleEditor({ rules, onRulesChange }: RuleEditorProps) {
         <div className="space-y-4">
             {Object.entries(rules).map(([symbol, ruleSet]) => (
                 <div key={symbol} className="p-3 border rounded-md space-y-3">
-                    <Row spacing={1}>
+                    <Row spacing={2}>
                         <Input
                             value={symbol}
                             onChange={(e) =>

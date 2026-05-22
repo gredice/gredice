@@ -1,8 +1,8 @@
 'use client';
 
-import { Duplicate } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Row } from '@signalco/ui-primitives/Row';
+import { Button } from '@gredice/ui/Button';
+import { Duplicate } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
 import type { MouseEvent } from 'react';
 import { useState } from 'react';
 
@@ -35,7 +35,7 @@ export function CopySummaryButton({
     };
 
     return (
-        <Row spacing={1}>
+        <Row spacing={2}>
             <Button
                 title="Kopiraj sažetak u međuspremnik"
                 onClick={handleCopy}

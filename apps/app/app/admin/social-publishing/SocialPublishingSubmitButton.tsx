@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@signalco/ui-primitives/Button';
+import { Button } from '@gredice/ui/Button';
 import { useFormStatus } from 'react-dom';
 
 type SocialPublishingSubmitButtonProps = {

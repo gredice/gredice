@@ -1,5 +1,5 @@
 import type { BlockData } from '@gredice/client';
-import { orderBy } from '@signalco/js';
+import { orderBy } from '@gredice/js/arrays';
 import type { HTMLAttributes } from 'react';
 
 export type GardenDisplay2DProps = {

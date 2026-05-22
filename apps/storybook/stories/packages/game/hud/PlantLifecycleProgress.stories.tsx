@@ -273,7 +273,7 @@ function LifecyclePanel({ example }: { example: LifecycleExample }) {
     });
 
     return (
-        <section className="rounded-md border border-border bg-card p-4 shadow-sm">
+        <section className="rounded-md border border-border bg-card p-4 shadow-xs">
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
                 <div>
                     <h3 className="m-0 text-sm font-semibold text-primary">
@@ -283,7 +283,7 @@ function LifecyclePanel({ example }: { example: LifecycleExample }) {
                         {example.description}
                     </p>
                 </div>
-                <code className="rounded-sm bg-muted px-1.5 py-0.5 text-xs">
+                <code className="rounded-xs bg-muted px-1.5 py-0.5 text-xs">
                     {example.field.plantStatus}
                 </code>
             </div>

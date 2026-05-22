@@ -1,5 +1,5 @@
-import { Button, type ButtonProps } from '@signalco/ui-primitives/Button';
-import { cx } from '@signalco/ui-primitives/cx';
+import { Button, type ButtonProps } from '@gredice/ui/Button';
+import { cx } from '@gredice/ui/utils';
 
 export function ButtonGreen({ className, ...rest }: ButtonProps) {
     return (

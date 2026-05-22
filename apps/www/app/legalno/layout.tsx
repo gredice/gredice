@@ -1,6 +1,6 @@
-import { SplitView } from '@signalco/ui/SplitView';
-import { ListHeader } from '@signalco/ui-primitives/List';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { ListHeader } from '@gredice/ui/List';
+import { SplitView } from '@gredice/ui/SplitView';
+import { Stack } from '@gredice/ui/Stack';
 import type { ReactNode } from 'react';
 import { getOccasionsData } from '../../lib/occasions/getOccasionsData';
 import { LegalFilesMenu } from './LegalFilesMenu';
@@ -15,12 +15,12 @@ export default async function LegalLayout({
 
     return (
         <SplitView minSize={212}>
-            <Stack spacing={2} className="px-2 my-2 md:my-24">
-                <Stack spacing={1}>
+            <Stack spacing={4} className="px-2 my-2 md:my-24">
+                <Stack spacing={2}>
                     <ListHeader header="Legalno" />
                     <LegalFilesMenu />
                 </Stack>
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     <ListHeader header="Natječaji" />
                     <OccasionsFilesMenu occasions={occasions} />
                 </Stack>

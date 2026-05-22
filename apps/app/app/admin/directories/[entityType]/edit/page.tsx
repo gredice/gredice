@@ -2,7 +2,7 @@ import {
     getEntityTypeByNameWithCategory,
     getEntityTypeCategories,
 } from '@gredice/storage';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Stack } from '@gredice/ui/Stack';
 import { notFound } from 'next/navigation';
 import {
     AdminDirectoryBreadcrumbs,
@@ -27,7 +27,7 @@ export default async function EditEntityTypePage({
     const categories = await getEntityTypeCategories();
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <AdminPageHeader
                 breadcrumbs={
                     <AdminDirectoryBreadcrumbs

@@ -1,14 +1,14 @@
 import { clientAuthenticated } from '@gredice/client';
+import { Button } from '@gredice/ui/Button';
+import { Card } from '@gredice/ui/Card';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { Input } from '@gredice/ui/Input';
+import { Approved, Close, Empty, Megaphone } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
-import { Approved, Close, Empty, Megaphone } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Typography } from '@gredice/ui/Typography';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
@@ -470,7 +470,7 @@ export function NotificationsTab() {
     const testNotificationResult = sendTestMutation.data;
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <Typography level="h4" className="hidden md:block">
                 🔔 Obavijesti
             </Typography>
@@ -488,7 +488,7 @@ export function NotificationsTab() {
                     <TabsTrigger value="settings">Postavke</TabsTrigger>
                 </TabsList>
                 <TabsContent value="notifications" className="mt-3">
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         <Typography level="body1" semiBold>
                             Popis obavijesti
                         </Typography>
@@ -535,7 +535,7 @@ export function NotificationsTab() {
                                 </Button>
                             </Row>
                         </Card>
-                        <div className="overflow-y-auto max-h-[calc(100dvh-18rem)] md:max-h-[calc(100dvh-24rem)] rounded-lg text-card-foreground bg-card shadow-sm p-0">
+                        <div className="overflow-y-auto max-h-[calc(100dvh-18rem)] md:max-h-[calc(100dvh-24rem)] rounded-lg text-card-foreground bg-card shadow-xs p-0">
                             <NotificationList
                                 read={notificationsFilter === 'all'}
                             />
@@ -543,9 +543,9 @@ export function NotificationsTab() {
                     </Stack>
                 </TabsContent>
                 <TabsContent value="settings" className="mt-3">
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         <Card className="bg-card p-2">
-                            <Stack spacing={1}>
+                            <Stack spacing={2}>
                                 <Typography level="body1" semiBold>
                                     Obavijesti na ovom uređaju
                                 </Typography>
@@ -596,7 +596,7 @@ export function NotificationsTab() {
                         {premiumNotificationControlsEnabled ? (
                             <>
                                 <Card className="bg-card p-2">
-                                    <Stack spacing={1}>
+                                    <Stack spacing={2}>
                                         <Typography level="body1" semiBold>
                                             Uvijek uključeno
                                         </Typography>
@@ -614,9 +614,9 @@ export function NotificationsTab() {
                                                     <Row
                                                         justifyContent="space-between"
                                                         alignItems="start"
-                                                        spacing={2}
+                                                        spacing={4}
                                                     >
-                                                        <Stack spacing={0.25}>
+                                                        <Stack spacing={0.5}>
                                                             <Typography
                                                                 semiBold
                                                             >
@@ -646,7 +646,7 @@ export function NotificationsTab() {
                                 </Card>
 
                                 <Card className="bg-card p-2">
-                                    <Stack spacing={1}>
+                                    <Stack spacing={2}>
                                         <Row justifyContent="space-between">
                                             <Typography level="body1" semiBold>
                                                 Vrste koje možeš prilagoditi
@@ -694,10 +694,10 @@ export function NotificationsTab() {
                                                         <Row
                                                             justifyContent="space-between"
                                                             alignItems="start"
-                                                            spacing={2}
+                                                            spacing={4}
                                                         >
                                                             <Stack
-                                                                spacing={0.25}
+                                                                spacing={0.5}
                                                             >
                                                                 <Typography
                                                                     semiBold
@@ -751,7 +751,7 @@ export function NotificationsTab() {
                                 </Card>
 
                                 <Card className="bg-card p-2">
-                                    <Stack spacing={1}>
+                                    <Stack spacing={2}>
                                         <Checkbox
                                             label="Ne ometaj"
                                             checked={quietHoursEnabled}
@@ -840,7 +840,7 @@ export function NotificationsTab() {
                                 </Card>
 
                                 <Card className="bg-card p-2">
-                                    <Stack spacing={1}>
+                                    <Stack spacing={2}>
                                         <Checkbox
                                             label="Primaj sažetak obavijesti"
                                             checked={digestEnabled}
@@ -861,7 +861,7 @@ export function NotificationsTab() {
                                             kategorije; obavezne poruke ne
                                             čekaju sažetak.
                                         </Typography>
-                                        <Stack spacing={0.5}>
+                                        <Stack spacing={1}>
                                             <Typography level="body2" semiBold>
                                                 Razdoblje sažetka
                                             </Typography>
@@ -944,7 +944,7 @@ export function NotificationsTab() {
                                     {testNotificationResult?.failed ?? 0}
                                 </Typography>
                             )}
-                            <Stack spacing={1} className="pt-2">
+                            <Stack spacing={2} className="pt-2">
                                 {devicesQuery.isPending ? (
                                     <Typography level="body2" secondary>
                                         Uređaji se učitavaju.
@@ -959,7 +959,7 @@ export function NotificationsTab() {
                                             key={device.id}
                                             className="p-1 bg-muted/20"
                                         >
-                                            <Stack spacing={0.5}>
+                                            <Stack spacing={1}>
                                                 <Typography semiBold>
                                                     {device.deviceLabel ||
                                                         'Nepoznati uređaj'}
@@ -988,7 +988,7 @@ export function NotificationsTab() {
                                                           )
                                                         : 'nema podataka'}
                                                 </Typography>
-                                                <Row spacing={1}>
+                                                <Row spacing={2}>
                                                     <Button
                                                         size="sm"
                                                         variant="plain"

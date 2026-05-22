@@ -3,12 +3,12 @@ import {
     emailStatusEnum,
     getEmailMessages,
 } from '@gredice/storage';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Table } from '@gredice/ui/Table';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../../lib/auth/auth';
@@ -88,12 +88,12 @@ export default async function EmailsPage({
     const emails = emailsResult.slice(0, ITEMS_PER_PAGE);
 
     return (
-        <Stack spacing={2}>
-            <Row spacing={1}>
+        <Stack spacing={4}>
+            <Row spacing={2}>
                 <Chip color="primary">{emails.length}</Chip>
             </Row>
 
-            <Row spacing={1} className="flex-wrap gap-2">
+            <Row spacing={2} className="flex-wrap gap-2">
                 {STATUS_OPTIONS.map((option) => {
                     const isActive =
                         (option === 'all' && !selectedStatus) ||
@@ -163,7 +163,7 @@ export default async function EmailsPage({
                                 return (
                                     <Table.Row key={email.id}>
                                         <Table.Cell>
-                                            <Stack spacing={0.5}>
+                                            <Stack spacing={1}>
                                                 <Link
                                                     href={KnownPages.CommunicationEmail(
                                                         email.id,
@@ -182,7 +182,7 @@ export default async function EmailsPage({
                                             </Stack>
                                         </Table.Cell>
                                         <Table.Cell>
-                                            <Stack spacing={0.5}>
+                                            <Stack spacing={1}>
                                                 <Typography>
                                                     {toRecipients}
                                                 </Typography>
@@ -205,7 +205,7 @@ export default async function EmailsPage({
                                             </Stack>
                                         </Table.Cell>
                                         <Table.Cell>
-                                            <Stack spacing={0.5}>
+                                            <Stack spacing={1}>
                                                 <EmailStatusBadge
                                                     status={email.status}
                                                 />
@@ -256,7 +256,7 @@ export default async function EmailsPage({
 
             {/* Pagination Controls */}
             {(currentPage > 1 || hasMorePages) && (
-                <Row spacing={2} className="justify-center items-center">
+                <Row spacing={4} className="justify-center items-center">
                     {currentPage > 1 && (
                         <Link
                             href={buildPageHref(

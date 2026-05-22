@@ -16,7 +16,6 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { SelectEntityType } from '@gredice/storage';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import {
     AI,
     Bank,
@@ -37,7 +36,8 @@ import {
     Tally3,
     Truck,
     User,
-} from '@signalco/ui-icons';
+} from '@gredice/ui/icons';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { usePathname } from 'next/navigation';
 import type { CSSProperties } from 'react';
 import { useContext, useState } from 'react';

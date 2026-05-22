@@ -1,20 +1,15 @@
 import { clientPublic } from '@gredice/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Container } from '@gredice/ui/Container';
+import { Timer } from '@gredice/ui/icons';
 import { LocalDateTime, TimeRange } from '@gredice/ui/LocalDateTime';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
-import { Timer } from '@signalco/ui-icons';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Container } from '@signalco/ui-primitives/Container';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
-import { PageHeader } from '../../../components/shared/PageHeader';
 import { WhatsAppCard } from '../../../components/social/WhatsAppCard';
 
 export const dynamic = 'force-dynamic';
@@ -110,7 +105,7 @@ async function SlotsDisplay({ type }: { type: 'delivery' | 'pickup' }) {
         return (
             <Card className="p-6 border-tertiary border-b-4">
                 <CardContent noHeader>
-                    <Stack spacing={2} className="text-center">
+                    <Stack spacing={4} className="text-center">
                         <Typography level="h6">
                             Nema dostupnih termina
                         </Typography>
@@ -131,7 +126,7 @@ async function SlotsDisplay({ type }: { type: 'delivery' | 'pickup' }) {
     }
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             {Object.entries(groupedSlots).map(([date, dateSlots]) => (
                 <Card key={date} className="border-tertiary border-b-4">
                     <CardHeader>
@@ -162,8 +157,8 @@ async function SlotsDisplay({ type }: { type: 'delivery' | 'pickup' }) {
                                         key={slot.id}
                                         className="border rounded-lg p-3 bg-background"
                                     >
-                                        <Stack spacing={2}>
-                                            <Row spacing={1}>
+                                        <Stack spacing={4}>
+                                            <Row spacing={2}>
                                                 <Timer className="size-5 shrink-0 text-tertiary-foreground" />
                                                 <Typography
                                                     level="body2"
@@ -200,7 +195,7 @@ async function SlotsDisplay({ type }: { type: 'delivery' | 'pickup' }) {
 export default async function DeliverySlotsPage() {
     return (
         <Container maxWidth="md">
-            <Stack spacing={4}>
+            <Stack spacing={8}>
                 <PageHeader
                     padded
                     header="📅 Termini dostave"
@@ -241,7 +236,7 @@ export default async function DeliverySlotsPage() {
                     </CardContent>
                 </Card>
 
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="h4">
                         Termini dostave na adresu
                     </Typography>
@@ -251,7 +246,7 @@ export default async function DeliverySlotsPage() {
                     </Typography>
                     <SlotsDisplay type="delivery" />
                 </Stack>
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="h4">
                         Termini osobnog preuzimanja
                     </Typography>
@@ -261,14 +256,14 @@ export default async function DeliverySlotsPage() {
                     <SlotsDisplay type="pickup" />
                 </Stack>
 
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="h6">
                         Potrebna ti je pomoć ili više informacija o dostavi?
                     </Typography>
                     <WhatsAppCard />
                 </Stack>
 
-                <Row spacing={2} className="mt-8">
+                <Row spacing={4} className="mt-8">
                     <Typography level="body1">
                         Jesu li ti ove informacije korisne?
                     </Typography>

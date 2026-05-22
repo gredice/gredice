@@ -1,6 +1,6 @@
-import { Checkbox } from '@signalco/ui-primitives/Checkbox';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { useState } from 'react';
 import type { RecipeIngredient } from '../../../lib/recipes/getRecipesData';
 import {

@@ -1,6 +1,5 @@
 'use client';
 
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import {
     AI,
     Bank,
@@ -21,7 +20,7 @@ import {
     Tally3,
     Truck,
     User,
-} from '@signalco/ui-icons';
+} from '@gredice/ui/icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -29,7 +28,8 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from '@signalco/ui-primitives/Menu';
+} from '@gredice/ui/Menu';
+import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { AdminBreadcrumbSelectorTrigger } from './AdminBreadcrumbSelectorTrigger';

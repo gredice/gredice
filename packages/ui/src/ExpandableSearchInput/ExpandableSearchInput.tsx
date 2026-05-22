@@ -1,10 +1,10 @@
 'use client';
 
-import { Search } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
 import { type ChangeEvent, useEffect, useRef, useState } from 'react';
+import { IconButton } from '../IconButton';
+import { Input } from '../Input';
+import { Search } from '../icons';
+import { cx } from '../utils';
 
 export type ExpandableSearchInputProps = {
     value: string;

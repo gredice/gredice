@@ -1,6 +1,6 @@
-import { Add, Remove } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Row } from '@signalco/ui-primitives/Row';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Add, Remove } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
 
 export function PortionPicker({
     value,
@@ -10,7 +10,7 @@ export function PortionPicker({
     onChange: (newValue: number) => void;
 }) {
     return (
-        <Row spacing={2}>
+        <Row spacing={4}>
             <IconButton
                 title="Smanji broj porcija"
                 onClick={() => onChange(Math.max(1, value - 1))}

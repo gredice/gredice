@@ -1,8 +1,8 @@
 'use client';
 
-import { Close, PanelRightClose } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Close, PanelRightClose } from '@gredice/ui/icons';
+import { Typography } from '@gredice/ui/Typography';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Nav } from './Nav';

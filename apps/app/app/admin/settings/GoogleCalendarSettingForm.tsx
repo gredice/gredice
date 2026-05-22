@@ -1,8 +1,8 @@
 'use client';
 
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { Stack } from '@gredice/ui/Stack';
 import { useActionState, useEffect, useState } from 'react';
 import { updateGoogleCalendarSettingsAction } from '../../(actions)/googleCalendarSettingsActions';
 
@@ -53,7 +53,7 @@ export function GoogleCalendarSettingForm({
                     autoComplete="off"
                 />
             </div>
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <label
                     htmlFor="google-calendar-private-key"
                     className="text-sm font-medium"
@@ -72,7 +72,7 @@ export function GoogleCalendarSettingForm({
                     }
                     rows={5}
                     autoComplete="off"
-                    className="min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 <p className="text-sm text-muted-foreground">
                     {hasPrivateKey

@@ -1,7 +1,7 @@
 'use client';
 
-import { Check } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
+import { Check } from '@gredice/ui/icons';
+import { cx } from '@gredice/ui/utils';
 import { useState } from 'react';
 import { adventDayFont } from './fonts';
 
@@ -26,7 +26,7 @@ export function getDayVariant(day: number): DayCellVariant {
 function StripedPattern() {
     return (
         <svg
-            className="absolute inset-0.5 w-full h-full rounded-sm"
+            className="absolute inset-0.5 w-full h-full rounded-xs"
             preserveAspectRatio="none"
             aria-hidden="true"
         >
@@ -50,7 +50,7 @@ function StripedPattern() {
 function DotsPattern() {
     return (
         <svg
-            className="absolute inset-0.5 w-full h-full rounded-sm"
+            className="absolute inset-0.5 w-full h-full rounded-xs"
             preserveAspectRatio="none"
             aria-hidden="true"
         >
@@ -73,7 +73,7 @@ function DotsPattern() {
 function WavePattern() {
     return (
         <svg
-            className="absolute inset-0.5 w-full h-full rounded-sm"
+            className="absolute inset-0.5 w-full h-full rounded-xs"
             preserveAspectRatio="none"
             aria-hidden="true"
         >
@@ -140,7 +140,7 @@ export function AdventDayCell({
     };
 
     const baseClasses = cx(
-        'overflow-hidden relative w-full rounded-sm h-full flex items-center justify-center font-bold text-2xl transition-all duration-200',
+        'overflow-hidden relative w-full rounded-xs h-full flex items-center justify-center font-bold text-2xl transition-all duration-200',
         'cursor-pointer hover:bg-white/30 hover:scale-105 active:scale-95',
     );
 
@@ -182,7 +182,7 @@ export function AdventDayCell({
                 {isOpen && (
                     <div
                         className={cx(
-                            'inset-0.5 rounded-sm absolute',
+                            'inset-0.5 rounded-xs absolute',
                             variantOpenBgClasses[variant],
                         )}
                     ></div>
@@ -210,7 +210,7 @@ export function AdventDayCell({
                 {/* Border for cell separation */}
                 <div
                     className={cx(
-                        'absolute rounded-sm inset-0.5 border border-dashed pointer-events-none',
+                        'absolute rounded-xs inset-0.5 border border-dashed pointer-events-none',
                         variantBorderClasses[variant],
                     )}
                 />

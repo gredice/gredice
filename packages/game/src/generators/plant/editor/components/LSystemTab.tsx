@@ -1,8 +1,8 @@
 'use client';
 
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Input } from '@gredice/ui/Input';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
 import type { PlantControlsProps } from '../@types/plant-generator';
 import { InfoHint } from './InfoHint';
 import { LSystemLegend } from './LSystemLegend';
@@ -17,7 +17,7 @@ export function LSystemTab({
 }: PlantControlsProps) {
     return (
         <div className="space-y-4">
-            <Row spacing={1} justifyContent="space-between" alignItems="center">
+            <Row spacing={2} justifyContent="space-between" alignItems="center">
                 <Typography level="body2" bold>
                     Pravila i simboli
                 </Typography>

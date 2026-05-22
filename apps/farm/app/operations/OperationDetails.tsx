@@ -1,7 +1,7 @@
 import type { EntityStandardized } from '@gredice/storage';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import {
     formatMinutes,
     getOperationDurationMinutes,
@@ -41,7 +41,7 @@ export function OperationDetails({ operation }: OperationDetailsProps) {
     return (
         <Card>
             <CardContent noHeader>
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     {operation.information?.shortDescription && (
                         <Typography className="text-muted-foreground">
                             {operation.information.shortDescription}

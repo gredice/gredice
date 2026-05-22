@@ -1,7 +1,7 @@
 import 'server-only';
 import { createHmac } from 'node:crypto';
+import { initAuth, initRbac } from '@gredice/auth';
 import { getUser as storageGetUser } from '@gredice/storage';
-import { initAuth, initRbac } from '@signalco/auth-server';
 import { cookies } from 'next/headers';
 import {
     accessTokenExpiryMs,
@@ -155,7 +155,7 @@ export function createJwt(
 
 /**
  * Set the session cookie with domain scoping for cross-subdomain SSO.
- * Overrides @signalco/auth-server's built-in setCookie which doesn't support domain.
+ * Overrides the shared auth setCookie helper, which does not support domain scoping.
  */
 export async function setCookie(value: Promise<string> | string) {
     const cookieStore = await cookies();
@@ -170,7 +170,7 @@ export async function setCookie(value: Promise<string> | string) {
 
 /**
  * Clear the session cookie (including domain-scoped cookie for SSO).
- * Overrides @signalco/auth-server's built-in clearCookie which doesn't support domain.
+ * Overrides the shared auth clearCookie helper, which does not support domain scoping.
  */
 export async function clearCookie() {
     const cookieStore = await cookies();

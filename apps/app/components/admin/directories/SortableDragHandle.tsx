@@ -7,7 +7,7 @@ export function SortableDragHandle({
     ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement>) {
     const classNames = [
-        'flex min-h-12 w-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-md border border-transparent text-muted-foreground/60 outline-none transition-colors hover:border-border hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:cursor-grabbing',
+        'flex min-h-12 w-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-md border border-transparent text-muted-foreground/60 outline-hidden transition-colors hover:border-border hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:cursor-grabbing',
         className,
     ]
         .filter(Boolean)

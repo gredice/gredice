@@ -1,11 +1,11 @@
 'use client';
 
-import { Delete, Reset } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Input } from '@gredice/ui/Input';
+import { Delete, Reset } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { SelectItems } from '@gredice/ui/SelectItems';
 import {
     MAX_PLANT_GENERATION,
     type PlantDefinition,
@@ -45,7 +45,7 @@ export function SettingsTab({
     return (
         <div className="space-y-4">
             {/* Plant Type Selection */}
-            <Row spacing={1} alignItems="end">
+            <Row spacing={2} alignItems="end">
                 <SelectItems
                     items={allPlantNames.map((name) => ({
                         value: name,
@@ -74,7 +74,7 @@ export function SettingsTab({
                 existingNames={allPlantNames.map((name) => name.toLowerCase())}
                 onCreatePlant={onCreateCustomPlant}
             />
-            <Row spacing={1} alignItems="center">
+            <Row spacing={2} alignItems="center">
                 <Button
                     variant="outlined"
                     onClick={onResetDefinition}
@@ -108,7 +108,7 @@ export function SettingsTab({
                     placeholder="Enter plant name..."
                 />
             )}
-            <Row spacing={1} alignItems="end">
+            <Row spacing={2} alignItems="end">
                 <Input
                     label="Sjeme"
                     value={state.seed}

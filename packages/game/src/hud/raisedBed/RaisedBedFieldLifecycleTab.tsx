@@ -2,11 +2,11 @@ import {
     plantFieldStatusLabel,
     userAllowedPlantStatusTransitions,
 } from '@gredice/js/plants';
+import { Button } from '@gredice/ui/Button';
+import { Row } from '@gredice/ui/Row';
 import { ShovelIcon } from '@gredice/ui/ShovelIcon';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useRaisedBedFieldRemove } from '../../hooks/useRaisedBedFieldRemove';
@@ -124,7 +124,7 @@ export function RaisedBedFieldLifecycleTab({
     const statusTrigger = field.active ? (
         <button
             type="button"
-            className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex flex-col gap-1 items-center justify-center pointer-events-auto transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
+            className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex flex-col gap-1 items-center justify-center pointer-events-auto transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
             aria-label={
                 canChangeStatus
                     ? `Promijeni stanje biljke: ${localizedStatus.shortLabel}`
@@ -143,7 +143,7 @@ export function RaisedBedFieldLifecycleTab({
     );
 
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             <PlantLifecycleProgress
                 field={field}
                 plantAttributes={plantAttributes}

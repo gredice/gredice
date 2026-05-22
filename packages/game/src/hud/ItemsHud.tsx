@@ -1,14 +1,14 @@
 import { BlockImage } from '@gredice/ui/BlockImage';
-import { Info, Up } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Link } from '@signalco/ui-primitives/Link';
-import { Popper } from '@signalco/ui-primitives/Popper';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Divider } from '@gredice/ui/Divider';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Info, Up } from '@gredice/ui/icons';
+import { Link } from '@gredice/ui/Link';
+import { Popper } from '@gredice/ui/Popper';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
 import { useState } from 'react';
 import { useBlockData } from '../hooks/useBlockData';
@@ -119,7 +119,7 @@ function PlaceEntityButton({
         placeBlock.error instanceof Error ? placeBlock.error.message : null;
 
     return (
-        <Stack spacing={0.5}>
+        <Stack spacing={1}>
             <Button
                 className={cx(
                     !simple && 'justify-between',
@@ -161,7 +161,7 @@ function EntityItem({ name }: HudItemEntity) {
     if (!block) return null;
 
     return (
-        <Stack spacing={1}>
+        <Stack spacing={2}>
             <Popper
                 open={open}
                 sideOffset={12}
@@ -184,7 +184,7 @@ function EntityItem({ name }: HudItemEntity) {
                 }
             >
                 <Stack>
-                    <Row spacing={2} alignItems="start">
+                    <Row spacing={4} alignItems="start">
                         <BlockImage
                             blockName={name}
                             alt={block.information.label}
@@ -192,7 +192,7 @@ function EntityItem({ name }: HudItemEntity) {
                             height={96}
                             className="size-24 z-10 border rounded-lg"
                         />
-                        <Stack spacing={1} className="w-full">
+                        <Stack spacing={2} className="w-full">
                             <Typography semiBold>
                                 {block.information.label}
                             </Typography>
@@ -247,7 +247,7 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                 </IconButton>
             }
         >
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <div className="bg-muted p-2 border-b">
                     <Typography semiBold level="body2">
                         {label}
@@ -277,7 +277,7 @@ export function ItemsHud() {
             className="static md:px-1 pointer-events-auto self-center"
             animateHeight
         >
-            <Row spacing={0.5} className="md:px-1" justifyContent="center">
+            <Row spacing={1} className="md:px-1" justifyContent="center">
                 {items.map((item, index) => {
                     if (item.type === 'separator') {
                         return (

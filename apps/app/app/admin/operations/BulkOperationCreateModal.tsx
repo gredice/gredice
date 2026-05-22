@@ -1,10 +1,10 @@
 'use client';
 
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { Modal } from '@gredice/ui/Modal';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useActionState, useEffect, useMemo, useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { getEntities } from '../../../components/shared/attributes/actions/entitiesActions';
@@ -117,7 +117,7 @@ export function BulkOperationCreateModal({
             onOpenChange={setOpen}
         >
             <form ref={formRef} action={handleSubmit} className="space-y-4">
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="h5">Nove radnje</Typography>
                     <SelectEntity
                         name="entityId"

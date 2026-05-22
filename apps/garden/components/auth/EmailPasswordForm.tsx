@@ -1,6 +1,6 @@
-import { Button } from '@signalco/ui-primitives/Button';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Button } from '@gredice/ui/Button';
+import { Input } from '@gredice/ui/Input';
+import { Stack } from '@gredice/ui/Stack';
 import { type FormEvent, useEffect, useState } from 'react';
 
 interface EmailPasswordFormProps {
@@ -40,7 +40,7 @@ export function EmailPasswordForm({
 
     return (
         <form onSubmit={handleSubmit} className="gap-6 flex flex-col">
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <Input
                     id="email"
                     type="email"
@@ -58,7 +58,7 @@ export function EmailPasswordForm({
                     required
                 />
                 {registration && (
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         <Input
                             id="repeatPassword"
                             type="password"
@@ -75,7 +75,7 @@ export function EmailPasswordForm({
                     </Stack>
                 )}
             </Stack>
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <Button
                     type="submit"
                     fullWidth

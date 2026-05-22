@@ -1,6 +1,7 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+@source "../../www/components";
+@source "../../../packages/ui/src";
 
 @layer base {
     :root {
@@ -147,11 +148,12 @@
     }
 
     * {
-        @apply border-border;
+        border-color: hsl(var(--border));
     }
 
     body {
-        @apply bg-background text-foreground;
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
         font-feature-settings:
             "rlig" 1,
             "calt" 1;
@@ -159,7 +161,7 @@
 
     button,
     [role="button"] {
-        @apply cursor-auto;
+        cursor: auto;
     }
 
     ::selection {
@@ -174,6 +176,12 @@ svg.lucide {
 
 @layer components {
     .status-card {
-        @apply rounded-lg border border-b-4 border-border border-b-tertiary bg-card text-card-foreground shadow-sm;
+        border: 1px solid hsl(var(--border));
+        border-bottom-color: hsl(var(--tertiary));
+        border-bottom-width: 4px;
+        border-radius: var(--radius);
+        background-color: hsl(var(--card));
+        color: hsl(var(--card-foreground));
+        box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     }
 }

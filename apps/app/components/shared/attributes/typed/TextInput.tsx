@@ -1,4 +1,4 @@
-import { Input } from '@signalco/ui-primitives/Input';
+import { Input } from '@gredice/ui/Input';
 import { useState } from 'react';
 import type { AttributeInputProps } from '../AttributeInputProps';
 import { attributeUnitDecorator } from './AttributeUnitDecorator';

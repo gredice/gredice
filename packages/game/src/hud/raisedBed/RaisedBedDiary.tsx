@@ -1,13 +1,13 @@
+import { Alert } from '@gredice/ui/Alert';
+import { Chip } from '@gredice/ui/Chip';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
-import { Alert } from '@signalco/ui/Alert';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { List } from '@signalco/ui-primitives/List';
-import { ListItem } from '@signalco/ui-primitives/ListItem';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Spinner } from '@signalco/ui-primitives/Spinner';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { List } from '@gredice/ui/List';
+import { ListItem } from '@gredice/ui/ListItem';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Spinner } from '@gredice/ui/Spinner';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { type ReactNode, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useGameFlags } from '../../GameFlagsContext';
@@ -168,11 +168,11 @@ function DiaryList({
                                     className="cursor-pointer hover:bg-muted/50 transition-colors"
                                     label={
                                         <Row
-                                            spacing={2}
+                                            spacing={4}
                                             className="justify-between font-normal"
                                         >
                                             <Row
-                                                spacing={2}
+                                                spacing={4}
                                                 className="items-start flex-1"
                                             >
                                                 <DiaryEntryImages
@@ -207,11 +207,11 @@ function DiaryList({
                                 <ListItem
                                     label={
                                         <Row
-                                            spacing={2}
+                                            spacing={4}
                                             className="justify-between font-normal"
                                         >
                                             <Row
-                                                spacing={2}
+                                                spacing={4}
                                                 className="items-start flex-1"
                                             >
                                                 <DiaryEntryImages
@@ -286,7 +286,7 @@ function DiaryList({
                 className="md:max-w-3xl"
             >
                 {expandedAiEntry && (
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         <DiaryEntryImages
                             name={expandedAiEntry.name}
                             imageUrls={expandedAiEntry.imageUrls}

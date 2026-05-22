@@ -1,13 +1,13 @@
 'use client';
 
 import { getAchievementDefinitions } from '@gredice/js/achievements';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Spinner } from '@signalco/ui-primitives/Spinner';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Modal } from '@gredice/ui/Modal';
+import { Row } from '@gredice/ui/Row';
+import { Spinner } from '@gredice/ui/Spinner';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useMemo, useState } from 'react';
 import { useAccountAchievements } from '../../hooks/useAccountAchievements';
 
@@ -146,14 +146,14 @@ export function AchievementsOverview() {
     return (
         <>
             <div className="overflow-y-auto max-h-[calc(100dvh-15rem)] md:max-h-[calc(100dvh-24rem)]">
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     {Array.from(definitionsByCategory.entries()).map(
                         ([category, definitions]) => {
                             const label = categoryLabels[category] ?? category;
                             return (
                                 <Card key={category}>
                                     <CardContent noHeader>
-                                        <Stack spacing={3}>
+                                        <Stack spacing={6}>
                                             <Typography
                                                 level="h5"
                                                 className="text-center"
@@ -199,7 +199,7 @@ export function AchievementsOverview() {
                 className="max-w-md"
             >
                 {selectedAchievement && (
-                    <Stack spacing={4}>
+                    <Stack spacing={8}>
                         {/* Trophy Icon */}
                         <div className="flex justify-center">
                             <div
@@ -227,7 +227,7 @@ export function AchievementsOverview() {
                         </div>
 
                         {/* Achievement Info */}
-                        <Stack spacing={2}>
+                        <Stack spacing={4}>
                             <Typography level="h4" className="text-center">
                                 {selectedAchievement.achievement
                                     ? selectedAchievement.definition.title
@@ -248,9 +248,9 @@ export function AchievementsOverview() {
                                 <CardContent noHeader>
                                     <Row
                                         justifyContent="space-between"
-                                        spacing={4}
+                                        spacing={8}
                                     >
-                                        <Stack spacing={1}>
+                                        <Stack spacing={2}>
                                             <Typography level="body3" secondary>
                                                 Status
                                             </Typography>
@@ -269,7 +269,7 @@ export function AchievementsOverview() {
                                         </Stack>
 
                                         {selectedAchievement.achievement && (
-                                            <Stack spacing={1}>
+                                            <Stack spacing={2}>
                                                 <Typography
                                                     level="body3"
                                                     secondary
@@ -293,7 +293,7 @@ export function AchievementsOverview() {
                                 ?.rewardGrantedAt && (
                                 <Card>
                                     <CardContent noHeader>
-                                        <Stack spacing={1}>
+                                        <Stack spacing={2}>
                                             <Typography level="body3" secondary>
                                                 Postignuto
                                             </Typography>

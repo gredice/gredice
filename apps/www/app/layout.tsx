@@ -1,10 +1,10 @@
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata } from 'next';
 import './globals.css';
+import { Button } from '@gredice/ui/Button';
+import { PageNav } from '@gredice/ui/Nav';
+import { Stack } from '@gredice/ui/Stack';
 import { PostHogPageView, PostHogProvider } from '@posthog/next';
-import { PageNav } from '@signalco/ui/Nav';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Stack } from '@signalco/ui-primitives/Stack';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import { Montserrat } from 'next/font/google';
 import Head from 'next/head';
@@ -38,7 +38,7 @@ function NavLinkButton({
             variant="plain"
             size="sm"
             className={[
-                'h-10 w-full justify-start whitespace-nowrap px-4 text-sm md:h-9 md:w-auto md:justify-center md:px-3',
+                'h-10 w-full shrink-0 justify-start whitespace-nowrap px-4 text-sm md:mx-1 md:h-9 md:w-auto md:justify-center md:px-3',
                 className,
             ]
                 .filter(Boolean)

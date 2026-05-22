@@ -1,8 +1,8 @@
 'use client';
 
 import { getBrowserGrediceAppOrigin } from '@gredice/client';
-import { Ghost } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Ghost } from '@gredice/ui/icons';
 import { useRouter } from 'next/navigation';
 
 function getGardenUrl() {

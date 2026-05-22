@@ -1,9 +1,9 @@
-import { Navigate, Truck } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { Navigate, Truck } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { useMemo } from 'react';
 import {
     type DeliveryRequestData,
@@ -94,8 +94,8 @@ export function DeliveryRequestsSection() {
     );
 
     return (
-        <Stack spacing={2}>
-            <Row spacing={1} justifyContent="space-between">
+        <Stack spacing={4}>
+            <Row spacing={2} justifyContent="space-between">
                 <Typography level="h5">Moje dostave</Typography>
                 <Button
                     variant="link"
@@ -108,7 +108,7 @@ export function DeliveryRequestsSection() {
             {isLoading ? (
                 <Typography>Učitavanje dostava...</Typography>
             ) : groupedRequests.length > 0 ? (
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     {groupedRequests.map((group) =>
                         group.requests.length === 1 ? (
                             <DeliveryRequestCard
@@ -126,7 +126,7 @@ export function DeliveryRequestsSection() {
             ) : (
                 <Card>
                     <CardContent>
-                        <Stack spacing={2} alignItems="center" className="py-8">
+                        <Stack spacing={4} alignItems="center" className="py-8">
                             <Truck className="size-12 text-muted-foreground" />
                             <Typography level="h6">Nema dostava</Typography>
                             <Typography level="body3" secondary>

@@ -1,6 +1,6 @@
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { RaisedBedIcon } from '../RaisedBedIcon';
+import { Row } from '../Row';
+import { Typography } from '../Typography';
 
 export function RaisedBedLabel({ physicalId }: { physicalId: string | null }) {
     if (!physicalId) {
@@ -8,7 +8,7 @@ export function RaisedBedLabel({ physicalId }: { physicalId: string | null }) {
     }
 
     return (
-        <Row spacing={1} className="items-center">
+        <Row spacing={2} className="items-center">
             <RaisedBedIcon
                 className="size-6 shrink-0"
                 physicalId={physicalId}

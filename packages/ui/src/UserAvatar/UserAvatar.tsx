@@ -1,6 +1,6 @@
-import { initials } from '@signalco/js';
-import { Avatar, type AvatarProps } from '@signalco/ui-primitives/Avatar';
-import { cx } from '@signalco/ui-primitives/cx';
+import { initials } from '@gredice/js/initials';
+import { Avatar, type AvatarProps } from '../Avatar';
+import { cx } from '../utils';
 
 export type UserAvatarProps = {
     avatarUrl?: string | null;

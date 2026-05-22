@@ -1,9 +1,9 @@
 'use client';
 
 import type { PlantData } from '@gredice/client';
-import { orderBy } from '@signalco/js';
-import { Gallery } from '@signalco/ui/Gallery';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { orderBy } from '@gredice/js/arrays';
+import { Gallery } from '@gredice/ui/Gallery';
+import { Typography } from '@gredice/ui/Typography';
 import { useClientSearchParam } from '../../hooks/useClientSearchParam';
 import type { PlantSortData } from '../../lib/plants/getPlantSortsData';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';

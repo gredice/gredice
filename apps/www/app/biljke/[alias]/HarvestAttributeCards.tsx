@@ -3,9 +3,9 @@ import {
     calculatePlantsPerField,
     getHarvestPlantRemovalDisclaimer,
 } from '@gredice/js/plants';
-import { ShoppingCart, Store } from '@signalco/ui-icons';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { ShoppingCart, Store } from '@gredice/ui/icons';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 
 export function HarvestAttributeCards({
@@ -100,7 +100,7 @@ export function HarvestAttributeCards({
     const yieldDetails = getYieldDetails();
 
     return (
-        <Stack spacing={1}>
+        <Stack spacing={2}>
             <div className="grid grid-cols-2 gap-2">
                 <AttributeCard
                     icon={<Store />}
@@ -115,7 +115,7 @@ export function HarvestAttributeCards({
                     header="Očekivani prinos"
                     value={
                         yieldDetails ? (
-                            <Stack spacing={0.5}>
+                            <Stack spacing={1}>
                                 <Typography semiBold>
                                     {yieldDetails.expectedPerFieldKg
                                         ? `~${yieldDetails.expectedPerFieldKg} kg po polju`

@@ -1,13 +1,13 @@
 'use client';
 
-import { ThumbsUp } from '@signalco/ui-icons';
-import { Chip } from '@signalco/ui-primitives/Chip';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Popper } from '@signalco/ui-primitives/Popper';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import { useState } from 'react';
+import { Chip } from '../Chip';
+import { ThumbsUp } from '../icons';
+import { Popper } from '../Popper';
+import { Row } from '../Row';
+import { Stack } from '../Stack';
+import { Typography } from '../Typography';
+import { cx } from '../utils';
 
 export function SeedTimeInformationBadge({
     size = 'md',
@@ -45,15 +45,15 @@ export function SeedTimeInformationBadge({
             }
             className="p-6 min-w-96"
         >
-            <Stack spacing={2}>
-                <Row spacing={2}>
+            <Stack spacing={4}>
+                <Row spacing={4}>
                     <ThumbsUp className="size-10 text-secondary-foreground" />
                     <Typography level="body2" semiBold>
                         &quot;Vrijeme za sijanje&quot; označava da je upravo sad
                         optimalno vrijeme za sjetvu.
                     </Typography>
                 </Row>
-                <Stack spacing={1}>
+                <Stack spacing={2}>
                     <Typography>
                         Prema kalendaru sjetve, sijanje ove biljke u gredicama
                         je preporučeno.

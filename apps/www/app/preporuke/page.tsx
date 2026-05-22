@@ -1,5 +1,5 @@
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default function ReferralsLandingPage() {
     return (
         <main className="container py-10">
-            <Stack spacing={3}>
+            <Stack spacing={6}>
                 <Typography level="h2" component="h1">
                     💮 Gredice program preporuka
                 </Typography>

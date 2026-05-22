@@ -1,8 +1,8 @@
 'use client';
 
-import { Button } from '@signalco/ui-primitives/Button';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Button } from '@gredice/ui/Button';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
 import { getTimeZones } from '@vvo/tzdb';
 import { useActionState, useEffect, useMemo, useState } from 'react';
 import { updateAdminGeneralSettingsAction } from '../../(actions)/adminGeneralSettingsActions';
@@ -39,7 +39,7 @@ export function AdminGeneralSettingForm({
 
     return (
         <form action={formAction} className="space-y-3">
-            <Stack spacing={1}>
+            <Stack spacing={2}>
                 <SelectItems
                     name="timeZone"
                     label="Vremenska zona backofficea"

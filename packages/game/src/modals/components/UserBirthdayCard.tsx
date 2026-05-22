@@ -1,8 +1,8 @@
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card, CardActions, CardContent } from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardActions, CardContent } from '@gredice/ui/Card';
+import { Input } from '@gredice/ui/Input';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { type FormEvent, useState } from 'react';
 
 import { useCurrentUser } from '../../hooks/useCurrentUser';
@@ -112,7 +112,7 @@ export function UserBirthdayCard() {
         <Card>
             <CardContent noHeader>
                 <form onSubmit={handleBirthdayUpdate}>
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         <div className="grid grid-cols-[1fr_1fr_2fr] gap-2">
                             <Input
                                 name="birthdayDay"
@@ -155,7 +155,7 @@ export function UserBirthdayCard() {
                                 }
                             />
                         </div>
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             <Typography level="body3">
                                 {birthdayLocked && nextChangeDisplay
                                     ? `Rođendan možeš ponovno promijeniti ${nextChangeDisplay}.`

@@ -1,7 +1,7 @@
 'use client';
 
-import { Input } from '@signalco/ui-primitives/Input';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
+import { Input } from '@gredice/ui/Input';
+import { SelectItems } from '@gredice/ui/SelectItems';
 import type { PlantControlsProps } from '../@types/plant-generator';
 import { PlantSlider } from './PlantSlider';
 

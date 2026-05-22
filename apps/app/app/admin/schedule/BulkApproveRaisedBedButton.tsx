@@ -1,7 +1,7 @@
 'use client';
 
-import { Approved } from '@signalco/ui-icons';
-import { IconButton } from '@signalco/ui-primitives/IconButton';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Approved } from '@gredice/ui/icons';
 import { useState } from 'react';
 import { acceptOperationAction } from '../../(actions)/operationActions';
 import { acceptRaisedBedFieldAction } from '../../(actions)/raisedBedFieldsActions';

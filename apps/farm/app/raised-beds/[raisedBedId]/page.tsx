@@ -3,20 +3,12 @@ import {
     getEntitiesFormatted,
     getFarmUserRaisedBeds,
 } from '@gredice/storage';
-import {
-    AuthProtectedSection,
-    SignedOut,
-} from '@signalco/auth-server/components';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Table } from '@signalco/ui-primitives/Table';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import { notFound } from 'next/navigation';
 import LoginDialog from '../../../components/auth/LoginDialog';
 import { HomeButton } from '../../../components/HomeButton';
@@ -95,7 +87,7 @@ async function RaisedBedDetailPageContent({
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
-            <Row spacing={1}>
+            <Row spacing={2}>
                 <HomeButton />
                 <Typography level="h4" component="h1">
                     {raisedBed.name || `Gredica #${raisedBed.id}`}
@@ -107,7 +99,7 @@ async function RaisedBedDetailPageContent({
                     <CardTitle>Detalji polja</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         <Typography
                             level="body2"
                             className="text-muted-foreground"

@@ -1,10 +1,10 @@
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { AchievementsOverview } from '../../shared-ui/achievements/AchievementsOverview';
 
 export function AchievementsTab() {
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <Typography level="h4" className="hidden md:block">
                 🏆 Postignuća
             </Typography>

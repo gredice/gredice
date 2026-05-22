@@ -1,10 +1,10 @@
 'use client';
 
 import type { getUsers } from '@gredice/storage';
-import { ModalConfirm } from '@signalco/ui/ModalConfirm';
-import { Fence, Security, User } from '@signalco/ui-icons';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Fence, Security, User } from '@gredice/ui/icons';
+import { ModalConfirm } from '@gredice/ui/ModalConfirm';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { updateUserRole } from '../../(actions)/userActions';
 

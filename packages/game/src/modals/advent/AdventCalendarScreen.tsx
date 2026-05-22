@@ -1,7 +1,7 @@
 'use client';
 
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { SantaCapIcon } from '../../icons/SantaCap';
 import { AdventDayCell, getDayVariant } from './AdventDayCell';
 import { adventTitleFont } from './fonts';
@@ -42,7 +42,7 @@ export function AdventCalendarScreen({
         : 'Otvori današnje polje i pripremi se za iznenađenje 🤩';
 
     return (
-        <Stack spacing={2} className="p-4 px-8">
+        <Stack spacing={4} className="p-4 px-8">
             {/* Header */}
             <div className="flex items-center gap-2 pr-8 md:pr-12">
                 <Stack spacing={0}>

@@ -5,14 +5,14 @@ import {
     type CmsPageSectionComponent,
     cmsPageSectionComponents,
 } from '@gredice/storage/cmsPageSections';
-import { SectionsView } from '@signalco/cms-core/SectionsView';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Card } from '@signalco/ui-primitives/Card';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
-import { SelectItems } from '@signalco/ui-primitives/SelectItems';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Card } from '@gredice/ui/Card';
+import { SectionsView } from '@gredice/ui/cms';
+import { Input } from '@gredice/ui/Input';
+import { Row } from '@gredice/ui/Row';
+import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import {
     useActionState,
     useEffect,
@@ -501,13 +501,13 @@ export function CmsPageForm({
     };
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <Card className="sticky top-4 z-10 border-border/70 bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
                 <Row
-                    spacing={2}
+                    spacing={4}
                     className="flex-wrap items-center justify-between"
                 >
-                    <Stack spacing={1}>
+                    <Stack spacing={2}>
                         <Typography level="h4" semiBold>
                             {page?.title?.trim() || 'Nova CMS stranica'}
                         </Typography>
@@ -516,7 +516,7 @@ export function CmsPageForm({
                             {page?.state ?? 'draft'}
                         </Typography>
                     </Stack>
-                    <Row spacing={2} className="items-center">
+                    <Row spacing={4} className="items-center">
                         {autosaveAction && (
                             <span
                                 className={`rounded-full border px-2 py-1 text-xs font-medium ${autosaveBadgeClassName}`}
@@ -543,7 +543,7 @@ export function CmsPageForm({
                 </Row>
             </Card>
             <Card className="w-full">
-                <Stack spacing={4} className="p-4 md:p-6">
+                <Stack spacing={8} className="p-4 md:p-6">
                     <form
                         id={reactId}
                         ref={formRef}
@@ -567,11 +567,11 @@ export function CmsPageForm({
                             }
                         }}
                     >
-                        <Stack spacing={4}>
-                            <Stack spacing={3}>
+                        <Stack spacing={8}>
+                            <Stack spacing={6}>
                                 {autosaveAction && (
                                     <Card className="border-border/60 bg-muted/20 p-3">
-                                        <Stack spacing={1}>
+                                        <Stack spacing={2}>
                                             <Typography level="body3" semiBold>
                                                 Autosave status
                                             </Typography>
@@ -616,7 +616,7 @@ export function CmsPageForm({
                                     defaultValue={page?.state ?? 'draft'}
                                     items={cmsPageStateItems}
                                 />
-                                <Stack spacing={2}>
+                                <Stack spacing={4}>
                                     <Typography level="h3" semiBold>
                                         Sadržaj stranice
                                     </Typography>
@@ -624,7 +624,7 @@ export function CmsPageForm({
                                         Vizualni editor je zadani način rada, a
                                         JSON editor je dostupan kao fallback.
                                     </Typography>
-                                    <Row spacing={2}>
+                                    <Row spacing={4}>
                                         <Button
                                             type="button"
                                             variant={
@@ -672,7 +672,7 @@ export function CmsPageForm({
                                             <textarea
                                                 value={rawContent}
                                                 rows={16}
-                                                className="block w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                                className="block w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                                 onBlur={() => {
                                                     try {
                                                         setRawContent(
@@ -724,7 +724,7 @@ export function CmsPageForm({
                                                 : 'Stranica još nema sekcija.'}
                                         </Card>
                                     ) : (
-                                        <Stack spacing={2}>
+                                        <Stack spacing={4}>
                                             {sections.map((section, index) => (
                                                 <Card
                                                     key={section.id}
@@ -735,9 +735,9 @@ export function CmsPageForm({
                                                         )
                                                     }
                                                 >
-                                                    <Stack spacing={2}>
+                                                    <Stack spacing={4}>
                                                         <Row
-                                                            spacing={2}
+                                                            spacing={4}
                                                             className="items-center justify-between"
                                                         >
                                                             <Typography
@@ -750,7 +750,7 @@ export function CmsPageForm({
                                                                         .component,
                                                                 )}
                                                             </Typography>
-                                                            <Row spacing={1}>
+                                                            <Row spacing={2}>
                                                                 <Button
                                                                     type="button"
                                                                     variant="plain"
@@ -898,7 +898,7 @@ export function CmsPageForm({
                                     )}
                                     {!rawMode && (
                                         <Card className="p-3">
-                                            <Stack spacing={2}>
+                                            <Stack spacing={4}>
                                                 <Typography
                                                     level="body2"
                                                     semiBold
@@ -916,7 +916,7 @@ export function CmsPageForm({
                                                     placeholder="npr. Heading ili Feature"
                                                 />
                                                 <Row
-                                                    spacing={1}
+                                                    spacing={2}
                                                     className="flex-wrap"
                                                 >
                                                     {Object.entries(
@@ -924,7 +924,7 @@ export function CmsPageForm({
                                                     ).map(([group, items]) => (
                                                         <Stack
                                                             key={group}
-                                                            spacing={1}
+                                                            spacing={2}
                                                             className="min-w-56"
                                                         >
                                                             <Typography
@@ -964,11 +964,11 @@ export function CmsPageForm({
                                 </Stack>
                             </Stack>
 
-                            <Stack spacing={2}>
+                            <Stack spacing={4}>
                                 <Typography level="h3" semiBold>
                                     Live preview
                                 </Typography>
-                                <Row spacing={2} className="flex-wrap">
+                                <Row spacing={4} className="flex-wrap">
                                     <Button
                                         type="button"
                                         variant={
@@ -1037,11 +1037,11 @@ export function CmsPageForm({
                                     <Card
                                         className={`p-4 ${previewMode === 'focused' ? 'lg:col-span-2' : ''}`}
                                     >
-                                        <Stack spacing={2}>
+                                        <Stack spacing={4}>
                                             {sections.map((section) => (
                                                 <Stack
                                                     key={section.id}
-                                                    spacing={2}
+                                                    spacing={4}
                                                     className={
                                                         previewViewportClassName
                                                     }
@@ -1077,11 +1077,11 @@ export function CmsPageForm({
                                     </Card>
                                     {previewMode === 'inline' && (
                                         <Stack
-                                            spacing={3}
+                                            spacing={6}
                                             className="h-fit lg:sticky lg:top-24"
                                         >
                                             <Card className="p-4">
-                                                <Stack spacing={2}>
+                                                <Stack spacing={4}>
                                                     <Typography
                                                         level="h4"
                                                         semiBold
@@ -1129,7 +1129,7 @@ export function CmsPageForm({
                                                             ),
                                                         )
                                                     )}
-                                                    <Row spacing={2}>
+                                                    <Row spacing={4}>
                                                         <Button
                                                             type="button"
                                                             variant={
@@ -1161,7 +1161,7 @@ export function CmsPageForm({
                                                 </Stack>
                                             </Card>
                                             <Card className="p-4">
-                                                <Stack spacing={2}>
+                                                <Stack spacing={4}>
                                                     <Typography
                                                         level="h4"
                                                         semiBold
@@ -1224,7 +1224,7 @@ export function CmsPageForm({
                                                                                 field.rows ??
                                                                                 4
                                                                             }
-                                                                            className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                                                            className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                                                             onChange={(
                                                                                 event,
                                                                             ) =>
@@ -1257,7 +1257,7 @@ export function CmsPageForm({
                                                                             field.key
                                                                         }
                                                                         spacing={
-                                                                            1
+                                                                            2
                                                                         }
                                                                     >
                                                                         <Input
@@ -1315,9 +1315,9 @@ export function CmsPageForm({
                                 </div>
                             </Stack>
 
-                            <Stack spacing={3}>
+                            <Stack spacing={6}>
                                 <Card className="p-4">
-                                    <Stack spacing={2}>
+                                    <Stack spacing={4}>
                                         <Typography level="h3" semiBold>
                                             Publish readiness
                                         </Typography>
@@ -1331,7 +1331,7 @@ export function CmsPageForm({
                                                 Stranica je spremna za objavu.
                                             </Typography>
                                         ) : (
-                                            <Stack spacing={1}>
+                                            <Stack spacing={2}>
                                                 {contentReadinessWarning && (
                                                     <Typography
                                                         level="body3"
@@ -1380,7 +1380,7 @@ export function CmsPageForm({
                                     </Stack>
                                 </Card>
                                 <Card className="p-4">
-                                    <Stack spacing={2}>
+                                    <Stack spacing={4}>
                                         <Typography level="h3" semiBold>
                                             Metadata
                                         </Typography>

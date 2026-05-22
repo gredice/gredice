@@ -1,6 +1,6 @@
 'use client';
 
-import { cx } from '@signalco/ui-primitives/cx';
+import { cx } from '@gredice/ui/utils';
 import type { GameSceneProps } from './GameScene';
 import { AccountHud } from './hud/AccountHud';
 import { AdventHud } from './hud/AdventHud';

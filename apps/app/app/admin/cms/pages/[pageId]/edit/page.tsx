@@ -1,7 +1,7 @@
 import { getCmsPage } from '@gredice/storage';
-import { Breadcrumbs } from '@signalco/ui/Breadcrumbs';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { notFound } from 'next/navigation';
 import { AdminPageHeader } from '../../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
@@ -34,7 +34,7 @@ export default async function EditCmsPagePage({
     const autosaveAction = autosaveCmsPageAction.bind(null, id);
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <AdminPageHeader
                 breadcrumbs={
                     <Breadcrumbs

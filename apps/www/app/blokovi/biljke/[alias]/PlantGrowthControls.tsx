@@ -1,6 +1,6 @@
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { ChangeEvent } from 'react';
 import { useMemo } from 'react';
 
@@ -40,7 +40,7 @@ export function PlantGrowthControls({
     onSliderChange: (e: ChangeEvent<HTMLInputElement>) => void;
 }) {
     return (
-        <Stack spacing={1}>
+        <Stack spacing={2}>
             <Row justifyContent="space-between">
                 <Typography level="h5">Rast biljke</Typography>
                 <Typography level="body2" secondary>

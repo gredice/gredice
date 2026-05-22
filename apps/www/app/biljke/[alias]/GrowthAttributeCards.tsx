@@ -1,5 +1,5 @@
 import type { PlantData } from '@gredice/client';
-import { Leaf, Sun, SunMoon, Tally3 } from '@signalco/ui-icons';
+import { Leaf, Sun, SunMoon, Tally3 } from '@gredice/ui/icons';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 
 export function GrowthAttributeCards({

@@ -1,9 +1,9 @@
 'use client';
 
-import { Button } from '@signalco/ui-primitives/Button';
-import { Popper } from '@signalco/ui-primitives/Popper';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Button } from '@gredice/ui/Button';
+import { Popper } from '@gredice/ui/Popper';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
 import { useLiveTime } from '../hooks/useLiveTime';
 import { useWeatherForecast } from '../hooks/useWeatherForecast';
 import { useWeatherNow } from '../hooks/useWeatherNow';
@@ -80,7 +80,7 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
                                 variant="plain"
                                 className="rounded-full px-2 justify-between pr-4 md:pr-2 hidden md:flex"
                             >
-                                <Row spacing={1}>
+                                <Row spacing={2}>
                                     {forecastData.slice(0, 3).map((day) => {
                                         const ForecastIcon =
                                             weatherIcons[day.symbol];

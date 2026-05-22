@@ -1,10 +1,10 @@
 import { getHarvestBehaviorOverviewDisclaimer } from '@gredice/js/plants';
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { Card, CardContent } from '@gredice/ui/Card';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { Card, CardContent } from '@signalco/ui-primitives/Card';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
@@ -65,7 +65,7 @@ export async function OperationApplicationsList({
             <div className="py-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 <Card className="border-tertiary border-b-4">
                     <CardContent noHeader>
-                        <Row spacing={2}>
+                        <Row spacing={4}>
                             <BlockImage
                                 blockName="Raised_Bed"
                                 width={42}
@@ -123,7 +123,7 @@ export async function OperationApplicationsList({
                                 className="border-tertiary border-b-4"
                             >
                                 <CardContent noHeader>
-                                    <Row spacing={2}>
+                                    <Row spacing={4}>
                                         <PlantOrSortImage
                                             plant={plant}
                                             width={42}

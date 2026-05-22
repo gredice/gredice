@@ -1,4 +1,4 @@
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Typography } from '@gredice/ui/Typography';
 
 const code128Patterns = [
     '212222',

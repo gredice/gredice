@@ -1,5 +1,5 @@
-import { Input } from '@signalco/ui-primitives/Input';
-import { Row } from '@signalco/ui-primitives/Row';
+import { Input } from '@gredice/ui/Input';
+import { Row } from '@gredice/ui/Row';
 import { useState } from 'react';
 import type { AttributeInputProps } from '../AttributeInputProps';
 import { attributeUnitDecorator } from './AttributeUnitDecorator';
@@ -22,7 +22,7 @@ export function BarcodeInput({
         onChange(value || null);
     }
     return (
-        <Row spacing={1}>
+        <Row spacing={2}>
             <Input
                 placeholder={'Nema informacija...'}
                 value={inputValue}

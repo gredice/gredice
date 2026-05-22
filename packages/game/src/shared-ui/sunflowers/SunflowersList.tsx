@@ -1,11 +1,11 @@
 import { getAchievementDefinition } from '@gredice/js/achievements';
 import { BlockImage } from '@gredice/ui/BlockImage';
-import { Empty, ShoppingCart as ShoppingCartIcon } from '@signalco/ui-icons';
-import { List } from '@signalco/ui-primitives/List';
-import { ListItem } from '@signalco/ui-primitives/ListItem';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Empty, ShoppingCart as ShoppingCartIcon } from '@gredice/ui/icons';
+import { List } from '@gredice/ui/List';
+import { ListItem } from '@gredice/ui/ListItem';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useCurrentAccount } from '../../hooks/useCurrentAccount';
 import { formatSunflowers } from '../../utils/sunflowerPricing';
@@ -178,8 +178,8 @@ export function SunflowersList({
             {hasPendingSunflowers && (
                 <ListItem
                     label={
-                        <Row spacing={1} justifyContent="space-between">
-                            <Row spacing={2}>
+                        <Row spacing={2} justifyContent="space-between">
+                            <Row spacing={4}>
                                 <div className="size-10 flex items-center justify-center rounded-full bg-yellow-100 text-yellow-800">
                                     <ShoppingCartIcon className="size-5 shrink-0" />
                                 </div>
@@ -207,11 +207,11 @@ export function SunflowersList({
                     <ListItem
                         key={event.id}
                         label={
-                            <Row spacing={1} justifyContent="space-between">
-                                <Row spacing={2}>
+                            <Row spacing={2} justifyContent="space-between">
+                                <Row spacing={4}>
                                     {description.icon}
                                     <Stack>
-                                        <Row spacing={1}>
+                                        <Row spacing={2}>
                                             <Typography level="body2">
                                                 {description.label}
                                             </Typography>

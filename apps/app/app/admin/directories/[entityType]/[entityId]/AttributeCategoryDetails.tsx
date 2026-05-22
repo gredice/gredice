@@ -3,7 +3,7 @@ import type {
     SelectAttributeDefinitionCategory,
     SelectAttributeValue,
 } from '@gredice/storage';
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { Stack } from '@gredice/ui/Stack';
 import { NoDataPlaceholder } from '../../../../../components/shared/placeholders/NoDataPlaceholder';
 import { AttributeCategoryDefinitionItem } from './AttributeCategoryDefinitionItem';
 
@@ -26,7 +26,7 @@ export function AttributeCategoryDetails({
         (a) => a.category === category.name,
     );
     return (
-        <Stack spacing={2}>
+        <Stack spacing={4}>
             {categoryAttributes.length === 0 && (
                 <div className="pt-12 pb-8">
                     <NoDataPlaceholder>

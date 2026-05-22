@@ -1,20 +1,20 @@
 'use client';
 
+import { Alert } from '@gredice/ui/Alert';
 import {
+    authCurrentUserQueryKeys,
     FacebookLoginButton,
     GoogleLoginButton,
     useLastLoginProvider,
 } from '@gredice/ui/auth';
+import { Button } from '@gredice/ui/Button';
+import { Divider } from '@gredice/ui/Divider';
+import { Input } from '@gredice/ui/Input';
+import { Warning } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { usePostHog } from '@posthog/next';
-import { authCurrentUserQueryKeys } from '@signalco/auth-client';
-import { Alert } from '@signalco/ui/Alert';
-import { Warning } from '@signalco/ui-icons';
-import { Button } from '@signalco/ui-primitives/Button';
-import { Divider } from '@signalco/ui-primitives/Divider';
-import { Input } from '@signalco/ui-primitives/Input';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useActionState, useCallback } from 'react';
@@ -132,8 +132,8 @@ export function LoginDialog() {
                 title="Prijava u Gredice farmu"
                 className="md:max-w-md"
             >
-                <Stack spacing={4}>
-                    <Stack spacing={1}>
+                <Stack spacing={8}>
+                    <Stack spacing={2}>
                         <Typography level="h3" className="text-2xl" semiBold>
                             Dobrodošli
                         </Typography>
@@ -143,8 +143,8 @@ export function LoginDialog() {
                         </Typography>
                     </Stack>
                     <form action={submitAction} className="space-y-4">
-                        <Stack spacing={3}>
-                            <Stack spacing={1}>
+                        <Stack spacing={6}>
+                            <Stack spacing={2}>
                                 <Input
                                     name="email"
                                     label="Email"
@@ -181,18 +181,18 @@ export function LoginDialog() {
                             )}
                         </Stack>
                     </form>
-                    <Stack spacing={2}>
+                    <Stack spacing={4}>
                         <div className="relative">
                             <div className="absolute inset-0 flex items-center">
                                 <Divider />
                             </div>
                             <div className="relative flex justify-center">
-                                <span className="bg-background px-2 text-xs rounded-sm">
+                                <span className="bg-background px-2 text-xs rounded-xs">
                                     ili nastavi sa
                                 </span>
                             </div>
                         </div>
-                        <Stack spacing={1}>
+                        <Stack spacing={2}>
                             <FacebookLoginButton
                                 onClick={() => handleOAuthLogin('facebook')}
                                 lastUsed={lastLoginProvider === 'facebook'}

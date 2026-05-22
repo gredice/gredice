@@ -1,10 +1,10 @@
+import { Check, Navigate } from '@gredice/ui/icons';
+import { Modal } from '@gredice/ui/Modal';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
-import { Check, Navigate } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Modal } from '@signalco/ui-primitives/Modal';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { type CSSProperties, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
@@ -110,7 +110,7 @@ export function RaisedBedFieldHud(_props: {
                                     <Navigate className="size-4 shrink-0" />
                                 }
                             >
-                                <Row spacing={1}>
+                                <Row spacing={2}>
                                     <RaisedBedIcon
                                         physicalId={raisedBed.physicalId}
                                         className="size-6"
@@ -139,7 +139,7 @@ export function RaisedBedFieldHud(_props: {
             </div>
             <Stack
                 className="absolute md:left-[calc(50%+var(--raised-bed-side-panel-left))] top-[var(--raised-bed-ui-top-mobile)] md:top-[var(--raised-bed-ui-top)] left-[var(--raised-bed-close-button-left)]"
-                spacing={1}
+                spacing={2}
                 alignItems="center"
             >
                 <ButtonGreen

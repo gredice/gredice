@@ -1,9 +1,9 @@
-import { Navigate } from '@signalco/ui-icons';
-import { Card, CardOverflow } from '@signalco/ui-primitives/Card';
-import { List } from '@signalco/ui-primitives/List';
-import { ListItem } from '@signalco/ui-primitives/ListItem';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Navigate } from '@gredice/ui/icons';
+import { List } from '@gredice/ui/List';
+import { ListItem } from '@gredice/ui/ListItem';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 
 const apis = [
     { label: '/api/mcp', href: '/test' },
@@ -23,7 +23,7 @@ const apis = [
 
 export default function Home() {
     return (
-        <Stack spacing={1} className="p-4">
+        <Stack spacing={2} className="p-4">
             <Typography level="body2">API Reference</Typography>
             <Card>
                 <CardOverflow>

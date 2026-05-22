@@ -1,12 +1,7 @@
-import { MailCheck } from '@signalco/ui-icons';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@signalco/ui-primitives/Card';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { MailCheck } from '@gredice/ui/icons';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { Suspense } from 'react';
 import { SendVerifyEmailButton } from '../../SendVerifyEmailButton';
 
@@ -23,7 +18,7 @@ export default function EmailVerificationSendPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Stack spacing={3}>
+                    <Stack spacing={6}>
                         <Typography level="body2" center>
                             Potrebna je potvrda email adrese za nastavak
                             prijave.

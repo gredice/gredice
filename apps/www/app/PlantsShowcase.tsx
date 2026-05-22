@@ -1,8 +1,8 @@
+import { Navigate } from '@gredice/ui/icons';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { Navigate } from '@signalco/ui-icons';
-import { cx } from '@signalco/ui-primitives/cx';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { Row } from '@gredice/ui/Row';
+import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import Link from 'next/link';
 import { getPlantsData } from '../lib/plants/getPlantsData';
 import { KnownPages } from '../src/KnownPages';
@@ -66,7 +66,7 @@ export async function PlantsShowcase() {
                         ))}
                     </div>
                     <div className="absolute inset-0 bg-card/60" />
-                    <Row spacing={1} className="relative z-10">
+                    <Row spacing={2} className="relative z-10">
                         <Typography level="body1">Sve biljke</Typography>
                         <Navigate className="size-5 shrink-0" />
                     </Row>

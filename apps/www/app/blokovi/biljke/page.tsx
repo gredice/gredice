@@ -1,8 +1,8 @@
-import { Stack } from '@signalco/ui-primitives/Stack';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Stack } from '@gredice/ui/Stack';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { PageFilterInputNoSSR } from '../../../components/shared/PageFilterInputNoSSR';
-import { PageHeader } from '../../../components/shared/PageHeader';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
 import { PlantBlockGallery } from '../PlantBlockGallery';
 

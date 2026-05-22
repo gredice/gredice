@@ -1,11 +1,11 @@
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { PageHeader } from '@gredice/ui/PageHeader';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInput } from '../../components/shared/PageFilterInput';
-import { PageHeader } from '../../components/shared/PageHeader';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
 import { KnownPages } from '../../src/KnownPages';
@@ -51,7 +51,7 @@ export default async function OperationsPage({
     );
 
     return (
-        <Stack spacing={4}>
+        <Stack spacing={8}>
             <StructuredDataScript
                 data={{
                     '@context': 'https://schema.org',
@@ -94,7 +94,7 @@ export default async function OperationsPage({
                 operationsData={operationsData}
                 initialSearch={search}
             />
-            <Row spacing={2}>
+            <Row spacing={4}>
                 <Typography level="body1">
                     Jesu li ti informacije o radnjama korisne?
                 </Typography>

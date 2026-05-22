@@ -1,7 +1,7 @@
-import { NavigatingButton } from '@signalco/ui/NavigatingButton';
-import { Row } from '@signalco/ui-primitives/Row';
-import { Stack } from '@signalco/ui-primitives/Stack';
-import { Typography } from '@signalco/ui-primitives/Typography';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
+import { Row } from '@gredice/ui/Row';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 
 export default function NotFound() {
@@ -15,7 +15,7 @@ export default function NotFound() {
                     width={200}
                     height={200}
                 />
-                <Stack spacing={2}>
+                <Stack spacing={4}>
                     <Typography level="h1">Nepoznata stranica</Typography>
                     <Typography level="body1">
                         Oprosti, ali stranica koju tražiš ne postoji. Možda je
