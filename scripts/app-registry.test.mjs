@@ -22,6 +22,7 @@ import {
 import {
     childProcessTreeOptions,
     processStatesIncludeLiveProcess,
+    shouldDetachChildProcessTree,
     terminateChildProcessTree,
 } from './process-tree.mjs';
 
@@ -271,6 +272,13 @@ describe('app registry worktree ports', () => {
         assert.equal(getWorktreeSlug('Feature/ABC thing'), 'feature-abc-thing');
     });
 
+    it('can keep app commands in the parent process group for Playwright teardown', () => {
+        withEnv({ GREDICE_DETACH_CHILD_PROCESS: 'false' }, () => {
+            assert.equal(shouldDetachChildProcessTree(), false);
+            assert.deepEqual(childProcessTreeOptions(), {});
+        });
+    });
+
     it('points local API calls at the app dev port for dev commands', () => {
         const result = runAppCommandForTest('dev', {
             GREDICE_PORT_OFFSET: '12',
@@ -320,6 +328,31 @@ describe('app registry worktree ports', () => {
         const readyPath = resolve(tempDir, 'ready');
         const signalPath = resolve(tempDir, 'signal');
         const { binDir, child } = spawnRunAppCommand('dev', {
+            GREDICE_TEST_READY_PATH: readyPath,
+            GREDICE_TEST_SIGNAL_PATH: signalPath,
+        });
+
+        try {
+            assert.equal(await waitForFile(readyPath), true);
+            child.kill('SIGINT');
+            const result = await waitForChildExit(child);
+
+            assert.equal(result.code, 130);
+            assert.equal(await waitForFile(signalPath), true);
+            assert.equal(readFileSync(signalPath, 'utf8'), 'SIGINT');
+        } finally {
+            child.kill('SIGKILL');
+            rmSync(binDir, { recursive: true, force: true });
+            rmSync(tempDir, { recursive: true, force: true });
+        }
+    });
+
+    it('forwards SIGINT to a non-detached app command', async () => {
+        const tempDir = mkdtempSync(resolve(tmpdir(), 'gredice-app-signal-'));
+        const readyPath = resolve(tempDir, 'ready');
+        const signalPath = resolve(tempDir, 'signal');
+        const { binDir, child } = spawnRunAppCommand('dev', {
+            GREDICE_DETACH_CHILD_PROCESS: 'false',
             GREDICE_TEST_READY_PATH: readyPath,
             GREDICE_TEST_SIGNAL_PATH: signalPath,
         });
