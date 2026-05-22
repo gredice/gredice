@@ -231,6 +231,24 @@ async function mockNotificationSettingsApi(
     return recorded;
 }
 
+test('notification tabs size to their labels', async ({ mount, page }) => {
+    await mockNotificationSettingsApi(page);
+    await mount(<NotificationsTabStory />);
+
+    const tabList = page.getByRole('tablist');
+    const widths = await tabList.evaluate((element) => {
+        const listRect = element.getBoundingClientRect();
+        const parentRect = element.parentElement?.getBoundingClientRect();
+
+        return {
+            list: listRect.width,
+            parent: parentRect?.width ?? 0,
+        };
+    });
+
+    expect(widths.list).toBeLessThan(widths.parent * 0.75);
+});
+
 test('notification settings shows loading, status, and empty device states', async ({
     mount,
     page,
