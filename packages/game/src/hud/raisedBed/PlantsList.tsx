@@ -18,6 +18,33 @@ import { usePlants } from '../../hooks/usePlants';
 import { KnownPages } from '../../knownPages';
 import { PlantListItemSkeleton } from './PlantListItemSkeleton';
 
+type PlantSearchable = {
+    information: {
+        name?: string | null;
+        label?: string | null;
+        alternativeName?: string[] | null;
+    };
+};
+
+function normalizePlantSearchText(value: string | null | undefined) {
+    return (value ?? '')
+        .replace(/[Đđ]/g, 'd')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLocaleLowerCase('hr-HR')
+        .trim();
+}
+
+function plantMatchesSearch(plant: PlantSearchable, normalizedSearch: string) {
+    return [
+        plant.information.name,
+        plant.information.label,
+        ...(plant.information.alternativeName ?? []),
+    ].some((value) =>
+        normalizePlantSearchText(value).includes(normalizedSearch),
+    );
+}
+
 export function PlantsList({
     onChange,
     search,
@@ -27,14 +54,12 @@ export function PlantsList({
 }) {
     const { track } = useGameAnalytics();
     const { data: plants, isLoading, isError } = usePlants();
-    const normalizedSearch = search.trim().toLowerCase();
+    const normalizedSearch = normalizePlantSearchText(search);
     // Filter plants based on search query
     const filteredPlants =
         normalizedSearch.length > 0
             ? plants?.filter((plant) =>
-                  plant.information.name
-                      .toLowerCase()
-                      .includes(normalizedSearch),
+                  plantMatchesSearch(plant, normalizedSearch),
               )
             : plants;
 

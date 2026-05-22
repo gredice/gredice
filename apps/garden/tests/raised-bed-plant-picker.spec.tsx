@@ -18,4 +18,12 @@ test('plant search keeps keyboard focus while filtering sowing options', async (
     await expect(page.getByRole('button', { name: /Rajčica/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /Bosiljak/ })).toHaveCount(0);
     await expect(page).not.toHaveURL(/pretraga=/u);
+
+    await searchInput.fill('');
+    await searchInput.pressSequentially('paradajz');
+
+    await expect(searchInput).toBeFocused();
+    await expect(searchInput).toHaveValue('paradajz');
+    await expect(page.getByRole('button', { name: /Rajčica/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Bosiljak/ })).toHaveCount(0);
 });

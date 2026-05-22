@@ -22,11 +22,11 @@ const formattedReferralReward = new Intl.NumberFormat('hr-HR').format(
 const formattedCombinedReferralReward = new Intl.NumberFormat('hr-HR').format(
     combinedReferralReward,
 );
+const referralMetadataDescription = `Program preporuka za Gredice: podijeli ili iskoristi kod i saznaj kako jedna preporuka donosi ukupno ${formattedCombinedReferralReward} 🌻 nagrade.`;
 
 export const metadata: Metadata = {
     title: 'Preporuke',
-    description:
-        'Program preporuka za Gredice: podijeli kod, iskoristi kod i saznaj pravila za 10.000 🌻 nagradu.',
+    description: referralMetadataDescription,
     keywords: [
         'Gredice',
         'program preporuka',
@@ -34,6 +34,11 @@ export const metadata: Metadata = {
         'nagrade',
         'vrt aplikacija',
     ],
+    openGraph: {
+        title: 'Preporuke',
+        description: referralMetadataDescription,
+        url: KnownPages.Referrals,
+    },
 };
 
 const referralFlows = [
@@ -81,7 +86,7 @@ export default function ReferralsLandingPage() {
             <Stack spacing={10}>
                 <PageHeader
                     header="Preporuke"
-                    subHeader={`Podijeli svoj kod, pozovi nekoga u Gredice i zaradi ${formattedReferralReward} 🌻 kada pozvani račun ispuni uvjet aktivne gredice.`}
+                    subHeader={`Podijeli svoj kod, pozovi nekoga u Gredice i zajedno ostvarite ukupno ${formattedCombinedReferralReward} 🌻 kada pozvani račun ispuni uvjet aktivne gredice.`}
                     padded
                     visual={
                         <Image

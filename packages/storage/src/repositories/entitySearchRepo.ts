@@ -475,7 +475,7 @@ async function buildEntitySearchDocumentValues(
     const category = publicSearchCategoryForDirectoryEntityType(
         entity.entityTypeName,
     );
-    if (!category || entity.state !== 'published' || !entity.publishedAt) {
+    if (!category || entity.state !== 'published') {
         return null;
     }
 
@@ -528,7 +528,6 @@ export async function refreshEntitySearchDocument(entityId: number) {
             id: true,
             entityTypeName: true,
             state: true,
-            publishedAt: true,
             isDeleted: true,
         },
     });
@@ -537,7 +536,6 @@ export async function refreshEntitySearchDocument(entityId: number) {
         !entityState ||
         entityState.isDeleted ||
         entityState.state !== 'published' ||
-        !entityState.publishedAt ||
         !publicSearchCategoryForDirectoryEntityType(entityState.entityTypeName)
     ) {
         await storage()

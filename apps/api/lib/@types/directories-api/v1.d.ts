@@ -43,6 +43,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /search
+         * @description Search published directory entities.
+         */
+        get: {
+            parameters: {
+                query: {
+                    q: string;
+                    category?: string | string[];
+                    entityType?: string | string[];
+                    limit?: number;
+                    offset?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["directory-search-response"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{slug}": {
         parameters: {
             query?: never;
@@ -666,6 +711,31 @@ export interface components {
         "page-detail": components["schemas"]["page-summary"] & {
             content: components["schemas"]["section-data"][];
         };
+        "directory-search-result": {
+            entityId: number;
+            entityType: string;
+            category: string;
+            categoryLabel: string;
+            title: string;
+            summary?: string | null;
+            imageUrl?: string | null;
+            imageAlt?: string | null;
+            visualKey?: string | null;
+            /** Format: uri */
+            href: string;
+            rank: number;
+            /** Format: date-time */
+            publishedAt: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        "directory-search-response": {
+            query: string;
+            limit: number;
+            offset: number;
+            count: number;
+            results: components["schemas"]["directory-search-result"][];
+        };
         "entity-plant": {
             id: number;
             entityType: {
@@ -677,30 +747,10 @@ export interface components {
                 label: string;
             };
             slug: string;
-            calendar: {
-                /** @description vrijeme sijanja na otvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
-                sowing?: {
-                    start: number;
-                    end: number;
-                }[];
-                /** @description vrijeme presađivanja na otvoreno (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
-                planting?: {
-                    start: number;
-                    end: number;
-                }[];
-                /** @description (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
-                harvest: {
-                    start: number;
-                    end: number;
-                }[];
-                /** @description vrijeme sijanja u zatvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
-                propagating?: {
-                    start: number;
-                    end: number;
-                }[];
-            };
             information: {
                 name: string;
+                /** @description (alternativni nazivi za biljku, iz naroda, druga nariječja) */
+                alternativeName?: string[];
                 latinName: string;
                 origin: string;
                 verified?: boolean;
@@ -839,40 +889,62 @@ export interface components {
                     };
                 }[];
             };
+            calendar: {
+                /** @description vrijeme sijanja u zatvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                propagating?: {
+                    start: number;
+                    end: number;
+                }[];
+                /** @description vrijeme presađivanja na otvoreno (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                planting?: {
+                    start: number;
+                    end: number;
+                }[];
+                /** @description vrijeme sijanja na otvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                sowing?: {
+                    start: number;
+                    end: number;
+                }[];
+                /** @description (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                harvest: {
+                    start: number;
+                    end: number;
+                }[];
+            };
             attributes: {
-                /** @description (u gramima) */
-                yieldMin: number;
+                /** @description (u danima) */
+                harvestWindowMin: number;
                 /** @description (u gramima) */
                 yieldMax: number;
                 /** @description (u danima) */
-                harvestWindowMin: number;
-                /** @description (u danima) */
-                harvestWindowMax: number;
-                /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
-                soil: string;
-                /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
-                light: number;
-                /** @description (u centimetrima) */
-                seedingDepth: number;
-                /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
-                nutrients: string;
-                /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
-                water: string;
+                germinationWindowMax: number;
                 /** @description (u centimetrima) */
                 seedingDistance: number;
-                /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
-                germinationType: string;
+                /** @description (u centimetrima) */
+                seedingDepth: number;
                 /** @description (u stupnjevima °C) */
                 gernimationTemperature: number;
+                /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
+                germinationType: string;
+                /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
+                soil: string;
                 germinationWindowMin: number;
-                /** @description (u danima) */
-                germinationWindowMax: number;
                 /** @description (u danima) */
                 growthWindowMin: number;
                 /** @description (u danima) */
                 growthWindowMax: number;
+                /** @description (u gramima) */
+                yieldMin: number;
+                /** @description (u danima) */
+                harvestWindowMax: number;
                 /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
                 yieldType: string;
+                /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
+                light: number;
+                /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
+                nutrients: string;
+                /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
+                water: string;
                 /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
                 cleanHarvest: boolean;
             };
@@ -905,30 +977,10 @@ export interface components {
             information: {
                 plant: {
                     id: number;
-                    calendar: {
-                        /** @description vrijeme sijanja na otvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
-                        sowing?: {
-                            start: number;
-                            end: number;
-                        }[];
-                        /** @description vrijeme presađivanja na otvoreno (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
-                        planting?: {
-                            start: number;
-                            end: number;
-                        }[];
-                        /** @description (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
-                        harvest: {
-                            start: number;
-                            end: number;
-                        }[];
-                        /** @description vrijeme sijanja u zatvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
-                        propagating?: {
-                            start: number;
-                            end: number;
-                        }[];
-                    };
                     information: {
                         name: string;
+                        /** @description (alternativni nazivi za biljku, iz naroda, druga nariječja) */
+                        alternativeName?: string[];
                         latinName: string;
                         origin: string;
                         verified?: boolean;
@@ -1067,40 +1119,62 @@ export interface components {
                             };
                         }[];
                     };
+                    calendar: {
+                        /** @description vrijeme sijanja u zatvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                        propagating?: {
+                            start: number;
+                            end: number;
+                        }[];
+                        /** @description vrijeme presađivanja na otvoreno (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                        planting?: {
+                            start: number;
+                            end: number;
+                        }[];
+                        /** @description vrijeme sijanja na otvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                        sowing?: {
+                            start: number;
+                            end: number;
+                        }[];
+                        /** @description (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                        harvest: {
+                            start: number;
+                            end: number;
+                        }[];
+                    };
                     attributes: {
-                        /** @description (u gramima) */
-                        yieldMin: number;
+                        /** @description (u danima) */
+                        harvestWindowMin: number;
                         /** @description (u gramima) */
                         yieldMax: number;
                         /** @description (u danima) */
-                        harvestWindowMin: number;
-                        /** @description (u danima) */
-                        harvestWindowMax: number;
-                        /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
-                        soil: string;
-                        /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
-                        light: number;
-                        /** @description (u centimetrima) */
-                        seedingDepth: number;
-                        /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
-                        nutrients: string;
-                        /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
-                        water: string;
+                        germinationWindowMax: number;
                         /** @description (u centimetrima) */
                         seedingDistance: number;
-                        /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
-                        germinationType: string;
+                        /** @description (u centimetrima) */
+                        seedingDepth: number;
                         /** @description (u stupnjevima °C) */
                         gernimationTemperature: number;
+                        /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
+                        germinationType: string;
+                        /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
+                        soil: string;
                         germinationWindowMin: number;
-                        /** @description (u danima) */
-                        germinationWindowMax: number;
                         /** @description (u danima) */
                         growthWindowMin: number;
                         /** @description (u danima) */
                         growthWindowMax: number;
+                        /** @description (u gramima) */
+                        yieldMin: number;
+                        /** @description (u danima) */
+                        harvestWindowMax: number;
                         /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
                         yieldType: string;
+                        /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
+                        light: number;
+                        /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
+                        nutrients: string;
+                        /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
+                        water: string;
                         /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
                         cleanHarvest: boolean;
                     };
@@ -1193,30 +1267,10 @@ export interface components {
                 name: string;
                 plant: {
                     id: number;
-                    calendar: {
-                        /** @description vrijeme sijanja na otvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
-                        sowing?: {
-                            start: number;
-                            end: number;
-                        }[];
-                        /** @description vrijeme presađivanja na otvoreno (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
-                        planting?: {
-                            start: number;
-                            end: number;
-                        }[];
-                        /** @description (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
-                        harvest: {
-                            start: number;
-                            end: number;
-                        }[];
-                        /** @description vrijeme sijanja u zatvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
-                        propagating?: {
-                            start: number;
-                            end: number;
-                        }[];
-                    };
                     information: {
                         name: string;
+                        /** @description (alternativni nazivi za biljku, iz naroda, druga nariječja) */
+                        alternativeName?: string[];
                         latinName: string;
                         origin: string;
                         verified?: boolean;
@@ -1355,40 +1409,62 @@ export interface components {
                             };
                         }[];
                     };
+                    calendar: {
+                        /** @description vrijeme sijanja u zatvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                        propagating?: {
+                            start: number;
+                            end: number;
+                        }[];
+                        /** @description vrijeme presađivanja na otvoreno (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                        planting?: {
+                            start: number;
+                            end: number;
+                        }[];
+                        /** @description vrijeme sijanja na otvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                        sowing?: {
+                            start: number;
+                            end: number;
+                        }[];
+                        /** @description (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                        harvest: {
+                            start: number;
+                            end: number;
+                        }[];
+                    };
                     attributes: {
-                        /** @description (u gramima) */
-                        yieldMin: number;
+                        /** @description (u danima) */
+                        harvestWindowMin: number;
                         /** @description (u gramima) */
                         yieldMax: number;
                         /** @description (u danima) */
-                        harvestWindowMin: number;
-                        /** @description (u danima) */
-                        harvestWindowMax: number;
-                        /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
-                        soil: string;
-                        /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
-                        light: number;
-                        /** @description (u centimetrima) */
-                        seedingDepth: number;
-                        /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
-                        nutrients: string;
-                        /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
-                        water: string;
+                        germinationWindowMax: number;
                         /** @description (u centimetrima) */
                         seedingDistance: number;
-                        /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
-                        germinationType: string;
+                        /** @description (u centimetrima) */
+                        seedingDepth: number;
                         /** @description (u stupnjevima °C) */
                         gernimationTemperature: number;
+                        /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
+                        germinationType: string;
+                        /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
+                        soil: string;
                         germinationWindowMin: number;
-                        /** @description (u danima) */
-                        germinationWindowMax: number;
                         /** @description (u danima) */
                         growthWindowMin: number;
                         /** @description (u danima) */
                         growthWindowMax: number;
+                        /** @description (u gramima) */
+                        yieldMin: number;
+                        /** @description (u danima) */
+                        harvestWindowMax: number;
                         /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
                         yieldType: string;
+                        /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
+                        light: number;
+                        /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
+                        nutrients: string;
+                        /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
+                        water: string;
                         /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
                         cleanHarvest: boolean;
                     };
@@ -1408,30 +1484,10 @@ export interface components {
                     information: {
                         plant: {
                             id: number;
-                            calendar: {
-                                /** @description vrijeme sijanja na otvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
-                                sowing?: {
-                                    start: number;
-                                    end: number;
-                                }[];
-                                /** @description vrijeme presađivanja na otvoreno (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
-                                planting?: {
-                                    start: number;
-                                    end: number;
-                                }[];
-                                /** @description (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
-                                harvest: {
-                                    start: number;
-                                    end: number;
-                                }[];
-                                /** @description vrijeme sijanja u zatvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
-                                propagating?: {
-                                    start: number;
-                                    end: number;
-                                }[];
-                            };
                             information: {
                                 name: string;
+                                /** @description (alternativni nazivi za biljku, iz naroda, druga nariječja) */
+                                alternativeName?: string[];
                                 latinName: string;
                                 origin: string;
                                 verified?: boolean;
@@ -1570,40 +1626,62 @@ export interface components {
                                     };
                                 }[];
                             };
+                            calendar: {
+                                /** @description vrijeme sijanja u zatvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                                propagating?: {
+                                    start: number;
+                                    end: number;
+                                }[];
+                                /** @description vrijeme presađivanja na otvoreno (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                                planting?: {
+                                    start: number;
+                                    end: number;
+                                }[];
+                                /** @description vrijeme sijanja na otvorenom (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                                sowing?: {
+                                    start: number;
+                                    end: number;
+                                }[];
+                                /** @description (upisati mjesec pocetka i kraja; npr. 1.5 naznacava sredinu siječnja) */
+                                harvest: {
+                                    start: number;
+                                    end: number;
+                                }[];
+                            };
                             attributes: {
-                                /** @description (u gramima) */
-                                yieldMin: number;
+                                /** @description (u danima) */
+                                harvestWindowMin: number;
                                 /** @description (u gramima) */
                                 yieldMax: number;
                                 /** @description (u danima) */
-                                harvestWindowMin: number;
-                                /** @description (u danima) */
-                                harvestWindowMax: number;
-                                /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
-                                soil: string;
-                                /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
-                                light: number;
-                                /** @description (u centimetrima) */
-                                seedingDepth: number;
-                                /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
-                                nutrients: string;
-                                /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
-                                water: string;
+                                germinationWindowMax: number;
                                 /** @description (u centimetrima) */
                                 seedingDistance: number;
-                                /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
-                                germinationType: string;
+                                /** @description (u centimetrima) */
+                                seedingDepth: number;
                                 /** @description (u stupnjevima °C) */
                                 gernimationTemperature: number;
+                                /** @description (Klijanje pod svijetlosti, Klijanje u mraku) */
+                                germinationType: string;
+                                /** @description (Lagano (pješčano), Srednje (ilovasto), Teško (glineno)) */
+                                soil: string;
                                 germinationWindowMin: number;
-                                /** @description (u danima) */
-                                germinationWindowMax: number;
                                 /** @description (u danima) */
                                 growthWindowMin: number;
                                 /** @description (u danima) */
                                 growthWindowMax: number;
+                                /** @description (u gramima) */
+                                yieldMin: number;
+                                /** @description (u danima) */
+                                harvestWindowMax: number;
                                 /** @description ('perPlant' ako je mjera po biljci ili 'perField' ako je mjera za jedno polje gredice) */
                                 yieldType: string;
+                                /** @description (od 0 do 1 gdje 0 označava potpuni hlad a 1 direktno sunce) */
+                                light: number;
+                                /** @description (Niske potrebe, Srednje potrebe, Visoke potrebe) */
+                                nutrients: string;
+                                /** @description (Suho tlo, Vlažno tlo, Mokro tlo) */
+                                water: string;
                                 /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
                                 cleanHarvest: boolean;
                             };

@@ -18,6 +18,7 @@ const tomatoPlant = {
     },
     information: {
         name: 'Rajčica',
+        alternativeName: ['Paradajz', 'Pomidor'],
         latinName: 'Solanum lycopersicum',
         origin: 'Mock',
         description: 'Mock plant for sowing picker tests.',
@@ -72,6 +73,7 @@ const basilPlant = {
     information: {
         ...tomatoPlant.information,
         name: 'Bosiljak',
+        alternativeName: ['Bazilikum'],
         latinName: 'Ocimum basilicum',
     },
     isRecommended: false,

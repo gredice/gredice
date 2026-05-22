@@ -1,6 +1,7 @@
 import { type components, directoriesClient } from '@gredice/client';
 import { Card } from '@gredice/ui/Card';
 import { Search, Warning } from '@gredice/ui/icons';
+import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -9,14 +10,17 @@ import {
     searchCategoryParam,
     searchPageLimit,
 } from '../../components/search/searchCategories';
-import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
 import { SearchInteractive } from './SearchInteractive';
+import { SearchPageControls } from './SearchPageControls';
 
 export const revalidate = 300;
 
+const pageDescription =
+    'Pronađi biljke, sorte, radnje, blokove i sjeme na Gredice webu.';
+
 export const metadata = {
     title: 'Pretraga',
-    description: 'Pretraži javni sadržaj na Gredice webu.',
+    description: pageDescription,
     robots: {
         index: false,
         follow: true,
@@ -89,49 +93,49 @@ export default async function SearchPage({
     const hasNextPage = results.length === searchPageLimit;
 
     return (
-        <Stack spacing={8} className="py-4">
-            <Typography level="h1">Pretraga</Typography>
-            <PageFilterInputNoSSR
-                searchParamName="pretraga"
-                fieldName="global-search"
-                initialValue={query}
-                className="w-full"
-                navigateOnChange
-                placeholder="Pretraga..."
-                resetSearchParamNamesOnChange={['stranica']}
-            />
+        <Stack spacing={5} className="py-4">
+            <PageHeader header="Pretraga" subHeader={pageDescription} padded />
 
-            {error ? (
-                <Card className="p-4">
-                    <Row spacing={4} alignItems="center">
-                        <Warning className="size-5 text-orange-500" />
-                        <Typography>{error}</Typography>
-                    </Row>
-                </Card>
-            ) : null}
+            <Stack spacing={3}>
+                <SearchPageControls
+                    query={query}
+                    selectedCategory={selectedCategory}
+                />
 
-            <SearchInteractive
-                query={query}
-                selectedCategory={selectedCategory}
-                results={trimmedQuery.length >= 2 ? results : []}
-                page={page}
-                hasNextPage={trimmedQuery.length >= 2 && hasNextPage}
-            />
+                {error ? (
+                    <Card className="p-4">
+                        <Row spacing={4} alignItems="center">
+                            <Warning className="size-5 text-orange-500" />
+                            <Typography>{error}</Typography>
+                        </Row>
+                    </Card>
+                ) : null}
 
-            {!trimmedQuery ? (
-                <Card className="p-6 text-center">
-                    <Search className="mx-auto mb-2 size-8 text-muted-foreground" />
-                    <Typography>Upiši pojam za pretragu.</Typography>
-                </Card>
-            ) : trimmedQuery.length < 2 ? (
-                <Card className="p-6 text-center">
-                    <Typography>Upiši barem 2 znaka za pretragu.</Typography>
-                </Card>
-            ) : results.length === 0 && !error ? (
-                <Card className="p-6 text-center">
-                    <Typography>Nema rezultata za zadani pojam.</Typography>
-                </Card>
-            ) : null}
+                <SearchInteractive
+                    query={query}
+                    selectedCategory={selectedCategory}
+                    results={trimmedQuery.length >= 2 ? results : []}
+                    page={page}
+                    hasNextPage={trimmedQuery.length >= 2 && hasNextPage}
+                />
+
+                {!trimmedQuery ? (
+                    <Card className="p-6 text-center">
+                        <Search className="mx-auto mb-2 size-8 text-muted-foreground" />
+                        <Typography>Upiši pojam za pretragu.</Typography>
+                    </Card>
+                ) : trimmedQuery.length < 2 ? (
+                    <Card className="p-6 text-center">
+                        <Typography>
+                            Upiši barem 2 znaka za pretragu.
+                        </Typography>
+                    </Card>
+                ) : results.length === 0 && !error ? (
+                    <Card className="p-6 text-center">
+                        <Typography>Nema rezultata za zadani pojam.</Typography>
+                    </Card>
+                ) : null}
+            </Stack>
         </Stack>
     );
 }

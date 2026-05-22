@@ -1,7 +1,7 @@
 import type { PlantData } from '@gredice/client';
 import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
-import { type CSSProperties, Fragment } from 'react';
+import { Fragment } from 'react';
 
 const plantCalendarMonths = [
     'I',
@@ -167,19 +167,15 @@ export function PlantGrowthCalendar({
                                     >
                                         {isActivityActive && (
                                             <div
-                                                className={`absolute inset-y-1 left-[--activity-left] -ml-[1px] right-[--activity-right] ${window.color} ${isActivityStart ? 'rounded-l-full' : ''} ${isActivityEnd ? 'rounded-r-full' : ''}`}
-                                                style={
-                                                    {
-                                                        '--activity-left':
-                                                            isActivityStart
-                                                                ? `${Math.min(75, minStart * 100)}%`
-                                                                : '0px',
-                                                        '--activity-right':
-                                                            isActivityEnd
-                                                                ? `${Math.min(75, (1 - maxEnd) * 100)}%`
-                                                                : '0px',
-                                                    } as CSSProperties
-                                                }
+                                                className={`absolute inset-y-1 -ml-[1px] ${window.color} ${isActivityStart ? 'rounded-l-full' : ''} ${isActivityEnd ? 'rounded-r-full' : ''}`}
+                                                style={{
+                                                    left: isActivityStart
+                                                        ? `${Math.min(75, minStart * 100)}%`
+                                                        : '0px',
+                                                    right: isActivityEnd
+                                                        ? `${Math.min(75, (1 - maxEnd) * 100)}%`
+                                                        : '0px',
+                                                }}
                                             ></div>
                                         )}
                                     </div>

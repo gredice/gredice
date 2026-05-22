@@ -1,4 +1,7 @@
-import { getEntitiesFormatted } from '@gredice/storage';
+import {
+    getEntitiesFormatted,
+    normalizeDirectorySearchText,
+} from '@gredice/storage';
 import { z } from 'zod';
 import { handleSearchEntities } from '../../searchEntities';
 
@@ -7,6 +10,7 @@ type EntityStandardized = {
     information?: {
         name?: string;
         label?: string;
+        alternativeName?: string[];
         shortDescription?: string;
         description?: string;
         plant?: EntityStandardized;
@@ -71,6 +75,14 @@ function entityName(entity: EntityStandardized): string {
         entity.information?.label ||
         `Entity ${entity.id}`
     );
+}
+
+function entityMatchesPlantSearch(entity: EntityStandardized, term: string) {
+    return [
+        entity.information?.name,
+        entity.information?.label,
+        ...(entity.information?.alternativeName ?? []),
+    ].some((value) => normalizeDirectorySearchText(value).includes(term));
 }
 
 function extractPlantName(entity: EntityStandardized): string {
@@ -203,9 +215,9 @@ async function handleGetPlant(
         signal,
     );
     signal?.throwIfAborted();
-    const term = input.plantName.toLowerCase();
+    const term = normalizeDirectorySearchText(input.plantName);
     const plant = allPlants.find((item) =>
-        entityName(item).toLowerCase().includes(term),
+        entityMatchesPlantSearch(item, term),
     );
 
     if (!plant) {
