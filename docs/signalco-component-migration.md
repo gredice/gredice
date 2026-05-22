@@ -1,12 +1,19 @@
-# Signalco component migration todo
+# Signalco component migration record
 
 Date: 2026-05-21
+Status: Completed
 
 ## Goal
 
-Replace Signalco UI component usage with first-party Gredice components while
-keeping shared UI in `packages/ui`, app-specific workflows in their owning app,
-and Storybook coverage for reusable components.
+This is a historical record of the completed migration from external Signalco
+UI/auth/CMS packages to first-party Gredice packages. Do not add new
+`@signalco/*` UI, auth, CMS, theme, hook, or helper dependencies; use
+`@gredice/ui`, `@gredice/ui/auth`, `@gredice/auth`, `@gredice/js`, and
+app-owned components instead.
+
+The migration replaced Signalco UI component usage with first-party Gredice
+components while keeping shared UI in `packages/ui`, app-specific workflows in
+their owning app, and Storybook coverage for reusable components.
 
 ## Initial inventory
 
@@ -176,6 +183,9 @@ migration.
 - 2026-05-21: Kept the new `Stack` and `Row` spacing contract at
   `spacing={n}` equals Tailwind gap `n`, then doubled migrated `spacing` call
   site values so layouts keep their pre-migration visual rhythm.
+- 2026-05-22: Removed stale Signalco recommendations from active contributor
+  guides. Remaining Signalco package names in this document are historical
+  migration inventory, decisions, and completion evidence.
 
 ### 1. Define the first-party UI foundation
 

@@ -46,6 +46,7 @@ jobs:
               - apps/garden/**
               - packages/client/**
               - packages/game/**
+              - packages/js/**
               - packages/ui/**
               - .github/workflows/**
               - package.json
@@ -54,6 +55,7 @@ jobs:
               - turbo.json
             app_farm:
               - apps/farm/**
+              - packages/auth/**
               - packages/client/**
               - packages/js/**
               - packages/label-printer/**
@@ -66,6 +68,7 @@ jobs:
               - turbo.json
             app_app:
               - apps/app/**
+              - packages/auth/**
               - packages/client/**
               - packages/email/**
               - packages/fiscalization/**
@@ -83,6 +86,7 @@ jobs:
               - turbo.json
             app_api:
               - apps/api/**
+              - packages/auth/**
               - packages/directory-types/**
               - packages/email/**
               - packages/google/**
@@ -92,6 +96,7 @@ jobs:
               - packages/storage/**
               - packages/stripe/**
               - packages/transactional/**
+              - packages/ui/**
               - .github/workflows/**
               - package.json
               - pnpm-lock.yaml
@@ -108,6 +113,7 @@ jobs:
               - turbo.json
             app_status:
               - apps/status/**
+              - packages/ui/**
               - .github/workflows/**
               - package.json
               - pnpm-lock.yaml
