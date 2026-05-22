@@ -43,7 +43,7 @@ export function Input({
             <input
                 id={inputId}
                 name={name}
-                className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-current placeholder:opacity-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-hidden placeholder:text-current placeholder:opacity-50 disabled:cursor-not-allowed disabled:opacity-50"
                 {...rest}
             />
             {endDecorator}

@@ -129,7 +129,7 @@ export function SearchInteractive({
                     <a
                         key={`${result.entityType}-${result.entityId}`}
                         href={localHref(result.href)}
-                        className="flex gap-3 rounded-lg border border-border/70 bg-card p-3 outline-none transition-colors hover:bg-muted/60 focus-visible:bg-muted/60"
+                        className="flex gap-3 rounded-lg border border-border/70 bg-card p-3 outline-hidden transition-colors hover:bg-muted/60 focus-visible:bg-muted/60"
                         onClick={() =>
                             posthog?.capture('public_search_result_clicked', {
                                 category: selectedCategory,

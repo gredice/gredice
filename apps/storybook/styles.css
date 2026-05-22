@@ -1,6 +1,11 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "./tailwind.config.ts";
+@source "../app/components";
+@source "../farm/components";
+@source "../garden/components";
+@source "../www/components";
+@source "../../packages/game/src";
+@source "../../packages/ui/src";
 
 :root {
     interpolate-size: allow-keywords;

@@ -84,15 +84,17 @@ export default function DeliveryPage() {
                     </p>
                     <p>Vidi mapu zona dostave i tablicu s cijenama ispod:</p>
                     <div>
-                        <figure className="w-full aspect-[4/3] mb-4 text-center">
-                            <iframe
-                                title="Zone dostave"
-                                src="https://www.google.com/maps/d/u/4/embed?mid=1hya16VbRWVVdH4G-8-iCHHrLl8pAISA&ehbc=2E312F&ll=45.778793753891875%2C15.983640700842331&z=9"
-                                className="w-full h-full border-0 rounded-lg"
-                                sandbox="allow-scripts allow-same-origin"
-                                loading="lazy"
-                            ></iframe>
-                            <figcaption>
+                        <figure className="mb-4 w-full text-center">
+                            <div className="aspect-[4/3] w-full">
+                                <iframe
+                                    title="Zone dostave"
+                                    src="https://www.google.com/maps/d/u/4/embed?mid=1hya16VbRWVVdH4G-8-iCHHrLl8pAISA&ehbc=2E312F&ll=45.778793753891875%2C15.983640700842331&z=9"
+                                    className="h-full w-full rounded-lg border-0"
+                                    sandbox="allow-scripts allow-same-origin"
+                                    loading="lazy"
+                                ></iframe>
+                            </div>
+                            <figcaption className="not-prose mt-2 text-sm text-foreground">
                                 <strong>Zone dostave</strong> -{' '}
                                 <em>
                                     zone su okvirne, a stvarne zone dostave mogu
@@ -125,6 +127,7 @@ export default function DeliveryPage() {
                                         border: '1px solid #ddd',
                                         padding: '8px',
                                         backgroundColor: '#faf4e3',
+                                        color: 'hsl(28 47.4% 11.2%)',
                                         borderTopLeftRadius: '12px',
                                     }}
                                 >
@@ -135,6 +138,7 @@ export default function DeliveryPage() {
                                         border: '1px solid #ddd',
                                         padding: '8px',
                                         backgroundColor: '#faf4e3',
+                                        color: 'hsl(28 47.4% 11.2%)',
                                     }}
                                 >
                                     Cijena dostave
@@ -144,6 +148,7 @@ export default function DeliveryPage() {
                                         border: '1px solid #ddd',
                                         padding: '8px',
                                         backgroundColor: '#faf4e3',
+                                        color: 'hsl(28 47.4% 11.2%)',
                                         borderTopRightRadius: '12px',
                                     }}
                                 >

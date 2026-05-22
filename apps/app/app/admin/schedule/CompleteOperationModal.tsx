@@ -488,7 +488,7 @@ export function CompleteOperationModal({
                                 setErrorMessage(null);
                             }}
                             placeholder="Upišite napomenu o završetku..."
-                            className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-base focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                             rows={3}
                             maxLength={MAX_COMPLETION_NOTES_LENGTH}
                             disabled={isSubmitting}

@@ -78,7 +78,7 @@ export function InventoryItemsTable({
             >
                 <button
                     type="button"
-                    className="flex items-center gap-1 rounded-sm text-left font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    className="flex items-center gap-1 rounded-xs text-left font-medium focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                     onClick={() => handleSort(key)}
                     aria-label={`Sortiraj ${label.toLowerCase()}`}
                 >

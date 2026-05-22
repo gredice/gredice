@@ -100,7 +100,7 @@ export function SelectItems<T extends string>({
                     aria-label={label ?? placeholder}
                     aria-labelledby={labelId}
                     className={cx(
-                        'flex h-10 w-full items-center justify-between rounded-md bg-transparent px-3 py-2 text-left text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+                        'flex h-10 w-full items-center justify-between rounded-md bg-transparent px-3 py-2 text-left text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
                         '[&>span]:line-clamp-1 data-[placeholder]:text-muted-foreground',
                         variant === 'outlined' && 'border border-input',
                     )}
@@ -122,7 +122,7 @@ export function SelectItems<T extends string>({
                         <SelectPrimitive.Viewport className="h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)] p-1">
                             {items.map((item) => (
                                 <SelectPrimitive.Item
-                                    className="relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                                    className="relative flex w-full cursor-default select-none items-center rounded-xs py-1.5 pl-8 pr-2 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
                                     disabled={item.disabled}
                                     key={item.value || EMPTY_VALUE}
                                     title={item.title}

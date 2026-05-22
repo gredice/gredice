@@ -21,7 +21,7 @@ export function RaisedBedFieldItemButton({
     return (
         <ButtonGreen
             className={cx(
-                'p-0 relative size-full flex items-center justify-center rounded-sm',
+                'p-0 relative size-full flex items-center justify-center rounded-xs',
                 className,
             )}
             {...rest}

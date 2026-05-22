@@ -23,7 +23,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
 ) {
     const interactive = Boolean(href || onClick);
     const cardClassName = cx(
-        'rounded-lg border bg-card p-2 text-card-foreground shadow-sm',
+        'rounded-lg border bg-card p-2 text-card-foreground shadow-xs',
         interactive &&
             'cursor-default hover:bg-accent hover:text-accent-foreground',
         variant === 'secondary' && 'bg-card/60',

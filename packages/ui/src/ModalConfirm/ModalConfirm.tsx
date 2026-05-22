@@ -98,7 +98,7 @@ export function ModalConfirm({
                 </AlertDialogPrimitive.Trigger>
             ) : null}
             <AlertDialogPrimitive.Portal>
-                <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+                <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-background/80 backdrop-blur-xs data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
                 <AlertDialogPrimitive.Content
                     aria-describedby={undefined}
                     className={cx(

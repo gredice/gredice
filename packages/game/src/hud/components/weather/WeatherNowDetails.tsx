@@ -181,7 +181,7 @@ export function WeatherNowDetails() {
                         className="flex gap-1 items-center"
                     >
                         <Image
-                            className="inline rounded-sm"
+                            className="inline rounded-xs"
                             width={18}
                             height={18}
                             alt="Signalco logo"

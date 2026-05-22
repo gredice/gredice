@@ -180,7 +180,7 @@ export default function LoginModal() {
                                         <Divider />
                                     </div>
                                     <div className="relative flex justify-center">
-                                        <span className="bg-background px-2 text-xs rounded-sm">
+                                        <span className="bg-background px-2 text-xs rounded-xs">
                                             ili nastavi sa
                                         </span>
                                     </div>
@@ -204,7 +204,7 @@ export default function LoginModal() {
                                         <Divider />
                                     </div>
                                     <div className="relative flex justify-center">
-                                        <span className="bg-background px-2 text-xs rounded-sm">
+                                        <span className="bg-background px-2 text-xs rounded-xs">
                                             ili nastavi sa
                                         </span>
                                     </div>

@@ -1,6 +1,5 @@
 'use client';
 
-import type { SelectTimeSlot } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import {
     Calendar,
@@ -12,11 +11,22 @@ import {
 } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { useState, useTransition } from 'react';
+import {
+    createContext,
+    type PropsWithChildren,
+    useContext,
+    useState,
+    useTransition,
+} from 'react';
 import {
     changeDeliveryRequestSlotAction,
     updateDeliveryRequestStatusAction,
 } from './actions';
+
+export type DeliveryRequestSlotOption = {
+    id: number;
+    startAt: Date | string;
+};
 
 type DeliveryRequest = {
     id: string;
@@ -26,15 +36,29 @@ type DeliveryRequest = {
     slot?: { id: number };
 };
 
+const DeliveryRequestSlotsContext = createContext<DeliveryRequestSlotOption[]>(
+    [],
+);
+
+export function DeliveryRequestSlotsProvider({
+    children,
+    slots,
+}: PropsWithChildren<{ slots: DeliveryRequestSlotOption[] }>) {
+    return (
+        <DeliveryRequestSlotsContext.Provider value={slots}>
+            {children}
+        </DeliveryRequestSlotsContext.Provider>
+    );
+}
+
 type DeliveryRequestActionButtonsProps = {
     request: DeliveryRequest;
-    slots: SelectTimeSlot[];
 };
 
 export function DeliveryRequestActionButtons({
     request,
-    slots,
 }: DeliveryRequestActionButtonsProps) {
+    const slots = useContext(DeliveryRequestSlotsContext);
     const [loading, setLoading] = useState<string | null>(null);
     const [showSlotForm, setShowSlotForm] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState(
@@ -168,15 +192,13 @@ export function DeliveryRequestActionButtons({
                             }
                             className="border rounded p-1 text-sm"
                         >
-                            {slots
-                                .filter((s) => s.status !== 'archived')
-                                .map((slot) => (
-                                    <option key={slot.id} value={slot.id}>
-                                        {new Date(slot.startAt).toLocaleString(
-                                            'hr-HR',
-                                        )}
-                                    </option>
-                                ))}
+                            {slots.map((slot) => (
+                                <option key={slot.id} value={slot.id}>
+                                    {new Date(slot.startAt).toLocaleString(
+                                        'hr-HR',
+                                    )}
+                                </option>
+                            ))}
                         </select>
                         <Row spacing={2}>
                             <Button

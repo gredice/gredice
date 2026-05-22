@@ -279,7 +279,7 @@ function RaisedBedFieldTile({
     ];
 
     return (
-        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border bg-background shadow-sm">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border bg-background shadow-xs">
             <div className="relative min-h-52 flex-1 bg-muted/40">
                 {field?.active && sort ? (
                     <PlantOrSortImage

@@ -31,7 +31,7 @@ export const DropdownMenuSubTrigger = forwardRef<
     return (
         <DropdownMenuPrimitive.SubTrigger
             className={cx(
-                'flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent data-[state=open]:bg-accent',
+                'flex cursor-default select-none items-center rounded-xs px-2 py-1.5 text-sm outline-hidden focus:bg-accent data-[state=open]:bg-accent',
                 inset && 'pl-8',
                 className,
             )}
@@ -110,7 +110,7 @@ export const DropdownMenuItem = forwardRef<
             children
         );
     const itemClassName = cx(
-        'relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+        'relative flex cursor-default select-none items-center rounded-xs px-2 py-1.5 text-sm outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
         inset && 'pl-8',
         className,
     );

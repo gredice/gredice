@@ -42,7 +42,7 @@ export function SunflowersTab() {
                         <DailyRewardOverview />
                     </CardContent>
                 </Card>
-                <div className="overflow-y-auto max-h-[calc(100dvh-20rem)] md:max-h-[calc(100dvh-24rem)] rounded-lg text-card-foreground bg-card border shadow-sm p-4">
+                <div className="overflow-y-auto max-h-[calc(100dvh-20rem)] md:max-h-[calc(100dvh-24rem)] rounded-lg text-card-foreground bg-card border shadow-xs p-4">
                     <SunflowersList />
                 </div>
             </Stack>

@@ -38,7 +38,7 @@ export function SoundSlider({
             <button
                 type="button"
                 onClick={onMuteToggle}
-                className="focus:outline-none relative size-6"
+                className="focus:outline-hidden relative size-6"
             >
                 <svg
                     viewBox="0 0 24 24"

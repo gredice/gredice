@@ -99,7 +99,7 @@ export function PageFilterInput({
                     onChange={handleChange}
                     placeholder={placeholder}
                     aria-label="Pretraga"
-                    className="h-10 min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none ring-0 placeholder:text-muted-foreground"
+                    className="h-10 min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-hidden ring-0 placeholder:text-muted-foreground"
                 />
                 <IconButton
                     className={cx(

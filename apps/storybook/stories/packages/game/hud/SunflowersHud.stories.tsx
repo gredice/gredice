@@ -15,7 +15,7 @@ const meta = {
     },
     decorators: [
         (Story) => (
-            <div className="w-[min(calc(100vw-2rem),28rem)] overflow-hidden rounded-md border border-border border-b-4 border-b-tertiary bg-popover shadow-sm">
+            <div className="w-[min(calc(100vw-2rem),28rem)] overflow-hidden rounded-md border border-border border-b-4 border-b-tertiary bg-popover shadow-xs">
                 <Story />
             </div>
         ),

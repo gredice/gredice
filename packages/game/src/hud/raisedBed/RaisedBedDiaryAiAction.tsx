@@ -241,7 +241,7 @@ export function RaisedBedDiaryAiAction({
             >
                 <div className="grid gap-4 md:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
                     <Stack spacing={4}>
-                        <div className="relative overflow-hidden rounded-3xl border bg-card shadow-sm">
+                        <div className="relative overflow-hidden rounded-3xl border bg-card shadow-xs">
                             <div className="relative aspect-square overflow-hidden bg-black/5">
                                 <Image
                                     src={selectedImageUrl}
@@ -273,7 +273,7 @@ export function RaisedBedDiaryAiAction({
                                             type="button"
                                             className={`overflow-hidden rounded-2xl border transition-all ${
                                                 isSelected
-                                                    ? 'border-lime-400 shadow-sm ring-2 ring-lime-200'
+                                                    ? 'border-lime-400 shadow-xs ring-2 ring-lime-200'
                                                     : 'border-black/10 opacity-80 hover:opacity-100'
                                             }`}
                                             onClick={() =>
@@ -386,7 +386,7 @@ export function RaisedBedDiaryAiAction({
                                 </Typography>
                             </Alert>
                         ) : (
-                            <div className="min-h-72 rounded-3xl border bg-background/80 p-4 shadow-sm">
+                            <div className="min-h-72 rounded-3xl border bg-background/80 p-4 shadow-xs">
                                 {visibleMarkdown ? (
                                     <div className="prose prose-sm max-w-none dark:prose-invert">
                                         <ReactMarkdown>

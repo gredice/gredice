@@ -126,7 +126,7 @@ export function OperationsDurationCard({
                         </Typography>
                         <Row className="gap-4 text-xs text-muted-foreground">
                             <Row spacing={1} className="items-center">
-                                <span className="h-2 w-2 rounded-sm bg-primary/60" />
+                                <span className="h-2 w-2 rounded-xs bg-primary/60" />
                                 <Typography level="body3">
                                     Radnje{' '}
                                     {formatTooltipDuration(
@@ -135,7 +135,7 @@ export function OperationsDurationCard({
                                 </Typography>
                             </Row>
                             <Row spacing={1} className="items-center">
-                                <span className="h-2 w-2 rounded-sm bg-emerald-500/60" />
+                                <span className="h-2 w-2 rounded-xs bg-emerald-500/60" />
                                 <Typography level="body3">
                                     Sijanje{' '}
                                     {formatTooltipDuration(data.sowingMinutes)}

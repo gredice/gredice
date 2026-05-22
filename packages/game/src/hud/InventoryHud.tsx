@@ -70,7 +70,7 @@ function InventoryItemCell({
             )}
 
             <div className="absolute -top-1.5 -right-1.5">
-                <div className="size-[18px] rounded-full bg-tertiary text-tertiary-foreground text-[10px] font-semibold leading-none flex items-center justify-center shadow-sm border border-tertiary-foreground/30">
+                <div className="size-[18px] rounded-full bg-tertiary text-tertiary-foreground text-[10px] font-semibold leading-none flex items-center justify-center shadow-xs border border-tertiary-foreground/30">
                     {item.amount?.toString()}
                 </div>
             </div>

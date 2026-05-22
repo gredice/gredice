@@ -75,7 +75,7 @@ export function DailyRewardOverview() {
                                 className={cx(
                                     'border',
                                     'rounded-lg p-2 flex justify-center items-center h-full relative',
-                                    'focus:ring-2 focus:outline-none',
+                                    'focus:ring-2 focus:outline-hidden',
                                 )}
                                 onClick={() => claimDailyReward.mutate()}
                                 disabled={claimDailyReward.isPending}

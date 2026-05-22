@@ -741,7 +741,7 @@ export default function InvoiceForm({
                                                     )
                                                 }
                                                 placeholder="Ulica i broj, Poštanski broj Grad, Država..."
-                                                className="w-full text-base px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                className="w-full text-base px-3 py-2 border border-input bg-background rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 resize-none"
                                                 rows={3}
                                             />
                                         </Stack>
@@ -809,7 +809,7 @@ export default function InvoiceForm({
                                                     )
                                                 }
                                                 placeholder="Dodatne napomene..."
-                                                className="w-full text-base px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                className="w-full text-base px-3 py-2 border border-input bg-background rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 resize-none"
                                                 rows={3}
                                             />
                                         </Stack>
@@ -826,7 +826,7 @@ export default function InvoiceForm({
                                                     )
                                                 }
                                                 placeholder="Uvjeti plaćanja..."
-                                                className="w-full text-base px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                                className="w-full text-base px-3 py-2 border border-input bg-background rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 resize-none"
                                                 rows={3}
                                             />
                                         </Stack>
@@ -980,7 +980,7 @@ export default function InvoiceForm({
 
             {/* Transaction Selection Modal - Only for create mode */}
             {mode === 'create' && showTransactionModal && (
-                <div className="fixed inset-0 bg-black backdrop-blur bg-opacity-50 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur flex items-center justify-center z-50">
                     <div className="bg-card rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
                         <div className="p-6 border-b">
                             <Row spacing={4} justifyContent="space-between">
@@ -1080,7 +1080,7 @@ export default function InvoiceForm({
 
             {/* Shopping Cart Selection Modal - Only for create mode */}
             {mode === 'create' && showShoppingCartModal && (
-                <div className="fixed inset-0 bg-black backdrop-blur bg-opacity-50 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur flex items-center justify-center z-50">
                     <div className="bg-card rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
                         <div className="p-6 border-b">
                             <Row spacing={4} justifyContent="space-between">

@@ -33,6 +33,10 @@
 			"path": "apps/status"
 		},
 		{
+			"name": "📦 @gredice/auth",
+			"path": "packages/auth"
+		},
+		{
 			"name": "📦 @gredice/client",
 			"path": "packages/client"
 		},

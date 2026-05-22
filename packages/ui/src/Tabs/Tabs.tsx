@@ -180,14 +180,14 @@ export const TabsList = forwardRef<
         <TabsPrimitive.List
             ref={handleListRef}
             className={cx(
-                'relative isolate inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border border-border bg-muted/80 p-1 text-muted-foreground shadow-sm',
+                'relative isolate inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border border-border bg-muted/80 p-1 text-muted-foreground shadow-xs',
                 className,
             )}
             {...props}
         >
             <span
                 aria-hidden="true"
-                className="pointer-events-none absolute left-0 top-0 z-0 rounded-md bg-background opacity-0 shadow-sm transition-[transform,width,height,opacity] duration-200 ease-out motion-reduce:transition-none"
+                className="pointer-events-none absolute left-0 top-0 z-0 rounded-md bg-background opacity-0 shadow-xs transition-[transform,width,height,opacity] duration-200 ease-out motion-reduce:transition-none"
                 style={indicatorStyle}
             />
             {props.children}
@@ -209,7 +209,7 @@ export const TabsTrigger = forwardRef<
             className={cx(
                 'relative z-10 inline-flex min-h-8 items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium leading-none text-muted-foreground transition-colors',
                 'hover:bg-background/70 hover:text-foreground',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 'disabled:pointer-events-none disabled:opacity-50',
                 'data-[state=active]:text-foreground data-[state=active]:hover:bg-transparent',
                 className,
@@ -231,7 +231,7 @@ export const TabsContent = forwardRef<
         <TabsPrimitive.Content
             ref={ref}
             className={cx(
-                'mt-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                'mt-2 outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 className,
             )}
             {...props}

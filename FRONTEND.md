@@ -18,6 +18,7 @@ Use this guide for React, Next.js, TypeScript, UI components, and frontend app s
 - Do not create multiple components in the same file. Split each component into its own file.
 - Keep app-specific components inside their owning app unless reuse is real.
 - When adding or changing a reusable UI component, add or update a Storybook story under `apps/storybook/stories` in the same change.
+- When adding a new `@gredice/ui` component or a meaningful new variant/state, update the relevant showcase story under `apps/storybook/stories/packages/ui/Showcases` so contributors can see it in an appropriate product context.
 - Prefer established `@gredice/*` primitives already used in the app before introducing a new dependency.
 
 ## Next.js and React

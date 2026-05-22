@@ -238,7 +238,7 @@ export function LandingGameScene() {
                                 : 'translate-y-3 opacity-0',
                         )}
                     >
-                        <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-tertiary border-b-4 bg-background/90 p-1 shadow-lg backdrop-blur-sm">
+                        <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-tertiary border-b-4 bg-background/90 p-1 shadow-lg backdrop-blur-xs">
                             <IconButton
                                 title="Zatvori prikaz"
                                 variant="plain"
@@ -279,7 +279,7 @@ export function LandingGameScene() {
                     <NavigatingButton
                         href={gardenBaseUrl}
                         variant="outlined"
-                        className="rounded-full bg-background/90 shadow-lg backdrop-blur-sm"
+                        className="rounded-full bg-background/90 shadow-lg backdrop-blur-xs"
                     >
                         Otvori aplikaciju
                     </NavigatingButton>

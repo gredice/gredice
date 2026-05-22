@@ -38,7 +38,7 @@ function NavLinkButton({
             variant="plain"
             size="sm"
             className={[
-                'h-10 w-full justify-start whitespace-nowrap px-4 text-sm md:h-9 md:w-auto md:justify-center md:px-3',
+                'h-10 w-full shrink-0 justify-start whitespace-nowrap px-4 text-sm md:mx-1 md:h-9 md:w-auto md:justify-center md:px-3',
                 className,
             ]
                 .filter(Boolean)

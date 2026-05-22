@@ -122,7 +122,7 @@ function IncomingLinksGroup({ group }: { group: IncomingEntityLinkGroup }) {
                             group.entityTypeName,
                             sourceEntity.id,
                         )}
-                        className="block border-border/70 border-b px-3 py-2 transition-colors last:border-b-0 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="block border-border/70 border-b px-3 py-2 transition-colors last:border-b-0 hover:bg-muted/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                     >
                         <span className="flex items-start justify-between gap-2">
                             <span className="min-w-0">

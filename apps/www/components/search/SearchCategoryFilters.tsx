@@ -38,7 +38,7 @@ export function SearchCategoryFilters({
                             className={cx(
                                 'h-8 shrink-0 rounded-full px-3 text-xs font-medium transition-[background-color,color,box-shadow]',
                                 isActive
-                                    ? 'bg-primary text-primary-foreground shadow-sm'
+                                    ? 'bg-primary text-primary-foreground shadow-xs'
                                     : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground',
                             )}
                             onMouseDown={(event) => event.preventDefault()}

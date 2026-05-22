@@ -86,7 +86,7 @@ export function ImageInput({
                 onDrop={handleDrop}
                 className={cx(
                     'group flex min-h-48 w-full items-center justify-center overflow-hidden rounded-md border border-dashed border-input bg-background text-left transition-colors',
-                    'hover:border-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                    'hover:border-foreground/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                     imageUrl && 'border-solid',
                     isDragging && 'border-primary bg-primary/10',
                 )}

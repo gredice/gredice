@@ -184,7 +184,7 @@ export default function UvjetiKoristenjaPage() {
                                                             {/** biome-ignore lint/performance/noImgElement: Favicons come from third-party domains that are not part of Next image config. */}
                                                             <img
                                                                 alt=""
-                                                                className="size-5 shrink-0 rounded-sm"
+                                                                className="size-5 shrink-0 rounded-xs"
                                                                 height={20}
                                                                 loading="lazy"
                                                                 referrerPolicy="no-referrer"

@@ -152,7 +152,7 @@ function StageDurationDetails({
             trigger={
                 <button
                     type="button"
-                    className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
+                    className="inline-flex rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
                     aria-label={`${label}: ${durationText}`}
                     title={`${label}: ${durationText}`}
                 >

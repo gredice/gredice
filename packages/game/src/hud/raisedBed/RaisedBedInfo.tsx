@@ -149,7 +149,7 @@ export function RaisedBedInfo({
                         ) : (
                             <Stack
                                 spacing={3}
-                                className="rounded-xl border border-red-200 bg-red-50/90 p-4 shadow-sm dark:border-red-900/60 dark:bg-red-950/90"
+                                className="rounded-xl border border-red-200 bg-red-50/90 p-4 shadow-xs dark:border-red-900/60 dark:bg-red-950/90"
                             >
                                 <Row spacing={4} alignItems="center">
                                     <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-700 ring-4 ring-red-200/70 dark:bg-red-900/70 dark:text-red-100 dark:ring-red-800/70">

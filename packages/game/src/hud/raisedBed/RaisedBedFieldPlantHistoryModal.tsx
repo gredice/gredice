@@ -90,7 +90,7 @@ export function RaisedBedFieldPlantHistoryModal({
                             <button
                                 key={entryKey}
                                 type="button"
-                                className="flex w-full items-center gap-2 rounded-md border bg-card p-2 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700"
+                                className="flex w-full items-center gap-2 rounded-md border bg-card p-2 text-left transition-colors hover:bg-muted/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700"
                                 aria-label={`Otvori detalje biljke ${plantName}`}
                                 onClick={() => {
                                     setSelectedEntry(entry);

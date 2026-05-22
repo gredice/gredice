@@ -24,17 +24,17 @@ const meta = {
                 <TabsTrigger value="history">Povijest</TabsTrigger>
             </TabsList>
             <TabsContent value="overview">
-                <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-sm">
+                <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-xs">
                     Trenutno stanje gredice, zadnje radnje i korisni sazetak.
                 </div>
             </TabsContent>
             <TabsContent value="calendar">
-                <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-sm">
+                <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-xs">
                     Kalendar sjetve, zalijevanja i planiranih radnji.
                 </div>
             </TabsContent>
             <TabsContent value="history">
-                <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-sm">
+                <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-xs">
                     Povijest promjena i biljeske korisnika.
                 </div>
             </TabsContent>
@@ -57,17 +57,17 @@ export const FullWidth: Story = {
                 <TabsTrigger value="history">Povijest</TabsTrigger>
             </TabsList>
             <TabsContent value="overview">
-                <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-sm">
+                <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-xs">
                     Kompaktna navigacija za panele koji zauzimaju cijelu sirinu.
                 </div>
             </TabsContent>
             <TabsContent value="calendar">
-                <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-sm">
+                <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-xs">
                     Sadrzaj ostaje poravnat ispod liste tabova.
                 </div>
             </TabsContent>
             <TabsContent value="history">
-                <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-sm">
+                <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-xs">
                     Aktivni tab koristi povrsinu kartice bez skakanja layouta.
                 </div>
             </TabsContent>
@@ -86,12 +86,12 @@ export const Disabled: Story = {
                 </TabsTrigger>
             </TabsList>
             <TabsContent value="overview">
-                <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-sm">
+                <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-xs">
                     Nedostupni tab ostaje vidljiv, ali nije interaktivan.
                 </div>
             </TabsContent>
             <TabsContent value="calendar">
-                <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-sm">
+                <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-xs">
                     Tipkovnica preskace onemogucene tabove.
                 </div>
             </TabsContent>
@@ -110,12 +110,12 @@ export const LongLabels: Story = {
                     <TabsTrigger value="calendar">Kalendar sijanja</TabsTrigger>
                 </TabsList>
                 <TabsContent value="overview">
-                    <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-sm">
+                    <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-xs">
                         Ogranicena sirina provjerava da tekst ostaje uredan.
                     </div>
                 </TabsContent>
                 <TabsContent value="calendar">
-                    <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-sm">
+                    <div className="rounded-lg border border-border bg-card p-4 text-sm text-card-foreground shadow-xs">
                         Dugi nazivi ostaju centrirani u triggerima.
                     </div>
                 </TabsContent>

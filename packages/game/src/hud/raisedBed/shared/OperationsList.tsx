@@ -173,7 +173,7 @@ export function OperationsList({
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Pretraži..."
-                    className="w-full min-w-60 pl-10 pr-10 py-2 rounded-md border border-input bg-muted/50 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="w-full min-w-60 pl-10 pr-10 py-2 rounded-md border border-input bg-muted/50 text-sm placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
                 />
                 {search && (
                     <IconButton

@@ -202,7 +202,7 @@ export function HistoryRevisionListClient({
                             <div className="space-y-1">
                                 <button
                                     type="button"
-                                    className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-muted/30 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                                     aria-expanded={expanded}
                                     aria-controls={contentId}
                                     onClick={() => toggleGroup(group.key)}
@@ -270,7 +270,7 @@ export function HistoryRevisionListClient({
                                         <button
                                             key={revision.revision.id}
                                             type="button"
-                                            className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                            className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                                             onClick={() =>
                                                 setSelectedRevision(
                                                     revision.revision,

@@ -23,7 +23,7 @@ export function PlantCalendarPicker({
         <Stack spacing={2} className="group">
             <Stack
                 spacing={0}
-                className="bg-muted p-2 rounded-lg border shadow-sm"
+                className="bg-muted p-2 rounded-lg border shadow-xs"
             >
                 {hasCalendarData ? (
                     <Tabs defaultValue="year">

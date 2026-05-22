@@ -31,7 +31,7 @@ export function PlantsSeedTimeFilterToggle({
             className={cx(
                 'inline-flex min-h-10 w-full max-w-full items-center justify-between gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:w-auto',
                 isEnabled
-                    ? 'border-lime-600 bg-lime-600 text-white shadow-sm hover:bg-lime-700'
+                    ? 'border-lime-600 bg-lime-600 text-white shadow-xs hover:bg-lime-700'
                     : 'border-tertiary bg-background text-foreground hover:border-lime-600 hover:bg-lime-50 dark:hover:bg-lime-950/30',
             )}
         >

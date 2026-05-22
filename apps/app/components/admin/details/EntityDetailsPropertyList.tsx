@@ -353,7 +353,7 @@ function renderBooleanValueToggle(value: boolean) {
         >
             <span
                 className={cx(
-                    'inline-block size-4 rounded-full shadow-sm transition-transform',
+                    'inline-block size-4 rounded-full shadow-xs transition-transform',
                     value ? 'bg-primary-foreground' : 'bg-muted-foreground',
                     value ? 'translate-x-4' : 'translate-x-0.5',
                 )}

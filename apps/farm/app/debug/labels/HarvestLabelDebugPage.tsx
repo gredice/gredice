@@ -295,7 +295,7 @@ export function HarvestLabelDebugPage() {
                                                 preset={
                                                     DEFAULT_HARVEST_LABEL_PRESET
                                                 }
-                                                className="rounded border border-black bg-white shadow-sm"
+                                                className="rounded border border-black bg-white shadow-xs"
                                             />
                                         </div>
                                     </Stack>

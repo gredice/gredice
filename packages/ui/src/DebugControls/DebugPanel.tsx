@@ -95,7 +95,7 @@ export function DebugPanelSection({
         <Stack
             spacing={3}
             className={cx(
-                'rounded-lg border border-border/40 bg-background/80 p-3 shadow-sm backdrop-blur-sm',
+                'rounded-lg border border-border/40 bg-background/80 p-3 shadow-xs backdrop-blur-xs',
                 className,
             )}
         >

@@ -124,7 +124,7 @@ export function RaisedBedFieldLifecycleTab({
     const statusTrigger = field.active ? (
         <button
             type="button"
-            className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex flex-col gap-1 items-center justify-center pointer-events-auto transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
+            className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex flex-col gap-1 items-center justify-center pointer-events-auto transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
             aria-label={
                 canChangeStatus
                     ? `Promijeni stanje biljke: ${localizedStatus.shortLabel}`

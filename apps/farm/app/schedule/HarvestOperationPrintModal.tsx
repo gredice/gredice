@@ -166,7 +166,7 @@ export function HarvestOperationPrintModal({
                 <div className="rounded-lg border bg-muted/20 p-3">
                     <HarvestLabelPreviewCanvas
                         labelData={labelData}
-                        className="mx-auto block w-full max-w-sm rounded border bg-white shadow-sm"
+                        className="mx-auto block w-full max-w-sm rounded border bg-white shadow-xs"
                     />
                 </div>
 

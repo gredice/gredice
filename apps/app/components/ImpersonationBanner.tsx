@@ -178,7 +178,7 @@ export function ImpersonationBanner() {
     return (
         <div
             ref={bannerRef}
-            className="fixed z-[9999] flex max-w-[calc(100vw-1rem)] flex-wrap items-center gap-2 rounded-full border border-yellow-700/70 bg-yellow-400/95 px-2.5 py-1.5 text-xs font-medium text-black shadow-lg backdrop-blur-sm"
+            className="fixed z-[9999] flex max-w-[calc(100vw-1rem)] flex-wrap items-center gap-2 rounded-full border border-yellow-700/70 bg-yellow-400/95 px-2.5 py-1.5 text-xs font-medium text-black shadow-lg backdrop-blur-xs"
             style={{
                 left: position?.left ?? bannerOffset,
                 opacity: position ? 1 : 0,

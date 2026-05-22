@@ -34,7 +34,7 @@ export function NavGroup({
     const rootClassName = className ? `space-y-1 ${className}` : 'space-y-1';
     const isNested = depth > 0;
     const buttonClassName = [
-        'group/nav-group relative flex w-full items-center gap-2 rounded-md text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'group/nav-group relative flex w-full items-center gap-2 rounded-md text-left outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         depth === 0
             ? 'h-8 px-2 text-foreground text-sm font-medium hover:bg-muted/70'
             : 'h-8 px-2 text-foreground text-sm hover:bg-muted/70',

@@ -44,6 +44,7 @@
         "@gredice/ui": "workspace:*",
         "@playwright/experimental-ct-react": "1.60.0",
         "@playwright/test": "1.60.0",
+        "@tailwindcss/postcss": "4.3.0",
         "@tailwindcss/typography": "0.5.19",
         "@tanstack/react-query": "5.100.11",
         "@types/node": "24.12.2",
@@ -54,7 +55,7 @@
         "nuqs": "2.8.9",
         "postcss": "8.5.15",
         "sass": "1.99.0",
-        "tailwindcss": "3.4.19",
+        "tailwindcss": "4.3.0",
         "typescript": "6.0.3"
     }
 }

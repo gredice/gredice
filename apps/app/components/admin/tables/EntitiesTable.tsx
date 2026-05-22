@@ -130,7 +130,7 @@ export function EntitiesTable({
             >
                 <button
                     type="button"
-                    className="flex w-full min-w-0 items-center gap-1 text-left font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm"
+                    className="flex w-full min-w-0 items-center gap-1 text-left font-medium focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-xs"
                     onClick={() => handleSort(key)}
                     aria-label={`Sortiraj ${label.toLowerCase()}`}
                 >

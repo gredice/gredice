@@ -113,7 +113,7 @@ export function RaisedBedFieldStatusChange({
                                     type="button"
                                     title="Odaberi datum promjene"
                                     aria-label={`Odaberi datum promjene: ${formatStatusChangeDate(selectedDate)}`}
-                                    className="inline-flex items-center gap-1 rounded-xl border bg-card px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-card-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
+                                    className="inline-flex items-center gap-1 rounded-xl border bg-card px-1.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-card-foreground/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
                                 >
                                     <Calendar
                                         className="size-3.5 shrink-0"

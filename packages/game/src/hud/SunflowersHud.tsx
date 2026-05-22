@@ -200,7 +200,7 @@ function SunflowersAmount() {
                             aria-hidden="true"
                             title={`U košari: ${formatSunflowers(pendingSunflowers)} 🌻`}
                             data-sunflowers-cart-indicator
-                            className="pointer-events-none absolute -right-1 -top-1 flex size-6 items-center justify-center rounded-full border border-background bg-neutral-100 text-neutral-900 shadow-sm"
+                            className="pointer-events-none absolute -right-1 -top-1 flex size-6 items-center justify-center rounded-full border border-background bg-neutral-100 text-neutral-900 shadow-xs"
                         >
                             <ShoppingCartIcon className="size-[18px] shrink-0" />
                         </span>

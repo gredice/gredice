@@ -42,7 +42,7 @@ export function OperationsHandbook({
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     placeholder="Pretraži radnje"
-                    className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+                    className="min-w-0 flex-1 bg-transparent outline-hidden placeholder:text-muted-foreground"
                 />
             </label>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

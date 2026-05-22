@@ -40,3 +40,4 @@ Use this guide for visual and interaction design decisions.
 - New reusable UI components need stories under `apps/storybook/stories`.
 - Stories should cover the meaningful states: default, loading, empty, disabled, error, long content, and any important variants.
 - Keep stories close to real product usage rather than synthetic decoration.
+- New `@gredice/ui` components and meaningful variants should also be added to the most relevant Storybook showcase page, such as dashboard, public content, garden workspace, or account/state demos.
