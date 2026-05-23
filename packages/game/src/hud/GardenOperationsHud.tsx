@@ -395,6 +395,24 @@ function OperationDates({ operation }: { operation: GardenOperationItem }) {
     );
 }
 
+function getActiveOperationName({
+    operation,
+    operationName,
+}: {
+    operation: GardenOperationItem;
+    operationName?: string;
+}) {
+    if (operationName) {
+        return operationName;
+    }
+
+    if (operation.raisedBedFieldId != null) {
+        return plantingOperationLabel;
+    }
+
+    return `Radnja #${operation.id}`;
+}
+
 function OperationCard({
     operation,
     operationName,
@@ -404,6 +422,11 @@ function OperationCard({
     operationName?: string;
     operationData?: OperationData;
 }) {
+    const resolvedOperationName = getActiveOperationName({
+        operation,
+        operationName,
+    });
+
     return (
         <div className="rounded-xl border p-3">
             <Row spacing={3} alignItems="start">
@@ -419,7 +442,7 @@ function OperationCard({
                 <Stack spacing={1.5} className="min-w-0 flex-1">
                     <Stack spacing={0.5}>
                         <Typography level="body2" semiBold noWrap>
-                            {operationName ?? `Radnja #${operation.id}`}
+                            {resolvedOperationName}
                         </Typography>
                         <Typography level="body3" secondary>
                             {operation.targetLabel}

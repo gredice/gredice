@@ -139,6 +139,37 @@ function createQueryClient() {
         },
     });
     const garden = buildGarden();
+    const pendingOperationPage = {
+        pages: [
+            {
+                items: [
+                    {
+                        id: 601,
+                        entityId: 999_001,
+                        raisedBedId: TEST_RAISED_BED_ID,
+                        raisedBedFieldId: 1,
+                        status: 'planned',
+                        createdAt: now,
+                        scheduledDate: '2026-05-22T00:00:00.000Z',
+                        scheduledAt: '2026-05-22T00:00:00.000Z',
+                        completedAt: null,
+                        verifiedAt: null,
+                        canceledAt: null,
+                        targetLabel: 'Polje 1 • Raised Bed 1',
+                        statusHistory: [
+                            {
+                                status: 'planned',
+                                changedAt: now,
+                            },
+                        ],
+                    },
+                ],
+                nextCursor: null,
+                total: 1,
+            },
+        ],
+        pageParams: [0],
+    };
     const emptyOperationPage = {
         pages: [{ items: [], nextCursor: null, total: 0 }],
         pageParams: [0],
@@ -173,7 +204,7 @@ function createQueryClient() {
     });
     queryClient.setQueryData(
         ['garden-operations', TEST_GARDEN_ID, false, 10],
-        emptyOperationPage,
+        pendingOperationPage,
     );
     queryClient.setQueryData(
         ['garden-operations', TEST_GARDEN_ID, true, 20],

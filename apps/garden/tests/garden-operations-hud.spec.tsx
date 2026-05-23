@@ -27,6 +27,9 @@ test.describe('Garden operations HUD', () => {
         ).toBeVisible();
         await expect(page.getByText('Zakazano: sutra')).toBeVisible();
         await expect(page.getByText('U košari').last()).toBeVisible();
+
+        await expect(page.getByText('Sadnja')).toBeVisible();
+        await expect(page.getByText('Polje 1 • Raised Bed 1')).toBeVisible();
         await expect(page.getByText('Nema nedovršenih radnji.')).toHaveCount(0);
     });
 });
