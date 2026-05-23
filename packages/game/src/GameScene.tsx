@@ -39,6 +39,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string;
     spriteBaseUrl?: string;
     zoom?: 'far' | 'normal';
+    cameraPosition?: [x: number, y: number, z: number];
 
     // Demo purposes only
     freezeTime?: Date;
@@ -58,6 +59,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
 };
 
 export function GameScene({
+    cameraPosition = defaultGameCameraPosition,
     zoom = 'normal',
     noControls,
     noWeather,
@@ -110,7 +112,7 @@ export function GameScene({
         >
             <GameSceneDetailContext.Provider value={{ renderDetails }}>
                 <Scene
-                    position={defaultGameCameraPosition}
+                    position={cameraPosition}
                     quality={qualityProfile}
                     zoom={
                         zoom === 'far'

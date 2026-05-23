@@ -1,5 +1,6 @@
 'use client';
 
+import { SquareArrowRightEnter } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { useCurrentUser } from '../hooks/useCurrentUser';
@@ -10,19 +11,32 @@ export function NavUserButton({ href }: { href: string }) {
     return (
         <NavigatingButton
             href={href}
-            className="whitespace-nowrap bg-green-800 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 dark:text-white rounded-full"
+            className="shrink-0 whitespace-nowrap rounded-full bg-green-800 px-3 hover:bg-green-700 dark:bg-green-700 dark:text-white dark:hover:bg-green-600 sm:px-4"
+            endDecorator={
+                <span className="hidden pl-1 sm:inline-flex">
+                    <SquareArrowRightEnter aria-hidden className="size-4" />
+                </span>
+            }
             startDecorator={
                 user ? (
-                    <UserAvatar
-                        avatarUrl={user.avatarUrl}
-                        displayName={user.displayName ?? user.userName}
-                        className="-ml-3.5 mr-1"
-                        animate
-                    />
+                    <span className="hidden sm:inline-flex">
+                        <UserAvatar
+                            avatarUrl={user.avatarUrl}
+                            displayName={user.displayName ?? user.userName}
+                            className="-ml-3.5 mr-1"
+                            animate
+                        />
+                    </span>
                 ) : undefined
             }
         >
-            {user ? 'Moj vrt' : 'Moj novi vrt'}
+            <span className="hidden sm:inline">
+                {user ? 'Moj vrt' : 'Moj novi vrt'}
+            </span>
+            <span className="sr-only sm:hidden">
+                {user ? 'Moj vrt' : 'Moj novi vrt'}
+            </span>
+            <SquareArrowRightEnter aria-hidden className="size-5 sm:hidden" />
         </NavigatingButton>
     );
 }

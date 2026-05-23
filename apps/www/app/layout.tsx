@@ -116,7 +116,7 @@ export default async function RootLayout({
                     <PageNav
                         logo={
                             <Logotype
-                                className="w-[140px] h-[38px]"
+                                className="h-[38px] w-[128px] sm:w-[140px]"
                                 aria-label="Gredice"
                             />
                         }
@@ -144,9 +144,8 @@ export default async function RootLayout({
                             </NavLinkButton>,
                         ]}
                     >
-                        <div className="absolute bg-background/80 w-full inset-0 -z-10" />
-                        <div className="flex items-center gap-2">
-                            <NavSearch className="md:-ml-1 xl:absolute xl:left-1/2 xl:top-1/2 xl:ml-0 xl:-translate-x-1/2 xl:-translate-y-1/2" />
+                        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+                            <NavSearch className="shrink-0 md:-ml-1 xl:absolute xl:left-1/2 xl:top-1/2 xl:ml-0 xl:-translate-x-1/2 xl:-translate-y-1/2" />
                             <NavUserButton href={KnownPages.GardenApp} />
                         </div>
                     </PageNav>

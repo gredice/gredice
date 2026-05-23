@@ -18,7 +18,7 @@ import { InstagramCard } from '../components/social/InstagramCard';
 import { WhatsAppCard } from '../components/social/WhatsAppCard';
 import { WinterModeToggle } from '../components/WinterModeToggle';
 import { KnownPages } from '../src/KnownPages';
-import { LandingGameScene } from './LandingGameScene';
+import { LandingGameScene, LandingGameSignupCta } from './LandingGameScene';
 import { NewsletterSignUp } from './NewsletterSignUp';
 import { PlantsShowcase } from './PlantsShowcase';
 
@@ -239,57 +239,48 @@ function StepsSection() {
 export default function Home() {
     return (
         <Stack>
-            <div className="relative">
-                <div className="relative h-[100dvh] lg:h-[700px] -mt-16 w-full overflow-hidden">
-                    <Image
-                        alt="Tvoj novi vrt u Gredice aplikaciji"
-                        className="absolute inset-0 h-full w-full object-contain opacity-0 pointer-events-none"
-                        height={1080}
-                        src="/seo-fallback.png"
-                        width={1920}
-                    />
-                    <LandingGameScene />
+            <div className="relative pt-3 pb-4 md:pt-6">
+                <Container
+                    maxWidth="xl"
+                    className="relative px-2 sm:px-4 [--landing-card-radius:calc(var(--landing-frame-radius)*0.625)] [--landing-frame-radius:1.5rem] md:[--landing-frame-radius:2rem]"
+                >
                     <div
-                        className="pointer-events-none absolute inset-x-0 bottom-0 h-24"
-                        style={{
-                            background: `linear-gradient(
-                                to bottom,
-                                hsl(var(--background) / 0) 0%,
-                                hsl(var(--background) / 0.013) 8.1%,
-                                hsl(var(--background) / 0.049) 15.5%,
-                                hsl(var(--background) / 0.104) 22.5%,
-                                hsl(var(--background) / 0.175) 29%,
-                                hsl(var(--background) / 0.259) 35.3%,
-                                hsl(var(--background) / 0.352) 41.2%,
-                                hsl(var(--background) / 0.45) 47.1%,
-                                hsl(var(--background) / 0.55) 52.9%,
-                                hsl(var(--background) / 0.648) 58.8%,
-                                hsl(var(--background) / 0.741) 64.7%,
-                                hsl(var(--background) / 0.825) 71%,
-                                hsl(var(--background) / 0.896) 77.5%,
-                                hsl(var(--background) / 0.951) 84.5%,
-                                hsl(var(--background) / 0.987) 91.9%,
-                                hsl(var(--background)) 100%
-                            )`,
-                        }}
-                    />
-                </div>
-                <Container className="absolute top-0 left-0 right-0">
-                    <div className="flex flex-col items-end sm:flex-row sm:items-start sm:justify-between gap-4 mt-4">
-                        <Card className="w-fit border-tertiary border-b-4">
-                            <CardContent noHeader className="p-6 lg:pr-10">
-                                <Stack spacing={4}>
-                                    <Typography level="h2" component="h1">
-                                        Vrt po tvom 🌱
-                                    </Typography>
-                                    <Typography level="body1">
-                                        Dobiješ povrće iz svojih gredica - nit
-                                        oro, nit kopo!
-                                    </Typography>
-                                </Stack>
-                            </CardContent>
-                        </Card>
-                        <WinterModeToggle />
+                        className="relative h-[min(540px,calc(100dvh-18rem))] min-h-[420px] w-full overflow-hidden rounded-[var(--landing-frame-radius)] border border-tertiary/70 bg-muted shadow-2xl shadow-foreground/10 md:h-[calc(100dvh-9rem)] md:max-h-[720px] lg:min-h-[560px]"
+                        data-testid="landing-game-frame"
+                    >
+                        <Image
+                            alt="Tvoj novi vrt u Gredice aplikaciji"
+                            className="absolute inset-0 h-full w-full object-contain opacity-0 pointer-events-none"
+                            height={1080}
+                            src="/seo-fallback.png"
+                            width={1920}
+                        />
+                        <LandingGameScene />
+                    </div>
+                    <LandingGameSignupCta />
+                    <div className="pointer-events-none absolute left-8 right-8 top-8 z-10 sm:left-10 sm:right-10 md:top-10 lg:left-16 lg:right-16 lg:top-12">
+                        <div className="pointer-events-auto flex flex-col items-start sm:flex-row sm:items-start sm:justify-between gap-4">
+                            <Card
+                                className="w-fit max-w-[19rem] rounded-[var(--landing-card-radius)] border-tertiary border-b-4 sm:max-w-none"
+                                data-testid="landing-hero-card"
+                            >
+                                <CardContent
+                                    noHeader
+                                    className="p-5 sm:p-6 lg:pr-10"
+                                >
+                                    <Stack spacing={4}>
+                                        <Typography level="h2" component="h1">
+                                            Vrt po tvom 🌱
+                                        </Typography>
+                                        <Typography level="body1">
+                                            Dobiješ povrće iz svojih gredica -
+                                            nit oro, nit kopo!
+                                        </Typography>
+                                    </Stack>
+                                </CardContent>
+                            </Card>
+                            <WinterModeToggle />
+                        </div>
                     </div>
                 </Container>
             </div>

@@ -129,6 +129,7 @@ export {
     Sparkles as AI,
     Sprout,
     Square as Stop,
+    SquareArrowRightEnter,
     Store,
     Sun,
     SunMoon,
