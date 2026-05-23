@@ -126,7 +126,14 @@ export const testSorts = {
 export type FieldConfig = {
     positionIndex: number;
     plantSortId?: number;
-    plantStatus?: 'sowed' | 'sprouted' | 'ready' | 'died';
+    plantStatus?:
+        | 'new'
+        | 'planned'
+        | 'pendingVerification'
+        | 'sowed'
+        | 'sprouted'
+        | 'ready'
+        | 'died';
     plantScheduledDate?: string;
     plantSowDate?: string;
     plantGrowthDate?: string;

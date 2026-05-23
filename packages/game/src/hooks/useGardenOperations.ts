@@ -27,6 +27,7 @@ export type GardenOperationStatus =
 export type GardenOperationItem = {
     id: number;
     entityId: number;
+    entityTypeName: string;
     raisedBedId: number | null;
     raisedBedFieldId: number | null;
     status: GardenOperationStatus;
@@ -51,8 +52,9 @@ type GardenOperationsPage = {
 
 type GardenOperationItemResponse = Omit<
     GardenOperationItem,
-    'status' | 'statusHistory'
+    'entityTypeName' | 'status' | 'statusHistory'
 > & {
+    entityTypeName?: string;
     status: string;
     statusHistory: ({
         status: string;
@@ -78,6 +80,7 @@ function parseGardenOperationItem(
 ): GardenOperationItem {
     return {
         ...item,
+        entityTypeName: item.entityTypeName ?? 'operation',
         status: parseGardenOperationStatus(item.status),
         statusHistory: item.statusHistory.flatMap((entry) => {
             if (!entry) {
