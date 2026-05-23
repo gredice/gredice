@@ -149,13 +149,17 @@ export type RaisedBedFieldCreatePayload = {
     status: string;
 };
 
+export type RaisedBedFieldSowingLocation = 'direct' | 'greenhouse';
+
 export type RaisedBedFieldPlantPlacePayload = {
     plantSortId: string;
     scheduledDate: string | null | undefined;
+    sowingLocation?: RaisedBedFieldSowingLocation;
 };
 
 export type RaisedBedFieldPlantSchedulePayload = {
     scheduledDate: string | null | undefined;
+    sowingLocation?: RaisedBedFieldSowingLocation;
 };
 
 export type RaisedBedFieldPlantUpdatePayload =

@@ -44,6 +44,7 @@ import {
     getEvents,
     knownEvents,
     knownEventTypes,
+    type RaisedBedFieldSowingLocation,
 } from './eventsRepo';
 import { getFarms } from './farmsRepo';
 
@@ -74,6 +75,7 @@ export type RaisedBedFieldPlantCycle = {
     plantStatus?: string;
     plantSortId?: number;
     plantScheduledDate?: Date;
+    sowingLocation: RaisedBedFieldSowingLocation;
     plantSowDate?: Date;
     plantGrowthDate?: Date;
     plantReadyDate?: Date;
@@ -588,6 +590,12 @@ function parsePlantSortId(value: unknown) {
     return undefined;
 }
 
+function parseSowingLocation(
+    value: unknown,
+): RaisedBedFieldSowingLocation | undefined {
+    return value === 'direct' || value === 'greenhouse' ? value : undefined;
+}
+
 function splitPlantCycleEvents(
     plantEvents: RaisedBedFieldPlantCycleEvent[],
 ): RaisedBedFieldPlantCycleEvent[][] {
@@ -632,6 +640,7 @@ function summarizePlantCycle(
     let plantStatus: string | undefined;
     let plantSortId: number | undefined;
     let plantScheduledDate: Date | undefined;
+    let sowingLocation: RaisedBedFieldSowingLocation = 'direct';
     let plantSowDate: Date | undefined;
     let plantGrowthDate: Date | undefined;
     let plantReadyDate: Date | undefined;
@@ -659,6 +668,8 @@ function summarizePlantCycle(
             stoppedDate = undefined;
             plantStatus = 'new';
             plantSortId = parsePlantSortId(data?.plantSortId);
+            sowingLocation =
+                parseSowingLocation(data?.sowingLocation) ?? 'direct';
 
             if (data?.scheduledDate && typeof data.scheduledDate === 'string') {
                 plantScheduledDate = new Date(data.scheduledDate);
@@ -700,6 +711,8 @@ function summarizePlantCycle(
             } else if (data?.scheduledDate == null) {
                 plantScheduledDate = undefined;
             }
+            sowingLocation =
+                parseSowingLocation(data?.sowingLocation) ?? sowingLocation;
             continue;
         }
 
@@ -811,6 +824,7 @@ function summarizePlantCycle(
         plantStatus,
         plantSortId,
         plantScheduledDate,
+        sowingLocation,
         plantSowDate,
         plantGrowthDate,
         plantReadyDate,
@@ -1456,6 +1470,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
         let plantStatus: string | undefined;
         let plantSortId: number | undefined;
         let plantScheduledDate: Date | undefined;
+        let sowingLocation: RaisedBedFieldSowingLocation = 'direct';
         let plantSowDate: Date | undefined;
         let plantGrowthDate: Date | undefined;
         let plantReadyDate: Date | undefined;
@@ -1481,6 +1496,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 stoppedDate = undefined;
                 plantStatus = 'new';
                 plantSortId = undefined;
+                sowingLocation = 'direct';
                 plantScheduledDate = undefined;
                 plantSowDate = undefined;
                 plantGrowthDate = undefined;
@@ -1503,6 +1519,8 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                         `Invalid plantSortId in event ${event.id} for field ${field.id}`,
                     );
                 }
+                sowingLocation =
+                    parseSowingLocation(data?.sowingLocation) ?? 'direct';
 
                 // Parse scheduled date if provided
                 if (
@@ -1536,6 +1554,8 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
                 } else if (data?.scheduledDate == null) {
                     plantScheduledDate = undefined;
                 }
+                sowingLocation =
+                    parseSowingLocation(data?.sowingLocation) ?? sowingLocation;
             }
             // Handle plant status update event
             else if (
@@ -1653,6 +1673,7 @@ export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
             plantStatus,
             plantSortId,
             plantScheduledDate,
+            sowingLocation,
             plantSowDate,
             plantGrowthDate,
             plantReadyDate,
