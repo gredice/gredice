@@ -31,6 +31,7 @@ import {
     useGardenOperations,
 } from '../hooks/useGardenOperations';
 import { useOperations } from '../hooks/useOperations';
+import { useSorts } from '../hooks/usePlantSorts';
 import {
     type ShoppingCartItemData,
     useShoppingCart,
@@ -40,9 +41,29 @@ import { useShoppingCartOpenParam } from '../useUrlState';
 type OperationData = NonNullable<
     ReturnType<typeof useOperations>['data']
 >[number];
+type PlantSortData = NonNullable<ReturnType<typeof useSorts>['data']>[number];
 type CurrentGardenData = NonNullable<
     ReturnType<typeof useCurrentGarden>['data']
 >;
+type RaisedBedData = CurrentGardenData['raisedBeds'][number];
+type RaisedBedFieldData = RaisedBedData['fields'][number];
+type GardenOperationHudItem = GardenOperationItem;
+type SowingPlantLifecycleEntry = {
+    active?: boolean | null;
+    assignedAt?: string | Date | null;
+    assignedUserId?: string | null;
+    assignedUserIds?: string[] | null;
+    createdAt?: string | Date | null;
+    endedAt?: string | Date | null;
+    plantPlaceEventId?: number | null;
+    plantScheduledDate?: string | Date | null;
+    plantSowDate?: string | Date | null;
+    plantStatus?: string | null;
+    plantSortId?: number | null;
+    startedAt?: string | Date | null;
+    stoppedDate?: string | Date | null;
+    updatedAt?: string | Date | null;
+};
 
 const uiPipeline: GardenOperationStatus[] = [
     'new',
@@ -66,6 +87,17 @@ const cartOperationEntityType = 'operation' as const;
 const cartPlantSortEntityType = 'plantSort' as const;
 const plantingOperationLabel = 'Sadnja';
 const plantSortFallbackLabel = 'Sorta';
+const sowingCompletedStatuses = new Set([
+    'sowed',
+    'sprouted',
+    'firstFlowers',
+    'firstFruitSet',
+    'ready',
+    'harvested',
+    'notSprouted',
+    'died',
+    'removed',
+]);
 
 type StatusConfig = {
     label: string;
@@ -166,6 +198,223 @@ function getCartItemScheduledDate(item: ShoppingCartItemData) {
 function getTimestamp(value: string | Date | null | undefined) {
     const timestamp = value ? new Date(value).getTime() : 0;
     return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function toIsoString(value: string | Date | null | undefined) {
+    if (!value) return null;
+
+    const date = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function getSowingEntryCreatedAt(
+    entry: SowingPlantLifecycleEntry,
+    field: RaisedBedFieldData,
+) {
+    return (
+        toIsoString(entry.startedAt) ??
+        toIsoString(entry.createdAt) ??
+        toIsoString(field.createdAt) ??
+        toIsoString(entry.plantScheduledDate) ??
+        toIsoString(field.updatedAt) ??
+        new Date(0).toISOString()
+    );
+}
+
+function getSowingEntryCompletedAt(entry: SowingPlantLifecycleEntry) {
+    return (
+        toIsoString(entry.plantSowDate) ??
+        toIsoString(entry.endedAt) ??
+        toIsoString(entry.updatedAt)
+    );
+}
+
+function hasAssignedSowingUser(entry: SowingPlantLifecycleEntry) {
+    return (
+        (entry.assignedUserIds?.length ?? 0) > 0 ||
+        Boolean(entry.assignedUserId)
+    );
+}
+
+function getSowingOperationStatus(
+    entry: SowingPlantLifecycleEntry,
+): GardenOperationStatus | null {
+    const status = entry.plantStatus ?? 'new';
+
+    if (status === 'deleted' || status === 'canceled') {
+        return 'canceled';
+    }
+
+    if (sowingCompletedStatuses.has(status)) {
+        return 'completed';
+    }
+
+    if (status === 'pendingVerification') {
+        return 'confirmed';
+    }
+
+    const hasAssignedUser = hasAssignedSowingUser(entry);
+    if (status === 'planned' && hasAssignedUser) {
+        return 'confirmed';
+    }
+
+    if (hasAssignedUser) {
+        return 'assigned';
+    }
+
+    if (status === 'planned' || entry.plantScheduledDate) {
+        return 'planned';
+    }
+
+    if (status === 'new') {
+        return 'new';
+    }
+
+    return null;
+}
+
+function buildSowingStatusHistory(
+    entry: SowingPlantLifecycleEntry,
+    field: RaisedBedFieldData,
+    status: GardenOperationStatus,
+): GardenOperationItem['statusHistory'] {
+    const createdAt = getSowingEntryCreatedAt(entry, field);
+    const plannedAt = toIsoString(entry.plantScheduledDate);
+    const assignedAt = toIsoString(entry.assignedAt);
+    const completedAt = getSowingEntryCompletedAt(entry);
+    const canceledAt =
+        status === 'canceled'
+            ? (toIsoString(entry.stoppedDate) ??
+              toIsoString(entry.updatedAt) ??
+              createdAt)
+            : null;
+    const history: GardenOperationItem['statusHistory'] = [
+        {
+            status: 'new',
+            changedAt: createdAt,
+        },
+    ];
+
+    if (
+        plannedAt ||
+        status === 'planned' ||
+        status === 'assigned' ||
+        status === 'confirmed' ||
+        status === 'completed'
+    ) {
+        history.push({
+            status: 'planned',
+            changedAt: plannedAt ?? createdAt,
+        });
+    }
+
+    if (
+        assignedAt ||
+        status === 'assigned' ||
+        (status === 'confirmed' && hasAssignedSowingUser(entry))
+    ) {
+        history.push({
+            status: 'assigned',
+            changedAt: assignedAt ?? plannedAt ?? createdAt,
+        });
+    }
+
+    if (status === 'confirmed') {
+        history.push({
+            status: 'confirmed',
+            changedAt: completedAt ?? assignedAt ?? plannedAt ?? createdAt,
+        });
+    }
+
+    if (status === 'completed') {
+        history.push({
+            status: 'completed',
+            changedAt: completedAt ?? plannedAt ?? createdAt,
+        });
+    }
+
+    if (status === 'canceled') {
+        history.push({
+            status: 'canceled',
+            changedAt: canceledAt ?? createdAt,
+        });
+    }
+
+    return history;
+}
+
+function getSowingEntries(
+    field: RaisedBedFieldData,
+): SowingPlantLifecycleEntry[] {
+    if (field.plantCycles && field.plantCycles.length > 0) {
+        return field.plantCycles.map((plantCycle) => plantCycle);
+    }
+
+    return [field];
+}
+
+function buildSowingOperationItems(
+    garden: CurrentGardenData | null | undefined,
+): GardenOperationHudItem[] {
+    if (!garden) {
+        return [];
+    }
+
+    return garden.raisedBeds.flatMap((raisedBed) =>
+        raisedBed.fields.flatMap((field) =>
+            getSowingEntries(field).flatMap((entry) => {
+                if (typeof entry.plantSortId !== 'number') {
+                    return [];
+                }
+
+                const status = getSowingOperationStatus(entry);
+                if (!status) {
+                    return [];
+                }
+
+                const createdAt = getSowingEntryCreatedAt(entry, field);
+                const completedAt = getSowingEntryCompletedAt(entry);
+                const scheduledDate = toIsoString(entry.plantScheduledDate);
+                const canceledAt =
+                    status === 'canceled'
+                        ? (toIsoString(entry.stoppedDate) ??
+                          toIsoString(entry.updatedAt))
+                        : null;
+                const sourceId =
+                    typeof entry.plantPlaceEventId === 'number'
+                        ? entry.plantPlaceEventId
+                        : field.id;
+
+                return [
+                    {
+                        id: -sourceId,
+                        entityId: entry.plantSortId,
+                        entityTypeName: cartPlantSortEntityType,
+                        raisedBedId: raisedBed.id,
+                        raisedBedFieldId: field.id,
+                        status,
+                        createdAt,
+                        scheduledDate,
+                        scheduledAt: scheduledDate,
+                        completedAt:
+                            status === 'completed' || status === 'confirmed'
+                                ? completedAt
+                                : null,
+                        verifiedAt: status === 'completed' ? completedAt : null,
+                        canceledAt,
+                        targetLabel: `Polje ${field.positionIndex + 1} • ${
+                            raisedBed.name
+                        }`,
+                        statusHistory: buildSowingStatusHistory(
+                            entry,
+                            field,
+                            status,
+                        ),
+                    },
+                ];
+            }),
+        ),
+    );
 }
 
 function getCartOperationTargetLabel(
@@ -355,7 +604,11 @@ function buildSegments(operation: GardenOperationItem) {
     return segments;
 }
 
-function OperationProgress({ operation }: { operation: GardenOperationItem }) {
+function OperationProgress({
+    operation,
+}: {
+    operation: GardenOperationHudItem;
+}) {
     const segments = useMemo(() => buildSegments(operation), [operation]);
 
     return (
@@ -398,10 +651,18 @@ function OperationDates({ operation }: { operation: GardenOperationItem }) {
 function getActiveOperationName({
     operation,
     operationName,
+    plantSortName,
 }: {
-    operation: GardenOperationItem;
+    operation: GardenOperationHudItem;
     operationName?: string;
+    plantSortName?: string;
 }) {
+    if (operation.entityTypeName === cartPlantSortEntityType) {
+        return plantSortName
+            ? `${plantingOperationLabel}: ${plantSortName}`
+            : plantingOperationLabel;
+    }
+
     if (operationName) {
         return operationName;
     }
@@ -417,21 +678,31 @@ function OperationCard({
     operation,
     operationName,
     operationData,
+    plantSortData,
 }: {
-    operation: GardenOperationItem;
+    operation: GardenOperationHudItem;
     operationName?: string;
     operationData?: OperationData;
+    plantSortData?: PlantSortData;
 }) {
     const resolvedOperationName = getActiveOperationName({
         operation,
         operationName,
+        plantSortName: plantSortData?.information.name,
     });
 
     return (
         <div className="rounded-xl border p-3">
             <Row spacing={3} alignItems="start">
                 <div className="size-12 rounded-lg bg-card flex items-center justify-center overflow-hidden shrink-0">
-                    {operationData ? (
+                    {plantSortData ? (
+                        <PlantOrSortImage
+                            plantSort={plantSortData}
+                            alt={plantSortData.information.name}
+                            width={40}
+                            height={40}
+                        />
+                    ) : operationData ? (
                         <OperationImage operation={operationData} size={40} />
                     ) : (
                         <Typography level="body3" secondary>
@@ -566,11 +837,13 @@ function HistoryModal({
     trigger,
     operations,
     operationDataById,
+    plantSortById,
     listRef,
 }: {
     trigger: React.ReactElement;
-    operations: GardenOperationItem[];
+    operations: GardenOperationHudItem[];
     operationDataById: Map<number, OperationData>;
+    plantSortById: Map<number, PlantSortData>;
     listRef: (node: HTMLDivElement | null) => void;
 }) {
     return (
@@ -600,15 +873,30 @@ function HistoryModal({
                     ) : (
                         operations.map((operation) => (
                             <OperationCard
-                                key={operation.id}
+                                key={`${operation.entityTypeName}-${operation.id}`}
                                 operation={operation}
                                 operationName={
-                                    operationDataById.get(operation.entityId)
-                                        ?.information.label
+                                    operation.entityTypeName ===
+                                    cartOperationEntityType
+                                        ? operationDataById.get(
+                                              operation.entityId,
+                                          )?.information.label
+                                        : undefined
                                 }
-                                operationData={operationDataById.get(
-                                    operation.entityId,
-                                )}
+                                operationData={
+                                    operation.entityTypeName ===
+                                    cartOperationEntityType
+                                        ? operationDataById.get(
+                                              operation.entityId,
+                                          )
+                                        : undefined
+                                }
+                                plantSortData={
+                                    operation.entityTypeName ===
+                                    cartPlantSortEntityType
+                                        ? plantSortById.get(operation.entityId)
+                                        : undefined
+                                }
                             />
                         ))
                     )}
@@ -619,7 +907,7 @@ function HistoryModal({
     );
 }
 
-function getLatestOperationChangeTime(operation: GardenOperationItem) {
+function getLatestOperationChangeTime(operation: GardenOperationHudItem) {
     let latest = new Date(operation.createdAt).getTime();
 
     for (const entry of operation.statusHistory) {
@@ -632,7 +920,7 @@ function getLatestOperationChangeTime(operation: GardenOperationItem) {
     return latest;
 }
 
-function sortNewestFirst(operations: GardenOperationItem[]) {
+function sortNewestFirst(operations: GardenOperationHudItem[]) {
     return [...operations].sort((a, b) => {
         const dateDiff =
             getLatestOperationChangeTime(b) - getLatestOperationChangeTime(a);
@@ -641,7 +929,7 @@ function sortNewestFirst(operations: GardenOperationItem[]) {
     });
 }
 
-function sortScheduledSoonestFirst(operations: GardenOperationItem[]) {
+function sortScheduledSoonestFirst(operations: GardenOperationHudItem[]) {
     return [...operations].sort((a, b) => {
         const aDate = new Date(a.scheduledDate ?? a.createdAt).getTime();
         const bDate = new Date(b.scheduledDate ?? b.createdAt).getTime();
@@ -665,24 +953,43 @@ export function GardenOperationsHud() {
         includeCompleted: true,
         pageSize: 20,
     });
+    const sowingOperations = useMemo(
+        () => buildSowingOperationItems(currentGarden),
+        [currentGarden],
+    );
+    const sowingPlantSortIds = useMemo(
+        () =>
+            Array.from(
+                new Set(
+                    sowingOperations.map((operation) => operation.entityId),
+                ),
+            ),
+        [sowingOperations],
+    );
+    const { data: sowingPlantSorts } = useSorts(
+        sowingPlantSortIds.length > 0 ? sowingPlantSortIds : undefined,
+    );
 
     const pendingOperations = useMemo(
         () =>
             sortScheduledSoonestFirst(
-                (
-                    pending.data?.pages.flatMap((page) => page.items) ?? []
-                ).filter(
+                [
+                    ...(pending.data?.pages.flatMap((page) => page.items) ??
+                        []),
+                    ...sowingOperations,
+                ].filter(
                     (operation) => !hiddenFromActive.has(operation.status),
                 ),
             ),
-        [pending.data?.pages],
+        [pending.data?.pages, sowingOperations],
     );
     const historyOperations = useMemo(
         () =>
-            sortNewestFirst(
-                history.data?.pages.flatMap((page) => page.items) ?? [],
-            ),
-        [history.data?.pages],
+            sortNewestFirst([
+                ...(history.data?.pages.flatMap((page) => page.items) ?? []),
+                ...sowingOperations,
+            ]),
+        [history.data?.pages, sowingOperations],
     );
 
     const pendingRef = useInfiniteScroll(
@@ -703,6 +1010,16 @@ export function GardenOperationsHud() {
                 ]),
             ),
         [operationsData],
+    );
+    const plantSortById = useMemo(
+        () =>
+            new Map(
+                (sowingPlantSorts ?? []).map((plantSort) => [
+                    plantSort.id,
+                    plantSort,
+                ]),
+            ),
+        [sowingPlantSorts],
     );
     const cartOperations = useMemo(() => {
         if (!currentGarden) {
@@ -834,16 +1151,32 @@ export function GardenOperationsHud() {
                                 pendingOperations.length > 0 && <Divider />}
                             {pendingOperations.map((operation) => (
                                 <OperationCard
-                                    key={operation.id}
+                                    key={`${operation.entityTypeName}-${operation.id}`}
                                     operation={operation}
                                     operationName={
-                                        operationDataById.get(
-                                            operation.entityId,
-                                        )?.information.label
+                                        operation.entityTypeName ===
+                                        cartOperationEntityType
+                                            ? operationDataById.get(
+                                                  operation.entityId,
+                                              )?.information.label
+                                            : undefined
                                     }
-                                    operationData={operationDataById.get(
-                                        operation.entityId,
-                                    )}
+                                    operationData={
+                                        operation.entityTypeName ===
+                                        cartOperationEntityType
+                                            ? operationDataById.get(
+                                                  operation.entityId,
+                                              )
+                                            : undefined
+                                    }
+                                    plantSortData={
+                                        operation.entityTypeName ===
+                                        cartPlantSortEntityType
+                                            ? plantSortById.get(
+                                                  operation.entityId,
+                                              )
+                                            : undefined
+                                    }
                                 />
                             ))}
                         </>
@@ -854,6 +1187,7 @@ export function GardenOperationsHud() {
                 <HistoryModal
                     operations={historyOperations}
                     operationDataById={operationDataById}
+                    plantSortById={plantSortById}
                     listRef={historyRef}
                     trigger={
                         <Button

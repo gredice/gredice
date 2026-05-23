@@ -10,6 +10,7 @@ import {
     GameStateContext,
 } from '../../../packages/game/src/useGameState';
 import {
+    allSorts,
     buildCartItem,
     buildField,
     TEST_GARDEN_ID,
@@ -77,6 +78,15 @@ function buildGarden() {
                             plantGrowthDate: now,
                         },
                         1,
+                    ),
+                    buildField(
+                        {
+                            positionIndex: 5,
+                            plantSortId: testSorts.basil.id,
+                            plantStatus: 'planned',
+                            plantScheduledDate: '2026-05-23T00:00:00.000Z',
+                        },
+                        2,
                     ),
                 ],
                 appliedOperations: [],
@@ -146,6 +156,7 @@ function createQueryClient() {
                     {
                         id: 601,
                         entityId: 999_001,
+                        entityTypeName: 'operation',
                         raisedBedId: TEST_RAISED_BED_ID,
                         raisedBedFieldId: 1,
                         status: 'planned',
@@ -181,6 +192,7 @@ function createQueryClient() {
         ['gardens', 'current', 'summer', TEST_GARDEN_ID],
         garden,
     );
+    queryClient.setQueryData(['sorts'], allSorts);
     queryClient.setQueryData(['operations'], [cartOperation]);
     queryClient.setQueryData(['shopping-cart'], {
         id: 1,

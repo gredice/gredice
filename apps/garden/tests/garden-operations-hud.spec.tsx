@@ -28,8 +28,28 @@ test.describe('Garden operations HUD', () => {
         await expect(page.getByText('Zakazano: sutra')).toBeVisible();
         await expect(page.getByText('U košari').last()).toBeVisible();
 
-        await expect(page.getByText('Sadnja')).toBeVisible();
+        await expect(page.getByText('Sadnja', { exact: true })).toBeVisible();
         await expect(page.getByText('Polje 1 • Raised Bed 1')).toBeVisible();
+        await expect(page.getByText('Sadnja: Klasični bosiljak')).toBeVisible();
+        await expect(page.getByText('Polje 6 • Raised Bed 1')).toBeVisible();
+        await expect(
+            page.getByText('Zakazano: 23. svibnja 2026.'),
+        ).toBeVisible();
         await expect(page.getByText('Nema nedovršenih radnji.')).toHaveCount(0);
+    });
+
+    test('shows completed sowing tasks in operation history', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<GardenOperationsHudStory />);
+
+        await page.getByTitle('Status radnji').click();
+        await page.getByRole('button', { name: 'Prikaži sve radnje' }).click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog.getByText('Sadnja: Cherry rajčica')).toBeVisible();
+        await expect(dialog.getByText('Polje 3 • Raised Bed 1')).toBeVisible();
+        await expect(dialog.getByText('Završeno')).toBeVisible();
     });
 });
