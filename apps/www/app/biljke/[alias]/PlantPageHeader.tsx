@@ -29,6 +29,24 @@ export function PlantPageHeader({
     const { totalPlants } = calculatePlantsPerField(
         plant.attributes?.seedingDistance,
     );
+    const contentLinks = informationSections
+        .filter((section) => section.avaialble)
+        .map((section) => ({
+            href: `#${slug(section.header)}`,
+            label: section.header,
+        }));
+    if ((plant.information.tip?.length ?? 0) > 0) {
+        contentLinks.push({
+            href: `#${slug('Savjeti')}`,
+            label: 'Savjeti',
+        });
+    }
+    if (!sort) {
+        contentLinks.push({
+            href: `#${slug('Sorte')}`,
+            label: 'Sorte',
+        });
+    }
 
     const baseLatinName = plant.information.latinName
         ? `lat. ${plant.information.latinName}`
@@ -99,23 +117,19 @@ export function PlantPageHeader({
                             Trenutno nije dostupna za sjetvu
                         </Typography>
                     )}
-                    {informationSections.some(
-                        (section) => section.avaialble,
-                    ) && (
+                    {contentLinks.length > 0 && (
                         <Stack spacing={2}>
                             <Typography level="body2">Sadržaj</Typography>
                             <Row spacing={2} className="flex-wrap">
-                                {informationSections
-                                    .filter((section) => section.avaialble)
-                                    .map((section) => (
-                                        <Chip
-                                            key={section.id}
-                                            color="neutral"
-                                            href={`#${slug(section.header)}`}
-                                        >
-                                            {section.header}
-                                        </Chip>
-                                    ))}
+                                {contentLinks.map((link) => (
+                                    <Chip
+                                        key={link.href}
+                                        color="neutral"
+                                        href={link.href}
+                                    >
+                                        {link.label}
+                                    </Chip>
+                                ))}
                             </Row>
                         </Stack>
                     )}
