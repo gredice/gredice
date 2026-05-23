@@ -45,7 +45,7 @@ export function RaisedBedGreenhouseSuggestion({
                         operation={basicGreenhouseOperation}
                         className="size-10 md:size-14 md:mr-4"
                     />
-                    <span className="hidden md:block -ml-2">Plastenik</span>
+                    <span className="hidden md:block -ml-2">Staklenik</span>
                 </ButtonGreen>
             }
         >

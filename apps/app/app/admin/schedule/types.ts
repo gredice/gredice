@@ -1,4 +1,8 @@
-import type { OperationAssignedUser, SelectTimeSlot } from '@gredice/storage';
+import type {
+    OperationAssignedUser,
+    RaisedBedFieldSowingLocation,
+    SelectTimeSlot,
+} from '@gredice/storage';
 
 // Type definitions shared across schedule components
 export type RaisedBedField = {
@@ -7,6 +11,7 @@ export type RaisedBedField = {
     positionIndex: number;
     plantStatus?: string;
     plantScheduledDate?: Date;
+    sowingLocation?: RaisedBedFieldSowingLocation;
     plantSortId?: number;
     plantSowDate?: Date;
     plantGrowthDate?: Date;

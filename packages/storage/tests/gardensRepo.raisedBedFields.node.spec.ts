@@ -892,6 +892,66 @@ test('getRaisedBed returns the latest plant cycle after a field is removed and r
     );
 });
 
+test('raised bed field sowing location is projected from schedule events', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'block-sowing-location');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+
+    await upsertRaisedBedField({
+        raisedBedId,
+        positionIndex: 0,
+    });
+
+    const aggregateId = `${raisedBedId.toString()}|0`;
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+            plantSortId: '101',
+            scheduledDate: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+        }),
+    );
+
+    let [field] = await getRaisedBedFieldsWithEvents(raisedBedId);
+    assert.strictEqual(field?.sowingLocation, 'direct');
+
+    await createEvent(
+        knownEvents.raisedBedFields.plantScheduleV1(aggregateId, {
+            scheduledDate: new Date('2026-01-02T00:00:00.000Z').toISOString(),
+            sowingLocation: 'greenhouse',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantScheduleV1(aggregateId, {
+            scheduledDate: new Date('2026-01-03T00:00:00.000Z').toISOString(),
+        }),
+    );
+
+    [field] = await getRaisedBedFieldsWithEvents(raisedBedId);
+    assert.strictEqual(field?.sowingLocation, 'greenhouse');
+    assert.strictEqual(
+        field?.plantScheduledDate?.toISOString(),
+        '2026-01-03T00:00:00.000Z',
+    );
+
+    let [plantCycle] = await getRaisedBedFieldPlantCycles(raisedBedId);
+    assert.strictEqual(plantCycle?.sowingLocation, 'greenhouse');
+
+    await createEvent(
+        knownEvents.raisedBedFields.plantScheduleV1(aggregateId, {
+            scheduledDate: field?.plantScheduledDate?.toISOString(),
+            sowingLocation: 'direct',
+        }),
+    );
+
+    [field] = await getRaisedBedFieldsWithEvents(raisedBedId);
+    assert.strictEqual(field?.sowingLocation, 'direct');
+
+    [plantCycle] = await getRaisedBedFieldPlantCycles(raisedBedId);
+    assert.strictEqual(plantCycle?.sowingLocation, 'direct');
+});
+
 test('raised bed field assignment metadata is projected for assign and unassign updates', async () => {
     createTestDb();
     const accountId = await createAccount();

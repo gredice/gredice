@@ -34,6 +34,7 @@ export type RaisedBedFieldOptimisticPatch = Partial<
         | 'isDeleted'
         | 'plantScheduledDate'
         | 'plantStatus'
+        | 'sowingLocation'
     >
 >;
 

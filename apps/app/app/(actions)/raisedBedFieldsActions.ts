@@ -16,15 +16,18 @@ import {
     knownEvents,
     moveRaisedBedFieldPlantHistory,
     queueSeasonalSowingOfferOperations,
+    type RaisedBedFieldSowingLocation,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
 
-async function revalidateRaisedBedPaths(
-    raisedBed: NonNullable<Awaited<ReturnType<typeof getRaisedBed>>>,
-) {
+async function revalidateRaisedBedPaths(raisedBed: {
+    id: number;
+    accountId?: string | null;
+    gardenId?: number | null;
+}) {
     revalidatePath(KnownPages.Schedule);
     if (raisedBed.accountId)
         revalidatePath(KnownPages.Account(raisedBed.accountId));
@@ -403,6 +406,47 @@ export async function rescheduleRaisedBedFieldAction(formData: FormData) {
     if (raisedBed.gardenId)
         revalidatePath(KnownPages.Garden(raisedBed.gardenId));
     revalidatePath(KnownPages.RaisedBed(raisedBedId));
+
+    return { success: true };
+}
+
+export async function setRaisedBedFieldSowingLocationAction(
+    raisedBedId: number,
+    positionIndex: number,
+    sowingLocation: RaisedBedFieldSowingLocation,
+) {
+    await auth(['admin']);
+    if (sowingLocation !== 'direct' && sowingLocation !== 'greenhouse') {
+        throw new Error('Nepoznata lokacija sijanja.');
+    }
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    if (!raisedBed) {
+        throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
+    }
+
+    const field = raisedBed.fields.find(
+        (f) => f.positionIndex === positionIndex && f.active,
+    );
+    if (!field?.plantSortId) {
+        throw new Error('Field or plant sort not found.');
+    }
+
+    if (field.sowingLocation === sowingLocation) {
+        return { success: true };
+    }
+
+    await createEvent(
+        knownEvents.raisedBedFields.plantScheduleV1(
+            `${raisedBedId}|${positionIndex}`,
+            {
+                scheduledDate: field.plantScheduledDate?.toISOString() ?? null,
+                sowingLocation,
+            },
+        ),
+    );
+
+    await revalidateRaisedBedPaths(raisedBed);
 
     return { success: true };
 }

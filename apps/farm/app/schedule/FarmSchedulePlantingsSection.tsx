@@ -4,6 +4,7 @@ import type {
     RaisedBedFieldAssignableFarmUser,
 } from '@gredice/storage';
 import { Checkbox } from '@gredice/ui/Checkbox';
+import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
@@ -34,11 +35,15 @@ function buildFieldLabel(
     field: FarmRaisedBedField,
     plantSortById: Map<number, EntityStandardized>,
 ) {
+    const taskName =
+        field.sowingLocation === 'greenhouse'
+            ? 'sijanje u stakleniku'
+            : 'sijanje';
     const sort = field.plantSortId
         ? plantSortById.get(field.plantSortId)
         : null;
     if (!field.plantSortId || !sort) {
-        return `${field.positionIndex + 1} - sijanje: ? Nepoznato`;
+        return `${field.positionIndex + 1} - ${taskName}: ? Nepoznato`;
     }
 
     const seedingDistance =
@@ -46,7 +51,7 @@ function buildFieldLabel(
     const totalPlants = seedingDistance
         ? calculatePlantsPerField(seedingDistance).totalPlants
         : null;
-    return `${field.positionIndex + 1} - sijanje: ${totalPlants ?? '?'} ${sort.information?.name ?? 'Nepoznato'}`;
+    return `${field.positionIndex + 1} - ${taskName}: ${totalPlants ?? '?'} ${sort.information?.name ?? 'Nepoznato'}`;
 }
 
 export function FarmSchedulePlantingsSection({
@@ -142,6 +147,8 @@ export function FarmSchedulePlantingsSection({
                                         !completed && !lockedByAssignment;
                                     const assignedUser =
                                         assignedUserByFieldId.get(field.id);
+                                    const greenhouseSowing =
+                                        field.sowingLocation === 'greenhouse';
 
                                     return (
                                         <div
@@ -220,6 +227,15 @@ export function FarmSchedulePlantingsSection({
                                                                     PLANTING_TASK_DURATION_MINUTES,
                                                                 )}
                                                             </Typography>
+                                                            {greenhouseSowing && (
+                                                                <Chip
+                                                                    size="sm"
+                                                                    color="success"
+                                                                    variant="soft"
+                                                                >
+                                                                    Staklenik
+                                                                </Chip>
+                                                            )}
                                                             <Typography
                                                                 level="body2"
                                                                 className="text-muted-foreground"

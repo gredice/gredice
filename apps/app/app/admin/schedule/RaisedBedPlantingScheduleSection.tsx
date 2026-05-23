@@ -2,10 +2,11 @@
 
 import { calculatePlantsPerField, FIELD_SIZE_CM } from '@gredice/js/plants';
 import type { RaisedBedFieldAssignableFarmUser } from '@gredice/storage';
+import { Button } from '@gredice/ui/Button';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Calendar, Close } from '@gredice/ui/icons';
+import { Calendar, Close, ToggleLeft, ToggleRight } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
@@ -20,6 +21,7 @@ import {
     cancelRaisedBedFieldAction,
     raisedBedPlanted,
     rescheduleRaisedBedFieldAction,
+    setRaisedBedFieldSowingLocationAction,
     verifyRaisedBedPlantingAction,
 } from '../../(actions)/raisedBedFieldsActions';
 import { AcceptRaisedBedFieldModal } from './AcceptRaisedBedFieldModal';
@@ -52,6 +54,24 @@ interface RaisedBedPlantingScheduleSectionProps {
         number,
         RaisedBedFieldAssignableFarmUser[]
     >;
+}
+
+function getSowingTaskName(sowingLocation?: RaisedBedField['sowingLocation']) {
+    return sowingLocation === 'greenhouse' ? 'sijanje u stakleniku' : 'sijanje';
+}
+
+function getSowingTaskLabel({
+    physicalPositionIndex,
+    plantName,
+    sowingLocation,
+    totalPlants,
+}: {
+    physicalPositionIndex: number;
+    plantName: string;
+    sowingLocation?: RaisedBedField['sowingLocation'];
+    totalPlants: number;
+}) {
+    return `${physicalPositionIndex} - ${getSowingTaskName(sowingLocation)}: ${totalPlants} ${plantName}`;
 }
 
 export function RaisedBedPlantingScheduleSection({
@@ -107,7 +127,14 @@ export function RaisedBedPlantingScheduleSection({
 
         return {
             id: `field-${field.id}`,
-            text: `${field.physicalPositionIndex} - sijanje: ${totalPlants} ${field.plantSortId ? `${sortData?.information?.name}` : '?'}`,
+            text: getSowingTaskLabel({
+                physicalPositionIndex: field.physicalPositionIndex,
+                plantName: field.plantSortId
+                    ? (sortData?.information?.name ?? '?')
+                    : '?',
+                sowingLocation: field.sowingLocation,
+                totalPlants,
+            }),
             approved:
                 isFieldApproved(field.plantStatus) &&
                 !isFieldPendingVerification(field.plantStatus) &&
@@ -138,7 +165,14 @@ export function RaisedBedPlantingScheduleSection({
                 id: field.id,
                 raisedBedId: field.raisedBedId,
                 positionIndex: field.positionIndex,
-                label: `${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : 'Nepoznato'}`,
+                label: getSowingTaskLabel({
+                    physicalPositionIndex: field.physicalPositionIndex,
+                    plantName: field.plantSortId
+                        ? (sortData?.information?.name ?? 'Nepoznato')
+                        : 'Nepoznato',
+                    sowingLocation: field.sowingLocation,
+                    totalPlants: numberOfPlants,
+                }),
             };
         });
     const fieldsToReschedule = dayFields
@@ -345,12 +379,24 @@ export function RaisedBedPlantingScheduleSection({
                         });
                     };
 
-                    const fieldLabel = `${field.physicalPositionIndex} - sijanje: ${numberOfPlants} ${field.plantSortId ? `${sortData?.information?.name}` : 'Nepoznato'}`;
+                    const fieldLabel = getSowingTaskLabel({
+                        physicalPositionIndex: field.physicalPositionIndex,
+                        plantName: field.plantSortId
+                            ? (sortData?.information?.name ?? 'Nepoznato')
+                            : 'Nepoznato',
+                        sowingLocation: field.sowingLocation,
+                        totalPlants: numberOfPlants,
+                    });
                     const fieldStatus = field.plantStatus;
                     const fieldCompleted = isFieldCompleted(fieldStatus);
                     const fieldPendingVerification =
                         isFieldPendingVerification(fieldStatus);
                     const fieldApproved = isFieldApproved(fieldStatus);
+                    const greenhouseSowing =
+                        field.sowingLocation === 'greenhouse';
+                    const nextSowingLocation = greenhouseSowing
+                        ? 'direct'
+                        : 'greenhouse';
                     const fieldStatusText = fieldCompleted
                         ? 'Završeno'
                         : fieldPendingVerification
@@ -483,6 +529,58 @@ export function RaisedBedPlantingScheduleSection({
                                             </Chip>
                                         )}
                                     </Typography>
+                                    <Button
+                                        variant={
+                                            greenhouseSowing
+                                                ? 'soft'
+                                                : 'outlined'
+                                        }
+                                        color={
+                                            greenhouseSowing
+                                                ? 'success'
+                                                : 'neutral'
+                                        }
+                                        size="sm"
+                                        title={
+                                            greenhouseSowing
+                                                ? 'Označeno za sijanje u stakleniku'
+                                                : 'Označi za sijanje u stakleniku'
+                                        }
+                                        startDecorator={
+                                            greenhouseSowing ? (
+                                                <ToggleRight className="size-4 shrink-0" />
+                                            ) : (
+                                                <ToggleLeft className="size-4 shrink-0" />
+                                            )
+                                        }
+                                        onClick={() =>
+                                            runOptimisticAction({
+                                                fieldPatches: [
+                                                    {
+                                                        id: field.id,
+                                                        patch: {
+                                                            sowingLocation:
+                                                                nextSowingLocation,
+                                                        },
+                                                    },
+                                                ],
+                                                action: () =>
+                                                    setRaisedBedFieldSowingLocationAction(
+                                                        field.raisedBedId,
+                                                        field.positionIndex,
+                                                        nextSowingLocation,
+                                                    ),
+                                                errorLogMessage:
+                                                    'Error updating sowing location:',
+                                                errorAlertMessage:
+                                                    'Promjena lokacije sijanja nije uspjela. Promjena je vraćena.',
+                                            })
+                                        }
+                                    >
+                                        {greenhouseSowing
+                                            ? 'Staklenik'
+                                            : 'Direktno'}
+                                    </Button>
                                 </Row>
                                 <Row>
                                     <AssignRaisedBedFieldModal

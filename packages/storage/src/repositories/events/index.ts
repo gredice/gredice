@@ -68,6 +68,7 @@ export type {
     RaisedBedFieldPlantReplaceSortPayload,
     RaisedBedFieldPlantSchedulePayload,
     RaisedBedFieldPlantUpdatePayload,
+    RaisedBedFieldSowingLocation,
     // Receipt
     ReceiptCreatePayload,
     ReceiptFiscalizePayload,
