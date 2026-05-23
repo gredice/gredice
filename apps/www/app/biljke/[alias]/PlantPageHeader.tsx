@@ -18,6 +18,38 @@ import { getPlantInforationSections } from './getPlantInforationSections';
 import { PlantCalendarPicker } from './PlantCalendarPicker';
 import { VerifiedInformationBadge } from './VerifiedInformationBadge';
 
+type InformationWithAlternativeName = {
+    name?: unknown;
+    alternativeName?: unknown;
+};
+
+const alternativeNamesLocale = 'hr-HR';
+
+function formatAlternativeNames(
+    information: InformationWithAlternativeName | null | undefined,
+) {
+    const names = Array.isArray(information?.alternativeName)
+        ? information.alternativeName
+              .filter((name): name is string => typeof name === 'string')
+              .map((name) => name.trim())
+              .filter(Boolean)
+        : [];
+
+    return names
+        .map((name, index) => {
+            const lowerName = name.toLocaleLowerCase(alternativeNamesLocale);
+            if (index > 0) {
+                return lowerName;
+            }
+
+            const [firstLetter, ...rest] = Array.from(lowerName);
+            return firstLetter
+                ? `${firstLetter.toLocaleUpperCase(alternativeNamesLocale)}${rest.join('')}`
+                : lowerName;
+        })
+        .join(', ');
+}
+
 export function PlantPageHeader({
     plant,
     sort,
@@ -34,6 +66,11 @@ export function PlantPageHeader({
         ? `lat. ${plant.information.latinName}`
         : null;
     const sortLatinName = `lat. ${sort?.information.latinName ?? '-'}`;
+    const origin = sort?.information.origin ?? plant.information.origin;
+    const alternativeNames =
+        formatAlternativeNames(sort?.information) ||
+        formatAlternativeNames(plant.information);
+
     return (
         <PageHeader
             visual={
@@ -73,16 +110,20 @@ export function PlantPageHeader({
             }
             headerChildren={
                 <Stack spacing={8} alignItems="start">
-                    {(plant.information.origin || sort?.information.origin) && (
+                    {(origin || alternativeNames) && (
                         <Stack spacing={2}>
                             <Typography level="body2">Porijeklo</Typography>
-                            <Row spacing={2}>
-                                <MapPinHouse className="size-5 shrink-0" />
-                                <Typography>
-                                    {sort?.information.origin ??
-                                        plant.information.origin}
+                            {origin && (
+                                <Row spacing={2}>
+                                    <MapPinHouse className="size-5 shrink-0" />
+                                    <Typography>{origin}</Typography>
+                                </Row>
+                            )}
+                            {alternativeNames && (
+                                <Typography level="body2" secondary>
+                                    Alternativni nazivi: {alternativeNames}
                                 </Typography>
-                            </Row>
+                            )}
                         </Stack>
                     )}
                     <Row spacing={2}>
