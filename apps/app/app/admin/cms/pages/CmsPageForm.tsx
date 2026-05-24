@@ -1,14 +1,39 @@
 'use client';
 
+import {
+    closestCenter,
+    DndContext,
+    type DragEndEvent,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import type { SelectCmsPage } from '@gredice/storage';
 import {
     type CmsPageSectionComponent,
+    type CmsPageSectionPreset,
     cmsPageSectionComponents,
+    cmsPageSectionPresets,
 } from '@gredice/storage/cmsPageSections';
 import { Button } from '@gredice/ui/Button';
 import { Card } from '@gredice/ui/Card';
 import { SectionsView } from '@gredice/ui/cms';
 import { Input } from '@gredice/ui/Input';
+import {
+    Add,
+    ArrowDown,
+    ArrowUp,
+    Delete,
+    Desktop,
+    Duplicate,
+    Mobile,
+    Tablet,
+} from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
@@ -23,6 +48,13 @@ import {
 } from 'react';
 import { sectionsComponentRegistry } from '../../../../components/shared/sectionsComponentRegistry';
 import type { CmsPageAutosaveState, CmsPageFormState } from './actions';
+import type {
+    CmsPageEditableSection,
+    CmsPageSectionData,
+} from './CmsPageFormTypes';
+import { CmsPageSectionFields } from './CmsPageSectionFields';
+import { CmsPageSectionLibrary } from './CmsPageSectionLibrary';
+import { CmsPageSortablePreviewSection } from './CmsPageSortablePreviewSection';
 
 type CmsPageFormProps = {
     page?: SelectCmsPage;
@@ -34,16 +66,6 @@ type CmsPageFormProps = {
     autosaveAction?: (formData: FormData) => Promise<CmsPageAutosaveState>;
 };
 
-type CmsPageSectionData = {
-    component: string;
-    [key: string]: unknown;
-};
-
-type CmsPageEditableSection = {
-    id: string;
-    data: CmsPageSectionData;
-};
-
 const cmsPageStateItems = [
     { value: 'draft', label: 'Draft' },
     {
@@ -51,12 +73,6 @@ const cmsPageStateItems = [
         label: 'Objavljeno',
     },
 ];
-
-const cmsPageSectionItems = cmsPageSectionComponents.map((component) => ({
-    value: component.component,
-    label: component.label,
-    category: component.isCustom ? 'Prilagođene' : 'Osnovne',
-}));
 
 const cmsPageSectionComponentsByName = new Map<string, CmsPageSectionComponent>(
     cmsPageSectionComponents.map((component) => [
@@ -129,6 +145,11 @@ function sectionValue(section: CmsPageEditableSection, key: string) {
     return typeof value === 'string' ? value : '';
 }
 
+function sectionListValue(section: CmsPageEditableSection, key: string) {
+    const value = section.data[key];
+    return Array.isArray(value) ? value : [];
+}
+
 function sectionLabel(component: string) {
     return cmsPageSectionComponentsByName.get(component)?.label ?? component;
 }
@@ -137,12 +158,30 @@ function sectionSummary(section: CmsPageEditableSection) {
     const fields =
         cmsPageSectionComponentsByName.get(section.data.component)?.fields ??
         [];
+
     for (const field of fields) {
+        if (
+            field.type === 'feature-list' ||
+            field.type === 'cta-list' ||
+            field.type === 'url'
+        ) {
+            continue;
+        }
+
         const value = sectionValue(section, field.key).trim();
         if (value.length > 0) {
             return value;
         }
     }
+
+    const firstFeature = sectionListValue(section, 'features').find(
+        (feature): feature is Record<string, unknown> =>
+            Boolean(feature) && typeof feature === 'object',
+    );
+    if (typeof firstFeature?.header === 'string') {
+        return firstFeature.header;
+    }
+
     return '';
 }
 
@@ -178,7 +217,7 @@ function copySection(
 ): CmsPageEditableSection {
     return {
         id,
-        data: JSON.parse(JSON.stringify(section.data)) as CmsPageSectionData,
+        data: structuredClone(section.data),
     };
 }
 
@@ -186,10 +225,15 @@ function validateSection(section: CmsPageEditableSection) {
     const fields =
         cmsPageSectionComponentsByName.get(section.data.component)?.fields ??
         [];
+
     return fields
         .filter((field) => field.required)
         .filter((field) => {
             const value = section.data[field.key];
+            if (field.type === 'feature-list' || field.type === 'cta-list') {
+                return !Array.isArray(value) || value.length === 0;
+            }
+
             return !(typeof value === 'string' && value.trim().length > 0);
         })
         .map((field) => `${field.label} je obavezno polje.`);
@@ -203,9 +247,16 @@ function sectionFieldErrors(section: CmsPageEditableSection) {
     return new Map(
         fields
             .filter((field) => field.required)
-            .filter(
-                (field) => sectionValue(section, field.key).trim().length === 0,
-            )
+            .filter((field) => {
+                if (
+                    field.type === 'feature-list' ||
+                    field.type === 'cta-list'
+                ) {
+                    return sectionListValue(section, field.key).length === 0;
+                }
+
+                return sectionValue(section, field.key).trim().length === 0;
+            })
             .map((field) => [field.key, `${field.label} je obavezno polje.`]),
     );
 }
@@ -219,10 +270,9 @@ function formatLastSavedAt(value: number | null) {
     }).format(new Date(value));
 }
 
-function updateSectionField(
+function updateSectionData(
     sectionId: string,
-    key: string,
-    value: string,
+    data: CmsPageSectionData,
     setSections: React.Dispatch<React.SetStateAction<CmsPageEditableSection[]>>,
 ) {
     setSections((current) =>
@@ -230,10 +280,7 @@ function updateSectionField(
             currentSection.id === sectionId
                 ? {
                       ...currentSection,
-                      data: {
-                          ...currentSection.data,
-                          [key]: value,
-                      },
+                      data,
                   }
                 : currentSection,
         ),
@@ -290,20 +337,15 @@ export function CmsPageForm({
     const [lastSavedAt, setLastSavedAt] = useState<number | null>(Date.now());
     const [lastSavedSnapshot, setLastSavedSnapshot] =
         useState(autosaveSnapshot);
-    const [previewSections, setPreviewSections] = useState<
-        CmsPageSectionData[]
-    >([]);
     const [selectedSectionId, setSelectedSectionId] = useState<string | null>(
         null,
     );
     const [insertAtEnd, setInsertAtEnd] = useState(false);
     const [sectionSearch, setSectionSearch] = useState('');
-    const [previewMode, setPreviewMode] = useState<'inline' | 'focused'>(
-        'inline',
-    );
     const [previewViewport, setPreviewViewport] = useState<
         'mobile' | 'tablet' | 'desktop'
     >('desktop');
+    const sensors = useSensors(useSensor(PointerSensor));
     const rawReadinessContent = useMemo(
         () => parseSections(rawContent),
         [rawContent],
@@ -387,16 +429,11 @@ export function CmsPageForm({
     ]);
 
     useEffect(() => {
-        setPreviewSections(parseSections(serializedContent).sections);
-    }, [serializedContent]);
-
-    useEffect(() => {
         if (sections.length === 0) {
             setSelectedSectionId(null);
             return;
         }
 
-        // Preserve explicit append mode instead of auto-selecting the first section.
         if (insertAtEnd && selectedSectionId === null) {
             return;
         }
@@ -425,28 +462,9 @@ export function CmsPageForm({
         insertAtEnd || selectedSectionIndex < 0
             ? undefined
             : selectedSectionIndex + 1;
-    const filteredSectionItems = useMemo(() => {
-        const query = sectionSearch.trim().toLowerCase();
-        if (!query) {
-            return cmsPageSectionItems;
-        }
-
-        return cmsPageSectionItems.filter(
-            (item) =>
-                item.label.toLowerCase().includes(query) ||
-                item.value.toLowerCase().includes(query),
-        );
-    }, [sectionSearch]);
-    const groupedSectionItems = useMemo(() => {
-        const grouped: Record<string, typeof cmsPageSectionItems> = {};
-        for (const item of filteredSectionItems) {
-            if (!grouped[item.category]) {
-                grouped[item.category] = [];
-            }
-            grouped[item.category].push(item);
-        }
-        return grouped;
-    }, [filteredSectionItems]);
+    const selectedSectionComponent = selectedSection
+        ? cmsPageSectionComponentsByName.get(selectedSection.data.component)
+        : undefined;
     const missingSectionFields = readinessSections
         .map((section, index) => ({
             section,
@@ -454,16 +472,17 @@ export function CmsPageForm({
             errors: validateSection(section),
         }))
         .filter((entry) => entry.errors.length > 0);
-    const metadataWarnings = [
-        {
-            label: 'Meta naslov',
-            value: metaTitle,
-        },
-        {
-            label: 'Meta opis',
-            value: metaDescription,
-        },
-    ].filter((entry) => entry.value.trim().length === 0);
+    const metadataIssues = [
+        ...(metaTitle.trim().length === 0 ? ['Meta naslov'] : []),
+        ...(metaDescription.trim().length === 0 ? ['Meta opis'] : []),
+        ...(metaDescription.length > 160
+            ? ['Meta opis je duži od 160 znakova']
+            : []),
+    ];
+    const publishReady =
+        missingSectionFields.length === 0 &&
+        metadataIssues.length === 0 &&
+        !contentReadinessWarning;
     const autosaveBadgeClassName =
         autosaveStatus === 'saved'
             ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
@@ -479,12 +498,12 @@ export function CmsPageForm({
               ? 'max-w-2xl'
               : 'max-w-none';
 
-    const insertSection = (component: string, index?: number) => {
+    const insertSectionData = (data: CmsPageSectionData, index?: number) => {
         const sectionId = nextSectionId.current;
         nextSectionId.current += 1;
         const id = `${newSectionIdPrefix}-${sectionId}`;
         setSections((current) => {
-            const entry = { id, data: { component } };
+            const entry = { id, data: structuredClone(data) };
             if (typeof index === 'number') {
                 const safeIndex = Math.max(0, Math.min(index, current.length));
                 return [
@@ -498,6 +517,68 @@ export function CmsPageForm({
         });
         setInsertAtEnd(false);
         setSelectedSectionId(id);
+    };
+
+    const insertSection = (component: string, index?: number) => {
+        insertSectionData({ component }, index);
+    };
+
+    const insertPreset = (preset: CmsPageSectionPreset, index?: number) => {
+        insertSectionData(preset.data, index);
+    };
+
+    const duplicateSection = (section: CmsPageEditableSection) => {
+        setSections((current) => {
+            const index = current.findIndex(
+                (candidate) => candidate.id === section.id,
+            );
+            if (index < 0) {
+                return current;
+            }
+
+            const sectionId = nextSectionId.current;
+            nextSectionId.current += 1;
+            const duplicate = copySection(
+                section,
+                `${newSectionIdPrefix}-${sectionId}`,
+            );
+            setSelectedSectionId(duplicate.id);
+            return [
+                ...current.slice(0, index + 1),
+                duplicate,
+                ...current.slice(index + 1),
+            ];
+        });
+    };
+
+    const removeSection = (sectionId: string) => {
+        setSections((current) =>
+            current.filter((section) => section.id !== sectionId),
+        );
+    };
+
+    const handleSectionDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) {
+            return;
+        }
+
+        setSections((current) => {
+            const oldIndex = current.findIndex(
+                (section) => section.id === active.id,
+            );
+            const newIndex = current.findIndex(
+                (section) => section.id === over.id,
+            );
+
+            if (oldIndex < 0 || newIndex < 0) {
+                return current;
+            }
+
+            return arrayMove(current, oldIndex, newIndex);
+        });
+        setInsertAtEnd(false);
+        setSelectedSectionId(String(active.id));
     };
 
     return (
@@ -542,908 +623,695 @@ export function CmsPageForm({
                     </Row>
                 </Row>
             </Card>
-            <Card className="w-full">
-                <Stack spacing={8} className="p-4 md:p-6">
-                    <form
-                        id={reactId}
-                        ref={formRef}
-                        action={formAction}
-                        onChange={() =>
-                            setFormRevision((current) => current + 1)
-                        }
-                        onSubmit={(event) => {
-                            if (!rawMode) {
-                                return;
-                            }
+            <form
+                id={reactId}
+                ref={formRef}
+                action={formAction}
+                onChange={() => setFormRevision((current) => current + 1)}
+                onSubmit={(event) => {
+                    if (!rawMode) {
+                        return;
+                    }
 
-                            try {
-                                setRawContent(formatJsonContent(rawContent));
-                                setRawError(null);
-                            } catch {
-                                event.preventDefault();
-                                setRawError(
-                                    'JSON nije valjan. Ispravi sadržaj prije spremanja.',
-                                );
-                            }
-                        }}
-                    >
-                        <Stack spacing={8}>
-                            <Stack spacing={6}>
-                                {autosaveAction && (
-                                    <Card className="border-border/60 bg-muted/20 p-3">
-                                        <Stack spacing={2}>
-                                            <Typography level="body3" semiBold>
-                                                Autosave status
-                                            </Typography>
-                                            <Typography level="body3" secondary>
-                                                {autosaveMessage ??
-                                                    (autosaveStatus === 'failed'
-                                                        ? 'Spremanje nije uspjelo. Provjeri polja i pokušaj ponovno.'
-                                                        : autosaveStatus ===
-                                                            'unsaved'
-                                                          ? 'Imaš nespremljene promjene.'
-                                                          : autosaveStatus ===
-                                                              'saving'
-                                                            ? 'Promjene se spremaju...'
-                                                            : 'Sve promjene su spremljene.')}
-                                            </Typography>
-                                            <Typography level="body3" secondary>
-                                                Zadnje spremanje:{' '}
-                                                {formatLastSavedAt(
-                                                    lastSavedAt,
-                                                ) ?? 'Nije dostupno'}
-                                            </Typography>
-                                        </Stack>
-                                    </Card>
-                                )}
-                                <Input
-                                    name="title"
-                                    label="Naslov"
-                                    defaultValue={page?.title ?? ''}
-                                    required
-                                />
-                                <Input
-                                    name="slug"
-                                    label="Slug"
-                                    defaultValue={page?.slug ?? ''}
-                                    placeholder="npr. sezonski-vodic"
-                                    helperText="Slug se sprema normalizirano i ne smije zauzeti postojeću statičku rutu."
-                                    required
-                                />
-                                <SelectItems
-                                    name="state"
-                                    label="Status"
-                                    defaultValue={page?.state ?? 'draft'}
-                                    items={cmsPageStateItems}
-                                />
-                                <Stack spacing={4}>
-                                    <Typography level="h3" semiBold>
-                                        Sadržaj stranice
-                                    </Typography>
-                                    <Typography level="body3" secondary>
-                                        Vizualni editor je zadani način rada, a
-                                        JSON editor je dostupan kao fallback.
-                                    </Typography>
-                                    <Row spacing={4}>
-                                        <Button
-                                            type="button"
-                                            variant={
-                                                !rawMode ? 'solid' : 'outlined'
-                                            }
-                                            onClick={() => setRawMode(false)}
-                                        >
-                                            Vizualni editor
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant={
-                                                rawMode ? 'solid' : 'outlined'
-                                            }
-                                            onClick={() => {
-                                                if (rawMode) {
-                                                    return;
-                                                }
-                                                setRawMode(true);
+                    try {
+                        setRawContent(formatJsonContent(rawContent));
+                        setRawError(null);
+                    } catch {
+                        event.preventDefault();
+                        setRawError(
+                            'JSON nije valjan. Ispravi sadržaj prije spremanja.',
+                        );
+                    }
+                }}
+            >
+                <Stack spacing={6}>
+                    {autosaveAction && (
+                        <Card className="border-border/60 bg-muted/20 p-3">
+                            <Stack spacing={2}>
+                                <Typography level="body3" semiBold>
+                                    Autosave status
+                                </Typography>
+                                <Typography level="body3" secondary>
+                                    {autosaveMessage ??
+                                        (autosaveStatus === 'failed'
+                                            ? 'Spremanje nije uspjelo. Provjeri polja i pokušaj ponovno.'
+                                            : autosaveStatus === 'unsaved'
+                                              ? 'Imaš nespremljene promjene.'
+                                              : autosaveStatus === 'saving'
+                                                ? 'Promjene se spremaju...'
+                                                : 'Sve promjene su spremljene.')}
+                                </Typography>
+                                <Typography level="body3" secondary>
+                                    Zadnje spremanje:{' '}
+                                    {formatLastSavedAt(lastSavedAt) ??
+                                        'Nije dostupno'}
+                                </Typography>
+                            </Stack>
+                        </Card>
+                    )}
+
+                    <Card className="p-4 md:p-6">
+                        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_14rem]">
+                            <Input
+                                name="title"
+                                label="Naslov"
+                                defaultValue={page?.title ?? ''}
+                                required
+                            />
+                            <Input
+                                name="slug"
+                                label="Slug"
+                                defaultValue={page?.slug ?? ''}
+                                placeholder="npr. sezonski-vodic"
+                                helperText="Slug se sprema normalizirano i ne smije zauzeti postojeću statičku rutu."
+                                required
+                            />
+                            <SelectItems
+                                name="state"
+                                label="Status"
+                                defaultValue={page?.state ?? 'draft'}
+                                items={cmsPageStateItems}
+                            />
+                        </div>
+                    </Card>
+
+                    <Stack spacing={4}>
+                        <Row
+                            spacing={4}
+                            className="flex-wrap items-center justify-between"
+                        >
+                            <Stack spacing={1}>
+                                <Typography level="h3" semiBold>
+                                    Sadržaj stranice
+                                </Typography>
+                                <Typography level="body3" secondary>
+                                    Vizualni editor sprema isti SectionData JSON
+                                    koji koristi javni www renderer.
+                                </Typography>
+                            </Stack>
+                            <Row spacing={2} className="flex-wrap">
+                                <Button
+                                    type="button"
+                                    variant={!rawMode ? 'solid' : 'outlined'}
+                                    onClick={() => setRawMode(false)}
+                                >
+                                    Vizualni editor
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={rawMode ? 'solid' : 'outlined'}
+                                    onClick={() => {
+                                        if (rawMode) {
+                                            return;
+                                        }
+                                        setRawMode(true);
+                                        setRawError(null);
+                                        setRawContent(builderContent);
+                                    }}
+                                >
+                                    JSON fallback
+                                </Button>
+                            </Row>
+                        </Row>
+
+                        {preserveFallbackContent && (
+                            <Card className="p-3 text-sm text-amber-700">
+                                Postojeći sadržaj nije moguće prikazati u
+                                vizualnom editoru bez gubitka podataka.
+                            </Card>
+                        )}
+
+                        <input
+                            name="content"
+                            type="hidden"
+                            value={serializedContent}
+                            readOnly
+                        />
+
+                        {rawMode ? (
+                            <Card className="p-4">
+                                <label className="space-y-1">
+                                    <span className="block text-sm font-medium">
+                                        JSON sadržaj
+                                    </span>
+                                    <textarea
+                                        value={rawContent}
+                                        rows={18}
+                                        className="block w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                        onBlur={() => {
+                                            try {
+                                                setRawContent(
+                                                    formatJsonContent(
+                                                        rawContent,
+                                                    ),
+                                                );
                                                 setRawError(null);
-                                                setRawContent(builderContent);
+                                            } catch {
+                                                setRawError(
+                                                    'JSON nije valjan. Ispravi sadržaj prije spremanja.',
+                                                );
+                                            }
+                                        }}
+                                        onChange={(event) => {
+                                            setRawContent(event.target.value);
+                                            setRawError(null);
+                                        }}
+                                    />
+                                    {rawError && (
+                                        <Typography
+                                            level="body2"
+                                            className="text-red-600"
+                                        >
+                                            {rawError}
+                                        </Typography>
+                                    )}
+                                    {preserveFallbackContent && (
+                                        <Button
+                                            type="button"
+                                            variant="plain"
+                                            onClick={() => {
+                                                setRawContent(
+                                                    page?.content ?? '',
+                                                );
+                                                setRawError(null);
                                             }}
                                         >
-                                            JSON fallback
+                                            Vrati spremljeni sadržaj
                                         </Button>
-                                    </Row>
-                                    {preserveFallbackContent && (
-                                        <Card className="p-3 text-sm text-amber-700">
-                                            Postojeći sadržaj nije moguće
-                                            prikazati u vizualnom editoru bez
-                                            gubitka podataka.
-                                        </Card>
                                     )}
-                                    <input
-                                        name="content"
-                                        type="hidden"
-                                        value={serializedContent}
-                                        readOnly
-                                    />
-                                    {rawMode ? (
-                                        <label className="space-y-1">
-                                            <span className="block text-sm font-medium">
-                                                JSON sadržaj
-                                            </span>
-                                            <textarea
-                                                value={rawContent}
-                                                rows={16}
-                                                className="block w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                                onBlur={() => {
-                                                    try {
-                                                        setRawContent(
-                                                            formatJsonContent(
-                                                                rawContent,
-                                                            ),
-                                                        );
-                                                        setRawError(null);
-                                                    } catch {
-                                                        setRawError(
-                                                            'JSON nije valjan. Ispravi sadržaj prije spremanja.',
-                                                        );
-                                                    }
-                                                }}
-                                                onChange={(event) => {
-                                                    setRawContent(
-                                                        event.target.value,
-                                                    );
-                                                    setRawError(null);
-                                                }}
-                                            />
-                                            {rawError && (
-                                                <Typography
-                                                    level="body2"
-                                                    className="text-red-600"
-                                                >
-                                                    {rawError}
-                                                </Typography>
-                                            )}
-                                            {preserveFallbackContent && (
-                                                <Button
-                                                    type="button"
-                                                    variant="plain"
-                                                    onClick={() => {
-                                                        setRawContent(
-                                                            page?.content ?? '',
-                                                        );
-                                                        setRawError(null);
-                                                    }}
-                                                >
-                                                    Vrati spremljeni sadržaj
-                                                </Button>
-                                            )}
-                                        </label>
-                                    ) : sections.length === 0 ? (
-                                        <Card className="p-4 text-sm text-muted-foreground">
-                                            {preserveFallbackContent
-                                                ? 'Postojeći sadržaj nije JSON niz sekcija i bit će sačuvan dok ne dodaš novu sekciju. Dodavanje nove sekcije zamijenit će ga novom strukturom sekcija.'
-                                                : 'Stranica još nema sekcija.'}
-                                        </Card>
-                                    ) : (
+                                </label>
+                            </Card>
+                        ) : (
+                            <div className="grid gap-6 xl:grid-cols-[18rem_minmax(0,1fr)_24rem]">
+                                <Stack spacing={6} className="h-fit">
+                                    <div className="rounded-lg border bg-background p-3">
+                                        <CmsPageSectionLibrary
+                                            query={sectionSearch}
+                                            components={
+                                                cmsPageSectionComponents
+                                            }
+                                            presets={cmsPageSectionPresets}
+                                            onQueryChange={setSectionSearch}
+                                            onInsertComponent={(component) =>
+                                                insertSection(
+                                                    component,
+                                                    insertionIndex,
+                                                )
+                                            }
+                                            onInsertPreset={(preset) =>
+                                                insertPreset(
+                                                    preset,
+                                                    insertionIndex,
+                                                )
+                                            }
+                                        />
+                                    </div>
+                                    <div className="rounded-lg border bg-background p-3">
                                         <Stack spacing={4}>
-                                            {sections.map((section, index) => (
-                                                <Card
-                                                    key={section.id}
-                                                    className={`p-4 cursor-pointer ${selectedSectionId === section.id ? 'border-primary' : ''}`}
-                                                    onClick={() =>
-                                                        selectSection(
-                                                            section.id,
-                                                        )
-                                                    }
-                                                >
-                                                    <Stack spacing={4}>
-                                                        <Row
-                                                            spacing={4}
-                                                            className="items-center justify-between"
-                                                        >
-                                                            <Typography
-                                                                level="body1"
-                                                                semiBold
-                                                            >
-                                                                {index + 1}.{' '}
-                                                                {sectionLabel(
-                                                                    section.data
-                                                                        .component,
-                                                                )}
-                                                            </Typography>
-                                                            <Row spacing={2}>
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="plain"
-                                                                    disabled={
-                                                                        index ===
-                                                                        0
-                                                                    }
-                                                                    onClick={() =>
-                                                                        setSections(
-                                                                            (
-                                                                                current,
-                                                                            ) =>
-                                                                                moveSection(
-                                                                                    current,
-                                                                                    section.id,
-                                                                                    -1,
-                                                                                ),
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    ↑ Gore
-                                                                </Button>
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="plain"
-                                                                    disabled={
-                                                                        index ===
-                                                                        sections.length -
-                                                                            1
-                                                                    }
-                                                                    onClick={() =>
-                                                                        setSections(
-                                                                            (
-                                                                                current,
-                                                                            ) =>
-                                                                                moveSection(
-                                                                                    current,
-                                                                                    section.id,
-                                                                                    1,
-                                                                                ),
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    ↓ Dolje
-                                                                </Button>
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="plain"
-                                                                    onClick={() => {
-                                                                        setSections(
-                                                                            (
-                                                                                current,
-                                                                            ) => {
-                                                                                const idx =
-                                                                                    current.findIndex(
-                                                                                        (
-                                                                                            candidate,
-                                                                                        ) =>
-                                                                                            candidate.id ===
-                                                                                            section.id,
-                                                                                    );
-                                                                                if (
-                                                                                    idx <
-                                                                                    0
-                                                                                ) {
-                                                                                    return current;
-                                                                                }
-                                                                                const sectionId =
-                                                                                    nextSectionId.current;
-                                                                                nextSectionId.current += 1;
-                                                                                const duplicate =
-                                                                                    copySection(
-                                                                                        section,
-                                                                                        `${newSectionIdPrefix}-${sectionId}`,
-                                                                                    );
-                                                                                return [
-                                                                                    ...current.slice(
-                                                                                        0,
-                                                                                        idx +
-                                                                                            1,
-                                                                                    ),
-                                                                                    duplicate,
-                                                                                    ...current.slice(
-                                                                                        idx +
-                                                                                            1,
-                                                                                    ),
-                                                                                ];
-                                                                            },
-                                                                        );
-                                                                    }}
-                                                                >
-                                                                    Dupliciraj
-                                                                </Button>
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="plain"
-                                                                    color="danger"
-                                                                    onClick={() =>
-                                                                        setSections(
-                                                                            (
-                                                                                current,
-                                                                            ) =>
-                                                                                current.filter(
-                                                                                    (
-                                                                                        currentSection,
-                                                                                    ) =>
-                                                                                        currentSection.id !==
-                                                                                        section.id,
-                                                                                ),
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    Ukloni
-                                                                </Button>
-                                                            </Row>
-                                                        </Row>
-                                                        {validateSection(
-                                                            section,
-                                                        ).map((error) => (
-                                                            <Typography
-                                                                key={error}
-                                                                level="body3"
-                                                                className="text-red-600"
-                                                            >
-                                                                {error}
-                                                            </Typography>
-                                                        ))}
-                                                        {!sectionSummary(
-                                                            section,
-                                                        ) && (
-                                                            <Typography
-                                                                level="body3"
-                                                                secondary
-                                                            >
-                                                                Prazna sekcija —
-                                                                sadržaj dodaj
-                                                                kroz postavke
-                                                                polja.
-                                                            </Typography>
-                                                        )}
-                                                    </Stack>
-                                                </Card>
-                                            ))}
-                                        </Stack>
-                                    )}
-                                    {!rawMode && (
-                                        <Card className="p-3">
-                                            <Stack spacing={4}>
-                                                <Typography
-                                                    level="body2"
-                                                    semiBold
-                                                >
-                                                    Komponente
-                                                </Typography>
-                                                <Input
-                                                    label="Pretraži komponente"
-                                                    value={sectionSearch}
-                                                    onChange={(event) =>
-                                                        setSectionSearch(
-                                                            event.target.value,
-                                                        )
-                                                    }
-                                                    placeholder="npr. Heading ili Feature"
-                                                />
-                                                <Row
-                                                    spacing={2}
-                                                    className="flex-wrap"
-                                                >
-                                                    {Object.entries(
-                                                        groupedSectionItems,
-                                                    ).map(([group, items]) => (
-                                                        <Stack
-                                                            key={group}
-                                                            spacing={2}
-                                                            className="min-w-56"
-                                                        >
-                                                            <Typography
-                                                                level="body3"
-                                                                secondary
-                                                            >
-                                                                {group}
-                                                            </Typography>
-                                                            {items.map(
-                                                                (item) => (
-                                                                    <Button
-                                                                        key={
-                                                                            item.value
-                                                                        }
-                                                                        type="button"
-                                                                        variant="outlined"
-                                                                        onClick={() =>
-                                                                            insertSection(
-                                                                                item.value,
-                                                                                insertionIndex,
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        Dodaj{' '}
-                                                                        {
-                                                                            item.label
-                                                                        }
-                                                                    </Button>
-                                                                ),
-                                                            )}
-                                                        </Stack>
-                                                    ))}
-                                                </Row>
-                                            </Stack>
-                                        </Card>
-                                    )}
-                                </Stack>
-                            </Stack>
-
-                            <Stack spacing={4}>
-                                <Typography level="h3" semiBold>
-                                    Live preview
-                                </Typography>
-                                <Row spacing={4} className="flex-wrap">
-                                    <Button
-                                        type="button"
-                                        variant={
-                                            previewMode === 'inline'
-                                                ? 'solid'
-                                                : 'outlined'
-                                        }
-                                        onClick={() => setPreviewMode('inline')}
-                                    >
-                                        Inline preview
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant={
-                                            previewMode === 'focused'
-                                                ? 'solid'
-                                                : 'outlined'
-                                        }
-                                        onClick={() =>
-                                            setPreviewMode('focused')
-                                        }
-                                    >
-                                        Fokusirani preview
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant={
-                                            previewViewport === 'mobile'
-                                                ? 'solid'
-                                                : 'outlined'
-                                        }
-                                        onClick={() =>
-                                            setPreviewViewport('mobile')
-                                        }
-                                    >
-                                        Mobile
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant={
-                                            previewViewport === 'tablet'
-                                                ? 'solid'
-                                                : 'outlined'
-                                        }
-                                        onClick={() =>
-                                            setPreviewViewport('tablet')
-                                        }
-                                    >
-                                        Tablet
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant={
-                                            previewViewport === 'desktop'
-                                                ? 'solid'
-                                                : 'outlined'
-                                        }
-                                        onClick={() =>
-                                            setPreviewViewport('desktop')
-                                        }
-                                    >
-                                        Desktop
-                                    </Button>
-                                </Row>
-                                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-                                    <Card
-                                        className={`p-4 ${previewMode === 'focused' ? 'lg:col-span-2' : ''}`}
-                                    >
-                                        <Stack spacing={4}>
-                                            {sections.map((section) => (
-                                                <Stack
-                                                    key={section.id}
-                                                    spacing={4}
-                                                    className={
-                                                        previewViewportClassName
-                                                    }
-                                                >
-                                                    <Card
-                                                        className={`p-3 cursor-pointer ${section.id === selectedSectionId ? 'border-primary' : ''}`}
-                                                        onClick={() =>
-                                                            selectSection(
-                                                                section.id,
-                                                            )
-                                                        }
-                                                    >
-                                                        <SectionsView
-                                                            sectionsData={[
-                                                                section.data,
-                                                            ]}
-                                                            componentsRegistry={
-                                                                sectionsComponentRegistry
-                                                            }
-                                                        />
-                                                    </Card>
-                                                </Stack>
-                                            ))}
-                                            {previewSections.length === 0 && (
+                                            <Typography level="h4" semiBold>
+                                                Navigator
+                                            </Typography>
+                                            {sections.length === 0 ? (
                                                 <Typography
                                                     level="body3"
                                                     secondary
                                                 >
-                                                    Nema sekcija za prikaz.
+                                                    Nema sekcija.
                                                 </Typography>
-                                            )}
-                                        </Stack>
-                                    </Card>
-                                    {previewMode === 'inline' && (
-                                        <Stack
-                                            spacing={6}
-                                            className="h-fit lg:sticky lg:top-24"
-                                        >
-                                            <Card className="p-4">
-                                                <Stack spacing={4}>
-                                                    <Typography
-                                                        level="h4"
-                                                        semiBold
-                                                    >
-                                                        Navigator sekcija
-                                                    </Typography>
-                                                    {sections.length === 0 ? (
-                                                        <Typography
-                                                            level="body3"
-                                                            secondary
+                                            ) : (
+                                                sections.map(
+                                                    (section, index) => (
+                                                        <Button
+                                                            key={`navigator-${section.id}`}
+                                                            type="button"
+                                                            variant={
+                                                                selectedSectionId ===
+                                                                section.id
+                                                                    ? 'solid'
+                                                                    : 'plain'
+                                                            }
+                                                            className="justify-start"
+                                                            onClick={() =>
+                                                                selectSection(
+                                                                    section.id,
+                                                                )
+                                                            }
                                                         >
-                                                            Dodaj prvu sekciju
-                                                            iz palete
-                                                            komponenti.
-                                                        </Typography>
-                                                    ) : (
-                                                        sections.map(
-                                                            (
-                                                                section,
-                                                                index,
-                                                            ) => (
-                                                                <Button
-                                                                    key={`navigator-${section.id}`}
-                                                                    type="button"
-                                                                    variant={
-                                                                        selectedSectionId ===
+                                                            {index + 1}.{' '}
+                                                            {sectionLabel(
+                                                                section.data
+                                                                    .component,
+                                                            )}
+                                                        </Button>
+                                                    ),
+                                                )
+                                            )}
+                                            <Button
+                                                type="button"
+                                                variant={
+                                                    insertAtEnd
+                                                        ? 'solid'
+                                                        : 'outlined'
+                                                }
+                                                startDecorator={
+                                                    <Add className="size-4" />
+                                                }
+                                                onClick={selectAppendTarget}
+                                            >
+                                                Dodaj na kraj
+                                            </Button>
+                                        </Stack>
+                                    </div>
+                                </Stack>
+
+                                <Stack spacing={4} className="min-w-0">
+                                    <Row
+                                        spacing={3}
+                                        className="flex-wrap items-center justify-between"
+                                    >
+                                        <Typography level="h4" semiBold>
+                                            Editor / preview
+                                        </Typography>
+                                        <Row spacing={2}>
+                                            <Button
+                                                type="button"
+                                                variant={
+                                                    previewViewport === 'mobile'
+                                                        ? 'solid'
+                                                        : 'outlined'
+                                                }
+                                                size="sm"
+                                                startDecorator={
+                                                    <Mobile className="size-4" />
+                                                }
+                                                onClick={() =>
+                                                    setPreviewViewport('mobile')
+                                                }
+                                            >
+                                                Mobile
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant={
+                                                    previewViewport === 'tablet'
+                                                        ? 'solid'
+                                                        : 'outlined'
+                                                }
+                                                size="sm"
+                                                startDecorator={
+                                                    <Tablet className="size-4" />
+                                                }
+                                                onClick={() =>
+                                                    setPreviewViewport('tablet')
+                                                }
+                                            >
+                                                Tablet
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant={
+                                                    previewViewport ===
+                                                    'desktop'
+                                                        ? 'solid'
+                                                        : 'outlined'
+                                                }
+                                                size="sm"
+                                                startDecorator={
+                                                    <Desktop className="size-4" />
+                                                }
+                                                onClick={() =>
+                                                    setPreviewViewport(
+                                                        'desktop',
+                                                    )
+                                                }
+                                            >
+                                                Desktop
+                                            </Button>
+                                        </Row>
+                                    </Row>
+                                    <div
+                                        className={`mx-auto w-full ${previewViewportClassName}`}
+                                    >
+                                        {sections.length === 0 ? (
+                                            <div className="min-h-96 rounded-lg border border-dashed bg-muted/20 p-8 text-center">
+                                                <Typography
+                                                    level="body2"
+                                                    secondary
+                                                >
+                                                    Stranica još nema sekcija.
+                                                </Typography>
+                                            </div>
+                                        ) : (
+                                            <DndContext
+                                                id={`cms-page-sections-${page?.id ?? 'new'}`}
+                                                sensors={sensors}
+                                                collisionDetection={
+                                                    closestCenter
+                                                }
+                                                onDragEnd={handleSectionDragEnd}
+                                            >
+                                                <SortableContext
+                                                    items={sections.map(
+                                                        (section) => section.id,
+                                                    )}
+                                                    strategy={
+                                                        verticalListSortingStrategy
+                                                    }
+                                                >
+                                                    <Stack spacing={4}>
+                                                        {sections.map(
+                                                            (section) => (
+                                                                <CmsPageSortablePreviewSection
+                                                                    key={
                                                                         section.id
-                                                                            ? 'solid'
-                                                                            : 'plain'
                                                                     }
-                                                                    className="justify-start"
-                                                                    onClick={() =>
+                                                                    id={
+                                                                        section.id
+                                                                    }
+                                                                    selected={
+                                                                        section.id ===
+                                                                        selectedSectionId
+                                                                    }
+                                                                    onSelect={() =>
                                                                         selectSection(
                                                                             section.id,
                                                                         )
                                                                     }
                                                                 >
-                                                                    {index + 1}.{' '}
-                                                                    {sectionLabel(
-                                                                        section
-                                                                            .data
-                                                                            .component,
-                                                                    )}
-                                                                </Button>
+                                                                    <SectionsView
+                                                                        sectionsData={[
+                                                                            section.data,
+                                                                        ]}
+                                                                        componentsRegistry={
+                                                                            sectionsComponentRegistry
+                                                                        }
+                                                                        debug
+                                                                    />
+                                                                </CmsPageSortablePreviewSection>
                                                             ),
-                                                        )
-                                                    )}
-                                                    <Row spacing={4}>
-                                                        <Button
-                                                            type="button"
-                                                            variant={
-                                                                insertAtEnd
-                                                                    ? 'solid'
-                                                                    : 'outlined'
-                                                            }
-                                                            onClick={
-                                                                selectAppendTarget
-                                                            }
-                                                        >
-                                                            Dodaj na kraj
-                                                        </Button>
-                                                        <Button
-                                                            type="button"
-                                                            variant="outlined"
-                                                            onClick={() =>
-                                                                insertSection(
-                                                                    cmsPageSectionItems[0]
-                                                                        ?.value ??
-                                                                        'Heading1',
-                                                                    insertionIndex,
-                                                                )
-                                                            }
-                                                        >
-                                                            Brzo dodaj sekciju
-                                                        </Button>
-                                                    </Row>
-                                                </Stack>
-                                            </Card>
-                                            <Card className="p-4">
-                                                <Stack spacing={4}>
+                                                        )}
+                                                    </Stack>
+                                                </SortableContext>
+                                            </DndContext>
+                                        )}
+                                    </div>
+                                </Stack>
+
+                                <Stack
+                                    spacing={4}
+                                    className="h-fit xl:sticky xl:top-24"
+                                >
+                                    <Card className="p-4">
+                                        <Stack spacing={4}>
+                                            <Row
+                                                spacing={2}
+                                                className="items-start justify-between"
+                                            >
+                                                <Stack spacing={1}>
                                                     <Typography
                                                         level="h4"
                                                         semiBold
                                                     >
-                                                        Postavke sekcije
+                                                        Detalji sekcije
                                                     </Typography>
-                                                    {!selectedSection ? (
+                                                    {selectedSection && (
                                                         <Typography
                                                             level="body3"
                                                             secondary
                                                         >
-                                                            Klikni sekciju u
-                                                            preview prikazu za
-                                                            uređivanje atributa.
+                                                            {
+                                                                selectedSection
+                                                                    .data
+                                                                    .component
+                                                            }
                                                         </Typography>
-                                                    ) : (
-                                                        <>
-                                                            <Typography
-                                                                level="body2"
-                                                                semiBold
-                                                            >
-                                                                {
-                                                                    selectedSection
-                                                                        .data
-                                                                        .component
-                                                                }
-                                                            </Typography>
-                                                            {(
-                                                                cmsPageSectionComponentsByName.get(
-                                                                    selectedSection
-                                                                        .data
-                                                                        .component,
-                                                                )?.fields ?? []
-                                                            ).map((field) =>
-                                                                field.type ===
-                                                                'textarea' ? (
-                                                                    <label
-                                                                        key={
-                                                                            field.key
-                                                                        }
-                                                                        className="space-y-1"
-                                                                    >
-                                                                        <span className="block text-sm font-medium">
-                                                                            {
-                                                                                field.label
-                                                                            }
-                                                                            {field.required && (
-                                                                                <span className="text-red-600">
-                                                                                    {' '}
-                                                                                    *
-                                                                                </span>
-                                                                            )}
-                                                                        </span>
-                                                                        <textarea
-                                                                            value={sectionValue(
-                                                                                selectedSection,
-                                                                                field.key,
-                                                                            )}
-                                                                            rows={
-                                                                                field.rows ??
-                                                                                4
-                                                                            }
-                                                                            className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                                                            onChange={(
-                                                                                event,
-                                                                            ) =>
-                                                                                updateSectionField(
-                                                                                    selectedSection.id,
-                                                                                    field.key,
-                                                                                    event
-                                                                                        .target
-                                                                                        .value,
-                                                                                    setSections,
-                                                                                )
-                                                                            }
-                                                                        />
-                                                                        {selectedSectionErrors.has(
-                                                                            field.key,
-                                                                        ) && (
-                                                                            <Typography
-                                                                                level="body3"
-                                                                                className="text-red-600"
-                                                                            >
-                                                                                {selectedSectionErrors.get(
-                                                                                    field.key,
-                                                                                )}
-                                                                            </Typography>
-                                                                        )}
-                                                                    </label>
-                                                                ) : (
-                                                                    <Stack
-                                                                        key={
-                                                                            field.key
-                                                                        }
-                                                                        spacing={
-                                                                            2
-                                                                        }
-                                                                    >
-                                                                        <Input
-                                                                            label={`${field.label}${field.required ? ' *' : ''}`}
-                                                                            value={sectionValue(
-                                                                                selectedSection,
-                                                                                field.key,
-                                                                            )}
-                                                                            onChange={(
-                                                                                event,
-                                                                            ) =>
-                                                                                updateSectionField(
-                                                                                    selectedSection.id,
-                                                                                    field.key,
-                                                                                    event
-                                                                                        .target
-                                                                                        .value,
-                                                                                    setSections,
-                                                                                )
-                                                                            }
-                                                                        />
-                                                                        {selectedSectionErrors.has(
-                                                                            field.key,
-                                                                        ) && (
-                                                                            <Typography
-                                                                                level="body3"
-                                                                                className="text-red-600"
-                                                                            >
-                                                                                {selectedSectionErrors.get(
-                                                                                    field.key,
-                                                                                )}
-                                                                            </Typography>
-                                                                        )}
-                                                                    </Stack>
-                                                                ),
-                                                            )}
-                                                            {selectedSectionErrors.size >
-                                                                0 && (
-                                                                <Typography
-                                                                    level="body3"
-                                                                    className="text-red-600"
-                                                                >
-                                                                    Sekcija ima
-                                                                    nepopunjena
-                                                                    obavezna
-                                                                    polja.
-                                                                </Typography>
-                                                            )}
-                                                        </>
                                                     )}
                                                 </Stack>
-                                            </Card>
-                                        </Stack>
-                                    )}
-                                </div>
-                            </Stack>
-
-                            <Stack spacing={6}>
-                                <Card className="p-4">
-                                    <Stack spacing={4}>
-                                        <Typography level="h3" semiBold>
-                                            Publish readiness
-                                        </Typography>
-                                        {missingSectionFields.length === 0 &&
-                                        metadataWarnings.length === 0 &&
-                                        !contentReadinessWarning ? (
-                                            <Typography
-                                                level="body3"
-                                                className="text-emerald-500"
-                                            >
-                                                Stranica je spremna za objavu.
-                                            </Typography>
-                                        ) : (
-                                            <Stack spacing={2}>
-                                                {contentReadinessWarning && (
-                                                    <Typography
-                                                        level="body3"
-                                                        className="text-amber-500"
-                                                    >
-                                                        {
-                                                            contentReadinessWarning
-                                                        }
-                                                    </Typography>
-                                                )}
-                                                {missingSectionFields.map(
-                                                    (entry) => (
-                                                        <Typography
-                                                            key={
-                                                                entry.section.id
+                                                {selectedSection && (
+                                                    <Row spacing={1}>
+                                                        <Button
+                                                            type="button"
+                                                            variant="plain"
+                                                            size="sm"
+                                                            disabled={
+                                                                selectedSectionIndex ===
+                                                                0
                                                             }
-                                                            level="body3"
-                                                            className="text-amber-500"
+                                                            aria-label="Pomakni sekciju gore"
+                                                            title="Pomakni sekciju gore"
+                                                            onClick={() =>
+                                                                setSections(
+                                                                    (current) =>
+                                                                        moveSection(
+                                                                            current,
+                                                                            selectedSection.id,
+                                                                            -1,
+                                                                        ),
+                                                                )
+                                                            }
                                                         >
-                                                            Sekcija{' '}
-                                                            {entry.index + 1} (
-                                                            {sectionLabel(
-                                                                entry.section
-                                                                    .data
-                                                                    .component,
-                                                            )}
-                                                            ) ima obavezna
-                                                            prazna polja.
-                                                        </Typography>
-                                                    ),
-                                                )}
-                                                {metadataWarnings.map(
-                                                    (warning) => (
-                                                        <Typography
-                                                            key={warning.label}
-                                                            level="body3"
-                                                            className="text-amber-500"
+                                                            <ArrowUp className="size-4" />
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="plain"
+                                                            size="sm"
+                                                            disabled={
+                                                                selectedSectionIndex ===
+                                                                sections.length -
+                                                                    1
+                                                            }
+                                                            aria-label="Pomakni sekciju dolje"
+                                                            title="Pomakni sekciju dolje"
+                                                            onClick={() =>
+                                                                setSections(
+                                                                    (current) =>
+                                                                        moveSection(
+                                                                            current,
+                                                                            selectedSection.id,
+                                                                            1,
+                                                                        ),
+                                                                )
+                                                            }
                                                         >
-                                                            Nedostaje:{' '}
-                                                            {warning.label}.
-                                                        </Typography>
-                                                    ),
+                                                            <ArrowDown className="size-4" />
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="plain"
+                                                            size="sm"
+                                                            aria-label="Dupliciraj sekciju"
+                                                            title="Dupliciraj sekciju"
+                                                            onClick={() =>
+                                                                duplicateSection(
+                                                                    selectedSection,
+                                                                )
+                                                            }
+                                                        >
+                                                            <Duplicate className="size-4" />
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="plain"
+                                                            color="danger"
+                                                            size="sm"
+                                                            aria-label="Ukloni sekciju"
+                                                            title="Ukloni sekciju"
+                                                            onClick={() =>
+                                                                removeSection(
+                                                                    selectedSection.id,
+                                                                )
+                                                            }
+                                                        >
+                                                            <Delete className="size-4" />
+                                                        </Button>
+                                                    </Row>
                                                 )}
-                                            </Stack>
-                                        )}
-                                    </Stack>
-                                </Card>
-                                <Card className="p-4">
-                                    <Stack spacing={4}>
-                                        <Typography level="h3" semiBold>
-                                            Metadata
-                                        </Typography>
-                                        <Input
-                                            name="metaTitle"
-                                            label="Meta naslov"
-                                            value={metaTitle}
-                                            onChange={(event) =>
-                                                setMetaTitle(event.target.value)
-                                            }
-                                        />
-                                        <Input
-                                            name="metaDescription"
-                                            label="Meta opis"
-                                            value={metaDescription}
-                                            onChange={(event) =>
-                                                setMetaDescription(
-                                                    event.target.value,
-                                                )
-                                            }
-                                        />
-                                        <Input
-                                            name="metaImageUrl"
-                                            label="Meta slika URL"
-                                            type="url"
-                                            defaultValue={
-                                                page?.metaImageUrl ?? ''
-                                            }
-                                        />
-                                        <Input
-                                            name="canonicalPath"
-                                            label="Canonical putanja"
-                                            defaultValue={
-                                                page?.canonicalPath ?? ''
-                                            }
-                                            placeholder="/primjer-stranice"
-                                        />
-                                        <label className="flex items-center gap-2 text-sm">
-                                            <input
-                                                type="checkbox"
-                                                name="noIndex"
-                                                defaultChecked={
-                                                    page?.noIndex ?? false
+                                            </Row>
+                                            {selectedSection && (
+                                                <Typography
+                                                    level="body3"
+                                                    secondary
+                                                >
+                                                    {selectedSectionComponent?.description ??
+                                                        sectionSummary(
+                                                            selectedSection,
+                                                        )}
+                                                </Typography>
+                                            )}
+                                            <CmsPageSectionFields
+                                                section={selectedSection}
+                                                fields={
+                                                    selectedSectionComponent?.fields ??
+                                                    []
+                                                }
+                                                fieldErrors={
+                                                    selectedSectionErrors
+                                                }
+                                                onChange={(sectionId, data) =>
+                                                    updateSectionData(
+                                                        sectionId,
+                                                        data,
+                                                        setSections,
+                                                    )
                                                 }
                                             />
-                                            Isključi iz indeksiranja (noindex)
-                                        </label>
-                                    </Stack>
-                                </Card>
-                            </Stack>
+                                        </Stack>
+                                    </Card>
 
-                            {state?.message && (
-                                <Typography
-                                    level="body2"
-                                    className="text-red-600"
-                                >
-                                    {state.message}
-                                </Typography>
-                            )}
-                        </Stack>
-                    </form>
+                                    <Card className="p-4">
+                                        <Stack spacing={4}>
+                                            <Typography level="h4" semiBold>
+                                                SEO
+                                            </Typography>
+                                            <Input
+                                                name="metaTitle"
+                                                label="Meta naslov"
+                                                value={metaTitle}
+                                                onChange={(event) =>
+                                                    setMetaTitle(
+                                                        event.target.value,
+                                                    )
+                                                }
+                                            />
+                                            <Input
+                                                name="metaDescription"
+                                                label="Meta opis"
+                                                value={metaDescription}
+                                                maxLength={160}
+                                                helperText={`${metaDescription.length}/160 znakova`}
+                                                onChange={(event) =>
+                                                    setMetaDescription(
+                                                        event.target.value,
+                                                    )
+                                                }
+                                            />
+                                            <Input
+                                                name="metaImageUrl"
+                                                label="Meta slika URL"
+                                                type="url"
+                                                defaultValue={
+                                                    page?.metaImageUrl ?? ''
+                                                }
+                                            />
+                                            <Input
+                                                name="canonicalPath"
+                                                label="Canonical putanja"
+                                                defaultValue={
+                                                    page?.canonicalPath ?? ''
+                                                }
+                                                placeholder="/primjer-stranice"
+                                            />
+                                            <label className="flex items-center gap-2 text-sm">
+                                                <input
+                                                    type="checkbox"
+                                                    name="noIndex"
+                                                    defaultChecked={
+                                                        page?.noIndex ?? false
+                                                    }
+                                                />
+                                                Isključi iz indeksiranja
+                                                (noindex)
+                                            </label>
+                                            <div className="rounded-md border bg-muted/20 p-3">
+                                                <Typography
+                                                    level="body3"
+                                                    semiBold
+                                                >
+                                                    {metaTitle ||
+                                                        page?.title ||
+                                                        'Meta naslov'}
+                                                </Typography>
+                                                <Typography
+                                                    level="body3"
+                                                    className="line-clamp-3"
+                                                    secondary
+                                                >
+                                                    {metaDescription ||
+                                                        'Meta opis za javni prikaz stranice.'}
+                                                </Typography>
+                                            </div>
+                                        </Stack>
+                                    </Card>
+
+                                    <Card className="p-4">
+                                        <Stack spacing={3}>
+                                            <Typography level="h4" semiBold>
+                                                Publish readiness
+                                            </Typography>
+                                            {publishReady ? (
+                                                <Typography
+                                                    level="body3"
+                                                    className="text-emerald-500"
+                                                >
+                                                    Stranica je spremna za
+                                                    objavu.
+                                                </Typography>
+                                            ) : (
+                                                <Stack spacing={2}>
+                                                    {contentReadinessWarning && (
+                                                        <Typography
+                                                            level="body3"
+                                                            className="text-amber-500"
+                                                        >
+                                                            {
+                                                                contentReadinessWarning
+                                                            }
+                                                        </Typography>
+                                                    )}
+                                                    {missingSectionFields.map(
+                                                        (entry) => (
+                                                            <Typography
+                                                                key={
+                                                                    entry
+                                                                        .section
+                                                                        .id
+                                                                }
+                                                                level="body3"
+                                                                className="text-amber-500"
+                                                            >
+                                                                Sekcija{' '}
+                                                                {entry.index +
+                                                                    1}{' '}
+                                                                (
+                                                                {sectionLabel(
+                                                                    entry
+                                                                        .section
+                                                                        .data
+                                                                        .component,
+                                                                )}
+                                                                ) ima obavezna
+                                                                prazna polja.
+                                                            </Typography>
+                                                        ),
+                                                    )}
+                                                    {metadataIssues.map(
+                                                        (issue) => (
+                                                            <Typography
+                                                                key={issue}
+                                                                level="body3"
+                                                                className="text-amber-500"
+                                                            >
+                                                                {issue}
+                                                            </Typography>
+                                                        ),
+                                                    )}
+                                                </Stack>
+                                            )}
+                                        </Stack>
+                                    </Card>
+                                </Stack>
+                            </div>
+                        )}
+                    </Stack>
+
+                    {state?.message && (
+                        <Typography level="body2" className="text-red-600">
+                            {state.message}
+                        </Typography>
+                    )}
                 </Stack>
-            </Card>
+            </form>
         </Stack>
     );
 }
