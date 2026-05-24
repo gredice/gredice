@@ -1,7 +1,7 @@
 'use client';
 
 import { cx } from '@gredice/ui/utils';
-import { type HTMLAttributes, useEffect, useMemo } from 'react';
+import { type HTMLAttributes, useEffect, useMemo, useState } from 'react';
 import { Controls } from './controls/Controls';
 import { EntityFactory } from './entities/EntityFactory';
 import {
@@ -58,6 +58,55 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     flags?: GameFeatureFlags;
 };
 
+function useAutoQualityProfileVersion(enabled: boolean) {
+    const [version, setVersion] = useState(0);
+
+    useEffect(() => {
+        if (!enabled || typeof window === 'undefined') {
+            return;
+        }
+
+        let resolutionQuery: MediaQueryList | undefined;
+        const refresh = () =>
+            setVersion((currentVersion) => currentVersion + 1);
+        const handleResolutionChange = () => {
+            refresh();
+            subscribeResolutionChange();
+        };
+        const subscribeResolutionChange = () => {
+            resolutionQuery?.removeEventListener(
+                'change',
+                handleResolutionChange,
+            );
+
+            if (typeof window.matchMedia !== 'function') {
+                resolutionQuery = undefined;
+                return;
+            }
+
+            resolutionQuery = window.matchMedia(
+                `(resolution: ${window.devicePixelRatio || 1}dppx)`,
+            );
+            resolutionQuery.addEventListener('change', handleResolutionChange);
+        };
+
+        subscribeResolutionChange();
+        window.addEventListener('resize', refresh);
+        window.addEventListener('orientationchange', refresh);
+
+        return () => {
+            resolutionQuery?.removeEventListener(
+                'change',
+                handleResolutionChange,
+            );
+            window.removeEventListener('resize', refresh);
+            window.removeEventListener('orientationchange', refresh);
+        };
+    }, [enabled]);
+
+    return version;
+}
+
 export function GameScene({
     cameraPosition = defaultGameCameraPosition,
     zoom = 'normal',
@@ -86,14 +135,21 @@ export function GameScene({
     );
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
     const renderDetails = useDeferredSceneDetails(deferDetails);
-    const qualityProfile = useMemo(
-        () =>
-            resolveGameQualityProfile(
-                quality ?? gameQualitySetting,
-                gameQualityCustomProfile,
-            ),
-        [gameQualityCustomProfile, gameQualitySetting, quality],
+    const autoQualityProfileVersion = useAutoQualityProfileVersion(
+        quality === undefined && gameQualitySetting === 'auto',
     );
+    const qualityProfile = useMemo(() => {
+        void autoQualityProfileVersion;
+        return resolveGameQualityProfile(
+            quality ?? gameQualitySetting,
+            gameQualityCustomProfile,
+        );
+    }, [
+        autoQualityProfileVersion,
+        gameQualityCustomProfile,
+        gameQualitySetting,
+        quality,
+    ]);
 
     // Start non-critical metadata early, but don't block the first scene frame.
     useBlockData();
