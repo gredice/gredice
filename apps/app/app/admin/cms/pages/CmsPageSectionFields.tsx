@@ -7,6 +7,7 @@ import { Add, Delete } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { useEffect } from 'react';
 import type {
     CmsPageCtaData,
     CmsPageEditableSection,
@@ -21,6 +22,12 @@ type CmsPageSectionFieldsProps = {
     onChange: (sectionId: string, data: CmsPageSectionData) => void;
 };
 
+type CmsPageCtaEditorData = CmsPageCtaData & { id: string };
+type CmsPageFeatureEditorData = Omit<CmsPageFeatureData, 'ctas'> & {
+    id: string;
+    ctas: CmsPageCtaEditorData[];
+};
+
 function textValue(value: unknown) {
     return typeof value === 'string' ? value : '';
 }
@@ -33,31 +40,68 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object';
 }
 
-function ctaValues(value: unknown): CmsPageCtaData[] {
+function normalizeCtaValues(value: unknown): {
+    items: CmsPageCtaEditorData[];
+    changed: boolean;
+} {
     if (!Array.isArray(value)) {
-        return [];
+        return { items: [], changed: false };
     }
 
-    return value.filter(isRecord).map((item) => ({
-        id: textValue(item.id),
-        label: textValue(item.label),
-        href: textValue(item.href),
-        iconName: textValue(item.iconName),
-        secondary: booleanValue(item.secondary),
-    }));
+    let changed = false;
+    const items = value.filter(isRecord).map((item) => {
+        const id = textValue(item.id);
+
+        if (!id) {
+            changed = true;
+        }
+
+        return {
+            id: id || crypto.randomUUID(),
+            label: textValue(item.label),
+            href: textValue(item.href),
+            iconName: textValue(item.iconName),
+            secondary: booleanValue(item.secondary),
+        };
+    });
+
+    return { items, changed };
 }
 
-function featureValues(value: unknown): CmsPageFeatureData[] {
+function ctaValues(value: unknown) {
+    return normalizeCtaValues(value).items;
+}
+
+function normalizeFeatureValues(value: unknown): {
+    items: CmsPageFeatureEditorData[];
+    changed: boolean;
+} {
     if (!Array.isArray(value)) {
-        return [];
+        return { items: [], changed: false };
     }
 
-    return value.filter(isRecord).map((item) => ({
-        id: textValue(item.id),
-        header: textValue(item.header),
-        description: textValue(item.description),
-        ctas: ctaValues(item.ctas),
-    }));
+    let changed = false;
+    const items = value.filter(isRecord).map((item) => {
+        const id = textValue(item.id);
+        const ctas = normalizeCtaValues(item.ctas);
+
+        if (!id || ctas.changed) {
+            changed = true;
+        }
+
+        return {
+            id: id || crypto.randomUUID(),
+            header: textValue(item.header),
+            description: textValue(item.description),
+            ctas: ctas.items,
+        };
+    });
+
+    return { items, changed };
+}
+
+function featureValues(value: unknown) {
+    return normalizeFeatureValues(value).items;
 }
 
 function replaceAt<T>(items: T[], index: number, value: T) {
@@ -74,6 +118,41 @@ export function CmsPageSectionFields({
     fieldErrors,
     onChange,
 }: CmsPageSectionFieldsProps) {
+    useEffect(() => {
+        if (!section) {
+            return;
+        }
+
+        let changed = false;
+        const nextData: CmsPageSectionData = { ...section.data };
+
+        for (const field of fields) {
+            if (field.type === 'cta-list') {
+                const ctas = normalizeCtaValues(section.data[field.key]);
+
+                if (ctas.changed) {
+                    changed = true;
+                    nextData[field.key] = ctas.items;
+                }
+            }
+
+            if (field.type === 'feature-list') {
+                const features = normalizeFeatureValues(
+                    section.data[field.key],
+                );
+
+                if (features.changed) {
+                    changed = true;
+                    nextData[field.key] = features.items;
+                }
+            }
+        }
+
+        if (changed) {
+            onChange(section.id, nextData);
+        }
+    }, [fields, onChange, section]);
+
     if (!section) {
         return (
             <Typography level="body3" secondary>
@@ -95,15 +174,15 @@ export function CmsPageSectionFields({
 
     const renderCtas = (
         key: string,
-        items: CmsPageCtaData[],
+        items: CmsPageCtaEditorData[],
         options: { allowIcon?: boolean; allowSecondary?: boolean },
-        updateItems: (items: CmsPageCtaData[]) => void,
+        updateItems: (items: CmsPageCtaEditorData[]) => void,
     ) => (
         <Stack spacing={3}>
             {items.map((cta, index) => (
                 <div
                     className="rounded-md border bg-background p-3"
-                    key={`${key}-${cta.id || cta.label || cta.href || cta.iconName}`}
+                    key={`${key}-${cta.id}`}
                 >
                     <Stack spacing={3}>
                         <Row spacing={2} className="items-start">
@@ -263,7 +342,7 @@ export function CmsPageSectionFields({
                             {items.map((feature, index) => (
                                 <div
                                     className="rounded-md border bg-background p-3"
-                                    key={`${field.key}-${feature.id || feature.header || feature.description}`}
+                                    key={`${field.key}-${feature.id}`}
                                 >
                                     <Stack spacing={3}>
                                         <Row
@@ -343,7 +422,7 @@ export function CmsPageSectionFields({
                                         )}
                                         {field.allowCtas &&
                                             renderCtas(
-                                                `${field.key}-${index}-ctas`,
+                                                `${field.key}-${feature.id}-ctas`,
                                                 feature.ctas ?? [],
                                                 { allowSecondary: true },
                                                 (nextCtas) =>
