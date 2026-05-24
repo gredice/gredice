@@ -1,13 +1,13 @@
 'use client';
 
-import type { GameQualityTier } from './gameQuality';
+import type { GameQualityProfileTier } from './gameQuality';
 
 export type GameProfileMetadata = {
     dprCap?: number;
     groundDecorationCount?: number;
     groundDecorationDensity?: number;
     instancedSnowOverlayCount?: number;
-    qualityTier?: GameQualityTier;
+    qualityTier?: GameQualityProfileTier;
     rainParticleCount?: number;
     raisedBedMulchOverlayCount?: number;
     shadowMapSize?: number;

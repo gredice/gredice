@@ -4,8 +4,11 @@ import type { OrbitControls } from 'three-stdlib';
 import { createStore, useStore } from 'zustand';
 import { createGameAudio, type GameAudio } from './audio/audioMixer';
 import {
+    type GameQualityCustomProfile,
     type GameQualitySetting,
+    getGameQualityCustomProfile,
     getGameQualitySetting,
+    setGameQualityCustomProfile as persistGameQualityCustomProfile,
     setGameQualitySetting as persistGameQualitySetting,
 } from './scene/gameQuality';
 import type { Block } from './types/Block';
@@ -112,6 +115,8 @@ export type GameState = {
     setFreezeTime: (freezeTime: Date | null) => void;
     dayNightCycleDisabled: boolean;
     setDayNightCycleDisabled: (disabled: boolean) => void;
+    gameQualityCustomProfile: GameQualityCustomProfile;
+    setGameQualityCustomProfile: (profile: GameQualityCustomProfile) => void;
     gameQualitySetting: GameQualitySetting;
     setGameQualitySetting: (setting: GameQualitySetting) => void;
     weatherVisualizationDisabled: boolean;
@@ -189,6 +194,7 @@ export function createGameState({
     winterMode?: WinterMode;
 }) {
     const dayNightCycleDisabled = isDayNightCycleDisabled();
+    const gameQualityCustomProfile = getGameQualityCustomProfile();
     const gameQualitySetting = getGameQualitySetting();
     const weatherVisualizationDisabled = isWeatherVisualizationDisabled();
     const now = freezeTime ?? new Date();
@@ -227,6 +233,15 @@ export function createGameState({
                     get().freezeTime ?? new Date(),
                     disabled,
                 ),
+            });
+        },
+        gameQualityCustomProfile,
+        setGameQualityCustomProfile: (profile) => {
+            persistGameQualityCustomProfile(profile);
+            persistGameQualitySetting('custom');
+            set({
+                gameQualityCustomProfile: profile,
+                gameQualitySetting: 'custom',
             });
         },
         gameQualitySetting,

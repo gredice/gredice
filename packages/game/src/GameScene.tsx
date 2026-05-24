@@ -1,7 +1,13 @@
 'use client';
 
 import { cx } from '@gredice/ui/utils';
-import { type HTMLAttributes, Suspense, useEffect } from 'react';
+import {
+    type HTMLAttributes,
+    Suspense,
+    useEffect,
+    useMemo,
+    useState,
+} from 'react';
 import { Controls } from './controls/Controls';
 import { EntityFactory } from './entities/EntityFactory';
 import {
@@ -28,7 +34,9 @@ import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
 import { Environment } from './scene/Environment';
 import {
+    type GameQualityAutoProfileMetrics,
     type GameQualityTier,
+    getGameQualityAutoProfileMetrics,
     resolveGameQualityProfile,
 } from './scene/gameQuality';
 import { Scene } from './scene/Scene';
@@ -58,6 +66,56 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     flags?: GameFeatureFlags;
 };
 
+function useAutoQualityProfileMetrics(enabled: boolean) {
+    const [metrics, setMetrics] = useState<
+        GameQualityAutoProfileMetrics | undefined
+    >(getGameQualityAutoProfileMetrics);
+
+    useEffect(() => {
+        if (!enabled || typeof window === 'undefined') {
+            return;
+        }
+
+        let resolutionQuery: MediaQueryList | undefined;
+        const refresh = () => setMetrics(getGameQualityAutoProfileMetrics());
+        const handleResolutionChange = () => {
+            refresh();
+            subscribeResolutionChange();
+        };
+        const subscribeResolutionChange = () => {
+            resolutionQuery?.removeEventListener(
+                'change',
+                handleResolutionChange,
+            );
+
+            if (typeof window.matchMedia !== 'function') {
+                resolutionQuery = undefined;
+                return;
+            }
+
+            resolutionQuery = window.matchMedia(
+                `(resolution: ${window.devicePixelRatio || 1}dppx)`,
+            );
+            resolutionQuery.addEventListener('change', handleResolutionChange);
+        };
+
+        subscribeResolutionChange();
+        window.addEventListener('resize', refresh);
+        window.addEventListener('orientationchange', refresh);
+
+        return () => {
+            resolutionQuery?.removeEventListener(
+                'change',
+                handleResolutionChange,
+            );
+            window.removeEventListener('resize', refresh);
+            window.removeEventListener('orientationchange', refresh);
+        };
+    }, [enabled]);
+
+    return metrics;
+}
+
 export function GameScene({
     cameraPosition = defaultGameCameraPosition,
     zoom = 'normal',
@@ -81,11 +139,26 @@ export function GameScene({
     const gameQualitySetting = useGameState(
         (state) => state.gameQualitySetting,
     );
+    const gameQualityCustomProfile = useGameState(
+        (state) => state.gameQualityCustomProfile,
+    );
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
     const renderDetails = useDeferredSceneDetails(deferDetails);
-    const qualityProfile = resolveGameQualityProfile(
-        quality ?? gameQualitySetting,
+    const autoQualityProfileMetrics = useAutoQualityProfileMetrics(
+        quality === undefined && gameQualitySetting === 'auto',
     );
+    const qualityProfile = useMemo(() => {
+        return resolveGameQualityProfile(
+            quality ?? gameQualitySetting,
+            gameQualityCustomProfile,
+            autoQualityProfileMetrics,
+        );
+    }, [
+        autoQualityProfileMetrics,
+        gameQualityCustomProfile,
+        gameQualitySetting,
+        quality,
+    ]);
 
     // Start non-critical metadata early, but don't block the first scene frame.
     useBlockData();
