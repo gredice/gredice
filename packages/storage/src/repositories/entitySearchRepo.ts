@@ -777,6 +777,12 @@ export async function searchDirectoryEntities({
             (ts_rank_cd(${entitySearchDocuments.searchVector}, ${prefixTsQuery}) * 0.5)
         `
         : exactRank;
+    const highPriorityRank = prefixTsQuery
+        ? sql<number>`
+            ts_rank_cd(array[0,0,0,1]::real[], ${entitySearchDocuments.searchVector}, ${exactTsQuery}) +
+            ts_rank_cd(array[0,0,0,1]::real[], ${entitySearchDocuments.searchVector}, ${prefixTsQuery})
+        `
+        : sql<number>`ts_rank_cd(array[0,0,0,1]::real[], ${entitySearchDocuments.searchVector}, ${exactTsQuery})`;
     const conditions = [
         eq(entitySearchDocuments.state, 'published'),
         prefixTsQuery
@@ -800,20 +806,23 @@ export async function searchDirectoryEntities({
 
     const requestedLimit = searchLimit(limit);
     const requestedOffset = searchOffset(offset);
-    const rows = await storage()
+    const selectedRows = {
+        entityId: entitySearchDocuments.entityId,
+        entityTypeName: entitySearchDocuments.entityTypeName,
+        publicCategory: entitySearchDocuments.publicCategory,
+        publicCategoryLabel: entitySearchDocuments.publicCategoryLabel,
+        title: entitySearchDocuments.title,
+        summary: entitySearchDocuments.summary,
+        imageUrl: entitySearchDocuments.imageUrl,
+        imageAlt: entitySearchDocuments.imageAlt,
+        state: entitySearchDocuments.state,
+        publishedAt: entitySearchDocuments.publishedAt,
+        updatedAt: entitySearchDocuments.updatedAt,
+        score: score.mapWith(Number),
+    };
+    const baseRows = await storage()
         .select({
-            entityId: entitySearchDocuments.entityId,
-            entityTypeName: entitySearchDocuments.entityTypeName,
-            publicCategory: entitySearchDocuments.publicCategory,
-            publicCategoryLabel: entitySearchDocuments.publicCategoryLabel,
-            title: entitySearchDocuments.title,
-            summary: entitySearchDocuments.summary,
-            imageUrl: entitySearchDocuments.imageUrl,
-            imageAlt: entitySearchDocuments.imageAlt,
-            state: entitySearchDocuments.state,
-            publishedAt: entitySearchDocuments.publishedAt,
-            updatedAt: entitySearchDocuments.updatedAt,
-            score: score.mapWith(Number),
+            ...selectedRows,
         })
         .from(entitySearchDocuments)
         .where(and(...conditions))
@@ -821,10 +830,24 @@ export async function searchDirectoryEntities({
             desc(score),
             asc(entitySearchDocuments.entityTypeName),
             asc(entitySearchDocuments.entityId),
-        );
+        )
+        .limit(requestedOffset + requestedLimit);
+    const highPriorityRows = await storage()
+        .select({
+            ...selectedRows,
+        })
+        .from(entitySearchDocuments)
+        .where(and(...conditions, sql`${highPriorityRank} > 0`));
+    const rowsByEntityId = new Map<number, (typeof baseRows)[number]>();
+    for (const row of baseRows) {
+        rowsByEntityId.set(row.entityId, row);
+    }
+    for (const row of highPriorityRows) {
+        rowsByEntityId.set(row.entityId, row);
+    }
 
     const rowsWithPublicUrls: DirectoryEntitySearchRow[] = [];
-    for (const row of rows) {
+    for (const row of rowsByEntityId.values()) {
         const entity = await getEntityRaw(row.entityId);
         if (!entity) {
             continue;
