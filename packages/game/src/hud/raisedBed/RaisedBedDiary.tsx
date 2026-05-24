@@ -98,7 +98,10 @@ function DiaryEntryImages({
     }
 
     return (
-        <div className={cx('min-w-0 max-w-full overflow-hidden', className)}>
+        <div
+            className={cx('min-w-0 max-w-full overflow-hidden', className)}
+            data-diary-entry-images
+        >
             <ImageGallery
                 images={imageUrls.map((url) => ({ src: url, alt: name }))}
                 previewWidth={80}
@@ -108,6 +111,10 @@ function DiaryEntryImages({
             />
         </div>
     );
+}
+
+function diaryEntryImagesClassName(imageUrls?: string[] | null) {
+    return cx('w-20 shrink-0', (imageUrls?.length ?? 0) > 1 && 'sm:w-44');
 }
 
 function DiaryList({
@@ -190,9 +197,14 @@ function DiaryList({
                                                 <DiaryEntryImages
                                                     name={entry.name}
                                                     imageUrls={entry.imageUrls}
-                                                    className="w-20 shrink-0 sm:w-44"
+                                                    className={diaryEntryImagesClassName(
+                                                        entry.imageUrls,
+                                                    )}
                                                 />
-                                                <Stack className="min-w-0 flex-1">
+                                                <Stack
+                                                    className="min-w-0 flex-1"
+                                                    data-diary-entry-content
+                                                >
                                                     <Typography
                                                         level="body1"
                                                         semiBold
@@ -235,9 +247,14 @@ function DiaryList({
                                                 <DiaryEntryImages
                                                     name={entry.name}
                                                     imageUrls={entry.imageUrls}
-                                                    className="w-20 shrink-0 sm:w-44"
+                                                    className={diaryEntryImagesClassName(
+                                                        entry.imageUrls,
+                                                    )}
                                                 />
-                                                <Stack className="min-w-0 flex-1">
+                                                <Stack
+                                                    className="min-w-0 flex-1"
+                                                    data-diary-entry-content
+                                                >
                                                     <Typography
                                                         level="body1"
                                                         semiBold

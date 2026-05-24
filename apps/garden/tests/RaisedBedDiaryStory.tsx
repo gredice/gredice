@@ -17,6 +17,8 @@ type DiaryEntry = {
     isMarkdown?: boolean;
 };
 
+const singleImageUrls = ['/web-app-manifest-192x192.png'];
+
 const imageUrls = [
     '/web-app-manifest-192x192.png',
     '/web-app-manifest-512x512.png',
@@ -33,7 +35,7 @@ const diaryEntries: DiaryEntry[] = [
         description: `${longWord} with a long description and enough words to wrap inside a narrow mobile raised bed diary card.`,
         status: 'Planirano',
         timestamp: new Date('2026-05-13T12:00:00.000Z'),
-        imageUrls,
+        imageUrls: singleImageUrls,
     },
     {
         id: 2,

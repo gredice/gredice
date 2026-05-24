@@ -3,6 +3,7 @@ import type { Locator } from '@playwright/test';
 import { RaisedBedDiaryOverflowStory } from './RaisedBedDiaryStory';
 
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
+const TABLET_VIEWPORT = { width: 1024, height: 768 };
 
 async function expectNoHorizontalOverflow(locator: Locator) {
     const overflow = await locator.evaluate((element) => ({
@@ -43,4 +44,28 @@ test('raised bed diary entries stay inside a narrow mobile card', async ({
     );
 
     expect(overflowingEntries).toEqual([]);
+});
+
+test('single-image diary entries keep text close to the thumbnail', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<RaisedBedDiaryOverflowStory />);
+
+    const firstEntry = page.locator('[data-diary-entry]').first();
+    const imageBox = await firstEntry
+        .locator('[data-diary-entry-images]')
+        .boundingBox();
+    const contentBox = await firstEntry
+        .locator('[data-diary-entry-content]')
+        .boundingBox();
+
+    expect(imageBox).not.toBeNull();
+    expect(contentBox).not.toBeNull();
+
+    const imageRight = (imageBox?.x ?? 0) + (imageBox?.width ?? 0);
+    const textGap = (contentBox?.x ?? 0) - imageRight;
+
+    expect(textGap).toBeLessThanOrEqual(24);
 });

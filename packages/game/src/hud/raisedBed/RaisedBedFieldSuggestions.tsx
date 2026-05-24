@@ -1,5 +1,4 @@
 import { Typography } from '@gredice/ui/Typography';
-import { cx } from '@gredice/ui/utils';
 import { useEffect } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useAllSorts } from '../../hooks/usePlantSorts';
@@ -161,6 +160,9 @@ const quickSeedOptions: Record<
     },
 };
 
+const quickSowingButtonClassName =
+    'size-10 rounded-full bg-black/80 text-white hover:bg-black/50 hover:text-white md:size-auto dark:bg-white/10 dark:text-primary-foreground dark:hover:text-primary-foreground/80';
+
 function getSeasonForDate(date: Date | null): QuickSeedType {
     if (!date || Number.isNaN(date.getTime())) {
         return 'spring';
@@ -311,10 +313,7 @@ export function RaisedBedFieldSuggestions({
                 {seasonalOption && (
                     <ButtonGreen
                         variant="plain"
-                        className={cx(
-                            'bg-black/80 hover:bg-black/50 dark:bg-white/10 md:size-auto',
-                            'size-10 rounded-full',
-                        )}
+                        className={quickSowingButtonClassName}
                         startDecorator={
                             <span className="text-xl">
                                 {seasonalOption.emoji}
@@ -338,10 +337,7 @@ export function RaisedBedFieldSuggestions({
                     <ButtonGreen
                         key={type}
                         variant="plain"
-                        className={cx(
-                            'bg-black/80 hover:bg-black/50 dark:bg-white/10 md:size-auto',
-                            'size-10 rounded-full',
-                        )}
+                        className={quickSowingButtonClassName}
                         startDecorator={
                             <span className="text-xl">{option.emoji}</span>
                         }

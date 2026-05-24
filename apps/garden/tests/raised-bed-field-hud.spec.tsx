@@ -632,6 +632,9 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
         const buttons = recommendations.locator('button');
         await expect(buttons).toHaveCount(2);
 
+        await expect(buttons.first()).toHaveCSS('color', 'rgb(255, 255, 255)');
+        await expect(buttons.nth(1)).toHaveCSS('color', 'rgb(255, 255, 255)');
+
         for (let index = 0; index < 2; index += 1) {
             const buttonBox = await buttons.nth(index).boundingBox();
             expect(buttonBox).not.toBeNull();
