@@ -107,6 +107,43 @@ const tomatoSort = {
     updatedAt: now,
 } satisfies PlantSortData;
 
+function createTomatoSort(id: number, name: string, shortDescription: string) {
+    return {
+        ...tomatoSort,
+        id,
+        slug: `mock-${id}`,
+        information: {
+            ...tomatoSort.information,
+            name,
+            shortDescription,
+        },
+    } satisfies PlantSortData;
+}
+
+const tomatoSorts = [
+    tomatoSort,
+    createTomatoSort(
+        102,
+        'Rajčica saint pierre',
+        'Klasična visoka rajčica okruglih crvenih plodova, pogodna za svježu potrošnju.',
+    ),
+    createTomatoSort(
+        103,
+        'Rajčica scatolone',
+        'Unikatna talijanska sorta. Na visokoj i bujnoj stabljici rastu krupni plodovi.',
+    ),
+    createTomatoSort(
+        104,
+        'Rajčica Volovsko srce',
+        'Sorta kasne rajčice. Biljke su visoke i bujne te zahtijevaju potporu.',
+    ),
+    createTomatoSort(
+        105,
+        'Rajčica San Marzano',
+        'Duguljasta rajčica punog okusa za umake, salate i ljetnu kuhinju.',
+    ),
+];
+
 function createPlantPickerQueryClient() {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
@@ -125,7 +162,7 @@ function createPlantPickerQueryClient() {
         items: [],
     });
     queryClient.setQueryData(['plants'], [tomatoPlant, basilPlant]);
-    queryClient.setQueryData(['sorts'], [tomatoSort]);
+    queryClient.setQueryData(['sorts'], tomatoSorts);
 
     return queryClient;
 }

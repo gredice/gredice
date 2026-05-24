@@ -77,7 +77,7 @@ export function PlantsList({
             )}
             <List
                 variant="outlined"
-                className="bg-card max-h-96 overflow-y-auto"
+                className="max-h-[40dvh] overflow-y-auto bg-card md:max-h-96"
             >
                 {!isLoading && sortedPlants?.length === 0 && (
                     <NoDataPlaceholder className="p-4">

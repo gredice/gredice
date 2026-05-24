@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import {
     RaisedBedFieldDndDialogStory,
     RaisedBedFieldHudStory,
+    RaisedBedFieldSuggestionsStory,
 } from './RaisedBedFieldHudStory';
 import {
     buildCartItem,
@@ -610,6 +611,48 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
             'data-touch-expanded',
             'false',
         );
+    });
+
+    test('quick sowing recommendations stay inside their card', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldSuggestionsStory scenario={emptyScenario()} />,
+        );
+
+        const recommendations = page.locator(
+            '[data-quick-sowing-recommendations]',
+        );
+        await expect(recommendations).toBeVisible();
+
+        const recommendationBox = await recommendations.boundingBox();
+        expect(recommendationBox).not.toBeNull();
+
+        const buttons = recommendations.locator('button');
+        await expect(buttons).toHaveCount(2);
+
+        await expect(buttons.first()).toHaveCSS(
+            'background-image',
+            /linear-gradient/u,
+        );
+        await expect(buttons.nth(1)).toHaveCSS(
+            'background-image',
+            /linear-gradient/u,
+        );
+
+        for (let index = 0; index < 2; index += 1) {
+            const buttonBox = await buttons.nth(index).boundingBox();
+            expect(buttonBox).not.toBeNull();
+            expect(buttonBox?.x).toBeGreaterThanOrEqual(
+                recommendationBox?.x ?? 0,
+            );
+            expect(
+                (buttonBox?.x ?? 0) + (buttonBox?.width ?? 0),
+            ).toBeLessThanOrEqual(
+                (recommendationBox?.x ?? 0) + (recommendationBox?.width ?? 0),
+            );
+        }
     });
 
     test('first touch on a multi-icon stack expands instead of activating the icon', async ({
