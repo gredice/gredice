@@ -15,6 +15,7 @@ import {
     type GameQualityProfile,
     resolveGameQualityProfile,
 } from './gameQuality';
+import { getMoonlitNightScales } from './moonlight';
 import { Drops } from './Rain/Drops';
 import Snow from './Snow/Snow';
 import { Stars } from './Stars';
@@ -308,6 +309,12 @@ function useEnvironmentElements({
         colors: { background, sunTemperature, hemisphereSkyColor },
         intensities: { sun: sunIntensity },
     } = environmentState(location, currentTime, timeOfDay);
+    const sceneDate = timeOfDayToDate(currentTime, timeOfDay);
+    const moonlitNightScales = getMoonlitNightScales({
+        date: sceneDate,
+        location,
+        timeOfDay,
+    });
 
     // Directional light
     const directionalLightColor = useRef<Color>(new Color());
@@ -328,9 +335,10 @@ function useEnvironmentElements({
     // Ambient light
     const ambientIntensityOffset = 1;
     const ambientLightIntensity =
-        sunIntensity *
+        (sunIntensity *
             (2 + Math.max(0, -(weather?.cloudy ?? 0) - (weather?.foggy ?? 0))) +
-        ambientIntensityOffset;
+            ambientIntensityOffset) *
+        moonlitNightScales.lightScale;
 
     // Background color
     const backgroundColor = useRef<Color>(new Color());
@@ -339,6 +347,13 @@ function useEnvironmentElements({
         background[1] / 255,
         background[2] / 255,
         'srgb',
+    );
+    const moonlitBackground = { h: 0, s: 0, l: 0 };
+    backgroundColor.current.getHSL(moonlitBackground);
+    backgroundColor.current.setHSL(
+        moonlitBackground.h,
+        moonlitBackground.s,
+        moonlitBackground.l * moonlitNightScales.skyScale,
     );
 
     // Set background color based on weather
@@ -369,7 +384,8 @@ function useEnvironmentElements({
         (backgroundColor.current.b / 255) * 0.5,
         'srgb',
     );
-    const hemisphereIntensity = sunIntensity * 2 + 3;
+    const hemisphereIntensity =
+        (sunIntensity * 2 + 3) * moonlitNightScales.lightScale;
 
     return {
         background: backgroundColor.current,
