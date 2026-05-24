@@ -28,3 +28,26 @@ test('custom quality profile resolves all adjustable fields', () => {
         tier: 'custom',
     });
 });
+
+test('auto quality profile can resolve from supplied device metrics', () => {
+    assert.equal(
+        resolveGameQualityProfile('auto', undefined, {
+            coarsePointer: false,
+            coreCount: 8,
+            dpr: 1,
+            memoryGb: 8,
+            narrowViewport: false,
+        }),
+        gameQualityProfiles.medium,
+    );
+    assert.equal(
+        resolveGameQualityProfile('auto', undefined, {
+            coarsePointer: false,
+            coreCount: 8,
+            dpr: 1,
+            memoryGb: 8,
+            narrowViewport: true,
+        }),
+        gameQualityProfiles.low,
+    );
+});

@@ -18,6 +18,13 @@ export type GameQualityProfile = {
 };
 
 export type GameQualityCustomProfile = Omit<GameQualityProfile, 'tier'>;
+export type GameQualityAutoProfileMetrics = {
+    coarsePointer: boolean;
+    coreCount?: number;
+    dpr: number;
+    memoryGb?: number;
+    narrowViewport: boolean;
+};
 
 export const gameQualityProfiles = {
     low: {
@@ -228,23 +235,39 @@ function readNavigatorNumber(property: string) {
         : undefined;
 }
 
-function resolveAutoGameQualityTier(): GameQualityTier {
+export function getGameQualityAutoProfileMetrics():
+    | GameQualityAutoProfileMetrics
+    | undefined {
     if (typeof window === 'undefined') {
+        return undefined;
+    }
+
+    return {
+        coarsePointer:
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(pointer: coarse)').matches,
+        coreCount: readNavigatorNumber('hardwareConcurrency'),
+        dpr: window.devicePixelRatio || 1,
+        memoryGb: readNavigatorNumber('deviceMemory'),
+        narrowViewport: window.innerWidth <= 640,
+    };
+}
+
+function resolveAutoGameQualityTier(
+    metrics = getGameQualityAutoProfileMetrics(),
+): GameQualityTier {
+    if (metrics === undefined) {
         return 'medium';
     }
 
-    const dpr = window.devicePixelRatio || 1;
-    const memoryGb = readNavigatorNumber('deviceMemory');
-    const coreCount = readNavigatorNumber('hardwareConcurrency');
-    const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
-    const narrowViewport = window.innerWidth <= 640;
-
     if (
-        coarsePointer ||
-        narrowViewport ||
-        dpr >= 2.75 ||
-        (memoryGb !== undefined && memoryGb <= 4) ||
-        (coreCount !== undefined && coreCount <= 4 && dpr > 1.25)
+        metrics.coarsePointer ||
+        metrics.narrowViewport ||
+        metrics.dpr >= 2.75 ||
+        (metrics.memoryGb !== undefined && metrics.memoryGb <= 4) ||
+        (metrics.coreCount !== undefined &&
+            metrics.coreCount <= 4 &&
+            metrics.dpr > 1.25)
     ) {
         return 'low';
     }
@@ -255,6 +278,7 @@ function resolveAutoGameQualityTier(): GameQualityTier {
 export function resolveGameQualityProfile(
     quality?: GameQualitySetting,
     customProfile?: GameQualityCustomProfile,
+    autoMetrics?: GameQualityAutoProfileMetrics,
 ): GameQualityProfile {
     if (quality === 'custom') {
         return {
@@ -265,7 +289,7 @@ export function resolveGameQualityProfile(
 
     const tier =
         quality === undefined || quality === 'auto'
-            ? resolveAutoGameQualityTier()
+            ? resolveAutoGameQualityTier(autoMetrics)
             : quality;
     return gameQualityProfiles[tier];
 }

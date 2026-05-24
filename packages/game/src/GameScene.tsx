@@ -28,7 +28,9 @@ import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
 import { Environment } from './scene/Environment';
 import {
+    type GameQualityAutoProfileMetrics,
     type GameQualityTier,
+    getGameQualityAutoProfileMetrics,
     resolveGameQualityProfile,
 } from './scene/gameQuality';
 import { Scene } from './scene/Scene';
@@ -58,8 +60,10 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     flags?: GameFeatureFlags;
 };
 
-function useAutoQualityProfileVersion(enabled: boolean) {
-    const [version, setVersion] = useState(0);
+function useAutoQualityProfileMetrics(enabled: boolean) {
+    const [metrics, setMetrics] = useState<
+        GameQualityAutoProfileMetrics | undefined
+    >(getGameQualityAutoProfileMetrics);
 
     useEffect(() => {
         if (!enabled || typeof window === 'undefined') {
@@ -67,8 +71,7 @@ function useAutoQualityProfileVersion(enabled: boolean) {
         }
 
         let resolutionQuery: MediaQueryList | undefined;
-        const refresh = () =>
-            setVersion((currentVersion) => currentVersion + 1);
+        const refresh = () => setMetrics(getGameQualityAutoProfileMetrics());
         const handleResolutionChange = () => {
             refresh();
             subscribeResolutionChange();
@@ -104,7 +107,7 @@ function useAutoQualityProfileVersion(enabled: boolean) {
         };
     }, [enabled]);
 
-    return version;
+    return metrics;
 }
 
 export function GameScene({
@@ -135,17 +138,17 @@ export function GameScene({
     );
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
     const renderDetails = useDeferredSceneDetails(deferDetails);
-    const autoQualityProfileVersion = useAutoQualityProfileVersion(
+    const autoQualityProfileMetrics = useAutoQualityProfileMetrics(
         quality === undefined && gameQualitySetting === 'auto',
     );
     const qualityProfile = useMemo(() => {
-        void autoQualityProfileVersion;
         return resolveGameQualityProfile(
             quality ?? gameQualitySetting,
             gameQualityCustomProfile,
+            autoQualityProfileMetrics,
         );
     }, [
-        autoQualityProfileVersion,
+        autoQualityProfileMetrics,
         gameQualityCustomProfile,
         gameQualitySetting,
         quality,
