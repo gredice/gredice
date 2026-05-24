@@ -328,7 +328,7 @@ export function NavSearch({ className }: NavSearchProps) {
         <div ref={rootRef} className={cx('relative', className)}>
             <search aria-label="Pretraga" className="hidden xl:block">
                 <form onSubmit={handleSubmit}>
-                    <div className="flex h-10 w-52 items-center rounded-full border border-muted-foreground/20 bg-background pl-3 pr-2 shadow-[0_2px_10px_rgba(38,31,24,0.10)] ring-offset-background transition-[background-color,border-color,box-shadow] duration-200 hover:border-muted-foreground/30 hover:bg-card hover:shadow-[0_8px_24px_rgba(38,31,24,0.16)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 2xl:w-72">
+                    <div className="flex h-10 w-44 items-center rounded-full border border-muted-foreground/20 bg-background pl-3 pr-2 shadow-[0_2px_10px_rgba(38,31,24,0.10)] ring-offset-background transition-[background-color,border-color,box-shadow] duration-200 hover:border-muted-foreground/30 hover:bg-card hover:shadow-[0_8px_24px_rgba(38,31,24,0.16)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 2xl:w-72">
                         <Search className="size-4 shrink-0 text-muted-foreground" />
                         <input
                             ref={desktopInputRef}
