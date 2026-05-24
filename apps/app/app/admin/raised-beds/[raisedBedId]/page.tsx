@@ -92,14 +92,20 @@ export default async function RaisedBedPage({
                                           )
                                         : undefined,
                                 },
-                                { label: 'Vrtovi' },
+                                {
+                                    label: 'Vrtovi',
+                                    href: KnownPages.Gardens,
+                                },
                                 {
                                     label: raisedBed.gardenId ?? 'Nepoznato',
                                     href: raisedBed.gardenId
                                         ? KnownPages.Garden(raisedBed.gardenId)
                                         : undefined,
                                 },
-                                { label: 'Gredice' },
+                                {
+                                    label: 'Gredice',
+                                    href: KnownPages.RaisedBeds,
+                                },
                                 { label: raisedBed?.id },
                             ]}
                         />

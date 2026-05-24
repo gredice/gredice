@@ -2,8 +2,11 @@ import type { ReactNode } from 'react';
 import { Link } from '../Link';
 import { Typography } from '../Typography';
 import { cx } from '../utils';
+import { BreadcrumbsCollapsedItems } from './BreadcrumbsCollapsedItems';
 
 export type BreadcrumbItem = {
+    dropdownHref?: string;
+    dropdownLabel?: ReactNode | string | undefined;
     href?: string;
     label: ReactNode | string | undefined;
 };
@@ -65,25 +68,43 @@ export function Breadcrumbs({
     return (
         <nav aria-label="Breadcrumb" className={cx('max-w-full', className)}>
             <ol className="flex min-w-0 flex-wrap items-center gap-1">
-                {items.map((item, index) => {
-                    const key =
-                        item.href ??
-                        (typeof item.label === 'string'
-                            ? item.label
-                            : `breadcrumb-${index}`);
-
-                    return (
-                        <li
-                            className="flex min-w-0 items-center gap-1"
-                            key={key}
-                        >
-                            <BreadcrumbsItem {...item} />
-                            {index < items.length - 1 ? (
-                                <BreadcrumbsSeparator />
-                            ) : null}
+                {items.length > 3 ? (
+                    <>
+                        <li className="flex min-w-0 items-center gap-1">
+                            <BreadcrumbsItem {...items[0]} />
+                            <BreadcrumbsSeparator />
                         </li>
-                    );
-                })}
+                        <li className="flex min-w-0 items-center gap-1">
+                            <BreadcrumbsCollapsedItems
+                                items={items.slice(1, -1)}
+                            />
+                            <BreadcrumbsSeparator />
+                        </li>
+                        <li className="flex min-w-0 items-center gap-1">
+                            <BreadcrumbsItem {...items[items.length - 1]} />
+                        </li>
+                    </>
+                ) : (
+                    items.map((item, index) => {
+                        const key =
+                            item.href ??
+                            (typeof item.label === 'string'
+                                ? item.label
+                                : `breadcrumb-${index}`);
+
+                        return (
+                            <li
+                                className="flex min-w-0 items-center gap-1"
+                                key={key}
+                            >
+                                <BreadcrumbsItem {...item} />
+                                {index < items.length - 1 ? (
+                                    <BreadcrumbsSeparator />
+                                ) : null}
+                            </li>
+                        );
+                    })
+                )}
                 {endSeparator ? (
                     <li>
                         <BreadcrumbsSeparator />
