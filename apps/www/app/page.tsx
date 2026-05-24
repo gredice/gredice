@@ -239,7 +239,7 @@ function StepsSection() {
 export default function Home() {
     return (
         <Stack>
-            <div className="relative pt-3 pb-4 md:pt-6">
+            <div className="relative pb-4">
                 <Container
                     maxWidth="xl"
                     className="relative px-2 sm:px-4 [--landing-card-radius:calc(var(--landing-frame-radius)*0.625)] [--landing-frame-radius:1.5rem] md:[--landing-frame-radius:2rem]"
