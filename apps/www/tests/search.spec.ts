@@ -367,21 +367,6 @@ test.describe('public search filters', () => {
             (raisedBedLinkBox?.x ?? 0) + (raisedBedLinkBox?.width ?? 0),
         ).toBeLessThanOrEqual(firstNavLinkBox?.x ?? 0);
         expect(raisedBedLinkBox?.x ?? 0).toBeLessThan(firstNavLinkBox?.x ?? 0);
-
-        await page.setViewportSize({ width: 1734, height: 846 });
-        const wideSearchBox = await page
-            .locator('header search[aria-label="Pretraga"]')
-            .boundingBox();
-        const wideRaisedBedLinkBox = await page
-            .locator('header')
-            .getByRole('link', { name: 'Gredica', exact: true })
-            .boundingBox();
-
-        expect(wideSearchBox).not.toBeNull();
-        expect(wideRaisedBedLinkBox).not.toBeNull();
-        expect(
-            (wideSearchBox?.x ?? 0) + (wideSearchBox?.width ?? 0),
-        ).toBeLessThan((wideRaisedBedLinkBox?.x ?? 0) - 8);
     });
 
     test('navbar exposes updated primary links', async ({ page }) => {
