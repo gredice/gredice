@@ -1,7 +1,7 @@
 'use client';
 
 import { cx } from '@gredice/ui/utils';
-import { type HTMLAttributes, useEffect } from 'react';
+import { type HTMLAttributes, useEffect, useMemo } from 'react';
 import { Controls } from './controls/Controls';
 import { EntityFactory } from './entities/EntityFactory';
 import {
@@ -81,10 +81,18 @@ export function GameScene({
     const gameQualitySetting = useGameState(
         (state) => state.gameQualitySetting,
     );
+    const gameQualityCustomProfile = useGameState(
+        (state) => state.gameQualityCustomProfile,
+    );
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
     const renderDetails = useDeferredSceneDetails(deferDetails);
-    const qualityProfile = resolveGameQualityProfile(
-        quality ?? gameQualitySetting,
+    const qualityProfile = useMemo(
+        () =>
+            resolveGameQualityProfile(
+                quality ?? gameQualitySetting,
+                gameQualityCustomProfile,
+            ),
+        [gameQualityCustomProfile, gameQualitySetting, quality],
     );
 
     // Start non-critical metadata early, but don't block the first scene frame.

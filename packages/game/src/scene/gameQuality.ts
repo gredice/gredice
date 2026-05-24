@@ -1,7 +1,8 @@
 'use client';
 
 export type GameQualityTier = 'low' | 'medium' | 'high';
-export type GameQualitySetting = GameQualityTier | 'auto';
+export type GameQualityProfileTier = GameQualityTier | 'custom';
+export type GameQualitySetting = GameQualityTier | 'auto' | 'custom';
 export type GameCloudShadowMode = 'hard' | 'soft';
 
 export type GameQualityProfile = {
@@ -13,8 +14,10 @@ export type GameQualityProfile = {
     shadows: boolean;
     snowOverlayMinCoverage: number;
     snowParticleMultiplier: number;
-    tier: GameQualityTier;
+    tier: GameQualityProfileTier;
 };
+
+export type GameQualityCustomProfile = Omit<GameQualityProfile, 'tier'>;
 
 export const gameQualityProfiles = {
     low: {
@@ -53,7 +56,14 @@ export const gameQualityProfiles = {
 } satisfies Record<GameQualityTier, GameQualityProfile>;
 
 const GAME_QUALITY_SETTING_STORAGE_KEY = 'game-quality-setting';
+const GAME_QUALITY_CUSTOM_PROFILE_STORAGE_KEY = 'game-quality-custom-profile';
+const shadowMapSizeOptions = [1024, 2048, 4096];
 let cachedGameQualitySetting: GameQualitySetting | undefined;
+let cachedGameQualityCustomProfile: GameQualityCustomProfile | undefined;
+
+export const defaultGameQualityCustomProfile = toGameQualityCustomProfile(
+    gameQualityProfiles.medium,
+);
 
 export function isGameQualityTier(
     value: string | undefined,
@@ -64,7 +74,7 @@ export function isGameQualityTier(
 export function isGameQualitySetting(
     value: string | undefined,
 ): value is GameQualitySetting {
-    return value === 'auto' || isGameQualityTier(value);
+    return value === 'auto' || value === 'custom' || isGameQualityTier(value);
 }
 
 export function getGameQualitySetting(): GameQualitySetting {
@@ -109,6 +119,104 @@ export function setGameQualitySetting(setting: GameQualitySetting) {
     }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+    return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isMultiplier(value: unknown) {
+    return isFiniteNumber(value) && value >= 0 && value <= 1;
+}
+
+function isDpr(value: unknown) {
+    return isFiniteNumber(value) && value >= 1 && value <= 3;
+}
+
+function isShadowMapSize(value: unknown) {
+    return isFiniteNumber(value) && shadowMapSizeOptions.includes(value);
+}
+
+function isGameCloudShadowMode(value: unknown): value is GameCloudShadowMode {
+    return value === 'hard' || value === 'soft';
+}
+
+function isGameQualityCustomProfile(
+    value: unknown,
+): value is GameQualityCustomProfile {
+    return (
+        isRecord(value) &&
+        isGameCloudShadowMode(value.cloudShadowMode) &&
+        isDpr(value.dpr) &&
+        isMultiplier(value.groundDecorationDensity) &&
+        isMultiplier(value.rainParticleMultiplier) &&
+        isShadowMapSize(value.shadowMapSize) &&
+        typeof value.shadows === 'boolean' &&
+        isMultiplier(value.snowOverlayMinCoverage) &&
+        isMultiplier(value.snowParticleMultiplier)
+    );
+}
+
+export function toGameQualityCustomProfile(
+    profile: GameQualityProfile,
+): GameQualityCustomProfile {
+    return {
+        cloudShadowMode: profile.cloudShadowMode,
+        dpr: profile.dpr,
+        groundDecorationDensity: profile.groundDecorationDensity,
+        rainParticleMultiplier: profile.rainParticleMultiplier,
+        shadowMapSize:
+            profile.shadowMapSize === 0 ? 2048 : profile.shadowMapSize,
+        shadows: profile.shadows,
+        snowOverlayMinCoverage: profile.snowOverlayMinCoverage,
+        snowParticleMultiplier: profile.snowParticleMultiplier,
+    };
+}
+
+export function getGameQualityCustomProfile(): GameQualityCustomProfile {
+    if (cachedGameQualityCustomProfile !== undefined) {
+        return cachedGameQualityCustomProfile;
+    }
+
+    try {
+        const storedValue =
+            typeof window !== 'undefined'
+                ? (window.localStorage.getItem(
+                      GAME_QUALITY_CUSTOM_PROFILE_STORAGE_KEY,
+                  ) ?? undefined)
+                : undefined;
+        const parsedValue =
+            storedValue !== undefined ? JSON.parse(storedValue) : undefined;
+
+        cachedGameQualityCustomProfile = isGameQualityCustomProfile(parsedValue)
+            ? parsedValue
+            : defaultGameQualityCustomProfile;
+    } catch {
+        cachedGameQualityCustomProfile = defaultGameQualityCustomProfile;
+    }
+
+    return cachedGameQualityCustomProfile;
+}
+
+export function setGameQualityCustomProfile(profile: GameQualityCustomProfile) {
+    cachedGameQualityCustomProfile = profile;
+
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    try {
+        window.localStorage.setItem(
+            GAME_QUALITY_CUSTOM_PROFILE_STORAGE_KEY,
+            JSON.stringify(profile),
+        );
+    } catch {
+        // Ignore storage failures and keep the in-memory state updated.
+    }
+}
+
 function readNavigatorNumber(property: string) {
     if (typeof window === 'undefined') {
         return undefined;
@@ -146,7 +254,15 @@ function resolveAutoGameQualityTier(): GameQualityTier {
 
 export function resolveGameQualityProfile(
     quality?: GameQualitySetting,
+    customProfile?: GameQualityCustomProfile,
 ): GameQualityProfile {
+    if (quality === 'custom') {
+        return {
+            ...(customProfile ?? getGameQualityCustomProfile()),
+            tier: 'custom',
+        };
+    }
+
     const tier =
         quality === undefined || quality === 'auto'
             ? resolveAutoGameQualityTier()
