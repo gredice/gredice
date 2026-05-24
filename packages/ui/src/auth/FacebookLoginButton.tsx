@@ -1,15 +1,21 @@
 import { Button, type ButtonProps } from '../Button';
 import { Chip } from '../Chip';
+import { cx } from '../utils';
 
 export function FacebookLoginButton({
+    className,
     lastUsed,
     ...props
 }: ButtonProps & { lastUsed?: boolean }) {
     return (
         <Button
             type="button"
+            color="neutral"
             variant="outlined"
-            className="bg-white dark:bg-blue-900 dark:hover:bg-blue-800"
+            className={cx(
+                'border-transparent bg-[#1877F2] text-white hover:bg-[#166FE5] dark:border-transparent dark:bg-blue-900 dark:text-white dark:hover:bg-blue-800',
+                className,
+            )}
             fullWidth
             endDecorator={
                 lastUsed && (
@@ -24,7 +30,7 @@ export function FacebookLoginButton({
             {...props}
         >
             <svg
-                className="mr-2 h-4 w-4 text-[#1877F2] dark:text-white"
+                className="h-4 w-4 shrink-0 text-white"
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
                 fill="currentColor"

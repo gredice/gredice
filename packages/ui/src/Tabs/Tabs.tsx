@@ -7,7 +7,7 @@ import type {
     CSSProperties,
     ForwardedRef,
 } from 'react';
-import { forwardRef, useCallback, useEffect, useState } from 'react';
+import { forwardRef, useCallback, useLayoutEffect, useState } from 'react';
 
 function cx(...classes: Array<string | false | null | undefined>) {
     return classes.filter(Boolean).join(' ');
@@ -69,7 +69,7 @@ export const TabsList = forwardRef<
         [ref],
     );
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (!listElement || typeof window === 'undefined') {
             return;
         }
@@ -89,21 +89,11 @@ export const TabsList = forwardRef<
                 return;
             }
 
-            const listRect = tabsListElement.getBoundingClientRect();
-            const activeRect = activeTrigger.getBoundingClientRect();
             const nextIndicator = {
-                height: activeRect.height,
-                left:
-                    activeRect.left -
-                    listRect.left +
-                    tabsListElement.scrollLeft -
-                    tabsListElement.clientLeft,
-                top:
-                    activeRect.top -
-                    listRect.top +
-                    tabsListElement.scrollTop -
-                    tabsListElement.clientTop,
-                width: activeRect.width,
+                height: activeTrigger.offsetHeight,
+                left: activeTrigger.offsetLeft - tabsListElement.scrollLeft,
+                top: activeTrigger.offsetTop - tabsListElement.scrollTop,
+                width: activeTrigger.offsetWidth,
             };
 
             setIndicator((current) =>
