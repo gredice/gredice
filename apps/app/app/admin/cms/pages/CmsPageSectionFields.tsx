@@ -7,7 +7,7 @@ import { Add, Delete } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type {
     CmsPageCtaData,
     CmsPageEditableSection,
@@ -27,6 +27,21 @@ type CmsPageFeatureEditorData = Omit<CmsPageFeatureData, 'ctas'> & {
     id: string;
     ctas: CmsPageCtaEditorData[];
 };
+
+let fallbackIdCounter = 0;
+
+function createEditorId() {
+    if (
+        typeof crypto !== 'undefined' &&
+        typeof crypto.randomUUID === 'function'
+    ) {
+        return crypto.randomUUID();
+    }
+
+    fallbackIdCounter += 1;
+
+    return `cms-editor-${Date.now().toString(36)}-${fallbackIdCounter.toString(36)}`;
+}
 
 function textValue(value: unknown) {
     return typeof value === 'string' ? value : '';
@@ -57,7 +72,7 @@ function normalizeCtaValues(value: unknown): {
         }
 
         return {
-            id: id || crypto.randomUUID(),
+            id: id || createEditorId(),
             label: textValue(item.label),
             href: textValue(item.href),
             iconName: textValue(item.iconName),
@@ -90,7 +105,7 @@ function normalizeFeatureValues(value: unknown): {
         }
 
         return {
-            id: id || crypto.randomUUID(),
+            id: id || createEditorId(),
             header: textValue(item.header),
             description: textValue(item.description),
             ctas: ctas.items,
@@ -120,9 +135,16 @@ export function CmsPageSectionFields({
 }: CmsPageSectionFieldsProps) {
     const sectionId = section?.id;
     const sectionData = section?.data;
+    const normalizedSectionData = useRef<WeakSet<CmsPageSectionData>>(
+        new WeakSet(),
+    );
 
     useEffect(() => {
-        if (!sectionId || !sectionData) {
+        if (
+            !sectionId ||
+            !sectionData ||
+            normalizedSectionData.current.has(sectionData)
+        ) {
             return;
         }
 
@@ -150,8 +172,12 @@ export function CmsPageSectionFields({
         }
 
         if (changed) {
+            normalizedSectionData.current.add(nextData);
             onChange(sectionId, nextData);
+            return;
         }
+
+        normalizedSectionData.current.add(sectionData);
     }, [fields, onChange, sectionData, sectionId]);
 
     if (!section) {
@@ -272,7 +298,7 @@ export function CmsPageSectionFields({
                 onClick={() =>
                     updateItems([
                         ...items,
-                        { id: crypto.randomUUID(), label: '', href: '' },
+                        { id: createEditorId(), label: '', href: '' },
                     ])
                 }
             >
@@ -451,7 +477,7 @@ export function CmsPageSectionFields({
                                     updateField(field.key, [
                                         ...items,
                                         {
-                                            id: crypto.randomUUID(),
+                                            id: createEditorId(),
                                             header: '',
                                             description: '',
                                         },
