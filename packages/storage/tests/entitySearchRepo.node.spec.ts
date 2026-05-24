@@ -243,6 +243,45 @@ test('directory entity search includes multiple plant alternative names', async 
     );
 });
 
+test('directory entity search ranks alternative-name prefixes above body matches', async () => {
+    createTestDb();
+    const tomatoId = await createSearchableEntity({
+        entityTypeName: 'plant',
+        entityTypeLabel: 'Plant',
+        title: 'Rajčica',
+        description: 'Sočna ljetna kultura za gredice.',
+    });
+    const bodyMatchId = await createSearchableEntity({
+        entityTypeName: 'plant',
+        entityTypeLabel: 'Plant',
+        title: 'Mahuna',
+        description: 'Biljka koja u opisu sadrži par kao usputnu riječ.',
+    });
+    const alternativeNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'alternativeName',
+        label: 'Alternative name',
+        entityTypeName: 'plant',
+        dataType: 'text',
+        multiple: true,
+    });
+
+    await upsertAttributeValue({
+        attributeDefinitionId: alternativeNameDefinitionId,
+        entityTypeName: 'plant',
+        entityId: tomatoId,
+        value: 'Paradajz',
+    });
+
+    const rows = await searchDirectoryEntities({
+        query: 'par',
+        entityTypeNames: ['plant'],
+    });
+
+    assert.ok(rows.some((row) => row.entityId === bodyMatchId));
+    assert.equal(rows[0]?.entityId, tomatoId);
+});
+
 test('directory entity search finds published operations without diacritics', async () => {
     createTestDb();
     const operationId = await createSearchableEntity({

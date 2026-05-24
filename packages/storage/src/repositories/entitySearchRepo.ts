@@ -18,6 +18,8 @@ const minSearchQueryLength = 2;
 const defaultSearchLimit = 20;
 const maxSearchLimit = 50;
 const exactSearchMatchBoost = 10;
+const highPriorityPrefixBoost = 100;
+const highPriorityContainsBoost = 25;
 
 type EntitySearchSource = NonNullable<Awaited<ReturnType<typeof getEntityRaw>>>;
 
@@ -140,6 +142,10 @@ function compactText(values: Array<string | null | undefined>) {
         .map((value) => value?.trim() ?? '')
         .filter((value) => value.length > 0)
         .join(' ');
+}
+
+function searchTokens(value: string) {
+    return normalizeDirectorySearchText(value).match(/[\p{L}\p{N}]+/gu) ?? [];
 }
 
 function attributeValue(
@@ -279,6 +285,51 @@ function attributeSearchText(attribute: EntitySearchAttribute) {
         }
     }
     return [rawValue];
+}
+
+function highPriorityAttributeSearchText(entity: EntitySearchSource) {
+    return entity.attributes
+        .filter(
+            (attribute) =>
+                attribute.attributeDefinition.category === 'information' &&
+                attribute.attributeDefinition.name === 'alternativeName',
+        )
+        .flatMap(attributeSearchText);
+}
+
+function highPrioritySearchText(entity: EntitySearchSource) {
+    return compactText([
+        entityTitle(entity),
+        ...highPriorityAttributeSearchText(entity),
+    ]);
+}
+
+function highPrioritySearchBoost(
+    entity: EntitySearchSource,
+    normalizedQuery: string,
+) {
+    const queryTokens = searchTokens(normalizedQuery);
+    if (queryTokens.length === 0) {
+        return 0;
+    }
+
+    const highPriorityText = highPrioritySearchText(entity);
+    const highPriorityTokens = searchTokens(highPriorityText);
+    const allQueryTokensStartHighPriorityToken = queryTokens.every(
+        (queryToken) =>
+            highPriorityTokens.some((token) => token.startsWith(queryToken)),
+    );
+    if (allQueryTokensStartHighPriorityToken) {
+        return highPriorityPrefixBoost;
+    }
+
+    if (
+        normalizeDirectorySearchText(highPriorityText).includes(normalizedQuery)
+    ) {
+        return highPriorityContainsBoost;
+    }
+
+    return 0;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -496,8 +547,9 @@ async function buildEntitySearchDocumentValues(
     const bodySearchText = compactText(
         entity.attributes.flatMap(attributeSearchText),
     );
+    const titleSearchText = highPrioritySearchText(entity);
     const searchableText = compactText([
-        title,
+        titleSearchText,
         subtitleSearchText,
         bodySearchText,
     ]);
@@ -513,7 +565,7 @@ async function buildEntitySearchDocumentValues(
         imageUrl: image?.url ?? null,
         imageAlt: image?.alt ?? null,
         searchableText,
-        titleSearchText: title,
+        titleSearchText,
         subtitleSearchText,
         bodySearchText,
         state: entity.state,
@@ -746,6 +798,9 @@ export async function searchDirectoryEntities({
         );
     }
 
+    const requestedLimit = searchLimit(limit);
+    const requestedOffset = searchOffset(offset);
+    const shouldReorderExpandedFirstPage = requestedOffset === 0;
     const rows = await storage()
         .select({
             entityId: entitySearchDocuments.entityId,
@@ -768,8 +823,12 @@ export async function searchDirectoryEntities({
             asc(entitySearchDocuments.entityTypeName),
             asc(entitySearchDocuments.entityId),
         )
-        .limit(searchLimit(limit))
-        .offset(searchOffset(offset));
+        .limit(
+            shouldReorderExpandedFirstPage
+                ? Math.max(requestedLimit, maxSearchLimit)
+                : requestedLimit,
+        )
+        .offset(shouldReorderExpandedFirstPage ? 0 : requestedOffset);
 
     const rowsWithPublicUrls: DirectoryEntitySearchRow[] = [];
     for (const row of rows) {
@@ -791,10 +850,21 @@ export async function searchDirectoryEntities({
             imageUrl: image?.url ?? null,
             imageAlt: image?.alt ?? null,
             visualKey,
+            score: row.score + highPrioritySearchBoost(entity, normalizedQuery),
         });
     }
 
-    return rowsWithPublicUrls;
+    return rowsWithPublicUrls
+        .toSorted((a, b) => {
+            if (b.score !== a.score) {
+                return b.score - a.score;
+            }
+            if (a.entityTypeName !== b.entityTypeName) {
+                return a.entityTypeName.localeCompare(b.entityTypeName);
+            }
+            return a.entityId - b.entityId;
+        })
+        .slice(0, requestedLimit);
 }
 
 export function publicSearchCategoryForEntityType(entityTypeName: string) {
