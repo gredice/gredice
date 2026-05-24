@@ -118,17 +118,20 @@ export function CmsPageSectionFields({
     fieldErrors,
     onChange,
 }: CmsPageSectionFieldsProps) {
+    const sectionId = section?.id;
+    const sectionData = section?.data;
+
     useEffect(() => {
-        if (!section) {
+        if (!sectionId || !sectionData) {
             return;
         }
 
         let changed = false;
-        const nextData: CmsPageSectionData = { ...section.data };
+        const nextData: CmsPageSectionData = { ...sectionData };
 
         for (const field of fields) {
             if (field.type === 'cta-list') {
-                const ctas = normalizeCtaValues(section.data[field.key]);
+                const ctas = normalizeCtaValues(sectionData[field.key]);
 
                 if (ctas.changed) {
                     changed = true;
@@ -137,9 +140,7 @@ export function CmsPageSectionFields({
             }
 
             if (field.type === 'feature-list') {
-                const features = normalizeFeatureValues(
-                    section.data[field.key],
-                );
+                const features = normalizeFeatureValues(sectionData[field.key]);
 
                 if (features.changed) {
                     changed = true;
@@ -149,9 +150,9 @@ export function CmsPageSectionFields({
         }
 
         if (changed) {
-            onChange(section.id, nextData);
+            onChange(sectionId, nextData);
         }
-    }, [fields, onChange, section]);
+    }, [fields, onChange, sectionData, sectionId]);
 
     if (!section) {
         return (
