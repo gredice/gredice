@@ -2,6 +2,7 @@
 
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import {
+    type AnchorHTMLAttributes,
     type ComponentPropsWithoutRef,
     Fragment,
     forwardRef,
@@ -84,8 +85,10 @@ export const DropdownMenuItem = forwardRef<
     ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
         inset?: boolean;
         href?: string;
+        rel?: string;
         startDecorator?: ReactNode;
         endDecorator?: ReactNode;
+        target?: AnchorHTMLAttributes<HTMLAnchorElement>['target'];
     }
 >(function DropdownMenuItem(
     {
@@ -94,7 +97,9 @@ export const DropdownMenuItem = forwardRef<
         endDecorator,
         href,
         inset,
+        rel,
         startDecorator,
+        target,
         ...props
     },
     ref,
@@ -122,7 +127,9 @@ export const DropdownMenuItem = forwardRef<
                 className={itemClassName}
                 {...props}
             >
-                <a href={href}>{content}</a>
+                <a href={href} rel={rel} target={target}>
+                    {content}
+                </a>
             </DropdownMenuPrimitive.Item>
         );
     }

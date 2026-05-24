@@ -4,6 +4,7 @@ export * from './cache/directoriesCached';
 export * from './cache/grediceCached';
 export * from './cache/redisCache';
 export * from './cache/scheduleCache';
+export * from './cmsPageContent';
 export * from './helpers/deliveryEmail';
 export * from './helpers/entityCompleteness';
 export * from './helpers/entityPageSections';

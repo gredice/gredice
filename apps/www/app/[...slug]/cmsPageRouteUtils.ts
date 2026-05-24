@@ -1,4 +1,8 @@
-import { parseSectionData } from '@gredice/ui/cms';
+import {
+    normalizeCmsPageRenderMaxWidth,
+    normalizeCmsPageRenderMode,
+    parseSectionData,
+} from '@gredice/ui/cms';
 
 export function normalizeCmsRouteSlug(segments: string[]) {
     return segments
@@ -8,6 +12,8 @@ export function normalizeCmsRouteSlug(segments: string[]) {
 }
 
 export const parseCmsSectionData = parseSectionData;
+export const parseCmsPageRenderMode = normalizeCmsPageRenderMode;
+export const parseCmsPageRenderMaxWidth = normalizeCmsPageRenderMaxWidth;
 
 const reservedFirstSegments = new Set([
     'biljke',

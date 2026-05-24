@@ -1,9 +1,7 @@
 import { getCmsPage } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Stack } from '@gredice/ui/Stack';
-import { Typography } from '@gredice/ui/Typography';
 import { notFound } from 'next/navigation';
-import { AdminPageHeader } from '../../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../../lib/auth/auth';
 import { KnownPages } from '../../../../../../src/KnownPages';
@@ -35,7 +33,11 @@ export default async function EditCmsPagePage({
 
     return (
         <Stack spacing={8}>
-            <AdminPageHeader
+            <CmsPageForm
+                page={page}
+                action={updateAction}
+                formId={`cms-page-${id}-edit-form`}
+                autosaveAction={autosaveAction}
                 breadcrumbs={
                     <Breadcrumbs
                         items={[
@@ -46,24 +48,11 @@ export default async function EditCmsPagePage({
                                 label: 'Stranice',
                                 href: KnownPages.CmsPages,
                             },
-                            {
-                                label: page.title,
-                                href: KnownPages.CmsPage(id),
-                            },
-                            { label: 'Uredi' },
+                            { label: page.title },
                         ]}
                     />
                 }
                 heading="Uredi stranicu"
-            />
-            <Typography level="h2" className="text-2xl" semiBold>
-                Uredi stranicu
-            </Typography>
-            <CmsPageForm
-                page={page}
-                action={updateAction}
-                submitLabel="Spremi promjene"
-                autosaveAction={autosaveAction}
             />
         </Stack>
     );
