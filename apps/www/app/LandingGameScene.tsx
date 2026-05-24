@@ -38,9 +38,6 @@ const winterWeather = {
 };
 
 const transitionDurationMs = 700;
-const landingCameraPosition: [x: number, y: number, z: number] = [
-    -130, 72, -120,
-];
 
 type SceneRect = {
     top: number;
@@ -217,7 +214,6 @@ export function LandingGameScene() {
                         key={isLoggedIn ? 'user-garden' : 'landing-mock'}
                         appBaseUrl="https://vrt.gredice.com"
                         spriteBaseUrl=""
-                        cameraPosition={landingCameraPosition}
                         deferDetails
                         quality={interactiveMounted ? undefined : 'high'}
                         zoom={

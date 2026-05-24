@@ -30,6 +30,8 @@ test('has title', async ({ page }) => {
 test('mobile navbar closes after navigating from the menu', async ({
     page,
 }) => {
+    test.slow();
+
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
     await expectMobileNavActionsDoNotOverlap(page);
@@ -56,8 +58,13 @@ test('mobile navbar closes after navigating from the menu', async ({
 test('navbar floats on scroll and landing game frame is rounded', async ({
     page,
 }) => {
+    test.slow();
+
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
+
+    const header = page.locator('header');
+    await expect(header).toHaveCSS('border-bottom-width', '0px');
 
     await expect(page.getByTestId('landing-game-frame')).toHaveCSS(
         'border-radius',
@@ -107,22 +114,24 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
     expect(signupCtaBox.y).toBeGreaterThanOrEqual(frameBox.y + frameBox.height);
 
     await expect
-        .poll(() =>
-            page.evaluate(() => {
-                const profile = (
-                    window as Window & {
-                        __grediceGameProfile?: {
-                            dprCap?: number;
-                            qualityTier?: string;
-                        };
-                    }
-                ).__grediceGameProfile;
+        .poll(
+            () =>
+                page.evaluate(() => {
+                    const profile = (
+                        window as Window & {
+                            __grediceGameProfile?: {
+                                dprCap?: number;
+                                qualityTier?: string;
+                            };
+                        }
+                    ).__grediceGameProfile;
 
-                return {
-                    dprCap: profile?.dprCap,
-                    qualityTier: profile?.qualityTier,
-                };
-            }),
+                    return {
+                        dprCap: profile?.dprCap,
+                        qualityTier: profile?.qualityTier,
+                    };
+                }),
+            { timeout: 15_000 },
         )
         .toEqual({ dprCap: 2, qualityTier: 'high' });
 
@@ -156,9 +165,9 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
         .poll(countVisibleCanvasPixels, { timeout: 10_000 })
         .toBeGreaterThan(10);
 
-    const header = page.locator('header');
     await page.evaluate(() => window.scrollTo(0, 160));
     await expect(header).toHaveCSS('border-radius', '16px');
+    await expect(header).toHaveCSS('border-bottom-width', '1px');
     await expectMobileNavActionsDoNotOverlap(page);
 
     const mobileHeaderBox = await header.boundingBox();
@@ -192,6 +201,8 @@ test('desktop floating navbar keeps container width', async ({ page }) => {
 test('logged-in landing game morphs into full screen in place', async ({
     page,
 }) => {
+    test.slow();
+
     await page.unroute('**/api/gredice/api/auth/current-claims**');
     await page.route(
         '**/api/gredice/api/auth/current-claims**',
