@@ -17,6 +17,7 @@ import { getEntityRaw } from './entitiesRepo';
 const minSearchQueryLength = 2;
 const defaultSearchLimit = 20;
 const maxSearchLimit = 50;
+const exactSearchMatchBoost = 10;
 
 type EntitySearchSource = NonNullable<Awaited<ReturnType<typeof getEntityRaw>>>;
 
@@ -713,12 +714,17 @@ export async function searchDirectoryEntities({
     const prefixTsQuery = prefixQueryText
         ? sql`to_tsquery('simple', ${prefixQueryText})`
         : null;
+    const exactRank = sql<number>`ts_rank_cd(${entitySearchDocuments.searchVector}, ${exactTsQuery})`;
+    const exactMatchBoost = prefixTsQuery
+        ? sql<number>`case when ${entitySearchDocuments.searchVector} @@ ${exactTsQuery} then ${exactSearchMatchBoost} else 0 end`
+        : sql<number>`0`;
     const score = prefixTsQuery
         ? sql<number>`
-            ts_rank_cd(${entitySearchDocuments.searchVector}, ${exactTsQuery}) +
+            ${exactMatchBoost} +
+            ${exactRank} +
             (ts_rank_cd(${entitySearchDocuments.searchVector}, ${prefixTsQuery}) * 0.5)
         `
-        : sql<number>`ts_rank_cd(${entitySearchDocuments.searchVector}, ${exactTsQuery})`;
+        : exactRank;
     const conditions = [
         eq(entitySearchDocuments.state, 'published'),
         prefixTsQuery

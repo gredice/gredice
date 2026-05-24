@@ -142,6 +142,7 @@ These can be promoted once GRE-365 (canonical URL resolution) defines linkabilit
   - highest: title/name-like fields
   - medium: subtitle/taxonomy-like fields (e.g. latin name)
   - lower: long description/body fields
+  - exact token matches rank ahead of prefix-only matches, including alternative-name matches
 - **No results behavior:** return empty `results` with preserved query metadata and category facets.
 
 ## Reuse guarantees for non-www consumers
