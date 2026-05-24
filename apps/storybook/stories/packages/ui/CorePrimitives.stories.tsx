@@ -62,6 +62,26 @@ const meta = {
                             <Search className="size-4" />
                         </IconButton>
                     </Row>
+                    <Row spacing={3} className="flex-wrap">
+                        <Button size="xs">Extra small</Button>
+                        <Button size="sm">Small</Button>
+                        <Button size="md">Medium</Button>
+                        <Button size="lg">Large</Button>
+                    </Row>
+                    <Row spacing={3} className="flex-wrap">
+                        <IconButton aria-label="Search extra small" size="xs">
+                            <Search className="size-3.5" />
+                        </IconButton>
+                        <IconButton aria-label="Search small" size="sm">
+                            <Search className="size-4" />
+                        </IconButton>
+                        <IconButton aria-label="Search medium" size="md">
+                            <Search className="size-4" />
+                        </IconButton>
+                        <IconButton aria-label="Search large" size="lg">
+                            <Search className="size-5" />
+                        </IconButton>
+                    </Row>
                     <Link className="text-primary underline" href="/">
                         Next link primitive
                     </Link>
@@ -76,6 +96,15 @@ const meta = {
                         placeholder="Find a plant"
                     />
                     <Row spacing={4} className="flex-wrap">
+                        <Chip color="neutral" size="sm">
+                            Small
+                        </Chip>
+                        <Chip color="neutral" size="md">
+                            Medium
+                        </Chip>
+                        <Chip color="neutral" size="lg">
+                            Large
+                        </Chip>
                         <Chip color="success">Ready</Chip>
                         <Chip color="warning">Needs review</Chip>
                         <Chip color="info" startDecorator={<Check />}>
