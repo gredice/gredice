@@ -7,10 +7,14 @@ test('redirects root to admin login page', async ({ request }) => {
     expect(response.headers().location).toBe('/admin');
 });
 
-test('shows login on admin page when signed out', async ({ request }) => {
+test('shows login on admin page when signed out', async ({ page, request }) => {
     const response = await request.get('/admin', { maxRedirects: 0 });
 
     expect(response.status()).toBe(200);
     expect(response.headers().location).toBeUndefined();
-    await expect(response.text()).resolves.toContain('Prijava');
+
+    await page.goto('/admin');
+    await expect(
+        page.getByRole('button', { name: 'Prijavi se' }),
+    ).toBeVisible();
 });
