@@ -248,7 +248,7 @@ Blender must be installed where the export scripts expect it:
 
 - macOS: `/Applications/Blender.app`
 - Windows: `C:\Program Files\Blender Foundation\Blender 4.5\blender.exe`
-- Linux/other Unix-like systems: update `assets/export.sh` for the local Blender path before running the generator.
+- Linux/other Unix-like systems: `blender` on `PATH`, or set `BLENDER_BINARY`.
 
 If the steps need to run separately, run `./export.sh` from `assets` on
 Unix-like systems or `.\export.ps1` from `assets` on Windows, then run

@@ -21,7 +21,7 @@ export function StoneMedium({ stack, block, rotation }: EntityInstanceProps) {
                 castShadow
                 receiveShadow
                 geometry={nodes.Stone_Medium.geometry}
-                material={materials['Material.Stone']}
+                material={materials['Material.Stone.001']}
                 scale={[0.236, 0.269, 0.205]}
             >
                 <SnowOverlay

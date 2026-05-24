@@ -153,20 +153,33 @@ function getPlantSortLabel(plantSort: EntityStandardized) {
     );
 }
 
+function normalizePlantSearchText(value: string | null | undefined) {
+    return (value ?? '')
+        .replace(/[Đđ]/g, 'd')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLocaleLowerCase('hr-HR')
+        .trim();
+}
+
 function getPlantSortSearchText(plantSort: EntityStandardized) {
+    const plantInformation = plantSort.information?.plant?.information;
+
     return [
         plantSort.information?.label,
         plantSort.information?.name,
         plantSort.information?.shortDescription,
         plantSort.information?.description,
-        plantSort.information?.plant?.information?.label,
-        plantSort.information?.plant?.information?.name,
-        plantSort.information?.plant?.information?.shortDescription,
-        plantSort.information?.plant?.information?.description,
+        ...(plantSort.information?.alternativeName ?? []),
+        plantInformation?.label,
+        plantInformation?.name,
+        plantInformation?.shortDescription,
+        plantInformation?.description,
+        ...(plantInformation?.alternativeName ?? []),
     ]
         .filter((value) => typeof value === 'string')
-        .join(' ')
-        .toLocaleLowerCase('hr-HR');
+        .map((value) => normalizePlantSearchText(value))
+        .join(' ');
 }
 
 export function PlantsHandbook({ plantSortsData }: PlantsHandbookProps) {
@@ -174,7 +187,7 @@ export function PlantsHandbook({ plantSortsData }: PlantsHandbookProps) {
     const [selectedPlantSortId, setSelectedPlantSortId] = useState<
         number | null
     >(null);
-    const normalizedQuery = query.trim().toLocaleLowerCase('hr-HR');
+    const normalizedQuery = normalizePlantSearchText(query);
     const sortedPlantSorts = useMemo(
         () =>
             [...plantSortsData].sort((left, right) =>

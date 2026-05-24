@@ -28,11 +28,16 @@ function getBlenderBinary() {
         return process.env.BLENDER_BINARY;
     }
 
-    if (platform() === 'win32') {
+    const os = platform();
+    if (os === 'win32') {
         return 'C:\\Program Files\\Blender Foundation\\Blender 4.5\\blender.exe';
     }
 
-    return '/Applications/Blender.app/Contents/MacOS/Blender';
+    if (os === 'darwin') {
+        return '/Applications/Blender.app/Contents/MacOS/Blender';
+    }
+
+    return 'blender';
 }
 
 function readManifest() {

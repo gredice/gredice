@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { expect, type Locator, test } from './fixtures';
 
 async function typeSearch(locator: Locator, value: string) {
@@ -5,6 +6,14 @@ async function typeSearch(locator: Locator, value: string) {
     await locator.pressSequentially(value);
     await expect(locator).toHaveValue(value);
     await expect(locator).toBeFocused();
+}
+
+async function expectSearchParam(page: Page, name: string, value: string) {
+    await expect
+        .poll(() => new URL(page.url()).searchParams.get(name), {
+            timeout: 10_000,
+        })
+        .toBe(value);
 }
 
 test.describe('public search filters', () => {
@@ -295,7 +304,9 @@ test.describe('public search filters', () => {
             searchDialog.getByRole('option', { name: /Snowball/ }),
         ).toBeVisible();
 
-        await searchDialog.getByRole('button', { name: 'Radnje' }).click();
+        await searchDialog
+            .getByRole('button', { name: 'Radnje' })
+            .press('Enter');
         await expect(searchInput).toBeFocused();
         await expect(
             searchDialog.getByRole('button', { name: 'Radnje' }),
@@ -389,12 +400,12 @@ test.describe('public search filters', () => {
     test('plant search keeps keyboard focus and ignores Croatian diacritics', async ({
         page,
     }) => {
-        await page.goto('/biljke', { waitUntil: 'domcontentloaded' });
+        await page.goto('/biljke', { waitUntil: 'load' });
 
         const searchInput = page.locator('#plant-search');
         await typeSearch(searchInput, 'rajcica');
 
-        await expect(page).toHaveURL(/pretraga=rajcica/);
+        await expectSearchParam(page, 'pretraga', 'rajcica');
         await expect(page.getByText('Rajčica', { exact: true })).toBeVisible();
         await expect(page.getByText('Nema rezultata pretrage.')).toBeHidden();
     });
@@ -402,15 +413,15 @@ test.describe('public search filters', () => {
     test('operation search keeps keyboard focus and ignores Croatian diacritics', async ({
         page,
     }) => {
-        await page.goto('/radnje', { waitUntil: 'domcontentloaded' });
+        await page.goto('/radnje', { waitUntil: 'load' });
 
         const searchInput = page.locator('#operation-search');
         await typeSearch(searchInput, 'ciscenje');
 
+        await expectSearchParam(page, 'pretraga', 'ciscenje');
         await expect(
             page.getByText('Čišćenje gredice', { exact: true }),
         ).toBeVisible();
-        await expect(page).toHaveURL(/pretraga=ciscenje/);
         await expect(page.getByText('Nema dostupnih radnji.')).toBeHidden();
     });
 

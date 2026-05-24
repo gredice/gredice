@@ -109,7 +109,7 @@ export function PageNav({ logo, links, children }: PageNavProps) {
             >
                 <header
                     className={cx(
-                        'pointer-events-auto relative flex h-16 items-center border-b border-muted/30 bg-background/75 backdrop-blur-md transition-[height,border-color,background-color,border-radius,box-shadow] duration-300 ease-out',
+                        'pointer-events-auto relative flex h-16 items-center border-transparent bg-background/75 backdrop-blur-md transition-[height,border-color,background-color,border-radius,box-shadow] duration-300 ease-out',
                         isFloating &&
                             'h-14 rounded-2xl border border-border/70 bg-background/80 shadow-lg shadow-foreground/10 backdrop-blur-xl',
                     )}
