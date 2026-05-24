@@ -413,7 +413,7 @@ export function PlantPicker({
                         </Stack>
                         <Row
                             data-plant-picker-actions
-                            className="-mx-4 sticky bottom-0 z-10 flex-wrap items-center justify-between gap-2 border-t bg-background/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-xs max-[340px]:flex-col max-[340px]:items-stretch max-[340px]:justify-start md:static md:mx-0 md:mb-0 md:flex-nowrap md:border-t-0 md:bg-transparent md:p-0 md:backdrop-blur-none"
+                            className="-mx-4 -mb-4 sticky bottom-0 z-10 flex-wrap items-center justify-between gap-2 border-t bg-background/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xs max-[340px]:flex-col max-[340px]:items-stretch max-[340px]:justify-start md:static md:mx-0 md:mb-0 md:flex-nowrap md:border-t-0 md:bg-transparent md:p-0 md:backdrop-blur-none"
                         >
                             <Button
                                 variant="plain"

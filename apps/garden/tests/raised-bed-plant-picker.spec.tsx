@@ -45,8 +45,10 @@ test('mobile sort step keeps the cart action reachable', async ({
 
     const actions = page.locator('[data-plant-picker-actions]');
     const backAction = actions.getByRole('button', { name: 'Odabir biljke' });
+    const actionsBox = await actions.boundingBox();
     const backActionBox = await backAction.boundingBox();
     const cartActionBox = await cartAction.boundingBox();
+    expect(actionsBox).not.toBeNull();
     expect(backActionBox).not.toBeNull();
     expect(cartActionBox).not.toBeNull();
     expect(
@@ -57,6 +59,14 @@ test('mobile sort step keeps the cart action reachable', async ({
         ),
     ).toBeLessThan(12);
     expect(backActionBox?.x ?? 0).toBeLessThan(cartActionBox?.x ?? 0);
+
+    const actionBottom = Math.max(
+        (backActionBox?.y ?? 0) + (backActionBox?.height ?? 0),
+        (cartActionBox?.y ?? 0) + (cartActionBox?.height ?? 0),
+    );
+    expect(
+        (actionsBox?.y ?? 0) + (actionsBox?.height ?? 0) - actionBottom,
+    ).toBeLessThanOrEqual(24);
 });
 
 test('mobile sort step scrolls the sowing date clear of sticky actions', async ({

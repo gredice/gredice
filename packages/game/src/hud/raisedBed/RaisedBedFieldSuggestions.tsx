@@ -160,8 +160,7 @@ const quickSeedOptions: Record<
     },
 };
 
-const quickSowingButtonClassName =
-    'size-10 rounded-full bg-black/80 text-white hover:bg-black/50 hover:text-white md:size-auto dark:bg-white/10 dark:text-primary-foreground dark:hover:text-primary-foreground/80';
+const quickSowingButtonClassName = 'size-10 rounded-full md:size-auto';
 
 function getSeasonForDate(date: Date | null): QuickSeedType {
     if (!date || Number.isNaN(date.getTime())) {
