@@ -7,7 +7,7 @@ import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from '../helpers/useAnimatedEntityRotation';
 
 export function Stick({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes } = useGameGLTF();
+    const { nodes } = useGameGLTF('Stick');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 

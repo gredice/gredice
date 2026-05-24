@@ -4,10 +4,11 @@ Date: 2026-04-29
 
 ## Summary
 
-The scene still does not look asset-bound. The shared GLB is unchanged and small
-for a 3D scene: `apps/garden/public/assets/models/GameAssets.glb` is 822,460
-bytes and contains 57 meshes, 73 primitives, 21,314 vertices, about 21,295
-triangles, one texture, and no animations.
+The scene still does not look asset-bound. Game models are now split into one
+runtime GLB per asset under `apps/garden/public/assets/models`, generated from
+one Blender source file per asset under `assets/game-assets`. The split set is
+932,304 bytes across 31 GLBs and contains 59 meshes, 75 primitives, 22,300
+vertices, 18 shared material names, and no animations.
 
 The optimization already made since the first pass is meaningful: the scene no
 longer mounts the old one-second game-time manager. Environment, sun/moon, plant,
@@ -42,6 +43,10 @@ not accidentally based on `next dev`.
   maps, low-tier shadow disabling, weather particle caps, profiling metadata,
   app-level `deferDetails` on the main garden page, snow-overlay coverage gates,
   ground-decoration density gates, and static sprite billboard rendering.
+- Game assets are split by model unit. The runtime preloads all ground block
+  models first, then preloads raised bed and common assets, while less common
+  block assets load behind local Suspense boundaries only when present in the
+  scene.
 - The remaining expensive areas are continuous `useFrame` systems, snow overlays,
   CPU weather loops, animated sprite billboard callbacks, plant/detail LOD, and
   profiling noise from app-level providers.
@@ -52,12 +57,12 @@ Measured from the current workspace on 2026-04-29:
 
 | Area | Current value | Notes |
 | --- | ---: | --- |
-| GLB size | 822,460 bytes | unchanged |
-| GLB meshes | 57 | unchanged |
-| GLB primitives | 73 | unchanged |
-| GLB vertices | 21,314 | unchanged |
-| GLB triangles | ~21,295 | unchanged |
-| GLB textures | 1 | unchanged |
+| GLB size | 932,304 bytes across 31 files | split by asset; `GiftBox.glb` is the largest at about 207 KB |
+| GLB meshes | 59 | summed across split assets |
+| GLB primitives | 75 | summed across split assets |
+| GLB vertices | 22,300 | summed across split assets |
+| GLB triangles | not remeasured | split export changed file boundaries |
+| GLB textures | 1 source texture | material names are duplicated only as runtime GLB-local data |
 | Runtime `useFrame` source files | 12 | still enough to keep continuous work alive |
 | `castShadow` / `receiveShadow` occurrences | 109 | coarse source count in `packages/game/src` |
 | Directional shadow map | low: off, medium: 2048, high: 4096 | legacy default was 8192 |

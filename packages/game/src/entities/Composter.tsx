@@ -6,7 +6,7 @@ import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function Composter({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes, materials } = useGameGLTF();
+    const { nodes, materials } = useGameGLTF('Composter');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 

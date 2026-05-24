@@ -1,9 +1,9 @@
 'use client';
 
-import { OrbitControls, useGLTF } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import { useMemo, useRef } from 'react';
 import { Vector3 } from 'three';
-import { models } from '../data/models';
+import { groundGameAssetNames } from '../data/models';
 import { BlockGround } from '../entities/BlockGround';
 import { useGeneratedLSystemSymbols } from '../generators/plant/hooks/useGeneratedLSystem';
 import { plantTypes } from '../generators/plant/lib/plant-presets';
@@ -16,6 +16,7 @@ import {
     type GameStateStore,
     useDisposeGameStateStore,
 } from '../useGameState';
+import { preloadGameAssetModels } from '../utils/useGameGLTF';
 
 const APP_BASE_URL = 'https://vrt.gredice.com';
 
@@ -90,7 +91,7 @@ export function PlantViewer({
         },
     );
 
-    useGLTF.preload(APP_BASE_URL + models.GameAssets.url);
+    preloadGameAssetModels(APP_BASE_URL, groundGameAssetNames);
 
     const storeRef = useRef<GameStateStore>(null);
     if (!storeRef.current) {

@@ -1,5 +1,7 @@
-import { useEffect, useMemo } from 'react';
-import { MeshStandardMaterial } from 'three';
+import { Suspense, useEffect, useMemo } from 'react';
+import { type Material, MeshStandardMaterial } from 'three';
+import type { GameAssetName } from '../data/models';
+import type { GLTFResult } from '../models/GameAssets';
 import { updateGameProfileMetadata } from '../scene/gameProfileMetadata';
 import {
     type GameQualityProfile,
@@ -9,7 +11,10 @@ import { snowPresets } from '../snow/snowPresets';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { useGameGLTF } from '../utils/useGameGLTF';
-import { EntityInstancesBlock } from './EntityInstancesBlock';
+import {
+    EntityInstancesBlock,
+    type EntityInstancesBlockBaseProps,
+} from './EntityInstancesBlock';
 import { GroundBlockDecorations } from './groundDecorations/GroundBlockDecorations';
 
 export const instancedBlockNames = [
@@ -79,6 +84,69 @@ function countInstancedSnowOverlays(stacks: Stack[] | undefined) {
     );
 }
 
+type EntityInstancesAssetBlockProps = Omit<
+    EntityInstancesBlockBaseProps,
+    'geometry'
+> & {
+    assetName: GameAssetName;
+    geometry: (gltf: GLTFResult) => EntityInstancesBlockBaseProps['geometry'];
+    material: (gltf: GLTFResult) => Material | Material[];
+};
+
+function hasRenderableBlockInstance({
+    name,
+    pickupBlock,
+    stacks,
+}: {
+    name: string;
+    pickupBlock: Stack['blocks'][number] | null | undefined;
+    stacks: Stack[] | undefined;
+}) {
+    return (
+        stacks?.some(
+            (stack) =>
+                (!pickupBlock || !stack.blocks.includes(pickupBlock)) &&
+                stack.blocks.some((block) => block.name === name),
+        ) ?? false
+    );
+}
+
+function LoadedEntityInstancesAssetBlock({
+    assetName,
+    geometry,
+    material,
+    ...props
+}: EntityInstancesAssetBlockProps) {
+    const gltf = useGameGLTF(assetName);
+
+    return (
+        <EntityInstancesBlock
+            {...props}
+            geometry={geometry(gltf)}
+            material={material(gltf)}
+        />
+    );
+}
+
+function EntityInstancesAssetBlock(props: EntityInstancesAssetBlockProps) {
+    const pickupBlock = useGameState((state) => state.pickupBlock);
+    const hasInstances = hasRenderableBlockInstance({
+        name: props.name,
+        pickupBlock,
+        stacks: props.stacks,
+    });
+
+    if (!hasInstances) {
+        return null;
+    }
+
+    return (
+        <Suspense fallback={null}>
+            <LoadedEntityInstancesAssetBlock {...props} />
+        </Suspense>
+    );
+}
+
 export function EntityInstances({
     quality,
     renderGroundDecorations,
@@ -90,7 +158,6 @@ export function EntityInstances({
     stacks: Stack[] | undefined;
     renderDetails?: boolean;
 }) {
-    const { nodes, materials } = useGameGLTF();
     const qualityProfile = quality ?? resolveGameQualityProfile();
     const isEditMode = useGameState((state) => state.mode) === 'edit';
     const snowCoverage = useGameState((state) => state.snowCoverage);
@@ -143,66 +210,72 @@ export function EntityInstances({
 
     return (
         <>
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="BlockGrass"
                 stacks={stacks}
                 name="Block_Grass"
                 renderRainWetOverlay
                 yOffset={0.2}
-                geometry={nodes.Block_Grass_1_2.geometry}
-                material={nodes.Block_Grass_1_2.material}
+                geometry={(gltf) => gltf.nodes.Block_Grass_1_2.geometry}
+                material={(gltf) => gltf.nodes.Block_Grass_1_2.material}
                 snow={snowPresets.grassFlat}
                 snowLift={0.01}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="BlockGrassAngle"
                 stacks={stacks}
                 name="Block_Grass_Angle"
                 renderRainWetOverlay
                 yOffset={0.2}
-                geometry={nodes.Block_Grass_Angle_1_2.geometry}
-                material={nodes.Block_Grass_Angle_1_2.material}
+                geometry={(gltf) => gltf.nodes.Block_Grass_Angle_1_2.geometry}
+                material={(gltf) => gltf.nodes.Block_Grass_Angle_1_2.material}
                 snow={snowPresets.grassAngle}
                 snowLift={0.003}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="BlockSand"
                 stacks={stacks}
                 name="Block_Sand"
                 renderRainWetOverlay
                 yOffset={0.2}
-                geometry={nodes.Block_Sand_1.geometry}
-                material={nodes.Block_Sand_1.material}
+                geometry={(gltf) => gltf.nodes.Block_Sand_1.geometry}
+                material={(gltf) => gltf.nodes.Block_Sand_1.material}
                 snow={snowPresets.sand}
                 snowLift={0.003}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="BlockSandAngle"
                 stacks={stacks}
                 name="Block_Sand_Angle"
                 renderRainWetOverlay
                 yOffset={0.2}
-                geometry={nodes.Block_Sand_Angle_1.geometry}
-                material={nodes.Block_Sand_Angle_1.material}
+                geometry={(gltf) => gltf.nodes.Block_Sand_Angle_1.geometry}
+                material={(gltf) => gltf.nodes.Block_Sand_Angle_1.material}
                 snow={snowPresets.sandAngle}
                 snowLift={0.003}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="BlockSand"
                 stacks={stacks}
                 name="Block_Snow"
                 yOffset={0.2}
-                geometry={nodes.Block_Sand_1.geometry}
-                material={snowMaterial}
+                geometry={(gltf) => gltf.nodes.Block_Sand_1.geometry}
+                material={() => snowMaterial}
                 snow={snowPresets.snow}
                 snowLift={0.003}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="BlockSandAngle"
                 stacks={stacks}
                 name="Block_Snow_Angle"
                 yOffset={0.2}
-                geometry={nodes.Block_Sand_Angle_1.geometry}
-                material={snowMaterial}
+                geometry={(gltf) => gltf.nodes.Block_Sand_Angle_1.geometry}
+                material={() => snowMaterial}
                 snow={snowPresets.snowAngle}
                 snowLift={0.003}
                 {...commonSnowProps}
@@ -213,168 +286,185 @@ export function EntityInstances({
                     stacks={stacks}
                 />
             )}
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="Tree"
                 stacks={stacks}
                 name="Tree"
                 yOffset={0.5}
                 scale={[0.125, 0.5, 0.125]}
-                geometry={nodes.Tree_1_1.geometry}
-                material={nodes.Tree_1_1.material}
+                geometry={(gltf) => gltf.nodes.Tree_1_1.geometry}
+                material={(gltf) => gltf.nodes.Tree_1_1.material}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="Tree"
                 stacks={stacks}
                 name="Tree"
                 yOffset={0.5}
                 scale={[0.125, 0.5, 0.125]}
-                geometry={nodes.Tree_1_2.geometry}
-                material={nodes.Tree_1_2.material}
+                geometry={(gltf) => gltf.nodes.Tree_1_2.geometry}
+                material={(gltf) => gltf.nodes.Tree_1_2.material}
                 snow={snowPresets.treeCanopyInner}
                 snowLift={0.002}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="Tree"
                 stacks={stacks}
                 name="Tree"
                 yOffset={0.5}
                 scale={[0.125, 0.5, 0.125]}
-                geometry={nodes.Tree_1_3.geometry}
-                material={nodes.Tree_1_3.material}
+                geometry={(gltf) => gltf.nodes.Tree_1_3.geometry}
+                material={(gltf) => gltf.nodes.Tree_1_3.material}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="Pine"
                 stacks={stacks}
                 name="Pine"
                 yOffset={1}
                 scale={[0.09, 1, 0.09]}
-                geometry={nodes.Tree_2.geometry}
-                material={nodes.Tree_2.material}
+                geometry={(gltf) => gltf.nodes.Tree_2.geometry}
+                material={(gltf) => gltf.nodes.Tree_2.material}
                 snow={snowPresets.pine}
                 snowLift={0.002}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="ShovelSmall"
                 stacks={stacks}
                 name="ShovelSmall"
                 yOffset={-0.1}
-                geometry={nodes.Shovel_Small.geometry}
-                material={materials['Material.ColorPaletteMain']}
+                geometry={(gltf) => gltf.nodes.Shovel_Small.geometry}
+                material={(gltf) => gltf.nodes.Shovel_Small.material}
                 snow={snowPresets.tool}
                 snowLift={0.002}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="MulchHey"
                 stacks={stacks}
                 name="MulchHey"
                 scale={[3, 3, 3]}
-                geometry={nodes.Mulch_Hey.geometry}
-                material={materials['Material.ColorPaletteMain']}
+                geometry={(gltf) => gltf.nodes.Mulch_Hey.geometry}
+                material={(gltf) => gltf.nodes.Mulch_Hey.material}
                 snow={snowPresets.mulch}
                 snowLift={0.002}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="MulchCoconut"
                 stacks={stacks}
                 name="MulchCoconut"
                 scale={[3, 3, 3]}
-                geometry={nodes.Mulch_Coconut.geometry}
-                material={materials['Material.ColorPaletteMain']}
+                geometry={(gltf) => gltf.nodes.Mulch_Coconut.geometry}
+                material={(gltf) => gltf.nodes.Mulch_Coconut.material}
                 snow={snowPresets.mulch}
                 snowLift={0.002}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="MulchWood"
                 stacks={stacks}
                 name="MulchWood"
                 scale={[3, 3, 3]}
-                geometry={nodes.Mulch_Wood.geometry}
-                material={materials['Material.ColorPaletteMain']}
+                geometry={(gltf) => gltf.nodes.Mulch_Wood.geometry}
+                material={(gltf) => gltf.nodes.Mulch_Wood.material}
                 snow={snowPresets.mulch}
                 snowLift={0.002}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="Tulip"
                 stacks={stacks}
                 name="Tulip"
-                geometry={nodes.Tulip.geometry}
-                material={materials['Material.ColorPaletteMain']}
+                geometry={(gltf) => gltf.nodes.Tulip.geometry}
+                material={(gltf) => gltf.nodes.Tulip.material}
                 snow={snowPresets.tulip}
                 snowLift={0.002}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="Bush"
                 stacks={stacks}
                 name="Bush"
-                geometry={nodes.Bush_1_1.geometry}
-                material={materials['Material.ColorPaletteMain']}
+                geometry={(gltf) => gltf.nodes.Bush_1_1.geometry}
+                material={(gltf) => gltf.nodes.Bush_1_1.material}
                 scale={[0.5, 0.5, 0.5]}
                 snow={snowPresets.bushCore}
                 snowLift={0.002}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="Bush"
                 stacks={stacks}
                 name="Bush"
-                geometry={nodes.Bush_1_2.geometry}
-                material={materials['Material.Leaves']}
+                geometry={(gltf) => gltf.nodes.Bush_1_2.geometry}
+                material={(gltf) => gltf.nodes.Bush_1_2.material}
                 scale={[0.5, 0.5, 0.5]}
                 snow={snowPresets.bushFoliage}
                 snowLift={0.002}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="BaleHey"
                 stacks={stacks}
                 name="BaleHey"
-                geometry={nodes.BaleHey.geometry}
-                material={materials['Material.ColorPaletteMain']}
+                geometry={(gltf) => gltf.nodes.BaleHey.geometry}
+                material={(gltf) => gltf.nodes.BaleHey.material}
                 snow={snowPresets.hay}
                 snowLift={0.002}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="StoneSmall"
                 stacks={stacks}
                 name="StoneSmall"
-                geometry={nodes.Stone_Small.geometry}
-                material={materials['Material.Stone']}
+                geometry={(gltf) => gltf.nodes.Stone_Small.geometry}
+                material={(gltf) => gltf.nodes.Stone_Small.material}
                 scale={[0.165, 0.165, 0.165]}
                 snow={snowPresets.stone}
                 snowLift={0.002}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="StoneMedium"
                 stacks={stacks}
                 name="StoneMedium"
-                geometry={nodes.Stone_Medium.geometry}
-                material={materials['Material.Stone']}
+                geometry={(gltf) => gltf.nodes.Stone_Medium.geometry}
+                material={(gltf) => gltf.nodes.Stone_Medium.material}
                 scale={[0.236, 0.269, 0.205]}
                 snow={snowPresets.stone}
                 snowLift={0.002}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="StoneLarge"
                 stacks={stacks}
                 name="StoneLarge"
-                geometry={nodes.Stone_Large.geometry}
-                material={materials['Material.Stone']}
+                geometry={(gltf) => gltf.nodes.Stone_Large.geometry}
+                material={(gltf) => gltf.nodes.Stone_Large.material}
                 scale={[0.263, 0.426, 0.291]}
                 snow={snowPresets.stone}
                 snowLift={0.002}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="Stick"
                 stacks={stacks}
                 name="Stick"
-                geometry={nodes.Stick.geometry}
-                material={nodes.Stick.material}
+                geometry={(gltf) => gltf.nodes.Stick.geometry}
+                material={(gltf) => gltf.nodes.Stick.material}
                 snow={snowPresets.tool}
                 snowLift={0.002}
                 {...commonSnowProps}
             />
-            <EntityInstancesBlock
+            <EntityInstancesAssetBlock
+                assetName="Seed"
                 stacks={stacks}
                 name="Seed"
-                geometry={nodes.Seed.geometry}
-                material={nodes.Seed.material}
+                geometry={(gltf) => gltf.nodes.Seed.geometry}
+                material={(gltf) => gltf.nodes.Seed.material}
             />
         </>
     );

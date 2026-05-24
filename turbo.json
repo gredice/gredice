@@ -58,6 +58,7 @@
         "generate:models-types": {
             "cache": false,
             "outputs": [
+                "packages/game/src/data/gameAssetModels.generated.ts",
                 "packages/game/src/models/GameAssets.tsx"
             ]
         }

@@ -7,7 +7,7 @@ import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function BaleHey({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes, materials } = useGameGLTF();
+    const { nodes, materials } = useGameGLTF('BaleHey');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 

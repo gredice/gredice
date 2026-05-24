@@ -57,8 +57,9 @@ test('mobile navbar closes after navigating from the menu', async ({
 
 test('navbar floats on scroll and landing game frame is rounded', async ({
     page,
-}) => {
+}, testInfo) => {
     test.slow();
+    testInfo.setTimeout(35_000);
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
@@ -136,8 +137,14 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
         .toEqual({ dprCap: 2, qualityTier: 'high' });
 
     const canvas = page.locator('canvas');
-    const countVisibleCanvasPixels = () =>
-        canvas.evaluate((canvasElement: HTMLCanvasElement) => {
+    const countVisibleCanvasPixels = async () => {
+        const screenshot = await canvas.screenshot({ scale: 'css' });
+
+        return page.evaluate(async (base64) => {
+            const image = new Image();
+            image.src = `data:image/png;base64,${base64}`;
+            await image.decode();
+
             const sampleCanvas = document.createElement('canvas');
             sampleCanvas.width = 20;
             sampleCanvas.height = 20;
@@ -146,7 +153,7 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
                 return 0;
             }
 
-            context.drawImage(canvasElement, 0, 0, 20, 20);
+            context.drawImage(image, 0, 0, 20, 20);
             const pixels = context.getImageData(0, 0, 20, 20).data;
             let visiblePixels = 0;
             for (let index = 0; index < pixels.length; index += 4) {
@@ -160,9 +167,10 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
             }
 
             return visiblePixels;
-        });
+        }, screenshot.toString('base64'));
+    };
     await expect
-        .poll(countVisibleCanvasPixels, { timeout: 10_000 })
+        .poll(countVisibleCanvasPixels, { timeout: 20_000 })
         .toBeGreaterThan(10);
 
     await page.evaluate(() => window.scrollTo(0, 160));

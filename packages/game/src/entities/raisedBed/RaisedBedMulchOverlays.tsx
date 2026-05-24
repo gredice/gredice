@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
-import type { BufferGeometry } from 'three';
+import type { BufferGeometry, Material } from 'three';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useOperations } from '../../hooks/useOperations';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
+import type { GLTFResult } from '../../models/GameAssets';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
 import {
     type GameQualityProfile,
@@ -58,6 +59,12 @@ type MulchVisual = {
     blockId: number;
     blockName: string;
     application: string;
+};
+
+type MulchAssetLookup = {
+    MulchCoconut: GLTFResult;
+    MulchHey: GLTFResult;
+    MulchWood: GLTFResult;
 };
 
 function normalizeText(value: string | null | undefined) {
@@ -344,18 +351,28 @@ function getUnionFootprintBounds(boundsList: FootprintBounds[]) {
     };
 }
 
-function getMulchGeometry(
-    nodes: ReturnType<typeof useGameGLTF>['nodes'],
+function getMulchAsset(
+    assets: MulchAssetLookup,
     blockName: string,
-) {
+): { geometry: BufferGeometry; material: Material | Material[] } | null {
     if (blockName === 'MulchHey') {
-        return nodes.Mulch_Hey.geometry;
+        return {
+            geometry: assets.MulchHey.nodes.Mulch_Hey.geometry,
+            material: assets.MulchHey.materials['Material.ColorPaletteMain'],
+        };
     }
     if (blockName === 'MulchCoconut') {
-        return nodes.Mulch_Coconut.geometry;
+        return {
+            geometry: assets.MulchCoconut.nodes.Mulch_Coconut.geometry,
+            material:
+                assets.MulchCoconut.materials['Material.ColorPaletteMain'],
+        };
     }
     if (blockName === 'MulchWood') {
-        return nodes.Mulch_Wood.geometry;
+        return {
+            geometry: assets.MulchWood.nodes.Mulch_Wood.geometry,
+            material: assets.MulchWood.materials['Material.ColorPaletteMain'],
+        };
     }
 
     return null;
@@ -363,7 +380,7 @@ function getMulchGeometry(
 
 function getFullBedSurfaceBounds(
     placements: RaisedBedPlacement[],
-    nodes: ReturnType<typeof useGameGLTF>['nodes'],
+    nodes: GLTFResult['nodes'],
 ) {
     return getUnionFootprintBounds(
         placements.map((placement) =>
@@ -390,14 +407,8 @@ function getFullBedPosition(surfaceBounds: FootprintBounds, surfaceY: number) {
 
 function getFullBedScale(
     surfaceBounds: FootprintBounds,
-    blockName: string,
-    nodes: ReturnType<typeof useGameGLTF>['nodes'],
+    mulchGeometry: BufferGeometry,
 ) {
-    const mulchGeometry = getMulchGeometry(nodes, blockName);
-    if (!mulchGeometry) {
-        return [3, 3, 3] as [number, number, number];
-    }
-
     const mulchBounds = getGeometryFootprintBounds(mulchGeometry);
     const mulchWidth = mulchBounds.maxX - mulchBounds.minX;
     const mulchDepth = mulchBounds.maxZ - mulchBounds.minZ;
@@ -474,19 +485,19 @@ function resolveMulchVisualByOperationId(
 
 function MulchMesh({
     geometry,
+    material,
     minSnowCoverage,
     position,
     renderSnow,
     scale,
 }: {
     geometry: BufferGeometry;
+    material: Material | Material[];
     minSnowCoverage: number;
     position: [number, number, number];
     renderSnow: boolean;
     scale: [number, number, number];
 }) {
-    const { materials } = useGameGLTF();
-
     return (
         <group position={position}>
             <mesh
@@ -494,7 +505,7 @@ function MulchMesh({
                 receiveShadow
                 scale={scale}
                 geometry={geometry}
-                material={materials['Material.ColorPaletteMain']}
+                material={material}
             >
                 {renderSnow && (
                     <SnowOverlay
@@ -527,7 +538,12 @@ export function RaisedBedMulchOverlays({
     const { data: cart } = useShoppingCart();
     const { data: operations } = useOperations();
     const { data: blockData } = useBlockData();
-    const { nodes } = useGameGLTF();
+    const { nodes: raisedBedNodes } = useGameGLTF('RaisedBed');
+    const mulchAssets = {
+        MulchCoconut: useGameGLTF('MulchCoconut'),
+        MulchHey: useGameGLTF('MulchHey'),
+        MulchWood: useGameGLTF('MulchWood'),
+    };
     const qualityProfile = quality ?? resolveGameQualityProfile();
     const snowCoverage = useGameState((state) => state.snowCoverage);
     const renderSnow = snowCoverage >= qualityProfile.snowOverlayMinCoverage;
@@ -616,16 +632,17 @@ export function RaisedBedMulchOverlays({
                 );
             }
             if (visual) {
-                const mulchGeometry = getMulchGeometry(nodes, visual.blockName);
-                if (mulchGeometry) {
+                const mulchAsset = getMulchAsset(mulchAssets, visual.blockName);
+                if (mulchAsset) {
                     const surfaceBounds = getFullBedSurfaceBounds(
                         placements,
-                        nodes,
+                        raisedBedNodes,
                     );
                     overlays.push(
                         <MulchMesh
                             key={`raised-bed-mulch-${raisedBed.id}-${visual.blockId}`}
-                            geometry={mulchGeometry}
+                            geometry={mulchAsset.geometry}
+                            material={mulchAsset.material}
                             minSnowCoverage={
                                 qualityProfile.snowOverlayMinCoverage
                             }
@@ -636,8 +653,7 @@ export function RaisedBedMulchOverlays({
                             renderSnow={renderSnow}
                             scale={getFullBedScale(
                                 surfaceBounds,
-                                visual.blockName,
-                                nodes,
+                                mulchAsset.geometry,
                             )}
                         />,
                     );
@@ -708,15 +724,16 @@ export function RaisedBedMulchOverlays({
                 continue;
             }
 
-            const mulchGeometry = getMulchGeometry(nodes, blockName);
-            if (!mulchGeometry) {
+            const mulchAsset = getMulchAsset(mulchAssets, blockName);
+            if (!mulchAsset) {
                 continue;
             }
 
             overlays.push(
                 <MulchMesh
                     key={`raised-bed-field-mulch-${raisedBed.id}-${positionIndex}-${blockName}`}
-                    geometry={mulchGeometry}
+                    geometry={mulchAsset.geometry}
+                    material={mulchAsset.material}
                     minSnowCoverage={qualityProfile.snowOverlayMinCoverage}
                     position={getFieldWorldPosition({
                         blockIndex: placement.blockIndex,

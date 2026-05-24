@@ -7,7 +7,7 @@ import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from '../helpers/useAnimatedEntityRotation';
 
 export function MulchCoconut({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes, materials } = useGameGLTF();
+    const { nodes, materials } = useGameGLTF('MulchCoconut');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 

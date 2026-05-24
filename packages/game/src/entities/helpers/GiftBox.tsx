@@ -24,7 +24,7 @@ export function GiftBox({
     boxMetalness = 0.3,
     boxRoughness = 0.7,
 }: GiftBoxProps) {
-    const { nodes } = useGameGLTF();
+    const { nodes } = useGameGLTF('GiftBox');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     const hovered =

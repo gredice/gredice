@@ -1,0 +1,253 @@
+{
+    "sourceDirectory": "game-assets",
+    "outputDirectory": "../apps/garden/public/assets/models",
+    "assets": [
+        {
+            "name": "BlockGround",
+            "source": "BlockGround.blend",
+            "output": "BlockGround.glb",
+            "preload": "ground",
+            "objects": ["Block Ground 1", "Block Ground 2"]
+        },
+        {
+            "name": "BlockGroundAngle",
+            "source": "BlockGroundAngle.blend",
+            "output": "BlockGroundAngle.glb",
+            "preload": "ground",
+            "objects": ["Block Ground Angle 1"]
+        },
+        {
+            "name": "BlockGrass",
+            "source": "BlockGrass.blend",
+            "output": "BlockGrass.glb",
+            "preload": "ground",
+            "objects": ["Block Grass 1"]
+        },
+        {
+            "name": "BlockGrassAngle",
+            "source": "BlockGrassAngle.blend",
+            "output": "BlockGrassAngle.glb",
+            "preload": "ground",
+            "objects": ["Block Grass Angle 1"]
+        },
+        {
+            "name": "BlockSand",
+            "source": "BlockSand.blend",
+            "output": "BlockSand.glb",
+            "preload": "ground",
+            "objects": ["Block Sand 1"]
+        },
+        {
+            "name": "BlockSandAngle",
+            "source": "BlockSandAngle.blend",
+            "output": "BlockSandAngle.glb",
+            "preload": "ground",
+            "objects": ["Block Sand Angle 1"]
+        },
+        {
+            "name": "RaisedBed",
+            "source": "RaisedBed.blend",
+            "output": "RaisedBed.glb",
+            "preload": "primary",
+            "objects": [
+                "Raised Bed O",
+                "Raised Bed I",
+                "Raised Bed L",
+                "Raised Bed U",
+                "Raised Bed I Construction"
+            ]
+        },
+        {
+            "name": "GardenBox",
+            "source": "GardenBox.blend",
+            "output": "GardenBox.glb",
+            "preload": "primary",
+            "objects": ["GardenBox_Body_Planks", "GardenBox_Lid_HingeOrigin"]
+        },
+        {
+            "name": "GiftBox",
+            "source": "GiftBox.blend",
+            "output": "GiftBox.glb",
+            "preload": "primary",
+            "objects": ["GiftBox_Bow", "GiftBox_Strip", "GiftBox_Box"]
+        },
+        {
+            "name": "Seed",
+            "source": "Seed.blend",
+            "output": "Seed.glb",
+            "preload": "primary",
+            "objects": ["Seed"]
+        },
+        {
+            "name": "Stick",
+            "source": "Stick.blend",
+            "output": "Stick.glb",
+            "preload": "primary",
+            "objects": ["Stick"]
+        },
+        {
+            "name": "Tree",
+            "source": "Tree.blend",
+            "output": "Tree.glb",
+            "preload": "primary",
+            "objects": ["Tree 1"]
+        },
+        {
+            "name": "Pine",
+            "source": "Pine.blend",
+            "output": "Pine.glb",
+            "preload": "primary",
+            "objects": ["Tree 2"]
+        },
+        {
+            "name": "Bush",
+            "source": "Bush.blend",
+            "output": "Bush.glb",
+            "preload": "primary",
+            "objects": ["Bush 1"]
+        },
+        {
+            "name": "StoneSmall",
+            "source": "StoneSmall.blend",
+            "output": "StoneSmall.glb",
+            "preload": "primary",
+            "objects": ["Stone Small"]
+        },
+        {
+            "name": "MulchHey",
+            "source": "MulchHey.blend",
+            "output": "MulchHey.glb",
+            "preload": "primary",
+            "objects": ["Mulch Hey"]
+        },
+        {
+            "name": "MulchCoconut",
+            "source": "MulchCoconut.blend",
+            "output": "MulchCoconut.glb",
+            "preload": "primary",
+            "objects": ["Mulch Coconut"]
+        },
+        {
+            "name": "MulchWood",
+            "source": "MulchWood.blend",
+            "output": "MulchWood.glb",
+            "preload": "primary",
+            "objects": ["Mulch Wood"]
+        },
+        {
+            "name": "BaleHey",
+            "source": "BaleHey.blend",
+            "output": "BaleHey.glb",
+            "preload": "lazy",
+            "objects": ["BaleHey"]
+        },
+        {
+            "name": "Bucket",
+            "source": "Bucket.blend",
+            "output": "Bucket.glb",
+            "preload": "lazy",
+            "objects": ["Bucket", "Bucket - Handle"]
+        },
+        {
+            "name": "Composter",
+            "source": "Composter.blend",
+            "output": "Composter.glb",
+            "preload": "lazy",
+            "objects": ["Composter"]
+        },
+        {
+            "name": "Fence",
+            "source": "Fence.blend",
+            "output": "Fence.glb",
+            "preload": "lazy",
+            "objects": [
+                "Fence Corner",
+                "Fence Cross",
+                "Fence Middle",
+                "Fence Single",
+                "Fence Solo",
+                "Fence T"
+            ]
+        },
+        {
+            "name": "Greenhouse",
+            "source": "Greenhouse.blend",
+            "output": "Greenhouse.glb",
+            "preload": "lazy",
+            "objects": [
+                "Tunnel Half",
+                "Greenhouse Tunnel Stick",
+                "Greenhouse Tunnel Stick Middle",
+                "Greenhouse Tunnel Stick Top",
+                "Greenhouse X Stick A",
+                "Greenhouse X Stick B",
+                "X Half"
+            ]
+        },
+        {
+            "name": "GroundEnvironment",
+            "source": "GroundEnvironment.blend",
+            "output": "GroundEnvironment.glb",
+            "preload": "lazy",
+            "objects": ["Gound Cube", "Grass 1"]
+        },
+        {
+            "name": "Shade",
+            "source": "Shade.blend",
+            "output": "Shade.glb",
+            "preload": "lazy",
+            "objects": [
+                "Shade E",
+                "Shade Middle",
+                "Shade N",
+                "Shade S",
+                "Shade Single Left",
+                "Shade Single Right",
+                "Shade Solo",
+                "Shade W"
+            ]
+        },
+        {
+            "name": "ShovelSmall",
+            "source": "ShovelSmall.blend",
+            "output": "ShovelSmall.glb",
+            "preload": "lazy",
+            "objects": ["Shovel Small"]
+        },
+        {
+            "name": "Snowman",
+            "source": "Snowman.blend",
+            "output": "Snowman.glb",
+            "preload": "lazy",
+            "objects": ["Snowman"]
+        },
+        {
+            "name": "StoneMedium",
+            "source": "StoneMedium.blend",
+            "output": "StoneMedium.glb",
+            "preload": "lazy",
+            "objects": ["Stone Medium"]
+        },
+        {
+            "name": "StoneLarge",
+            "source": "StoneLarge.blend",
+            "output": "StoneLarge.glb",
+            "preload": "lazy",
+            "objects": ["Stone Large"]
+        },
+        {
+            "name": "Stool",
+            "source": "Stool.blend",
+            "output": "Stool.glb",
+            "preload": "lazy",
+            "objects": ["Stool"]
+        },
+        {
+            "name": "Tulip",
+            "source": "Tulip.blend",
+            "output": "Tulip.glb",
+            "preload": "lazy",
+            "objects": ["Tulip"]
+        }
+    ]
+}

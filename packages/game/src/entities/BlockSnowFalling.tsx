@@ -91,7 +91,7 @@ export function BlockSnowFalling({
     block,
     rotation,
 }: EntityInstanceProps) {
-    const { nodes } = useGameGLTF();
+    const { nodes } = useGameGLTF('BlockSand');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     const snowArea = useSnowArea(stack);

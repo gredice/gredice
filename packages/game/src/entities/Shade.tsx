@@ -7,7 +7,7 @@ import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { useEntityNeighbors } from './helpers/useEntityNeighbors';
 
 export function Shade({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes, materials } = useGameGLTF();
+    const { nodes, materials } = useGameGLTF('Shade');
     const currentStackHeight = useStackHeight(stack, block);
 
     let realizedRotation = rotation % 2;

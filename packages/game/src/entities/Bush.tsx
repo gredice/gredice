@@ -8,7 +8,7 @@ import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function Bush({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes, materials } = useGameGLTF();
+    const { nodes, materials } = useGameGLTF('Bush');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 
@@ -31,7 +31,7 @@ export function Bush({ stack, block, rotation }: EntityInstanceProps) {
             </mesh>
             <mesh castShadow receiveShadow geometry={nodes.Bush_1_2.geometry}>
                 <MeshWobbleMaterial
-                    {...materials['Material.Leaves']}
+                    {...materials['Material.GrassPart']}
                     factor={0.02}
                     speed={3}
                 />
