@@ -51,3 +51,17 @@ export const LongLabels: Story = {
         </div>
     ),
 };
+
+export const CollapsedMiddleItems: Story = {
+    args: {
+        items: [
+            { label: 'Gredice', href: '/' },
+            { label: 'Računi', href: '/' },
+            { label: 'd5048f9f-51c2-48f4-85d5-4bed9e8e06c2', href: '/' },
+            { label: 'Vrtovi', href: '/' },
+            { label: '24', href: '/' },
+            { label: 'Gredice', href: '/' },
+            { label: '33' },
+        ],
+    },
+};

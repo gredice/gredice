@@ -1,4 +1,5 @@
 import { type BreadcrumbItem, Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import { KnownPages } from '../../../src/KnownPages';
 import { AdminBreadcrumbLevelSelector } from './AdminBreadcrumbLevelSelector';
 import { AdminDirectoryCategoryBreadcrumbSelector } from './AdminDirectoryCategoryBreadcrumbSelector';
 import { AdminDirectoryEntityTypeBreadcrumbSelector } from './AdminDirectoryEntityTypeBreadcrumbSelector';
@@ -21,6 +22,8 @@ export function AdminDirectoryBreadcrumbs({
     if (entityTypeName) {
         breadcrumbs.push(
             {
+                dropdownHref: KnownPages.Directories,
+                dropdownLabel: 'Kategorije',
                 label: (
                     <AdminDirectoryCategoryBreadcrumbSelector
                         entityTypeName={entityTypeName}
@@ -28,6 +31,8 @@ export function AdminDirectoryBreadcrumbs({
                 ),
             },
             {
+                dropdownHref: KnownPages.DirectoryEntityType(entityTypeName),
+                dropdownLabel: entityTypeLabel ?? entityTypeName,
                 label: (
                     <AdminDirectoryEntityTypeBreadcrumbSelector
                         entityTypeName={entityTypeName}

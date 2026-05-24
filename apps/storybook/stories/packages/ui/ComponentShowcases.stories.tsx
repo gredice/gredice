@@ -531,7 +531,9 @@ function OperationsDashboardShowcase() {
                     items={[
                         { label: 'Admin', href: '/' },
                         { label: 'Operacije', href: '/' },
-                        { label: 'Danas' },
+                        { label: 'Raspored', href: '/' },
+                        { label: 'Danas', href: '/' },
+                        { label: 'Berba' },
                     ]}
                 />
                 <PageHeader
