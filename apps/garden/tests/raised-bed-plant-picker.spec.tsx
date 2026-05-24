@@ -27,3 +27,19 @@ test('plant search keeps keyboard focus while filtering sowing options', async (
     await expect(page.getByRole('button', { name: /Rajčica/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /Bosiljak/ })).toHaveCount(0);
 });
+
+test('mobile sort step keeps the cart action reachable', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await mount(<PlantPickerTestStory />);
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    await page.getByRole('button', { name: /Rajčica/ }).click();
+    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
+
+    const cartAction = page.getByRole('button', { name: 'Dodaj u košaru' });
+    await expect(cartAction).toBeVisible();
+    await expect(cartAction).toBeInViewport();
+});

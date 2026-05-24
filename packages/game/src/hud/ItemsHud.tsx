@@ -272,12 +272,17 @@ export function ItemsHud() {
     const isEditMode = useIsEditMode();
     return (
         <HudCard
+            data-items-hud
             open={isEditMode}
             position="bottom"
-            className="static md:px-1 pointer-events-auto self-center"
+            className="static mx-auto w-fit max-w-[calc(100vw-1rem)] overflow-x-auto md:px-1 pointer-events-auto"
             animateHeight
         >
-            <Row spacing={1} className="md:px-1" justifyContent="center">
+            <Row
+                spacing={1}
+                className="min-w-max md:px-1"
+                justifyContent="center"
+            >
                 {items.map((item, index) => {
                     if (item.type === 'separator') {
                         return (

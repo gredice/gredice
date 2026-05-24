@@ -31,6 +31,11 @@ const fieldMulchScale: [number, number, number] = [1, 3, 1];
 type CurrentGardenData = NonNullable<
     NonNullable<ReturnType<typeof useCurrentGarden>['data']>
 >;
+type RaisedBedFieldData =
+    CurrentGardenData['raisedBeds'][number]['fields'][number];
+type AppliedRaisedBedOperationData = NonNullable<
+    CurrentGardenData['raisedBeds'][number]['appliedOperations']
+>[number];
 
 type RaisedBedDirtGeometryName =
     | 'Raised_Bed_O_2'
@@ -89,6 +94,45 @@ function getMulchKeywords(blockName: string) {
         default:
             return [];
     }
+}
+
+function timestampMs(value: Date | string | null | undefined) {
+    if (!value) {
+        return null;
+    }
+
+    const timestamp =
+        value instanceof Date ? value.getTime() : Date.parse(value);
+
+    return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function activePlantCycleStartMs(field: RaisedBedFieldData) {
+    const activePlantCycle = field.plantCycles?.find(
+        (plantCycle) => plantCycle.active,
+    );
+
+    return timestampMs(activePlantCycle?.startedAt);
+}
+
+function isOperationAppliedToActivePlantCycle(
+    operation: AppliedRaisedBedOperationData,
+    field: RaisedBedFieldData,
+) {
+    const operationTimestamp = timestampMs(
+        operation.completedAt ?? operation.createdAt,
+    );
+    if (operationTimestamp == null) {
+        return true;
+    }
+
+    const cycleStartTimestamp =
+        activePlantCycleStartMs(field) ?? timestampMs(field.plantSowDate);
+    if (cycleStartTimestamp == null) {
+        return true;
+    }
+
+    return operationTimestamp >= cycleStartTimestamp;
 }
 
 function isBedMulchApplication(application: string) {
@@ -677,16 +721,7 @@ export function RaisedBedMulchOverlays({
                 continue;
             }
 
-            const operationTimestamp = Date.parse(
-                operation.completedAt ?? operation.createdAt,
-            );
-            const sowTimestamp = field.plantSowDate
-                ? Date.parse(field.plantSowDate)
-                : Number.NaN;
-            if (
-                Number.isFinite(sowTimestamp) &&
-                operationTimestamp < sowTimestamp
-            ) {
+            if (!isOperationAppliedToActivePlantCycle(operation, field)) {
                 continue;
             }
 

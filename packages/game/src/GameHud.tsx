@@ -22,6 +22,12 @@ import { GiftBoxModal } from './modals/GiftBoxModal';
 import { OverviewModal } from './modals/OverviewModal';
 import { useGameState } from './useGameState';
 
+export const gameHudBottomBarClassName =
+    'pointer-events-none absolute bottom-0 left-0 right-0 flex flex-col items-center md:block';
+
+export const gameHudBottomControlsClassName =
+    'flex flex-row items-end p-2 md:absolute md:bottom-0 md:left-0';
+
 export function GameHud({
     flags,
     noWeather,
@@ -56,8 +62,8 @@ export function GameHud({
                 </div>
                 <SunflowersHud />
             </div>
-            <div className="absolute bottom-0 flex flex-col left-0 right-0 md:flex-row md:justify-between md:items-end pointer-events-none">
-                <div className="p-2 flex flex-row items-end">
+            <div className={gameHudBottomBarClassName}>
+                <div className={gameHudBottomControlsClassName}>
                     <CameraHud />
                     <AudioHud />
                     <ControlsTooltipHud />

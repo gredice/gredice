@@ -8,6 +8,7 @@ import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { type ReactNode, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useGameFlags } from '../../GameFlagsContext';
@@ -86,22 +87,26 @@ function relateAiHistory(entries: DiaryEntry[] | undefined) {
 function DiaryEntryImages({
     name,
     imageUrls,
+    className,
 }: {
     name: string;
     imageUrls?: string[] | null;
+    className?: string;
 }) {
     if (!imageUrls?.length) {
         return null;
     }
 
     return (
-        <ImageGallery
-            images={imageUrls.map((url) => ({ src: url, alt: name }))}
-            previewWidth={80}
-            previewHeight={80}
-            previewAs="div"
-            previewVariant="carousel"
-        />
+        <div className={cx('min-w-0 max-w-full overflow-hidden', className)}>
+            <ImageGallery
+                images={imageUrls.map((url) => ({ src: url, alt: name }))}
+                previewWidth={80}
+                previewHeight={80}
+                previewAs="div"
+                previewVariant="carousel"
+            />
+        </div>
     );
 }
 
@@ -126,7 +131,10 @@ function DiaryList({
 
     return (
         <>
-            <List>
+            <List
+                className="w-full max-w-full overflow-x-hidden"
+                data-diary-list
+            >
                 {error && (
                     <Alert color="danger">
                         <Typography level="body2">
@@ -159,34 +167,43 @@ function DiaryList({
                     return (
                         <div
                             key={entry.id}
-                            className={entryAction ? 'space-y-1' : undefined}
+                            className={cx(
+                                'w-full min-w-0 max-w-full',
+                                entryAction && 'space-y-1',
+                            )}
+                            data-diary-entry
                         >
                             {entry.isMarkdown ? (
                                 <ListItem
                                     nodeId={entry.id.toString()}
                                     onSelected={() => setExpandedAiEntry(entry)}
-                                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                                    className="cursor-pointer hover:bg-muted/50 transition-colors max-w-full"
                                     label={
                                         <Row
                                             spacing={4}
-                                            className="justify-between font-normal"
+                                            className="w-full min-w-0 flex-col items-stretch justify-between font-normal sm:flex-row sm:items-start"
                                         >
                                             <Row
                                                 spacing={4}
-                                                className="items-start flex-1"
+                                                className="min-w-0 flex-1 items-start"
                                             >
                                                 <DiaryEntryImages
                                                     name={entry.name}
                                                     imageUrls={entry.imageUrls}
+                                                    className="w-20 shrink-0 sm:w-44"
                                                 />
-                                                <Stack>
+                                                <Stack className="min-w-0 flex-1">
                                                     <Typography
                                                         level="body1"
                                                         semiBold
+                                                        className="break-words"
                                                     >
                                                         {entry.name}
                                                     </Typography>
-                                                    <Typography level="body2">
+                                                    <Typography
+                                                        level="body2"
+                                                        className="break-words"
+                                                    >
                                                         Klikni za prikaz analize
                                                     </Typography>
                                                 </Stack>
@@ -194,7 +211,7 @@ function DiaryList({
                                             <Typography
                                                 level="body2"
                                                 noWrap
-                                                className="shrink-0"
+                                                className="shrink-0 self-start sm:self-auto"
                                             >
                                                 {entry.timestamp.toLocaleDateString(
                                                     'hr-HR',
@@ -205,32 +222,38 @@ function DiaryList({
                                 />
                             ) : (
                                 <ListItem
+                                    className="max-w-full"
                                     label={
                                         <Row
                                             spacing={4}
-                                            className="justify-between font-normal"
+                                            className="w-full min-w-0 flex-col items-stretch justify-between font-normal sm:flex-row sm:items-start"
                                         >
                                             <Row
                                                 spacing={4}
-                                                className="items-start flex-1"
+                                                className="min-w-0 flex-1 items-start"
                                             >
                                                 <DiaryEntryImages
                                                     name={entry.name}
                                                     imageUrls={entry.imageUrls}
+                                                    className="w-20 shrink-0 sm:w-44"
                                                 />
-                                                <Stack>
+                                                <Stack className="min-w-0 flex-1">
                                                     <Typography
                                                         level="body1"
                                                         semiBold
+                                                        className="break-words"
                                                     >
                                                         {entry.name}
                                                     </Typography>
-                                                    <Typography level="body2">
+                                                    <Typography
+                                                        level="body2"
+                                                        className="break-words"
+                                                    >
                                                         {entry.description}
                                                     </Typography>
                                                 </Stack>
                                             </Row>
-                                            <Stack className="items-end shrink-0">
+                                            <Stack className="w-full min-w-0 items-start sm:w-auto sm:shrink-0 sm:items-end">
                                                 {entry.status && (
                                                     <Chip
                                                         color={
@@ -250,7 +273,7 @@ function DiaryList({
                                                                       ? 'error'
                                                                       : 'neutral'
                                                         }
-                                                        className="shrink-0 w-fit self-end"
+                                                        className="shrink-0 w-fit max-w-full self-start sm:self-end"
                                                     >
                                                         {entry.status}
                                                     </Chip>

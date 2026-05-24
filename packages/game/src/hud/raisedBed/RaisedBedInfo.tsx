@@ -227,7 +227,7 @@ export function RaisedBedInfo({
                 </TabsContent>
                 <TabsContent value="diary">
                     <Card>
-                        <CardOverflow className="overflow-auto max-h-96">
+                        <CardOverflow className="max-h-96 overflow-y-auto overflow-x-hidden">
                             <RaisedBedDiary
                                 gardenId={gardenId}
                                 raisedBedId={raisedBed.id}

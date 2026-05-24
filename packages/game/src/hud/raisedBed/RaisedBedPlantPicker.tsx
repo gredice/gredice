@@ -411,9 +411,13 @@ export function PlantPicker({
                                 max={max}
                             />
                         </Stack>
-                        <Row justifyContent="space-between">
+                        <Row
+                            justifyContent="space-between"
+                            className="-mx-4 -mb-4 sticky bottom-0 z-10 flex-col items-stretch gap-2 border-t bg-background/95 p-4 backdrop-blur-xs md:static md:mx-0 md:mb-0 md:flex-row md:items-center md:border-t-0 md:bg-transparent md:p-0 md:backdrop-blur-none"
+                        >
                             <Button
                                 variant="plain"
+                                className="justify-center md:justify-start"
                                 onClick={() => {
                                     setSelectedPlantId(null);
                                     resetSearch();
@@ -422,7 +426,10 @@ export function PlantPicker({
                             >
                                 Odabir biljke
                             </Button>
-                            <Row spacing={2}>
+                            <Row
+                                spacing={2}
+                                className="justify-end max-[360px]:flex-col-reverse max-[360px]:items-stretch"
+                            >
                                 {inShoppingCart && (
                                     <Button
                                         variant="plain"

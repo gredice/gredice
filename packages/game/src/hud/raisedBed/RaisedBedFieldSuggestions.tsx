@@ -295,7 +295,10 @@ export function RaisedBedFieldSuggestions({
     }
 
     return (
-        <RaisedBedCard className="flex items-center w-fit md:w-auto md:self-stretch flex-col gap-1 px-2 rounded-full py-2 md:gap-2 md:px-2 md:pb-4 md:pt-3">
+        <RaisedBedCard
+            data-quick-sowing-recommendations
+            className="flex w-fit flex-col items-center gap-1 rounded-full px-2 py-2 md:w-auto md:self-stretch md:gap-2 md:px-2 md:pb-4 md:pt-3"
+        >
             <Typography
                 level="body2"
                 className="dark:text-primary-foreground hidden md:block"
@@ -309,8 +312,8 @@ export function RaisedBedFieldSuggestions({
                     <ButtonGreen
                         variant="plain"
                         className={cx(
-                            'md:size-auto bg-black/80 dark:bg-white/10 hover:bg-black/50',
-                            'rounded-full size-10 left-[calc(50%+118px)]',
+                            'bg-black/80 hover:bg-black/50 dark:bg-white/10 md:size-auto',
+                            'size-10 rounded-full',
                         )}
                         startDecorator={
                             <span className="text-xl">
@@ -336,8 +339,8 @@ export function RaisedBedFieldSuggestions({
                         key={type}
                         variant="plain"
                         className={cx(
-                            'md:size-auto bg-black/80 dark:bg-white/10 hover:bg-black/50',
-                            'rounded-full size-10 left-[calc(50%+118px)]',
+                            'bg-black/80 hover:bg-black/50 dark:bg-white/10 md:size-auto',
+                            'size-10 rounded-full',
                         )}
                         startDecorator={
                             <span className="text-xl">{option.emoji}</span>
