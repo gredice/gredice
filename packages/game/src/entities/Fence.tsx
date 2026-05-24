@@ -8,7 +8,7 @@ import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { useEntityNeighbors } from './helpers/useEntityNeighbors';
 
 export function Fence({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes, materials } = useGameGLTF();
+    const { nodes, materials } = useGameGLTF('Fence');
     const currentStackHeight = useStackHeight(stack, block);
 
     let variant:

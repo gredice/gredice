@@ -227,21 +227,35 @@ Coordinate with teammates before editing shared game asset files. Only one perso
 
 ### Game assets
 
-After changing `assets/GameAssets.blend`, regenerate the exported GLB and model types from the repo root:
+Game asset source files live as one Blender file per asset under
+`assets/game-assets`. The manifest `assets/game-assets.json` defines which
+source file exports to each runtime GLB and which assets are preloaded first.
+
+After changing a split Blender file or the asset manifest, regenerate the
+exported GLBs and model types from the repo root:
 
 ```bash
 pnpm generate:game-assets
 ```
 
-This runs the platform export script from `assets`, writes `apps/garden/public/assets/models/GameAssets.glb`, then runs `pnpm generate:models-types` to update `packages/game/src/models/GameAssets.tsx` through `gltfjsx` and the local post-processing script.
+This runs the platform export script from `assets`, writes one GLB per asset to
+`apps/garden/public/assets/models`, then runs `pnpm generate:models-types` to
+update `packages/game/src/data/gameAssetModels.generated.ts` and
+`packages/game/src/models/GameAssets.tsx`. Type generation uses a temporary
+combined GLB under `apps/garden/.tmp` and removes it after `gltfjsx` finishes.
 
 Blender must be installed where the export scripts expect it:
 
 - macOS: `/Applications/Blender.app`
 - Windows: `C:\Program Files\Blender Foundation\Blender 4.5\blender.exe`
-- Linux/other Unix-like systems: update `assets/export.sh` for the local Blender path before running the generator.
+- Linux/other Unix-like systems: `blender` on `PATH`, or set `BLENDER_BINARY`.
 
-If the steps need to run separately, run `./export.sh` from `assets` on Unix-like systems or `.\export.ps1` from `assets` on Windows, then run `pnpm generate:models-types` from the repo root.
+If the steps need to run separately, run `./export.sh` from `assets` on
+Unix-like systems or `.\export.ps1` from `assets` on Windows, then run
+`pnpm generate:models-types` from the repo root.
+
+To recreate the split Blender files from an old monolithic source, run Blender
+against `assets/split-game-assets.py` with `-- --source /path/to/GameAssets.blend`.
 
 ### Decoration sprite atlas
 

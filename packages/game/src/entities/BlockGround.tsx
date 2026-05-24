@@ -11,7 +11,7 @@ export function BlockGround({
     rotation,
     variant,
 }: EntityInstanceProps) {
-    const { nodes, materials } = useGameGLTF();
+    const { nodes } = useGameGLTF('BlockGround');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 
@@ -41,7 +41,7 @@ export function BlockGround({
                 castShadow
                 receiveShadow
                 geometry={nodes[variantResolved2].geometry}
-                material={materials['Material.Stone']}
+                material={nodes[variantResolved2].material}
             />
         </animated.group>
     );

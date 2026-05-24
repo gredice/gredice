@@ -19,7 +19,7 @@
         "test:run": "playwright test",
         "test:sw": "node --test tests/push-notifications-sw.node.spec.mjs",
         "test-ui": "pnpm run test:prepare && playwright test --ui",
-        "generate:models-types": "pnpm dlx gltfjsx ./public/assets/models/GameAssets.glb --types --typeonly --output ../../packages/game/src/models/GameAssets.tsx && node ../../scripts/fix-gltfjsx-output.mjs",
+        "generate:models-types": "node ../../scripts/generate-game-model-types.mjs",
         "test:local": "pnpm run test:prepare && pnpm run test:run"
     },
     "dependencies": {

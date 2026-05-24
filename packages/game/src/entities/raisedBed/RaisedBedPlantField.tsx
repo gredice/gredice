@@ -142,7 +142,7 @@ export function RaisedBedPlantField({
     });
 
     // TODO: Move to seed block/part
-    const { nodes } = useGameGLTF();
+    const { nodes } = useGameGLTF('Seed');
     const { row, col } = getGridPositionFromIndex(positionIndex, orientation);
     const fieldPosition = [
         col * multiplierX - offsetX,

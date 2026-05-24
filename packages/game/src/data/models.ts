@@ -1,3 +1,8 @@
-export const models = {
-    GameAssets: { url: '/assets/models/GameAssets.glb' },
-};
+export {
+    allGameAssetNames,
+    type GameAssetName,
+    gameAssetModels,
+    groundGameAssetNames,
+    lazyGameAssetNames,
+    primaryGameAssetNames,
+} from './gameAssetModels.generated';

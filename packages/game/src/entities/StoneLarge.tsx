@@ -8,7 +8,7 @@ import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function StoneLarge({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes, materials } = useGameGLTF();
+    const { nodes, materials } = useGameGLTF('StoneLarge');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 
@@ -21,7 +21,7 @@ export function StoneLarge({ stack, block, rotation }: EntityInstanceProps) {
                 castShadow
                 receiveShadow
                 geometry={nodes.Stone_Large.geometry}
-                material={materials['Material.Stone']}
+                material={materials['Material.Stone.002']}
                 scale={[0.263, 0.426, 0.291]}
             >
                 <SnowOverlay

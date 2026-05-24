@@ -10,7 +10,7 @@ export function BlockGroundAngle({
     block,
     rotation,
 }: EntityInstanceProps) {
-    const { nodes, materials } = useGameGLTF();
+    const { nodes } = useGameGLTF('BlockGroundAngle');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 
@@ -38,7 +38,7 @@ export function BlockGroundAngle({
                 castShadow
                 receiveShadow
                 geometry={nodes[variantResolved2].geometry}
-                material={materials['Material.Stone']}
+                material={nodes[variantResolved2].material}
             />
         </animated.group>
     );

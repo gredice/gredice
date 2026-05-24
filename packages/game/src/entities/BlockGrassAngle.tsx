@@ -12,7 +12,7 @@ export function BlockGrassAngle({
     block,
     rotation,
 }: EntityInstanceProps) {
-    const { nodes, materials } = useGameGLTF();
+    const { nodes } = useGameGLTF('BlockGrassAngle');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     const variantResolved = 1;
@@ -28,7 +28,9 @@ export function BlockGrassAngle({
                 geometry={
                     nodes[`Block_Grass_Angle_${variantResolved}_2`].geometry
                 }
-                material={materials[`Material.Grass`]}
+                material={
+                    nodes[`Block_Grass_Angle_${variantResolved}_2`].material
+                }
             />
             <SnowOverlay
                 geometry={

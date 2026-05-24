@@ -8,7 +8,7 @@ import { BlockSurfaceDecorationSprites } from './groundDecorations/BlockSurfaceD
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function BlockGrass({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes, materials } = useGameGLTF();
+    const { nodes, materials } = useGameGLTF('BlockGrass');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     // const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;

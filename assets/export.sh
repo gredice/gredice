@@ -1,4 +1,11 @@
 #!/bin/bash
 
-/Applications/Blender.app/Contents/MacOS/Blender -b GameAssets.blend \
-  --python-expr "import bpy; bpy.ops.export_scene.gltf(filepath='../apps/garden/public/assets/models/GameAssets.glb',export_apply=True)"
+if [ -z "${BLENDER_BINARY:-}" ]; then
+    if [ "$(uname -s)" = "Darwin" ]; then
+        BLENDER_BINARY="/Applications/Blender.app/Contents/MacOS/Blender"
+    else
+        BLENDER_BINARY="blender"
+    fi
+fi
+
+"$BLENDER_BINARY" -b --python export-game-assets.py

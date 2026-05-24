@@ -1,8 +1,7 @@
 'use client';
 
-import { useGLTF } from '@react-three/drei';
 import { useEffect, useRef } from 'react';
-import { models } from './data/models';
+import { groundGameAssetNames, primaryGameAssetNames } from './data/models';
 import { GameFlagsContext } from './GameFlagsContext';
 import { GameScene, type GameSceneProps } from './GameScene';
 import {
@@ -11,6 +10,7 @@ import {
     type GameStateStore,
     useDisposeGameStateStore,
 } from './useGameState';
+import { preloadGameAssetModels } from './utils/useGameGLTF';
 
 export function GameSceneWrapper({
     appBaseUrl,
@@ -47,7 +47,17 @@ export function GameSceneWrapper({
         }
     }, [freezeTime]);
 
-    useGLTF.preload((appBaseUrl ?? '') + models.GameAssets.url);
+    const resolvedAppBaseUrl = appBaseUrl ?? '';
+    preloadGameAssetModels(resolvedAppBaseUrl, groundGameAssetNames);
+
+    useEffect(() => {
+        const preloadPrimaryAssets = () => {
+            preloadGameAssetModels(resolvedAppBaseUrl, primaryGameAssetNames);
+        };
+
+        const timeout = window.setTimeout(preloadPrimaryAssets, 0);
+        return () => window.clearTimeout(timeout);
+    }, [resolvedAppBaseUrl]);
 
     return (
         <GameStateContext.Provider value={storeRef.current}>

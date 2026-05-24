@@ -17,11 +17,14 @@ Primary files and directories:
 - Game runtime package: `packages/game`.
 - Game scene root: `packages/game/src/GameScene.tsx`.
 - Game quality policy: `packages/game/src/scene/gameQuality.ts`.
-- Source Blender asset: `assets/GameAssets.blend`.
+- Source Blender assets: one file per asset under `assets/game-assets`.
+- Game asset manifest: `assets/game-assets.json`.
 - Blender version marker: `assets/BLENDER_VERSION`.
 - Source brand/game texture examples: `assets/GredicePixPal_BaseColor.png`, `assets/brand/gredice-logotype.svg`.
 - Export scripts: `assets/export.sh`, `assets/export.ps1`.
-- Generated GLB: `apps/garden/public/assets/models/GameAssets.glb`.
+- Blender split/export helpers: `assets/split-game-assets.py`, `assets/export-game-assets.py`.
+- Generated GLBs: one file per asset under `apps/garden/public/assets/models`.
+- Generated runtime asset manifest: `packages/game/src/data/gameAssetModels.generated.ts`.
 - Generated model types: `packages/game/src/models/GameAssets.tsx`.
 - CDN asset scripts: `packages/cdn/scripts`.
 - Performance doc: `docs/game-scene-performance.md`.
@@ -30,15 +33,15 @@ Primary files and directories:
 
 Document this pipeline exactly when it is relevant:
 
-1. Edit source assets under `assets`, especially `assets/GameAssets.blend`.
+1. Edit source assets under `assets/game-assets` and update `assets/game-assets.json` when adding, removing, or reprioritizing assets.
 2. Run:
 
 ```bash
 pnpm generate:game-assets
 ```
 
-3. The script exports the GLB to `apps/garden/public/assets/models/GameAssets.glb`.
-4. The script runs model type generation for `packages/game/src/models/GameAssets.tsx`.
+3. The script exports split GLBs to `apps/garden/public/assets/models`.
+4. The script runs model metadata/type generation for `packages/game/src/data/gameAssetModels.generated.ts` and `packages/game/src/models/GameAssets.tsx`.
 5. Review generated output and only commit generated artifacts when the source change requires them and they are established tracked outputs.
 
 If the steps need to run separately:
@@ -50,7 +53,7 @@ cd ..
 pnpm generate:models-types
 ```
 
-On Windows, use `assets/export.ps1`. Blender must be installed where `WORKSPACE.md` documents it.
+On Windows, use `assets/export.ps1`. Blender must be installed where `WORKSPACE.md` documents it. To recreate the split Blender sources from an older monolithic source, run Blender with `assets/split-game-assets.py` and pass `-- --source /path/to/GameAssets.blend`.
 
 ## Decoration Sprite Atlas
 
