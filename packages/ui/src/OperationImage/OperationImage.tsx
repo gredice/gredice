@@ -71,16 +71,18 @@ export function OperationImage({
     const categoryName =
         operation.attributes?.category?.information?.name ??
         operation.attributes?.stage?.information?.name;
+    const fallbackSize = size ?? 48;
+    const imageSize = size ?? 24;
 
     if (!operation.image?.cover?.url) {
         return (
-            <div
+            <span
                 style={{
-                    width: size ? `${size}px` : '48px',
-                    height: size ? `${size}px` : '48px',
+                    width: `${fallbackSize}px`,
+                    height: `${fallbackSize}px`,
                 }}
                 className={cx(
-                    'aspect-square flex items-center justify-center',
+                    'aspect-square inline-flex shrink-0 items-center justify-center',
                     className,
                 )}
             >
@@ -93,22 +95,28 @@ export function OperationImage({
                     }
                     className="size-[--imageSize] shrink-0"
                 />
-            </div>
+            </span>
         );
     }
 
     return (
-        <Image
-            src={operation.image.cover.url}
-            width={size ?? 24}
-            height={size ?? 24}
+        <span
             style={{
-                objectFit: 'contain',
-                width: `${size ?? 24}px`,
-                height: `${size ?? 24}px`,
+                width: `${imageSize}px`,
+                height: `${imageSize}px`,
             }}
-            alt={operation.information?.label ?? 'Slika radnje'}
-            className={className}
-        />
+            className={cx(
+                'relative inline-flex shrink-0 items-center justify-center overflow-hidden',
+                className,
+            )}
+        >
+            <Image
+                src={operation.image.cover.url}
+                fill
+                sizes={`${imageSize}px`}
+                style={{ objectFit: 'contain' }}
+                alt={operation.information?.label ?? 'Slika radnje'}
+            />
+        </span>
     );
 }

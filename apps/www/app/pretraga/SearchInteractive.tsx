@@ -6,7 +6,7 @@ import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { usePostHog } from '@posthog/next';
 import type { Route } from 'next';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DirectorySearchResultVisual } from '../../components/search/DirectorySearchResultVisual';
 import {
     type SearchCategoryValue,
@@ -37,6 +37,60 @@ function localHref(href: string) {
     }
 
     return href as Route;
+}
+
+function SearchResultSummary({ summary }: { summary: string }) {
+    const summaryRef = useRef<HTMLDivElement>(null);
+    const [isOverflowing, setIsOverflowing] = useState(false);
+    const measureOverflow = useCallback(() => {
+        const element = summaryRef.current;
+        if (!element) {
+            return;
+        }
+
+        setIsOverflowing(element.scrollHeight > element.clientHeight + 1);
+    }, []);
+
+    useEffect(() => {
+        const element = summaryRef.current;
+        const frame = window.requestAnimationFrame(measureOverflow);
+        let resizeObserver: ResizeObserver | null = null;
+
+        if (element && typeof ResizeObserver !== 'undefined') {
+            resizeObserver = new ResizeObserver(measureOverflow);
+            resizeObserver.observe(element);
+            const content = element.firstElementChild;
+            if (content) {
+                resizeObserver.observe(content);
+            }
+        }
+
+        window.addEventListener('resize', measureOverflow);
+
+        return () => {
+            window.cancelAnimationFrame(frame);
+            resizeObserver?.disconnect();
+            window.removeEventListener('resize', measureOverflow);
+        };
+    }, [measureOverflow]);
+
+    return (
+        <div
+            ref={summaryRef}
+            data-search-result-summary=""
+            data-overflowing={isOverflowing ? 'true' : 'false'}
+            style={{ maxHeight: '7rem' }}
+            className={cx(
+                'relative mt-1 max-h-28 overflow-hidden',
+                isOverflowing &&
+                    'after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-8 after:bg-gradient-to-b after:from-transparent after:to-card group-hover:after:to-muted group-focus-visible:after:to-muted',
+            )}
+        >
+            <Markdown className="text-sm text-muted-foreground prose-headings:my-1 prose-headings:text-sm prose-headings:font-medium prose-headings:text-muted-foreground prose-li:my-0 prose-ol:my-1 prose-p:my-1 prose-strong:text-muted-foreground prose-ul:my-1">
+                {summary}
+            </Markdown>
+        </div>
+    );
 }
 
 export function SearchInteractive({
@@ -133,11 +187,9 @@ export function SearchInteractive({
                                     </span>
                                 </div>
                                 {result.summary ? (
-                                    <div className="relative mt-1 max-h-28 overflow-hidden after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-8 after:bg-gradient-to-b after:from-transparent after:to-card group-hover:after:to-muted group-focus-visible:after:to-muted">
-                                        <Markdown className="text-sm text-muted-foreground prose-headings:my-1 prose-headings:text-sm prose-headings:font-medium prose-headings:text-muted-foreground prose-li:my-0 prose-ol:my-1 prose-p:my-1 prose-strong:text-muted-foreground prose-ul:my-1">
-                                            {result.summary}
-                                        </Markdown>
-                                    </div>
+                                    <SearchResultSummary
+                                        summary={result.summary}
+                                    />
                                 ) : null}
                             </div>
                         </a>

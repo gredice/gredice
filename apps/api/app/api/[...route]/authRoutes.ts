@@ -68,14 +68,21 @@ function isStringArray(value: unknown): value is string[] {
     );
 }
 
-type CurrentClaims = {
+type CurrentSessionClaims = {
     id: string;
     userName: string;
     role: string;
     accountIds: string[];
 };
 
-function currentClaimsFromPayload(payload: unknown): CurrentClaims | null {
+type CurrentClaims = CurrentSessionClaims & {
+    displayName: string;
+    avatarUrl: string | null;
+};
+
+function currentClaimsFromPayload(
+    payload: unknown,
+): CurrentSessionClaims | null {
     if (!isRecord(payload) || typeof payload.sub !== 'string') {
         return null;
     }
@@ -108,6 +115,8 @@ function currentClaimsFromUser(
     return {
         id: user.id,
         userName: user.userName,
+        displayName: user.displayName ?? user.userName,
+        avatarUrl: user.avatarUrl,
         role: user.role,
         accountIds: user.accounts.map((account) => account.accountId),
     };
@@ -159,10 +168,13 @@ async function currentClaimsFromRefreshToken(context: Context) {
 }
 
 async function getCurrentClaims(context: Context) {
-    return (
-        (await currentClaimsFromSessionCookie(context)) ??
-        (await currentClaimsFromRefreshToken(context))
-    );
+    const sessionClaims = await currentClaimsFromSessionCookie(context);
+    if (sessionClaims) {
+        const user = await getUser(sessionClaims.id);
+        return user ? currentClaimsFromUser(user) : null;
+    }
+
+    return await currentClaimsFromRefreshToken(context);
 }
 
 /**
@@ -817,7 +829,7 @@ const app = new Hono()
         '/current-claims',
         describeRoute({
             description:
-                'Get basic current user claims from a verified or refreshed session token.',
+                'Get current user claims and profile fields from a verified or refreshed session token.',
         }),
         async (context) => {
             const claims = await getCurrentClaims(context);

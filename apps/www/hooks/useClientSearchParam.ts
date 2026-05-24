@@ -68,7 +68,7 @@ export function useClientSearchParam(
 
     useEffect(() => {
         const updateValueFromLocation = () => {
-            setValue(getWindowSearchParam(name, defaultValue));
+            setValue(getWindowSearchParam(name, ''));
         };
 
         updateValueFromLocation();
@@ -85,7 +85,7 @@ export function useClientSearchParam(
                 updateValueFromLocation,
             );
         };
-    }, [defaultValue, name]);
+    }, [name]);
 
     const updateValue = useCallback(
         (nextValue: string) => {

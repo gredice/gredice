@@ -45,3 +45,12 @@ export const Sizes: Story = {
         </div>
     ),
 };
+
+export const InitialsInColoredParent: Story = {
+    render: () => (
+        <div className="inline-flex items-center gap-2 rounded-full bg-green-800 px-3 py-2 text-white">
+            <UserAvatar displayName="Ana Kovač" size="sm" />
+            <span className="text-sm font-medium">Moj vrt</span>
+        </div>
+    ),
+};

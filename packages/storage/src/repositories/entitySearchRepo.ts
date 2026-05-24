@@ -18,6 +18,8 @@ const minSearchQueryLength = 2;
 const defaultSearchLimit = 20;
 const maxSearchLimit = 50;
 const exactSearchMatchBoost = 10;
+const highPriorityPrefixBoost = 100;
+const highPriorityContainsBoost = 25;
 
 type EntitySearchSource = NonNullable<Awaited<ReturnType<typeof getEntityRaw>>>;
 
@@ -140,6 +142,10 @@ function compactText(values: Array<string | null | undefined>) {
         .map((value) => value?.trim() ?? '')
         .filter((value) => value.length > 0)
         .join(' ');
+}
+
+function searchTokens(value: string) {
+    return normalizeDirectorySearchText(value).match(/[\p{L}\p{N}]+/gu) ?? [];
 }
 
 function attributeValue(
@@ -279,6 +285,51 @@ function attributeSearchText(attribute: EntitySearchAttribute) {
         }
     }
     return [rawValue];
+}
+
+function highPriorityAttributeSearchText(entity: EntitySearchSource) {
+    return entity.attributes
+        .filter(
+            (attribute) =>
+                attribute.attributeDefinition.category === 'information' &&
+                attribute.attributeDefinition.name === 'alternativeName',
+        )
+        .flatMap(attributeSearchText);
+}
+
+function highPrioritySearchText(entity: EntitySearchSource) {
+    return compactText([
+        entityTitle(entity),
+        ...highPriorityAttributeSearchText(entity),
+    ]);
+}
+
+function highPrioritySearchBoost(
+    entity: EntitySearchSource,
+    normalizedQuery: string,
+) {
+    const queryTokens = searchTokens(normalizedQuery);
+    if (queryTokens.length === 0) {
+        return 0;
+    }
+
+    const highPriorityText = highPrioritySearchText(entity);
+    const highPriorityTokens = searchTokens(highPriorityText);
+    const allQueryTokensStartHighPriorityToken = queryTokens.every(
+        (queryToken) =>
+            highPriorityTokens.some((token) => token.startsWith(queryToken)),
+    );
+    if (allQueryTokensStartHighPriorityToken) {
+        return highPriorityPrefixBoost;
+    }
+
+    if (
+        normalizeDirectorySearchText(highPriorityText).includes(normalizedQuery)
+    ) {
+        return highPriorityContainsBoost;
+    }
+
+    return 0;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -496,8 +547,9 @@ async function buildEntitySearchDocumentValues(
     const bodySearchText = compactText(
         entity.attributes.flatMap(attributeSearchText),
     );
+    const titleSearchText = highPrioritySearchText(entity);
     const searchableText = compactText([
-        title,
+        titleSearchText,
         subtitleSearchText,
         bodySearchText,
     ]);
@@ -513,7 +565,7 @@ async function buildEntitySearchDocumentValues(
         imageUrl: image?.url ?? null,
         imageAlt: image?.alt ?? null,
         searchableText,
-        titleSearchText: title,
+        titleSearchText,
         subtitleSearchText,
         bodySearchText,
         state: entity.state,
@@ -725,6 +777,12 @@ export async function searchDirectoryEntities({
             (ts_rank_cd(${entitySearchDocuments.searchVector}, ${prefixTsQuery}) * 0.5)
         `
         : exactRank;
+    const highPriorityRank = prefixTsQuery
+        ? sql<number>`
+            ts_rank_cd(array[0,0,0,1]::real[], ${entitySearchDocuments.searchVector}, ${exactTsQuery}) +
+            ts_rank_cd(array[0,0,0,1]::real[], ${entitySearchDocuments.searchVector}, ${prefixTsQuery})
+        `
+        : sql<number>`ts_rank_cd(array[0,0,0,1]::real[], ${entitySearchDocuments.searchVector}, ${exactTsQuery})`;
     const conditions = [
         eq(entitySearchDocuments.state, 'published'),
         prefixTsQuery
@@ -746,20 +804,25 @@ export async function searchDirectoryEntities({
         );
     }
 
-    const rows = await storage()
+    const requestedLimit = searchLimit(limit);
+    const requestedOffset = searchOffset(offset);
+    const selectedRows = {
+        entityId: entitySearchDocuments.entityId,
+        entityTypeName: entitySearchDocuments.entityTypeName,
+        publicCategory: entitySearchDocuments.publicCategory,
+        publicCategoryLabel: entitySearchDocuments.publicCategoryLabel,
+        title: entitySearchDocuments.title,
+        summary: entitySearchDocuments.summary,
+        imageUrl: entitySearchDocuments.imageUrl,
+        imageAlt: entitySearchDocuments.imageAlt,
+        state: entitySearchDocuments.state,
+        publishedAt: entitySearchDocuments.publishedAt,
+        updatedAt: entitySearchDocuments.updatedAt,
+        score: score.mapWith(Number),
+    };
+    const baseRows = await storage()
         .select({
-            entityId: entitySearchDocuments.entityId,
-            entityTypeName: entitySearchDocuments.entityTypeName,
-            publicCategory: entitySearchDocuments.publicCategory,
-            publicCategoryLabel: entitySearchDocuments.publicCategoryLabel,
-            title: entitySearchDocuments.title,
-            summary: entitySearchDocuments.summary,
-            imageUrl: entitySearchDocuments.imageUrl,
-            imageAlt: entitySearchDocuments.imageAlt,
-            state: entitySearchDocuments.state,
-            publishedAt: entitySearchDocuments.publishedAt,
-            updatedAt: entitySearchDocuments.updatedAt,
-            score: score.mapWith(Number),
+            ...selectedRows,
         })
         .from(entitySearchDocuments)
         .where(and(...conditions))
@@ -768,11 +831,23 @@ export async function searchDirectoryEntities({
             asc(entitySearchDocuments.entityTypeName),
             asc(entitySearchDocuments.entityId),
         )
-        .limit(searchLimit(limit))
-        .offset(searchOffset(offset));
+        .limit(requestedOffset + requestedLimit);
+    const highPriorityRows = await storage()
+        .select({
+            ...selectedRows,
+        })
+        .from(entitySearchDocuments)
+        .where(and(...conditions, sql`${highPriorityRank} > 0`));
+    const rowsByEntityId = new Map<number, (typeof baseRows)[number]>();
+    for (const row of baseRows) {
+        rowsByEntityId.set(row.entityId, row);
+    }
+    for (const row of highPriorityRows) {
+        rowsByEntityId.set(row.entityId, row);
+    }
 
     const rowsWithPublicUrls: DirectoryEntitySearchRow[] = [];
-    for (const row of rows) {
+    for (const row of rowsByEntityId.values()) {
         const entity = await getEntityRaw(row.entityId);
         if (!entity) {
             continue;
@@ -791,10 +866,21 @@ export async function searchDirectoryEntities({
             imageUrl: image?.url ?? null,
             imageAlt: image?.alt ?? null,
             visualKey,
+            score: row.score + highPrioritySearchBoost(entity, normalizedQuery),
         });
     }
 
-    return rowsWithPublicUrls;
+    return rowsWithPublicUrls
+        .toSorted((a, b) => {
+            if (b.score !== a.score) {
+                return b.score - a.score;
+            }
+            if (a.entityTypeName !== b.entityTypeName) {
+                return a.entityTypeName.localeCompare(b.entityTypeName);
+            }
+            return a.entityId - b.entityId;
+        })
+        .slice(requestedOffset, requestedOffset + requestedLimit);
 }
 
 export function publicSearchCategoryForEntityType(entityTypeName: string) {

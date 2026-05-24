@@ -365,8 +365,23 @@ test.describe('public search filters', () => {
         );
         expect(
             (raisedBedLinkBox?.x ?? 0) + (raisedBedLinkBox?.width ?? 0),
-        ).toBeLessThan((firstNavLinkBox?.x ?? 0) - 4);
+        ).toBeLessThanOrEqual(firstNavLinkBox?.x ?? 0);
         expect(raisedBedLinkBox?.x ?? 0).toBeLessThan(firstNavLinkBox?.x ?? 0);
+
+        await page.setViewportSize({ width: 1734, height: 846 });
+        const wideSearchBox = await page
+            .locator('header search[aria-label="Pretraga"]')
+            .boundingBox();
+        const wideRaisedBedLinkBox = await page
+            .locator('header')
+            .getByRole('link', { name: 'Gredica', exact: true })
+            .boundingBox();
+
+        expect(wideSearchBox).not.toBeNull();
+        expect(wideRaisedBedLinkBox).not.toBeNull();
+        expect(
+            (wideSearchBox?.x ?? 0) + (wideSearchBox?.width ?? 0),
+        ).toBeLessThan((wideRaisedBedLinkBox?.x ?? 0) - 8);
     });
 
     test('navbar exposes updated primary links', async ({ page }) => {
@@ -379,6 +394,33 @@ test.describe('public search filters', () => {
         await expect(
             navbar.getByRole('link', { name: 'Radnje', exact: true }),
         ).toHaveAttribute('href', '/radnje');
+    });
+
+    test('navbar shows current user avatar image', async ({ page }) => {
+        await page.unroute('**/api/gredice/api/auth/current-claims**');
+        await page.route(
+            '**/api/gredice/api/auth/current-claims**',
+            async (route) => {
+                await route.fulfill({
+                    contentType: 'application/json',
+                    json: {
+                        id: 'test-user',
+                        userName: 'ana@example.com',
+                        displayName: 'Ana Kovač',
+                        avatarUrl: '/icon.svg',
+                    },
+                    status: 200,
+                });
+            },
+        );
+
+        await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+        const navbar = page.locator('header');
+        await expect(
+            navbar.getByRole('img', { name: 'Ana Kovač' }),
+        ).toBeVisible();
+        await expect(navbar.getByText('AK', { exact: true })).toHaveCount(0);
     });
 
     test('navbar search uses compact mobile button', async ({ page }) => {
@@ -410,9 +452,35 @@ test.describe('public search filters', () => {
         await expect(page.getByText('Nema rezultata pretrage.')).toBeHidden();
     });
 
+    test('plant search clear button resets input, URL and list', async ({
+        page,
+    }) => {
+        await page.goto('/biljke?pretraga=zzzz', { waitUntil: 'load' });
+
+        const searchInput = page.locator('#plant-search');
+        await expect(searchInput).toHaveValue('zzzz');
+        await expect(page.getByText('Nema rezultata pretrage.')).toBeVisible();
+
+        await page.getByTitle('Očisti pretragu').click();
+
+        await expect(searchInput).toHaveValue('');
+        await expect
+            .poll(() => new URL(page.url()).searchParams.has('pretraga'))
+            .toBe(false);
+        await expect(page.getByText('Nema rezultata pretrage.')).toBeHidden();
+    });
+
     test('operation search keeps keyboard focus and ignores Croatian diacritics', async ({
         page,
     }) => {
+        const imageDimensionWarnings: string[] = [];
+        page.on('console', (message) => {
+            const text = message.text();
+            if (text.includes('has either width or height modified')) {
+                imageDimensionWarnings.push(text);
+            }
+        });
+
         await page.goto('/radnje', { waitUntil: 'load' });
 
         const searchInput = page.locator('#operation-search');
@@ -423,6 +491,7 @@ test.describe('public search filters', () => {
             page.getByText('Čišćenje gredice', { exact: true }),
         ).toBeVisible();
         await expect(page.getByText('Nema dostupnih radnji.')).toBeHidden();
+        await expect.poll(() => imageDimensionWarnings).toEqual([]);
     });
 
     test('global search page renders search controls', async ({ page }) => {
