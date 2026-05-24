@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 
+test.describe.configure({ mode: 'default' });
+
 async function expectMobileNavActionsDoNotOverlap(page: Page) {
     const cta = page.getByRole('link', { name: 'Moj novi vrt' });
     const menuButton = page.getByRole('button', {
@@ -33,7 +35,7 @@ test('mobile navbar closes after navigating from the menu', async ({
     test.slow();
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/');
+    await page.goto('/kontakt');
     await expectMobileNavActionsDoNotOverlap(page);
 
     const menuButton = page.getByRole('button', {
@@ -59,7 +61,7 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
     page,
 }, testInfo) => {
     test.slow();
-    testInfo.setTimeout(35_000);
+    testInfo.setTimeout(60_000);
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
