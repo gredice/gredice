@@ -8,7 +8,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
     title: 'Razvojni centar',
     description:
-        'Središnje mjesto za razvojne alate, dijagnostiku, profiliranje, API i timsku suradnju Gredice timova.',
+        'Središnje mjesto za razvojne alate, dijagnostiku, API i timsku suradnju u Gredicama.',
 };
 
 type DevelopmentResource = {
@@ -58,30 +58,30 @@ function getEnvironmentHosts(): EnvironmentHosts {
 function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
     return [
         {
-            title: 'Dijagnostika i performanse',
+            title: 'Dijagnostika i učinkovitost',
             description:
-                'Brzi pristup vrtnim alatima za pregled entiteta i provjeru performansi renderiranja.',
+                'Brzi pristup vrtnim alatima za pregled elemenata i provjeru učinkovitosti iscrtavanja.',
             resources: [
                 {
-                    title: 'Dijagnostika vrtnih entiteta',
+                    title: 'Dijagnostika vrtnih elemenata',
                     description:
-                        'Mrežni prikaz za pregled vrtnih entiteta, blokova i prikazanih stanja.',
+                        'Mrežni prikaz za pregled vrtnih elemenata, blokova i prikazanih stanja.',
                     href: `${hosts.garden}/debug/entities`,
                     icon: '🐞',
                 },
                 {
-                    title: 'Performanse prikaza biljaka',
+                    title: 'Učinkovitost prikaza biljaka',
                     description:
-                        'Gusti prikaz biljnih predložaka za uočavanje uskih grla u renderiranju i regresija performansi.',
+                        'Gusti prikaz biljnih predložaka za uočavanje zastoja pri iscrtavanju i pada učinkovitosti.',
                     href: `${hosts.garden}/debug/plants`,
                     icon: '📈',
                 },
             ],
         },
         {
-            title: 'Produktna sučelja',
+            title: 'Sučelja proizvoda',
             description:
-                'Otvori glavna produktna okruženja koja se koriste tijekom razvoja i provjere kvalitete.',
+                'Otvori glavna sučelja Gredica koja se koriste tijekom razvoja i provjere kvalitete.',
             resources: [
                 {
                     title: 'WWW',
@@ -93,21 +93,21 @@ function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
                 {
                     title: 'Vrt',
                     description:
-                        'Glavna aplikacija za korisničke tokove i radnje upravljanja vrtom.',
+                        'Glavna aplikacija za korisničke tijekove i radnje upravljanja vrtom.',
                     href: hosts.garden,
                     icon: '🌱',
                 },
                 {
                     title: 'Farma',
                     description:
-                        'Operativno sučelje za partnere i radne tokove na strani farme.',
+                        'Operativno sučelje za partnere i radne tijekove farme.',
                     href: hosts.farm,
                     icon: '🚜',
                 },
                 {
                     title: 'Aplikacija',
                     description:
-                        'Interno aplikacijsko sučelje za autentificirane i dijeljene produktne značajke.',
+                        'Interno aplikacijsko sučelje za prijavljene korisnike i dijeljene značajke proizvoda.',
                     href: hosts.app,
                     icon: '🧩',
                 },
@@ -116,7 +116,7 @@ function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
         {
             title: 'Platforma i API',
             description:
-                'Pozadinski sustav i platformske krajnje točke za rješavanje integracija i incidenata.',
+                'Pozadinski sustav i platformne krajnje točke za rješavanje integracija i incidenata.',
             resources: [
                 {
                     title: 'API',
@@ -137,7 +137,7 @@ function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
         {
             title: 'Dizajn, analitika i suradnja',
             description:
-                'Dijeljeni alati za razvoj komponenti, produktnu analitiku i timsku suradnju.',
+                'Dijeljeni alati za razvoj komponenti, analitiku proizvoda i timsku suradnju.',
             resources: [
                 {
                     title: 'Storybook',
@@ -149,14 +149,14 @@ function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
                 {
                     title: 'PostHog',
                     description:
-                        'Produktna analitika i uvidi u zastavice značajki na cijeloj platformi.',
+                        'Analitika proizvoda i uvidi u oznake značajki na cijeloj platformi.',
                     href: 'https://eu.posthog.com',
                     icon: '📊',
                 },
                 {
                     title: 'GitHub',
                     description:
-                        'Kontrola izvornog koda, pregledi promjena, praćenje zadataka i CI pregled.',
+                        'Kontrola izvornog koda, pregledi promjena, praćenje zadataka i CI provjere.',
                     href: 'https://github.com/gredice',
                     icon: '🐙',
                 },
@@ -176,7 +176,7 @@ export default function DevelopmentPage() {
                     Razvojni centar
                 </Typography>
                 <Typography level="body1" secondary>
-                    Svi dijagnostički, razvojni i platformski resursi na jednom
+                    Svi dijagnostički, razvojni i platformni resursi na jednom
                     mjestu.
                 </Typography>
             </Stack>
