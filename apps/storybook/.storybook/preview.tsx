@@ -32,8 +32,8 @@ const preview: Preview = {
                 'Gredice base': {
                     value: 'hsl(var(--background))',
                 },
-                'Storybook purple': {
-                    value: '#7c3aed',
+                'Storybook black': {
+                    value: '#111111',
                 },
             },
         },
