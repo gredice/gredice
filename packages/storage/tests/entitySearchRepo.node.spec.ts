@@ -198,6 +198,11 @@ test('directory entity search includes multiple plant alternative names', async 
         entityTypeLabel: 'Plant',
         title: 'Kupus',
     });
+    const titlePrefixMatchId = await createSearchableEntity({
+        entityTypeName: 'plant',
+        entityTypeLabel: 'Plant',
+        title: 'Zeljeznica',
+    });
     const alternativeNameDefinitionId = await createAttributeDefinition({
         category: 'information',
         name: 'alternativeName',
@@ -231,6 +236,11 @@ test('directory entity search includes multiple plant alternative names', async 
 
     assert.equal(zeljeRows[0]?.entityId, kupusId);
     assert.equal(kapusRows[0]?.entityId, kupusId);
+    assert.ok(zeljeRows.some((row) => row.entityId === titlePrefixMatchId));
+    assert.ok(
+        zeljeRows.findIndex((row) => row.entityId === kupusId) <
+            zeljeRows.findIndex((row) => row.entityId === titlePrefixMatchId),
+    );
 });
 
 test('directory entity search finds published operations without diacritics', async () => {
