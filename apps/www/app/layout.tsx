@@ -23,6 +23,15 @@ const montserrat = Montserrat({
     variable: '--font-montserrat',
 });
 
+const gardenModelPreloadUrls = [
+    'BlockGround',
+    'BlockGroundAngle',
+    'BlockGrass',
+    'BlockGrassAngle',
+    'BlockSand',
+    'BlockSandAngle',
+].map((assetName) => `https://vrt.gredice.com/assets/models/${assetName}.glb`);
+
 function NavLinkButton({
     href,
     children,
@@ -168,13 +177,16 @@ export default async function RootLayout({
                 <meta name="apple-mobile-web-app-title" content="Gredice" />
                 <meta name="theme-color" content="#2e6f40" />
                 <link rel="preconnect" href="https://vrt.gredice.com" />
-                <link
-                    rel="preload"
-                    href="https://vrt.gredice.com/assets/models/GameAssets.glb"
-                    as="fetch"
-                    type="model/gltf-binary"
-                    crossOrigin="anonymous"
-                />
+                {gardenModelPreloadUrls.map((href) => (
+                    <link
+                        key={href}
+                        rel="preload"
+                        href={href}
+                        as="fetch"
+                        type="model/gltf-binary"
+                        crossOrigin="anonymous"
+                    />
+                ))}
             </Head>
             <body className={`${montserrat.variable} antialiased`}>
                 {postHogApiKey ? (

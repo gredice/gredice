@@ -9,7 +9,7 @@ import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { getStackHeight } from '../utils/getStackHeight';
 
-type EntityInstancesBlockBaseProps = {
+export type EntityInstancesBlockBaseProps = {
     stacks: Stack[] | undefined;
     name: string;
     renderSnow?: boolean;
@@ -22,7 +22,7 @@ type EntityInstancesBlockBaseProps = {
     renderRainWetOverlay?: boolean;
 };
 
-type EntityInstancesBlockMaterialProps =
+export type EntityInstancesBlockMaterialProps =
     | {
           material: Material | Material[];
           materialNode?: never;

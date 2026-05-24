@@ -324,7 +324,7 @@ export function PineAdvent({
     rotation,
     variant,
 }: EntityInstanceProps) {
-    const { nodes, materials } = useGameGLTF();
+    const { nodes, materials } = useGameGLTF('Pine');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     const { data: calendar } = useAdventCalendar();

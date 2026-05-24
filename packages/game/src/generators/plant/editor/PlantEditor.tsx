@@ -1,9 +1,9 @@
 'use client';
 
-import { OrbitControls, useGLTF } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Vector3 } from 'three';
-import { models } from '../../../data/models';
+import { groundGameAssetNames } from '../../../data/models';
 import { RaisedBed } from '../../../entities/RaisedBed';
 import { Environment } from '../../../scene/Environment';
 import { Scene } from '../../../scene/Scene';
@@ -13,6 +13,7 @@ import {
     type GameStateStore,
     useDisposeGameStateStore,
 } from '../../../useGameState';
+import { preloadGameAssetModels } from '../../../utils/useGameGLTF';
 import { useGeneratedLSystemSymbols } from '../hooks/useGeneratedLSystem';
 import { serializeLSystemSymbols } from '../lib/l-system';
 import { MAX_PLANT_GENERATION, type Rule } from '../lib/plant-definitions';
@@ -217,7 +218,7 @@ export function PlantEditor({
     }
     useDisposeGameStateStore(storeRef.current);
 
-    useGLTF.preload((appBaseUrl ?? '') + models.GameAssets.url);
+    preloadGameAssetModels(appBaseUrl ?? '', groundGameAssetNames);
 
     return (
         <div className="relative h-[calc(100vh-64px)] w-full overflow-hidden">

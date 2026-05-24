@@ -13,24 +13,35 @@ test.use({
 
 test.setTimeout(30_000);
 
-const gameAssetsModelPath = resolve(
-    '../garden/public/assets/models/GameAssets.glb',
-);
+const groundAssetNames = [
+    'BlockGround',
+    'BlockGroundAngle',
+    'BlockGrass',
+    'BlockGrassAngle',
+    'BlockSand',
+    'BlockSandAngle',
+];
 
 test.beforeEach(async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.route(
-        'https://vrt.gredice.com/assets/models/GameAssets.glb',
-        async (route) => {
-            await route.fulfill({
-                contentType: 'model/gltf-binary',
-                headers: {
-                    'Access-Control-Allow-Origin': '*',
-                },
-                path: gameAssetsModelPath,
-            });
-        },
-    );
+    for (const assetName of groundAssetNames) {
+        await page.route(
+            `https://vrt.gredice.com/assets/models/${assetName}.glb`,
+            async (route) => {
+                const gameAssetsModelPath = resolve(
+                    `../garden/public/assets/models/${assetName}.glb`,
+                );
+
+                await route.fulfill({
+                    contentType: 'model/gltf-binary',
+                    headers: {
+                        'Access-Control-Allow-Origin': '*',
+                    },
+                    path: gameAssetsModelPath,
+                });
+            },
+        );
+    }
 });
 
 type PlantType = PlantViewerProps['plantType'];

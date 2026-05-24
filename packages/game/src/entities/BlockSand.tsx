@@ -8,7 +8,7 @@ import { BlockSurfaceDecorationSprites } from './groundDecorations/BlockSurfaceD
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function BlockSand({ stack, block, rotation }: EntityInstanceProps) {
-    const { nodes } = useGameGLTF();
+    const { nodes } = useGameGLTF('BlockSand');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 

@@ -33,7 +33,7 @@ export function GardenBox({
     lidMetalness = 0.2,
     lidRoughness = 0.75,
 }: GardenBoxProps) {
-    const { nodes } = useGameGLTF();
+    const { nodes } = useGameGLTF('GardenBox');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     const hovered =

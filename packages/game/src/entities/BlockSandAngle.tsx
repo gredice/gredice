@@ -12,7 +12,7 @@ export function BlockSandAngle({
     block,
     rotation,
 }: EntityInstanceProps) {
-    const { nodes } = useGameGLTF();
+    const { nodes } = useGameGLTF('BlockSandAngle');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 

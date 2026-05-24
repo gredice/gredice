@@ -14,7 +14,7 @@ const combinedOverlap = 0.1;
 const halfOverlap = combinedOverlap / 2;
 
 export function RaisedBed({ stack, block }: EntityInstanceProps) {
-    const { nodes, materials } = useGameGLTF();
+    const { nodes, materials } = useGameGLTF('RaisedBed');
     const currentStackHeight = useStackHeight(stack, block);
     const hovered =
         useHoveredBlockStore((state) => state.hoveredBlock) === block;
