@@ -287,6 +287,21 @@ function ControlledSelect() {
                 { value: 'today', label: 'Danas', icon: <Calendar /> },
                 { value: 'week', label: 'Tjedan', icon: <Dashboard /> },
                 {
+                    value: 'harvest',
+                    label: 'Berba',
+                    icon: <Leaf />,
+                },
+                {
+                    value: 'delivery',
+                    label: 'Dostava',
+                    icon: <Truck />,
+                },
+                {
+                    value: 'settings',
+                    label: 'Postavke',
+                    icon: <Settings />,
+                },
+                {
                     value: 'blocked',
                     label: 'Blokirano',
                     icon: <Warning />,

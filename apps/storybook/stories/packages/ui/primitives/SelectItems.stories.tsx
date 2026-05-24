@@ -63,6 +63,37 @@ export const WithIcons: Story = {
     },
 };
 
+const plantSortItems = [
+    { value: 'rajcica', label: 'Rajčica' },
+    { value: 'paprika', label: 'Paprika' },
+    { value: 'krastavac', label: 'Krastavac' },
+    { value: 'salata', label: 'Salata' },
+    { value: 'mrkva', label: 'Mrkva' },
+    { value: 'blitva', label: 'Blitva' },
+    { value: 'tikvica', label: 'Tikvica' },
+    { value: 'bosiljak', label: 'Bosiljak' },
+];
+
+export const SearchableList: Story = {
+    args: {
+        label: 'Biljka',
+        placeholder: 'Odaberi biljku',
+        items: plantSortItems,
+    },
+};
+
+export const ServerFilteredList: Story = {
+    args: {
+        label: 'Račun',
+        placeholder: 'Odaberi račun',
+        searchable: true,
+        clientSideFilter: false,
+        searchPlaceholder: 'Pretraži račune...',
+        items: plantSortItems.slice(0, 5),
+    },
+    render: (args) => <ServerFilteredSelect {...args} />,
+};
+
 export const EmptyStringValue: Story = {
     args: {
         defaultValue: '',
@@ -82,7 +113,7 @@ export const HelperText: Story = {
 
 function ControlledSelect(args: ComponentProps<typeof SelectItems>) {
     const [value, setValue] = useState<string | undefined>(
-        args.defaultValue as string | undefined,
+        defaultStringValue(args.defaultValue),
     );
 
     return (
@@ -94,4 +125,34 @@ function ControlledSelect(args: ComponentProps<typeof SelectItems>) {
             />
         </div>
     );
+}
+
+function ServerFilteredSelect(args: ComponentProps<typeof SelectItems>) {
+    const [value, setValue] = useState<string | undefined>(
+        defaultStringValue(args.defaultValue),
+    );
+    const [search, setSearch] = useState('');
+    const normalizedSearch = search.trim().toLocaleLowerCase();
+    const filteredItems = plantSortItems
+        .filter((item) =>
+            item.label.toLocaleLowerCase().includes(normalizedSearch),
+        )
+        .slice(0, 5);
+
+    return (
+        <div className="w-80">
+            <SelectItems
+                {...args}
+                items={filteredItems}
+                searchValue={search}
+                value={value}
+                onSearchValueChange={setSearch}
+                onValueChange={(nextValue) => setValue(nextValue)}
+            />
+        </div>
+    );
+}
+
+function defaultStringValue(value: unknown) {
+    return typeof value === 'string' ? value : undefined;
 }
