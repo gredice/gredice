@@ -4,6 +4,15 @@ import { Accordion } from '../Accordion';
 import { Button } from '../Button';
 import { Container } from '../Container';
 import { Divider } from '../Divider';
+import {
+    Comment,
+    CompanyFacebook,
+    CompanyGitHub,
+    CompanyReddit,
+    CompanyX,
+    Globe,
+    Mail,
+} from '../icons';
 import { Stack } from '../Stack';
 import { Typography } from '../Typography';
 import { cx } from '../utils';
@@ -14,11 +23,14 @@ export type SectionData = {
     header?: string;
     description?: ReactNode;
     asset?: ReactNode;
+    assetUrl?: string;
+    assetAlt?: string;
     features?: SectionData[];
     ctas?: {
         label: string;
         href: string;
         icon?: ReactNode;
+        iconName?: string;
         secondary?: boolean;
     }[];
 };
@@ -113,6 +125,77 @@ function DescriptionBlock({
     );
 }
 
+function AssetBlock({
+    asset,
+    assetAlt,
+    assetUrl,
+}: Pick<SectionData, 'asset' | 'assetAlt' | 'assetUrl'>) {
+    if (asset) {
+        return <div>{asset}</div>;
+    }
+
+    if (!assetUrl) {
+        return null;
+    }
+
+    return (
+        <div className="overflow-hidden rounded-lg border bg-muted/20">
+            {/** biome-ignore lint/performance/noImgElement: CMS image URLs are remote and not known at build time. */}
+            <img
+                alt={assetAlt ?? ''}
+                className="h-auto w-full object-cover"
+                src={assetUrl}
+            />
+        </div>
+    );
+}
+
+function IconName({ name }: { name: string }) {
+    const normalized = name.trim().toLowerCase();
+
+    if (!normalized) {
+        return null;
+    }
+
+    switch (normalized) {
+        case 'facebook':
+            return <CompanyFacebook className="size-4" />;
+        case 'github':
+            return <CompanyGitHub className="size-4" />;
+        case 'instagram':
+        case 'link':
+            return <Globe className="size-4" />;
+        case 'mail':
+            return <Mail className="size-4" />;
+        case 'reddit':
+            return <CompanyReddit className="size-4" />;
+        case 'whatsapp':
+            return <Comment className="size-4" />;
+        case 'x':
+            return <CompanyX className="size-4" />;
+        default:
+            break;
+    }
+
+    return (
+        <span className="text-xs font-semibold uppercase tracking-normal">
+            {normalized.slice(0, 2)}
+        </span>
+    );
+}
+
+function ctaIcon(cta: NonNullable<SectionData['ctas']>[number]) {
+    if (cta.icon) {
+        return cta.icon;
+    }
+
+    if (!cta.iconName) {
+        return null;
+    }
+
+    return <IconName name={cta.iconName} />;
+}
+
 function Ctas({ ctas }: { ctas: SectionData['ctas'] }) {
     if (!ctas?.length) {
         return null;
@@ -125,7 +208,7 @@ function Ctas({ ctas }: { ctas: SectionData['ctas'] }) {
                     color={cta.secondary ? 'secondary' : 'primary'}
                     href={cta.href}
                     key={cta.label}
-                    startDecorator={cta.icon}
+                    startDecorator={ctaIcon(cta)}
                     variant={cta.secondary ? 'outlined' : 'solid'}
                 >
                     {cta.label}
@@ -158,9 +241,18 @@ export function SectionsView({
     debug,
     sectionsData,
 }: CmsSectionsViewProps) {
+    const sectionKeyCounts = new Map<string, number>();
+
     return (
         <div>
             {sectionsData.map((section) => {
+                const baseSectionKey = sectionKey(section) || 'section';
+                const occurrence = sectionKeyCounts.get(baseSectionKey) ?? 0;
+                sectionKeyCounts.set(baseSectionKey, occurrence + 1);
+                const key =
+                    occurrence === 0
+                        ? baseSectionKey
+                        : `${baseSectionKey}-${occurrence}`;
                 const Component = section.component
                     ? componentsRegistry[section.component]
                     : null;
@@ -168,7 +260,7 @@ export function SectionsView({
                 if (Component) {
                     return createElement(Component, {
                         ...section,
-                        key: sectionKey(section),
+                        key,
                     });
                 }
 
@@ -179,7 +271,7 @@ export function SectionsView({
                 return (
                     <div
                         className="rounded-lg border border-red-400 bg-red-100 p-4 text-red-700"
-                        key={sectionKey(section)}
+                        key={key}
                         role="alert"
                     >
                         <Typography className="text-base font-semibold">
@@ -195,6 +287,8 @@ export function SectionsView({
 
 export function Heading1({
     asset,
+    assetAlt,
+    assetUrl,
     ctas,
     description,
     header,
@@ -230,7 +324,11 @@ export function Heading1({
                     </Stack>
                     <Ctas ctas={ctas} />
                 </Stack>
-                {asset && <div>{asset}</div>}
+                <AssetBlock
+                    asset={asset}
+                    assetAlt={assetAlt}
+                    assetUrl={assetUrl}
+                />
             </Container>
         </section>
     );
@@ -238,6 +336,8 @@ export function Heading1({
 
 export function Feature1({
     asset,
+    assetAlt,
+    assetUrl,
     ctas,
     description,
     features,
@@ -254,7 +354,11 @@ export function Feature1({
                         tagline={tagline}
                     />
                     <Ctas ctas={ctas} />
-                    {asset && <div>{asset}</div>}
+                    <AssetBlock
+                        asset={asset}
+                        assetAlt={assetAlt}
+                        assetUrl={assetUrl}
+                    />
                 </Stack>
                 {features?.length ? (
                     <div className="flex flex-col gap-8">
@@ -329,7 +433,9 @@ function FooterSocialLinks({ ctas }: { ctas: SectionData['ctas'] }) {
                     href={cta.href}
                     key={cta.label}
                 >
-                    {cta.icon}
+                    {ctaIcon(cta) ?? (
+                        <span className="text-xs font-medium">{cta.label}</span>
+                    )}
                 </a>
             ))}
         </div>
