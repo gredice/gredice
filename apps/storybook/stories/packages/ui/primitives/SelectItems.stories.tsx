@@ -86,7 +86,6 @@ export const ServerFilteredList: Story = {
     args: {
         label: 'Račun',
         placeholder: 'Odaberi račun',
-        searchable: true,
         clientSideFilter: false,
         searchPlaceholder: 'Pretraži račune...',
         items: plantSortItems.slice(0, 5),

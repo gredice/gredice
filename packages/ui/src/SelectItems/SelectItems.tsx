@@ -119,12 +119,16 @@ export function SelectItems<T extends string>({
     const [internalSearchValue, setInternalSearchValue] = useState('');
     const searchInputRef = useRef<HTMLInputElement>(null);
     const isOpen = open ?? internalOpen;
-    const shouldShowSearch = searchable ?? items.length > SEARCH_ITEM_THRESHOLD;
     const shouldClientFilter = clientSideFilter ?? !onSearchValueChange;
+    const searchQuery = searchValue ?? internalSearchValue;
+    const hasControlledServerSearch =
+        Boolean(onSearchValueChange) && !shouldClientFilter;
+    const shouldShowSearch =
+        searchable ??
+        (items.length > SEARCH_ITEM_THRESHOLD || hasControlledServerSearch);
     const isSearchActive =
         shouldShowSearch &&
         (shouldClientFilter || Boolean(onSearchValueChange));
-    const searchQuery = searchValue ?? internalSearchValue;
     const normalizedSearchQuery = searchQuery.trim().toLocaleLowerCase();
     const visibleItems = useMemo(() => {
         if (
