@@ -24,7 +24,7 @@ async function PlantSortsListContent({
     if (!sorts.length) {
         return (
             <Stack spacing={4}>
-                <Typography level="h2" className="text-2xl">
+                <Typography level="h2" className="text-2xl" id={slug('Sorte')}>
                     Sorte
                 </Typography>
                 <Typography level="body2" className="text-gray-500 italic">
