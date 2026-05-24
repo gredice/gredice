@@ -6,8 +6,6 @@ import {
 } from '@gredice/storage';
 import { SignedOut } from '@gredice/ui/auth';
 import { AuthProtectedSection } from '@gredice/ui/auth/server';
-import { cookies, headers } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { type PropsWithChildren, Suspense } from 'react';
 import {
     AdminPageCardHeader,
@@ -19,7 +17,6 @@ import {
 import { AdminClientProvider } from '../../components/admin/providers';
 import { AuthAppProvider } from '../../components/providers/AuthAppProvider';
 import { auth } from '../../lib/auth/auth';
-import { impersonationRefreshCookieName } from '../../lib/auth/sessionConfig';
 import {
     buildDashboardQuickActionOptions,
     getDashboardQuickActionsFromConfig,
@@ -28,37 +25,32 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-function localWwwOriginFromHost(host: string) {
-    const hostUrl = new URL(`https://${host}`);
-    hostUrl.hostname = 'www.gredice.test';
-    return hostUrl.origin;
-}
-
 export default async function AdminLayout({ children }: PropsWithChildren) {
-    const requestHeaders = await headers();
-    const requestHost = requestHeaders.get('host') ?? '';
-    const landingUrl = requestHost.includes('.test')
-        ? localWwwOriginFromHost(requestHost)
-        : 'https://www.gredice.com';
-
     const authAdmin = auth.bind(null, ['admin']);
-    const isAdmin = await auth(['admin']).then(
+    const isAdmin = await authAdmin().then(
         () => true,
         () => false,
     );
-    const isImpersonating =
-        (await cookies()).get(impersonationRefreshCookieName) !== undefined;
 
-    if (!isAdmin && !isImpersonating) {
-        redirect(landingUrl);
+    if (!isAdmin) {
+        return (
+            <AuthAppProvider>
+                <div className="grow bg-secondary/40">
+                    <main className="relative h-full min-h-screen">
+                        <LoginDialog />
+                    </main>
+                </div>
+            </AuthAppProvider>
+        );
     }
+
     const [
         { categorizedTypes, uncategorizedTypes, shadowTypes },
         pendingAchievementsCount,
         dashboardQuickActionsSetting,
     ] = await Promise.all([
         getEntityTypesOrganizedByCategories(),
-        isAdmin ? getPendingAchievementsCount() : Promise.resolve(0),
+        getPendingAchievementsCount(),
         getSetting(SettingsKeys.DashboardQuickActions),
     ]);
 

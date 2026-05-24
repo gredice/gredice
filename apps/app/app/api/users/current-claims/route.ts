@@ -1,7 +1,7 @@
 import { withAuth } from '../../../../lib/auth/auth';
 
 export async function GET() {
-    return await withAuth(['user', 'admin'], async ({ user }) => {
+    return await withAuth(['admin'], async ({ user }) => {
         return Response.json({
             id: user.id,
             userName: user.userName,
