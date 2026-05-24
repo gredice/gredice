@@ -282,6 +282,59 @@ test('directory entity search ranks alternative-name prefixes above body matches
     assert.equal(rows[0]?.entityId, tomatoId);
 });
 
+test('directory entity search paginates after high-priority reranking', async () => {
+    createTestDb();
+    const query = uniqueToken('parrank');
+    const bodyMatchIds: number[] = [];
+    for (let index = 0; index < 55; index += 1) {
+        bodyMatchIds.push(
+            await createSearchableEntity({
+                entityTypeName: 'plant',
+                entityTypeLabel: 'Plant',
+                title: `Body match ${index.toString().padStart(2, '0')}`,
+                description: `Biljka koja spominje ${query} kao cijelu riječ.`,
+            }),
+        );
+    }
+    const tomatoId = await createSearchableEntity({
+        entityTypeName: 'plant',
+        entityTypeLabel: 'Plant',
+        title: 'Rajčica',
+        description: 'Sočna ljetna kultura za gredice.',
+    });
+    const alternativeNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'alternativeName',
+        label: 'Alternative name',
+        entityTypeName: 'plant',
+        dataType: 'text',
+        multiple: true,
+    });
+
+    await upsertAttributeValue({
+        attributeDefinitionId: alternativeNameDefinitionId,
+        entityTypeName: 'plant',
+        entityId: tomatoId,
+        value: `${query}adajz`,
+    });
+
+    const firstPage = await searchDirectoryEntities({
+        query,
+        entityTypeNames: ['plant'],
+        limit: 1,
+        offset: 0,
+    });
+    const secondPage = await searchDirectoryEntities({
+        query,
+        entityTypeNames: ['plant'],
+        limit: 1,
+        offset: 1,
+    });
+
+    assert.equal(firstPage[0]?.entityId, tomatoId);
+    assert.equal(secondPage[0]?.entityId, bodyMatchIds[0]);
+});
+
 test('directory entity search finds published operations without diacritics', async () => {
     createTestDb();
     const operationId = await createSearchableEntity({

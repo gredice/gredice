@@ -800,7 +800,6 @@ export async function searchDirectoryEntities({
 
     const requestedLimit = searchLimit(limit);
     const requestedOffset = searchOffset(offset);
-    const shouldReorderExpandedFirstPage = requestedOffset === 0;
     const rows = await storage()
         .select({
             entityId: entitySearchDocuments.entityId,
@@ -822,13 +821,7 @@ export async function searchDirectoryEntities({
             desc(score),
             asc(entitySearchDocuments.entityTypeName),
             asc(entitySearchDocuments.entityId),
-        )
-        .limit(
-            shouldReorderExpandedFirstPage
-                ? Math.max(requestedLimit, maxSearchLimit)
-                : requestedLimit,
-        )
-        .offset(shouldReorderExpandedFirstPage ? 0 : requestedOffset);
+        );
 
     const rowsWithPublicUrls: DirectoryEntitySearchRow[] = [];
     for (const row of rows) {
@@ -864,7 +857,7 @@ export async function searchDirectoryEntities({
             }
             return a.entityId - b.entityId;
         })
-        .slice(0, requestedLimit);
+        .slice(requestedOffset, requestedOffset + requestedLimit);
 }
 
 export function publicSearchCategoryForEntityType(entityTypeName: string) {
