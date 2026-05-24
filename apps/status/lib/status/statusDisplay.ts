@@ -3,7 +3,7 @@ import type { StatusLevel } from './types';
 export function getStatusLabel(status: StatusLevel) {
     switch (status) {
         case 'operational':
-            return 'Radi';
+            return 'Dostupno';
         case 'degraded':
             return 'Usporeno';
         case 'down':
