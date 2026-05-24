@@ -39,12 +39,13 @@ export function EmailPasswordForm({
     };
 
     return (
-        <form onSubmit={handleSubmit} className="gap-6 flex flex-col">
+        <form onSubmit={handleSubmit} className="flex w-full flex-col gap-6">
             <Stack spacing={2}>
                 <Input
                     id="email"
                     type="email"
                     label="Email"
+                    fullWidth
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -53,6 +54,7 @@ export function EmailPasswordForm({
                     id="password"
                     type="password"
                     label="Zaporka"
+                    fullWidth
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -63,6 +65,7 @@ export function EmailPasswordForm({
                             id="repeatPassword"
                             type="password"
                             label="Ponovi zaporku"
+                            fullWidth
                             value={repeatPassword}
                             onChange={(e) => setRepeatPassword(e.target.value)}
                             required
