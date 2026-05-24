@@ -4,7 +4,7 @@ import { GameScene } from '@gredice/game';
 import { getGardenBaseUrl } from '@gredice/js/urls';
 import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Close, Navigate } from '@gredice/ui/icons';
+import { Close, Navigate, SquareArrowRightEnter } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { cx } from '@gredice/ui/utils';
 import type { CSSProperties } from 'react';
@@ -38,6 +38,9 @@ const winterWeather = {
 };
 
 const transitionDurationMs = 700;
+const landingCameraPosition: [x: number, y: number, z: number] = [
+    -130, 72, -120,
+];
 
 type SceneRect = {
     top: number;
@@ -202,33 +205,43 @@ export function LandingGameScene() {
                             : collapsedStyle
                         : undefined
                 }
+                data-testid="landing-game-scene"
             >
-                <GameScene
-                    key={isLoggedIn ? 'user-garden' : 'landing-mock'}
-                    appBaseUrl="https://vrt.gredice.com"
-                    spriteBaseUrl=""
-                    deferDetails
-                    zoom={
-                        interactiveMounted
-                            ? 'normal'
-                            : isMobile
-                              ? 'far'
-                              : 'normal'
-                    }
-                    hideHud={!interactiveVisible}
-                    noControls={!interactiveVisible}
-                    noSound={!interactiveVisible}
-                    mockGarden={!isLoggedIn}
-                    winterMode={winterMode}
-                    weather={
-                        isLoggedIn
-                            ? undefined
-                            : isWinter
-                              ? winterWeather
-                              : summerWeather
-                    }
-                    className="size-full"
-                />
+                <div
+                    className={cx(
+                        'absolute inset-0',
+                        !interactiveMounted && 'top-20 -bottom-20 md:inset-0',
+                    )}
+                >
+                    <GameScene
+                        key={isLoggedIn ? 'user-garden' : 'landing-mock'}
+                        appBaseUrl="https://vrt.gredice.com"
+                        spriteBaseUrl=""
+                        cameraPosition={landingCameraPosition}
+                        deferDetails
+                        quality={interactiveMounted ? undefined : 'high'}
+                        zoom={
+                            interactiveMounted
+                                ? 'normal'
+                                : isMobile
+                                  ? 'far'
+                                  : 'normal'
+                        }
+                        hideHud={!interactiveVisible}
+                        noControls={!interactiveVisible}
+                        noSound={!interactiveVisible}
+                        mockGarden={!isLoggedIn}
+                        winterMode={winterMode}
+                        weather={
+                            isLoggedIn
+                                ? undefined
+                                : isWinter
+                                  ? winterWeather
+                                  : summerWeather
+                        }
+                        className="size-full"
+                    />
+                </div>
                 {interactiveMounted && (
                     <div
                         className={cx(
@@ -286,5 +299,38 @@ export function LandingGameScene() {
                 </div>
             )}
         </>
+    );
+}
+
+export function LandingGameSignupCta() {
+    const gardenBaseUrl = getGardenBaseUrl();
+    const { data: user, isLoading } = useCurrentUser();
+
+    if (isLoading || user) {
+        return null;
+    }
+
+    return (
+        <div
+            className="mt-4 flex flex-col items-center justify-center gap-2 px-3 sm:flex-row md:mt-5"
+            data-testid="landing-game-signup-cta"
+        >
+            <NavigatingButton
+                href={gardenBaseUrl}
+                className="rounded-full bg-green-800 hover:bg-green-700 dark:bg-green-700 dark:text-white dark:hover:bg-green-600"
+                endDecorator={
+                    <SquareArrowRightEnter aria-hidden className="size-4" />
+                }
+            >
+                Započni svoj vrt
+            </NavigatingButton>
+            <NavigatingButton
+                href={gardenBaseUrl}
+                variant="outlined"
+                className="rounded-full bg-background/90 shadow-sm backdrop-blur-xs"
+            >
+                Otvori aplikaciju
+            </NavigatingButton>
+        </div>
     );
 }

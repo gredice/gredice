@@ -167,22 +167,6 @@
         animation: scale-in 0.15s ease-out;
     }
 
-    header label[for="mobile-menu-toggle"] {
-        height: 2.25rem;
-        width: 2.25rem;
-        align-items: center;
-        justify-content: center;
-        border-radius: 9999px;
-        transition:
-            background-color 0.2s ease,
-            box-shadow 0.2s ease;
-    }
-
-    header label[for="mobile-menu-toggle"]:hover {
-        background-color: hsl(var(--accent));
-        box-shadow: 0 4px 14px rgba(38, 31, 24, 0.14);
-    }
-
     .site-footer .text-muted-foreground,
     .site-footer .text-tertiary-foreground {
         color: hsl(var(--foreground));
@@ -205,11 +189,6 @@
     }
 }
 
-@media (max-width: 767px) {
-    header label[for="mobile-menu-toggle"] {
-        display: inline-flex;
-    }
-}
 svg.lucide {
     stroke-width: 1.75px;
 }
