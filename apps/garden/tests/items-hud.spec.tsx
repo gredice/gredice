@@ -24,3 +24,19 @@ test('edit mode item picker stays centered on tablet layouts', async ({
         TABLET_VIEWPORT.width,
     );
 });
+
+test('pots are listed under the decoration picker', async ({ mount, page }) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudAlignmentStory />);
+
+    await expect(page.getByRole('button', { name: 'Tegle' })).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+
+    await expect(
+        page.getByRole('button', { name: 'PotLowBowl' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'PotWideLippedCup' }),
+    ).toBeVisible();
+});
