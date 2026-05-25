@@ -62,9 +62,11 @@ export function resolveGroundDecorationSurface(
     switch (blockName) {
         case 'Block_Grass':
         case 'Block_Grass_Angle':
+        case 'Block_Grass_Corner':
             return 'grass';
         case 'Block_Sand':
         case 'Block_Sand_Angle':
+        case 'Block_Sand_Corner':
             return 'sand';
         default:
             return null;

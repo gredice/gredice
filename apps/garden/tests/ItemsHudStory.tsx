@@ -79,6 +79,10 @@ const blockNames = [
     'Block_Ground_Angle',
     'Block_Sand_Angle',
     'Block_Snow_Angle',
+    'Block_Grass_Corner',
+    'Block_Ground_Corner',
+    'Block_Sand_Corner',
+    'Block_Snow_Corner',
 ];
 
 function createItemsHudQueryClient() {

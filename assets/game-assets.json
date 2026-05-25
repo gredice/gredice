@@ -45,6 +45,17 @@
             "objects": ["Block Sand Angle 1"]
         },
         {
+            "name": "BlockTerrainCorner",
+            "source": "BlockTerrainCorner.blend",
+            "output": "BlockTerrainCorner.glb",
+            "preload": "ground",
+            "objects": [
+                "Block Ground Corner 1",
+                "Block Grass Corner 1",
+                "Block Sand Corner 1"
+            ]
+        },
+        {
             "name": "RaisedBed",
             "source": "RaisedBed.blend",
             "output": "RaisedBed.glb",

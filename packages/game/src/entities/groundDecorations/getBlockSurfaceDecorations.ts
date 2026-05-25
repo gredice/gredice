@@ -19,7 +19,15 @@ function resolveDecorationBaseY(
     block: Block,
     options: (typeof groundDecorationOptions)[GroundDecorationSurface],
     x: number,
+    z: number,
 ) {
+    if (block.name.endsWith('_Corner')) {
+        return (
+            options.baseY +
+            (Math.min(x, z) - angledBlockHighEdgeX) * options.angleLiftPerUnit
+        );
+    }
+
     if (!block.name.endsWith('_Angle')) {
         return options.baseY;
     }
@@ -126,7 +134,7 @@ export function getBlockSurfaceDecorations(options: {
             ),
             position: [
                 x,
-                resolveDecorationBaseY(block, decorationOptions, x) +
+                resolveDecorationBaseY(block, decorationOptions, x, z) +
                     index * 0.002,
                 z,
             ],

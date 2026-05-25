@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { BlockData } from '@gredice/client';
 import { EntityViewer } from '@gredice/game';
 import { test } from '@playwright/experimental-ct-react';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
+import { allGameAssetNames } from '../../../packages/game/src/data/models';
 
 test.use({
     deviceScaleFactor: 2,
@@ -11,6 +13,25 @@ test.use({
 
 test.beforeEach(async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
+
+    for (const assetName of allGameAssetNames) {
+        await page.route(
+            `https://vrt.gredice.com/assets/models/${assetName}.glb`,
+            async (route) => {
+                const gameAssetsModelPath = resolve(
+                    `../garden/public/assets/models/${assetName}.glb`,
+                );
+
+                await route.fulfill({
+                    contentType: 'model/gltf-binary',
+                    headers: {
+                        'Access-Control-Allow-Origin': '*',
+                    },
+                    path: gameAssetsModelPath,
+                });
+            },
+        );
+    }
 });
 
 type SnapshotView = 'normal' | 'far' | 'closeup';
