@@ -49,7 +49,15 @@ export function StyledHtml({
                 ...sanitizeHtml.defaults.allowedAttributes,
                 '*': ['class'],
                 a: ['href', 'name', 'target', 'rel'],
-                img: ['src', 'srcset', 'alt', 'title', 'width', 'height', 'loading'],
+                img: [
+                    'src',
+                    'srcset',
+                    'alt',
+                    'title',
+                    'width',
+                    'height',
+                    'loading',
+                ],
                 iframe: [
                     'src',
                     'title',
