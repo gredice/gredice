@@ -1749,6 +1749,10 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                 }
                 case knownEventTypes.raisedBeds.abandon: {
                     name = 'Gredica napuštena';
+                    description =
+                        data?.reason === 'inactivity'
+                            ? 'Gredica je napuštena zbog neaktivnosti.'
+                            : '';
                     break;
                 }
             }
@@ -1834,12 +1838,14 @@ export async function abandonRaisedBed({
     gardenId,
     operationEntityId,
     operationEntityTypeName,
+    reason,
     raisedBedId,
 }: {
     accountId: string;
     gardenId: number;
     operationEntityId: number;
     operationEntityTypeName: string;
+    reason?: 'inactivity' | 'user';
     raisedBedId: number;
 }) {
     const operation = await storage().transaction(async (tx) => {
@@ -1859,9 +1865,11 @@ export async function abandonRaisedBed({
             .set({ status: 'abandoned' })
             .where(eq(raisedBeds.id, raisedBedId));
 
-        await tx
-            .insert(events)
-            .values(knownEvents.raisedBeds.abandonV1(raisedBedId.toString()));
+        await tx.insert(events).values(
+            knownEvents.raisedBeds.abandonV1(raisedBedId.toString(), {
+                reason,
+            }),
+        );
 
         return createdOperation;
     });

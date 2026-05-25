@@ -203,11 +203,17 @@ export const knownEvents = {
             version: 1,
             aggregateId,
         }),
-        abandonV1: (aggregateId: string) => ({
+        abandonV1: (
+            aggregateId: string,
+            data?: Omit<RaisedBedAbandonPayload, 'status'>,
+        ) => ({
             type: knownEventTypes.raisedBeds.abandon,
             version: 1,
             aggregateId,
-            data: { status: 'abandoned' } satisfies RaisedBedAbandonPayload,
+            data: {
+                status: 'abandoned',
+                ...(data?.reason ? { reason: data.reason } : {}),
+            } satisfies RaisedBedAbandonPayload,
         }),
         aiAnalysisV1: (
             aggregateId: string,

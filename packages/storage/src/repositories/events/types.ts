@@ -140,6 +140,7 @@ export type RaisedBedCreatePayload = {
 
 export type RaisedBedAbandonPayload = {
     status: 'abandoned';
+    reason?: 'inactivity' | 'user';
 };
 
 // ============================================================================

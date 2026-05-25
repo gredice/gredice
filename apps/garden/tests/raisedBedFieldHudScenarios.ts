@@ -150,6 +150,9 @@ export type RaisedBedScenario = {
     fields: FieldConfig[];
     cartItems?: ShoppingCartItemData[];
     operations?: OperationData[];
+    raisedBedStatus?: string;
+    raisedBedAbandonReason?: string | null;
+    isRaisedBedValid?: boolean;
 };
 
 export function buildField(config: FieldConfig, id: number) {

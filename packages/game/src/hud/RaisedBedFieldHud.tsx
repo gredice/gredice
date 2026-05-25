@@ -8,6 +8,7 @@ import { cx } from '@gredice/ui/utils';
 import { type CSSProperties, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { isRaisedBedAbandoned } from '../raisedBedConstants';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import { useGameState } from '../useGameState';
 import { useRemoveRaisedBedCloseupParam } from '../useRaisedBedCloseup';
@@ -54,6 +55,9 @@ export function RaisedBedFieldHud(_props: {
     const raisedBed = closeupBlock
         ? findRaisedBedByBlockId(currentGarden, closeupBlock.id)
         : null;
+    const canUseRaisedBedActions = raisedBed
+        ? raisedBed.isValid && !isRaisedBedAbandoned(raisedBed.status)
+        : false;
     const raisedBedBlockCount =
         currentGarden && raisedBed
             ? getRaisedBedBlockIds(currentGarden, raisedBed.id).length
@@ -158,7 +162,7 @@ export function RaisedBedFieldHud(_props: {
                 >
                     <span className="hidden md:block">Završi uređivanje</span>
                 </ButtonGreen>
-                {currentGarden && raisedBed?.isValid && (
+                {currentGarden && raisedBed && canUseRaisedBedActions && (
                     <>
                         <RaisedBedFieldSuggestions
                             gardenId={currentGarden.id}

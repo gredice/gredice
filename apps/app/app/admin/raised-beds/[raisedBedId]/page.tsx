@@ -1,8 +1,16 @@
+import {
+    isRaisedBedAbandoned,
+    RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
+    RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE,
+} from '@gredice/js/raisedBeds';
 import { getRaisedBed } from '@gredice/storage';
+import { Alert } from '@gredice/ui/Alert';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
+import { Warning } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import {
@@ -42,6 +50,7 @@ export default async function RaisedBedPage({
     }
     const raisedBedTitle =
         raisedBed.name || `Gredica ${raisedBed.physicalId ?? raisedBed.id}`;
+    const isAbandoned = isRaisedBedAbandoned(raisedBed.status);
     const propertyItems: EntityDetailsPropertyListItem[] = [
         { id: 'id', label: 'ID', value: raisedBed.id, mono: true },
         { id: 'name', label: 'Naziv', value: raisedBed.name },
@@ -113,6 +122,10 @@ export default async function RaisedBedPage({
                     actions={
                         <Row className="items-center" spacing={2}>
                             <RaisedBedActionsMenu
+                                accountId={raisedBed.accountId}
+                                gardenId={raisedBed.gardenId}
+                                raisedBedName={raisedBedTitle}
+                                status={raisedBed.status}
                                 targetRaisedBedId={raisedBed.id}
                             />
                             <EntityDetailsPropertiesToggle />
@@ -121,6 +134,27 @@ export default async function RaisedBedPage({
                     heading="Gredica"
                 />
                 <EntityDetailsPropertiesLayout properties={propertiesPanel}>
+                    {isAbandoned && (
+                        <Alert
+                            color="warning"
+                            startDecorator={
+                                <Warning className="size-4 shrink-0" />
+                            }
+                        >
+                            <Stack spacing={1}>
+                                <Typography level="body2" semiBold>
+                                    {
+                                        RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE
+                                    }
+                                </Typography>
+                                <Typography level="body3">
+                                    {
+                                        RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE
+                                    }
+                                </Typography>
+                            </Stack>
+                        </Alert>
+                    )}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <Card className="h-fit">
                             <CardHeader>
@@ -139,6 +173,7 @@ export default async function RaisedBedPage({
                                 <OperationsTableCard
                                     accountId={raisedBed.accountId}
                                     gardenId={raisedBed.gardenId}
+                                    isRaisedBedAbandoned={isAbandoned}
                                     raisedBedId={raisedBed.id}
                                 />
                                 <NotificationsTableCard
