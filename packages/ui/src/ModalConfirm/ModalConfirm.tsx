@@ -42,10 +42,10 @@ export type ModalConfirmProps = ModalConfirmBaseProps &
     (ModalConfirmNoPromptProps | ModalConfirmPromptProps);
 
 export function ModalConfirm({
-    cancelLabel = 'Cancel',
+    cancelLabel = 'Odustani',
     children,
     className,
-    confirmLabel = 'Confirm',
+    confirmLabel = 'Potvrdi',
     disableMobile: _disableMobile,
     dismissible: _dismissible,
     expectedConfirm,
