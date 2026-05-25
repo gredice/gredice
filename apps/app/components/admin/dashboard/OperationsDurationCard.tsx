@@ -4,6 +4,7 @@ import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { UserAvatar } from '@gredice/ui/UserAvatar';
 import {
     Bar,
     BarChart,
@@ -17,24 +18,31 @@ import {
 export type OperationsDurationPoint = {
     date: string;
     operationsMinutes: number;
+    plannedMinutes: number;
     sowingMinutes: number;
     totalMinutes: number;
     byUser: {
         userId: string;
         userName: string;
+        userAvatarUrl: string | null;
         operationsMinutes: number;
+        plannedMinutes: number;
     }[];
 };
 
 export type OperationsDurationData = {
     totalMinutes: number;
     operationsMinutes: number;
+    plannedMinutes: number;
     sowingMinutes: number;
     byUser: {
         userId: string;
         userName: string;
+        userAvatarUrl: string | null;
         operationsMinutes: number;
+        plannedMinutes: number;
         operationsCount: number;
+        plannedCount: number;
     }[];
     daily: OperationsDurationPoint[];
 };
@@ -54,6 +62,21 @@ const USER_BAR_COLORS = [
     'hsl(199 89% 48% / 0.8)',
     'hsl(32 95% 44% / 0.8)',
 ];
+
+function getUserBarColor(index: number) {
+    return (
+        USER_BAR_COLORS[index % USER_BAR_COLORS.length] ??
+        'hsl(var(--primary) / 0.8)'
+    );
+}
+
+function getCompletedDataKey(userId: string) {
+    return `completed-${userId}`;
+}
+
+function getPlannedDataKey(userId: string) {
+    return `planned-${userId}`;
+}
 
 function formatTotalDuration(totalMinutes: number) {
     const hours = Math.floor(totalMinutes / 60);
@@ -93,19 +116,25 @@ export function OperationsDurationCard({
     const userSegments = data.byUser.map((user, index) => ({
         userId: user.userId,
         userName: user.userName,
-        color: USER_BAR_COLORS[index % USER_BAR_COLORS.length],
+        userAvatarUrl: user.userAvatarUrl,
+        completedDataKey: getCompletedDataKey(user.userId),
+        plannedDataKey: getPlannedDataKey(user.userId),
+        color: getUserBarColor(index),
     }));
     const chartData = data.daily.map((day) => {
-        const valuesByUser = Object.fromEntries(
-            day.byUser.map((user) => [user.userId, user.operationsMinutes]),
-        );
-
-        return {
-            ...valuesByUser,
+        const valuesByUser: Record<string, string | number> = {
             date: day.date,
             label: formatDateLabel(day.date),
             sowingMinutes: day.sowingMinutes,
         };
+
+        for (const user of day.byUser) {
+            valuesByUser[getCompletedDataKey(user.userId)] =
+                user.operationsMinutes;
+            valuesByUser[getPlannedDataKey(user.userId)] = user.plannedMinutes;
+        }
+
+        return valuesByUser;
     });
     const maxVisibleLabels = 10;
     const labelStep = Math.max(
@@ -135,6 +164,15 @@ export function OperationsDurationCard({
                                 </Typography>
                             </Row>
                             <Row spacing={1} className="items-center">
+                                <span className="h-2 w-2 rounded-xs border border-primary/70" />
+                                <Typography level="body3">
+                                    Planirano{' '}
+                                    {formatTooltipDuration(
+                                        data.plannedMinutes ?? 0,
+                                    )}
+                                </Typography>
+                            </Row>
+                            <Row spacing={1} className="items-center">
                                 <span className="h-2 w-2 rounded-xs bg-emerald-500/60" />
                                 <Typography level="body3">
                                     Sijanje{' '}
@@ -142,12 +180,6 @@ export function OperationsDurationCard({
                                 </Typography>
                             </Row>
                         </Row>
-                        <Typography
-                            level="body3"
-                            className="text-muted-foreground"
-                        >
-                            Prikazane su samo završene radnje
-                        </Typography>
                     </Stack>
                     {chartData.length === 0 ? (
                         <Typography
@@ -210,12 +242,6 @@ export function OperationsDurationCard({
                                         cursor={{
                                             fill: 'hsl(var(--primary) / 0.08)',
                                         }}
-                                        contentStyle={{
-                                            border: '1px solid hsl(var(--border))',
-                                            borderRadius: '0.5rem',
-                                            backgroundColor:
-                                                'hsl(var(--background))',
-                                        }}
                                         content={({
                                             active,
                                             payload,
@@ -269,7 +295,7 @@ export function OperationsDurationCard({
                                             return (
                                                 <Stack
                                                     spacing={1}
-                                                    className="text-xs"
+                                                    className="rounded-md border border-border bg-card p-2 text-xs text-card-foreground shadow-md"
                                                 >
                                                     <Typography level="body2">
                                                         {label}
@@ -330,16 +356,28 @@ export function OperationsDurationCard({
                                     {userSegments.map((user) => (
                                         <Bar
                                             key={user.userId}
-                                            dataKey={user.userId}
-                                            stackId="duration"
+                                            dataKey={user.completedDataKey}
+                                            stackId="completedDuration"
                                             fill={user.color}
                                             radius={[4, 4, 0, 0]}
-                                            name={user.userName}
+                                            name={`${user.userName} završeno`}
+                                        />
+                                    ))}
+                                    {userSegments.map((user) => (
+                                        <Bar
+                                            key={`${user.userId}-planned`}
+                                            dataKey={user.plannedDataKey}
+                                            stackId="plannedDuration"
+                                            fill="transparent"
+                                            stroke={user.color}
+                                            strokeWidth={2}
+                                            radius={[4, 4, 0, 0]}
+                                            name={`${user.userName} planirano`}
                                         />
                                     ))}
                                     <Bar
                                         dataKey="sowingMinutes"
-                                        stackId="duration"
+                                        stackId="completedDuration"
                                         fill="hsl(142 71% 45% / 0.65)"
                                         name="Sijanje"
                                     />
@@ -350,33 +388,67 @@ export function OperationsDurationCard({
                     {data.byUser.length > 0 ? (
                         <Stack spacing={3} className="pt-2">
                             <Typography level="body3" className="font-medium">
-                                Po korisniku (dodijeljene radnje)
+                                Po korisniku
                             </Typography>
-                            <Stack spacing={2}>
-                                {data.byUser.map((user) => (
-                                    <Row
-                                        key={user.userId}
-                                        className="items-center justify-between gap-3 rounded-md border border-border/40 px-2 py-1.5"
-                                    >
-                                        <Stack spacing={0}>
-                                            <Typography level="body3" semiBold>
-                                                {user.userName}
-                                            </Typography>
+                            <div className="flex flex-wrap gap-2">
+                                {data.byUser.map((user, index) => {
+                                    const segmentColor =
+                                        userSegments[index]?.color ??
+                                        getUserBarColor(index);
+
+                                    return (
+                                        <Row
+                                            key={user.userId}
+                                            className="min-w-[14rem] items-center gap-2 rounded-md border border-border/40 px-2 py-1.5"
+                                        >
+                                            <span
+                                                className="size-2.5 shrink-0 rounded-full"
+                                                style={{
+                                                    backgroundColor:
+                                                        segmentColor,
+                                                }}
+                                            />
+                                            <UserAvatar
+                                                size="sm"
+                                                avatarUrl={user.userAvatarUrl}
+                                                displayName={user.userName}
+                                            />
+                                            <Stack
+                                                spacing={0}
+                                                className="min-w-0"
+                                            >
+                                                <Typography
+                                                    level="body3"
+                                                    semiBold
+                                                    className="truncate"
+                                                >
+                                                    {user.userName}
+                                                </Typography>
+                                                <Typography
+                                                    level="body3"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    Završeno:{' '}
+                                                    {user.operationsCount} ·
+                                                    Nezavršeno:{' '}
+                                                    {user.plannedCount ?? 0}
+                                                </Typography>
+                                            </Stack>
                                             <Typography
                                                 level="body3"
-                                                className="text-muted-foreground"
+                                                semiBold
+                                                className="ml-auto whitespace-nowrap"
                                             >
-                                                Radnji: {user.operationsCount}
+                                                {formatTooltipDuration(
+                                                    user.operationsMinutes +
+                                                        (user.plannedMinutes ??
+                                                            0),
+                                                )}
                                             </Typography>
-                                        </Stack>
-                                        <Typography level="body3" semiBold>
-                                            {formatTooltipDuration(
-                                                user.operationsMinutes,
-                                            )}
-                                        </Typography>
-                                    </Row>
-                                ))}
-                            </Stack>
+                                        </Row>
+                                    );
+                                })}
+                            </div>
                         </Stack>
                     ) : null}
                 </Stack>

@@ -359,7 +359,11 @@ export function AdminDashboardClient({
             </Stack>
             <Stack spacing={2}>
                 <DashboardDivider>Radnje</DashboardDivider>
-                <OperationsDurationCard data={initialOperationsDurationData} />
+                <div className="w-full lg:max-w-2xl">
+                    <OperationsDurationCard
+                        data={initialOperationsDurationData}
+                    />
+                </div>
             </Stack>
             <Stack spacing={2}>
                 <DashboardDivider>Zapisi</DashboardDivider>
