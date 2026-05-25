@@ -100,6 +100,10 @@ const items: HudItem[] = [
             { type: 'entity', name: 'Block_Ground_Angle' },
             { type: 'entity', name: 'Block_Sand_Angle' },
             { type: 'entity', name: 'Block_Snow_Angle' },
+            { type: 'entity', name: 'Block_Grass_Corner' },
+            { type: 'entity', name: 'Block_Ground_Corner' },
+            { type: 'entity', name: 'Block_Sand_Corner' },
+            { type: 'entity', name: 'Block_Snow_Corner' },
         ],
     },
 ];
@@ -142,12 +146,13 @@ function PlaceEntityButton({
                 )}
                 onClick={placeEntity}
                 size={simple ? 'sm' : 'md'}
+                variant="soft"
                 disabled={!block.prices.sunflowers || placeBlock.isPending}
                 endDecorator={
                     <Row
                         className={cx(
                             !simple &&
-                                'rounded-full p-1 gap border bg-muted w-fit pr-2',
+                                'rounded-full p-1 gap border border-primary/15 bg-primary/15 text-primary w-fit pr-2',
                             !block.prices.sunflowers && 'pl-2',
                         )}
                     >

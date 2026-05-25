@@ -5,7 +5,6 @@ import { type HTMLAttributes, useRef } from 'react';
 import { Vector3 } from 'three';
 import { v4 as uuidv4 } from 'uuid';
 import { EntityFactory } from '../entities/EntityFactory';
-import { EntityInstances } from '../entities/EntityInstances';
 import { Environment } from '../scene/Environment';
 import { Scene } from '../scene/Scene';
 import type { Block } from '../types/Block';
@@ -42,6 +41,7 @@ export function EntityViewer({
     itemPosition,
     className,
     rotation = 0,
+    ...rest
 }: EntityViewerProps) {
     const storeRef = useRef<GameStateStore>(null);
     if (!storeRef.current) {
@@ -55,12 +55,6 @@ export function EntityViewer({
     useDisposeGameStateStore(storeRef.current);
 
     const client = new QueryClient();
-    const stack = {
-        position: itemPosition
-            ? new Vector3(itemPosition[0], itemPosition[1], itemPosition[2])
-            : position,
-        blocks: [],
-    };
     const normalizedRotation = ((rotation % 4) + 4) % 4;
     let variant: number | undefined;
     if (entityName === 'PineAdvent') {
@@ -72,11 +66,22 @@ export function EntityViewer({
         rotation: normalizedRotation,
         variant: variant,
     };
+    const stack = {
+        position: itemPosition
+            ? new Vector3(itemPosition[0], itemPosition[1], itemPosition[2])
+            : position,
+        blocks: [block],
+    };
 
     return (
         <QueryClientProvider client={client}>
             <GameStateContext.Provider value={storeRef.current}>
-                <Scene position={100} zoom={zoom ?? 90} className={className}>
+                <Scene
+                    position={100}
+                    zoom={zoom ?? 90}
+                    className={className}
+                    {...rest}
+                >
                     <Environment noBackground noSound noWeather />
                     <EntityFactory
                         name={entityName}
@@ -85,7 +90,6 @@ export function EntityViewer({
                         rotation={normalizedRotation}
                         variant={variant}
                     />
-                    <EntityInstances stacks={[stack]} />
                 </Scene>
             </GameStateContext.Provider>
         </QueryClientProvider>

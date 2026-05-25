@@ -851,7 +851,7 @@ export function Environment({
                 />
             )}
             {showStars && <Stars visibility={starVisibility} />}
-            <SunMoon visibility={bodyVisibility} />
+            {!noBackground && <SunMoon visibility={bodyVisibility} />}
             {!weatherDisabled && fog > 0 && (
                 <fog attach="fog" args={[fogColor, fogNear, 190]} />
             )}

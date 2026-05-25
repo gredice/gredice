@@ -20,6 +20,11 @@ export type GLTFResult = GLTF & {
         Block_Grass_Angle_1_2: THREE.Mesh;
         Block_Sand_1: THREE.Mesh;
         Block_Sand_Angle_1: THREE.Mesh;
+        Block_Ground_Corner_1_1: THREE.Mesh;
+        Block_Ground_Corner_1_2: THREE.Mesh;
+        Block_Grass_Corner_1_1: THREE.Mesh;
+        Block_Grass_Corner_1_2: THREE.Mesh;
+        Block_Sand_Corner_1: THREE.Mesh;
         Raised_Bed_O_1: THREE.Mesh;
         Raised_Bed_O_2: THREE.Mesh;
         Raised_Bed_I_1: THREE.Mesh;
