@@ -9,6 +9,7 @@ Use this guide for repo layout, setup, commands, package boundaries, and local d
 - `apps/garden`: customer garden experience and game-facing UI.
 - `apps/farm`: farm back-office application.
 - `apps/app`: internal operations/admin application.
+- `apps/desktop`: Electron desktop release shells for `garden`, `farm`, and `app`.
 - `apps/storybook`: public Storybook documentation for shared and app-adjacent UI.
 - `apps/status`: public status page. It is not started by the default root dev command.
 - `packages/*`: shared libraries such as `@gredice/ui`, `@gredice/auth`, `@gredice/client`, `@gredice/storage`, `@gredice/email`, `@gredice/transactional`, `@gredice/stripe`, `@gredice/game`, and integration helpers.
@@ -50,6 +51,9 @@ pnpm env:pull
 
 # Start the default development stack with the local HTTPS proxy
 pnpm dev
+
+# Build Electron desktop artifacts for garden, farm, and app
+pnpm desktop:dist
 
 # Lint the full workspace
 pnpm lint

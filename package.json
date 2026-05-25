@@ -5,6 +5,13 @@
   "scripts": {
     "build": "turbo build",
     "clean": "turbo clean",
+    "desktop:dev:app": "pnpm --filter desktop dev:app",
+    "desktop:dev:farm": "pnpm --filter desktop dev:farm",
+    "desktop:dev:garden": "pnpm --filter desktop dev:garden",
+    "desktop:dist": "pnpm --filter desktop dist",
+    "desktop:dist:app": "pnpm --filter desktop dist:app",
+    "desktop:dist:farm": "pnpm --filter desktop dist:farm",
+    "desktop:dist:garden": "pnpm --filter desktop dist:garden",
     "dev": "node ./scripts/dev-with-proxy.mjs",
     "env:pull": "node ./scripts/pull-envs.mjs",
     "vercel:link": "node ./scripts/link-vercel.mjs",

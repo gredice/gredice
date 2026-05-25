@@ -1,0 +1,30 @@
+{
+    "name": "desktop",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "description": "Electron desktop release shells for Gredice apps.",
+    "main": "electron/main.cjs",
+    "scripts": {
+        "build": "node scripts/check-desktop-sources.mjs",
+        "clean": "rimraf .desktop-build .turbo dist",
+        "dev:app": "node scripts/run-desktop-app.mjs app",
+        "dev:farm": "node scripts/run-desktop-app.mjs farm",
+        "dev:garden": "node scripts/run-desktop-app.mjs garden",
+        "dist": "node scripts/package-desktop-app.mjs all",
+        "dist:app": "node scripts/package-desktop-app.mjs app",
+        "dist:farm": "node scripts/package-desktop-app.mjs farm",
+        "dist:garden": "node scripts/package-desktop-app.mjs garden",
+        "lint": "biome check --write .",
+        "pack:app": "node scripts/package-desktop-app.mjs app --dir",
+        "pack:farm": "node scripts/package-desktop-app.mjs farm --dir",
+        "pack:garden": "node scripts/package-desktop-app.mjs garden --dir",
+        "test": "node --test tests/*.test.mjs"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.4.15",
+        "electron": "42.2.0",
+        "electron-builder": "26.8.1",
+        "rimraf": "6.1.3"
+    }
+}

@@ -84,15 +84,24 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                 pendingAchievementsCount={pendingAchievementsCount}
                 quickActions={quickActions}
             >
-                <div className="grow bg-secondary/40">
+                <div className="grow bg-secondary/40" data-gredice-admin-shell>
                     <main className="relative h-full min-h-screen">
                         <DesktopNavProvider>
-                            <div className="flex min-h-full flex-row gap-3 md:gap-4 md:p-4">
+                            <div
+                                className="flex min-h-full flex-row gap-3 md:gap-4 md:p-4"
+                                data-gredice-admin-frame
+                            >
                                 {/* Desktop Navigation */}
                                 <DesktopNav />
                                 {/* Main Content */}
-                                <div className="min-h-full grow">
-                                    <div className="min-h-full border bg-[var(--admin-page-content-background)] p-3 md:rounded-2xl md:p-4">
+                                <div
+                                    className="min-h-full grow"
+                                    data-gredice-admin-content
+                                >
+                                    <div
+                                        className="min-h-full border bg-[var(--admin-page-content-background)] p-3 md:rounded-2xl md:p-4"
+                                        data-gredice-admin-content-panel
+                                    >
                                         <AuthProtectedSection auth={authAdmin}>
                                             <Suspense>
                                                 <AdminPageHeaderProvider>

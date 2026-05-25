@@ -3,11 +3,8 @@ import { createHmac } from 'node:crypto';
 import { initAuth, initRbac } from '@gredice/auth';
 import { getUser as storageGetUser } from '@gredice/storage';
 import { cookies } from 'next/headers';
-import {
-    accessTokenExpiryMs,
-    cookieDomain,
-    sessionCookieName,
-} from './sessionConfig';
+import { authCookieSettings } from './cookieSecurity';
+import { accessTokenExpiryMs, sessionCookieName } from './sessionConfig';
 
 function jwtSecretFactory() {
     const signSecret = process.env.GREDICE_JWT_SIGN_SECRET;
@@ -159,11 +156,12 @@ export function createJwt(
  */
 export async function setCookie(value: Promise<string> | string) {
     const cookieStore = await cookies();
+    const cookieSettings = await authCookieSettings();
     cookieStore.set(sessionCookieName, await value, {
-        secure: true,
+        secure: cookieSettings.secure,
         httpOnly: true,
         sameSite: 'lax',
-        domain: cookieDomain,
+        domain: cookieSettings.domain,
         expires: new Date(Date.now() + accessTokenExpiryMs),
     });
 }
@@ -174,11 +172,12 @@ export async function setCookie(value: Promise<string> | string) {
  */
 export async function clearCookie() {
     const cookieStore = await cookies();
+    const cookieSettings = await authCookieSettings();
     cookieStore.set(sessionCookieName, '', {
-        secure: true,
+        secure: cookieSettings.secure,
         httpOnly: true,
         sameSite: 'lax',
-        domain: cookieDomain,
+        domain: cookieSettings.domain,
         maxAge: 0,
     });
 }

@@ -1,17 +1,13 @@
-import { cookies, headers } from 'next/headers';
-import { authCookieSettings } from '../../../lib/authCookieSecurity';
-
-const accessTokenExpiryMs = 15 * 60 * 1000;
-const refreshTokenExpiryMs = 30 * 24 * 60 * 60 * 1000;
+import { headers } from 'next/headers';
+import { setCookie } from '../../../lib/auth/auth';
+import { setRefreshCookie } from '../../../lib/auth/refreshCookies';
 
 export async function POST(request: Request) {
-    // CSRF protection: validate Origin and Sec-Fetch-Site headers
     const headersList = await headers();
     const origin = headersList.get('origin');
     const secFetchSite = headersList.get('sec-fetch-site');
     const requestUrl = new URL(request.url);
 
-    // Ensure request is same-origin or from the same site
     if (
         secFetchSite &&
         secFetchSite !== 'same-origin' &&
@@ -24,13 +20,9 @@ export async function POST(request: Request) {
         return new Response('Forbidden', { status: 403 });
     }
 
-    // Additional origin validation if Origin header is present
     if (origin) {
-        // Treat explicit "null" origin as forbidden (e.g., some sandboxed contexts)
         if (origin === 'null') {
-            console.error(
-                'CSRF check failed: null Origin header is not allowed',
-            );
+            console.error('CSRF check failed: forbidden null Origin header');
             return new Response('Forbidden', { status: 403 });
         }
 
@@ -47,8 +39,6 @@ export async function POST(request: Request) {
         }
 
         const requestOrigin = requestUrl.origin;
-
-        // Check if origins match, treating localhost and 127.0.0.1 as equivalent
         const isSameOrigin =
             originUrl.origin === requestOrigin ||
             (isLocalhost(originUrl.hostname) &&
@@ -72,26 +62,10 @@ export async function POST(request: Request) {
         return new Response('Token is required', { status: 400 });
     }
 
-    const cookieStore = await cookies();
-    const cookieSettings = await authCookieSettings();
-
-    cookieStore.set('gredice_session', token, {
-        httpOnly: true,
-        secure: cookieSettings.secure,
-        sameSite: 'lax',
-        domain: cookieSettings.domain,
-        expires: new Date(Date.now() + accessTokenExpiryMs),
-    });
-
     if (refreshToken) {
-        cookieStore.set('gredice_refresh', refreshToken, {
-            httpOnly: true,
-            secure: cookieSettings.secure,
-            sameSite: 'lax',
-            domain: cookieSettings.domain,
-            expires: new Date(Date.now() + refreshTokenExpiryMs),
-        });
+        await setRefreshCookie(refreshToken);
     }
+    await setCookie(token);
 
     return Response.json({ success: true });
 }

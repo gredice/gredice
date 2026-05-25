@@ -200,6 +200,11 @@ async function createOAuthStateFromSession(context: Context): Promise<string> {
 const defaultWebAppOrigin = 'https://vrt.gredice.com';
 const oauthRedirectCookieName = 'oauth_redirect';
 const oauthTimeZoneCookieName = 'oauth_timezone';
+const allowedDesktopRedirectProtocols = new Set([
+    'gredice-admin:',
+    'gredice-farm:',
+    'gredice-garden:',
+]);
 const allowedLocalRedirectHosts = new Set([
     'localhost',
     '127.0.0.1',
@@ -215,6 +220,13 @@ function sanitizeRedirectUrl(redirectUrl?: string) {
 
     try {
         const parsed = new URL(redirectUrl);
+        if (
+            allowedDesktopRedirectProtocols.has(parsed.protocol) &&
+            parsed.hostname === 'auth-callback'
+        ) {
+            return parsed.toString();
+        }
+
         const hostname = parsed.hostname.toLowerCase();
         const isSecureProtocol =
             parsed.protocol === 'https:' ||
