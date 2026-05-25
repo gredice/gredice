@@ -6,6 +6,7 @@ import { Input } from '@gredice/ui/Input';
 import { Calendar, Navigate } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { ListItem } from '@gredice/ui/ListItem';
+import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { Popper } from '@gredice/ui/Popper';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -41,6 +42,7 @@ export function RaisedBedFieldStatusChange({
     );
     const [open, setOpen] = useState(false);
     const [datePickerOpen, setDatePickerOpen] = useState(false);
+    const [statusToConfirm, setStatusToConfirm] = useState<string | null>(null);
     const [datePickerContainer, setDatePickerContainer] =
         useState<HTMLElement>();
     const handleDatePickerContainerRef = useCallback(
@@ -76,7 +78,12 @@ export function RaisedBedFieldStatusChange({
             timestamp,
         });
         setOpen(false);
+        setStatusToConfirm(null);
     };
+
+    const confirmedStatusInfo = statusToConfirm
+        ? plantFieldStatusLabel(statusToConfirm)
+        : null;
 
     return (
         <Popper
@@ -156,7 +163,9 @@ export function RaisedBedFieldStatusChange({
                                         updateStatusMutation.isPending ||
                                         !isDateSelected
                                     }
-                                    onSelected={handleStatusChange}
+                                    onSelected={(nextStatus) => {
+                                        setStatusToConfirm(nextStatus);
+                                    }}
                                     className="py-3 pr-4"
                                     startDecorator={
                                         <span
@@ -206,6 +215,29 @@ export function RaisedBedFieldStatusChange({
                     </Stack>
                 )}
             </Stack>
+            <ModalConfirm
+                open={Boolean(statusToConfirm)}
+                onOpenChange={(nextOpen) => {
+                    if (!nextOpen) {
+                        setStatusToConfirm(null);
+                    }
+                }}
+                title="Potvrda promjene stanja"
+                description={
+                    confirmedStatusInfo
+                        ? `Jeste li sigurni da želite promijeniti stanje biljke u "${confirmedStatusInfo.shortLabel}"?`
+                        : 'Jeste li sigurni da želite promijeniti stanje biljke?'
+                }
+                cancelLabel="Odustani"
+                confirmLabel="Promijeni stanje"
+                onConfirm={async () => {
+                    if (statusToConfirm) {
+                        await handleStatusChange(statusToConfirm);
+                    }
+                }}
+                disabled={updateStatusMutation.isPending}
+                loading={updateStatusMutation.isPending}
+            />
         </Popper>
     );
 }
