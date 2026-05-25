@@ -7,6 +7,7 @@ export { knownEvents } from './knownEvents';
 export { knownEventTypes } from './knownEventTypes';
 // Query functions
 export {
+    countAiRequestEventsSince,
     countEventsSince,
     createEvent,
     deleteEventById,
@@ -21,11 +22,13 @@ export {
 } from './queries';
 export type {
     // Account
+    AccountAiRequestPayload,
     AccountAssignUserPayload,
     AccountSunflowersPayload,
     AdventAward,
     AdventCalendarOpenPayload,
     AdventGiftAward,
+    AiRequestKind,
     // Delivery
     DeliveryRequestAddressChangedPayload,
     DeliveryRequestCancelledPayload,

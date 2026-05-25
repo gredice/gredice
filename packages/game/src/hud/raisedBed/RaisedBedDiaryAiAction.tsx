@@ -1,6 +1,5 @@
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
-import { Chip } from '@gredice/ui/Chip';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -50,6 +49,9 @@ export function RaisedBedDiaryAiAction({
     const [resultSource, setResultSource] = useState<
         'history' | 'analysis' | null
     >(null);
+    const [analysisCompletedAt, setAnalysisCompletedAt] = useState<Date | null>(
+        null,
+    );
     const requestIdRef = useRef(0);
     const raisedBedAnalysis = useRaisedBedAiAnalysis();
     const raisedBedFieldAnalysis = useRaisedBedFieldAiAnalysis();
@@ -58,6 +60,13 @@ export function RaisedBedDiaryAiAction({
             ? raisedBedFieldAnalysis
             : raisedBedAnalysis;
     const latestHistoryEntry = historyEntries?.[0];
+    const latestCompleteHistoryEntry = historyEntries?.find((entry) => {
+        const analyzedImageUrls = entry.imageUrls ?? [];
+
+        return imageUrls.every((imageUrl) =>
+            analyzedImageUrls.includes(imageUrl),
+        );
+    });
 
     useEffect(() => {
         if (!selectedImageUrl && imageUrls[0]) {
@@ -72,18 +81,26 @@ export function RaisedBedDiaryAiAction({
         setPhase('idle');
         setSelectedHistoryEntryId(null);
         setResultSource(null);
+        setAnalysisCompletedAt(null);
     }
 
-    function beginAnalysis(nextImageUrl: string) {
+    function beginAnalysis() {
+        if (!imageUrls.length) {
+            return;
+        }
+
         requestIdRef.current += 1;
         const requestId = requestIdRef.current;
 
-        setSelectedImageUrl(nextImageUrl);
+        if (!selectedImageUrl) {
+            setSelectedImageUrl(imageUrls[0] ?? '');
+        }
         setVisibleMarkdown('');
         setErrorMessage(null);
         setPhase('thinking');
         setSelectedHistoryEntryId(null);
         setResultSource('analysis');
+        setAnalysisCompletedAt(null);
 
         const onChunk = (accumulated: string) => {
             if (requestIdRef.current !== requestId) return;
@@ -95,11 +112,13 @@ export function RaisedBedDiaryAiAction({
             onSuccess: () => {
                 if (requestIdRef.current !== requestId) return;
                 setPhase('done');
+                setAnalysisCompletedAt(new Date());
             },
             onError: (error: Error) => {
                 if (requestIdRef.current !== requestId) return;
                 setPhase('error');
                 setErrorMessage(error.message);
+                setAnalysisCompletedAt(null);
             },
         };
 
@@ -109,7 +128,7 @@ export function RaisedBedDiaryAiAction({
                     gardenId,
                     raisedBedId,
                     positionIndex,
-                    imageUrl: nextImageUrl,
+                    imageUrls,
                     onChunk,
                 },
                 callbacks,
@@ -119,7 +138,7 @@ export function RaisedBedDiaryAiAction({
                 {
                     gardenId,
                     raisedBedId,
-                    imageUrl: nextImageUrl,
+                    imageUrls,
                     onChunk,
                 },
                 callbacks,
@@ -128,16 +147,26 @@ export function RaisedBedDiaryAiAction({
     }
 
     function handleOpen() {
-        const firstImageUrl = imageUrls[0];
-        if (!firstImageUrl) {
+        if (!imageUrls.length) {
             return;
         }
 
         setOpen(true);
-        beginAnalysis(firstImageUrl);
+        beginAnalysis();
     }
 
-    function handleShowHistory(entry = latestHistoryEntry) {
+    function handlePrimaryAction() {
+        if (latestCompleteHistoryEntry) {
+            handleShowHistory(latestCompleteHistoryEntry);
+            return;
+        }
+
+        handleOpen();
+    }
+
+    function handleShowHistory(
+        entry = latestCompleteHistoryEntry ?? latestHistoryEntry,
+    ) {
         if (!entry) {
             return;
         }
@@ -150,6 +179,7 @@ export function RaisedBedDiaryAiAction({
         setErrorMessage(null);
         setPhase('done');
         setResultSource('history');
+        setAnalysisCompletedAt(null);
     }
 
     function handleOpenChange(nextOpen: boolean) {
@@ -174,52 +204,47 @@ export function RaisedBedDiaryAiAction({
                     : 'Pitaj suncokret';
     const statusDescription =
         resultSource === 'history' && phase === 'done'
-            ? 'Prikazujem posljednji spremljeni AI odgovor za ovu fotografiju. Za novu provjeru pokreni analizu ponovno.'
+            ? 'Prikazujem spremljene savjete suncokreta za ovaj dnevnički unos.'
             : phase === 'thinking'
-              ? 'Skeniram fotografiju i tražim tragove stresa, rasta i hitnih koraka.'
+              ? 'Skeniram sve fotografije i tražim tragove stresa, rasta i hitnih koraka.'
               : phase === 'typing'
                 ? 'Preporuke se ispisuju u AI dnevničkom formatu.'
                 : phase === 'done'
                   ? 'Odgovor je spremljen i u dnevnik, a ovdje ga vidiš odmah.'
                   : phase === 'error'
-                    ? 'Pokušaj ponovno s istom ili drugom fotografijom.'
-                    : 'Pokreni analizu nad ovom fotografijom iz dnevnika.';
+                    ? 'Pokušaj ponovno s istim fotografijama iz dnevnika.'
+                    : 'Pokreni analizu svih fotografija iz dnevnika.';
+    const selectedHistoryEntry = historyEntries?.find(
+        (historyEntry) => historyEntry.id === selectedHistoryEntryId,
+    );
+    const analysisTimestamp =
+        resultSource === 'history' && phase === 'done'
+            ? selectedHistoryEntry?.timestamp
+            : phase === 'done'
+              ? analysisCompletedAt
+              : null;
+    const formattedAnalysisTimestamp = analysisTimestamp?.toLocaleString(
+        'hr-HR',
+        {
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            month: 'long',
+            year: 'numeric',
+        },
+    );
+    const canAnalyzeEntry =
+        !latestCompleteHistoryEntry && (phase === 'idle' || phase === 'error');
 
     return (
         <>
             <Stack spacing={2} className="items-end">
-                {latestHistoryEntry && (
-                    <>
-                        <button
-                            type="button"
-                            className="self-end"
-                            onClick={(event) => {
-                                event.stopPropagation();
-                                handleShowHistory();
-                            }}
-                        >
-                            <Chip
-                                size="sm"
-                                color="neutral"
-                                className="w-fit cursor-pointer transition-colors hover:border-lime-300 hover:bg-lime-50"
-                            >
-                                {`AI upiti: ${historyEntries?.length ?? 0}`}
-                            </Chip>
-                        </button>
-                        <Typography
-                            level="body3"
-                            className="text-muted-foreground text-right"
-                        >
-                            {`Zadnji upit ${latestHistoryEntry.timestamp.toLocaleDateString('hr-HR')}`}
-                        </Typography>
-                    </>
-                )}
                 <ButtonGreen
                     size="sm"
                     className="w-fit self-end px-3"
                     onClick={(event) => {
                         event.stopPropagation();
-                        handleOpen();
+                        handlePrimaryAction();
                     }}
                     startDecorator={
                         <Image
@@ -230,7 +255,9 @@ export function RaisedBedDiaryAiAction({
                         />
                     }
                 >
-                    Pitaj suncokret za savjete
+                    {latestCompleteHistoryEntry
+                        ? 'Pogledaj savjete suncokreta'
+                        : 'Pitaj suncokret za savjete'}
                 </ButtonGreen>
             </Stack>
             <Modal
@@ -252,10 +279,9 @@ export function RaisedBedDiaryAiAction({
                                 />
                                 {phase === 'thinking' && (
                                     <>
-                                        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(16,24,40,0.08)_0%,rgba(16,24,40,0.2)_100%)]" />
-                                        <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(180deg,rgba(255,255,255,0.04)_0,rgba(255,255,255,0.04)_2px,transparent_2px,transparent_8px)]" />
+                                        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(254,240,138,0.14),transparent_58%),linear-gradient(180deg,rgba(120,53,15,0.02)_0%,rgba(120,53,15,0.12)_100%)]" />
                                         <div
-                                            className={`${styles.scanLine} pointer-events-none absolute inset-x-[8%] top-[-12%] h-[24%] rounded-full bg-[linear-gradient(180deg,rgba(190,242,100,0)_0%,rgba(190,242,100,0.2)_25%,rgba(250,204,21,0.9)_50%,rgba(190,242,100,0.2)_75%,rgba(190,242,100,0)_100%)] shadow-[0_0_18px_rgba(250,204,21,0.55),0_0_30px_rgba(190,242,100,0.35)]`}
+                                            className={`${styles.scanBeam} pointer-events-none absolute -inset-x-[16%] top-[-30%] h-[28%] rounded-full`}
                                         />
                                     </>
                                 )}
@@ -277,7 +303,7 @@ export function RaisedBedDiaryAiAction({
                                                     : 'border-black/10 opacity-80 hover:opacity-100'
                                             }`}
                                             onClick={() =>
-                                                beginAnalysis(imageUrl)
+                                                setSelectedImageUrl(imageUrl)
                                             }
                                         >
                                             <div className="relative size-16">
@@ -338,9 +364,9 @@ export function RaisedBedDiaryAiAction({
                             <div
                                 className={`${
                                     phase === 'thinking'
-                                        ? styles.sunflowerAuraPulse
+                                        ? styles.sunflowerPulse
                                         : ''
-                                } relative rounded-full border border-lime-200 bg-lime-50 p-2 after:pointer-events-none after:absolute after:-inset-1.5 after:rounded-full after:border after:border-lime-200/80 after:opacity-0 after:content-['']`}
+                                } relative flex size-16 shrink-0 items-center justify-center`}
                             >
                                 <Image
                                     src="https://cdn.gredice.com/sunflower-large.svg"
@@ -364,6 +390,14 @@ export function RaisedBedDiaryAiAction({
                                 >
                                     {statusDescription}
                                 </Typography>
+                                {formattedAnalysisTimestamp && (
+                                    <Typography
+                                        level="body3"
+                                        className="text-muted-foreground"
+                                    >
+                                        {`Analizirano ${formattedAnalysisTimestamp}`}
+                                    </Typography>
+                                )}
                                 {phase === 'thinking' && (
                                     <div className="inline-flex items-center gap-1.5">
                                         <span
@@ -386,7 +420,7 @@ export function RaisedBedDiaryAiAction({
                                 </Typography>
                             </Alert>
                         ) : (
-                            <div className="min-h-72 rounded-3xl border bg-background/80 p-4 shadow-xs">
+                            <div className="min-h-72 rounded-3xl border bg-card p-4 text-card-foreground shadow-xs">
                                 {visibleMarkdown ? (
                                     <div className="prose prose-sm max-w-none dark:prose-invert">
                                         <ReactMarkdown>
@@ -404,7 +438,7 @@ export function RaisedBedDiaryAiAction({
                                         className="text-muted-foreground"
                                     >
                                         {phase === 'thinking'
-                                            ? 'Suncokret skenira boje listova, tragove stresa i vrtni kontekst prije nego što napiše preporuke.'
+                                            ? 'Suncokret skenira sve fotografije, boje listova, tragove stresa i vrtni kontekst prije nego što napiše preporuke.'
                                             : 'Analiza će se pojaviti ovdje u markdown formatu.'}
                                     </Typography>
                                 )}
@@ -420,14 +454,16 @@ export function RaisedBedDiaryAiAction({
                             >
                                 {`Fotografija ${Math.max(imageUrls.indexOf(selectedImageUrl), 0) + 1} od ${imageUrls.length}`}
                             </Typography>
-                            <Button
-                                size="sm"
-                                variant="outlined"
-                                loading={activeMutation.isPending}
-                                onClick={() => beginAnalysis(selectedImageUrl)}
-                            >
-                                Analiziraj ponovno
-                            </Button>
+                            {canAnalyzeEntry && (
+                                <Button
+                                    size="sm"
+                                    variant="outlined"
+                                    loading={activeMutation.isPending}
+                                    onClick={beginAnalysis}
+                                >
+                                    Pokušaj ponovno
+                                </Button>
+                            )}
                         </Row>
                     </Stack>
                 </div>

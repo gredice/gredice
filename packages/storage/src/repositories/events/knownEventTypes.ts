@@ -5,6 +5,7 @@ export const knownEventTypes = {
         earnSunflowers: 'account.earnSunflowers',
         referral: 'account.referral.v1',
         spendSunflowers: 'account.spendSunflowers',
+        aiRequest: 'account.aiRequest',
     },
     users: {
         create: 'user.create',
