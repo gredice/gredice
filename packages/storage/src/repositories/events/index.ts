@@ -13,6 +13,7 @@ export {
     getAiAnalysisEvents,
     getAiAnalysisTotals,
     getEvents,
+    getEventsByAggregateIds,
     getLastBirthdayRewardEvent,
     getPlantPlaceEventsCount,
     getPlantUpdateEvents,

@@ -25,6 +25,7 @@ import { AccountAchievementsCard } from './AccountAchievementsCard';
 import { AccountEventsCard } from './AccountEventsCard';
 import { AccountGardensCard } from './AccountGardensCard';
 import { AccountInventoryCard } from './AccountInventoryCard';
+import { AccountReferralsCard } from './AccountReferralsCard';
 import { AccountShoppingCartsCard } from './AccountShoppingCartsCard';
 import { AccountSunflowersCard } from './AccountSunflowersCard';
 import { AccountTimeZonePicker } from './AccountTimeZonePicker';
@@ -108,6 +109,7 @@ export default async function AccountPage({
                         <AccountUsersCard accountId={accountId} />
                         <AccountGardensCard accountId={accountId} />
                         <AccountSunflowersCard accountId={accountId} />
+                        <AccountReferralsCard accountId={accountId} />
                         <AccountAchievementsCard accountId={accountId} />
                         <AccountTransactionsCard accountId={accountId} />
                         <RaisedBedsTableCard accountId={accountId} />

@@ -8,11 +8,12 @@ import { Check, Copy, Edit, ExternalLink, Info } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { useState } from 'react';
 import { useReferrals } from '../../hooks/useReferrals';
 import { KnownPages } from '../../knownPages';
 
-async function errorMessageFromResponse(response: Response) {
+async function errorMessageFromResponse(response: Response, fallback: string) {
     const payload: unknown = await response.json().catch(() => null);
     if (payload && typeof payload === 'object' && 'error' in payload) {
         const error = payload.error;
@@ -20,7 +21,7 @@ async function errorMessageFromResponse(response: Response) {
             return error;
         }
     }
-    return 'Kod nije spremljen';
+    return fallback;
 }
 
 type CopyState = 'idle' | 'copied';
@@ -33,10 +34,12 @@ export function ReferralsTab() {
     const [codeCopyState, setCodeCopyState] = useState<CopyState>('idle');
     const [linkCopyState, setLinkCopyState] = useState<CopyState>('idle');
     const [changeCodeError, setChangeCodeError] = useState<string | null>(null);
+    const [useCodeError, setUseCodeError] = useState<string | null>(null);
     const [isChangingCode, setIsChangingCode] = useState(false);
     const [isUsingCode, setIsUsingCode] = useState(false);
     const referralCode = data?.myCode ?? '';
     const referralLink = data?.referralLink ?? '';
+    const usedReferral = data?.usedReferral ?? null;
     const referredAccounts = data?.referredAccounts ?? [];
     const trimmedUseCode = useCode.trim();
 
@@ -75,7 +78,12 @@ export function ReferralsTab() {
                     { json: { code: newCode } },
                 );
             if (!response.ok) {
-                setChangeCodeError(await errorMessageFromResponse(response));
+                setChangeCodeError(
+                    await errorMessageFromResponse(
+                        response,
+                        'Kod nije spremljen',
+                    ),
+                );
                 return;
             }
             await refetch();
@@ -91,12 +99,24 @@ export function ReferralsTab() {
         }
 
         setIsUsingCode(true);
+        setUseCodeError(null);
         try {
-            await clientAuthenticated().api.accounts.current.referrals.use.$post(
-                {
-                    json: { code: trimmedUseCode },
-                },
-            );
+            const response =
+                await clientAuthenticated().api.accounts.current.referrals.use.$post(
+                    {
+                        json: { code: trimmedUseCode },
+                    },
+                );
+            if (!response.ok) {
+                setUseCodeError(
+                    await errorMessageFromResponse(
+                        response,
+                        'Kod preporuke nije iskorišten',
+                    ),
+                );
+                return;
+            }
+            setUseCode('');
             await refetch();
         } finally {
             setIsUsingCode(false);
@@ -267,45 +287,96 @@ export function ReferralsTab() {
                     </form>
                 </Modal>
                 <Card>
-                    <form
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            void redeemReferralCode();
-                        }}
-                    >
-                        <CardContent noHeader>
-                            <Stack spacing={6}>
+                    <CardContent noHeader>
+                        {usedReferral ? (
+                            <Stack spacing={4}>
                                 <Stack spacing={2}>
                                     <div className="text-sm font-semibold">
-                                        Iskoristi kod preporuke
+                                        Iskorišten kod preporuke
                                     </div>
-                                    <Input
-                                        fullWidth
-                                        label="Kod za preporuku"
-                                        value={useCode}
-                                        onChange={(e) =>
-                                            setUseCode(e.target.value)
+                                    <Alert
+                                        color="success"
+                                        startDecorator={
+                                            <Check className="size-4" />
                                         }
-                                        placeholder="Unesi kod"
-                                        disabled={isUsingCode}
-                                    />
-                                </Stack>
-                                <CardActions className="justify-end">
-                                    <Button
-                                        disabled={
-                                            !trimmedUseCode || isUsingCode
-                                        }
-                                        loading={isUsingCode}
-                                        size="sm"
-                                        type="submit"
-                                        variant="solid"
                                     >
-                                        Primijeni kod
-                                    </Button>
-                                </CardActions>
+                                        <Typography level="body2">
+                                            Kod preporuke je iskorišten za ovaj
+                                            račun. Za ovaj račun nije moguće
+                                            unijeti drugi kod.
+                                        </Typography>
+                                    </Alert>
+                                </Stack>
+                                <div className="flex items-center gap-3 rounded-md border bg-muted/40 p-3">
+                                    <UserAvatar
+                                        avatarUrl={
+                                            usedReferral.account?.avatarUrl
+                                        }
+                                        displayName={
+                                            usedReferral.account?.displayName ??
+                                            'Nepoznat račun'
+                                        }
+                                        className="size-9"
+                                    />
+                                    <Stack spacing={0}>
+                                        <Typography level="body2" semiBold>
+                                            {usedReferral.account
+                                                ?.displayName ??
+                                                'Nepoznat račun'}
+                                        </Typography>
+                                        <Typography level="body3">
+                                            Kod: {usedReferral.code}
+                                        </Typography>
+                                    </Stack>
+                                </div>
                             </Stack>
-                        </CardContent>
-                    </form>
+                        ) : (
+                            <form
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    void redeemReferralCode();
+                                }}
+                            >
+                                <Stack spacing={6}>
+                                    <Stack spacing={2}>
+                                        <div className="text-sm font-semibold">
+                                            Iskoristi kod preporuke
+                                        </div>
+                                        {useCodeError ? (
+                                            <Alert color="danger">
+                                                <Typography level="body2">
+                                                    {useCodeError}
+                                                </Typography>
+                                            </Alert>
+                                        ) : null}
+                                        <Input
+                                            fullWidth
+                                            label="Kod za preporuku"
+                                            value={useCode}
+                                            onChange={(e) =>
+                                                setUseCode(e.target.value)
+                                            }
+                                            placeholder="Unesi kod"
+                                            disabled={isUsingCode}
+                                        />
+                                    </Stack>
+                                    <CardActions className="justify-end">
+                                        <Button
+                                            disabled={
+                                                !trimmedUseCode || isUsingCode
+                                            }
+                                            loading={isUsingCode}
+                                            size="sm"
+                                            type="submit"
+                                            variant="solid"
+                                        >
+                                            Primijeni kod
+                                        </Button>
+                                    </CardActions>
+                                </Stack>
+                            </form>
+                        )}
+                    </CardContent>
                 </Card>
                 {referredAccounts.length > 0 ? (
                     <Card>

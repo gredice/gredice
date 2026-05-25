@@ -1,4 +1,8 @@
-import { getAccount, getEvents, knownEventTypes } from '@gredice/storage';
+import {
+    getAccount,
+    getEventsByAggregateIds,
+    knownEventTypes,
+} from '@gredice/storage';
 import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
 import { Stack } from '@gredice/ui/Stack';
 import type { ReactNode } from 'react';
@@ -12,14 +16,21 @@ const ACCOUNT_EVENT_TYPE_LABELS: Record<string, string> = {
     [knownEventTypes.accounts.create]: 'Račun stvoren',
     [knownEventTypes.accounts.assignUser]: 'Korisnik dodan',
     [knownEventTypes.accounts.earnSunflowers]: 'Dodani suncokreti',
+    [knownEventTypes.accounts.referral]: 'Preporuka',
     [knownEventTypes.accounts.spendSunflowers]: 'Potrošeni suncokreti',
 };
 
-const ACCOUNT_EVENT_TYPES = Object.values(knownEventTypes.accounts);
-
-type AccountEvent = Awaited<ReturnType<typeof getEvents>>[number];
+type AccountEvent = Awaited<ReturnType<typeof getEventsByAggregateIds>>[number];
 
 type AccountUserLabels = Map<string, string>;
+
+function renderJsonDetails(data: Record<string, unknown>) {
+    return (
+        <pre className="text-xs whitespace-pre-wrap font-mono">
+            {JSON.stringify(data, null, 2)}
+        </pre>
+    );
+}
 
 function renderEventDetails(
     event: AccountEvent,
@@ -74,12 +85,82 @@ function renderEventDetails(
         return null;
     }
 
+    if (event.type === knownEventTypes.accounts.referral) {
+        const action =
+            typeof data?.action === 'string' ? data.action : undefined;
+        const code = typeof data?.code === 'string' ? data.code : undefined;
+        const ownerAccountId =
+            typeof data?.ownerAccountId === 'string'
+                ? data.ownerAccountId
+                : undefined;
+        const referredAccountId =
+            typeof data?.referredAccountId === 'string'
+                ? data.referredAccountId
+                : undefined;
+        const source =
+            typeof data?.source === 'string' ? data.source : undefined;
+        const rewarded =
+            typeof data?.rewarded === 'boolean' ? data.rewarded : undefined;
+
+        const details: ReactNode[] = [];
+        if (action === 'code_set') {
+            details.push(<span key="action">Akcija: postavljen kod</span>);
+        } else if (action === 'used_code') {
+            details.push(<span key="action">Akcija: iskorišten kod</span>);
+        } else if (action === 'used_code_cleared') {
+            details.push(<span key="action">Akcija: očišćen kod</span>);
+        } else if (action === 'referred_account') {
+            details.push(<span key="action">Akcija: preporučen račun</span>);
+        } else if (action) {
+            details.push(<span key="action">Akcija: {action}</span>);
+        }
+        if (code) {
+            details.push(<span key="code">Kod: {code}</span>);
+        }
+        if (ownerAccountId) {
+            details.push(
+                <span key="ownerAccount">
+                    Račun preporučitelja: {ownerAccountId}
+                </span>,
+            );
+        }
+        if (referredAccountId) {
+            details.push(
+                <span key="referredAccount">
+                    Preporučeni račun: {referredAccountId}
+                </span>,
+            );
+        }
+        if (typeof rewarded === 'boolean') {
+            details.push(
+                <span key="rewarded">
+                    Nagrada: {rewarded ? 'dodijeljena' : 'na čekanju'}
+                </span>,
+            );
+        }
+        if (source) {
+            details.push(<span key="source">Izvor: {source}</span>);
+        }
+
+        if (details.length > 0) {
+            return (
+                <Stack spacing={1} className="text-sm">
+                    {details}
+                </Stack>
+            );
+        }
+    }
+
+    if (data) {
+        return renderJsonDetails(data);
+    }
+
     return null;
 }
 
 export async function AccountEventsCard({ accountId }: AccountEventsCardProps) {
     const [events, account] = await Promise.all([
-        getEvents(ACCOUNT_EVENT_TYPES, [accountId], 0, 10000),
+        getEventsByAggregateIds([accountId], 0, 10000),
         getAccount(accountId),
     ]);
 
@@ -88,8 +169,8 @@ export async function AccountEventsCard({ accountId }: AccountEventsCardProps) {
         if (!accountUser.user) {
             continue;
         }
-        const { id, userName, email } = accountUser.user;
-        userLabels.set(id, userName ?? email ?? id);
+        const { id, displayName, userName } = accountUser.user;
+        userLabels.set(id, displayName ?? userName ?? id);
     }
 
     const sortedEvents = [...events].sort(

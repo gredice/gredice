@@ -73,6 +73,20 @@ export function getEvents(
     });
 }
 
+export function getEventsByAggregateIds(
+    aggregateIds: string[],
+    offset: number = 0,
+    limit: number = 1000,
+    db: DatabaseClient = storage(),
+) {
+    return db.query.events.findMany({
+        where: inArray(events.aggregateId, aggregateIds),
+        orderBy: [asc(events.createdAt), asc(events.id)],
+        offset,
+        limit,
+    });
+}
+
 export async function getPlantUpdateEvents(filter?: {
     status?: string;
     from?: Date;
