@@ -423,7 +423,6 @@ async function processReferralRewardsForAccountInTransaction(
     accountId: string,
     tx: ReferralDatabase,
     options: {
-        snapshot?: ReferralSnapshot;
         usedReferral?: UsedReferralState;
     } = {},
 ): Promise<ReferralRewardProcessResult> {
@@ -431,7 +430,7 @@ async function processReferralRewardsForAccountInTransaction(
         sql`select pg_advisory_xact_lock(hashtext(${`referral-reward:${accountId}`}));`,
     );
 
-    const snapshot = options.snapshot ?? (await getReferralSnapshot(tx));
+    const snapshot = await getReferralSnapshot(tx);
     if (referralRewardGrantedForReferredAccount(snapshot, accountId)) {
         return { rewarded: false, reason: 'already_rewarded' };
     }
@@ -633,13 +632,18 @@ export async function redeemReferralCodeForAccount(
             accountId,
             tx,
             {
-                snapshot,
                 usedReferral: {
                     code,
                     ownerAccountId,
                 },
             },
         );
+        if (
+            !rewardResult.rewarded &&
+            rewardResult.reason === 'already_rewarded'
+        ) {
+            throw new ReferralCodeAlreadyUsedError();
+        }
     });
 
     if (!ownerAccountId) {
