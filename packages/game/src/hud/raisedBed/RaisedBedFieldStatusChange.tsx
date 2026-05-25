@@ -222,22 +222,24 @@ export function RaisedBedFieldStatusChange({
                         setStatusToConfirm(null);
                     }
                 }}
-                title="Potvrda promjene stanja"
-                description={
-                    confirmedStatusInfo
-                        ? `Jeste li sigurni da želite promijeniti stanje biljke u "${confirmedStatusInfo.shortLabel}"?`
-                        : 'Jeste li sigurni da želite promijeniti stanje biljke?'
+                title="Potvrda promjene stanja biljke"
+                header="Potvrda promjene stanja"
+                confirmLabel={
+                    updateStatusMutation.isPending
+                        ? 'Spremam...'
+                        : 'Promijeni stanje'
                 }
                 cancelLabel="Odustani"
-                confirmLabel="Promijeni stanje"
-                onConfirm={async () => {
-                    if (statusToConfirm) {
-                        await handleStatusChange(statusToConfirm);
+                onConfirm={() => {
+                    if (statusToConfirm && !updateStatusMutation.isPending) {
+                        void handleStatusChange(statusToConfirm);
                     }
                 }}
-                disabled={updateStatusMutation.isPending}
-                loading={updateStatusMutation.isPending}
-            />
+            >
+                {confirmedStatusInfo
+                    ? `Jeste li sigurni da želite promijeniti stanje biljke u "${confirmedStatusInfo.shortLabel}"?`
+                    : 'Jeste li sigurni da želite promijeniti stanje biljke?'}
+            </ModalConfirm>
         </Popper>
     );
 }
