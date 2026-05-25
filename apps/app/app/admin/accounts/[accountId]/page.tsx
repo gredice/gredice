@@ -36,12 +36,19 @@ import { RaisedBedsTableCard } from './RaisedBedsTableCard';
 
 export const dynamic = 'force-dynamic';
 
+type AccountPageSearchParams = Record<string, string | string[] | undefined>;
+
 export default async function AccountPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ accountId: string }>;
+    searchParams: Promise<AccountPageSearchParams>;
 }) {
-    const { accountId } = await params;
+    const [{ accountId }, resolvedSearchParams] = await Promise.all([
+        params,
+        searchParams,
+    ]);
     await auth(['admin']);
 
     const actionBound = sendDeleteAccountEmail.bind(null, accountId);
@@ -144,7 +151,10 @@ export default async function AccountPage({
                         <AccountAchievementsCard accountId={accountId} />
                         <AccountTransactionsCard accountId={accountId} />
                         <RaisedBedsTableCard accountId={accountId} />
-                        <AccountEventsCard accountId={accountId} />
+                        <AccountEventsCard
+                            accountId={accountId}
+                            searchParams={resolvedSearchParams}
+                        />
                         <NotificationsTableCard accountId={accountId} scroll />
                         <AccountInventoryCard accountId={accountId} />
                         <AccountShoppingCartsCard accountId={accountId} />

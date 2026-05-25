@@ -14,6 +14,7 @@ export {
     getAiAnalysisTotals,
     getEvents,
     getLastBirthdayRewardEvent,
+    getLatestEvents,
     getPlantPlaceEventsCount,
     getPlantUpdateEvents,
     getSunflowersDailyTotals,
