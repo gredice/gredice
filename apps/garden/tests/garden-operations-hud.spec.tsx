@@ -31,6 +31,15 @@ test.describe('Garden operations HUD', () => {
         await expect(page.getByText('Zakazano: sutra')).toBeVisible();
         await expect(page.getByText('U košari').last()).toBeVisible();
 
+        await expect(page.getByText('Zakazano', { exact: true })).toHaveCount(
+            2,
+        );
+        await expect(page.getByText('Planirano', { exact: true })).toHaveCount(
+            0,
+        );
+        await expect(
+            page.getByText('Zakazano: 22. svibnja 2026.'),
+        ).toBeVisible();
         await expect(page.getByText('Sadnja', { exact: true })).toBeVisible();
         await expect(page.getByLabel('Polje 1 • Raised Bed 1')).toBeVisible();
         await expect(page.getByText('Sadnja: Klasični bosiljak')).toBeVisible();
@@ -38,6 +47,8 @@ test.describe('Garden operations HUD', () => {
         await expect(
             page.getByText('Zakazano: 23. svibnja 2026.'),
         ).toBeVisible();
+        await expect(page.getByLabel('Tijek radnje')).toHaveCount(0);
+        await expect(page.locator('.animate-progress')).toHaveCount(0);
         await expect(page.getByText(/^Kreirano:/)).toHaveCount(0);
         await expect(page.getByText(/Sljedeći korak/)).toHaveCount(0);
         await expect(page.getByText('Nema nedovršenih radnji.')).toHaveCount(0);
@@ -56,5 +67,9 @@ test.describe('Garden operations HUD', () => {
         await expect(dialog.getByText('Sadnja: Cherry rajčica')).toBeVisible();
         await expect(dialog.getByLabel('Polje 3 • Raised Bed 1')).toBeVisible();
         await expect(dialog.getByText('Završeno')).toBeVisible();
+        await expect(dialog.getByLabel('Tijek radnje').first()).toHaveCSS(
+            'max-width',
+            '320px',
+        );
     });
 });

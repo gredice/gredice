@@ -1,4 +1,5 @@
 import type { OperationData, PlantData, PlantSortData } from '@gredice/client';
+import type { GardenOperationItem } from '../../../packages/game/src/hooks/useGardenOperations';
 import type { ShoppingCartItemData } from '../../../packages/game/src/hooks/useShoppingCart';
 
 const now = '2026-05-13T00:00:00.000Z';
@@ -150,6 +151,7 @@ export type RaisedBedScenario = {
     fields: FieldConfig[];
     cartItems?: ShoppingCartItemData[];
     operations?: OperationData[];
+    operationHistoryItems?: GardenOperationItem[];
     raisedBedStatus?: string;
     raisedBedAbandonReason?: string | null;
     isRaisedBedValid?: boolean;

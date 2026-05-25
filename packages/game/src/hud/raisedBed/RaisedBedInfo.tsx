@@ -1,7 +1,6 @@
 import { Alert } from '@gredice/ui/Alert';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
-import { Card, CardOverflow } from '@gredice/ui/Card';
 import { EditableInput } from '@gredice/ui/EditableInput';
 import { Book, Hammer, Info, MoreHorizontal, Warning } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
@@ -19,8 +18,8 @@ import {
     RAISED_BED_STATUS_ABANDONED,
 } from '../../raisedBedConstants';
 import { useGameState } from '../../useGameState';
-import { RaisedBedDiary } from './RaisedBedDiary';
 import { RaisedBedInfoTab } from './RaisedBedInfoTab';
+import { RaisedBedOperationHistoryList } from './RaisedBedOperationHistoryList';
 import { RaisedBedOperationsTab } from './RaisedBedOperationsTab';
 
 type RaisedBedTab = 'diary' | 'operations' | 'info' | 'more';
@@ -226,14 +225,11 @@ export function RaisedBedInfo({
                     </Stack>
                 </TabsContent>
                 <TabsContent value="diary">
-                    <Card>
-                        <CardOverflow className="max-h-96 overflow-y-auto overflow-x-hidden">
-                            <RaisedBedDiary
-                                gardenId={gardenId}
-                                raisedBedId={raisedBed.id}
-                            />
-                        </CardOverflow>
-                    </Card>
+                    <div className="max-h-96 overflow-y-auto overflow-x-hidden pr-1">
+                        <RaisedBedOperationHistoryList
+                            raisedBedId={raisedBed.id}
+                        />
+                    </div>
                 </TabsContent>
                 <TabsContent value="operations">
                     <RaisedBedOperationsTab

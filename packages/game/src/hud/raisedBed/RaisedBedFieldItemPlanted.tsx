@@ -1,4 +1,3 @@
-import { Card, CardOverflow } from '@gredice/ui/Card';
 import {
     Book,
     Check,
@@ -27,7 +26,6 @@ import {
     findRaisedBedOccupiedField,
     type RaisedBedFieldPlantHistoryEntry,
 } from '../../utils/raisedBedFields';
-import { RaisedBedFieldDiary } from './RaisedBedDiary';
 import { RaisedBedFieldIconStack } from './RaisedBedFieldIconStack';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import {
@@ -36,6 +34,7 @@ import {
 } from './RaisedBedFieldLifecycleTab';
 import { RaisedBedFieldOperationsTab } from './RaisedBedFieldOperationsTab';
 import { RaisedBedFieldPlantHistoryModal } from './RaisedBedFieldPlantHistoryModal';
+import { RaisedBedOperationHistoryList } from './RaisedBedOperationHistoryList';
 
 type RaisedBedFieldTabValue = 'lifecycle' | 'diary' | 'operations';
 
@@ -392,16 +391,12 @@ export function RaisedBedFieldItemPlanted({
                     )}
                     <TabsContent value="diary">
                         {garden && (
-                            <Card>
-                                <CardOverflow className="max-h-96 overflow-y-auto overflow-x-hidden">
-                                    <RaisedBedFieldDiary
-                                        gardenId={garden.id}
-                                        raisedBedId={raisedBed.id}
-                                        positionIndex={positionIndex}
-                                        disableActions={isHistorical}
-                                    />
-                                </CardOverflow>
-                            </Card>
+                            <div className="max-h-96 overflow-y-auto overflow-x-hidden pr-1">
+                                <RaisedBedOperationHistoryList
+                                    raisedBedId={raisedBed.id}
+                                    positionIndex={positionIndex}
+                                />
+                            </div>
                         )}
                     </TabsContent>
                     <TabsContent value="lifecycle">

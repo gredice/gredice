@@ -3,6 +3,7 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useMemo, useState } from 'react';
 import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/GameAnalyticsContext';
 import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
+import { gardenOperationsQueryKey } from '../../../packages/game/src/hooks/useGardenOperations';
 import { RaisedBedField } from '../../../packages/game/src/hud/raisedBed/RaisedBedField';
 import { RaisedBedFieldItem } from '../../../packages/game/src/hud/raisedBed/RaisedBedFieldItem';
 import { RaisedBedFieldSuggestions } from '../../../packages/game/src/hud/raisedBed/RaisedBedFieldSuggestions';
@@ -71,6 +72,57 @@ function createScenarioQueryClient(scenario: RaisedBedScenario) {
     queryClient.setQueryData(['plants'], allPlants);
     queryClient.setQueryData(['sorts'], allSorts);
     queryClient.setQueryData(['operations'], scenario.operations ?? []);
+    const operationHistoryItems = scenario.operationHistoryItems ?? [];
+    queryClient.setQueryData(
+        gardenOperationsQueryKey({
+            gardenId: TEST_GARDEN_ID,
+            includeCompleted: true,
+            pageSize: 20,
+            raisedBedId: TEST_RAISED_BED_ID,
+        }),
+        {
+            pages: [
+                {
+                    items: operationHistoryItems,
+                    nextCursor: null,
+                    total: operationHistoryItems.length,
+                },
+            ],
+            pageParams: [0],
+        },
+    );
+
+    for (const field of garden.raisedBeds[0]?.fields ?? []) {
+        const fieldIds = garden.raisedBeds[0].fields
+            .filter(
+                (candidate) => candidate.positionIndex === field.positionIndex,
+            )
+            .map((candidate) => candidate.id);
+        const fieldOperationHistoryItems = operationHistoryItems.filter(
+            (operation) =>
+                operation.raisedBedFieldId !== null &&
+                fieldIds.includes(operation.raisedBedFieldId),
+        );
+        queryClient.setQueryData(
+            gardenOperationsQueryKey({
+                gardenId: TEST_GARDEN_ID,
+                includeCompleted: true,
+                pageSize: 20,
+                raisedBedId: TEST_RAISED_BED_ID,
+                positionIndex: field.positionIndex,
+            }),
+            {
+                pages: [
+                    {
+                        items: fieldOperationHistoryItems,
+                        nextCursor: null,
+                        total: fieldOperationHistoryItems.length,
+                    },
+                ],
+                pageParams: [0],
+            },
+        );
+    }
 
     return queryClient;
 }
@@ -78,12 +130,14 @@ function createScenarioQueryClient(scenario: RaisedBedScenario) {
 type ProvidersProps = PropsWithChildren<{
     scenario: RaisedBedScenario;
     enablePlantHistory?: boolean;
+    enableRaisedBedImageAI?: boolean;
 }>;
 
 function RaisedBedHudTestProviders({
     children,
     scenario,
     enablePlantHistory = true,
+    enableRaisedBedImageAI = false,
 }: ProvidersProps) {
     const queryClient = useMemo(
         () => createScenarioQueryClient(scenario),
@@ -105,7 +159,10 @@ function RaisedBedHudTestProviders({
             <ReactQuery.QueryClientProvider client={queryClient}>
                 <GameStateContext.Provider value={gameStore}>
                     <GameFlagsContext.Provider
-                        value={{ enablePlantHistoryFlag: enablePlantHistory }}
+                        value={{
+                            enablePlantHistoryFlag: enablePlantHistory,
+                            raisedBedImageAI: enableRaisedBedImageAI,
+                        }}
                     >
                         <GameAnalyticsProvider capture={() => undefined}>
                             {children}
@@ -121,11 +178,13 @@ export function RaisedBedFieldHudStory({
     scenario,
     positionIndex,
     enablePlantHistory = true,
+    enableRaisedBedImageAI = false,
     cellSize = 80,
 }: {
     scenario: RaisedBedScenario;
     positionIndex: number;
     enablePlantHistory?: boolean;
+    enableRaisedBedImageAI?: boolean;
     cellSize?: number;
 }) {
     const cartItem =
@@ -136,6 +195,7 @@ export function RaisedBedFieldHudStory({
         <RaisedBedHudTestProviders
             scenario={scenario}
             enablePlantHistory={enablePlantHistory}
+            enableRaisedBedImageAI={enableRaisedBedImageAI}
         >
             <div
                 data-testid="hud-cell"
