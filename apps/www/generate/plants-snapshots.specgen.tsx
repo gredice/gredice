@@ -20,6 +20,7 @@ const groundAssetNames = [
     'BlockGrassAngle',
     'BlockSand',
     'BlockSandAngle',
+    'BlockTerrainCorner',
 ];
 
 test.beforeEach(async ({ page }) => {
