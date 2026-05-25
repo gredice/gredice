@@ -5,6 +5,7 @@ export const knownEventTypes = {
         earnSunflowers: 'account.earnSunflowers',
         referral: 'account.referral.v1',
         spendSunflowers: 'account.spendSunflowers',
+        aiRequest: 'account.aiRequest',
     },
     users: {
         create: 'user.create',
@@ -55,6 +56,11 @@ export const knownEventTypes = {
         verify: 'operation.verify',
         fail: 'operation.fail',
         cancel: 'operation.cancel',
+    },
+    approvalRequests: {
+        create: 'approvalRequest.create',
+        approve: 'approvalRequest.approve',
+        reject: 'approvalRequest.reject',
     },
     delivery: {
         requestCreated: 'delivery.request.created',

@@ -6,7 +6,6 @@ import { useRef } from 'react';
 import { MOUSE, Vector3 } from 'three';
 import { v4 as uuidv4 } from 'uuid';
 import { EntityFactory } from '../entities/EntityFactory';
-import { EntityInstances } from '../entities/EntityInstances';
 import { entityNameMap } from '../entities/entityNameMap';
 import { Environment } from '../scene/Environment';
 import { Scene } from '../scene/Scene';
@@ -27,15 +26,21 @@ export type EntityGridViewerProps = {
     columns?: number;
     /**
      * Spacing between entities
-     * @default 2.5
+     * @default 5
      */
     spacing?: number;
+    /**
+     * Zoom level of the camera
+     * @default 28
+     */
+    zoom?: number;
 };
 
 export function EntityGridViewer({
     className,
     columns = 6,
     spacing = 5,
+    zoom = 28,
 }: EntityGridViewerProps) {
     const storeRef = useRef<GameStateStore>(null);
     if (!storeRef.current) {
@@ -55,13 +60,6 @@ export function EntityGridViewer({
         const col = index % columns;
         const row = Math.floor(index / columns);
 
-        const position = new Vector3(col * spacing, 0, row * spacing);
-
-        const stack = {
-            position,
-            blocks: [] as Block[],
-        };
-
         let variant: number | undefined;
         if (entityName === 'PineAdvent') {
             variant = 100;
@@ -72,6 +70,12 @@ export function EntityGridViewer({
             name: entityName,
             rotation: 0,
             variant: variant,
+        };
+
+        const position = new Vector3(col * spacing, 0, row * spacing);
+        const stack = {
+            position,
+            blocks: [block],
         };
 
         return { entityName, stack, block, variant, position };
@@ -85,7 +89,7 @@ export function EntityGridViewer({
     return (
         <QueryClientProvider client={client}>
             <GameStateContext.Provider value={storeRef.current}>
-                <Scene position={100} zoom={35} className={className}>
+                <Scene position={100} zoom={zoom} className={className}>
                     <Environment noBackground noSound noWeather />
                     <OrbitControls
                         enableDamping
@@ -132,9 +136,6 @@ export function EntityGridViewer({
                                 </group>
                             ),
                         )}
-                        <EntityInstances
-                            stacks={entities.map((e) => e.stack)}
-                        />
                     </group>
                 </Scene>
             </GameStateContext.Provider>

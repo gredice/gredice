@@ -1736,7 +1736,7 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                     break;
                 }
                 case knownEventTypes.raisedBeds.aiAnalysis: {
-                    name = 'AI analiza gredice';
+                    name = 'Savjeti suncokreta';
                     description =
                         typeof data?.markdown === 'string'
                             ? data.markdown
@@ -2215,7 +2215,7 @@ export async function getRaisedBedFieldDiaryEntries(
                     break;
                 }
                 case knownEventTypes.raisedBedFields.aiAnalysis: {
-                    name = 'AI analiza vrta';
+                    name = 'Savjeti suncokreta';
                     description =
                         typeof data?.markdown === 'string'
                             ? data.markdown

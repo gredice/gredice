@@ -9,6 +9,7 @@ import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
+import Image from 'next/image';
 import { type ReactNode, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useGameFlags } from '../../GameFlagsContext';
@@ -174,10 +175,7 @@ function DiaryList({
                     return (
                         <div
                             key={entry.id}
-                            className={cx(
-                                'w-full min-w-0 max-w-full',
-                                entryAction && 'space-y-1',
-                            )}
+                            className="w-full min-w-0 max-w-full"
                             data-diary-entry
                         >
                             {entry.isMarkdown ? (
@@ -208,15 +206,25 @@ function DiaryList({
                                                     <Typography
                                                         level="body1"
                                                         semiBold
-                                                        className="break-words"
+                                                        className="flex min-w-0 items-center gap-1.5 break-words"
                                                     >
-                                                        {entry.name}
+                                                        <Image
+                                                            src="https://cdn.gredice.com/sunflower-large.svg"
+                                                            alt=""
+                                                            width={18}
+                                                            height={18}
+                                                            className="size-[18px] shrink-0"
+                                                        />
+                                                        <span className="min-w-0 break-words">
+                                                            {entry.name}
+                                                        </span>
                                                     </Typography>
                                                     <Typography
                                                         level="body2"
                                                         className="break-words"
                                                     >
-                                                        Klikni za prikaz analize
+                                                        Klikni za prikaz savjeta
+                                                        suncokreta
                                                     </Typography>
                                                 </Stack>
                                             </Row>
@@ -268,6 +276,11 @@ function DiaryList({
                                                     >
                                                         {entry.description}
                                                     </Typography>
+                                                    {entryAction && (
+                                                        <div className="mt-2 w-fit max-w-full">
+                                                            {entryAction}
+                                                        </div>
+                                                    )}
                                                 </Stack>
                                             </Row>
                                             <Stack className="w-full min-w-0 items-start sm:w-auto sm:shrink-0 sm:items-end">
@@ -308,11 +321,6 @@ function DiaryList({
                                     }
                                 />
                             )}
-                            {entryAction && (
-                                <div className="flex justify-end px-2 pb-2">
-                                    {entryAction}
-                                </div>
-                            )}
                         </div>
                     );
                 })}
@@ -322,7 +330,7 @@ function DiaryList({
                 onOpenChange={(open) => {
                     if (!open) setExpandedAiEntry(null);
                 }}
-                title={expandedAiEntry?.name ?? 'AI analiza'}
+                title={expandedAiEntry?.name ?? 'Savjeti suncokreta'}
                 className="md:max-w-3xl"
             >
                 {expandedAiEntry && (

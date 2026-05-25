@@ -15,6 +15,7 @@ export * from './repositories/accountInvitationsRepo';
 export * from './repositories/accountsRepo';
 export * from './repositories/achievementsRepo';
 export * from './repositories/analyticsRepo';
+export * from './repositories/approvalRequestsRepo';
 export * from './repositories/attributeDefinitionsRepo';
 export * from './repositories/attributeValuesRepo';
 export * from './repositories/cmsPagesRepo';
