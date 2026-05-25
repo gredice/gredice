@@ -29,9 +29,9 @@ export type ChipProps = PropsWithChildren<{
 }>;
 
 const sizeClassNames = {
-    sm: 'min-h-6 px-1.5 py-0.5 text-xs leading-none',
-    md: 'min-h-7 px-2 py-1 text-sm leading-none',
-    lg: 'min-h-8 px-3 py-1 text-sm leading-none',
+    sm: 'min-h-6 px-1.5 py-0.5 text-xs',
+    md: 'min-h-7 px-2 py-1 text-sm',
+    lg: 'min-h-8 px-3 py-1 text-sm',
 };
 
 const decoratorSizeClassNames = {
