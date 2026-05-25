@@ -2,13 +2,41 @@ import { getEntitiesFormatted, getOperations } from '@gredice/storage';
 import { streamText } from 'ai';
 import { validateHostedImageUrl } from '../http/safeUrls';
 
-const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5';
+const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5.5';
 
-/** Max AI analysis requests per account per day. */
-export const AI_ANALYSIS_DAILY_LIMIT = 10;
+export const AI_REQUEST_QUOTA_WINDOW_DAYS = 7;
+export const AI_REQUEST_QUOTA_WINDOW_MS =
+    AI_REQUEST_QUOTA_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+export const AI_REQUEST_WEEKLY_LIMIT = 5;
+export const RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND =
+    'raisedBedImageAnalysis' as const;
+
+export type AiRequestKind = typeof RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND;
+
+export const AI_REQUEST_QUOTAS = {
+    [RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND]: {
+        limit: AI_REQUEST_WEEKLY_LIMIT,
+        windowDays: AI_REQUEST_QUOTA_WINDOW_DAYS,
+        windowMs: AI_REQUEST_QUOTA_WINDOW_MS,
+    },
+} as const satisfies Record<
+    AiRequestKind,
+    { limit: number; windowDays: number; windowMs: number }
+>;
 
 export function validateImageUrl(imageUrl: string): string | null {
     return validateHostedImageUrl(imageUrl);
+}
+
+export function validateImageUrls(imageUrls: string[]): string | null {
+    for (const imageUrl of imageUrls) {
+        const error = validateImageUrl(imageUrl);
+        if (error) {
+            return error;
+        }
+    }
+
+    return null;
 }
 
 function daysSince(date: Date | string | null | undefined) {
@@ -49,7 +77,7 @@ type AnalysisParams = {
     accountId: string;
     gardenId: number;
     raisedBed: RaisedBedAnalysisTarget;
-    imageUrl: string;
+    imageUrls: string[];
     positionIndex?: number;
 };
 
@@ -57,7 +85,7 @@ async function buildAnalysisMessages({
     accountId,
     gardenId,
     raisedBed,
-    imageUrl,
+    imageUrls,
     positionIndex,
 }: AnalysisParams) {
     const [plantSorts, operations, operationsData] = await Promise.all([
@@ -84,6 +112,11 @@ async function buildAnalysisMessages({
             entity.information?.label ?? entity.information?.name ?? entity.id,
         ]),
     );
+    const availableOperations = operationsData.map((entity) => ({
+        id: entity.id,
+        name:
+            entity.information?.label ?? entity.information?.name ?? entity.id,
+    }));
 
     const plantedFields = raisedBed.fields
         .filter((field) => field.active && field.plantSortId)
@@ -120,7 +153,7 @@ async function buildAnalysisMessages({
         {
             role: 'system' as const,
             content:
-                'Ti si stručni agronom za urbane vrtove. Piši ISKLJUČIVO na hrvatskom jeziku i vrati odgovor kao uredno formatiran markdown.',
+                'Ti si stručni agronom za urbane vrtove. Piši ISKLJUČIVO na hrvatskom jeziku i vrati odgovor kao uredno formatiran markdown. Korisnik nema fizički pristup gredici; kada preporuka traži rad na gredici, predloži naručivanje najbliže odgovarajuće operacije iz dostupnog popisa umjesto da korisniku kažeš da to sam ručno napravi.',
         },
         {
             role: 'user' as const,
@@ -129,8 +162,9 @@ async function buildAnalysisMessages({
                     type: 'text' as const,
                     text: [
                         typeof positionIndex === 'number'
-                            ? 'Analiziraj fotografiju vrta i kontekst te napiši praktične preporuke za označeno polje i ostatak gredice.'
-                            : 'Analiziraj fotografiju gredice i kontekst te napiši praktične preporuke za cijelu gredicu.',
+                            ? 'Analiziraj sve fotografije vrta i kontekst te napiši objedinjene praktične preporuke za označeno polje i ostatak gredice.'
+                            : 'Analiziraj sve fotografije gredice i kontekst te napiši objedinjene praktične preporuke za cijelu gredicu.',
+                        'Fotografije su različiti pogledi istog dnevničkog unosa; nemoj ih tretirati kao zasebne zahtjeve.',
                         'Odgovor MORA imati ove markdown sekcije:',
                         '## Sažetak stanja',
                         '## Globalne preporuke (2-4 stavke)',
@@ -144,7 +178,9 @@ async function buildAnalysisMessages({
                                     typeof positionIndex === 'number'
                                         ? positionIndex
                                         : null,
+                                imageCount: imageUrls.length,
                                 plantedFields,
+                                availableOperations,
                                 executedOperations,
                             },
                             null,
@@ -152,10 +188,10 @@ async function buildAnalysisMessages({
                         ),
                     ].join('\n'),
                 },
-                {
+                ...imageUrls.map((imageUrl) => ({
                     type: 'image' as const,
                     image: new URL(imageUrl),
-                },
+                })),
             ],
         },
     ];

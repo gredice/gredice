@@ -167,6 +167,21 @@
             "objects": ["Composter"]
         },
         {
+            "name": "BirdHouse",
+            "source": "BirdHouse.blend",
+            "output": "BirdHouse.glb",
+            "preload": "lazy",
+            "objects": [
+                "Birdhouse_Angled_Supports",
+                "Birdhouse_Cabin_Walls",
+                "Birdhouse_Center_Post",
+                "Birdhouse_Perch",
+                "Birdhouse_Ridge_Cap",
+                "Birdhouse_Roof_Panels",
+                "Birdhouse_Upper_Platform"
+            ]
+        },
+        {
             "name": "Fence",
             "source": "Fence.blend",
             "output": "Fence.glb",
@@ -259,6 +274,91 @@
             "output": "Tulip.glb",
             "preload": "lazy",
             "objects": ["Tulip"]
+        },
+        {
+            "name": "PotLowBowl",
+            "source": "PotLowBowl.blend",
+            "output": "PotLowBowl.glb",
+            "preload": "lazy",
+            "objects": ["PotVariant_01_Low_Bowl", "PotVariant_Soil_01"]
+        },
+        {
+            "name": "PotRoundedBowl",
+            "source": "PotRoundedBowl.blend",
+            "output": "PotRoundedBowl.glb",
+            "preload": "lazy",
+            "objects": ["PotVariant_02_Rounded_Bowl", "PotVariant_Soil_02"]
+        },
+        {
+            "name": "PotBulbousNeck",
+            "source": "PotBulbousNeck.blend",
+            "output": "PotBulbousNeck.glb",
+            "preload": "lazy",
+            "objects": ["PotVariant_03_Bulbous_Neck", "PotVariant_Soil_03"]
+        },
+        {
+            "name": "PotTallTapered",
+            "source": "PotTallTapered.blend",
+            "output": "PotTallTapered.glb",
+            "preload": "lazy",
+            "objects": ["PotVariant_04_Tall_Tapered", "PotVariant_Soil_04"]
+        },
+        {
+            "name": "PotHourglass",
+            "source": "PotHourglass.blend",
+            "output": "PotHourglass.glb",
+            "preload": "lazy",
+            "objects": ["PotVariant_05_Hourglass", "PotVariant_Soil_05"]
+        },
+        {
+            "name": "PotStraightShortTub",
+            "source": "PotStraightShortTub.blend",
+            "output": "PotStraightShortTub.glb",
+            "preload": "lazy",
+            "objects": [
+                "PotVariant_06_Straight_Short_Tub",
+                "PotVariant_Soil_06"
+            ]
+        },
+        {
+            "name": "PotNarrowFootBowl",
+            "source": "PotNarrowFootBowl.blend",
+            "output": "PotNarrowFootBowl.glb",
+            "preload": "lazy",
+            "objects": [
+                "PotVariant_07_Narrow_Foot_Bowl",
+                "PotVariant_Soil_07"
+            ]
+        },
+        {
+            "name": "PotSquatRidged",
+            "source": "PotSquatRidged.blend",
+            "output": "PotSquatRidged.glb",
+            "preload": "lazy",
+            "objects": [
+                "PotVariant_08_Squat_Ridged_Pot",
+                "PotVariant_Soil_08"
+            ]
+        },
+        {
+            "name": "PotTallSlenderCone",
+            "source": "PotTallSlenderCone.blend",
+            "output": "PotTallSlenderCone.glb",
+            "preload": "lazy",
+            "objects": [
+                "PotVariant_09_Tall_Slender_Cone",
+                "PotVariant_Soil_09"
+            ]
+        },
+        {
+            "name": "PotWideLippedCup",
+            "source": "PotWideLippedCup.blend",
+            "output": "PotWideLippedCup.glb",
+            "preload": "lazy",
+            "objects": [
+                "PotVariant_10_Wide_Lipped_Cup",
+                "PotVariant_Soil_10"
+            ]
         }
     ]
 }

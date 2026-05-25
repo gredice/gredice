@@ -1,5 +1,6 @@
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { BaleHey } from './BaleHey';
+import { BirdHouse } from './BirdHouse';
 import { BlockGrass } from './BlockGrass';
 import { BlockGrassAngle } from './BlockGrassAngle';
 import { BlockGround } from './BlockGround';
@@ -28,6 +29,7 @@ import { GiftBoxRedWhite } from './GiftBoxRedWhite';
 import { GiftBoxWhiteGreen } from './GiftBoxWhiteGreen';
 import { Pine } from './Pine';
 import { PineAdvent } from './PineAdvent';
+import { Pot } from './Pot';
 import { RaisedBed } from './RaisedBed';
 import { MulchCoconut } from './raisedBed/MulchCoconut';
 import { MulchHey } from './raisedBed/MulchHey';
@@ -68,6 +70,7 @@ export const entityNameMap: Record<
     GardenBox: GardenBox,
     Stool: Stool,
     Bucket: Bucket,
+    BirdHouse: BirdHouse,
     GiftBox_RedWhite: GiftBoxRedWhite,
     GiftBox_GreenGold: GiftBoxGreenGold,
     GiftBox_BlueWhite: GiftBoxBlueWhite,
@@ -85,6 +88,16 @@ export const entityNameMap: Record<
     Snowman: Snowman,
     Tulip: Tulip,
     BaleHey: BaleHey,
+    PotLowBowl: Pot,
+    PotRoundedBowl: Pot,
+    PotBulbousNeck: Pot,
+    PotTallTapered: Pot,
+    PotHourglass: Pot,
+    PotStraightShortTub: Pot,
+    PotNarrowFootBowl: Pot,
+    PotSquatRidged: Pot,
+    PotTallSlenderCone: Pot,
+    PotWideLippedCup: Pot,
 
     // Raised bed items
     MulchHey: MulchHey,

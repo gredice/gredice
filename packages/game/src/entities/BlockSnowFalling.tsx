@@ -12,6 +12,7 @@ import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 const SNOW_BLOCK_NAMES = [
     'Block_Snow',
     'Block_Snow_Angle',
+    'Block_Snow_Corner',
     'Block_Snow_Falling',
 ];
 

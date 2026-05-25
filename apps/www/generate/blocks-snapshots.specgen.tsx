@@ -40,6 +40,8 @@ const CLOSEUP_ENTITIES = new Set<string>([
     // Flowers and other small props look better when zoomed in
     'Tulip',
 ]);
+const gameAssetBaseUrl =
+    process.env.GAME_ASSET_BASE_URL ?? 'https://vrt.gredice.com';
 
 function getSnapshotView(entity: BlockData): SnapshotView {
     if (CLOSEUP_ENTITIES.has(entity.information.name)) {
@@ -93,25 +95,29 @@ test.describe('block screenshots', async () => {
                     `rotation ${rotation + 1}`,
                 );
                 const component = await mount(
-                    <NuqsTestingAdapter>
-                        <EntityViewer
-                            className="size-80"
-                            zoom={zoom}
-                            itemPosition={itemPosition}
-                            entityName={entity.information.name}
-                            appBaseUrl="https://vrt.gredice.com"
-                            rotation={rotation}
-                        />
-                    </NuqsTestingAdapter>,
+                    <div style={{ width: 160, height: 160 }}>
+                        <NuqsTestingAdapter>
+                            <EntityViewer
+                                style={{ width: 160, height: 160 }}
+                                zoom={zoom}
+                                itemPosition={itemPosition}
+                                entityName={entity.information.name}
+                                appBaseUrl={gameAssetBaseUrl}
+                                rotation={rotation}
+                            />
+                        </NuqsTestingAdapter>
+                    </div>,
                 );
 
                 // Wait for possible animations to finish
                 await new Promise((resolve) => setTimeout(resolve, 1000));
+                const canvas = component.locator('canvas').first();
+                await canvas.waitFor({ state: 'visible' });
 
                 console.debug('Taking screenshot now...');
 
                 // Save rotation-specific version
-                await component.screenshot({
+                await canvas.screenshot({
                     omitBackground: true,
                     path: `./public/assets/blocks/${entity.information.name}_${rotation + 1}.png`,
                     animations: 'disabled',
@@ -119,7 +125,7 @@ test.describe('block screenshots', async () => {
 
                 // Save base version (unsuffixed) for the first rotation to maintain backward compatibility
                 if (rotation === 0) {
-                    await component.screenshot({
+                    await canvas.screenshot({
                         omitBackground: true,
                         path: `./public/assets/blocks/${entity.information.name}.png`,
                         animations: 'disabled',

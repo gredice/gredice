@@ -10,6 +10,14 @@ export type AccountSunflowersPayload = {
     reason: string;
 };
 
+export type AiRequestKind = 'raisedBedImageAnalysis';
+
+export type AccountAiRequestPayload = {
+    accountId: string;
+    aiRequestKind: AiRequestKind;
+    requestedAt: string;
+};
+
 // ============================================================================
 // User event payload types
 // ============================================================================
@@ -194,8 +202,11 @@ export type RaisedBedFieldPlantReplaceSortPayload = {
 export type RaisedBedFieldAiAnalysisPayload = {
     markdown: string;
     imageUrl: string;
+    imageUrls?: string[];
     model: string;
     analyzedAt: string;
+    accountId?: string;
+    aiRequestKind?: AiRequestKind;
     inputTokens?: number;
     outputTokens?: number;
     totalTokens?: number;
@@ -275,6 +286,37 @@ export type OperationEventsAnyPayload = Partial<
         OperationFailPayload &
         OperationCancelPayload
 >;
+
+// ============================================================================
+// Approval request event payload types
+// ============================================================================
+export type PlantStatusApprovalTarget = {
+    kind: 'raisedBedField.plantStatus';
+    raisedBedId: number;
+    positionIndex: number;
+    raisedBedFieldId?: number | null;
+    accountId?: string | null;
+    gardenId?: number | null;
+    plantSortId?: number | null;
+    currentStatus?: string | null;
+    requestedStatus: string;
+    effectiveAt?: string | null;
+};
+
+export type ApprovalRequestTarget = PlantStatusApprovalTarget;
+
+export type ApprovalRequestCreatePayload = {
+    target: ApprovalRequestTarget;
+    requestedBy: string;
+    requestedAt: string;
+    note?: string | null;
+};
+
+export type ApprovalRequestReviewPayload = {
+    reviewedBy: string;
+    reviewedAt: string;
+    note?: string | null;
+};
 
 // ============================================================================
 // Delivery event payload types

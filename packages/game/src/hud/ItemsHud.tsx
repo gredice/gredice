@@ -31,6 +31,19 @@ type HudItemPicker = {
 
 type HudItem = HudItemEntity | HudItemPicker | { type: 'separator' };
 
+const potItems: HudItemEntity[] = [
+    { type: 'entity', name: 'PotLowBowl' },
+    { type: 'entity', name: 'PotRoundedBowl' },
+    { type: 'entity', name: 'PotBulbousNeck' },
+    { type: 'entity', name: 'PotTallTapered' },
+    { type: 'entity', name: 'PotHourglass' },
+    { type: 'entity', name: 'PotStraightShortTub' },
+    { type: 'entity', name: 'PotNarrowFootBowl' },
+    { type: 'entity', name: 'PotSquatRidged' },
+    { type: 'entity', name: 'PotTallSlenderCone' },
+    { type: 'entity', name: 'PotWideLippedCup' },
+];
+
 const items: HudItem[] = [
     {
         type: 'picker',
@@ -51,6 +64,12 @@ const items: HudItem[] = [
     },
     {
         type: 'picker',
+        label: 'Tegle',
+        imageSrc: 'https://www.gredice.com/assets/blocks/PotWideLippedCup.png',
+        items: potItems,
+    },
+    {
+        type: 'picker',
         label: 'Dekoracija',
         imageSrc: 'https://www.gredice.com/assets/blocks/Shade.png',
         items: [
@@ -60,6 +79,7 @@ const items: HudItem[] = [
             { type: 'entity', name: 'StoneSmall' },
             { type: 'entity', name: 'StoneMedium' },
             { type: 'entity', name: 'StoneLarge' },
+            { type: 'entity', name: 'BirdHouse' },
             { type: 'entity', name: 'Bush' },
             { type: 'entity', name: 'Tree' },
             { type: 'entity', name: 'Pine' },
