@@ -8,6 +8,10 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import Link from 'next/link';
 import {
+    scrollableTableCardClassName,
+    scrollableTableCardOverflowClassName,
+} from '../../../../components/admin/cards/tableCardLayout';
+import {
     EntityDetailsPanelCard,
     EntityDetailsPropertiesLayout,
     EntityDetailsPropertiesPanel,
@@ -148,11 +152,13 @@ export default async function AccountPage({
                 <EntityDetailsPropertiesLayout properties={propertiesPanel}>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <AccountUsersCard accountId={accountId} />
-                        <Card>
+                        <Card className={scrollableTableCardClassName}>
                             <CardHeader>
                                 <CardTitle>Vrtovi</CardTitle>
                             </CardHeader>
-                            <CardOverflow>
+                            <CardOverflow
+                                className={scrollableTableCardOverflowClassName}
+                            >
                                 <GardensTable
                                     gardens={gardens}
                                     showAccountColumn={false}
@@ -164,7 +170,7 @@ export default async function AccountPage({
                         <AccountSunflowersCard accountId={accountId} />
                         <AccountAchievementsCard accountId={accountId} />
                         <AccountTransactionsCard accountId={accountId} />
-                        <RaisedBedsTableCard accountId={accountId} />
+                        <RaisedBedsTableCard accountId={accountId} scroll />
                         <AccountEventsCard
                             accountId={accountId}
                             searchParams={resolvedSearchParams}
@@ -175,11 +181,13 @@ export default async function AccountPage({
                             scroll
                         />
                         <AccountInventoryCard accountId={accountId} />
-                        <Card>
+                        <Card className={scrollableTableCardClassName}>
                             <CardHeader>
                                 <CardTitle>Košarice</CardTitle>
                             </CardHeader>
-                            <CardOverflow>
+                            <CardOverflow
+                                className={scrollableTableCardOverflowClassName}
+                            >
                                 <ShoppingCartsTable
                                     accountId={accountId}
                                     showIdColumn={false}

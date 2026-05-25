@@ -11,6 +11,10 @@ import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Stack } from '@gredice/ui/Stack';
 import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
+import {
+    scrollableTableCardClassName,
+    scrollableTableCardOverflowClassName,
+} from '../../../../components/admin/cards/tableCardLayout';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 
 function statusLabel(status: string) {
@@ -37,7 +41,7 @@ export async function AccountAchievementsCard({
     );
 
     return (
-        <Card>
+        <Card className={scrollableTableCardClassName}>
             <CardHeader>
                 <CardTitle>Postignuća</CardTitle>
             </CardHeader>
@@ -48,90 +52,77 @@ export async function AccountAchievementsCard({
                     </Typography>
                 </Stack>
             </CardContent>
-            <CardOverflow>
-                <div className="max-h-80 overflow-auto">
-                    <Table>
-                        <Table.Header>
+            <CardOverflow className={scrollableTableCardOverflowClassName}>
+                <Table>
+                    <Table.Header>
+                        <Table.Row>
+                            <Table.Head>Postignuće</Table.Head>
+                            <Table.Head>Status</Table.Head>
+                            <Table.Head>Nagrada</Table.Head>
+                            <Table.Head>Stečeno</Table.Head>
+                            <Table.Head>Odobreno</Table.Head>
+                        </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
+                        {sorted.length === 0 && (
                             <Table.Row>
-                                <Table.Head>Postignuće</Table.Head>
-                                <Table.Head>Status</Table.Head>
-                                <Table.Head>Nagrada</Table.Head>
-                                <Table.Head>Stečeno</Table.Head>
-                                <Table.Head>Odobreno</Table.Head>
+                                <Table.Cell colSpan={5}>
+                                    <NoDataPlaceholder>
+                                        Nema zabilježenih postignuća
+                                    </NoDataPlaceholder>
+                                </Table.Cell>
                             </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {sorted.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={5}>
-                                        <NoDataPlaceholder>
-                                            Nema zabilježenih postignuća
-                                        </NoDataPlaceholder>
+                        )}
+                        {sorted.map((achievement) => {
+                            const definition = getAchievementDefinition(
+                                achievement.achievementKey,
+                            );
+                            const status = statusLabel(achievement.status);
+                            return (
+                                <Table.Row key={achievement.id}>
+                                    <Table.Cell>
+                                        <Stack spacing={2}>
+                                            <Typography level="body2" semiBold>
+                                                {definition?.title ??
+                                                    achievement.achievementKey}
+                                            </Typography>
+                                            <Typography level="body3" secondary>
+                                                {definition?.description}
+                                            </Typography>
+                                        </Stack>
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        <Typography className={status.color}>
+                                            {status.label}
+                                        </Typography>
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        🌻{' '}
+                                        {achievement.rewardSunflowers.toLocaleString(
+                                            'hr-HR',
+                                        )}
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        <LocalDateTime>
+                                            {achievement.earnedAt}
+                                        </LocalDateTime>
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        {achievement.approvedAt ? (
+                                            <LocalDateTime>
+                                                {achievement.approvedAt}
+                                            </LocalDateTime>
+                                        ) : (
+                                            <Typography level="body3" secondary>
+                                                —
+                                            </Typography>
+                                        )}
                                     </Table.Cell>
                                 </Table.Row>
-                            )}
-                            {sorted.map((achievement) => {
-                                const definition = getAchievementDefinition(
-                                    achievement.achievementKey,
-                                );
-                                const status = statusLabel(achievement.status);
-                                return (
-                                    <Table.Row key={achievement.id}>
-                                        <Table.Cell>
-                                            <Stack spacing={2}>
-                                                <Typography
-                                                    level="body2"
-                                                    semiBold
-                                                >
-                                                    {definition?.title ??
-                                                        achievement.achievementKey}
-                                                </Typography>
-                                                <Typography
-                                                    level="body3"
-                                                    secondary
-                                                >
-                                                    {definition?.description}
-                                                </Typography>
-                                            </Stack>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <Typography
-                                                className={status.color}
-                                            >
-                                                {status.label}
-                                            </Typography>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            🌻{' '}
-                                            {achievement.rewardSunflowers.toLocaleString(
-                                                'hr-HR',
-                                            )}
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <LocalDateTime>
-                                                {achievement.earnedAt}
-                                            </LocalDateTime>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            {achievement.approvedAt ? (
-                                                <LocalDateTime>
-                                                    {achievement.approvedAt}
-                                                </LocalDateTime>
-                                            ) : (
-                                                <Typography
-                                                    level="body3"
-                                                    secondary
-                                                >
-                                                    —
-                                                </Typography>
-                                            )}
-                                        </Table.Cell>
-                                    </Table.Row>
-                                );
-                            })}
-                        </Table.Body>
-                    </Table>
-                </div>
+                            );
+                        })}
+                    </Table.Body>
+                </Table>
             </CardOverflow>
         </Card>
     );

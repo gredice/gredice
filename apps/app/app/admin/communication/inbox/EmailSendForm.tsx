@@ -132,6 +132,7 @@ export function EmailSendForm({ from }: { from: string }) {
                                             value={from}
                                             readOnly
                                             className="bg-muted"
+                                            fullWidth
                                         />
                                     </div>
                                 </Row>
@@ -143,6 +144,7 @@ export function EmailSendForm({ from }: { from: string }) {
                                 type="email"
                                 placeholder="primatelj@example.com"
                                 required
+                                fullWidth
                             />
                             <Input
                                 disabled={pending}
@@ -151,6 +153,7 @@ export function EmailSendForm({ from }: { from: string }) {
                                 type="text"
                                 placeholder="Unesite naslov..."
                                 required
+                                fullWidth
                             />
                             <Stack spacing={2}>
                                 <input

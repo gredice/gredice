@@ -20,6 +20,10 @@ import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import Link from 'next/link';
 import { KnownPages } from '../../src/KnownPages';
+import {
+    scrollableTableCardClassName,
+    scrollableTableCardOverflowClassName,
+} from '../admin/cards/tableCardLayout';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
 import { ServerActionIconButton } from '../shared/ServerActionIconButton';
 import { deleteNotification } from './(actions)/notificationActions';
@@ -294,7 +298,7 @@ export async function NotificationsTableCard({
     }
 
     return (
-        <Card>
+        <Card className={scroll ? scrollableTableCardClassName : undefined}>
             <CardHeader>
                 <Row justifyContent="space-between">
                     <CardTitle>Obavijesti</CardTitle>
@@ -307,7 +311,9 @@ export async function NotificationsTableCard({
                     />
                 </Row>
             </CardHeader>
-            <CardOverflow className={cx(scroll && 'max-h-96 overflow-auto')}>
+            <CardOverflow
+                className={cx(scroll && scrollableTableCardOverflowClassName)}
+            >
                 {tableContent}
             </CardOverflow>
         </Card>

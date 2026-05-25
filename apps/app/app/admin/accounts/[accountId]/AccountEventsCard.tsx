@@ -12,6 +12,10 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { ReactNode } from 'react';
+import {
+    scrollableTableCardClassName,
+    scrollableTableCardOverflowClassName,
+} from '../../../../components/admin/cards/tableCardLayout';
 import { EventsTable } from '../../../../components/shared/events/EventsTable';
 import { KnownPages } from '../../../../src/KnownPages';
 
@@ -156,7 +160,7 @@ export async function AccountEventsCard({
             continue;
         }
         const { id, userName, displayName } = accountUser.user;
-        userLabels.set(id, userName ?? displayName ?? id);
+        userLabels.set(id, userName || displayName || id);
     }
 
     const hasNextPage = eventsPage.length > ACCOUNT_EVENTS_PAGE_SIZE;
@@ -164,11 +168,13 @@ export async function AccountEventsCard({
     const hasPagination = currentPage > 1 || hasNextPage;
 
     return (
-        <Card>
+        <Card className={scrollableTableCardClassName}>
             <CardHeader>
                 <CardTitle id={ACCOUNT_EVENTS_SECTION_ID}>Događaji</CardTitle>
             </CardHeader>
-            <CardOverflow className="mb-0 max-h-96 overflow-auto">
+            <CardOverflow
+                className={`${scrollableTableCardOverflowClassName} mb-0`}
+            >
                 <EventsTable
                     events={events}
                     renderType={(event) =>
