@@ -13,6 +13,7 @@ import {
     SortableContext,
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
+import { slugify } from '@gredice/js/slug';
 import type { SelectCmsPage } from '@gredice/storage';
 import {
     type CmsPageSectionComponent,
@@ -21,24 +22,56 @@ import {
     cmsPageSectionPresets,
 } from '@gredice/storage/cmsPageSections';
 import { Button } from '@gredice/ui/Button';
+import { ButtonGroup, buttonGroupItemClassName } from '@gredice/ui/ButtonGroup';
 import { Card } from '@gredice/ui/Card';
-import { SectionsView } from '@gredice/ui/cms';
+import { Checkbox } from '@gredice/ui/Checkbox';
+import {
+    type CmsPageRenderMaxWidth,
+    type CmsPageRenderMode,
+    type CmsSectionRenderMode,
+    normalizeCmsPageRenderMaxWidth,
+    normalizeCmsPageRenderMode,
+    normalizeCmsSectionRenderMode,
+    parseCmsPageContentDocument,
+    SectionsView,
+} from '@gredice/ui/cms';
+import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
 import {
     Add,
     ArrowDown,
     ArrowUp,
+    Close,
+    Code,
     Delete,
     Desktop,
+    Down,
     Duplicate,
+    ExternalLink,
+    FullWidth,
+    Globe,
+    Info,
+    LayoutGrid,
+    Megaphone,
     Mobile,
     Tablet,
 } from '@gredice/ui/icons';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@gredice/ui/Menu';
+import { PanelSection } from '@gredice/ui/PanelSection';
 import { Row } from '@gredice/ui/Row';
-import { SelectItems } from '@gredice/ui/SelectItems';
+import {
+    SidePanelLayout,
+    SidePanelToggleButton,
+} from '@gredice/ui/SidePanelLayout';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import {
+    type ReactNode,
     useActionState,
     useEffect,
     useId,
@@ -46,33 +79,42 @@ import {
     useRef,
     useState,
 } from 'react';
+import {
+    AdminPageHeader,
+    DesktopNavCollapseOnMount,
+} from '../../../../components/admin/navigation';
 import { sectionsComponentRegistry } from '../../../../components/shared/sectionsComponentRegistry';
+import { KnownPages } from '../../../../src/KnownPages';
 import type { CmsPageAutosaveState, CmsPageFormState } from './actions';
 import type {
     CmsPageEditableSection,
     CmsPageSectionData,
 } from './CmsPageFormTypes';
 import { CmsPageSectionFields } from './CmsPageSectionFields';
-import { CmsPageSectionLibrary } from './CmsPageSectionLibrary';
+import {
+    CmsPageSectionLibrary,
+    componentPreviewSectionData,
+    type SectionInfoItem,
+    SectionInfoModal,
+} from './CmsPageSectionLibrary';
 import { CmsPageSortablePreviewSection } from './CmsPageSortablePreviewSection';
+import {
+    type CmsPreviewViewport,
+    cmsPagePreviewViewportClassNames,
+    useCmsPreviewViewportSupport,
+} from './CmsPreviewViewport';
 
 type CmsPageFormProps = {
     page?: SelectCmsPage;
+    formId?: string;
+    breadcrumbs?: ReactNode;
+    heading?: ReactNode;
     action: (
         previousState: CmsPageFormState,
         formData: FormData,
     ) => Promise<CmsPageFormState>;
-    submitLabel: string;
     autosaveAction?: (formData: FormData) => Promise<CmsPageAutosaveState>;
 };
-
-const cmsPageStateItems = [
-    { value: 'draft', label: 'Draft' },
-    {
-        value: 'published',
-        label: 'Objavljeno',
-    },
-];
 
 const cmsPageSectionComponentsByName = new Map<string, CmsPageSectionComponent>(
     cmsPageSectionComponents.map((component) => [
@@ -81,20 +123,90 @@ const cmsPageSectionComponentsByName = new Map<string, CmsPageSectionComponent>(
     ]),
 );
 
+const cmsPageSectionPresetDataByComponent = new Map(
+    cmsPageSectionPresets.map((preset) => [preset.data.component, preset.data]),
+);
+
+const renderMaxWidthOptions: CmsPageRenderMaxWidth[] = [
+    'xs',
+    'sm',
+    'md',
+    'lg',
+    'xl',
+];
+
+const cmsPageNavigatorCollapsedStorageKey =
+    'gredice:cms-pages:editor:navigator-collapsed';
+const cmsPageRightPanelCollapsedStorageKeyPrefix =
+    'gredice:cms-pages:editor:right-panel-collapsed:';
+
+function readStoredPanelCollapsedState(key: string) {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    try {
+        const value = window.localStorage.getItem(key);
+        if (value === 'true') {
+            return true;
+        }
+        if (value === 'false') {
+            return false;
+        }
+    } catch {
+        return null;
+    }
+
+    return null;
+}
+
+function writeStoredPanelCollapsedState(key: string, collapsed: boolean) {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    try {
+        window.localStorage.setItem(key, String(collapsed));
+    } catch {
+        // Ignore unavailable localStorage, for example private browsing quotas.
+    }
+}
+
 function parseSections(content?: string | null) {
     if (!content) {
-        return { isStructured: true, sections: [] };
+        return {
+            isStructured: true,
+            sections: [],
+            renderMode: normalizeCmsPageRenderMode(undefined),
+            renderMaxWidth: normalizeCmsPageRenderMaxWidth(undefined),
+        };
     }
 
     try {
         const parsed: unknown = JSON.parse(content);
-        if (!Array.isArray(parsed)) {
-            return { isStructured: false, sections: [] };
+        if (
+            !Array.isArray(parsed) &&
+            !(
+                parsed &&
+                typeof parsed === 'object' &&
+                'sections' in parsed &&
+                Array.isArray(parsed.sections)
+            )
+        ) {
+            return {
+                isStructured: false,
+                sections: [],
+                renderMode: normalizeCmsPageRenderMode(undefined),
+                renderMaxWidth: normalizeCmsPageRenderMaxWidth(undefined),
+            };
         }
 
+        const document = parseCmsPageContentDocument(parsed);
         return {
             isStructured: true,
-            sections: parsed.filter(
+            renderMode: document.renderMode,
+            renderMaxWidth: document.renderMaxWidth,
+            sections: document.sectionsData.filter(
                 (section): section is CmsPageSectionData =>
                     Boolean(section) &&
                     typeof section === 'object' &&
@@ -103,7 +215,12 @@ function parseSections(content?: string | null) {
             ),
         };
     } catch {
-        return { isStructured: false, sections: [] };
+        return {
+            isStructured: false,
+            sections: [],
+            renderMode: normalizeCmsPageRenderMode(undefined),
+            renderMaxWidth: normalizeCmsPageRenderMaxWidth(undefined),
+        };
     }
 }
 
@@ -135,9 +252,37 @@ function editableSections(sections: CmsPageSectionData[]) {
     });
 }
 
-function stringifySections(sections: CmsPageEditableSection[]) {
+function stringifySections(
+    sections: CmsPageEditableSection[],
+    renderMode: CmsPageRenderMode,
+    renderMaxWidth: CmsPageRenderMaxWidth,
+) {
     const data = sections.map((section) => section.data);
-    return data.length > 0 ? JSON.stringify(data, null, 2) : '';
+    if (data.length === 0) {
+        return '';
+    }
+
+    if (renderMode === 'container' && renderMaxWidth === 'lg') {
+        return JSON.stringify(data, null, 2);
+    }
+
+    const document: {
+        renderMode?: CmsPageRenderMode;
+        renderMaxWidth?: CmsPageRenderMaxWidth;
+        sections: CmsPageSectionData[];
+    } = {
+        sections: data,
+    };
+
+    if (renderMode !== 'container') {
+        document.renderMode = renderMode;
+    }
+
+    if (renderMode === 'container' && renderMaxWidth !== 'lg') {
+        document.renderMaxWidth = renderMaxWidth;
+    }
+
+    return JSON.stringify(document, null, 2);
 }
 
 function sectionValue(section: CmsPageEditableSection, key: string) {
@@ -183,6 +328,153 @@ function sectionSummary(section: CmsPageEditableSection) {
     }
 
     return '';
+}
+
+function sectionRenderMode(section: CmsPageEditableSection) {
+    return normalizeCmsSectionRenderMode(section.data.renderMode);
+}
+
+function sectionRenderMaxWidth(section: CmsPageEditableSection) {
+    return normalizeCmsPageRenderMaxWidth(section.data.renderMaxWidth);
+}
+
+function sectionRenderCustomIndicator(section: CmsPageEditableSection) {
+    const renderMode = sectionRenderMode(section);
+    if (renderMode === 'inherit') {
+        return null;
+    }
+
+    if (renderMode === 'fullWidth') {
+        return {
+            icon: <FullWidth className="size-3.5" />,
+            label: 'Puna širina',
+        };
+    }
+
+    const size = sectionRenderMaxWidth(section).toUpperCase();
+    return {
+        icon: <LayoutGrid className="size-3.5" />,
+        label: `Kontejner ${size}`,
+        text: size,
+    };
+}
+
+function PageRenderModeButtonGroup({
+    value,
+    onChange,
+}: {
+    value: CmsPageRenderMode;
+    onChange: (value: CmsPageRenderMode) => void;
+}) {
+    return (
+        <ButtonGroup legend="Prikaz stranice" size="sm">
+            <Button
+                type="button"
+                variant={value === 'container' ? 'solid' : 'plain'}
+                size="sm"
+                className={buttonGroupItemClassName({ iconOnly: true })}
+                aria-pressed={value === 'container'}
+                aria-label="Kontejner"
+                title="Kontejner"
+                onClick={() => onChange('container')}
+            >
+                <LayoutGrid className="size-4" />
+            </Button>
+            <Button
+                type="button"
+                variant={value === 'fullWidth' ? 'solid' : 'plain'}
+                size="sm"
+                className={buttonGroupItemClassName({ iconOnly: true })}
+                aria-pressed={value === 'fullWidth'}
+                aria-label="Puna širina"
+                title="Puna širina"
+                onClick={() => onChange('fullWidth')}
+            >
+                <FullWidth className="size-4" />
+            </Button>
+        </ButtonGroup>
+    );
+}
+
+function SectionRenderModeButtonGroup({
+    value,
+    onChange,
+}: {
+    value: CmsSectionRenderMode;
+    onChange: (value: CmsSectionRenderMode) => void;
+}) {
+    return (
+        <ButtonGroup legend="Prikaz sekcije" size="sm">
+            <Button
+                type="button"
+                variant={value === 'inherit' ? 'solid' : 'plain'}
+                size="sm"
+                className={buttonGroupItemClassName({ iconOnly: true })}
+                aria-pressed={value === 'inherit'}
+                aria-label="Auto"
+                title="Auto"
+                onClick={() => onChange('inherit')}
+            >
+                <span aria-hidden="true" className="text-xs font-semibold">
+                    A
+                </span>
+            </Button>
+            <Button
+                type="button"
+                variant={value === 'container' ? 'solid' : 'plain'}
+                size="sm"
+                className={buttonGroupItemClassName({ iconOnly: true })}
+                aria-pressed={value === 'container'}
+                aria-label="Kontejner"
+                title="Kontejner"
+                onClick={() => onChange('container')}
+            >
+                <LayoutGrid className="size-4" />
+            </Button>
+            <Button
+                type="button"
+                variant={value === 'fullWidth' ? 'solid' : 'plain'}
+                size="sm"
+                className={buttonGroupItemClassName({ iconOnly: true })}
+                aria-pressed={value === 'fullWidth'}
+                aria-label="Puna širina"
+                title="Puna širina"
+                onClick={() => onChange('fullWidth')}
+            >
+                <FullWidth className="size-4" />
+            </Button>
+        </ButtonGroup>
+    );
+}
+
+function RenderMaxWidthButtonGroup({
+    legend,
+    value,
+    onChange,
+}: {
+    legend: string;
+    value: CmsPageRenderMaxWidth;
+    onChange: (value: CmsPageRenderMaxWidth) => void;
+}) {
+    return (
+        <ButtonGroup legend={legend} size="sm">
+            {renderMaxWidthOptions.map((option) => (
+                <Button
+                    key={option}
+                    type="button"
+                    variant={value === option ? 'solid' : 'plain'}
+                    size="sm"
+                    className={buttonGroupItemClassName()}
+                    aria-pressed={value === option}
+                    aria-label={option.toUpperCase()}
+                    title={option.toUpperCase()}
+                    onClick={() => onChange(option)}
+                >
+                    {option.toUpperCase()}
+                </Button>
+            ))}
+        </ButtonGroup>
+    );
 }
 
 function moveSection(
@@ -270,6 +562,20 @@ function formatLastSavedAt(value: number | null) {
     }).format(new Date(value));
 }
 
+function normalizeCmsPageSlugInput(value: string) {
+    return value
+        .trim()
+        .split('/')
+        .map((segment) => slugify(segment))
+        .filter((segment) => segment.length > 0)
+        .join('/');
+}
+
+function canonicalPathFromSlug(value: string) {
+    const normalized = normalizeCmsPageSlugInput(value);
+    return normalized ? `/${normalized}` : '';
+}
+
 function updateSectionData(
     sectionId: string,
     data: CmsPageSectionData,
@@ -289,12 +595,43 @@ function updateSectionData(
 
 export function CmsPageForm({
     page,
+    formId,
+    breadcrumbs,
+    heading,
     action,
-    submitLabel,
     autosaveAction,
 }: CmsPageFormProps) {
     const [state, formAction, pending] = useActionState(action, null);
     const reactId = useId();
+    const resolvedFormId = formId ?? reactId;
+    const initialTitle = page?.title ?? '';
+    const initialSlug = page?.slug ?? '';
+    const storedCanonicalPath = page?.canonicalPath ?? '';
+    const initialCanonicalPath =
+        storedCanonicalPath.trim().length > 0
+            ? storedCanonicalPath
+            : canonicalPathFromSlug(initialSlug);
+    const [title, setTitle] = useState(initialTitle);
+    const [slug, setSlug] = useState(initialSlug);
+    const [isCustomSlug, setIsCustomSlug] = useState(
+        () =>
+            initialSlug.length > 0 &&
+            initialSlug !== normalizeCmsPageSlugInput(initialTitle),
+    );
+    const [canonicalPath, setCanonicalPath] = useState(initialCanonicalPath);
+    const [isCustomCanonicalPath, setIsCustomCanonicalPath] = useState(
+        () =>
+            storedCanonicalPath.trim().length > 0 &&
+            storedCanonicalPath !== canonicalPathFromSlug(initialSlug),
+    );
+    const currentPageState = page?.state ?? 'draft';
+    const isPublished = currentPageState === 'published';
+    const nextPublishState = isPublished ? 'draft' : 'published';
+    const publishButtonLabel = isPublished
+        ? 'Vrati u izradu'
+        : page
+          ? 'Objavi'
+          : 'Kreiraj i objavi';
     const newSectionIdPrefix = useMemo(
         () => `${reactId}-${page?.id ?? 'new'}`,
         [page?.id, reactId],
@@ -303,6 +640,11 @@ export function CmsPageForm({
         () => parseSections(page?.content),
         [page?.content],
     );
+    const [pageRenderMode, setPageRenderMode] = useState<CmsPageRenderMode>(
+        parsedSections.renderMode,
+    );
+    const [pageRenderMaxWidth, setPageRenderMaxWidth] =
+        useState<CmsPageRenderMaxWidth>(parsedSections.renderMaxWidth);
     const nextSectionId = useRef(parsedSections.sections.length);
     const [sections, setSections] = useState<CmsPageEditableSection[]>(() =>
         editableSections(parsedSections.sections),
@@ -312,13 +654,21 @@ export function CmsPageForm({
     const [rawMode, setRawMode] = useState(preserveFallbackContent);
     const [rawContent, setRawContent] = useState(page?.content ?? '');
     const [rawError, setRawError] = useState<string | null>(null);
-    const [metaTitle, setMetaTitle] = useState(page?.metaTitle ?? '');
+    const storedMetaTitle = page?.metaTitle ?? '';
+    const initialMetaTitle =
+        storedMetaTitle.trim().length > 0 ? storedMetaTitle : initialTitle;
+    const [metaTitle, setMetaTitle] = useState(initialMetaTitle);
+    const [isCustomMetaTitle, setIsCustomMetaTitle] = useState(
+        () =>
+            storedMetaTitle.trim().length > 0 &&
+            storedMetaTitle !== initialTitle,
+    );
     const [metaDescription, setMetaDescription] = useState(
         page?.metaDescription ?? '',
     );
     const builderContent = useMemo(
-        () => stringifySections(sections),
-        [sections],
+        () => stringifySections(sections, pageRenderMode, pageRenderMaxWidth),
+        [pageRenderMaxWidth, pageRenderMode, sections],
     );
     const serializedContent = rawMode
         ? rawContent
@@ -334,7 +684,9 @@ export function CmsPageForm({
     const latestAutosaveSnapshot = useRef(autosaveSnapshot);
     const [autosaveStatus, setAutosaveStatus] = useState('saved');
     const [autosaveMessage, setAutosaveMessage] = useState<string | null>(null);
-    const [lastSavedAt, setLastSavedAt] = useState<number | null>(Date.now());
+    const [lastSavedAt, setLastSavedAt] = useState<number | null>(
+        () => page?.updatedAt?.getTime() ?? null,
+    );
     const [lastSavedSnapshot, setLastSavedSnapshot] =
         useState(autosaveSnapshot);
     const [selectedSectionId, setSelectedSectionId] = useState<string | null>(
@@ -342,9 +694,28 @@ export function CmsPageForm({
     );
     const [insertAtEnd, setInsertAtEnd] = useState(false);
     const [sectionSearch, setSectionSearch] = useState('');
-    const [previewViewport, setPreviewViewport] = useState<
-        'mobile' | 'tablet' | 'desktop'
-    >('desktop');
+    const [previewViewport, setPreviewViewport] =
+        useState<CmsPreviewViewport>('desktop');
+    const {
+        containerRef: previewViewportContainerRef,
+        supportedViewports: supportedPreviewViewports,
+    } = useCmsPreviewViewportSupport(previewViewport, setPreviewViewport, {
+        disabled: rawMode,
+    });
+    const [navigatorCollapsed, setNavigatorCollapsed] = useState(false);
+    const [navigatorStorageLoaded, setNavigatorStorageLoaded] = useState(false);
+    const rightPanelStorageKey = useMemo(
+        () =>
+            `${cmsPageRightPanelCollapsedStorageKeyPrefix}${page?.id ?? 'create'}`,
+        [page?.id],
+    );
+    const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+    const [rightPanelStorageLoaded, setRightPanelStorageLoaded] =
+        useState(false);
+    const [publishChecksExpanded, setPublishChecksExpanded] = useState(true);
+    const [sectionInfoItem, setSectionInfoItem] =
+        useState<SectionInfoItem | null>(null);
+    const previousPublishReady = useRef(false);
     const sensors = useSensors(useSensor(PointerSensor));
     const rawReadinessContent = useMemo(
         () => parseSections(rawContent),
@@ -365,6 +736,44 @@ export function CmsPageForm({
         !rawReadinessContent.isStructured
             ? 'JSON fallback mora biti JSON niz sekcija za provjeru obaveznih polja.'
             : null;
+
+    useEffect(() => {
+        const storedCollapsed = readStoredPanelCollapsedState(
+            cmsPageNavigatorCollapsedStorageKey,
+        );
+        setNavigatorCollapsed(storedCollapsed ?? false);
+        setNavigatorStorageLoaded(true);
+    }, []);
+
+    useEffect(() => {
+        if (!navigatorStorageLoaded) {
+            return;
+        }
+
+        writeStoredPanelCollapsedState(
+            cmsPageNavigatorCollapsedStorageKey,
+            navigatorCollapsed,
+        );
+    }, [navigatorCollapsed, navigatorStorageLoaded]);
+
+    useEffect(() => {
+        setRightPanelStorageLoaded(false);
+        const storedCollapsed =
+            readStoredPanelCollapsedState(rightPanelStorageKey);
+        setRightPanelCollapsed(storedCollapsed ?? false);
+        setRightPanelStorageLoaded(true);
+    }, [rightPanelStorageKey]);
+
+    useEffect(() => {
+        if (!rightPanelStorageLoaded) {
+            return;
+        }
+
+        writeStoredPanelCollapsedState(
+            rightPanelStorageKey,
+            rightPanelCollapsed,
+        );
+    }, [rightPanelCollapsed, rightPanelStorageKey, rightPanelStorageLoaded]);
 
     const selectSection = (sectionId: string) => {
         setInsertAtEnd(false);
@@ -400,7 +809,6 @@ export function CmsPageForm({
             const snapshotToSave = autosaveSnapshot;
             setAutosaveStatus('saving');
             const formData = new FormData(form);
-            formData.set('state', 'draft');
             formData.set('content', serializedContent);
 
             const result = await autosaveAction(formData);
@@ -472,31 +880,95 @@ export function CmsPageForm({
             errors: validateSection(section),
         }))
         .filter((entry) => entry.errors.length > 0);
-    const metadataIssues = [
-        ...(metaTitle.trim().length === 0 ? ['Meta naslov'] : []),
-        ...(metaDescription.trim().length === 0 ? ['Meta opis'] : []),
-        ...(metaDescription.length > 160
-            ? ['Meta opis je duži od 160 znakova']
-            : []),
+    const titleReady = title.trim().length > 0;
+    const slugReady = normalizeCmsPageSlugInput(slug).length > 0;
+    const contentStructured = !contentReadinessWarning;
+    const hasContentSections = readinessSections.length > 0;
+    const sectionReadinessItems =
+        missingSectionFields.length > 0
+            ? missingSectionFields.map((entry) => ({
+                  id: `section-${entry.section.id}`,
+                  checked: false,
+                  label: `Sekcija ${entry.index + 1} (${sectionLabel(
+                      entry.section.data.component,
+                  )}) ima popunjena obavezna polja.`,
+              }))
+            : hasContentSections
+              ? [
+                    {
+                        id: 'sections',
+                        checked: true,
+                        label: 'Sve sekcije imaju popunjena obavezna polja.',
+                    },
+                ]
+              : [];
+    const publishReadinessItems = [
+        {
+            id: 'title',
+            checked: titleReady,
+            label: 'Naslov stranice je upisan.',
+        },
+        {
+            id: 'slug',
+            checked: slugReady,
+            label: 'Slug stranice je upisan.',
+        },
+        {
+            id: 'content-structure',
+            checked: contentStructured,
+            label: 'Sadržaj je ispravno strukturiran.',
+        },
+        {
+            id: 'content-sections',
+            checked: hasContentSections,
+            label: 'Dodana je barem jedna sekcija.',
+        },
+        ...sectionReadinessItems,
+        {
+            id: 'meta-title',
+            checked: metaTitle.trim().length > 0,
+            label: 'Meta naslov je upisan.',
+        },
+        {
+            id: 'meta-description',
+            checked: metaDescription.trim().length > 0,
+            label: 'Meta opis je upisan.',
+        },
+        {
+            id: 'meta-description-length',
+            checked: metaDescription.length <= 160,
+            label: 'Meta opis ima najviše 160 znakova.',
+        },
     ];
-    const publishReady =
-        missingSectionFields.length === 0 &&
-        metadataIssues.length === 0 &&
-        !contentReadinessWarning;
-    const autosaveBadgeClassName =
-        autosaveStatus === 'saved'
-            ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-            : autosaveStatus === 'saving'
-              ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
-              : autosaveStatus === 'failed'
-                ? 'bg-red-500/15 text-red-400 border-red-500/30'
-                : 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+    const checkedReadinessCount = publishReadinessItems.filter(
+        (item) => item.checked,
+    ).length;
+    const publishReadinessTotal = publishReadinessItems.length;
+    const publishReady = checkedReadinessCount === publishReadinessTotal;
+    const showPublishChecks = !publishReady || publishChecksExpanded;
+    useEffect(() => {
+        if (publishReady && !previousPublishReady.current) {
+            setPublishChecksExpanded(false);
+        }
+
+        if (!publishReady && previousPublishReady.current) {
+            setPublishChecksExpanded(true);
+        }
+
+        previousPublishReady.current = publishReady;
+    }, [publishReady]);
     const previewViewportClassName =
-        previewViewport === 'mobile'
-            ? 'max-w-sm'
-            : previewViewport === 'tablet'
-              ? 'max-w-2xl'
-              : 'max-w-none';
+        cmsPagePreviewViewportClassNames[previewViewport];
+    const slugHelperText = isCustomSlug
+        ? 'Prilagođeni slug. Sprema se normalizirano i ne smije zauzeti postojeću statičku rutu.'
+        : 'Automatski se generira iz naslova. Sprema se normalizirano i ne smije zauzeti postojeću statičku rutu.';
+    const canonicalPathHelperText = isCustomCanonicalPath
+        ? 'Prilagođena canonical putanja.'
+        : 'Automatski se popunjava iz sluga.';
+    const metaTitleHelperText = isCustomMetaTitle
+        ? 'Prilagođeni meta naslov.'
+        : 'Automatski se popunjava iz naslova stranice.';
+    const formattedLastSavedAt = formatLastSavedAt(lastSavedAt);
 
     const insertSectionData = (data: CmsPageSectionData, index?: number) => {
         const sectionId = nextSectionId.current;
@@ -526,6 +998,507 @@ export function CmsPageForm({
     const insertPreset = (preset: CmsPageSectionPreset, index?: number) => {
         insertSectionData(preset.data, index);
     };
+
+    const pageDetailsPanel = (
+        <PanelSection title="Stranica" contentClassName="px-4 pt-1">
+            <Stack spacing={4}>
+                <input
+                    name="state"
+                    type="hidden"
+                    value={currentPageState}
+                    readOnly
+                />
+                <Input
+                    name="title"
+                    label="Naslov"
+                    value={title}
+                    fullWidth
+                    onChange={(event) => {
+                        const nextTitle = event.target.value;
+                        setTitle(nextTitle);
+                        if (!isCustomSlug) {
+                            const nextSlug =
+                                normalizeCmsPageSlugInput(nextTitle);
+                            setSlug(nextSlug);
+                            if (!isCustomCanonicalPath) {
+                                setCanonicalPath(
+                                    canonicalPathFromSlug(nextSlug),
+                                );
+                            }
+                        }
+                        if (!isCustomMetaTitle) {
+                            setMetaTitle(nextTitle);
+                        }
+                    }}
+                    required
+                />
+                <Input
+                    name="slug"
+                    label="Slug"
+                    value={slug}
+                    fullWidth
+                    placeholder="npr. sezonski-vodic"
+                    helperText={slugHelperText}
+                    endDecorator={
+                        isCustomSlug ? (
+                            <span className="mr-1 flex items-center gap-1">
+                                <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">
+                                    Prilagođeno
+                                </span>
+                                <IconButton
+                                    aria-label="Vrati automatski slug"
+                                    className="size-7 text-muted-foreground"
+                                    size="xs"
+                                    title="Vrati automatski slug"
+                                    type="button"
+                                    variant="plain"
+                                    onClick={() => {
+                                        const nextSlug =
+                                            normalizeCmsPageSlugInput(title);
+                                        setIsCustomSlug(false);
+                                        setSlug(nextSlug);
+                                        if (!isCustomCanonicalPath) {
+                                            setCanonicalPath(
+                                                canonicalPathFromSlug(nextSlug),
+                                            );
+                                        }
+                                    }}
+                                >
+                                    <Close className="size-3.5" />
+                                </IconButton>
+                            </span>
+                        ) : undefined
+                    }
+                    onChange={(event) => {
+                        const nextSlug = event.target.value;
+                        setIsCustomSlug(true);
+                        setSlug(nextSlug);
+                        if (!isCustomCanonicalPath) {
+                            setCanonicalPath(canonicalPathFromSlug(nextSlug));
+                        }
+                    }}
+                    required
+                />
+                <Stack spacing={1}>
+                    <Typography level="body3" semiBold>
+                        Prikaz stranice
+                    </Typography>
+                    <Row spacing={2} className="flex-wrap">
+                        <PageRenderModeButtonGroup
+                            value={pageRenderMode}
+                            onChange={setPageRenderMode}
+                        />
+                        {pageRenderMode === 'container' && (
+                            <RenderMaxWidthButtonGroup
+                                legend="Maksimalna širina stranice"
+                                value={pageRenderMaxWidth}
+                                onChange={setPageRenderMaxWidth}
+                            />
+                        )}
+                    </Row>
+                </Stack>
+                {autosaveAction && (
+                    <div className="space-y-1">
+                        <div className="flex items-center justify-between gap-3">
+                            <Typography level="body3" secondary>
+                                Zadnje spremanje
+                            </Typography>
+                            <Typography
+                                level="body3"
+                                className={
+                                    autosaveStatus === 'failed'
+                                        ? 'text-right text-red-600'
+                                        : 'text-right'
+                                }
+                                secondary={autosaveStatus !== 'failed'}
+                                semiBold={autosaveStatus !== 'saved'}
+                            >
+                                {autosaveStatus === 'failed'
+                                    ? 'Spremanje nije uspjelo.'
+                                    : autosaveStatus === 'unsaved'
+                                      ? 'Nespremljene promjene'
+                                      : autosaveStatus === 'saving'
+                                        ? 'Spremanje u tijeku...'
+                                        : (formattedLastSavedAt ??
+                                          'Nije dostupno')}
+                            </Typography>
+                        </div>
+                        {autosaveStatus === 'failed' && autosaveMessage ? (
+                            <Typography
+                                level="body3"
+                                className="text-right text-red-600"
+                            >
+                                {autosaveMessage}
+                            </Typography>
+                        ) : null}
+                    </div>
+                )}
+            </Stack>
+        </PanelSection>
+    );
+
+    const sectionLibraryPanel = (
+        <PanelSection title="Biblioteka" contentClassName="px-3 pt-1">
+            <CmsPageSectionLibrary
+                query={sectionSearch}
+                components={cmsPageSectionComponents}
+                componentsRegistry={sectionsComponentRegistry}
+                presets={cmsPageSectionPresets}
+                searchLabel="Pretraga"
+                onQueryChange={setSectionSearch}
+                onInsertComponent={(component) =>
+                    insertSection(component, insertionIndex)
+                }
+                onInsertPreset={(preset) =>
+                    insertPreset(preset, insertionIndex)
+                }
+            />
+        </PanelSection>
+    );
+
+    const seoPanel = (
+        <PanelSection title="SEO" contentClassName="px-4 pt-1">
+            <Stack spacing={4}>
+                <Input
+                    name="metaTitle"
+                    label="Meta naslov"
+                    value={metaTitle}
+                    helperText={metaTitleHelperText}
+                    endDecorator={
+                        isCustomMetaTitle ? (
+                            <span className="mr-1 flex items-center gap-1">
+                                <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">
+                                    Prilagođeno
+                                </span>
+                                <IconButton
+                                    aria-label="Vrati automatski meta naslov"
+                                    className="size-7 text-muted-foreground"
+                                    size="xs"
+                                    title="Vrati automatski meta naslov"
+                                    type="button"
+                                    variant="plain"
+                                    onClick={() => {
+                                        setIsCustomMetaTitle(false);
+                                        setMetaTitle(title);
+                                    }}
+                                >
+                                    <Close className="size-3.5" />
+                                </IconButton>
+                            </span>
+                        ) : undefined
+                    }
+                    onChange={(event) => {
+                        setIsCustomMetaTitle(true);
+                        setMetaTitle(event.target.value);
+                    }}
+                />
+                <Input
+                    name="metaDescription"
+                    label="Meta opis"
+                    value={metaDescription}
+                    maxLength={160}
+                    helperText={`${metaDescription.length}/160 znakova`}
+                    onChange={(event) => setMetaDescription(event.target.value)}
+                />
+                <Input
+                    name="metaImageUrl"
+                    label="Meta slika URL"
+                    type="url"
+                    defaultValue={page?.metaImageUrl ?? ''}
+                />
+                <Input
+                    name="canonicalPath"
+                    label="Canonical putanja"
+                    value={canonicalPath}
+                    helperText={canonicalPathHelperText}
+                    placeholder="/primjer-stranice"
+                    onChange={(event) => {
+                        setIsCustomCanonicalPath(true);
+                        setCanonicalPath(event.target.value);
+                    }}
+                />
+                <label className="flex items-center gap-2 text-sm">
+                    <input
+                        type="checkbox"
+                        name="noIndex"
+                        defaultChecked={page?.noIndex ?? false}
+                    />
+                    Isključi iz indeksiranja (noindex)
+                </label>
+                <div className="rounded-md border bg-muted/20 p-3">
+                    <Typography level="body3" semiBold>
+                        {metaTitle || title || 'Meta naslov'}
+                    </Typography>
+                    <Typography
+                        level="body3"
+                        className="line-clamp-3"
+                        secondary
+                    >
+                        {metaDescription ||
+                            'Meta opis za javni prikaz stranice.'}
+                    </Typography>
+                </div>
+            </Stack>
+        </PanelSection>
+    );
+
+    const publishReadinessPanel = (
+        <PanelSection
+            title="Spremnost za objavu"
+            action={
+                <div className="flex items-center gap-2 pr-1 text-xs font-medium text-muted-foreground">
+                    <Checkbox
+                        aria-label={
+                            publishReady
+                                ? 'Stranica je spremna za objavu'
+                                : 'Stranica nije spremna za objavu'
+                        }
+                        checked={publishReady}
+                        className="pointer-events-none"
+                        readOnly
+                        tabIndex={-1}
+                        variant="circle"
+                    />
+                    <span>
+                        {checkedReadinessCount}/{publishReadinessTotal}
+                    </span>
+                </div>
+            }
+            contentClassName="px-4 pt-1"
+        >
+            <Stack spacing={3}>
+                {publishReady && (
+                    <Button
+                        type="button"
+                        variant="plain"
+                        size="xs"
+                        className="h-auto justify-start px-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                        onClick={() =>
+                            setPublishChecksExpanded((current) => !current)
+                        }
+                    >
+                        {showPublishChecks
+                            ? 'Sakrij provjere'
+                            : 'Prikaži provjere'}
+                    </Button>
+                )}
+                {showPublishChecks && (
+                    <Stack spacing={2}>
+                        {publishReadinessItems.map((item) => (
+                            <Checkbox
+                                key={item.id}
+                                checked={item.checked}
+                                label={item.label}
+                                readOnly
+                                variant="circle"
+                            />
+                        ))}
+                    </Stack>
+                )}
+                <Button
+                    type="submit"
+                    name="publishState"
+                    value={nextPublishState}
+                    variant={isPublished ? 'outlined' : 'solid'}
+                    fullWidth
+                    disabled={nextPublishState === 'published' && !publishReady}
+                    loading={pending}
+                    startDecorator={<Megaphone className="size-4" />}
+                >
+                    {publishButtonLabel}
+                </Button>
+                {nextPublishState === 'published' && !publishReady ? (
+                    <Typography level="body3" secondary>
+                        Dovrši sve provjere prije objave.
+                    </Typography>
+                ) : null}
+            </Stack>
+        </PanelSection>
+    );
+
+    const editorModeControls = (
+        <ButtonGroup legend="Editor mode" size="sm">
+            <Button
+                type="button"
+                variant={!rawMode ? 'solid' : 'plain'}
+                size="sm"
+                className={buttonGroupItemClassName({ iconOnly: true })}
+                aria-pressed={!rawMode}
+                aria-label="Vizualni editor"
+                title="Vizualni editor"
+                onClick={() => {
+                    if (!rawMode) {
+                        return;
+                    }
+
+                    const parsed = parseSections(rawContent);
+                    if (parsed.isStructured) {
+                        setSections(editableSections(parsed.sections));
+                        setPageRenderMode(parsed.renderMode);
+                        setPageRenderMaxWidth(parsed.renderMaxWidth);
+                    }
+                    setRawMode(false);
+                }}
+            >
+                <LayoutGrid className="size-4" />
+            </Button>
+            <Button
+                type="button"
+                variant={rawMode ? 'solid' : 'plain'}
+                size="sm"
+                className={buttonGroupItemClassName({ iconOnly: true })}
+                aria-pressed={rawMode}
+                aria-label="JSON fallback"
+                title="JSON fallback"
+                onClick={() => {
+                    if (rawMode) {
+                        return;
+                    }
+                    setRawMode(true);
+                    setRawError(null);
+                    setRawContent(builderContent);
+                }}
+            >
+                <Code className="size-4" />
+            </Button>
+        </ButtonGroup>
+    );
+
+    const previewViewportControls = (
+        <ButtonGroup legend="Preview viewport" size="sm">
+            <Button
+                type="button"
+                variant={previewViewport === 'mobile' ? 'solid' : 'plain'}
+                size="sm"
+                className={buttonGroupItemClassName({ iconOnly: true })}
+                aria-pressed={previewViewport === 'mobile'}
+                aria-label="Mobile preview"
+                title="Mobile preview"
+                disabled={rawMode}
+                onClick={() => setPreviewViewport('mobile')}
+            >
+                <Mobile className="size-4" />
+            </Button>
+            <Button
+                type="button"
+                variant={previewViewport === 'tablet' ? 'solid' : 'plain'}
+                size="sm"
+                className={buttonGroupItemClassName({ iconOnly: true })}
+                aria-pressed={previewViewport === 'tablet'}
+                aria-label="Tablet preview"
+                title="Tablet preview"
+                disabled={rawMode || !supportedPreviewViewports.tablet}
+                onClick={() => setPreviewViewport('tablet')}
+            >
+                <Tablet className="size-4" />
+            </Button>
+            <Button
+                type="button"
+                variant={previewViewport === 'desktop' ? 'solid' : 'plain'}
+                size="sm"
+                className={buttonGroupItemClassName({ iconOnly: true })}
+                aria-pressed={previewViewport === 'desktop'}
+                aria-label="Desktop preview"
+                title="Desktop preview"
+                disabled={rawMode || !supportedPreviewViewports.desktop}
+                onClick={() => setPreviewViewport('desktop')}
+            >
+                <Desktop className="size-4" />
+            </Button>
+        </ButtonGroup>
+    );
+
+    const headerActions = (
+        <Row spacing={2} className="flex-wrap justify-end">
+            {editorModeControls}
+            {previewViewportControls}
+            {page ? (
+                <DropdownMenu>
+                    <DropdownMenuTrigger className="inline-flex h-8 min-w-0 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                        <ExternalLink className="size-4" />
+                        Preview
+                        <Down className="size-3.5" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52">
+                        <DropdownMenuItem
+                            href={KnownPages.CmsPagePreview(page.id)}
+                            rel="noreferrer"
+                            target="_blank"
+                            startDecorator={<ExternalLink className="size-4" />}
+                        >
+                            Admin preview
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            href={KnownPages.CmsPageWwwPreview(page.id)}
+                            rel="noreferrer"
+                            target="_blank"
+                            startDecorator={<Globe className="size-4" />}
+                        >
+                            WWW preview
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            ) : null}
+            {!autosaveAction && (
+                <Button
+                    variant="solid"
+                    size="sm"
+                    type="submit"
+                    form={resolvedFormId}
+                    loading={pending}
+                    startDecorator={<Add className="size-4" />}
+                >
+                    Kreiraj
+                </Button>
+            )}
+            {!rawMode && (
+                <SidePanelToggleButton
+                    label="sadržaj"
+                    onOpenChange={(open) => setNavigatorCollapsed(!open)}
+                    open={!navigatorCollapsed}
+                    side="left"
+                />
+            )}
+            <SidePanelToggleButton
+                label="panele"
+                onOpenChange={(open) => setRightPanelCollapsed(!open)}
+                open={!rightPanelCollapsed}
+                side="right"
+            />
+        </Row>
+    );
+
+    const navigatorPanel = (
+        <Stack spacing={2}>
+            <Typography level="body3" className="px-1" semiBold>
+                Sadržaj
+            </Typography>
+            <Stack spacing={1}>
+                {sections.length === 0 ? (
+                    <Typography level="body3" secondary>
+                        Nema sekcija.
+                    </Typography>
+                ) : (
+                    sections.map((section, index) => (
+                        <Button
+                            key={`navigator-${section.id}`}
+                            type="button"
+                            variant={
+                                selectedSectionId === section.id
+                                    ? 'solid'
+                                    : 'plain'
+                            }
+                            size="sm"
+                            className="justify-start px-2"
+                            onClick={() => selectSection(section.id)}
+                        >
+                            {index + 1}. {sectionLabel(section.data.component)}
+                        </Button>
+                    ))
+                )}
+            </Stack>
+        </Stack>
+    );
 
     const duplicateSection = (section: CmsPageEditableSection) => {
         setSections((current) => {
@@ -581,50 +1554,135 @@ export function CmsPageForm({
         setSelectedSectionId(String(active.id));
     };
 
-    return (
-        <Stack spacing={8}>
-            <Card className="sticky top-4 z-10 border-border/70 bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-                <Row
-                    spacing={4}
-                    className="flex-wrap items-center justify-between"
-                >
-                    <Stack spacing={2}>
-                        <Typography level="h4" semiBold>
-                            {page?.title?.trim() || 'Nova CMS stranica'}
-                        </Typography>
-                        <Typography level="body3" secondary>
-                            /{page?.slug?.trim() || 'slug'} •{' '}
-                            {page?.state ?? 'draft'}
-                        </Typography>
-                    </Stack>
-                    <Row spacing={4} className="items-center">
-                        {autosaveAction && (
-                            <span
-                                className={`rounded-full border px-2 py-1 text-xs font-medium ${autosaveBadgeClassName}`}
-                            >
-                                {autosaveStatus === 'failed'
-                                    ? 'Greška autosavea'
-                                    : autosaveStatus === 'saving'
-                                      ? 'Spremanje...'
-                                      : autosaveStatus === 'unsaved'
-                                        ? 'Nespremljene promjene'
-                                        : 'Spremljeno'}
-                            </span>
-                        )}
-                        <Button
-                            variant="solid"
-                            type="submit"
-                            form={reactId}
-                            className="w-fit"
-                            loading={pending}
-                        >
-                            {submitLabel}
-                        </Button>
-                    </Row>
+    const selectedSectionRenderSettings = selectedSection ? (
+        <Stack spacing={3}>
+            <Stack spacing={1}>
+                <Typography level="body3" semiBold>
+                    Prikaz sekcije
+                </Typography>
+                <Row spacing={2} className="flex-wrap">
+                    <SectionRenderModeButtonGroup
+                        value={sectionRenderMode(selectedSection)}
+                        onChange={(value) => {
+                            const nextData: CmsPageSectionData = {
+                                ...selectedSection.data,
+                            };
+                            if (value === 'inherit') {
+                                delete nextData.renderMode;
+                            } else {
+                                nextData.renderMode = value;
+                            }
+
+                            if (value === 'container') {
+                                nextData.renderMaxWidth =
+                                    selectedSection.data.renderMaxWidth ??
+                                    pageRenderMaxWidth;
+                            } else {
+                                delete nextData.renderMaxWidth;
+                            }
+
+                            updateSectionData(
+                                selectedSection.id,
+                                nextData,
+                                setSections,
+                            );
+                        }}
+                    />
+                    {sectionRenderMode(selectedSection) === 'container' && (
+                        <RenderMaxWidthButtonGroup
+                            legend="Maksimalna širina sekcije"
+                            value={sectionRenderMaxWidth(selectedSection)}
+                            onChange={(value) => {
+                                updateSectionData(
+                                    selectedSection.id,
+                                    {
+                                        ...selectedSection.data,
+                                        renderMode: 'container',
+                                        renderMaxWidth: value,
+                                    },
+                                    setSections,
+                                );
+                            }}
+                        />
+                    )}
                 </Row>
-            </Card>
+                <Typography level="body3" secondary>
+                    Auto nasljeđuje prikaz stranice.
+                </Typography>
+            </Stack>
+        </Stack>
+    ) : null;
+
+    const selectedSectionActions = selectedSection ? (
+        <Row spacing={0}>
+            <Button
+                type="button"
+                variant="plain"
+                size="sm"
+                className="size-7 px-0"
+                disabled={selectedSectionIndex === 0}
+                aria-label="Pomakni sekciju gore"
+                title="Pomakni sekciju gore"
+                onClick={() =>
+                    setSections((current) =>
+                        moveSection(current, selectedSection.id, -1),
+                    )
+                }
+            >
+                <ArrowUp className="size-4" />
+            </Button>
+            <Button
+                type="button"
+                variant="plain"
+                size="sm"
+                className="size-7 px-0"
+                disabled={selectedSectionIndex === sections.length - 1}
+                aria-label="Pomakni sekciju dolje"
+                title="Pomakni sekciju dolje"
+                onClick={() =>
+                    setSections((current) =>
+                        moveSection(current, selectedSection.id, 1),
+                    )
+                }
+            >
+                <ArrowDown className="size-4" />
+            </Button>
+            <Button
+                type="button"
+                variant="plain"
+                size="sm"
+                className="size-7 px-0"
+                aria-label="Dupliciraj sekciju"
+                title="Dupliciraj sekciju"
+                onClick={() => duplicateSection(selectedSection)}
+            >
+                <Duplicate className="size-4" />
+            </Button>
+            <Button
+                type="button"
+                variant="plain"
+                color="danger"
+                size="sm"
+                className="size-7 px-0"
+                aria-label="Ukloni sekciju"
+                title="Ukloni sekciju"
+                onClick={() => removeSection(selectedSection.id)}
+            >
+                <Delete className="size-4" />
+            </Button>
+        </Row>
+    ) : undefined;
+
+    return (
+        <>
+            <DesktopNavCollapseOnMount />
+            <AdminPageHeader
+                breadcrumbs={breadcrumbs}
+                actions={headerActions}
+                heading={heading}
+            />
             <form
-                id={reactId}
+                id={resolvedFormId}
                 ref={formRef}
                 action={formAction}
                 onChange={() => setFormRevision((current) => current + 1)}
@@ -645,95 +1703,7 @@ export function CmsPageForm({
                 }}
             >
                 <Stack spacing={6}>
-                    {autosaveAction && (
-                        <Card className="border-border/60 bg-muted/20 p-3">
-                            <Stack spacing={2}>
-                                <Typography level="body3" semiBold>
-                                    Autosave status
-                                </Typography>
-                                <Typography level="body3" secondary>
-                                    {autosaveMessage ??
-                                        (autosaveStatus === 'failed'
-                                            ? 'Spremanje nije uspjelo. Provjeri polja i pokušaj ponovno.'
-                                            : autosaveStatus === 'unsaved'
-                                              ? 'Imaš nespremljene promjene.'
-                                              : autosaveStatus === 'saving'
-                                                ? 'Promjene se spremaju...'
-                                                : 'Sve promjene su spremljene.')}
-                                </Typography>
-                                <Typography level="body3" secondary>
-                                    Zadnje spremanje:{' '}
-                                    {formatLastSavedAt(lastSavedAt) ??
-                                        'Nije dostupno'}
-                                </Typography>
-                            </Stack>
-                        </Card>
-                    )}
-
-                    <Card className="p-4 md:p-6">
-                        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_14rem]">
-                            <Input
-                                name="title"
-                                label="Naslov"
-                                defaultValue={page?.title ?? ''}
-                                required
-                            />
-                            <Input
-                                name="slug"
-                                label="Slug"
-                                defaultValue={page?.slug ?? ''}
-                                placeholder="npr. sezonski-vodic"
-                                helperText="Slug se sprema normalizirano i ne smije zauzeti postojeću statičku rutu."
-                                required
-                            />
-                            <SelectItems
-                                name="state"
-                                label="Status"
-                                defaultValue={page?.state ?? 'draft'}
-                                items={cmsPageStateItems}
-                            />
-                        </div>
-                    </Card>
-
                     <Stack spacing={4}>
-                        <Row
-                            spacing={4}
-                            className="flex-wrap items-center justify-between"
-                        >
-                            <Stack spacing={1}>
-                                <Typography level="h3" semiBold>
-                                    Sadržaj stranice
-                                </Typography>
-                                <Typography level="body3" secondary>
-                                    Vizualni editor sprema isti SectionData JSON
-                                    koji koristi javni www renderer.
-                                </Typography>
-                            </Stack>
-                            <Row spacing={2} className="flex-wrap">
-                                <Button
-                                    type="button"
-                                    variant={!rawMode ? 'solid' : 'outlined'}
-                                    onClick={() => setRawMode(false)}
-                                >
-                                    Vizualni editor
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant={rawMode ? 'solid' : 'outlined'}
-                                    onClick={() => {
-                                        if (rawMode) {
-                                            return;
-                                        }
-                                        setRawMode(true);
-                                        setRawError(null);
-                                        setRawContent(builderContent);
-                                    }}
-                                >
-                                    JSON fallback
-                                </Button>
-                            </Row>
-                        </Row>
-
                         {preserveFallbackContent && (
                             <Card className="p-3 text-sm text-amber-700">
                                 Postojeći sadržaj nije moguće prikazati u
@@ -749,559 +1719,331 @@ export function CmsPageForm({
                         />
 
                         {rawMode ? (
-                            <Card className="p-4">
-                                <label className="space-y-1">
-                                    <span className="block text-sm font-medium">
-                                        JSON sadržaj
-                                    </span>
-                                    <textarea
-                                        value={rawContent}
-                                        rows={18}
-                                        className="block w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                        onBlur={() => {
-                                            try {
-                                                setRawContent(
-                                                    formatJsonContent(
-                                                        rawContent,
-                                                    ),
-                                                );
-                                                setRawError(null);
-                                            } catch {
-                                                setRawError(
-                                                    'JSON nije valjan. Ispravi sadržaj prije spremanja.',
-                                                );
-                                            }
-                                        }}
-                                        onChange={(event) => {
-                                            setRawContent(event.target.value);
-                                            setRawError(null);
-                                        }}
-                                    />
-                                    {rawError && (
-                                        <Typography
-                                            level="body2"
-                                            className="text-red-600"
-                                        >
-                                            {rawError}
-                                        </Typography>
-                                    )}
-                                    {preserveFallbackContent && (
-                                        <Button
-                                            type="button"
-                                            variant="plain"
-                                            onClick={() => {
-                                                setRawContent(
-                                                    page?.content ?? '',
-                                                );
-                                                setRawError(null);
-                                            }}
-                                        >
-                                            Vrati spremljeni sadržaj
-                                        </Button>
-                                    )}
-                                </label>
-                            </Card>
-                        ) : (
-                            <div className="grid gap-6 xl:grid-cols-[18rem_minmax(0,1fr)_24rem]">
-                                <Stack spacing={6} className="h-fit">
-                                    <div className="rounded-lg border bg-background p-3">
-                                        <CmsPageSectionLibrary
-                                            query={sectionSearch}
-                                            components={
-                                                cmsPageSectionComponents
-                                            }
-                                            presets={cmsPageSectionPresets}
-                                            onQueryChange={setSectionSearch}
-                                            onInsertComponent={(component) =>
-                                                insertSection(
-                                                    component,
-                                                    insertionIndex,
-                                                )
-                                            }
-                                            onInsertPreset={(preset) =>
-                                                insertPreset(
-                                                    preset,
-                                                    insertionIndex,
-                                                )
-                                            }
-                                        />
-                                    </div>
-                                    <div className="rounded-lg border bg-background p-3">
-                                        <Stack spacing={4}>
-                                            <Typography level="h4" semiBold>
-                                                Navigator
-                                            </Typography>
-                                            {sections.length === 0 ? (
+                            <SidePanelLayout
+                                preserveClosedPanels
+                                rightOpen={!rightPanelCollapsed}
+                                rightPanel={
+                                    <Stack spacing={3}>
+                                        {pageDetailsPanel}
+                                        {seoPanel}
+                                        {publishReadinessPanel}
+                                    </Stack>
+                                }
+                            >
+                                <Card className="p-4">
+                                    <Stack spacing={4}>
+                                        <label className="space-y-1">
+                                            <span className="block text-sm font-medium">
+                                                JSON sadržaj
+                                            </span>
+                                            <textarea
+                                                value={rawContent}
+                                                rows={18}
+                                                className="block w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                                onBlur={() => {
+                                                    try {
+                                                        setRawContent(
+                                                            formatJsonContent(
+                                                                rawContent,
+                                                            ),
+                                                        );
+                                                        setRawError(null);
+                                                    } catch {
+                                                        setRawError(
+                                                            'JSON nije valjan. Ispravi sadržaj prije spremanja.',
+                                                        );
+                                                    }
+                                                }}
+                                                onChange={(event) => {
+                                                    setRawContent(
+                                                        event.target.value,
+                                                    );
+                                                    setRawError(null);
+                                                }}
+                                            />
+                                            {rawError && (
                                                 <Typography
-                                                    level="body3"
-                                                    secondary
+                                                    level="body2"
+                                                    className="text-red-600"
                                                 >
-                                                    Nema sekcija.
+                                                    {rawError}
                                                 </Typography>
-                                            ) : (
-                                                sections.map(
-                                                    (section, index) => (
-                                                        <Button
-                                                            key={`navigator-${section.id}`}
-                                                            type="button"
-                                                            variant={
-                                                                selectedSectionId ===
-                                                                section.id
-                                                                    ? 'solid'
-                                                                    : 'plain'
-                                                            }
-                                                            className="justify-start"
-                                                            onClick={() =>
-                                                                selectSection(
-                                                                    section.id,
-                                                                )
-                                                            }
-                                                        >
-                                                            {index + 1}.{' '}
-                                                            {sectionLabel(
-                                                                section.data
-                                                                    .component,
-                                                            )}
-                                                        </Button>
-                                                    ),
-                                                )
                                             )}
+                                            {preserveFallbackContent && (
+                                                <Button
+                                                    type="button"
+                                                    variant="plain"
+                                                    onClick={() => {
+                                                        setRawContent(
+                                                            page?.content ?? '',
+                                                        );
+                                                        setRawError(null);
+                                                    }}
+                                                >
+                                                    Vrati spremljeni sadržaj
+                                                </Button>
+                                            )}
+                                        </label>
+                                    </Stack>
+                                </Card>
+                            </SidePanelLayout>
+                        ) : (
+                            <SidePanelLayout
+                                leftOpen={!navigatorCollapsed}
+                                leftPanel={navigatorPanel}
+                                preserveClosedPanels
+                                rightOpen={!rightPanelCollapsed}
+                                rightPanel={
+                                    <Stack spacing={3}>
+                                        {insertAtEnd &&
+                                            !selectedSection &&
+                                            sectionLibraryPanel}
+                                        {pageDetailsPanel}
+                                        {selectedSection && (
+                                            <PanelSection
+                                                title="Sekcija"
+                                                action={selectedSectionActions}
+                                                contentClassName="px-4 pt-1"
+                                            >
+                                                <Stack spacing={4}>
+                                                    <Row
+                                                        spacing={2}
+                                                        className="items-start justify-between"
+                                                    >
+                                                        <Stack
+                                                            spacing={0.5}
+                                                            className="min-w-0"
+                                                        >
+                                                            <Typography
+                                                                level="body2"
+                                                                semiBold
+                                                            >
+                                                                {selectedSectionComponent?.label ??
+                                                                    selectedSection
+                                                                        .data
+                                                                        .component}
+                                                            </Typography>
+                                                            <Typography
+                                                                level="body3"
+                                                                secondary
+                                                            >
+                                                                {selectedSectionComponent?.description ??
+                                                                    sectionSummary(
+                                                                        selectedSection,
+                                                                    )}
+                                                            </Typography>
+                                                        </Stack>
+                                                        <IconButton
+                                                            aria-label="Informacije o sekciji"
+                                                            className="size-7 shrink-0 text-muted-foreground"
+                                                            disabled={
+                                                                !selectedSectionComponent
+                                                            }
+                                                            size="xs"
+                                                            title="Informacije o sekciji"
+                                                            type="button"
+                                                            variant="plain"
+                                                            onClick={() => {
+                                                                if (
+                                                                    !selectedSectionComponent
+                                                                ) {
+                                                                    return;
+                                                                }
+
+                                                                setSectionInfoItem(
+                                                                    {
+                                                                        id: selectedSectionComponent.component,
+                                                                        label: selectedSectionComponent.label,
+                                                                        description:
+                                                                            selectedSectionComponent.description,
+                                                                        category:
+                                                                            selectedSectionComponent.category,
+                                                                        component:
+                                                                            selectedSectionComponent,
+                                                                        section:
+                                                                            componentPreviewSectionData(
+                                                                                selectedSectionComponent,
+                                                                                cmsPageSectionPresetDataByComponent,
+                                                                            ),
+                                                                    },
+                                                                );
+                                                            }}
+                                                        >
+                                                            <Info className="size-4" />
+                                                        </IconButton>
+                                                    </Row>
+                                                    {
+                                                        selectedSectionRenderSettings
+                                                    }
+                                                    <CmsPageSectionFields
+                                                        section={
+                                                            selectedSection
+                                                        }
+                                                        fields={
+                                                            selectedSectionComponent?.fields ??
+                                                            []
+                                                        }
+                                                        fieldErrors={
+                                                            selectedSectionErrors
+                                                        }
+                                                        onChange={(
+                                                            sectionId,
+                                                            data,
+                                                        ) =>
+                                                            updateSectionData(
+                                                                sectionId,
+                                                                data,
+                                                                setSections,
+                                                            )
+                                                        }
+                                                    />
+                                                </Stack>
+                                            </PanelSection>
+                                        )}
+
+                                        {seoPanel}
+                                        {publishReadinessPanel}
+                                    </Stack>
+                                }
+                            >
+                                <div
+                                    ref={previewViewportContainerRef}
+                                    className="min-w-0"
+                                >
+                                    <Stack spacing={4} className="min-w-0">
+                                        <div
+                                            className={`mx-auto w-full ${previewViewportClassName}`}
+                                        >
+                                            {sections.length === 0 ? (
+                                                <div className="min-h-96 rounded-lg border border-dashed bg-muted/20 p-8 text-center">
+                                                    <Typography
+                                                        level="body2"
+                                                        secondary
+                                                    >
+                                                        Stranica još nema
+                                                        sekcija.
+                                                    </Typography>
+                                                </div>
+                                            ) : (
+                                                <DndContext
+                                                    id={`cms-page-sections-${page?.id ?? 'new'}`}
+                                                    sensors={sensors}
+                                                    collisionDetection={
+                                                        closestCenter
+                                                    }
+                                                    onDragEnd={
+                                                        handleSectionDragEnd
+                                                    }
+                                                >
+                                                    <SortableContext
+                                                        items={sections.map(
+                                                            (section) =>
+                                                                section.id,
+                                                        )}
+                                                        strategy={
+                                                            verticalListSortingStrategy
+                                                        }
+                                                    >
+                                                        <Stack spacing={4}>
+                                                            {sections.map(
+                                                                (section) => {
+                                                                    const customRenderIndicator =
+                                                                        sectionRenderCustomIndicator(
+                                                                            section,
+                                                                        );
+
+                                                                    return (
+                                                                        <CmsPageSortablePreviewSection
+                                                                            key={
+                                                                                section.id
+                                                                            }
+                                                                            id={
+                                                                                section.id
+                                                                            }
+                                                                            selected={
+                                                                                section.id ===
+                                                                                selectedSectionId
+                                                                            }
+                                                                            badge={
+                                                                                customRenderIndicator ? (
+                                                                                    <span
+                                                                                        className="inline-flex items-center gap-1"
+                                                                                        title={
+                                                                                            customRenderIndicator.label
+                                                                                        }
+                                                                                    >
+                                                                                        <span className="sr-only">
+                                                                                            {
+                                                                                                customRenderIndicator.label
+                                                                                            }
+                                                                                        </span>
+                                                                                        {
+                                                                                            customRenderIndicator.icon
+                                                                                        }
+                                                                                        {customRenderIndicator.text ? (
+                                                                                            <span>
+                                                                                                {
+                                                                                                    customRenderIndicator.text
+                                                                                                }
+                                                                                            </span>
+                                                                                        ) : null}
+                                                                                    </span>
+                                                                                ) : undefined
+                                                                            }
+                                                                            onSelect={() =>
+                                                                                selectSection(
+                                                                                    section.id,
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            <SectionsView
+                                                                                sectionsData={[
+                                                                                    section.data,
+                                                                                ]}
+                                                                                componentsRegistry={
+                                                                                    sectionsComponentRegistry
+                                                                                }
+                                                                                renderMode={
+                                                                                    pageRenderMode
+                                                                                }
+                                                                                renderMaxWidth={
+                                                                                    pageRenderMaxWidth
+                                                                                }
+                                                                                debug
+                                                                            />
+                                                                        </CmsPageSortablePreviewSection>
+                                                                    );
+                                                                },
+                                                            )}
+                                                        </Stack>
+                                                    </SortableContext>
+                                                </DndContext>
+                                            )}
+                                        </div>
+                                        <div
+                                            className={`mx-auto w-full ${previewViewportClassName}`}
+                                        >
                                             <Button
                                                 type="button"
                                                 variant={
                                                     insertAtEnd
-                                                        ? 'solid'
-                                                        : 'outlined'
+                                                        ? 'soft'
+                                                        : 'plain'
                                                 }
+                                                className="h-9 border border-dashed border-transparent text-muted-foreground hover:border-border/70 hover:bg-muted/30 hover:text-foreground"
+                                                fullWidth
+                                                aria-pressed={insertAtEnd}
                                                 startDecorator={
                                                     <Add className="size-4" />
                                                 }
                                                 onClick={selectAppendTarget}
                                             >
-                                                Dodaj na kraj
+                                                Dodaj sekciju
                                             </Button>
-                                        </Stack>
-                                    </div>
-                                </Stack>
-
-                                <Stack spacing={4} className="min-w-0">
-                                    <Row
-                                        spacing={3}
-                                        className="flex-wrap items-center justify-between"
-                                    >
-                                        <Typography level="h4" semiBold>
-                                            Editor / preview
-                                        </Typography>
-                                        <Row spacing={2}>
-                                            <Button
-                                                type="button"
-                                                variant={
-                                                    previewViewport === 'mobile'
-                                                        ? 'solid'
-                                                        : 'outlined'
-                                                }
-                                                size="sm"
-                                                startDecorator={
-                                                    <Mobile className="size-4" />
-                                                }
-                                                onClick={() =>
-                                                    setPreviewViewport('mobile')
-                                                }
-                                            >
-                                                Mobile
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant={
-                                                    previewViewport === 'tablet'
-                                                        ? 'solid'
-                                                        : 'outlined'
-                                                }
-                                                size="sm"
-                                                startDecorator={
-                                                    <Tablet className="size-4" />
-                                                }
-                                                onClick={() =>
-                                                    setPreviewViewport('tablet')
-                                                }
-                                            >
-                                                Tablet
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant={
-                                                    previewViewport ===
-                                                    'desktop'
-                                                        ? 'solid'
-                                                        : 'outlined'
-                                                }
-                                                size="sm"
-                                                startDecorator={
-                                                    <Desktop className="size-4" />
-                                                }
-                                                onClick={() =>
-                                                    setPreviewViewport(
-                                                        'desktop',
-                                                    )
-                                                }
-                                            >
-                                                Desktop
-                                            </Button>
-                                        </Row>
-                                    </Row>
-                                    <div
-                                        className={`mx-auto w-full ${previewViewportClassName}`}
-                                    >
-                                        {sections.length === 0 ? (
-                                            <div className="min-h-96 rounded-lg border border-dashed bg-muted/20 p-8 text-center">
-                                                <Typography
-                                                    level="body2"
-                                                    secondary
-                                                >
-                                                    Stranica još nema sekcija.
-                                                </Typography>
-                                            </div>
-                                        ) : (
-                                            <DndContext
-                                                id={`cms-page-sections-${page?.id ?? 'new'}`}
-                                                sensors={sensors}
-                                                collisionDetection={
-                                                    closestCenter
-                                                }
-                                                onDragEnd={handleSectionDragEnd}
-                                            >
-                                                <SortableContext
-                                                    items={sections.map(
-                                                        (section) => section.id,
-                                                    )}
-                                                    strategy={
-                                                        verticalListSortingStrategy
-                                                    }
-                                                >
-                                                    <Stack spacing={4}>
-                                                        {sections.map(
-                                                            (section) => (
-                                                                <CmsPageSortablePreviewSection
-                                                                    key={
-                                                                        section.id
-                                                                    }
-                                                                    id={
-                                                                        section.id
-                                                                    }
-                                                                    selected={
-                                                                        section.id ===
-                                                                        selectedSectionId
-                                                                    }
-                                                                    onSelect={() =>
-                                                                        selectSection(
-                                                                            section.id,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <SectionsView
-                                                                        sectionsData={[
-                                                                            section.data,
-                                                                        ]}
-                                                                        componentsRegistry={
-                                                                            sectionsComponentRegistry
-                                                                        }
-                                                                        debug
-                                                                    />
-                                                                </CmsPageSortablePreviewSection>
-                                                            ),
-                                                        )}
-                                                    </Stack>
-                                                </SortableContext>
-                                            </DndContext>
-                                        )}
-                                    </div>
-                                </Stack>
-
-                                <Stack
-                                    spacing={4}
-                                    className="h-fit xl:sticky xl:top-24"
-                                >
-                                    <Card className="p-4">
-                                        <Stack spacing={4}>
-                                            <Row
-                                                spacing={2}
-                                                className="items-start justify-between"
-                                            >
-                                                <Stack spacing={1}>
-                                                    <Typography
-                                                        level="h4"
-                                                        semiBold
-                                                    >
-                                                        Detalji sekcije
-                                                    </Typography>
-                                                    {selectedSection && (
-                                                        <Typography
-                                                            level="body3"
-                                                            secondary
-                                                        >
-                                                            {
-                                                                selectedSection
-                                                                    .data
-                                                                    .component
-                                                            }
-                                                        </Typography>
-                                                    )}
-                                                </Stack>
-                                                {selectedSection && (
-                                                    <Row spacing={1}>
-                                                        <Button
-                                                            type="button"
-                                                            variant="plain"
-                                                            size="sm"
-                                                            disabled={
-                                                                selectedSectionIndex ===
-                                                                0
-                                                            }
-                                                            aria-label="Pomakni sekciju gore"
-                                                            title="Pomakni sekciju gore"
-                                                            onClick={() =>
-                                                                setSections(
-                                                                    (current) =>
-                                                                        moveSection(
-                                                                            current,
-                                                                            selectedSection.id,
-                                                                            -1,
-                                                                        ),
-                                                                )
-                                                            }
-                                                        >
-                                                            <ArrowUp className="size-4" />
-                                                        </Button>
-                                                        <Button
-                                                            type="button"
-                                                            variant="plain"
-                                                            size="sm"
-                                                            disabled={
-                                                                selectedSectionIndex ===
-                                                                sections.length -
-                                                                    1
-                                                            }
-                                                            aria-label="Pomakni sekciju dolje"
-                                                            title="Pomakni sekciju dolje"
-                                                            onClick={() =>
-                                                                setSections(
-                                                                    (current) =>
-                                                                        moveSection(
-                                                                            current,
-                                                                            selectedSection.id,
-                                                                            1,
-                                                                        ),
-                                                                )
-                                                            }
-                                                        >
-                                                            <ArrowDown className="size-4" />
-                                                        </Button>
-                                                        <Button
-                                                            type="button"
-                                                            variant="plain"
-                                                            size="sm"
-                                                            aria-label="Dupliciraj sekciju"
-                                                            title="Dupliciraj sekciju"
-                                                            onClick={() =>
-                                                                duplicateSection(
-                                                                    selectedSection,
-                                                                )
-                                                            }
-                                                        >
-                                                            <Duplicate className="size-4" />
-                                                        </Button>
-                                                        <Button
-                                                            type="button"
-                                                            variant="plain"
-                                                            color="danger"
-                                                            size="sm"
-                                                            aria-label="Ukloni sekciju"
-                                                            title="Ukloni sekciju"
-                                                            onClick={() =>
-                                                                removeSection(
-                                                                    selectedSection.id,
-                                                                )
-                                                            }
-                                                        >
-                                                            <Delete className="size-4" />
-                                                        </Button>
-                                                    </Row>
-                                                )}
-                                            </Row>
-                                            {selectedSection && (
-                                                <Typography
-                                                    level="body3"
-                                                    secondary
-                                                >
-                                                    {selectedSectionComponent?.description ??
-                                                        sectionSummary(
-                                                            selectedSection,
-                                                        )}
-                                                </Typography>
-                                            )}
-                                            <CmsPageSectionFields
-                                                section={selectedSection}
-                                                fields={
-                                                    selectedSectionComponent?.fields ??
-                                                    []
-                                                }
-                                                fieldErrors={
-                                                    selectedSectionErrors
-                                                }
-                                                onChange={(sectionId, data) =>
-                                                    updateSectionData(
-                                                        sectionId,
-                                                        data,
-                                                        setSections,
-                                                    )
-                                                }
-                                            />
-                                        </Stack>
-                                    </Card>
-
-                                    <Card className="p-4">
-                                        <Stack spacing={4}>
-                                            <Typography level="h4" semiBold>
-                                                SEO
-                                            </Typography>
-                                            <Input
-                                                name="metaTitle"
-                                                label="Meta naslov"
-                                                value={metaTitle}
-                                                onChange={(event) =>
-                                                    setMetaTitle(
-                                                        event.target.value,
-                                                    )
-                                                }
-                                            />
-                                            <Input
-                                                name="metaDescription"
-                                                label="Meta opis"
-                                                value={metaDescription}
-                                                maxLength={160}
-                                                helperText={`${metaDescription.length}/160 znakova`}
-                                                onChange={(event) =>
-                                                    setMetaDescription(
-                                                        event.target.value,
-                                                    )
-                                                }
-                                            />
-                                            <Input
-                                                name="metaImageUrl"
-                                                label="Meta slika URL"
-                                                type="url"
-                                                defaultValue={
-                                                    page?.metaImageUrl ?? ''
-                                                }
-                                            />
-                                            <Input
-                                                name="canonicalPath"
-                                                label="Canonical putanja"
-                                                defaultValue={
-                                                    page?.canonicalPath ?? ''
-                                                }
-                                                placeholder="/primjer-stranice"
-                                            />
-                                            <label className="flex items-center gap-2 text-sm">
-                                                <input
-                                                    type="checkbox"
-                                                    name="noIndex"
-                                                    defaultChecked={
-                                                        page?.noIndex ?? false
-                                                    }
-                                                />
-                                                Isključi iz indeksiranja
-                                                (noindex)
-                                            </label>
-                                            <div className="rounded-md border bg-muted/20 p-3">
-                                                <Typography
-                                                    level="body3"
-                                                    semiBold
-                                                >
-                                                    {metaTitle ||
-                                                        page?.title ||
-                                                        'Meta naslov'}
-                                                </Typography>
-                                                <Typography
-                                                    level="body3"
-                                                    className="line-clamp-3"
-                                                    secondary
-                                                >
-                                                    {metaDescription ||
-                                                        'Meta opis za javni prikaz stranice.'}
-                                                </Typography>
-                                            </div>
-                                        </Stack>
-                                    </Card>
-
-                                    <Card className="p-4">
-                                        <Stack spacing={3}>
-                                            <Typography level="h4" semiBold>
-                                                Publish readiness
-                                            </Typography>
-                                            {publishReady ? (
-                                                <Typography
-                                                    level="body3"
-                                                    className="text-emerald-500"
-                                                >
-                                                    Stranica je spremna za
-                                                    objavu.
-                                                </Typography>
-                                            ) : (
-                                                <Stack spacing={2}>
-                                                    {contentReadinessWarning && (
-                                                        <Typography
-                                                            level="body3"
-                                                            className="text-amber-500"
-                                                        >
-                                                            {
-                                                                contentReadinessWarning
-                                                            }
-                                                        </Typography>
-                                                    )}
-                                                    {missingSectionFields.map(
-                                                        (entry) => (
-                                                            <Typography
-                                                                key={
-                                                                    entry
-                                                                        .section
-                                                                        .id
-                                                                }
-                                                                level="body3"
-                                                                className="text-amber-500"
-                                                            >
-                                                                Sekcija{' '}
-                                                                {entry.index +
-                                                                    1}{' '}
-                                                                (
-                                                                {sectionLabel(
-                                                                    entry
-                                                                        .section
-                                                                        .data
-                                                                        .component,
-                                                                )}
-                                                                ) ima obavezna
-                                                                prazna polja.
-                                                            </Typography>
-                                                        ),
-                                                    )}
-                                                    {metadataIssues.map(
-                                                        (issue) => (
-                                                            <Typography
-                                                                key={issue}
-                                                                level="body3"
-                                                                className="text-amber-500"
-                                                            >
-                                                                {issue}
-                                                            </Typography>
-                                                        ),
-                                                    )}
-                                                </Stack>
-                                            )}
-                                        </Stack>
-                                    </Card>
-                                </Stack>
-                            </div>
+                                        </div>
+                                    </Stack>
+                                </div>
+                            </SidePanelLayout>
                         )}
                     </Stack>
 
@@ -1312,6 +2054,15 @@ export function CmsPageForm({
                     )}
                 </Stack>
             </form>
-        </Stack>
+            <SectionInfoModal
+                componentsRegistry={sectionsComponentRegistry}
+                item={sectionInfoItem}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setSectionInfoItem(null);
+                    }
+                }}
+            />
+        </>
     );
 }

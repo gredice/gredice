@@ -11,6 +11,7 @@ import {
 
 type DesktopNavContextValue = {
     isExpanded: boolean;
+    setExpanded: (expanded: boolean) => void;
     toggle: () => void;
 };
 
@@ -21,6 +22,10 @@ const DesktopNavContext = createContext<DesktopNavContextValue | undefined>(
 export function DesktopNavProvider({ children }: PropsWithChildren) {
     const [isExpanded, setIsExpanded] = useState(true);
 
+    const setExpanded = useCallback((expanded: boolean) => {
+        setIsExpanded(expanded);
+    }, []);
+
     const toggle = useCallback(() => {
         setIsExpanded((current) => !current);
     }, []);
@@ -28,9 +33,10 @@ export function DesktopNavProvider({ children }: PropsWithChildren) {
     const value = useMemo(
         () => ({
             isExpanded,
+            setExpanded,
             toggle,
         }),
-        [isExpanded, toggle],
+        [isExpanded, setExpanded, toggle],
     );
 
     return (

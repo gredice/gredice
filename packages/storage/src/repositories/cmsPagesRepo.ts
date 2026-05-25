@@ -14,7 +14,7 @@ import {
     cacheKeys,
     directoriesCached,
 } from '../cache/directoriesCached';
-import { supportedCmsPageSectionComponents } from '../cmsPageSections';
+import { normalizeCmsPageContent as normalizeCmsPageContentPayload } from '../cmsPageContent';
 
 export type CmsPageState = 'draft' | 'published';
 
@@ -110,7 +110,6 @@ function requiredText(value: string, fieldLabel: string) {
 function resolveSlugSegments(value: string) {
     return value
         .trim()
-        .replace(/[?#].*$/, '')
         .split('/')
         .map((segment) => slugify(segment))
         .filter((segment) => segment.length > 0);
@@ -186,52 +185,7 @@ function pageInsertValues(input: CreateCmsPageInput): InsertCmsPage {
     return values;
 }
 
-function normalizeCmsPageContent(content: string | null | undefined) {
-    const normalized = optionalText(content);
-    if (!normalized) {
-        return null;
-    }
-
-    let parsed: unknown;
-    try {
-        parsed = JSON.parse(normalized);
-    } catch {
-        throw new Error(
-            'Page content must be a valid JSON array of SectionData blocks.',
-        );
-    }
-
-    if (!Array.isArray(parsed)) {
-        throw new Error(
-            'Page content must be a JSON array of SectionData blocks.',
-        );
-    }
-
-    parsed.forEach((section, index) => {
-        if (!section || typeof section !== 'object') {
-            throw new Error(
-                `Section at index ${index} must be an object with a component field.`,
-            );
-        }
-
-        if (
-            !('component' in section) ||
-            typeof section.component !== 'string'
-        ) {
-            throw new Error(
-                `Section at index ${index} must define a string component.`,
-            );
-        }
-
-        if (!supportedCmsPageSectionComponents.has(section.component)) {
-            throw new Error(
-                `Section at index ${index} has unsupported component: ${section.component}.`,
-            );
-        }
-    });
-
-    return JSON.stringify(parsed);
-}
+const normalizeCmsPageContent = normalizeCmsPageContentPayload;
 
 function normalizeCmsPageContentForUpdate(
     content: string | null | undefined,

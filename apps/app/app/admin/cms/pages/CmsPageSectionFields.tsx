@@ -106,8 +106,12 @@ function normalizeFeatureValues(value: unknown): {
 
         return {
             id: id || createEditorId(),
+            tagline: textValue(item.tagline),
             header: textValue(item.header),
             description: textValue(item.description),
+            assetUrl: textValue(item.assetUrl),
+            assetDarkUrl: textValue(item.assetDarkUrl),
+            assetAlt: textValue(item.assetAlt),
             ctas: ctas.items,
         };
     });
@@ -413,6 +417,104 @@ export function CmsPageSectionFields({
                                                 <Delete className="size-4" />
                                             </Button>
                                         </Row>
+                                        {field.allowTagline && (
+                                            <Input
+                                                fullWidth
+                                                label="Oznaka"
+                                                value={feature.tagline ?? ''}
+                                                onChange={(event) =>
+                                                    updateField(
+                                                        field.key,
+                                                        replaceAt(
+                                                            items,
+                                                            index,
+                                                            {
+                                                                ...feature,
+                                                                tagline:
+                                                                    event.target
+                                                                        .value,
+                                                            },
+                                                        ),
+                                                    )
+                                                }
+                                            />
+                                        )}
+                                        {field.allowMedia && (
+                                            <Stack spacing={3}>
+                                                <Input
+                                                    fullWidth
+                                                    label="URL slike"
+                                                    type="url"
+                                                    value={
+                                                        feature.assetUrl ?? ''
+                                                    }
+                                                    onChange={(event) =>
+                                                        updateField(
+                                                            field.key,
+                                                            replaceAt(
+                                                                items,
+                                                                index,
+                                                                {
+                                                                    ...feature,
+                                                                    assetUrl:
+                                                                        event
+                                                                            .target
+                                                                            .value,
+                                                                },
+                                                            ),
+                                                        )
+                                                    }
+                                                />
+                                                <Input
+                                                    fullWidth
+                                                    label="URL tamne slike"
+                                                    type="url"
+                                                    value={
+                                                        feature.assetDarkUrl ??
+                                                        ''
+                                                    }
+                                                    onChange={(event) =>
+                                                        updateField(
+                                                            field.key,
+                                                            replaceAt(
+                                                                items,
+                                                                index,
+                                                                {
+                                                                    ...feature,
+                                                                    assetDarkUrl:
+                                                                        event
+                                                                            .target
+                                                                            .value,
+                                                                },
+                                                            ),
+                                                        )
+                                                    }
+                                                />
+                                                <Input
+                                                    fullWidth
+                                                    label="Opis slike"
+                                                    value={
+                                                        feature.assetAlt ?? ''
+                                                    }
+                                                    onChange={(event) =>
+                                                        updateField(
+                                                            field.key,
+                                                            replaceAt(
+                                                                items,
+                                                                index,
+                                                                {
+                                                                    ...feature,
+                                                                    assetAlt:
+                                                                        event
+                                                                            .target
+                                                                            .value,
+                                                                },
+                                                            ),
+                                                        )
+                                                    }
+                                                />
+                                            </Stack>
+                                        )}
                                         {!field.allowCtas && (
                                             <label className="space-y-1">
                                                 <span className="block text-sm font-medium">

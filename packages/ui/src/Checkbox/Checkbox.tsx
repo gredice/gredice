@@ -11,6 +11,7 @@ export type CheckboxProps = ComponentPropsWithoutRef<
     label?: ReactNode;
     disableIcon?: boolean;
     readOnly?: boolean;
+    variant?: 'default' | 'circle';
 };
 
 export function Checkbox({
@@ -23,6 +24,7 @@ export function Checkbox({
     label,
     onCheckedChange,
     readOnly,
+    variant = 'default',
     ...props
 }: CheckboxProps) {
     const generatedId = useId();
@@ -35,7 +37,8 @@ export function Checkbox({
                 aria-readonly={readOnly || undefined}
                 checked={readOnly ? readOnlyChecked : checked}
                 className={cx(
-                    'peer size-4 shrink-0 rounded-xs border border-primary ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[readonly]:cursor-default data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground',
+                    'peer size-4 shrink-0 border border-primary ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[readonly]:cursor-default data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground',
+                    variant === 'circle' ? 'rounded-full' : 'rounded-xs',
                     className,
                 )}
                 data-readonly={readOnly ? '' : undefined}

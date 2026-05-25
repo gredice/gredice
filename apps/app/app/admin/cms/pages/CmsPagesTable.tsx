@@ -30,7 +30,7 @@ export function CmsPagesTable({ pages }: { pages: SelectCmsPage[] }) {
                 {pages.map((page) => (
                     <Table.Row key={page.id}>
                         <Table.Cell>
-                            <Link href={KnownPages.CmsPage(page.id)}>
+                            <Link href={KnownPages.CmsPageEdit(page.id)}>
                                 <Typography>{page.title}</Typography>
                             </Link>
                         </Table.Cell>

@@ -1,7 +1,5 @@
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Stack } from '@gredice/ui/Stack';
-import { Typography } from '@gredice/ui/Typography';
-import { AdminPageHeader } from '../../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../lib/auth/auth';
 import { KnownPages } from '../../../../../src/KnownPages';
@@ -15,7 +13,9 @@ export default async function CreateCmsPagePage() {
 
     return (
         <Stack spacing={8}>
-            <AdminPageHeader
+            <CmsPageForm
+                action={createCmsPageAction}
+                formId="cms-page-create-form"
                 breadcrumbs={
                     <Breadcrumbs
                         items={[
@@ -31,13 +31,6 @@ export default async function CreateCmsPagePage() {
                     />
                 }
                 heading="Nova stranica"
-            />
-            <Typography level="h2" className="text-2xl" semiBold>
-                Nova stranica
-            </Typography>
-            <CmsPageForm
-                action={createCmsPageAction}
-                submitLabel="Kreiraj stranicu"
             />
         </Stack>
     );

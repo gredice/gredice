@@ -37,7 +37,8 @@ function formOptionalText(formData: FormData, key: string) {
 }
 
 function formCmsPageState(formData: FormData) {
-    const value = formText(formData, 'state');
+    const value =
+        formText(formData, 'publishState') || formText(formData, 'state');
     return isCmsPageState(value) ? value : 'draft';
 }
 
@@ -68,7 +69,6 @@ function cmsPageErrorMessage(error: unknown) {
 
 function revalidateCmsPagePaths(pageId: number) {
     revalidatePath(KnownPages.CmsPages);
-    revalidatePath(KnownPages.CmsPage(pageId));
     revalidatePath(KnownPages.CmsPageEdit(pageId));
 }
 
@@ -83,10 +83,11 @@ export async function createCmsPageAction(
     formData: FormData,
 ): Promise<CmsPageFormState> {
     const authContext = await auth(['admin']);
+    const payload = cmsPageInputFromForm(formData);
 
     let pageId: number;
     try {
-        pageId = await createCmsPage(cmsPageInputFromForm(formData), {
+        pageId = await createCmsPage(payload, {
             id: authContext.user.id,
             name: authContext.user.userName,
         });
@@ -98,7 +99,10 @@ export async function createCmsPageAction(
     }
 
     revalidateCmsPagePaths(pageId);
-    redirect(KnownPages.CmsPage(pageId));
+    if (payload.state === 'published') {
+        revalidatePublicCmsPagePaths(payload.slug);
+    }
+    redirect(KnownPages.CmsPageEdit(pageId));
 }
 
 export async function updateCmsPageAction(
@@ -109,6 +113,7 @@ export async function updateCmsPageAction(
     const authContext = await auth(['admin']);
 
     const payload = cmsPageInputFromForm(formData);
+    const existingPage = await getCmsPage(pageId);
 
     try {
         await updateCmsPage(
@@ -129,10 +134,15 @@ export async function updateCmsPageAction(
     }
 
     revalidateCmsPagePaths(pageId);
-    if (payload.state === 'published') {
-        revalidatePublicCmsPagePaths(payload.slug);
+    if (payload.state === 'published' || existingPage?.state === 'published') {
+        const publicSlugs = [existingPage?.slug, payload.slug].filter(
+            (slug): slug is string => Boolean(slug),
+        );
+        for (const publicSlug of new Set(publicSlugs)) {
+            revalidatePublicCmsPagePaths(publicSlug);
+        }
     }
-    redirect(KnownPages.CmsPage(pageId));
+    redirect(KnownPages.CmsPageEdit(pageId));
 }
 
 export async function autosaveCmsPageAction(
@@ -142,7 +152,7 @@ export async function autosaveCmsPageAction(
     const authContext = await auth(['admin']);
 
     const payload = cmsPageInputFromForm(formData);
-    payload.state = 'draft';
+    const existingPage = await getCmsPage(pageId);
 
     try {
         await updateCmsPage(
@@ -163,9 +173,17 @@ export async function autosaveCmsPageAction(
     }
 
     revalidateCmsPagePaths(pageId);
+    if (payload.state === 'published' || existingPage?.state === 'published') {
+        const publicSlugs = [existingPage?.slug, payload.slug].filter(
+            (slug): slug is string => Boolean(slug),
+        );
+        for (const publicSlug of new Set(publicSlugs)) {
+            revalidatePublicCmsPagePaths(publicSlug);
+        }
+    }
     return {
         success: true,
-        message: 'Skica spremljena.',
+        message: 'Promjene spremljene.',
         savedAt: new Date().toISOString(),
     };
 }
@@ -184,7 +202,7 @@ export async function publishCmsPageAction(pageId: number) {
         });
     } catch (error) {
         const message = encodeURIComponent(cmsPageErrorMessage(error));
-        redirect(`${KnownPages.CmsPage(pageId)}?publishError=${message}`);
+        redirect(`${KnownPages.CmsPageEdit(pageId)}?publishError=${message}`);
     }
     revalidateCmsPagePaths(pageId);
     if (slug) {
@@ -194,12 +212,16 @@ export async function publishCmsPageAction(pageId: number) {
 
 export async function unpublishCmsPageAction(pageId: number) {
     const authContext = await auth(['admin']);
+    const page = await getCmsPage(pageId);
 
     await updateCmsPageState(pageId, 'draft', {
         id: authContext.user.id,
         name: authContext.user.userName,
     });
     revalidateCmsPagePaths(pageId);
+    if (page?.slug) {
+        revalidatePublicCmsPagePaths(page.slug);
+    }
 }
 
 export async function deleteCmsPageAction(pageId: number) {

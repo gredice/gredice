@@ -6,6 +6,7 @@ export { AdminPageHeaderProvider } from './AdminPageHeaderProvider';
 export { AdminPageTitle } from './AdminPageTitle';
 export { AdminTitleProvider } from './AdminTitleProvider';
 export { DesktopNav } from './DesktopNav';
+export { DesktopNavCollapseOnMount } from './DesktopNavCollapseOnMount';
 export { DesktopNavProvider } from './DesktopNavProvider';
 export { DesktopNavToggle } from './DesktopNavToggle';
 export { LoginDialog } from './LoginDialog';

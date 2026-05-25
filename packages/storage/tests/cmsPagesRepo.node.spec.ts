@@ -119,6 +119,10 @@ test('CMS page slugs reject reserved static route conflicts', async () => {
     createTestDb();
 
     assert.equal(normalizeCmsPageSlug('/Česta pitanja/'), 'cesta-pitanja');
+    assert.equal(
+        normalizeCmsPageSlug('test123---dsadase21321!@#$%^&*(fdsfdsdq'),
+        'test123-dsadase21321-fdsfdsdq',
+    );
     await assert.rejects(
         () =>
             createCmsPage({
@@ -176,6 +180,64 @@ test('CMS page content stores valid SectionData JSON payload', async () => {
 
     const page = await getCmsPage(pageId);
     assert.equal(page?.content, JSON.stringify(sectionData));
+});
+
+test('CMS page content stores page render layout document', async () => {
+    createTestDb();
+    const content = {
+        renderMode: 'container',
+        renderMaxWidth: 'xl',
+        sections: [
+            {
+                component: 'Feature1',
+                header: 'Contained section',
+                renderMode: 'container',
+                renderMaxWidth: 'md',
+            },
+            {
+                component: 'MediaBlock',
+                renderMode: 'fullWidth',
+                renderMaxWidth: 'xs',
+                header: 'Full width section',
+            },
+            {
+                component: 'TextBlock',
+                renderMode: 'component',
+                renderMaxWidth: 'xl',
+                header: 'Legacy section',
+                description: 'Legacy render mode is normalized away.',
+            },
+        ],
+    };
+
+    const pageId = await createCmsPage({
+        slug: `section-layout-${randomUUID()}`,
+        title: 'Section layout page',
+        content: JSON.stringify(content),
+    });
+
+    const page = await getCmsPage(pageId);
+    assert.deepEqual(page?.content ? JSON.parse(page.content) : null, {
+        sections: [
+            {
+                component: 'Feature1',
+                header: 'Contained section',
+                renderMode: 'container',
+                renderMaxWidth: 'md',
+            },
+            {
+                component: 'MediaBlock',
+                renderMode: 'fullWidth',
+                header: 'Full width section',
+            },
+            {
+                component: 'TextBlock',
+                header: 'Legacy section',
+                description: 'Legacy render mode is normalized away.',
+            },
+        ],
+        renderMaxWidth: 'xl',
+    });
 });
 
 test('CMS page content rejects invalid SectionData JSON payload', async () => {

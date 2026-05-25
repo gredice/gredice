@@ -13,6 +13,7 @@
                 "CDN_R2_SECRET_ACCESS_KEY",
                 "CHECKLY_ACCOUNT_ID",
                 "CHECKLY_API_KEY",
+                "CMS_PAGES_PREVIEW_SECRET",
                 "ENABLE_EXPERIMENTAL_COREPACK",
                 "GREDICE_GOOGLE_MAPS_API_KEY",
                 "GREDICE_GOOGLE_MAPS_URL_SIGNING_SECRET",

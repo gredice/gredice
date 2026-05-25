@@ -4,6 +4,7 @@ import {
     getCmsPages,
     getEntitiesFormatted,
     getEntityFormatted,
+    parseCmsPageContent,
     searchDirectoryEntities,
 } from '@gredice/storage';
 import { Hono } from 'hono';
@@ -13,6 +14,26 @@ import {
     cacheControlPresets,
     setCacheControl,
 } from '../../../lib/http/cacheControl';
+
+const localCmsPagePreviewSecret = 'local-preview-secret';
+
+function isLocalPreviewHost(hostname: string) {
+    return (
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname.endsWith('.gredice.test')
+    );
+}
+
+function cmsPagePreviewSecret(requestUrl: string) {
+    const configuredSecret = process.env.CMS_PAGES_PREVIEW_SECRET?.trim();
+    if (configuredSecret) {
+        return configuredSecret;
+    }
+
+    const hostname = new URL(requestUrl).hostname;
+    return isLocalPreviewHost(hostname) ? localCmsPagePreviewSecret : null;
+}
 
 const app = new Hono()
     .get(
@@ -109,7 +130,7 @@ const app = new Hono()
             const slug = context.req.param('slug');
             const includeDraft = context.req.valid('query').draft === '1';
             const previewSecret = context.req.header('x-preview-secret');
-            const expectedPreviewSecret = process.env.CMS_PAGES_PREVIEW_SECRET;
+            const expectedPreviewSecret = cmsPagePreviewSecret(context.req.url);
 
             const canAccessDraft =
                 includeDraft &&
@@ -129,12 +150,14 @@ const app = new Hono()
             }
 
             let content: unknown[] = [];
+            let renderMode = 'container';
+            let renderMaxWidth = 'lg';
             if (page.content) {
                 try {
-                    const parsed = JSON.parse(page.content);
-                    if (Array.isArray(parsed)) {
-                        content = parsed;
-                    }
+                    const parsed = parseCmsPageContent(page.content);
+                    content = parsed.sections;
+                    renderMode = parsed.renderMode;
+                    renderMaxWidth = parsed.renderMaxWidth;
                 } catch {
                     content = [];
                 }
@@ -149,6 +172,8 @@ const app = new Hono()
                 slug: page.slug,
                 title: page.title,
                 content,
+                renderMode,
+                renderMaxWidth,
                 state: page.state,
                 publishedAt: page.publishedAt,
                 metaTitle: page.metaTitle,
