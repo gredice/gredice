@@ -1,6 +1,6 @@
 import 'server-only';
 import { randomInt } from 'node:crypto';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { accounts, accountUsers, events, raisedBeds, users } from '../schema';
 import { storage } from '../storage';
 import { knownEventTypes } from './events';
@@ -48,6 +48,7 @@ export type ReferralRewardProcessResult =
               | 'already_rewarded'
               | 'inactive_raised_bed'
               | 'no_referral'
+              | 'reciprocal_referral'
               | 'self_referral';
       };
 
@@ -56,6 +57,7 @@ export class ReferralCodeAlreadyUsedError extends Error {}
 export class ReferralCodeInvalidError extends Error {}
 export class ReferralCodeNotFoundError extends Error {}
 export class ReferralCodeReservedError extends Error {}
+export class ReferralCodeReciprocalUseError extends Error {}
 export class ReferralCodeSelfUseError extends Error {}
 
 export type ReferralAccountSummary = {
@@ -75,6 +77,7 @@ export type AccountReferralState = {
     } | null;
     referredAccounts: Array<{
         accountId: string;
+        account: ReferralAccountSummary | null;
         rewarded: boolean;
     }>;
 };
@@ -293,32 +296,67 @@ async function accountHasActiveRaisedBed(
     return Boolean(activeRaisedBed);
 }
 
-export async function getReferralAccountSummary(accountId: string | null) {
-    if (!accountId) {
-        return null;
+function fallbackReferralAccountSummary(
+    accountId: string,
+): ReferralAccountSummary {
+    return {
+        id: accountId,
+        displayName: 'Gredice račun',
+        avatarUrl: null,
+    };
+}
+
+async function getReferralAccountSummaries(accountIds: string[]) {
+    const uniqueAccountIds = Array.from(new Set(accountIds));
+    const summaries = new Map<string, ReferralAccountSummary>();
+    for (const accountId of uniqueAccountIds) {
+        summaries.set(accountId, fallbackReferralAccountSummary(accountId));
     }
 
-    const [primaryAccountUser] = await storage()
+    if (uniqueAccountIds.length === 0) {
+        return summaries;
+    }
+
+    const primaryAccountUsers = await storage()
         .select({
-            id: accountUsers.accountId,
+            accountId: accountUsers.accountId,
             displayName: users.displayName,
             userName: users.userName,
             avatarUrl: users.avatarUrl,
         })
         .from(accountUsers)
         .innerJoin(users, eq(accountUsers.userId, users.id))
-        .where(eq(accountUsers.accountId, accountId))
-        .orderBy(asc(accountUsers.createdAt))
-        .limit(1);
+        .where(inArray(accountUsers.accountId, uniqueAccountIds))
+        .orderBy(asc(accountUsers.createdAt));
 
-    return {
-        id: accountId,
-        displayName:
-            primaryAccountUser?.displayName ??
-            primaryAccountUser?.userName ??
-            'Gredice račun',
-        avatarUrl: primaryAccountUser?.avatarUrl ?? null,
-    };
+    const accountIdsWithUser = new Set<string>();
+    for (const accountUser of primaryAccountUsers) {
+        if (accountIdsWithUser.has(accountUser.accountId)) {
+            continue;
+        }
+        accountIdsWithUser.add(accountUser.accountId);
+        summaries.set(accountUser.accountId, {
+            id: accountUser.accountId,
+            displayName:
+                accountUser.displayName ??
+                accountUser.userName ??
+                'Gredice račun',
+            avatarUrl: accountUser.avatarUrl ?? null,
+        });
+    }
+
+    return summaries;
+}
+
+export async function getReferralAccountSummary(accountId: string | null) {
+    if (!accountId) {
+        return null;
+    }
+
+    const summaries = await getReferralAccountSummaries([accountId]);
+    return (
+        summaries.get(accountId) ?? fallbackReferralAccountSummary(accountId)
+    );
 }
 
 export async function getOrCreateDefaultReferralCode(accountId: string) {
@@ -396,12 +434,29 @@ export async function getAccountReferralState(
         }
         referredAccounts.push({
             accountId: referredAccountId,
+            account: null,
             rewarded: rewards.get(`${accountId}:${referredAccountId}`) ?? false,
         });
     }
 
-    const usedReferralAccount = await getReferralAccountSummary(
-        usedReferralState?.ownerAccountId ?? null,
+    const referralAccountSummaries = await getReferralAccountSummaries(
+        [
+            usedReferralState?.ownerAccountId ?? null,
+            ...referredAccounts.map(
+                (referredAccount) => referredAccount.accountId,
+            ),
+        ].filter((id): id is string => id !== null),
+    );
+    const usedReferralAccount = usedReferralState?.ownerAccountId
+        ? (referralAccountSummaries.get(usedReferralState.ownerAccountId) ??
+          null)
+        : null;
+    const referredAccountsWithSummaries = referredAccounts.map(
+        (referredAccount) => ({
+            ...referredAccount,
+            account:
+                referralAccountSummaries.get(referredAccount.accountId) ?? null,
+        }),
     );
 
     return {
@@ -415,7 +470,7 @@ export async function getAccountReferralState(
                   rewarded: usedReferralRewarded,
               }
             : null,
-        referredAccounts,
+        referredAccounts: referredAccountsWithSummaries,
     };
 }
 
@@ -435,14 +490,19 @@ async function processReferralRewardsForAccountInTransaction(
         return { rewarded: false, reason: 'already_rewarded' };
     }
 
-    const usedReferral =
-        options.usedReferral ??
-        currentUsedReferralsByAccount(snapshot).get(accountId);
+    const usedReferrals = currentUsedReferralsByAccount(snapshot);
+    const usedReferral = options.usedReferral ?? usedReferrals.get(accountId);
     if (!usedReferral?.ownerAccountId) {
         return { rewarded: false, reason: 'no_referral' };
     }
     if (usedReferral.ownerAccountId === accountId) {
         return { rewarded: false, reason: 'self_referral' };
+    }
+    if (
+        usedReferrals.get(usedReferral.ownerAccountId)?.ownerAccountId ===
+        accountId
+    ) {
+        return { rewarded: false, reason: 'reciprocal_referral' };
     }
 
     if (!(await accountHasActiveRaisedBed(accountId, tx))) {
@@ -576,8 +636,8 @@ export async function redeemReferralCodeForAccount(
         );
 
         const snapshot = await getReferralSnapshot(tx);
-        const existingUsedReferral =
-            currentUsedReferralsByAccount(snapshot).get(accountId);
+        const usedReferrals = currentUsedReferralsByAccount(snapshot);
+        const existingUsedReferral = usedReferrals.get(accountId);
         if (referralRewardGrantedForReferredAccount(snapshot, accountId)) {
             throw new ReferralCodeAlreadyUsedError();
         }
@@ -592,6 +652,9 @@ export async function redeemReferralCodeForAccount(
 
         if (ownerAccountId === accountId) {
             throw new ReferralCodeSelfUseError();
+        }
+        if (usedReferrals.get(ownerAccountId)?.ownerAccountId === accountId) {
+            throw new ReferralCodeReciprocalUseError();
         }
 
         const usedReferralChanged =
