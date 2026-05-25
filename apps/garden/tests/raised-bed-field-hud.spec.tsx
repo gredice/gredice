@@ -285,7 +285,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         ).toBeVisible();
     });
 
-    test('status popover explains when current state cannot change', async ({
+    test('status popover allows reverting ready state back to sprouted', async ({
         mount,
         page,
     }) => {
@@ -305,16 +305,11 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             })
             .click();
 
-        await expect(
-            page.getByText('Stanje biljke', { exact: true }),
-        ).toBeVisible();
-        await expect(page.getByText('Spremna za berbu').last()).toBeVisible();
-        await expect(
-            page.getByText('Stanje se ne može promijeniti u ovom trenutku.'),
-        ).toBeVisible();
+        await expect(page.getByText('Promijeni stanje')).toBeVisible();
+        await expect(page.getByText('Proklijala').last()).toBeVisible();
         await expect(
             page.getByRole('button', { name: 'Odaberi datum promjene' }),
-        ).toHaveCount(0);
+        ).toBeVisible();
     });
 
     test('future harvest date shows absolute harvest days', async ({

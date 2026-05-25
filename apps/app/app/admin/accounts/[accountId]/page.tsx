@@ -1,4 +1,4 @@
-import { getAccountGardens } from '@gredice/storage';
+import { getAccountGardens, getAccountReferralDetails } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
@@ -6,6 +6,7 @@ import { Delete } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import Link from 'next/link';
 import {
     EntityDetailsPanelCard,
     EntityDetailsPropertiesLayout,
@@ -36,21 +37,57 @@ import { RaisedBedsTableCard } from './RaisedBedsTableCard';
 
 export const dynamic = 'force-dynamic';
 
+type AccountPageSearchParams = Record<string, string | string[] | undefined>;
+
 export default async function AccountPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ accountId: string }>;
+    searchParams: Promise<AccountPageSearchParams>;
 }) {
-    const { accountId } = await params;
+    const [{ accountId }, resolvedSearchParams] = await Promise.all([
+        params,
+        searchParams,
+    ]);
     await auth(['admin']);
 
     const actionBound = sendDeleteAccountEmail.bind(null, accountId);
-    const [currentTimeZone, gardens] = await Promise.all([
+    const [currentTimeZone, gardens, referralDetails] = await Promise.all([
         getAccountTimeZone(accountId),
         getAccountGardens(accountId),
+        getAccountReferralDetails(accountId, {
+            includeUsedReferralSource: true,
+        }),
     ]);
+    const usedReferralCodeValue =
+        referralDetails.usedReferralCode &&
+        referralDetails.usedReferralSourceAccountId ? (
+            <Link
+                href={KnownPages.Account(
+                    referralDetails.usedReferralSourceAccountId,
+                )}
+                title={`Izvorni račun: ${referralDetails.usedReferralSourceAccountId}`}
+            >
+                {referralDetails.usedReferralCode}
+            </Link>
+        ) : (
+            referralDetails.usedReferralCode
+        );
     const propertyItems: EntityDetailsPropertyListItem[] = [
         { id: 'account-id', label: 'ID računa', value: accountId, mono: true },
+        {
+            id: 'own-referral-code',
+            label: 'Vlastiti kod preporuke',
+            value: referralDetails.myCode,
+            mono: true,
+        },
+        {
+            id: 'used-referral-code',
+            label: 'Korišteni kod preporuke',
+            value: usedReferralCodeValue,
+            mono: true,
+        },
         {
             id: 'time-zone',
             label: 'Vremenska zona',
@@ -128,7 +165,10 @@ export default async function AccountPage({
                         <AccountAchievementsCard accountId={accountId} />
                         <AccountTransactionsCard accountId={accountId} />
                         <RaisedBedsTableCard accountId={accountId} />
-                        <AccountEventsCard accountId={accountId} />
+                        <AccountEventsCard
+                            accountId={accountId}
+                            searchParams={resolvedSearchParams}
+                        />
                         <NotificationsTableCard
                             accountId={accountId}
                             showAccountColumn={false}
