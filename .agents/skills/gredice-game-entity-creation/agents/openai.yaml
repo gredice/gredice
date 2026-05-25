@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gredice Game Entity Creation"
+  short_description: "Create garden game entities and shop rows"
+  default_prompt: "Use $gredice-game-entity-creation to add a new purchasable garden game entity from a model asset."
