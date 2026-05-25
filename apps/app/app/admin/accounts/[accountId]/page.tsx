@@ -1,9 +1,11 @@
+import { getAccountReferralDetails } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Button } from '@gredice/ui/Button';
 import { Delete } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import Link from 'next/link';
 import {
     EntityDetailsPanelCard,
     EntityDetailsPropertiesLayout,
@@ -43,9 +45,40 @@ export default async function AccountPage({
     await auth(['admin']);
 
     const actionBound = sendDeleteAccountEmail.bind(null, accountId);
-    const currentTimeZone = await getAccountTimeZone(accountId);
+    const [currentTimeZone, referralDetails] = await Promise.all([
+        getAccountTimeZone(accountId),
+        getAccountReferralDetails(accountId, {
+            includeUsedReferralSource: true,
+        }),
+    ]);
+    const usedReferralCodeValue =
+        referralDetails.usedReferralCode &&
+        referralDetails.usedReferralSourceAccountId ? (
+            <Link
+                href={KnownPages.Account(
+                    referralDetails.usedReferralSourceAccountId,
+                )}
+                title={`Izvorni račun: ${referralDetails.usedReferralSourceAccountId}`}
+            >
+                {referralDetails.usedReferralCode}
+            </Link>
+        ) : (
+            referralDetails.usedReferralCode
+        );
     const propertyItems: EntityDetailsPropertyListItem[] = [
         { id: 'account-id', label: 'ID računa', value: accountId, mono: true },
+        {
+            id: 'own-referral-code',
+            label: 'Vlastiti kod preporuke',
+            value: referralDetails.myCode,
+            mono: true,
+        },
+        {
+            id: 'used-referral-code',
+            label: 'Korišteni kod preporuke',
+            value: usedReferralCodeValue,
+            mono: true,
+        },
         {
             id: 'time-zone',
             label: 'Vremenska zona',
