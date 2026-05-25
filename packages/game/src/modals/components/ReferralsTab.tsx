@@ -9,7 +9,10 @@ import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
-import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import Confetti from 'react-confetti-boom';
+import { currentAccountKeys } from '../../hooks/useCurrentAccount';
 import { useReferrals } from '../../hooks/useReferrals';
 import { KnownPages } from '../../knownPages';
 
@@ -24,11 +27,27 @@ async function errorMessageFromResponse(response: Response, fallback: string) {
     return fallback;
 }
 
+function referralRewardGrantedFromPayload(payload: unknown) {
+    if (!payload || typeof payload !== 'object' || !('reward' in payload)) {
+        return false;
+    }
+
+    const { reward } = payload;
+    return (
+        reward !== null &&
+        typeof reward === 'object' &&
+        'rewarded' in reward &&
+        reward.rewarded === true
+    );
+}
+
 type CopyState = 'idle' | 'copied';
 
 export function ReferralsTab() {
+    const queryClient = useQueryClient();
     const { data, refetch } = useReferrals();
     const [useCode, setUseCode] = useState('');
+    const [showRewardConfetti, setShowRewardConfetti] = useState(false);
     const [changeCodeOpen, setChangeCodeOpen] = useState(false);
     const [newCode, setNewCode] = useState('');
     const [codeCopyState, setCodeCopyState] = useState<CopyState>('idle');
@@ -40,8 +59,23 @@ export function ReferralsTab() {
     const referralCode = data?.myCode ?? '';
     const referralLink = data?.referralLink ?? '';
     const usedReferral = data?.usedReferral ?? null;
+    const usedReferralRewarded = usedReferral?.rewarded === true;
+    const canEditUsedReferral = Boolean(usedReferral && !usedReferralRewarded);
     const referredAccounts = data?.referredAccounts ?? [];
     const trimmedUseCode = useCode.trim();
+    const useCodeUnchanged = Boolean(
+        usedReferral && trimmedUseCode === usedReferral.code,
+    );
+
+    useEffect(() => {
+        if (usedReferral && !usedReferralRewarded) {
+            setUseCode(usedReferral.code);
+            return;
+        }
+        if (!usedReferral) {
+            setUseCode('');
+        }
+    }, [usedReferral, usedReferralRewarded]);
 
     async function copyTextToClipboard(
         value: string,
@@ -116,7 +150,17 @@ export function ReferralsTab() {
                 );
                 return;
             }
-            setUseCode('');
+            const payload: unknown = await response.json().catch(() => null);
+            const rewardGranted = referralRewardGrantedFromPayload(payload);
+            if (rewardGranted) {
+                setShowRewardConfetti(true);
+                window.setTimeout(() => setShowRewardConfetti(false), 3500);
+                await queryClient.invalidateQueries({
+                    queryKey: currentAccountKeys,
+                });
+            } else {
+                setUseCode('');
+            }
             await refetch();
         } finally {
             setIsUsingCode(false);
@@ -124,7 +168,12 @@ export function ReferralsTab() {
     }
 
     return (
-        <Stack spacing={8}>
+        <Stack spacing={8} className="relative">
+            {showRewardConfetti ? (
+                <div className="pointer-events-none fixed inset-0 z-50">
+                    <Confetti mode="fall" particleCount={80} />
+                </div>
+            ) : null}
             <Typography level="h4" className="hidden md:block">
                 💮 Preporuke
             </Typography>
@@ -295,15 +344,23 @@ export function ReferralsTab() {
                                         Iskorišten kod preporuke
                                     </div>
                                     <Alert
-                                        color="success"
+                                        color={
+                                            usedReferralRewarded
+                                                ? 'success'
+                                                : 'info'
+                                        }
                                         startDecorator={
-                                            <Check className="size-4" />
+                                            usedReferralRewarded ? (
+                                                <Check className="size-4" />
+                                            ) : (
+                                                <Info className="size-4" />
+                                            )
                                         }
                                     >
                                         <Typography level="body2">
-                                            Kod preporuke je iskorišten za ovaj
-                                            račun. Za ovaj račun nije moguće
-                                            unijeti drugi kod.
+                                            {usedReferralRewarded
+                                                ? 'Nagrada za kod preporuke je dodijeljena. Za ovaj račun više nije moguće unijeti drugi kod.'
+                                                : 'Kod preporuke je spremljen. Možeš ga promijeniti dok nagrada za preporuku ne bude dodijeljena.'}
                                         </Typography>
                                     </Alert>
                                 </Stack>
@@ -329,6 +386,53 @@ export function ReferralsTab() {
                                         </Typography>
                                     </Stack>
                                 </div>
+                                {canEditUsedReferral ? (
+                                    <form
+                                        onSubmit={(event) => {
+                                            event.preventDefault();
+                                            void redeemReferralCode();
+                                        }}
+                                    >
+                                        <Stack spacing={6}>
+                                            <Stack spacing={2}>
+                                                {useCodeError ? (
+                                                    <Alert color="danger">
+                                                        <Typography level="body2">
+                                                            {useCodeError}
+                                                        </Typography>
+                                                    </Alert>
+                                                ) : null}
+                                                <Input
+                                                    fullWidth
+                                                    label="Promijeni kod preporuke"
+                                                    value={useCode}
+                                                    onChange={(e) =>
+                                                        setUseCode(
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    placeholder="Unesi kod"
+                                                    disabled={isUsingCode}
+                                                />
+                                            </Stack>
+                                            <CardActions className="justify-end">
+                                                <Button
+                                                    disabled={
+                                                        !trimmedUseCode ||
+                                                        useCodeUnchanged ||
+                                                        isUsingCode
+                                                    }
+                                                    loading={isUsingCode}
+                                                    size="sm"
+                                                    type="submit"
+                                                    variant="solid"
+                                                >
+                                                    Promijeni kod
+                                                </Button>
+                                            </CardActions>
+                                        </Stack>
+                                    </form>
+                                ) : null}
                             </Stack>
                         ) : (
                             <form

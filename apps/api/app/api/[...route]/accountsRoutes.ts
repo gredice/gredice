@@ -20,6 +20,7 @@ import {
     getSunflowersHistory,
     getUser,
     knownEventTypes,
+    REFERRAL_REWARD_AMOUNT,
     ReferralCodeAlreadyExistsError,
     ReferralCodeAlreadyUsedError,
     ReferralCodeInvalidError,
@@ -195,8 +196,6 @@ async function getDailyRewardState(accountId: string) {
     };
 }
 
-const REFERRAL_REWARD = 10000;
-
 async function hasActiveRaisedBed(accountId: string) {
     const gardens = await getAccountGardens(accountId);
     for (const garden of gardens) {
@@ -303,7 +302,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             return context.json({
                 ...referralState,
-                rewardAmount: REFERRAL_REWARD,
+                rewardAmount: REFERRAL_REWARD_AMOUNT,
                 referralLink: getReferralLink(referralState.myCode),
             });
         },
@@ -370,6 +369,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             usedReferral.ownerAccountId,
                         ),
                     },
+                    reward: usedReferral.reward,
                 });
             } catch (error) {
                 if (error instanceof ReferralCodeInvalidError) {
@@ -377,7 +377,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
                 if (error instanceof ReferralCodeAlreadyUsedError) {
                     return context.json(
-                        { error: 'Kod preporuke je već iskorišten' },
+                        {
+                            error: 'Nagrada za kod preporuke je već dodijeljena',
+                        },
                         400,
                     );
                 }

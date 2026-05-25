@@ -99,6 +99,8 @@ function renderEventDetails(
                 : undefined;
         const source =
             typeof data?.source === 'string' ? data.source : undefined;
+        const amount =
+            typeof data?.amount === 'number' ? data.amount : undefined;
         const rewarded =
             typeof data?.rewarded === 'boolean' ? data.rewarded : undefined;
 
@@ -111,6 +113,8 @@ function renderEventDetails(
             details.push(<span key="action">Akcija: očišćen kod</span>);
         } else if (action === 'referred_account') {
             details.push(<span key="action">Akcija: preporučen račun</span>);
+        } else if (action === 'reward_granted') {
+            details.push(<span key="action">Akcija: dodijeljena nagrada</span>);
         } else if (action) {
             details.push(<span key="action">Akcija: {action}</span>);
         }
@@ -137,6 +141,9 @@ function renderEventDetails(
                     Nagrada: {rewarded ? 'dodijeljena' : 'na čekanju'}
                 </span>,
             );
+        }
+        if (typeof amount === 'number') {
+            details.push(<span key="amount">Iznos: {amount}</span>);
         }
         if (source) {
             details.push(<span key="source">Izvor: {source}</span>);

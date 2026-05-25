@@ -1,9 +1,11 @@
 import 'server-only';
 import { randomInt } from 'node:crypto';
-import { asc, eq, sql } from 'drizzle-orm';
-import { accounts, accountUsers, events, users } from '../schema';
+import { and, asc, eq, sql } from 'drizzle-orm';
+import { accounts, accountUsers, events, raisedBeds, users } from '../schema';
 import { storage } from '../storage';
 import { knownEventTypes } from './events';
+
+export const REFERRAL_REWARD_AMOUNT = 10000;
 
 const REFERRAL_EVENT_TYPE = knownEventTypes.accounts.referral;
 const REFERRAL_CODE_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
@@ -33,6 +35,22 @@ type UsedReferralState = {
     ownerAccountId: string | null;
 };
 
+export type ReferralRewardProcessResult =
+    | {
+          rewarded: true;
+          accountId: string;
+          ownerAccountId: string;
+          amount: number;
+      }
+    | {
+          rewarded: false;
+          reason:
+              | 'already_rewarded'
+              | 'inactive_raised_bed'
+              | 'no_referral'
+              | 'self_referral';
+      };
+
 export class ReferralCodeAlreadyExistsError extends Error {}
 export class ReferralCodeAlreadyUsedError extends Error {}
 export class ReferralCodeInvalidError extends Error {}
@@ -53,6 +71,7 @@ export type AccountReferralState = {
     usedReferral: {
         code: string;
         account: ReferralAccountSummary | null;
+        rewarded: boolean;
     } | null;
     referredAccounts: Array<{
         accountId: string;
@@ -137,6 +156,10 @@ function ownerAccountIdFromUsedCodeEventData(data: unknown) {
 
 function referralEventRewarded(data: unknown) {
     return referralEventData(data)?.rewarded === true;
+}
+
+function isReferralRewardGrantedEventData(data: unknown) {
+    return referralEventData(data)?.action === 'reward_granted';
 }
 
 function referralCodeOwnerAccountId(
@@ -232,6 +255,44 @@ function referredRewardsByOwnerAndAccount(snapshot: ReferralSnapshot) {
     return rewards;
 }
 
+function referralRewardGrantedForReferredAccount(
+    snapshot: ReferralSnapshot,
+    accountId: string,
+) {
+    return snapshot.events.some((event) => {
+        if (
+            event.aggregateId === accountId &&
+            isReferralRewardGrantedEventData(event.data)
+        ) {
+            return true;
+        }
+
+        return (
+            referredAccountIdFromReferralEventData(event.data) === accountId &&
+            referralEventRewarded(event.data)
+        );
+    });
+}
+
+async function accountHasActiveRaisedBed(
+    accountId: string,
+    db: ReferralDatabase,
+) {
+    const [activeRaisedBed] = await db
+        .select({ id: raisedBeds.id })
+        .from(raisedBeds)
+        .where(
+            and(
+                eq(raisedBeds.accountId, accountId),
+                eq(raisedBeds.status, 'active'),
+                eq(raisedBeds.isDeleted, false),
+            ),
+        )
+        .limit(1);
+
+    return Boolean(activeRaisedBed);
+}
+
 export async function getReferralAccountSummary(accountId: string | null) {
     if (!accountId) {
         return null;
@@ -320,6 +381,10 @@ export async function getAccountReferralState(
     const usedReferrals = currentUsedReferralsByAccount(snapshot);
     const rewards = referredRewardsByOwnerAndAccount(snapshot);
     const usedReferralState = usedReferrals.get(accountId) ?? null;
+    const usedReferralRewarded = referralRewardGrantedForReferredAccount(
+        snapshot,
+        accountId,
+    );
     const referredAccounts: AccountReferralState['referredAccounts'] = [];
 
     for (const [referredAccountId, referralState] of usedReferrals) {
@@ -347,10 +412,102 @@ export async function getAccountReferralState(
             ? {
                   code: usedReferralState.code,
                   account: usedReferralAccount,
+                  rewarded: usedReferralRewarded,
               }
             : null,
         referredAccounts,
     };
+}
+
+async function processReferralRewardsForAccountInTransaction(
+    accountId: string,
+    tx: ReferralDatabase,
+    options: {
+        snapshot?: ReferralSnapshot;
+        usedReferral?: UsedReferralState;
+    } = {},
+): Promise<ReferralRewardProcessResult> {
+    await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${`referral-reward:${accountId}`}));`,
+    );
+
+    const snapshot = options.snapshot ?? (await getReferralSnapshot(tx));
+    if (referralRewardGrantedForReferredAccount(snapshot, accountId)) {
+        return { rewarded: false, reason: 'already_rewarded' };
+    }
+
+    const usedReferral =
+        options.usedReferral ??
+        currentUsedReferralsByAccount(snapshot).get(accountId);
+    if (!usedReferral?.ownerAccountId) {
+        return { rewarded: false, reason: 'no_referral' };
+    }
+    if (usedReferral.ownerAccountId === accountId) {
+        return { rewarded: false, reason: 'self_referral' };
+    }
+
+    if (!(await accountHasActiveRaisedBed(accountId, tx))) {
+        return { rewarded: false, reason: 'inactive_raised_bed' };
+    }
+
+    const rewardedAt = new Date().toISOString();
+    await tx.insert(events).values([
+        {
+            type: knownEventTypes.accounts.earnSunflowers,
+            version: 1,
+            aggregateId: accountId,
+            data: {
+                amount: REFERRAL_REWARD_AMOUNT,
+                reason: `referral:used:${usedReferral.ownerAccountId}`,
+            },
+        },
+        {
+            type: knownEventTypes.accounts.earnSunflowers,
+            version: 1,
+            aggregateId: usedReferral.ownerAccountId,
+            data: {
+                amount: REFERRAL_REWARD_AMOUNT,
+                reason: `referral:referred:${accountId}`,
+            },
+        },
+        {
+            type: REFERRAL_EVENT_TYPE,
+            version: 1,
+            aggregateId: usedReferral.ownerAccountId,
+            data: {
+                action: 'referred_account',
+                referredAccountId: accountId,
+                code: usedReferral.code,
+                rewarded: true,
+                rewardedAt,
+            },
+        },
+        {
+            type: REFERRAL_EVENT_TYPE,
+            version: 1,
+            aggregateId: accountId,
+            data: {
+                action: 'reward_granted',
+                code: usedReferral.code,
+                ownerAccountId: usedReferral.ownerAccountId,
+                amount: REFERRAL_REWARD_AMOUNT,
+                rewardedAt,
+            },
+        },
+    ]);
+
+    return {
+        rewarded: true,
+        accountId,
+        ownerAccountId: usedReferral.ownerAccountId,
+        amount: REFERRAL_REWARD_AMOUNT,
+    };
+}
+
+export async function processReferralRewardsForAccount(accountId: string) {
+    return await storage().transaction((tx) =>
+        processReferralRewardsForAccountInTransaction(accountId, tx),
+    );
 }
 
 export async function setReferralCodeForAccount(
@@ -406,6 +563,10 @@ export async function redeemReferralCodeForAccount(
     }
 
     let ownerAccountId: string | null = null;
+    let rewardResult: ReferralRewardProcessResult = {
+        rewarded: false,
+        reason: 'inactive_raised_bed',
+    };
 
     await storage().transaction(async (tx) => {
         await tx.execute(
@@ -416,9 +577,9 @@ export async function redeemReferralCodeForAccount(
         );
 
         const snapshot = await getReferralSnapshot(tx);
-        const usedReferral =
+        const existingUsedReferral =
             currentUsedReferralsByAccount(snapshot).get(accountId);
-        if (usedReferral) {
+        if (referralRewardGrantedForReferredAccount(snapshot, accountId)) {
             throw new ReferralCodeAlreadyUsedError();
         }
 
@@ -434,36 +595,58 @@ export async function redeemReferralCodeForAccount(
             throw new ReferralCodeSelfUseError();
         }
 
-        await tx.insert(events).values([
+        const usedReferralChanged =
+            !existingUsedReferral ||
+            existingUsedReferral.code !== code ||
+            existingUsedReferral.ownerAccountId !== ownerAccountId;
+
+        if (usedReferralChanged) {
+            await tx.insert(events).values([
+                {
+                    type: REFERRAL_EVENT_TYPE,
+                    version: 1,
+                    aggregateId: accountId,
+                    data: {
+                        action: 'used_code',
+                        code,
+                        ownerAccountId,
+                        previousCode: existingUsedReferral?.code,
+                        previousOwnerAccountId:
+                            existingUsedReferral?.ownerAccountId,
+                    },
+                },
+                {
+                    type: REFERRAL_EVENT_TYPE,
+                    version: 1,
+                    aggregateId: ownerAccountId,
+                    data: {
+                        action: 'referred_account',
+                        referredAccountId: accountId,
+                        code,
+                        rewarded: false,
+                    },
+                },
+            ]);
+        }
+
+        rewardResult = await processReferralRewardsForAccountInTransaction(
+            accountId,
+            tx,
             {
-                type: REFERRAL_EVENT_TYPE,
-                version: 1,
-                aggregateId: accountId,
-                data: {
-                    action: 'used_code',
+                snapshot,
+                usedReferral: {
                     code,
                     ownerAccountId,
                 },
             },
-            {
-                type: REFERRAL_EVENT_TYPE,
-                version: 1,
-                aggregateId: ownerAccountId,
-                data: {
-                    action: 'referred_account',
-                    referredAccountId: accountId,
-                    code,
-                    rewarded: false,
-                },
-            },
-        ]);
+        );
     });
 
     if (!ownerAccountId) {
         throw new ReferralCodeNotFoundError();
     }
 
-    return { code, ownerAccountId };
+    return { code, ownerAccountId, reward: rewardResult };
 }
 
 export async function clearUsedReferralCodeForAccount(
