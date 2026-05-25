@@ -1,8 +1,8 @@
 import { tz } from '@date-fns/tz';
 import { sendEmail } from '@gredice/email/acs';
 import {
+    ACCOUNT_REFERRAL_EVENT_TYPE,
     acceptAccountInvitation,
-    accounts as accountRecords,
     cancelAccountInvitation,
     createAccountInvitation,
     createEvent,
@@ -14,13 +14,15 @@ import {
     getAccountInvitationByToken,
     getAccountInvitations,
     getAccountInvitationsByEmail,
+    getAccountReferralDetails,
     getAccountUsers,
-    getEvents,
     getRaisedBeds,
+    getReferralCodeOwnerAccountId,
     getSunflowers,
     getSunflowersHistory,
     getUser,
     knownEventTypes,
+    normalizeReferralCode,
     sql,
     storage,
     events as storedEvents,
@@ -28,7 +30,6 @@ import {
 } from '@gredice/storage';
 import AccountDeleteConfirmationTemplate from '@gredice/transactional/emails/Account/delete-confirmation';
 import { addDays, differenceInCalendarDays, startOfDay } from 'date-fns';
-import { asc, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { setCookie as honoSetCookie } from 'hono/cookie';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
@@ -193,70 +194,8 @@ async function getDailyRewardState(accountId: string) {
 }
 
 const REFERRAL_REWARD = 10000;
-const REFERRAL_EVENT_TYPE = 'account.referral.v1';
 
 class ReferralCodeAlreadyExistsError extends Error {}
-
-function normalizeReferralCode(code: string) {
-    return code
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9_-]/g, '')
-        .slice(0, 32);
-}
-
-function codeFromCodeSetEventData(data: unknown) {
-    if (!data || typeof data !== 'object') {
-        return null;
-    }
-    if (!('action' in data) || data.action !== 'code_set') {
-        return null;
-    }
-    if (!('code' in data) || typeof data.code !== 'string') {
-        return null;
-    }
-    return normalizeReferralCode(data.code);
-}
-
-async function getReferralCodeOwnerAccountId(
-    code: string,
-    db: Pick<ReturnType<typeof storage>, 'select'>,
-) {
-    const [accounts, events] = await Promise.all([
-        db.select({ id: accountRecords.id }).from(accountRecords),
-        db
-            .select({
-                aggregateId: storedEvents.aggregateId,
-                data: storedEvents.data,
-            })
-            .from(storedEvents)
-            .where(eq(storedEvents.type, REFERRAL_EVENT_TYPE))
-            .orderBy(asc(storedEvents.createdAt), asc(storedEvents.id)),
-    ]);
-
-    const currentCodes = new Map<string, string>();
-    for (const account of accounts) {
-        currentCodes.set(
-            account.id,
-            normalizeReferralCode(account.id.slice(0, 12)),
-        );
-    }
-
-    for (const event of events) {
-        const eventCode = codeFromCodeSetEventData(event.data);
-        if (eventCode) {
-            currentCodes.set(event.aggregateId, eventCode);
-        }
-    }
-
-    for (const [accountId, currentCode] of currentCodes) {
-        if (currentCode === code) {
-            return accountId;
-        }
-    }
-
-    return null;
-}
 
 async function hasActiveRaisedBed(accountId: string) {
     const gardens = await getAccountGardens(accountId);
@@ -352,48 +291,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { accountId } = context.get('authContext');
-            const events = await getEvents(
-                REFERRAL_EVENT_TYPE,
-                [accountId],
-                0,
-                1000,
-            );
-
-            let myCode = '';
-            let usedReferralCode: string | null = null;
-            const referredAccounts: Array<{
-                accountId: string;
-                rewarded: boolean;
-            }> = [];
-
-            for (const event of events) {
-                const data = event.data as Record<string, unknown> | null;
-                if (
-                    data?.action === 'code_set' &&
-                    typeof data.code === 'string'
-                ) {
-                    myCode = data.code;
-                }
-                if (
-                    data?.action === 'used_code' &&
-                    typeof data.code === 'string'
-                ) {
-                    usedReferralCode = data.code;
-                }
-                if (
-                    data?.action === 'referred_account' &&
-                    typeof data.referredAccountId === 'string'
-                ) {
-                    referredAccounts.push({
-                        accountId: data.referredAccountId,
-                        rewarded: data.rewarded === true,
-                    });
-                }
-            }
-
-            if (!myCode) {
-                myCode = normalizeReferralCode(accountId.slice(0, 12));
-            }
+            const { myCode, usedReferralCode, referredAccounts } =
+                await getAccountReferralDetails(accountId);
 
             return context.json({
                 myCode,
@@ -434,7 +333,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     }
 
                     await tx.insert(storedEvents).values({
-                        type: REFERRAL_EVENT_TYPE,
+                        type: ACCOUNT_REFERRAL_EVENT_TYPE,
                         version: 1,
                         aggregateId: accountId,
                         data: { action: 'code_set', code },
@@ -462,19 +361,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const code = normalizeReferralCode(body.code ?? '');
             if (!code) return context.json({ error: 'Neispravan kod' }, 400);
 
-            const myEvents = await getEvents(
-                REFERRAL_EVENT_TYPE,
-                [accountId],
-                0,
-                1000,
-            );
-            if (
-                myEvents.some(
-                    (e) =>
-                        (e.data as Record<string, unknown> | null)?.action ===
-                        'used_code',
-                )
-            ) {
+            const { usedReferralCode } =
+                await getAccountReferralDetails(accountId);
+            if (usedReferralCode) {
                 return context.json(
                     { error: 'Referral kod je već iskorišten' },
                     400,
@@ -482,7 +371,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             await createEvent({
-                type: REFERRAL_EVENT_TYPE,
+                type: ACCOUNT_REFERRAL_EVENT_TYPE,
                 version: 1,
                 aggregateId: accountId,
                 data: { action: 'used_code', code },
