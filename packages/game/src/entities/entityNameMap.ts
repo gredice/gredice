@@ -45,6 +45,7 @@ import { StoneSmall } from './StoneSmall';
 import { Stool } from './Stool';
 import { Tree } from './Tree';
 import { Tulip } from './Tulip';
+import { WateringCan } from './WateringCan';
 
 export const entityNameMap: Record<
     string,
@@ -70,6 +71,7 @@ export const entityNameMap: Record<
     GardenBox: GardenBox,
     Stool: Stool,
     Bucket: Bucket,
+    WateringCan: WateringCan,
     BirdHouse: BirdHouse,
     GiftBox_RedWhite: GiftBoxRedWhite,
     GiftBox_GreenGold: GiftBoxGreenGold,

@@ -58,6 +58,7 @@ const items: HudItem[] = [
         imageSrc: 'https://www.gredice.com/assets/blocks/Bucket.png',
         items: [
             { type: 'entity', name: 'Bucket' },
+            { type: 'entity', name: 'WateringCan' },
             { type: 'entity', name: 'Composter' },
             { type: 'entity', name: 'GardenBox' },
         ],

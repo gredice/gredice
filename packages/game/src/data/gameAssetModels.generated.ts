@@ -23,6 +23,7 @@ export const gameAssetModels = {
     MulchWood: { url: '/assets/models/MulchWood.glb' },
     BaleHey: { url: '/assets/models/BaleHey.glb' },
     Bucket: { url: '/assets/models/Bucket.glb' },
+    WateringCan: { url: '/assets/models/WateringCan.glb' },
     Composter: { url: '/assets/models/Composter.glb' },
     BirdHouse: { url: '/assets/models/BirdHouse.glb' },
     Fence: { url: '/assets/models/Fence.glb' },
@@ -77,6 +78,7 @@ export const primaryGameAssetNames = [
 export const lazyGameAssetNames = [
     'BaleHey',
     'Bucket',
+    'WateringCan',
     'Composter',
     'BirdHouse',
     'Fence',
@@ -123,6 +125,7 @@ export const allGameAssetNames = [
     'MulchWood',
     'BaleHey',
     'Bucket',
+    'WateringCan',
     'Composter',
     'BirdHouse',
     'Fence',

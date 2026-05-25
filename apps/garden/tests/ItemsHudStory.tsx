@@ -43,6 +43,7 @@ function createBlockData(name: string, index: number) {
 const blockNames = [
     'Raised_Bed',
     'Bucket',
+    'WateringCan',
     'Composter',
     'GardenBox',
     'PotLowBowl',
