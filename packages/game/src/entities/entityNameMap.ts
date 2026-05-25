@@ -1,5 +1,6 @@
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { BaleHey } from './BaleHey';
+import { BirdHouse } from './BirdHouse';
 import { BlockGrass } from './BlockGrass';
 import { BlockGrassAngle } from './BlockGrassAngle';
 import { BlockGround } from './BlockGround';
@@ -58,6 +59,7 @@ export const entityNameMap: Record<
     GardenBox: GardenBox,
     Stool: Stool,
     Bucket: Bucket,
+    BirdHouse: BirdHouse,
     GiftBox_RedWhite: GiftBoxRedWhite,
     GiftBox_GreenGold: GiftBoxGreenGold,
     GiftBox_BlueWhite: GiftBoxBlueWhite,

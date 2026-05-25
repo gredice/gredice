@@ -54,6 +54,13 @@ export type GLTFResult = GLTF & {
         'Bucket_-_Handle': THREE.Mesh;
         Composter_1: THREE.Mesh;
         Composter_2: THREE.Mesh;
+        Birdhouse_Angled_Supports: THREE.Mesh;
+        Birdhouse_Cabin_Walls: THREE.Mesh;
+        Birdhouse_Center_Post: THREE.Mesh;
+        Birdhouse_Perch: THREE.Mesh;
+        Birdhouse_Ridge_Cap: THREE.Mesh;
+        Birdhouse_Roof_Panels: THREE.Mesh;
+        Birdhouse_Upper_Platform: THREE.Mesh;
         Fence_Corner: THREE.Mesh;
         Fence_Cross: THREE.Mesh;
         Fence_Middle: THREE.Mesh;
@@ -85,6 +92,9 @@ export type GLTFResult = GLTF & {
         Tulip: THREE.Mesh;
     };
     materials: {
+        BH_flat_dark_wood: THREE.MeshStandardMaterial;
+        BH_flat_light_wood: THREE.MeshStandardMaterial;
+        BH_flat_warm_gray_roof: THREE.MeshStandardMaterial;
         'Material.ColorPaletteMain': THREE.MeshStandardMaterial;
         'Material.Dirt': THREE.MeshStandardMaterial;
         'Material.Dirt.001': THREE.MeshStandardMaterial;
