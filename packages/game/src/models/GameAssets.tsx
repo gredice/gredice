@@ -83,6 +83,26 @@ export type GLTFResult = GLTF & {
         Stone_Large: THREE.Mesh;
         Stool: THREE.Mesh;
         Tulip: THREE.Mesh;
+        PotVariant_01_Low_Bowl: THREE.Mesh;
+        PotVariant_Soil_01: THREE.Mesh;
+        PotVariant_02_Rounded_Bowl: THREE.Mesh;
+        PotVariant_Soil_02: THREE.Mesh;
+        PotVariant_03_Bulbous_Neck: THREE.Mesh;
+        PotVariant_Soil_03: THREE.Mesh;
+        PotVariant_04_Tall_Tapered: THREE.Mesh;
+        PotVariant_Soil_04: THREE.Mesh;
+        PotVariant_05_Hourglass: THREE.Mesh;
+        PotVariant_Soil_05: THREE.Mesh;
+        PotVariant_06_Straight_Short_Tub: THREE.Mesh;
+        PotVariant_Soil_06: THREE.Mesh;
+        PotVariant_07_Narrow_Foot_Bowl: THREE.Mesh;
+        PotVariant_Soil_07: THREE.Mesh;
+        PotVariant_08_Squat_Ridged_Pot: THREE.Mesh;
+        PotVariant_Soil_08: THREE.Mesh;
+        PotVariant_09_Tall_Slender_Cone: THREE.Mesh;
+        PotVariant_Soil_09: THREE.Mesh;
+        PotVariant_10_Wide_Lipped_Cup: THREE.Mesh;
+        PotVariant_Soil_10: THREE.Mesh;
     };
     materials: {
         'Material.ColorPaletteMain': THREE.MeshStandardMaterial;

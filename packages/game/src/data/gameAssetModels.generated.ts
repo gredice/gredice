@@ -33,6 +33,16 @@ export const gameAssetModels = {
     StoneLarge: { url: '/assets/models/StoneLarge.glb' },
     Stool: { url: '/assets/models/Stool.glb' },
     Tulip: { url: '/assets/models/Tulip.glb' },
+    PotLowBowl: { url: '/assets/models/PotLowBowl.glb' },
+    PotRoundedBowl: { url: '/assets/models/PotRoundedBowl.glb' },
+    PotBulbousNeck: { url: '/assets/models/PotBulbousNeck.glb' },
+    PotTallTapered: { url: '/assets/models/PotTallTapered.glb' },
+    PotHourglass: { url: '/assets/models/PotHourglass.glb' },
+    PotStraightShortTub: { url: '/assets/models/PotStraightShortTub.glb' },
+    PotNarrowFootBowl: { url: '/assets/models/PotNarrowFootBowl.glb' },
+    PotSquatRidged: { url: '/assets/models/PotSquatRidged.glb' },
+    PotTallSlenderCone: { url: '/assets/models/PotTallSlenderCone.glb' },
+    PotWideLippedCup: { url: '/assets/models/PotWideLippedCup.glb' },
 } satisfies Record<string, { url: string }>;
 
 export type GameAssetName = keyof typeof gameAssetModels;
@@ -75,6 +85,16 @@ export const lazyGameAssetNames = [
     'StoneLarge',
     'Stool',
     'Tulip',
+    'PotLowBowl',
+    'PotRoundedBowl',
+    'PotBulbousNeck',
+    'PotTallTapered',
+    'PotHourglass',
+    'PotStraightShortTub',
+    'PotNarrowFootBowl',
+    'PotSquatRidged',
+    'PotTallSlenderCone',
+    'PotWideLippedCup',
 ] satisfies GameAssetName[];
 
 export const allGameAssetNames = [
@@ -109,4 +129,14 @@ export const allGameAssetNames = [
     'StoneLarge',
     'Stool',
     'Tulip',
+    'PotLowBowl',
+    'PotRoundedBowl',
+    'PotBulbousNeck',
+    'PotTallTapered',
+    'PotHourglass',
+    'PotStraightShortTub',
+    'PotNarrowFootBowl',
+    'PotSquatRidged',
+    'PotTallSlenderCone',
+    'PotWideLippedCup',
 ] satisfies GameAssetName[];

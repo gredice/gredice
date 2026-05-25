@@ -22,6 +22,7 @@ import { GiftBoxRedWhite } from './GiftBoxRedWhite';
 import { GiftBoxWhiteGreen } from './GiftBoxWhiteGreen';
 import { Pine } from './Pine';
 import { PineAdvent } from './PineAdvent';
+import { Pot } from './Pot';
 import { RaisedBed } from './RaisedBed';
 import { MulchCoconut } from './raisedBed/MulchCoconut';
 import { MulchHey } from './raisedBed/MulchHey';
@@ -75,6 +76,16 @@ export const entityNameMap: Record<
     Snowman: Snowman,
     Tulip: Tulip,
     BaleHey: BaleHey,
+    PotLowBowl: Pot,
+    PotRoundedBowl: Pot,
+    PotBulbousNeck: Pot,
+    PotTallTapered: Pot,
+    PotHourglass: Pot,
+    PotStraightShortTub: Pot,
+    PotNarrowFootBowl: Pot,
+    PotSquatRidged: Pot,
+    PotTallSlenderCone: Pot,
+    PotWideLippedCup: Pot,
 
     // Raised bed items
     MulchHey: MulchHey,
