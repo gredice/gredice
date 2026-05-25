@@ -22,10 +22,11 @@ export const gameAssetModels = {
     MulchCoconut: { url: '/assets/models/MulchCoconut.glb' },
     MulchWood: { url: '/assets/models/MulchWood.glb' },
     BaleHey: { url: '/assets/models/BaleHey.glb' },
+    BirdSmall: { url: '/assets/models/BirdSmall.glb' },
     Bucket: { url: '/assets/models/Bucket.glb' },
     WateringCan: { url: '/assets/models/WateringCan.glb' },
     Composter: { url: '/assets/models/Composter.glb' },
-    BirdHouse: { url: '/assets/models/BirdHouse.glb' },
+    BirdHouse: { url: '/assets/models/BirdHouse.glb?v=2e0de8b19af3' },
     Fence: { url: '/assets/models/Fence.glb' },
     Greenhouse: { url: '/assets/models/Greenhouse.glb' },
     GroundEnvironment: { url: '/assets/models/GroundEnvironment.glb' },
@@ -77,6 +78,7 @@ export const primaryGameAssetNames = [
 
 export const lazyGameAssetNames = [
     'BaleHey',
+    'BirdSmall',
     'Bucket',
     'WateringCan',
     'Composter',
@@ -124,6 +126,7 @@ export const allGameAssetNames = [
     'MulchCoconut',
     'MulchWood',
     'BaleHey',
+    'BirdSmall',
     'Bucket',
     'WateringCan',
     'Composter',

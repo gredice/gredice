@@ -62,7 +62,26 @@ def append_objects(source_blend, object_names):
 
 def export_glb(output_path):
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    bpy.ops.export_scene.gltf(filepath=str(output_path), export_apply=True)
+    export_options = {
+        "filepath": str(output_path),
+        "export_apply": True,
+    }
+    gltf_properties = bpy.ops.export_scene.gltf.get_rna_type().properties
+    if "export_animation_mode" in gltf_properties:
+        animation_modes = {
+            item.identifier
+            for item in gltf_properties["export_animation_mode"].enum_items
+        }
+        if "NLA_TRACKS" in animation_modes:
+            export_options["export_animation_mode"] = "NLA_TRACKS"
+    if "export_merge_animation" in gltf_properties:
+        merge_modes = {
+            item.identifier
+            for item in gltf_properties["export_merge_animation"].enum_items
+        }
+        if "NLA_TRACK" in merge_modes:
+            export_options["export_merge_animation"] = "NLA_TRACK"
+    bpy.ops.export_scene.gltf(**export_options)
     print(f"Exported {output_path.relative_to(ASSETS_DIR.parent)}")
 
 

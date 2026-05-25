@@ -153,6 +153,37 @@
             "objects": ["BaleHey"]
         },
         {
+            "name": "BirdSmall",
+            "source": "BirdSmall.blend",
+            "output": "BirdSmall.glb",
+            "preload": "lazy",
+            "objects": [
+                "BirdSmall_Root",
+                "BirdSmall_BodyPivot",
+                "BirdSmall_HeadPivot",
+                "BirdSmall_WingPivot_L",
+                "BirdSmall_WingPivot_R",
+                "BirdSmall_TailPivot",
+                "BirdSmall_LegPivot_L",
+                "BirdSmall_LegPivot_R",
+                "BirdSmall_Body",
+                "BirdSmall_BellyPatch",
+                "BirdSmall_Head",
+                "BirdSmall_Beak",
+                "BirdSmall_Eye_L",
+                "BirdSmall_Pupil_L",
+                "BirdSmall_Eye_R",
+                "BirdSmall_Pupil_R",
+                "BirdSmall_Wing_L",
+                "BirdSmall_Wing_R",
+                "BirdSmall_Tail",
+                "BirdSmall_Leg_L",
+                "BirdSmall_Leg_R",
+                "BirdSmall_Foot_L",
+                "BirdSmall_Foot_R"
+            ]
+        },
+        {
             "name": "Bucket",
             "source": "Bucket.blend",
             "output": "Bucket.glb",
@@ -189,6 +220,7 @@
             "name": "BirdHouse",
             "source": "BirdHouse.blend",
             "output": "BirdHouse.glb",
+            "version": "2e0de8b19af3",
             "preload": "lazy",
             "objects": [
                 "Birdhouse_Angled_Supports",
