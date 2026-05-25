@@ -65,15 +65,10 @@ const items: HudItem[] = [
     },
     {
         type: 'picker',
-        label: 'Tegle',
-        imageSrc: 'https://www.gredice.com/assets/blocks/PotWideLippedCup.png',
-        items: potItems,
-    },
-    {
-        type: 'picker',
         label: 'Dekoracija',
         imageSrc: 'https://www.gredice.com/assets/blocks/Shade.png',
         items: [
+            ...potItems,
             { type: 'entity', name: 'Shade' },
             { type: 'entity', name: 'Stool' },
             { type: 'entity', name: 'Fence' },
