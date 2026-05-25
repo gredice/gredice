@@ -1,5 +1,9 @@
 import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
 import { Row } from '@gredice/ui/Row';
+import {
+    scrollableTableCardClassName,
+    scrollableTableCardOverflowClassName,
+} from '../../../../components/admin/cards/tableCardLayout';
 import { OperationsTable } from '../../../../components/operations/OperationsTable';
 import { OperationCreateModal } from './OperationCreateModal';
 
@@ -15,7 +19,7 @@ export function OperationsTableCard({
     raisedBedFieldId?: number;
 }) {
     return (
-        <Card>
+        <Card className={scrollableTableCardClassName}>
             <CardHeader>
                 <Row justifyContent="space-between">
                     <CardTitle>Radnje</CardTitle>
@@ -27,7 +31,7 @@ export function OperationsTableCard({
                     />
                 </Row>
             </CardHeader>
-            <CardOverflow className="max-h-96 overflow-auto">
+            <CardOverflow className={scrollableTableCardOverflowClassName}>
                 <OperationsTable
                     accountId={accountId}
                     gardenId={gardenId}

@@ -120,7 +120,7 @@ export function FormDataTypeSelect({
                 placeholder={getAttributeDataTypeLabel(value)}
             />
             {isRangeDataType && (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
                     <Input
                         type="number"
                         label="Minimalna vrijednost"
@@ -129,6 +129,7 @@ export function FormDataTypeSelect({
                             setRangeMinValue(event.target.value)
                         }
                         onBlur={handleRangeBlur}
+                        fullWidth
                     />
                     <Input
                         type="number"
@@ -138,6 +139,7 @@ export function FormDataTypeSelect({
                             setRangeMaxValue(event.target.value)
                         }
                         onBlur={handleRangeBlur}
+                        fullWidth
                     />
                 </div>
             )}

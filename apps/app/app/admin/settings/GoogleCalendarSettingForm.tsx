@@ -35,7 +35,7 @@ export function GoogleCalendarSettingForm({
 
     return (
         <form action={formAction} className="space-y-3">
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
                 <Input
                     name="clientEmail"
                     label="Google service account"
@@ -43,6 +43,7 @@ export function GoogleCalendarSettingForm({
                     value={clientEmail}
                     onChange={(event) => setClientEmail(event.target.value)}
                     autoComplete="off"
+                    fullWidth
                 />
                 <Input
                     name="calendarId"
@@ -51,6 +52,7 @@ export function GoogleCalendarSettingForm({
                     value={calendarId}
                     onChange={(event) => setCalendarId(event.target.value)}
                     autoComplete="off"
+                    fullWidth
                 />
             </div>
             <Stack spacing={2}>

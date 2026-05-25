@@ -68,6 +68,7 @@ export function IconPicker({ name, value, onValueChange }: IconPickerProps) {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         autoFocus
+                        fullWidth
                     />
                     <button
                         type="button"

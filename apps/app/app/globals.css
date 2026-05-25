@@ -128,7 +128,7 @@ svg.lucide {
     color-scheme: light;
     --admin-page-content-background: color-mix(
         in srgb,
-        hsl(var(--background)) 40%,
+        hsl(var(--background)) 90%,
         hsl(var(--muted))
     );
     scrollbar-width: thin;
@@ -139,7 +139,7 @@ svg.lucide {
 .dark {
     --admin-page-content-background: color-mix(
         in srgb,
-        hsl(var(--background)) 40%,
+        hsl(var(--background)) 90%,
         hsl(var(--muted))
     );
 }
