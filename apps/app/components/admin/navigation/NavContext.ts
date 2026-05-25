@@ -8,6 +8,7 @@ export type NavContextType = Awaited<
     ReturnType<typeof getEntityTypesOrganizedByCategories>
 > & {
     pendingAchievementsCount: number;
+    pendingApprovalTasksCount: number;
     quickActions: DashboardQuickActionOption[];
 };
 

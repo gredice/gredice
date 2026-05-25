@@ -288,6 +288,37 @@ export type OperationEventsAnyPayload = Partial<
 >;
 
 // ============================================================================
+// Approval request event payload types
+// ============================================================================
+export type PlantStatusApprovalTarget = {
+    kind: 'raisedBedField.plantStatus';
+    raisedBedId: number;
+    positionIndex: number;
+    raisedBedFieldId?: number | null;
+    accountId?: string | null;
+    gardenId?: number | null;
+    plantSortId?: number | null;
+    currentStatus?: string | null;
+    requestedStatus: string;
+    effectiveAt?: string | null;
+};
+
+export type ApprovalRequestTarget = PlantStatusApprovalTarget;
+
+export type ApprovalRequestCreatePayload = {
+    target: ApprovalRequestTarget;
+    requestedBy: string;
+    requestedAt: string;
+    note?: string | null;
+};
+
+export type ApprovalRequestReviewPayload = {
+    reviewedBy: string;
+    reviewedAt: string;
+    note?: string | null;
+};
+
+// ============================================================================
 // Delivery event payload types
 // ============================================================================
 export type DeliveryRequestCreatePayload = {
