@@ -36,6 +36,7 @@ type NotificationTableCardProps = {
     raisedBedId?: number;
     showCard?: boolean;
     showAccountLabels?: boolean;
+    showAccountColumn?: boolean;
     limit?: number;
     page?: number;
     scroll?: boolean;
@@ -48,6 +49,7 @@ export async function NotificationsTableCard({
     raisedBedId,
     showCard = true,
     showAccountLabels = false,
+    showAccountColumn = true,
     limit = 10000,
     page = 0,
     scroll = false,
@@ -101,6 +103,7 @@ export async function NotificationsTableCard({
             return true;
         },
     );
+    const emptyStateColumnCount = showAccountColumn ? 8 : 7;
 
     const tableContent = (
         <Table>
@@ -109,7 +112,7 @@ export async function NotificationsTableCard({
                     <Table.Head>Sadržaj</Table.Head>
                     <Table.Head>Link</Table.Head>
                     <Table.Head>Mjesto</Table.Head>
-                    <Table.Head>Račun</Table.Head>
+                    {showAccountColumn && <Table.Head>Račun</Table.Head>}
                     <Table.Head>Korisnik</Table.Head>
                     <Table.Head>Pročitano</Table.Head>
                     <Table.Head>Datum</Table.Head>
@@ -119,7 +122,7 @@ export async function NotificationsTableCard({
             <Table.Body>
                 {filteredNotifications.length === 0 && (
                     <Table.Row>
-                        <Table.Cell colSpan={8}>
+                        <Table.Cell colSpan={emptyStateColumnCount}>
                             <NoDataPlaceholder>
                                 Nema obavjesti
                             </NoDataPlaceholder>
@@ -202,22 +205,24 @@ export async function NotificationsTableCard({
                                     )}
                                 </Stack>
                             </Table.Cell>
-                            <Table.Cell>
-                                {notification.accountId ? (
-                                    <Link
-                                        href={KnownPages.Account(
-                                            notification.accountId,
-                                        )}
-                                        className="text-primary underline"
-                                    >
-                                        {accountLabels[
-                                            notification.accountId
-                                        ] || notification.accountId}
-                                    </Link>
-                                ) : (
-                                    '-'
-                                )}
-                            </Table.Cell>
+                            {showAccountColumn && (
+                                <Table.Cell>
+                                    {notification.accountId ? (
+                                        <Link
+                                            href={KnownPages.Account(
+                                                notification.accountId,
+                                            )}
+                                            className="text-primary underline"
+                                        >
+                                            {accountLabels[
+                                                notification.accountId
+                                            ] || notification.accountId}
+                                        </Link>
+                                    ) : (
+                                        '-'
+                                    )}
+                                </Table.Cell>
+                            )}
                             <Table.Cell>
                                 {notification.userId ? (
                                     <Link

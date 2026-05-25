@@ -1,7 +1,8 @@
 import { Chip } from '@gredice/ui/Chip';
-import { Check, Warning } from '@gredice/ui/icons';
+import { Check, ExternalLink, Warning } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 const meta = {
@@ -82,6 +83,36 @@ export const Decorators: Story = {
             </Chip>
             <Chip color="warning" startDecorator={<Warning />} variant="soft">
                 Potrebna provjera
+            </Chip>
+        </Row>
+    ),
+};
+
+export const ContentAlignment: Story = {
+    render: () => (
+        <Row className="flex-wrap" spacing={3}>
+            <Chip color="info">
+                <Typography component="span" noWrap>
+                    completed
+                </Typography>
+            </Chip>
+            <Chip color="success">
+                <Typography component="span" noWrap>
+                    €12.70
+                </Typography>
+            </Chip>
+            <Chip color="error">
+                <Typography component="span" noWrap>
+                    Bez ponuda
+                </Typography>
+            </Chip>
+            <Chip color="success">
+                <Typography component="span" noWrap>
+                    1 ponuda
+                </Typography>
+            </Chip>
+            <Chip color="neutral" startDecorator={<ExternalLink />}>
+                Stripe
             </Chip>
         </Row>
     ),
