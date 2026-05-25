@@ -124,7 +124,7 @@ export function McpTestConsole({
                         <button
                             className={`w-full rounded-md border px-3 py-2 text-left transition ${
                                 request.key === selectedKey
-                                    ? 'border-blue-500 bg-blue-50 text-blue-950 dark:bg-blue-950 dark:text-blue-50'
+                                    ? 'border-primary bg-secondary text-foreground'
                                     : 'border-border bg-background hover:bg-secondary'
                             }`}
                             key={request.key}
@@ -190,7 +190,7 @@ export function McpTestConsole({
                             ) : null}
                         </div>
                         <button
-                            className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="rounded-md bg-primary px-3 py-2 text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                             disabled={isRunning}
                             onClick={runRequest}
                             type="button"

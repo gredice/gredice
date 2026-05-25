@@ -1,11 +1,13 @@
 import type { OperationData, PlantSortData } from '@gredice/client';
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
+import { BlockImage } from '@gredice/ui/BlockImage';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Modal } from '@gredice/ui/Modal';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { useMemo, useState } from 'react';
@@ -25,6 +27,28 @@ type InventoryItemData = {
     name?: string;
     image?: string;
 };
+
+type GardenBoxInventoryData = {
+    blockId: string;
+    gardenId: number;
+    gardenName?: string | null;
+    items: InventoryItemData[];
+};
+
+type InventoryData = {
+    items: InventoryItemData[];
+    gardenBoxes?: GardenBoxInventoryData[];
+};
+
+function inventoryItemKey(
+    item: Pick<InventoryItemData, 'entityTypeName' | 'entityId'>,
+) {
+    return `${item.entityTypeName}-${item.entityId}`;
+}
+
+function inventoryItemTotal(items: InventoryItemData[]) {
+    return items.reduce((sum, item) => sum + item.amount, 0);
+}
 
 function InventoryItemCell({
     item,
@@ -75,6 +99,59 @@ function InventoryItemCell({
                 </div>
             </div>
         </button>
+    );
+}
+
+function InventoryItemsGrid({
+    items,
+    keyPrefix,
+    operationLookup,
+    sortData,
+    onItemClick,
+}: {
+    items: InventoryItemData[];
+    keyPrefix: string;
+    operationLookup: Map<string, OperationData>;
+    sortData?: PlantSortData[];
+    onItemClick: (item: InventoryItemData) => void;
+}) {
+    const gridItems = useMemo(() => {
+        const result: (InventoryItemData | null)[] = [...items];
+        while (result.length < GRID_SIZE) {
+            result.push(null);
+        }
+        return result;
+    }, [items]);
+
+    return (
+        <div className="grid grid-cols-6 gap-1">
+            {gridItems.map((item, index) => {
+                const key = item
+                    ? `${keyPrefix}-${inventoryItemKey(item)}`
+                    : `${keyPrefix}-empty-${index}`;
+                const itemSortData =
+                    item?.entityTypeName === 'plantSort'
+                        ? sortData?.find((s) => s.id === Number(item.entityId))
+                        : undefined;
+                const itemOperationData = item
+                    ? operationLookup.get(inventoryItemKey(item))
+                    : undefined;
+
+                return (
+                    <InventoryItemCell
+                        key={key}
+                        item={item ?? undefined}
+                        sortData={itemSortData}
+                        operationData={itemOperationData}
+                        onClick={() => {
+                            if (item) {
+                                onItemClick(item);
+                            }
+                        }}
+                    />
+                );
+            })}
+        </div>
     );
 }
 
@@ -179,23 +256,89 @@ function InventoryItemModal({
     );
 }
 
+function GardenBoxInventoryGroup({
+    gardenBox,
+    index,
+    operationLookup,
+    sortData,
+    onItemClick,
+}: {
+    gardenBox: GardenBoxInventoryData;
+    index: number;
+    operationLookup: Map<string, OperationData>;
+    sortData?: PlantSortData[];
+    onItemClick: (item: InventoryItemData) => void;
+}) {
+    const itemTotal = inventoryItemTotal(gardenBox.items);
+
+    return (
+        <Stack spacing={3} className="rounded-lg border bg-card/50 p-3">
+            <Row spacing={3} alignItems="center">
+                <BlockImage
+                    blockName="GardenBox"
+                    alt="Vrtna kutija"
+                    width={40}
+                    height={40}
+                    className="size-10 rounded-md border bg-card"
+                />
+                <Stack spacing={0} className="min-w-0 flex-1">
+                    <Typography level="body2" semiBold>
+                        Vrtna kutija {index + 1}
+                    </Typography>
+                    <Typography level="body3" secondary>
+                        {[gardenBox.gardenName, `${itemTotal} predmeta`]
+                            .filter(Boolean)
+                            .join(' · ')}
+                    </Typography>
+                </Stack>
+            </Row>
+            <InventoryItemsGrid
+                items={gardenBox.items}
+                keyPrefix={`garden-box-${gardenBox.gardenId}-${gardenBox.blockId}`}
+                operationLookup={operationLookup}
+                sortData={sortData}
+                onItemClick={onItemClick}
+            />
+            {gardenBox.items.length === 0 && (
+                <Typography level="body3" secondary className="text-center">
+                    Kutija je prazna.
+                </Typography>
+            )}
+        </Stack>
+    );
+}
+
 export function InventoryHud() {
     const { data: inventory } = useInventory();
     const { data: operations } = useOperations();
     const { track } = useGameAnalytics();
     const [isOpen, setIsOpen] = useBackpackOpenParam();
-    const [selectedItemKey, setSelectedItemKey] = useState<string | null>(null);
+    const [selectedItem, setSelectedItem] = useState<InventoryItemData | null>(
+        null,
+    );
 
-    const items = inventory?.items as InventoryItemData[] | undefined;
+    const inventoryData = inventory as InventoryData | null | undefined;
+    const items = inventoryData?.items ?? [];
+    const gardenBoxes = inventoryData?.gardenBoxes ?? [];
+    const gardenBoxItems = useMemo(
+        () => gardenBoxes.flatMap((gardenBox) => gardenBox.items),
+        [gardenBoxes],
+    );
+    const allItems = useMemo(
+        () => [...items, ...gardenBoxItems],
+        [gardenBoxItems, items],
+    );
 
     // Extract plant sort IDs for fetching sort data
     const plantSortIds = useMemo(() => {
-        return (
-            items
-                ?.filter((item) => item.entityTypeName === 'plantSort')
-                .map((item) => Number(item.entityId)) ?? []
+        return Array.from(
+            new Set(
+                allItems
+                    .filter((item) => item.entityTypeName === 'plantSort')
+                    .map((item) => Number(item.entityId)),
+            ),
         );
-    }, [items]);
+    }, [allItems]);
 
     const { data: sortData } = useSorts(
         plantSortIds.length > 0 ? plantSortIds : undefined,
@@ -213,38 +356,38 @@ export function InventoryHud() {
         );
     }, [operations]);
 
-    const totalItems = useMemo(
-        () => items?.reduce((sum, item) => sum + item.amount, 0) ?? 0,
+    const backpackItemsTotal = useMemo(
+        () => inventoryItemTotal(items),
         [items],
     );
-
-    // Create grid items: fill with actual items, then empty slots
-    const gridItems = useMemo(() => {
-        const result: (InventoryItemData | null)[] = [];
-        if (items) {
-            result.push(...items);
-        }
-        // Fill remaining slots with nulls up to GRID_SIZE
-        while (result.length < GRID_SIZE) {
-            result.push(null);
-        }
-        return result;
-    }, [items]);
-
-    const selectedItem = selectedItemKey
-        ? items?.find(
-              (item) =>
-                  `${item.entityTypeName}-${item.entityId}` === selectedItemKey,
-          )
-        : null;
+    const gardenBoxItemsTotal = useMemo(
+        () => inventoryItemTotal(gardenBoxItems),
+        [gardenBoxItems],
+    );
+    const totalItems = useMemo(
+        () => backpackItemsTotal + gardenBoxItemsTotal,
+        [backpackItemsTotal, gardenBoxItemsTotal],
+    );
 
     const selectedSortData =
         selectedItem?.entityTypeName === 'plantSort'
             ? sortData?.find((s) => s.id === Number(selectedItem.entityId))
             : undefined;
-    const selectedOperationData = selectedItemKey
-        ? operationLookup.get(selectedItemKey)
+    const selectedOperationData = selectedItem
+        ? operationLookup.get(inventoryItemKey(selectedItem))
         : undefined;
+
+    const handleItemClick = (
+        item: InventoryItemData,
+        source: 'backpack' | 'gardenBox',
+    ) => {
+        track('game_inventory_item_opened', {
+            entity_id: item.entityId,
+            entity_type: item.entityTypeName,
+            source,
+        });
+        setSelectedItem(item);
+    };
 
     const handleOpenChange = (open: boolean) => {
         if (open) {
@@ -253,20 +396,23 @@ export function InventoryHud() {
             });
         }
         setIsOpen(open);
-        if (!open) setSelectedItemKey(null);
+        if (!open) setSelectedItem(null);
     };
+
+    const tabCountClassName =
+        'ml-1 rounded-full bg-muted px-1.5 text-[10px] font-semibold leading-4 text-muted-foreground';
 
     return (
         <HudCard open position="floating" className="static p-0.5">
             <Modal
                 open={isOpen}
                 onOpenChange={handleOpenChange}
-                title="Ruksak"
+                title="Inventar"
                 trigger={
                     <IconButton
                         variant="plain"
                         className="rounded-full size-10"
-                        title="Ruksak"
+                        title="Inventar"
                     >
                         <div className="relative flex items-center justify-center">
                             <BackpackIcon className="size-6" />
@@ -288,81 +434,109 @@ export function InventoryHud() {
                     <Row spacing={2}>
                         <BackpackIcon className="size-8 shrink-0" />
                         <Typography level="h6" className="font-bold">
-                            Ruksak
+                            Inventar
                         </Typography>
                     </Row>
-                    <Stack>
-                        <Typography level="body2" semiBold>
-                            Predmeti u ruksaku koje možeš iskoristiti pri sadnji
-                            ili izvođenju radnji u vrtu.
-                        </Typography>
-                        <Typography level="body3" secondary>
-                            Klikni na predmet za više informacija.
-                        </Typography>
-                    </Stack>
-                    {/* Grid display - 6 columns */}
-                    <div className="grid grid-cols-6 gap-1">
-                        {gridItems.map((item, index) => {
-                            const key = item
-                                ? `${item.entityTypeName}-${item.entityId}`
-                                : `empty-${index}`;
-                            const itemSortData =
-                                item?.entityTypeName === 'plantSort'
-                                    ? sortData?.find(
-                                          (s) => s.id === Number(item.entityId),
-                                      )
-                                    : undefined;
-                            const itemOperationData = item
-                                ? operationLookup.get(
-                                      `${item.entityTypeName}-${item.entityId}`,
-                                  )
-                                : undefined;
-
-                            return (
-                                <InventoryItemCell
-                                    key={key}
-                                    item={item ?? undefined}
-                                    sortData={itemSortData}
-                                    operationData={itemOperationData}
-                                    onClick={() => {
-                                        if (item) {
-                                            track(
-                                                'game_inventory_item_opened',
-                                                {
-                                                    entity_id: item.entityId,
-                                                    entity_type:
-                                                        item.entityTypeName,
-                                                },
-                                            );
-                                            setSelectedItemKey(key);
-                                        }
-                                    }}
+                    <Tabs defaultValue="backpack" className="flex flex-col">
+                        <TabsList className="grid grid-cols-2 border">
+                            <TabsTrigger value="backpack">
+                                <Row spacing={2} alignItems="center">
+                                    <BackpackIcon className="size-4 shrink-0" />
+                                    <Typography>Ruksak</Typography>
+                                    <span className={tabCountClassName}>
+                                        {backpackItemsTotal}
+                                    </span>
+                                </Row>
+                            </TabsTrigger>
+                            <TabsTrigger value="gardenBoxes">
+                                <Row spacing={2} alignItems="center">
+                                    <BlockImage
+                                        blockName="GardenBox"
+                                        alt=""
+                                        width={16}
+                                        height={16}
+                                        className="size-4 shrink-0"
+                                    />
+                                    <Typography>Kutije</Typography>
+                                    <span className={tabCountClassName}>
+                                        {gardenBoxes.length}
+                                    </span>
+                                </Row>
+                            </TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="backpack" className="mt-4">
+                            <Stack spacing={4}>
+                                <Stack>
+                                    <Typography level="body2" semiBold>
+                                        Predmeti u ruksaku koje možeš
+                                        iskoristiti pri sadnji ili izvođenju
+                                        radnji u vrtu.
+                                    </Typography>
+                                    <Typography level="body3" secondary>
+                                        Klikni na predmet za više informacija.
+                                    </Typography>
+                                </Stack>
+                                <InventoryItemsGrid
+                                    items={items}
+                                    keyPrefix="backpack"
+                                    operationLookup={operationLookup}
+                                    sortData={sortData}
+                                    onItemClick={(item) =>
+                                        handleItemClick(item, 'backpack')
+                                    }
                                 />
-                            );
-                        })}
-                    </div>
-
-                    {/* Empty state message */}
-                    {(!items || items.length === 0) && (
-                        <Typography
-                            level="body3"
-                            secondary
-                            className="text-center"
-                        >
-                            Predmeti se dodaju kroz kupnju ili nagrade.
-                        </Typography>
-                    )}
+                                {items.length === 0 && (
+                                    <Typography
+                                        level="body3"
+                                        secondary
+                                        className="text-center"
+                                    >
+                                        Predmeti se dodaju kroz kupnju ili
+                                        nagrade.
+                                    </Typography>
+                                )}
+                            </Stack>
+                        </TabsContent>
+                        <TabsContent value="gardenBoxes" className="mt-4">
+                            <Stack spacing={3}>
+                                {gardenBoxes.length === 0 ? (
+                                    <Typography
+                                        level="body3"
+                                        secondary
+                                        className="text-center"
+                                    >
+                                        Još nema vrtnih kutija.
+                                    </Typography>
+                                ) : (
+                                    gardenBoxes.map((gardenBox, index) => (
+                                        <GardenBoxInventoryGroup
+                                            key={`${gardenBox.gardenId}-${gardenBox.blockId}`}
+                                            gardenBox={gardenBox}
+                                            index={index}
+                                            operationLookup={operationLookup}
+                                            sortData={sortData}
+                                            onItemClick={(item) =>
+                                                handleItemClick(
+                                                    item,
+                                                    'gardenBox',
+                                                )
+                                            }
+                                        />
+                                    ))
+                                )}
+                            </Stack>
+                        </TabsContent>
+                    </Tabs>
                 </Stack>
             </Modal>
 
-            {/* Item details modal */}
             {selectedItem && (
                 <InventoryItemModal
                     item={selectedItem}
                     sortData={selectedSortData}
                     operationData={selectedOperationData}
-                    open={Boolean(selectedItemKey)}
-                    onClose={() => setSelectedItemKey(null)}
+                    open={Boolean(selectedItem)}
+                    onClose={() => setSelectedItem(null)}
                 />
             )}
         </HudCard>

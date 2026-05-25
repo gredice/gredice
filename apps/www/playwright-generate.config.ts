@@ -5,6 +5,6 @@ export default defineConfig({
     ...config,
     fullyParallel: false,
     testDir: '.',
-    testMatch: '**/*.specgen.tsx',
+    testMatch: 'generate/**/*.specgen.tsx',
     webServer: undefined,
 });

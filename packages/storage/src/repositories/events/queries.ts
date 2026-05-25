@@ -1,4 +1,15 @@
-import { and, asc, count, desc, eq, gte, inArray, lte } from 'drizzle-orm';
+import {
+    and,
+    asc,
+    count,
+    desc,
+    eq,
+    gte,
+    inArray,
+    lte,
+    or,
+    sql,
+} from 'drizzle-orm';
 import {
     bustDeliveryRequestsCache,
     bustScheduleCache,
@@ -21,6 +32,9 @@ const scheduleInvalidatingEventTypes = new Set<string>([
     knownEventTypes.operations.verify,
     knownEventTypes.operations.fail,
     knownEventTypes.operations.cancel,
+    knownEventTypes.approvalRequests.create,
+    knownEventTypes.approvalRequests.approve,
+    knownEventTypes.approvalRequests.reject,
     knownEventTypes.raisedBedFields.create,
     knownEventTypes.raisedBedFields.delete,
     knownEventTypes.raisedBedFields.plantPlace,
@@ -145,6 +159,50 @@ export async function countEventsSince(
                 inArray(events.aggregateId, aggregateIds),
             ),
         );
+    return result[0]?.count ?? 0;
+}
+
+export async function countAiRequestEventsSince({
+    type,
+    legacyType,
+    since,
+    accountId,
+    requestKind,
+    legacyAggregateIds = [],
+}: {
+    type: string | string[];
+    legacyType?: string | string[];
+    since: Date;
+    accountId: string;
+    requestKind: string;
+    legacyAggregateIds?: string[];
+}) {
+    const typeFilter = Array.isArray(type)
+        ? inArray(events.type, type)
+        : eq(events.type, type);
+    const accountRequestFilter = and(
+        typeFilter,
+        sql<boolean>`(${events.data}->>'accountId') = ${accountId}`,
+        sql<boolean>`(${events.data}->>'aiRequestKind') = ${requestKind}`,
+    );
+    const legacyRequestFilter =
+        legacyType && legacyAggregateIds.length > 0
+            ? and(
+                  Array.isArray(legacyType)
+                      ? inArray(events.type, legacyType)
+                      : eq(events.type, legacyType),
+                  inArray(events.aggregateId, legacyAggregateIds),
+                  sql<boolean>`(${events.data}->>'aiRequestKind') is null`,
+              )
+            : undefined;
+    const requestFilter = legacyRequestFilter
+        ? or(accountRequestFilter, legacyRequestFilter)
+        : accountRequestFilter;
+
+    const result = await storage()
+        .select({ count: count() })
+        .from(events)
+        .where(and(gte(events.createdAt, since), requestFilter));
     return result[0]?.count ?? 0;
 }
 
