@@ -3,6 +3,8 @@ import type {
     AccountAssignUserPayload,
     AccountSunflowersPayload,
     AdventCalendarOpenPayload,
+    ApprovalRequestCreatePayload,
+    ApprovalRequestReviewPayload,
     DeliveryRequestAddressChangedPayload,
     DeliveryRequestCancelledPayload,
     DeliveryRequestCreatePayload,
@@ -319,6 +321,35 @@ export const knownEvents = {
         }),
         canceledV1: (aggregateId: string, data: OperationCancelPayload) => ({
             type: knownEventTypes.operations.cancel,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+    },
+    approvalRequests: {
+        createdV1: (
+            aggregateId: string,
+            data: ApprovalRequestCreatePayload,
+        ) => ({
+            type: knownEventTypes.approvalRequests.create,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        approvedV1: (
+            aggregateId: string,
+            data: ApprovalRequestReviewPayload,
+        ) => ({
+            type: knownEventTypes.approvalRequests.approve,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        rejectedV1: (
+            aggregateId: string,
+            data: ApprovalRequestReviewPayload,
+        ) => ({
+            type: knownEventTypes.approvalRequests.reject,
             version: 1,
             aggregateId,
             data,

@@ -56,6 +56,11 @@ export const knownEventTypes = {
         fail: 'operation.fail',
         cancel: 'operation.cancel',
     },
+    approvalRequests: {
+        create: 'approvalRequest.create',
+        approve: 'approvalRequest.approve',
+        reject: 'approvalRequest.reject',
+    },
     delivery: {
         requestCreated: 'delivery.request.created',
         requestSlotChanged: 'delivery.request.slot.changed',

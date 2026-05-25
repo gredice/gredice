@@ -1,10 +1,17 @@
 import {
+    plantFieldStatusLabel,
+    userAllowedPlantStatusTransitions,
+} from '@gredice/js/plants';
+import {
+    type ApprovalRequest,
     type EntityStandardized,
+    getApprovalRequests,
     getEntitiesFormatted,
     getFarmUserRaisedBeds,
 } from '@gredice/storage';
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Table } from '@gredice/ui/Table';
@@ -13,6 +20,7 @@ import { notFound } from 'next/navigation';
 import LoginDialog from '../../../components/auth/LoginDialog';
 import { HomeButton } from '../../../components/HomeButton';
 import { auth } from '../../../lib/auth/auth';
+import { PlantStateRequestForm } from './PlantStateRequestForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,16 +54,42 @@ function resolvePlantName(
     return name ? String(name) : `Sorta #${plantSortId}`;
 }
 
+function statusLabel(status?: string | null) {
+    if (!status) {
+        return '—';
+    }
+
+    return plantFieldStatusLabel(status).shortLabel;
+}
+
+function getPendingPlantStatusRequest(
+    requests: ApprovalRequest[],
+    raisedBedId: number,
+    positionIndex: number,
+) {
+    return requests.find(
+        (request) =>
+            request.target.kind === 'raisedBedField.plantStatus' &&
+            request.target.raisedBedId === raisedBedId &&
+            request.target.positionIndex === positionIndex,
+    );
+}
+
 async function RaisedBedDetailPageContent({
     raisedBedId,
 }: {
     raisedBedId: number;
 }) {
     const { userId } = await auth(['farmer', 'admin']);
-    const [raisedBeds, plantSorts] = await Promise.all([
-        getFarmUserRaisedBeds(userId),
-        getEntitiesFormatted<EntityStandardized>('plantSort'),
-    ]);
+    const [raisedBeds, plantSorts, pendingPlantStatusRequests] =
+        await Promise.all([
+            getFarmUserRaisedBeds(userId),
+            getEntitiesFormatted<EntityStandardized>('plantSort'),
+            getApprovalRequests({
+                status: 'pending',
+                kind: 'raisedBedField.plantStatus',
+            }),
+        ]);
     const plantSortNamesById = new Map<number, string>();
     if (plantSorts) {
         for (const plantSort of plantSorts) {
@@ -113,6 +147,7 @@ async function RaisedBedDetailPageContent({
                                     <Table.Head>Pozicija</Table.Head>
                                     <Table.Head>Biljka</Table.Head>
                                     <Table.Head>Status</Table.Head>
+                                    <Table.Head>Promjena</Table.Head>
                                     <Table.Head>Planirano</Table.Head>
                                     <Table.Head>Posijano</Table.Head>
                                     <Table.Head>Spremno</Table.Head>
@@ -124,6 +159,27 @@ async function RaisedBedDetailPageContent({
                                     const field =
                                         activeFieldsByPosition.get(
                                             positionIndex,
+                                        );
+                                    const pendingRequest =
+                                        getPendingPlantStatusRequest(
+                                            pendingPlantStatusRequests,
+                                            raisedBed.id,
+                                            positionIndex,
+                                        );
+                                    const displayStatus =
+                                        pendingRequest?.target.kind ===
+                                        'raisedBedField.plantStatus'
+                                            ? pendingRequest.target
+                                                  .requestedStatus
+                                            : field?.plantStatus;
+                                    const hasAllowedChange =
+                                        Boolean(field?.plantStatus) &&
+                                        Boolean(
+                                            field?.plantStatus
+                                                ? userAllowedPlantStatusTransitions[
+                                                      field.plantStatus
+                                                  ]?.length
+                                                : false,
                                         );
 
                                     return (
@@ -138,7 +194,57 @@ async function RaisedBedDetailPageContent({
                                                 )}
                                             </Table.Cell>
                                             <Table.Cell>
-                                                {field?.plantStatus || '—'}
+                                                <Row
+                                                    spacing={1}
+                                                    className="items-center flex-wrap"
+                                                >
+                                                    <Typography level="body2">
+                                                        {statusLabel(
+                                                            displayStatus,
+                                                        )}
+                                                    </Typography>
+                                                    {pendingRequest && (
+                                                        <Chip
+                                                            color="warning"
+                                                            size="sm"
+                                                            variant="soft"
+                                                        >
+                                                            Čeka odobrenje
+                                                        </Chip>
+                                                    )}
+                                                </Row>
+                                            </Table.Cell>
+                                            <Table.Cell>
+                                                {field && hasAllowedChange ? (
+                                                    <PlantStateRequestForm
+                                                        raisedBedId={
+                                                            raisedBed.id
+                                                        }
+                                                        positionIndex={
+                                                            positionIndex
+                                                        }
+                                                        currentStatus={
+                                                            field.plantStatus
+                                                        }
+                                                        pendingRequestedStatus={
+                                                            pendingRequest
+                                                                ?.target
+                                                                .kind ===
+                                                            'raisedBedField.plantStatus'
+                                                                ? pendingRequest
+                                                                      .target
+                                                                      .requestedStatus
+                                                                : null
+                                                        }
+                                                    />
+                                                ) : (
+                                                    <Typography
+                                                        level="body3"
+                                                        className="text-muted-foreground"
+                                                    >
+                                                        —
+                                                    </Typography>
+                                                )}
                                             </Table.Cell>
                                             <Table.Cell>
                                                 {formatDate(
