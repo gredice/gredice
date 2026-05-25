@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { BlockData } from '@gredice/client';
 import { EntityViewer } from '@gredice/game';
 import { test } from '@playwright/experimental-ct-react';
@@ -11,6 +12,26 @@ test.use({
 
 test.beforeEach(async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.route(
+        'https://vrt.gredice.com/assets/models/*.glb',
+        async (route) => {
+            const assetFileName = route.request().url().split('/').pop();
+            if (!assetFileName) {
+                await route.continue();
+                return;
+            }
+
+            await route.fulfill({
+                contentType: 'model/gltf-binary',
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                },
+                path: resolve(
+                    `../garden/public/assets/models/${assetFileName}`,
+                ),
+            });
+        },
+    );
 });
 
 type SnapshotView = 'normal' | 'far' | 'closeup';

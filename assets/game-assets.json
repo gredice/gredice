@@ -149,6 +149,25 @@
             "objects": ["Bucket", "Bucket - Handle"]
         },
         {
+            "name": "WateringCan",
+            "source": "WateringCan.blend",
+            "output": "WateringCan.glb",
+            "preload": "lazy",
+            "objects": [
+                "WateringCan_Base_Ring",
+                "WateringCan_Body",
+                "WateringCan_Body_Facet_Strips",
+                "WateringCan_Fill_Rim",
+                "WateringCan_Handle",
+                "WateringCan_Handle_Mounts",
+                "WateringCan_Rose_Face_Dots",
+                "WateringCan_Rose_Head",
+                "WateringCan_Spout",
+                "WateringCan_Spout_Collar",
+                "WateringCan_Water"
+            ]
+        },
+        {
             "name": "Composter",
             "source": "Composter.blend",
             "output": "Composter.glb",
