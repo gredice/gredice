@@ -80,10 +80,12 @@ export function RaisedBedOperationHistoryList({
     raisedBedId,
     positionIndex,
     raisedBedFieldId,
+    disableActions = false,
 }: {
     raisedBedId?: number;
     positionIndex?: number;
     raisedBedFieldId?: number;
+    disableActions?: boolean;
 }) {
     const referenceDate = useLiveTime();
     const flags = useGameFlags();
@@ -205,6 +207,7 @@ export function RaisedBedOperationHistoryList({
                 const actionRaisedBedId = operation.raisedBedId ?? raisedBedId;
                 const action =
                     flags.raisedBedImageAI &&
+                    !disableActions &&
                     currentGarden &&
                     actionRaisedBedId &&
                     operation.imageUrls.length > 0 ? (
