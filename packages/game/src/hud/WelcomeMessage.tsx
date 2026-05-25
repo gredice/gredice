@@ -22,7 +22,7 @@ const messageTypes = {
         text: [
             'Sad ima svoj vrt, mjesto gdje ćeš uzgajati svoje biljke i uživati u predivnoj prirodi.',
             'Tvoj vrt je trenutno prazan 🥺 ali ne brini, možeš ga popuniti raskošnim gredicama, raznim alatima i ukrasima.',
-            'Alate i ukrase možeš kupiti suncokretima, a gredice i povrće u našem dučanu. Sve dostupno preko trake na dnu ekrana.',
+            'Alate, tegle i ukrase možeš kupiti suncokretima, a gredice i povrće u našem dučanu. Sve dostupno preko trake na dnu ekrana.',
             'Kreni u avanturu i stvori svoj vlastiti vrt iz snova!',
         ],
     },
