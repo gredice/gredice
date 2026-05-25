@@ -5,6 +5,7 @@ import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/Game
 import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
 import { RaisedBedField } from '../../../packages/game/src/hud/raisedBed/RaisedBedField';
 import { RaisedBedFieldItem } from '../../../packages/game/src/hud/raisedBed/RaisedBedFieldItem';
+import { RaisedBedFieldSuggestions } from '../../../packages/game/src/hud/raisedBed/RaisedBedFieldSuggestions';
 import {
     createGameState,
     GameStateContext,
@@ -152,6 +153,21 @@ export function RaisedBedFieldHudStory({
                     positionIndex={positionIndex}
                 />
             </div>
+        </RaisedBedHudTestProviders>
+    );
+}
+
+export function RaisedBedFieldSuggestionsStory({
+    scenario,
+}: {
+    scenario: RaisedBedScenario;
+}) {
+    return (
+        <RaisedBedHudTestProviders scenario={scenario}>
+            <RaisedBedFieldSuggestions
+                gardenId={TEST_GARDEN_ID}
+                raisedBedId={TEST_RAISED_BED_ID}
+            />
         </RaisedBedHudTestProviders>
     );
 }

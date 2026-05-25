@@ -105,7 +105,7 @@ export function LoginDialog() {
                     <Typography level="h4" component="p">
                         Prijava
                     </Typography>
-                    <form action={submitAction}>
+                    <form action={submitAction} className="w-full">
                         <Stack spacing={8}>
                             <Stack spacing={2}>
                                 <Input
@@ -114,18 +114,21 @@ export function LoginDialog() {
                                     placeholder="email@email.com"
                                     type="email"
                                     autoComplete="email"
+                                    fullWidth
                                 />
                                 <Input
                                     name="password"
                                     label="Zaporka"
                                     type="password"
                                     autoComplete="current-password"
+                                    fullWidth
                                 />
                             </Stack>
                             <Button
                                 type="submit"
                                 loading={isPending}
                                 variant="solid"
+                                fullWidth
                             >
                                 Prijavi se
                             </Button>

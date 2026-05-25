@@ -361,7 +361,7 @@ export function PlantPicker({
                 )}
                 {currentStep === 1 && selectedPlantId && (
                     <>
-                        <Stack spacing={4}>
+                        <Stack spacing={4} className="pb-8 md:pb-0">
                             <PlantsSortList
                                 plantId={selectedPlantId}
                                 selectedSortId={selectedSortId}
@@ -411,9 +411,13 @@ export function PlantPicker({
                                 max={max}
                             />
                         </Stack>
-                        <Row justifyContent="space-between">
+                        <Row
+                            data-plant-picker-actions
+                            className="-mx-4 -mb-4 sticky bottom-0 z-10 flex-wrap items-center justify-between gap-2 border-t bg-background/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xs max-[340px]:flex-col max-[340px]:items-stretch max-[340px]:justify-start md:static md:mx-0 md:mb-0 md:flex-nowrap md:border-t-0 md:bg-transparent md:p-0 md:backdrop-blur-none"
+                        >
                             <Button
                                 variant="plain"
+                                className="min-w-0 justify-start whitespace-nowrap px-2 max-[340px]:justify-center md:justify-start"
                                 onClick={() => {
                                     setSelectedPlantId(null);
                                     resetSearch();
@@ -422,10 +426,14 @@ export function PlantPicker({
                             >
                                 Odabir biljke
                             </Button>
-                            <Row spacing={2}>
+                            <Row
+                                spacing={2}
+                                className="min-w-0 flex-wrap justify-end max-[340px]:w-full max-[340px]:flex-col-reverse max-[340px]:items-stretch"
+                            >
                                 {inShoppingCart && (
                                     <Button
                                         variant="plain"
+                                        className="whitespace-nowrap"
                                         loading={setCartItem.isPending}
                                         onClick={handleRemove}
                                     >
@@ -434,6 +442,7 @@ export function PlantPicker({
                                 )}
                                 <Button
                                     variant="solid"
+                                    className="whitespace-nowrap"
                                     disabled={!selectedSortId}
                                     title={
                                         !selectedSortId

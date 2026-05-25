@@ -393,7 +393,7 @@ export function RaisedBedFieldItemPlanted({
                     <TabsContent value="diary">
                         {garden && (
                             <Card>
-                                <CardOverflow className="overflow-auto max-h-96">
+                                <CardOverflow className="max-h-96 overflow-y-auto overflow-x-hidden">
                                     <RaisedBedFieldDiary
                                         gardenId={garden.id}
                                         raisedBedId={raisedBed.id}

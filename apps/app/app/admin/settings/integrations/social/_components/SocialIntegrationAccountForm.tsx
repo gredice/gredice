@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useActionState, useEffect } from 'react';
 import { KnownPages } from '../../../../../../src/KnownPages';
 import { getSocialProviderDefinition } from '../../../../../../src/social/providers/definitions';
+import { getSocialProviderSetupGuide } from '../../../../../../src/social/providers/setupGuide';
 import {
     type SocialAccountActionState,
     saveSocialAccountAction,
@@ -34,18 +35,22 @@ function destinationsText(value: unknown) {
     return value.filter((entry) => typeof entry === 'string').join('\n');
 }
 
-function accessTokenReferencePlaceholder(
+function referenceSegment(value: string) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
+function credentialReferencePlaceholder(
     provider: SocialProvider,
     providerAccountKey: string | undefined,
 ) {
-    const providerKey = provider.toUpperCase();
-    const accountKey = (providerAccountKey || 'brand-main')
-        .trim()
-        .toUpperCase()
-        .replace(/[^A-Z0-9]+/g, '_')
-        .replace(/^_+|_+$/g, '');
+    const accountKey =
+        referenceSegment(providerAccountKey || 'brand-main') || 'brand-main';
 
-    return `SOCIAL_PROVIDER_${providerKey}_${accountKey}_ACCESS_TOKEN`;
+    return `social/${referenceSegment(provider)}/${accountKey}`;
 }
 
 export function SocialIntegrationAccountForm({
@@ -58,6 +63,8 @@ export function SocialIntegrationAccountForm({
         FormData
     >(saveSocialAccountAction, null);
     const definition = getSocialProviderDefinition(provider);
+    const guide = getSocialProviderSetupGuide(provider);
+    const fieldHelp = guide?.formFields;
     const status: SocialAccountStatus = account?.status ?? 'active';
 
     useEffect(() => {
@@ -92,6 +99,7 @@ export function SocialIntegrationAccountForm({
                     defaultValue={account?.providerAccountKey ?? ''}
                     placeholder="brand-main"
                     disabled={Boolean(account)}
+                    helperText={fieldHelp?.providerAccountKey}
                     required
                 />
                 <Input
@@ -99,6 +107,7 @@ export function SocialIntegrationAccountForm({
                     name="label"
                     defaultValue={account?.label ?? ''}
                     placeholder={`Gredice ${definition?.label ?? provider}`}
+                    helperText={fieldHelp?.label}
                     required
                 />
                 <Input
@@ -106,14 +115,22 @@ export function SocialIntegrationAccountForm({
                     name="handle"
                     defaultValue={account?.handle ?? ''}
                     placeholder="@gredice"
+                    helperText={fieldHelp?.handle}
                 />
-                <SelectItems
-                    label="Status"
-                    name="status"
-                    defaultValue={status}
-                    items={accountStatusItems}
-                    required
-                />
+                <div className="space-y-1">
+                    <SelectItems
+                        label="Status"
+                        name="status"
+                        defaultValue={status}
+                        items={accountStatusItems}
+                        required
+                    />
+                    {fieldHelp?.status ? (
+                        <p className="text-xs text-muted-foreground">
+                            {fieldHelp.status}
+                        </p>
+                    ) : null}
+                </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -125,6 +142,7 @@ export function SocialIntegrationAccountForm({
                         definition?.destinationPlaceholder ??
                         '17841400000000000'
                     }
+                    helperText={fieldHelp?.externalAccountId}
                 />
                 <Input
                     label="Zadano odredište"
@@ -133,15 +151,17 @@ export function SocialIntegrationAccountForm({
                     placeholder={
                         definition?.destinationPlaceholder ?? 'gredice'
                     }
+                    helperText={fieldHelp?.defaultDestination}
                 />
                 <Input
                     label="Interna referenca"
                     name="credentialReference"
                     defaultValue={account?.credentialReference ?? ''}
-                    placeholder={accessTokenReferencePlaceholder(
+                    placeholder={credentialReferencePlaceholder(
                         provider,
                         account?.providerAccountKey,
                     )}
+                    helperText={fieldHelp?.credentialReference}
                 />
             </div>
 
@@ -158,6 +178,11 @@ export function SocialIntegrationAccountForm({
                     }
                     className="w-full rounded border border-muted bg-card p-2"
                 />
+                {fieldHelp?.allowedDestinations ? (
+                    <p className="text-xs text-muted-foreground">
+                        {fieldHelp.allowedDestinations}
+                    </p>
+                ) : null}
             </label>
 
             <div className="flex flex-wrap items-center gap-3">

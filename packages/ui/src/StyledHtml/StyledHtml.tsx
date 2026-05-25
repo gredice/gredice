@@ -1,4 +1,5 @@
 import type { HTMLAttributes } from 'react';
+import sanitizeHtml from 'sanitize-html';
 import { cx } from '../utils';
 import './StyledHtml.css';
 
@@ -26,11 +27,52 @@ export function StyledHtml({
     ...rest
 }: StyledHtmlProps) {
     if (typeof html === 'string') {
+        const sanitizedHtml = sanitizeHtml(html, {
+            allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+                'h1',
+                'h2',
+                'h3',
+                'h4',
+                'h5',
+                'h6',
+                'img',
+                'iframe',
+                'table',
+                'thead',
+                'tbody',
+                'tfoot',
+                'tr',
+                'th',
+                'td',
+            ]),
+            allowedAttributes: {
+                ...sanitizeHtml.defaults.allowedAttributes,
+                '*': ['class'],
+                a: ['href', 'name', 'target', 'rel'],
+                img: ['src', 'srcset', 'alt', 'title', 'width', 'height', 'loading'],
+                iframe: [
+                    'src',
+                    'title',
+                    'width',
+                    'height',
+                    'allow',
+                    'allowfullscreen',
+                    'loading',
+                    'referrerpolicy',
+                ],
+                th: ['colspan', 'rowspan', 'scope'],
+                td: ['colspan', 'rowspan'],
+            },
+            allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+            allowedSchemesAppliedToAttributes: ['href', 'src', 'cite'],
+            allowProtocolRelative: false,
+        });
+
         return (
             <div
                 className={styledHtmlClassName(className)}
-                // biome-ignore lint/security/noDangerouslySetInnerHtml: StyledHtml renders trusted source-controlled or CMS-author HTML through one shared API.
-                dangerouslySetInnerHTML={{ __html: html }}
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is sanitized before rendering.
+                dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
                 {...rest}
             />
         );

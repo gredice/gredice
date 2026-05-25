@@ -37,6 +37,7 @@ import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getBlockData } from '../../../lib/blocks/blockDataService';
 import { publicSecurity } from '../../../lib/docs/security';
+import { isAppliedOperationCurrentForRaisedBedFields } from '../../../lib/garden/appliedRaisedBedOperations';
 import { resolveGardenBlockPlacement } from '../../../lib/garden/blockPlacementService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
@@ -372,11 +373,25 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const blockNameById = new Map(
                 blocks.map((block) => [block.id, block.name] as const),
             );
+            const raisedBedsById = new Map(
+                garden.raisedBeds.map((raisedBed) => [raisedBed.id, raisedBed]),
+            );
             const appliedOperationsByRaisedBedId = operations.reduce(
                 (acc, operation) => {
                     if (
                         !operation.raisedBedId ||
                         !isAppliedRaisedBedOperationStatus(operation.status)
+                    ) {
+                        return acc;
+                    }
+
+                    const raisedBed = raisedBedsById.get(operation.raisedBedId);
+                    if (
+                        !raisedBed ||
+                        !isAppliedOperationCurrentForRaisedBedFields(
+                            operation,
+                            raisedBed.fields,
+                        )
                     ) {
                         return acc;
                     }

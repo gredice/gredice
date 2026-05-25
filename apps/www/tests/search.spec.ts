@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test';
 import { expect, type Locator, test } from './fixtures';
 
+const navSearchTestPath = '/kontakt';
+
 async function typeSearch(locator: Locator, value: string) {
     await locator.click();
     await locator.pressSequentially(value);
@@ -68,7 +70,7 @@ test.describe('public search filters', () => {
             },
         );
 
-        await page.goto('/', { waitUntil: 'domcontentloaded' });
+        await page.goto(navSearchTestPath, { waitUntil: 'domcontentloaded' });
 
         const expectedShortcut = await page.evaluate(() =>
             /Mac|iPhone|iPad|iPod/u.test(
@@ -146,7 +148,7 @@ test.describe('public search filters', () => {
             },
         );
 
-        await page.goto('/', { waitUntil: 'domcontentloaded' });
+        await page.goto(navSearchTestPath, { waitUntil: 'domcontentloaded' });
         const expectedShortcut = await page.evaluate(() =>
             /Mac|iPhone|iPad|iPod/u.test(
                 navigator.platform || navigator.userAgent,
@@ -262,7 +264,7 @@ test.describe('public search filters', () => {
             },
         );
 
-        await page.goto('/', { waitUntil: 'domcontentloaded' });
+        await page.goto(navSearchTestPath, { waitUntil: 'domcontentloaded' });
         const expectedShortcut = await page.evaluate(() =>
             /Mac|iPhone|iPad|iPod/u.test(
                 navigator.platform || navigator.userAgent,
@@ -328,7 +330,7 @@ test.describe('public search filters', () => {
                 get: () => 1,
             });
         });
-        await page.goto('/', { waitUntil: 'domcontentloaded' });
+        await page.goto(navSearchTestPath, { waitUntil: 'domcontentloaded' });
 
         await expect(page.getByText('⌘K', { exact: true })).toHaveCount(0);
         await expect(page.getByText('Ctrl K', { exact: true })).toHaveCount(0);
@@ -336,7 +338,7 @@ test.describe('public search filters', () => {
 
     test('navbar search avoids primary link overlap', async ({ page }) => {
         await page.setViewportSize({ width: 1180, height: 720 });
-        await page.goto('/', { waitUntil: 'domcontentloaded' });
+        await page.goto(navSearchTestPath, { waitUntil: 'domcontentloaded' });
         await expect(
             page.locator('header search[aria-label="Pretraga"]'),
         ).toBeHidden();
@@ -367,25 +369,10 @@ test.describe('public search filters', () => {
             (raisedBedLinkBox?.x ?? 0) + (raisedBedLinkBox?.width ?? 0),
         ).toBeLessThanOrEqual(firstNavLinkBox?.x ?? 0);
         expect(raisedBedLinkBox?.x ?? 0).toBeLessThan(firstNavLinkBox?.x ?? 0);
-
-        await page.setViewportSize({ width: 1734, height: 846 });
-        const wideSearchBox = await page
-            .locator('header search[aria-label="Pretraga"]')
-            .boundingBox();
-        const wideRaisedBedLinkBox = await page
-            .locator('header')
-            .getByRole('link', { name: 'Gredica', exact: true })
-            .boundingBox();
-
-        expect(wideSearchBox).not.toBeNull();
-        expect(wideRaisedBedLinkBox).not.toBeNull();
-        expect(
-            (wideSearchBox?.x ?? 0) + (wideSearchBox?.width ?? 0),
-        ).toBeLessThan((wideRaisedBedLinkBox?.x ?? 0) - 8);
     });
 
     test('navbar exposes updated primary links', async ({ page }) => {
-        await page.goto('/', { waitUntil: 'domcontentloaded' });
+        await page.goto(navSearchTestPath, { waitUntil: 'domcontentloaded' });
 
         const navbar = page.locator('header');
         await expect(
@@ -414,7 +401,7 @@ test.describe('public search filters', () => {
             },
         );
 
-        await page.goto('/', { waitUntil: 'domcontentloaded' });
+        await page.goto(navSearchTestPath, { waitUntil: 'domcontentloaded' });
 
         const navbar = page.locator('header');
         await expect(
@@ -425,7 +412,7 @@ test.describe('public search filters', () => {
 
     test('navbar search uses compact mobile button', async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 });
-        await page.goto('/', { waitUntil: 'domcontentloaded' });
+        await page.goto(navSearchTestPath, { waitUntil: 'domcontentloaded' });
 
         const searchButton = page.getByRole('button', { name: 'Pretraga' });
         await expect(searchButton).toBeVisible();

@@ -157,14 +157,14 @@ function MobileModal({
                 <Drawer.Overlay className="fixed inset-0 z-50 bg-black/50" />
                 <Drawer.Content
                     className={cx(
-                        'fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[calc(100dvh-1rem)] flex-col overflow-hidden rounded-t-[10px] border bg-background',
+                        'fixed inset-x-0 bottom-0 z-50 mt-4 flex max-h-[calc(100dvh-1rem)] flex-col rounded-t-[10px] border bg-background',
                         className,
                     )}
                     {...rest}
                 >
                     <Drawer.Title className="sr-only">{title}</Drawer.Title>
-                    <Drawer.Handle className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
-                    <div className="overflow-y-auto overscroll-contain p-4">
+                    <Drawer.Handle className="mx-auto mt-4 h-2 w-[100px] shrink-0 rounded-full bg-muted" />
+                    <div className="min-h-0 overflow-y-auto p-4">
                         {children}
                     </div>
                 </Drawer.Content>
