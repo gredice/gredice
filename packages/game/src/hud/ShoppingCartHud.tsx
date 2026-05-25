@@ -311,7 +311,8 @@ export function ShoppingCartHud() {
                         setIsOpen(open);
                     }}
                     title="Košara"
-                    className="border-tertiary border-b-4 md:max-w-2xl"
+                    className="z-[46] border-tertiary border-b-4 md:max-w-2xl"
+                    overlayClassName="z-[46]"
                     trigger={
                         <Button
                             title="Košara"
