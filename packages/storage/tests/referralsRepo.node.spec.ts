@@ -1,16 +1,21 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
+    accountUsers,
     clearUsedReferralCodeForAccount,
     getAccountReferralState,
     getSunflowers,
     processReferralRewardsForAccount,
     REFERRAL_REWARD_AMOUNT,
     ReferralCodeAlreadyUsedError,
+    ReferralCodeReciprocalUseError,
     ReferralCodeReservedError,
     redeemReferralCodeForAccount,
     setReferralCodeForAccount,
+    storage,
     updateRaisedBed,
+    users,
 } from '@gredice/storage';
 import {
     createTestAccount,
@@ -28,6 +33,51 @@ async function createRaisedBedForAccount(accountId: string) {
     return await createTestRaisedBed(gardenId, accountId, blockId);
 }
 
+async function assignTestUserToAccount({
+    accountId,
+    avatarUrl,
+    displayName,
+    userName,
+}: {
+    accountId: string;
+    avatarUrl?: string | null;
+    displayName?: string | null;
+    userName: string;
+}) {
+    const userId = randomUUID();
+    await storage().insert(users).values({
+        id: userId,
+        userName,
+        displayName,
+        avatarUrl,
+        role: 'user',
+    });
+    await storage().insert(accountUsers).values({
+        accountId,
+        userId,
+    });
+    return userId;
+}
+
+function expectedReferredAccount(
+    accountId: string,
+    rewarded: boolean,
+    account: {
+        displayName?: string;
+        avatarUrl?: string | null;
+    } = {},
+) {
+    return {
+        accountId,
+        account: {
+            id: accountId,
+            displayName: account.displayName ?? 'Gredice račun',
+            avatarUrl: account.avatarUrl ?? null,
+        },
+        rewarded,
+    };
+}
+
 test('account referral state respects cleared used codes', async () => {
     createTestDb();
     const ownerAccountId = await createTestAccount();
@@ -35,6 +85,15 @@ test('account referral state respects cleared used codes', async () => {
     const referredAccountId = await createTestAccount();
     const ownerCode = `owner-${ownerAccountId.slice(0, 8)}`;
     const nextOwnerCode = `next-${nextOwnerAccountId.slice(0, 8)}`;
+    const referredDisplayName = 'Farmernčić';
+    const referredAvatarUrl = 'https://cdn.gredice.com/avatar/farmer.png';
+
+    await assignTestUserToAccount({
+        accountId: referredAccountId,
+        userName: 'farmer@example.com',
+        displayName: referredDisplayName,
+        avatarUrl: referredAvatarUrl,
+    });
 
     await setReferralCodeForAccount(ownerAccountId, ownerCode, {
         source: 'admin',
@@ -53,7 +112,10 @@ test('account referral state respects cleared used codes', async () => {
 
     const ownerState = await getAccountReferralState(ownerAccountId);
     assert.deepStrictEqual(ownerState.referredAccounts, [
-        { accountId: referredAccountId, rewarded: false },
+        expectedReferredAccount(referredAccountId, false, {
+            displayName: referredDisplayName,
+            avatarUrl: referredAvatarUrl,
+        }),
     ]);
 
     await redeemReferralCodeForAccount(referredAccountId, nextOwnerCode);
@@ -96,6 +158,37 @@ test('setReferralCodeForAccount rejects account id prefix codes', async () => {
     );
 });
 
+test('redeeming a referral code rejects reciprocal account referrals', async () => {
+    createTestDb();
+    const firstAccountId = await createTestAccount();
+    const secondAccountId = await createTestAccount();
+    const firstCode = `first-${firstAccountId.slice(0, 8)}`;
+    const secondCode = `second-${secondAccountId.slice(0, 8)}`;
+
+    await setReferralCodeForAccount(firstAccountId, firstCode, {
+        source: 'admin',
+    });
+    await setReferralCodeForAccount(secondAccountId, secondCode, {
+        source: 'admin',
+    });
+
+    await redeemReferralCodeForAccount(secondAccountId, firstCode);
+
+    await assert.rejects(
+        () => redeemReferralCodeForAccount(firstAccountId, secondCode),
+        ReferralCodeReciprocalUseError,
+    );
+
+    const firstState = await getAccountReferralState(firstAccountId);
+    assert.strictEqual(firstState.usedReferral, null);
+
+    const secondState = await getAccountReferralState(secondAccountId);
+    assert.strictEqual(secondState.usedReferralCode, firstCode);
+    assert.deepStrictEqual(firstState.referredAccounts, [
+        expectedReferredAccount(secondAccountId, false),
+    ]);
+});
+
 test('redeeming a referral code rewards both accounts when referred account is already active', async () => {
     createTestDb();
     const ownerAccountId = await createTestAccount();
@@ -132,7 +225,7 @@ test('redeeming a referral code rewards both accounts when referred account is a
 
     const ownerState = await getAccountReferralState(ownerAccountId);
     assert.deepStrictEqual(ownerState.referredAccounts, [
-        { accountId: referredAccountId, rewarded: true },
+        expectedReferredAccount(referredAccountId, true),
     ]);
 });
 
