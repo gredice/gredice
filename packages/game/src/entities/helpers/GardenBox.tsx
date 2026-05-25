@@ -13,27 +13,8 @@ import { useAnimatedEntityRotation } from './useAnimatedEntityRotation';
 const lidClosedRotation = 0;
 const lidOpenRotation = -Math.PI / 2;
 
-type GardenBoxProps = EntityInstanceProps & {
-    bodyColor: string;
-    lidColor: string;
-    bodyMetalness?: number;
-    bodyRoughness?: number;
-    lidMetalness?: number;
-    lidRoughness?: number;
-};
-
-export function GardenBox({
-    stack,
-    block,
-    rotation,
-    bodyColor,
-    lidColor,
-    bodyMetalness = 0.1,
-    bodyRoughness = 0.85,
-    lidMetalness = 0.2,
-    lidRoughness = 0.75,
-}: GardenBoxProps) {
-    const { nodes } = useGameGLTF('GardenBox');
+export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
+    const { nodes, materials } = useGameGLTF('GardenBox');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     const hovered =
@@ -60,12 +41,8 @@ export function GardenBox({
                 castShadow
                 receiveShadow
                 geometry={nodes.GardenBox_Body_Planks.geometry}
+                material={materials['Material.Planks']}
             >
-                <meshStandardMaterial
-                    color={bodyColor}
-                    metalness={bodyMetalness}
-                    roughness={bodyRoughness}
-                />
                 <HoverOutline hovered={hovered} variant="outlines" />
             </mesh>
             <SnowOverlay
@@ -81,13 +58,8 @@ export function GardenBox({
                     castShadow
                     receiveShadow
                     geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
-                >
-                    <meshStandardMaterial
-                        color={lidColor}
-                        metalness={lidMetalness}
-                        roughness={lidRoughness}
-                    />
-                </mesh>
+                    material={materials['Material.Planks']}
+                />
                 <SnowOverlay
                     geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
                     {...snowPresets.giftBox}
