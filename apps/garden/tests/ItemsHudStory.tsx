@@ -51,6 +51,7 @@ const blockNames = [
     'StoneSmall',
     'StoneMedium',
     'StoneLarge',
+    'BirdHouse',
     'Bush',
     'Tree',
     'Pine',

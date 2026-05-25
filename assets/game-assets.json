@@ -156,6 +156,21 @@
             "objects": ["Composter"]
         },
         {
+            "name": "BirdHouse",
+            "source": "BirdHouse.blend",
+            "output": "BirdHouse.glb",
+            "preload": "lazy",
+            "objects": [
+                "Birdhouse_Angled_Supports",
+                "Birdhouse_Cabin_Walls",
+                "Birdhouse_Center_Post",
+                "Birdhouse_Perch",
+                "Birdhouse_Ridge_Cap",
+                "Birdhouse_Roof_Panels",
+                "Birdhouse_Upper_Platform"
+            ]
+        },
+        {
             "name": "Fence",
             "source": "Fence.blend",
             "output": "Fence.glb",

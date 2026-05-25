@@ -60,6 +60,7 @@ const items: HudItem[] = [
             { type: 'entity', name: 'StoneSmall' },
             { type: 'entity', name: 'StoneMedium' },
             { type: 'entity', name: 'StoneLarge' },
+            { type: 'entity', name: 'BirdHouse' },
             { type: 'entity', name: 'Bush' },
             { type: 'entity', name: 'Tree' },
             { type: 'entity', name: 'Pine' },
