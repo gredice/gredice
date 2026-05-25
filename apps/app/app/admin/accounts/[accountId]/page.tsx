@@ -1,9 +1,12 @@
+import { getAccountGardens, getAccountReferralState } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Button } from '@gredice/ui/Button';
+import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
 import { Delete } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import Link from 'next/link';
 import {
     EntityDetailsPanelCard,
     EntityDetailsPropertiesLayout,
@@ -21,12 +24,12 @@ import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { sendDeleteAccountEmail } from '../../../(actions)/accountsActions';
 import { getAccountTimeZone } from '../../../(actions)/accountTimeZoneActions';
+import { GardensTable } from '../../gardens/GardensTable';
+import { ShoppingCartsTable } from '../../shopping-carts/ShoppingCartsTable';
 import { AccountAchievementsCard } from './AccountAchievementsCard';
 import { AccountEventsCard } from './AccountEventsCard';
-import { AccountGardensCard } from './AccountGardensCard';
 import { AccountInventoryCard } from './AccountInventoryCard';
 import { AccountReferralsCard } from './AccountReferralsCard';
-import { AccountShoppingCartsCard } from './AccountShoppingCartsCard';
 import { AccountSunflowersCard } from './AccountSunflowersCard';
 import { AccountTimeZonePicker } from './AccountTimeZonePicker';
 import { AccountTransactionsCard } from './AccountTransactionsCard';
@@ -35,18 +38,55 @@ import { RaisedBedsTableCard } from './RaisedBedsTableCard';
 
 export const dynamic = 'force-dynamic';
 
+type AccountPageSearchParams = Record<string, string | string[] | undefined>;
+
 export default async function AccountPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ accountId: string }>;
+    searchParams: Promise<AccountPageSearchParams>;
 }) {
-    const { accountId } = await params;
+    const [{ accountId }, resolvedSearchParams] = await Promise.all([
+        params,
+        searchParams,
+    ]);
     await auth(['admin']);
 
     const actionBound = sendDeleteAccountEmail.bind(null, accountId);
-    const currentTimeZone = await getAccountTimeZone(accountId);
+    const [currentTimeZone, gardens, referralState] = await Promise.all([
+        getAccountTimeZone(accountId),
+        getAccountGardens(accountId),
+        getAccountReferralState(accountId),
+    ]);
+    const usedReferralCodeValue =
+        referralState.usedReferralCode &&
+        referralState.usedReferralOwnerAccountId ? (
+            <Link
+                href={KnownPages.Account(
+                    referralState.usedReferralOwnerAccountId,
+                )}
+                title={`Izvorni račun: ${referralState.usedReferralOwnerAccountId}`}
+            >
+                {referralState.usedReferralCode}
+            </Link>
+        ) : (
+            referralState.usedReferralCode
+        );
     const propertyItems: EntityDetailsPropertyListItem[] = [
         { id: 'account-id', label: 'ID računa', value: accountId, mono: true },
+        {
+            id: 'own-referral-code',
+            label: 'Vlastiti kod preporuke',
+            value: referralState.myCode,
+            mono: true,
+        },
+        {
+            id: 'used-referral-code',
+            label: 'Korišteni kod preporuke',
+            value: usedReferralCodeValue,
+            mono: true,
+        },
         {
             id: 'time-zone',
             label: 'Vremenska zona',
@@ -107,16 +147,45 @@ export default async function AccountPage({
                 <EntityDetailsPropertiesLayout properties={propertiesPanel}>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <AccountUsersCard accountId={accountId} />
-                        <AccountGardensCard accountId={accountId} />
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Vrtovi</CardTitle>
+                            </CardHeader>
+                            <CardOverflow>
+                                <GardensTable
+                                    gardens={gardens}
+                                    showAccountColumn={false}
+                                    showCreatedTime
+                                    emptyLabel="Nema povezanih vrtova"
+                                />
+                            </CardOverflow>
+                        </Card>
                         <AccountSunflowersCard accountId={accountId} />
                         <AccountReferralsCard accountId={accountId} />
                         <AccountAchievementsCard accountId={accountId} />
                         <AccountTransactionsCard accountId={accountId} />
                         <RaisedBedsTableCard accountId={accountId} />
-                        <AccountEventsCard accountId={accountId} />
-                        <NotificationsTableCard accountId={accountId} scroll />
+                        <AccountEventsCard
+                            accountId={accountId}
+                            searchParams={resolvedSearchParams}
+                        />
+                        <NotificationsTableCard
+                            accountId={accountId}
+                            showAccountColumn={false}
+                            scroll
+                        />
                         <AccountInventoryCard accountId={accountId} />
-                        <AccountShoppingCartsCard accountId={accountId} />
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Košarice</CardTitle>
+                            </CardHeader>
+                            <CardOverflow>
+                                <ShoppingCartsTable
+                                    accountId={accountId}
+                                    showIdColumn={false}
+                                />
+                            </CardOverflow>
+                        </Card>
                     </div>
                 </EntityDetailsPropertiesLayout>
             </Stack>

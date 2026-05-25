@@ -149,6 +149,14 @@ export function SelectItems<T extends string>({
             return;
         }
 
+        const isCoarsePointer =
+            typeof window !== 'undefined' &&
+            window.matchMedia('(pointer: coarse)').matches;
+
+        if (isCoarsePointer) {
+            return;
+        }
+
         const timeoutId = setTimeout(() => {
             searchInputRef.current?.focus();
         }, 0);

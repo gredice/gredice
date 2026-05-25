@@ -73,15 +73,21 @@ export function getEvents(
     });
 }
 
-export function getEventsByAggregateIds(
+export function getLatestEvents(
+    type: string | string[],
     aggregateIds: string[],
     offset: number = 0,
     limit: number = 1000,
     db: DatabaseClient = storage(),
 ) {
     return db.query.events.findMany({
-        where: inArray(events.aggregateId, aggregateIds),
-        orderBy: [asc(events.createdAt), asc(events.id)],
+        where: and(
+            inArray(events.aggregateId, aggregateIds),
+            Array.isArray(type)
+                ? inArray(events.type, type)
+                : eq(events.type, type),
+        ),
+        orderBy: [desc(events.createdAt), desc(events.id)],
         offset,
         limit,
     });
