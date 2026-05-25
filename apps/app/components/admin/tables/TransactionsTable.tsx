@@ -85,14 +85,14 @@ export async function TransactionsTable({ accountId }: { accountId?: string }) {
                             )}
                             <Table.Cell>
                                 <Chip color="info" className="w-fit">
-                                    <Typography noWrap>
+                                    <Typography component="span" noWrap>
                                         {transaction.status}
                                     </Typography>
                                 </Chip>
                             </Table.Cell>
                             <Table.Cell>
                                 <Chip color="success" className="w-fit">
-                                    <Typography noWrap>
+                                    <Typography component="span" noWrap>
                                         €{(transaction.amount / 100).toFixed(2)}
                                     </Typography>
                                 </Chip>
@@ -101,13 +101,13 @@ export async function TransactionsTable({ accountId }: { accountId?: string }) {
                                 <Row spacing={2}>
                                     {hasNoInvoices ? (
                                         <Chip color="error" className="w-fit">
-                                            <Typography noWrap>
+                                            <Typography component="span" noWrap>
                                                 Bez ponuda
                                             </Typography>
                                         </Chip>
                                     ) : (
                                         <Chip color="success" className="w-fit">
-                                            <Typography noWrap>
+                                            <Typography component="span" noWrap>
                                                 📋 {invoiceCount} ponuda
                                             </Typography>
                                         </Chip>
