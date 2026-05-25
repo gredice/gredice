@@ -4,8 +4,25 @@ import { validateHostedImageUrl } from '../http/safeUrls';
 
 const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5';
 
-/** Max AI analysis requests per account per day. */
-export const AI_ANALYSIS_DAILY_LIMIT = 10;
+export const AI_REQUEST_QUOTA_WINDOW_DAYS = 7;
+export const AI_REQUEST_QUOTA_WINDOW_MS =
+    AI_REQUEST_QUOTA_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+export const AI_REQUEST_WEEKLY_LIMIT = 5;
+export const RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND =
+    'raisedBedImageAnalysis' as const;
+
+export type AiRequestKind = typeof RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND;
+
+export const AI_REQUEST_QUOTAS = {
+    [RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND]: {
+        limit: AI_REQUEST_WEEKLY_LIMIT,
+        windowDays: AI_REQUEST_QUOTA_WINDOW_DAYS,
+        windowMs: AI_REQUEST_QUOTA_WINDOW_MS,
+    },
+} as const satisfies Record<
+    AiRequestKind,
+    { limit: number; windowDays: number; windowMs: number }
+>;
 
 export function validateImageUrl(imageUrl: string): string | null {
     return validateHostedImageUrl(imageUrl);
@@ -84,6 +101,11 @@ async function buildAnalysisMessages({
             entity.information?.label ?? entity.information?.name ?? entity.id,
         ]),
     );
+    const availableOperations = operationsData.map((entity) => ({
+        id: entity.id,
+        name:
+            entity.information?.label ?? entity.information?.name ?? entity.id,
+    }));
 
     const plantedFields = raisedBed.fields
         .filter((field) => field.active && field.plantSortId)
@@ -120,7 +142,7 @@ async function buildAnalysisMessages({
         {
             role: 'system' as const,
             content:
-                'Ti si stručni agronom za urbane vrtove. Piši ISKLJUČIVO na hrvatskom jeziku i vrati odgovor kao uredno formatiran markdown.',
+                'Ti si stručni agronom za urbane vrtove. Piši ISKLJUČIVO na hrvatskom jeziku i vrati odgovor kao uredno formatiran markdown. Korisnik nema fizički pristup gredici; kada preporuka traži rad na gredici, predloži naručivanje najbliže odgovarajuće operacije iz dostupnog popisa umjesto da korisniku kažeš da to sam ručno napravi.',
         },
         {
             role: 'user' as const,
@@ -145,6 +167,7 @@ async function buildAnalysisMessages({
                                         ? positionIndex
                                         : null,
                                 plantedFields,
+                                availableOperations,
                                 executedOperations,
                             },
                             null,

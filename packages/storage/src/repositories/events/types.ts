@@ -10,6 +10,14 @@ export type AccountSunflowersPayload = {
     reason: string;
 };
 
+export type AiRequestKind = 'raisedBedImageAnalysis';
+
+export type AccountAiRequestPayload = {
+    accountId: string;
+    aiRequestKind: AiRequestKind;
+    requestedAt: string;
+};
+
 // ============================================================================
 // User event payload types
 // ============================================================================
@@ -195,6 +203,8 @@ export type RaisedBedFieldAiAnalysisPayload = {
     imageUrl: string;
     model: string;
     analyzedAt: string;
+    accountId?: string;
+    aiRequestKind?: AiRequestKind;
     inputTokens?: number;
     outputTokens?: number;
     totalTokens?: number;

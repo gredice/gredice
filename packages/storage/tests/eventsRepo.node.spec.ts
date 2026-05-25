@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
+    countAiRequestEventsSince,
     createEvent,
     getEvents,
     getLatestEvents,
@@ -8,6 +10,20 @@ import {
     knownEventTypes,
 } from '@gredice/storage';
 import { createTestDb } from './testDb';
+
+function aiAnalysisData(
+    overrides: Partial<
+        Parameters<typeof knownEvents.raisedBeds.aiAnalysisV1>[1]
+    > = {},
+) {
+    return {
+        markdown: '## Test',
+        imageUrl: 'https://example.com/raised-bed.jpg',
+        model: 'test-model',
+        analyzedAt: '2026-02-02T12:00:00.000Z',
+        ...overrides,
+    };
+}
 
 test('createEvent and getEvents basic usage', async () => {
     createTestDb();
@@ -75,4 +91,77 @@ test('getLatestEvents returns newest events first and paginates', async () => {
         secondPage.map((event) => event.createdAt.toISOString()),
         ['2026-01-01T12:00:00.000Z'],
     );
+});
+
+test('countAiRequestEventsSince counts account-kind events with legacy aggregate fallback', async () => {
+    createTestDb();
+    const accountId = `account-${randomUUID()}`;
+    const otherAccountId = `account-${randomUUID()}`;
+    const legacyAggregateId = `legacy-bed-${randomUUID()}|0`;
+    const ignoredLegacyAggregateId = `legacy-bed-${randomUUID()}|0`;
+    const requestKind = 'raisedBedImageAnalysis';
+    const since = new Date('2026-02-01T00:00:00.000Z');
+
+    await createEvent({
+        ...knownEvents.accounts.aiRequestV1(accountId, {
+            accountId,
+            aiRequestKind: requestKind,
+            requestedAt: '2026-02-02T12:00:00.000Z',
+        }),
+        createdAt: new Date('2026-02-02T12:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.raisedBedFields.aiAnalysisV1(
+            legacyAggregateId,
+            aiAnalysisData(),
+        ),
+        createdAt: new Date('2026-02-03T12:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.raisedBedFields.aiAnalysisV1(
+            legacyAggregateId,
+            aiAnalysisData({
+                accountId,
+                aiRequestKind: requestKind,
+            }),
+        ),
+        createdAt: new Date('2026-02-03T13:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.accounts.aiRequestV1(otherAccountId, {
+            accountId: otherAccountId,
+            aiRequestKind: requestKind,
+            requestedAt: '2026-02-04T12:00:00.000Z',
+        }),
+        createdAt: new Date('2026-02-04T12:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.raisedBedFields.aiAnalysisV1(
+            ignoredLegacyAggregateId,
+            aiAnalysisData(),
+        ),
+        createdAt: new Date('2026-02-05T12:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.accounts.aiRequestV1(accountId, {
+            accountId,
+            aiRequestKind: requestKind,
+            requestedAt: '2026-01-31T12:00:00.000Z',
+        }),
+        createdAt: new Date('2026-01-31T12:00:00.000Z'),
+    });
+
+    const count = await countAiRequestEventsSince({
+        type: knownEventTypes.accounts.aiRequest,
+        legacyType: [
+            knownEventTypes.raisedBeds.aiAnalysis,
+            knownEventTypes.raisedBedFields.aiAnalysis,
+        ],
+        since,
+        accountId,
+        requestKind,
+        legacyAggregateIds: [legacyAggregateId],
+    });
+
+    assert.strictEqual(count, 2);
 });

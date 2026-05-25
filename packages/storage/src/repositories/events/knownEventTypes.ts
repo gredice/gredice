@@ -4,6 +4,7 @@ export const knownEventTypes = {
         assignUser: 'account.assignUser',
         earnSunflowers: 'account.earnSunflowers',
         spendSunflowers: 'account.spendSunflowers',
+        aiRequest: 'account.aiRequest',
     },
     users: {
         create: 'user.create',

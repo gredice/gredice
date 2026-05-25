@@ -1,5 +1,6 @@
 import { knownEventTypes } from './knownEventTypes';
 import type {
+    AccountAiRequestPayload,
     AccountAssignUserPayload,
     AccountSunflowersPayload,
     AdventCalendarOpenPayload,
@@ -70,6 +71,12 @@ export const knownEvents = {
             data: AccountSunflowersPayload,
         ) => ({
             type: knownEventTypes.accounts.spendSunflowers,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        aiRequestV1: (aggregateId: string, data: AccountAiRequestPayload) => ({
+            type: knownEventTypes.accounts.aiRequest,
             version: 1,
             aggregateId,
             data,

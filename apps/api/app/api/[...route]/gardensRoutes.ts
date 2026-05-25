@@ -3,7 +3,7 @@ import { signalcoClient } from '@gredice/signalco';
 import {
     abandonRaisedBed,
     buildRaisedBedFieldPlantUpdatePayload,
-    countEventsSince,
+    countAiRequestEventsSince,
     createDefaultGardenForAccount,
     createEvent,
     createGardenBlock,
@@ -43,7 +43,9 @@ import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
 import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
 import {
-    AI_ANALYSIS_DAILY_LIMIT,
+    AI_REQUEST_QUOTAS,
+    type AiRequestKind,
+    RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
     streamRaisedBedImageAnalysis,
     validateImageUrl,
 } from '../../../lib/garden/raisedBedAiAnalysisService';
@@ -67,9 +69,41 @@ const ABANDON_RAISED_BED_OPERATION_ID = 591;
 // Operations are stored as CMS entities with entityTypeName='operation'.
 const OPERATION_ENTITY_TYPE_NAME = 'operation';
 
-async function countRecentRaisedBedAiAnalyses(accountId: string) {
+async function countRecentAiRequests(
+    accountId: string,
+    requestKind: AiRequestKind,
+) {
+    const quota = AI_REQUEST_QUOTAS[requestKind];
+    const since = new Date(Date.now() - quota.windowMs);
+
+    switch (requestKind) {
+        case RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND:
+            return countRecentRaisedBedImageAnalyses(accountId, since);
+    }
+
+    const unreachable: never = requestKind;
+    throw new Error(`Unsupported AI request kind: ${unreachable}`);
+}
+
+async function getAiRequestQuotaUsage(
+    accountId: string,
+    requestKind: AiRequestKind,
+) {
+    const quota = AI_REQUEST_QUOTAS[requestKind];
+    const used = await countRecentAiRequests(accountId, requestKind);
+
+    return {
+        ...quota,
+        used,
+        remaining: Math.max(0, quota.limit - used),
+    };
+}
+
+async function countRecentRaisedBedImageAnalyses(
+    accountId: string,
+    since: Date,
+) {
     const accountBedIds = await getRaisedBedIdsByAccount(accountId);
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const raisedBedAggregateIds = accountBedIds.map((bedId) =>
         bedId.toString(),
     );
@@ -80,20 +114,30 @@ async function countRecentRaisedBedAiAnalyses(accountId: string) {
         ),
     );
 
-    const [raisedBedCount, raisedBedFieldCount] = await Promise.all([
-        countEventsSince(
+    return countAiRequestEventsSince({
+        type: knownEventTypes.accounts.aiRequest,
+        legacyType: [
             knownEventTypes.raisedBeds.aiAnalysis,
-            since,
-            raisedBedAggregateIds,
-        ),
-        countEventsSince(
             knownEventTypes.raisedBedFields.aiAnalysis,
-            since,
-            raisedBedFieldAggregateIds,
-        ),
-    ]);
+        ],
+        since,
+        accountId,
+        requestKind: RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
+        legacyAggregateIds: [
+            ...raisedBedAggregateIds,
+            ...raisedBedFieldAggregateIds,
+        ],
+    });
+}
 
-    return raisedBedCount + raisedBedFieldCount;
+async function recordAiRequest(accountId: string, requestKind: AiRequestKind) {
+    await createEvent(
+        knownEvents.accounts.aiRequestV1(accountId, {
+            accountId,
+            aiRequestKind: requestKind,
+            requestedAt: new Date().toISOString(),
+        }),
+    );
 }
 
 async function trackGardenCreated(input: {
@@ -1710,11 +1754,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
 
-            const recentCount = await countRecentRaisedBedAiAnalyses(accountId);
-            if (recentCount >= AI_ANALYSIS_DAILY_LIMIT) {
+            const aiQuota = await getAiRequestQuotaUsage(
+                accountId,
+                RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
+            );
+            if (aiQuota.used >= aiQuota.limit) {
                 return context.json(
                     {
-                        error: `Daily AI analysis limit reached (${AI_ANALYSIS_DAILY_LIMIT.toString()}/day). Try again tomorrow.`,
+                        error: `Dosegnut je tjedni limit AI zahtjeva (${aiQuota.limit.toString()}/tjedan). Pokušaj ponovno kasnije.`,
                     },
                     429,
                 );
@@ -1726,6 +1773,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     500,
                 );
             }
+
+            await recordAiRequest(
+                accountId,
+                RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
+            );
 
             const result = await streamRaisedBedImageAnalysis(
                 {
@@ -1743,6 +1795,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 imageUrl,
                                 model: analysis.model,
                                 analyzedAt: analysis.analyzedAt,
+                                accountId,
+                                aiRequestKind:
+                                    RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
                                 inputTokens: analysis.inputTokens,
                                 outputTokens: analysis.outputTokens,
                                 totalTokens: analysis.totalTokens,
@@ -2156,11 +2211,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const recentCount = await countRecentRaisedBedAiAnalyses(accountId);
-            if (recentCount >= AI_ANALYSIS_DAILY_LIMIT) {
+            const aiQuota = await getAiRequestQuotaUsage(
+                accountId,
+                RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
+            );
+            if (aiQuota.used >= aiQuota.limit) {
                 return context.json(
                     {
-                        error: `Daily AI analysis limit reached (${AI_ANALYSIS_DAILY_LIMIT.toString()}/day). Try again tomorrow.`,
+                        error: `Dosegnut je tjedni limit AI zahtjeva (${aiQuota.limit.toString()}/tjedan). Pokušaj ponovno kasnije.`,
                     },
                     429,
                 );
@@ -2172,6 +2230,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     500,
                 );
             }
+
+            await recordAiRequest(
+                accountId,
+                RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
+            );
 
             const result = await streamRaisedBedImageAnalysis(
                 {
@@ -2190,6 +2253,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 imageUrl,
                                 model: analysis.model,
                                 analyzedAt: analysis.analyzedAt,
+                                accountId,
+                                aiRequestKind:
+                                    RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
                                 inputTokens: analysis.inputTokens,
                                 outputTokens: analysis.outputTokens,
                                 totalTokens: analysis.totalTokens,
