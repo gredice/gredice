@@ -13,7 +13,6 @@ import {
     gardens,
     getNotificationCampaign,
     getNotificationDeliverySummary,
-    getNotificationRolloutDiagnostics,
     getNotificationsByAccount,
     getUser,
     notificationCampaigns,
@@ -25,7 +24,6 @@ import {
     recordNotificationDeliveryEvent,
     routeNotificationDelivery,
     storage,
-    userNotificationSettings,
     users,
     webPushSubscriptions,
 } from '@gredice/storage';
@@ -958,9 +956,12 @@ test('cleanupNotificationRetention disables denied and default subscriptions', a
 
 test('backfillNotificationRolloutDefaults limits subscription updates with batch limit', async () => {
     createTestDb();
-    const existingUsers = await storage().select({ id: users.id }).from(users);
     const defaultSubscriptionIds: string[] = [];
     const deniedSubscriptionIds: string[] = [];
+    const rolloutUserDates = [
+        '1900-01-01T00:00:00.000Z',
+        '1900-01-02T00:00:00.000Z',
+    ];
 
     for (const [index, suffix] of ['first', 'second'].entries()) {
         const userId = await createUserWithPassword(
@@ -969,7 +970,7 @@ test('backfillNotificationRolloutDefaults limits subscription updates with batch
         );
         await storage()
             .update(users)
-            .set({ createdAt: new Date(`2099-01-0${index + 1}T00:00:00.000Z`) })
+            .set({ createdAt: new Date(rolloutUserDates[index]) })
             .where(eq(users.id, userId));
         const user = await getUser(userId);
         assert.ok(user);
@@ -1008,11 +1009,11 @@ test('backfillNotificationRolloutDefaults limits subscription updates with batch
     }
 
     const result = await backfillNotificationRolloutDefaults({
-        limit: existingUsers.length + 1,
+        limit: 1,
         now: new Date('2026-01-01T00:00:00.000Z'),
     });
 
-    assert.equal(result.usersScanned, existingUsers.length + 1);
+    assert.equal(result.usersScanned, 1);
     assert.ok(result.subscriptionsMarkedGranted >= 1);
     assert.ok(result.deniedSubscriptionsDisabled >= 1);
     assert.ok(result.deviceLabelsBackfilled >= 1);
