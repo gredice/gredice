@@ -16,9 +16,12 @@ test.describe('Garden operations HUD', () => {
         await expect(
             page.getByRole('img', { name: 'Maslac salata' }),
         ).toBeVisible();
-        await expect(page.getByText('Polje 3 • Raised Bed 1')).toBeVisible();
-        await expect(page.getByText('Polje 4 • Raised Bed 1')).toBeVisible();
-        await expect(page.getByText('Polje 5 • Raised Bed 1')).toBeVisible();
+        await expect(
+            page.getByTitle('Identifikator gredice').first(),
+        ).toBeVisible();
+        await expect(page.getByLabel('Polje 3 • Raised Bed 1')).toBeVisible();
+        await expect(page.getByLabel('Polje 4 • Raised Bed 1')).toBeVisible();
+        await expect(page.getByLabel('Polje 5 • Raised Bed 1')).toBeVisible();
         await expect(
             page.getByText('Zakazano: 20. svibnja 2026.'),
         ).toBeVisible();
@@ -29,12 +32,14 @@ test.describe('Garden operations HUD', () => {
         await expect(page.getByText('U košari').last()).toBeVisible();
 
         await expect(page.getByText('Sadnja', { exact: true })).toBeVisible();
-        await expect(page.getByText('Polje 1 • Raised Bed 1')).toBeVisible();
+        await expect(page.getByLabel('Polje 1 • Raised Bed 1')).toBeVisible();
         await expect(page.getByText('Sadnja: Klasični bosiljak')).toBeVisible();
-        await expect(page.getByText('Polje 6 • Raised Bed 1')).toBeVisible();
+        await expect(page.getByLabel('Polje 6 • Raised Bed 1')).toBeVisible();
         await expect(
             page.getByText('Zakazano: 23. svibnja 2026.'),
         ).toBeVisible();
+        await expect(page.getByText(/^Kreirano:/)).toHaveCount(0);
+        await expect(page.getByText(/Sljedeći korak/)).toHaveCount(0);
         await expect(page.getByText('Nema nedovršenih radnji.')).toHaveCount(0);
     });
 
@@ -49,7 +54,7 @@ test.describe('Garden operations HUD', () => {
 
         const dialog = page.getByRole('dialog');
         await expect(dialog.getByText('Sadnja: Cherry rajčica')).toBeVisible();
-        await expect(dialog.getByText('Polje 3 • Raised Bed 1')).toBeVisible();
+        await expect(dialog.getByLabel('Polje 3 • Raised Bed 1')).toBeVisible();
         await expect(dialog.getByText('Završeno')).toBeVisible();
     });
 });
