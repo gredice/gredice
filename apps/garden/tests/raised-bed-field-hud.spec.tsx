@@ -19,6 +19,14 @@ function emptyScenario(): RaisedBedScenario {
     return { fields: [] };
 }
 
+function abandonedScenario(): RaisedBedScenario {
+    return {
+        fields: [],
+        raisedBedAbandonReason: 'inactivity',
+        raisedBedStatus: 'abandoned',
+    };
+}
+
 function cartScenario(): RaisedBedScenario {
     return {
         fields: [],
@@ -250,6 +258,25 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(page.getByRole('dialog')).toBeVisible();
         await page.waitForTimeout(100);
         expect(dragSensorErrors).toEqual([]);
+    });
+
+    test('abandoned raised bed shows inactivity message instead of sowing grid', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldDndDialogStory scenario={abandonedScenario()} />,
+        );
+
+        await expect(
+            page.getByText('Gredica je napuštena zbog neaktivnosti.'),
+        ).toBeVisible();
+        await expect(
+            page.getByText(
+                'Nove sjetve i radnje više nisu dostupne za ovu gredicu.',
+            ),
+        ).toBeVisible();
+        await expect(page.getByRole('button')).toHaveCount(1);
     });
 
     test('planted growing field renders lifecycle progress and no indicator stack', async ({

@@ -1,4 +1,9 @@
 import {
+    isRaisedBedAbandoned,
+    RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
+    RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE,
+} from '@gredice/js/raisedBeds';
+import {
     notifyDeliveryRequestEvent,
     notifyOperationUpdate,
     notifyPurchase,
@@ -12,6 +17,7 @@ import {
     earnSunflowersForPayment,
     getAllTransactions,
     getInventory,
+    getRaisedBed,
     getRaisedBedFieldsWithEvents,
     getShoppingCart,
     isCartItemDeliverable,
@@ -413,6 +419,11 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
                 );
                 continue;
             }
+            if (
+                !(await assertRaisedBedAllowsCheckoutItem(cartItem.raisedBedId))
+            ) {
+                continue;
+            }
 
             await setCartItemPaid(cartItem.id);
             affectedCartIds.push(cart.id);
@@ -525,6 +536,23 @@ export async function processCheckoutSession(checkoutSessionId?: string) {
     }
 }
 
+async function assertRaisedBedAllowsCheckoutItem(raisedBedId?: number | null) {
+    if (!raisedBedId) {
+        return true;
+    }
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    if (raisedBed && isRaisedBedAbandoned(raisedBed.status)) {
+        console.warn(
+            `${RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE} ${RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE}`,
+            { raisedBedId },
+        );
+        return false;
+    }
+
+    return true;
+}
+
 export async function processItem(itemData: {
     entityId: string | null | undefined;
     entityTypeName: string | null | undefined;
@@ -573,6 +601,9 @@ export async function processItem(itemData: {
                 `Invalid entityId ${itemData.entityId} for operation item in order.`,
                 itemData,
             );
+            return;
+        }
+        if (!(await assertRaisedBedAllowsCheckoutItem(itemData.raisedBedId))) {
             return;
         }
 
@@ -747,6 +778,10 @@ export async function processItem(itemData: {
         itemData.raisedBedId &&
         typeof itemData.positionIndex === 'number'
     ) {
+        if (!(await assertRaisedBedAllowsCheckoutItem(itemData.raisedBedId))) {
+            return;
+        }
+
         await Promise.all([
             upsertRaisedBedField({
                 positionIndex: itemData.positionIndex,

@@ -4,6 +4,7 @@ import { SelectItems } from '@gredice/ui/SelectItems';
 import { useMemo } from 'react';
 import { setRaisedBedStatus } from '../../../(actions)/raisedBedActions';
 import {
+    RaisedBedStatusDisplayItems,
     RaisedBedStatusItems,
     type RaisedBedStatusValue,
 } from './RaisedBedStatusItems';
@@ -24,11 +25,16 @@ export function RaisedBedStatusSelect({
             return RaisedBedStatusItems;
         }
 
+        const displayItem = RaisedBedStatusDisplayItems.find(
+            (item) => item.value === status,
+        );
+
         return [
             {
                 value: status,
-                label: status,
-                icon: 'ℹ️',
+                label: displayItem?.label ?? status,
+                icon: displayItem?.icon ?? 'ℹ️',
+                disabled: true,
             },
             ...RaisedBedStatusItems,
         ];
