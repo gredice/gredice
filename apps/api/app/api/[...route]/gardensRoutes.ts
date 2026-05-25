@@ -52,7 +52,7 @@ import {
     type AiRequestKind,
     RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
     streamRaisedBedImageAnalysis,
-    validateImageUrl,
+    validateImageUrls,
 } from '../../../lib/garden/raisedBedAiAnalysisService';
 import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
@@ -69,6 +69,27 @@ import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
+
+const analyzeImageBodySchema = z
+    .object({
+        imageUrl: z.url().optional(),
+        imageUrls: z.array(z.url()).min(1).optional(),
+    })
+    .refine((body) => Boolean(body.imageUrl || body.imageUrls?.length), {
+        message: 'At least one image URL is required',
+    });
+
+type AnalyzeImageBody = z.infer<typeof analyzeImageBodySchema>;
+
+function normalizeAnalysisImageUrls(body: AnalyzeImageBody) {
+    const imageUrls = body.imageUrls?.length
+        ? body.imageUrls
+        : body.imageUrl
+          ? [body.imageUrl]
+          : [];
+
+    return Array.from(new Set(imageUrls));
+}
 
 async function countRecentAiRequests(
     accountId: string,
@@ -1750,7 +1771,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId/raised-beds/:raisedBedId/analyze-image',
         describeRoute({
             description:
-                'Analyze raised bed image with AI and save response to diary',
+                'Analyze raised bed images with AI and save response to diary',
         }),
         zValidator(
             'param',
@@ -1759,18 +1780,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 raisedBedId: z.string(),
             }),
         ),
-        zValidator(
-            'json',
-            z.object({
-                imageUrl: z.url(),
-            }),
-        ),
+        zValidator('json', analyzeImageBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId } = context.req.valid('param');
-            const { imageUrl } = context.req.valid('json');
+            const imageUrls = normalizeAnalysisImageUrls(
+                context.req.valid('json'),
+            );
+            const firstImageUrl = imageUrls[0];
+            if (!firstImageUrl) {
+                return context.json({ error: 'Image URL is required' }, 400);
+            }
 
-            const urlError = validateImageUrl(imageUrl);
+            const urlError = validateImageUrls(imageUrls);
             if (urlError) {
                 return context.json({ error: urlError }, 400);
             }
@@ -1825,7 +1847,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     accountId,
                     gardenId: gardenIdNumber,
                     raisedBed,
-                    imageUrl,
+                    imageUrls,
                 },
                 async (analysis) => {
                     await createEvent(
@@ -1833,7 +1855,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             raisedBedIdNumber.toString(),
                             {
                                 markdown: analysis.markdown,
-                                imageUrl,
+                                imageUrl: firstImageUrl,
+                                imageUrls,
                                 model: analysis.model,
                                 analyzedAt: analysis.analyzedAt,
                                 accountId,
@@ -2187,7 +2210,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex/analyze-image',
         describeRoute({
             description:
-                'Analyze raised bed field image with AI and save response to diary',
+                'Analyze raised bed field images with AI and save response to diary',
         }),
         zValidator(
             'param',
@@ -2197,20 +2220,21 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 positionIndex: z.string(),
             }),
         ),
-        zValidator(
-            'json',
-            z.object({
-                imageUrl: z.url(),
-            }),
-        ),
+        zValidator('json', analyzeImageBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId, positionIndex } =
                 context.req.valid('param');
-            const { imageUrl } = context.req.valid('json');
+            const imageUrls = normalizeAnalysisImageUrls(
+                context.req.valid('json'),
+            );
+            const firstImageUrl = imageUrls[0];
+            if (!firstImageUrl) {
+                return context.json({ error: 'Image URL is required' }, 400);
+            }
 
-            // Validate image URL against allowed hosts
-            const urlError = validateImageUrl(imageUrl);
+            // Validate image URLs against allowed hosts
+            const urlError = validateImageUrls(imageUrls);
             if (urlError) {
                 return context.json({ error: urlError }, 400);
             }
@@ -2286,7 +2310,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     gardenId: gardenIdNumber,
                     raisedBed,
                     positionIndex: positionIndexNumber,
-                    imageUrl,
+                    imageUrls,
                 },
                 async (analysis) => {
                     await createEvent(
@@ -2294,7 +2318,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
                             {
                                 markdown: analysis.markdown,
-                                imageUrl,
+                                imageUrl: firstImageUrl,
+                                imageUrls,
                                 model: analysis.model,
                                 analyzedAt: analysis.analyzedAt,
                                 accountId,

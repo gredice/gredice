@@ -60,6 +60,13 @@ export function RaisedBedDiaryAiAction({
             ? raisedBedFieldAnalysis
             : raisedBedAnalysis;
     const latestHistoryEntry = historyEntries?.[0];
+    const latestCompleteHistoryEntry = historyEntries?.find((entry) => {
+        const analyzedImageUrls = entry.imageUrls ?? [];
+
+        return imageUrls.every((imageUrl) =>
+            analyzedImageUrls.includes(imageUrl),
+        );
+    });
 
     useEffect(() => {
         if (!selectedImageUrl && imageUrls[0]) {
@@ -77,11 +84,17 @@ export function RaisedBedDiaryAiAction({
         setAnalysisCompletedAt(null);
     }
 
-    function beginAnalysis(nextImageUrl: string) {
+    function beginAnalysis() {
+        if (!imageUrls.length) {
+            return;
+        }
+
         requestIdRef.current += 1;
         const requestId = requestIdRef.current;
 
-        setSelectedImageUrl(nextImageUrl);
+        if (!selectedImageUrl) {
+            setSelectedImageUrl(imageUrls[0] ?? '');
+        }
         setVisibleMarkdown('');
         setErrorMessage(null);
         setPhase('thinking');
@@ -115,7 +128,7 @@ export function RaisedBedDiaryAiAction({
                     gardenId,
                     raisedBedId,
                     positionIndex,
-                    imageUrl: nextImageUrl,
+                    imageUrls,
                     onChunk,
                 },
                 callbacks,
@@ -125,7 +138,7 @@ export function RaisedBedDiaryAiAction({
                 {
                     gardenId,
                     raisedBedId,
-                    imageUrl: nextImageUrl,
+                    imageUrls,
                     onChunk,
                 },
                 callbacks,
@@ -134,25 +147,26 @@ export function RaisedBedDiaryAiAction({
     }
 
     function handleOpen() {
-        const firstImageUrl = imageUrls[0];
-        if (!firstImageUrl) {
+        if (!imageUrls.length) {
             return;
         }
 
         setOpen(true);
-        beginAnalysis(firstImageUrl);
+        beginAnalysis();
     }
 
     function handlePrimaryAction() {
-        if (latestHistoryEntry) {
-            handleShowHistory(latestHistoryEntry);
+        if (latestCompleteHistoryEntry) {
+            handleShowHistory(latestCompleteHistoryEntry);
             return;
         }
 
         handleOpen();
     }
 
-    function handleShowHistory(entry = latestHistoryEntry) {
+    function handleShowHistory(
+        entry = latestCompleteHistoryEntry ?? latestHistoryEntry,
+    ) {
         if (!entry) {
             return;
         }
@@ -190,16 +204,16 @@ export function RaisedBedDiaryAiAction({
                     : 'Pitaj suncokret';
     const statusDescription =
         resultSource === 'history' && phase === 'done'
-            ? 'Prikazujem spremljene savjete suncokreta za ovu fotografiju.'
+            ? 'Prikazujem spremljene savjete suncokreta za ovaj dnevnički unos.'
             : phase === 'thinking'
-              ? 'Skeniram fotografiju i tražim tragove stresa, rasta i hitnih koraka.'
+              ? 'Skeniram sve fotografije i tražim tragove stresa, rasta i hitnih koraka.'
               : phase === 'typing'
                 ? 'Preporuke se ispisuju u AI dnevničkom formatu.'
                 : phase === 'done'
                   ? 'Odgovor je spremljen i u dnevnik, a ovdje ga vidiš odmah.'
                   : phase === 'error'
-                    ? 'Pokušaj ponovno s istom ili drugom fotografijom.'
-                    : 'Pokreni analizu nad ovom fotografijom iz dnevnika.';
+                    ? 'Pokušaj ponovno s istim fotografijama iz dnevnika.'
+                    : 'Pokreni analizu svih fotografija iz dnevnika.';
     const selectedHistoryEntry = historyEntries?.find(
         (historyEntry) => historyEntry.id === selectedHistoryEntryId,
     );
@@ -219,9 +233,8 @@ export function RaisedBedDiaryAiAction({
             year: 'numeric',
         },
     );
-    const canAnalyzeSelectedImage =
-        !latestHistoryEntry &&
-        !(resultSource === 'analysis' && phase === 'done');
+    const canAnalyzeEntry =
+        !latestCompleteHistoryEntry && (phase === 'idle' || phase === 'error');
 
     return (
         <>
@@ -242,7 +255,7 @@ export function RaisedBedDiaryAiAction({
                         />
                     }
                 >
-                    {latestHistoryEntry
+                    {latestCompleteHistoryEntry
                         ? 'Pogledaj savjete suncokreta'
                         : 'Pitaj suncokret za savjete'}
                 </ButtonGreen>
@@ -284,18 +297,13 @@ export function RaisedBedDiaryAiAction({
                                         <button
                                             key={imageUrl}
                                             type="button"
-                                            disabled={Boolean(
-                                                latestHistoryEntry,
-                                            )}
                                             className={`overflow-hidden rounded-2xl border transition-all ${
                                                 isSelected
                                                     ? 'border-lime-400 shadow-xs ring-2 ring-lime-200'
-                                                    : latestHistoryEntry
-                                                      ? 'border-black/10 opacity-80'
-                                                      : 'border-black/10 opacity-80 hover:opacity-100'
+                                                    : 'border-black/10 opacity-80 hover:opacity-100'
                                             }`}
                                             onClick={() =>
-                                                beginAnalysis(imageUrl)
+                                                setSelectedImageUrl(imageUrl)
                                             }
                                         >
                                             <div className="relative size-16">
@@ -430,7 +438,7 @@ export function RaisedBedDiaryAiAction({
                                         className="text-muted-foreground"
                                     >
                                         {phase === 'thinking'
-                                            ? 'Suncokret skenira boje listova, tragove stresa i vrtni kontekst prije nego što napiše preporuke.'
+                                            ? 'Suncokret skenira sve fotografije, boje listova, tragove stresa i vrtni kontekst prije nego što napiše preporuke.'
                                             : 'Analiza će se pojaviti ovdje u markdown formatu.'}
                                     </Typography>
                                 )}
@@ -446,16 +454,14 @@ export function RaisedBedDiaryAiAction({
                             >
                                 {`Fotografija ${Math.max(imageUrls.indexOf(selectedImageUrl), 0) + 1} od ${imageUrls.length}`}
                             </Typography>
-                            {canAnalyzeSelectedImage && (
+                            {canAnalyzeEntry && (
                                 <Button
                                     size="sm"
                                     variant="outlined"
                                     loading={activeMutation.isPending}
-                                    onClick={() =>
-                                        beginAnalysis(selectedImageUrl)
-                                    }
+                                    onClick={beginAnalysis}
                                 >
-                                    Analiziraj ponovno
+                                    Pokušaj ponovno
                                 </Button>
                             )}
                         </Row>

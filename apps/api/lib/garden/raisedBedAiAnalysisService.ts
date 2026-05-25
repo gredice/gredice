@@ -28,6 +28,17 @@ export function validateImageUrl(imageUrl: string): string | null {
     return validateHostedImageUrl(imageUrl);
 }
 
+export function validateImageUrls(imageUrls: string[]): string | null {
+    for (const imageUrl of imageUrls) {
+        const error = validateImageUrl(imageUrl);
+        if (error) {
+            return error;
+        }
+    }
+
+    return null;
+}
+
 function daysSince(date: Date | string | null | undefined) {
     if (!date) {
         return null;
@@ -66,7 +77,7 @@ type AnalysisParams = {
     accountId: string;
     gardenId: number;
     raisedBed: RaisedBedAnalysisTarget;
-    imageUrl: string;
+    imageUrls: string[];
     positionIndex?: number;
 };
 
@@ -74,7 +85,7 @@ async function buildAnalysisMessages({
     accountId,
     gardenId,
     raisedBed,
-    imageUrl,
+    imageUrls,
     positionIndex,
 }: AnalysisParams) {
     const [plantSorts, operations, operationsData] = await Promise.all([
@@ -151,8 +162,9 @@ async function buildAnalysisMessages({
                     type: 'text' as const,
                     text: [
                         typeof positionIndex === 'number'
-                            ? 'Analiziraj fotografiju vrta i kontekst te napiši praktične preporuke za označeno polje i ostatak gredice.'
-                            : 'Analiziraj fotografiju gredice i kontekst te napiši praktične preporuke za cijelu gredicu.',
+                            ? 'Analiziraj sve fotografije vrta i kontekst te napiši objedinjene praktične preporuke za označeno polje i ostatak gredice.'
+                            : 'Analiziraj sve fotografije gredice i kontekst te napiši objedinjene praktične preporuke za cijelu gredicu.',
+                        'Fotografije su različiti pogledi istog dnevničkog unosa; nemoj ih tretirati kao zasebne zahtjeve.',
                         'Odgovor MORA imati ove markdown sekcije:',
                         '## Sažetak stanja',
                         '## Globalne preporuke (2-4 stavke)',
@@ -166,6 +178,7 @@ async function buildAnalysisMessages({
                                     typeof positionIndex === 'number'
                                         ? positionIndex
                                         : null,
+                                imageCount: imageUrls.length,
                                 plantedFields,
                                 availableOperations,
                                 executedOperations,
@@ -175,10 +188,10 @@ async function buildAnalysisMessages({
                         ),
                     ].join('\n'),
                 },
-                {
+                ...imageUrls.map((imageUrl) => ({
                     type: 'image' as const,
                     image: new URL(imageUrl),
-                },
+                })),
             ],
         },
     ];

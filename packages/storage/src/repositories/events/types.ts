@@ -202,6 +202,7 @@ export type RaisedBedFieldPlantReplaceSortPayload = {
 export type RaisedBedFieldAiAnalysisPayload = {
     markdown: string;
     imageUrl: string;
+    imageUrls?: string[];
     model: string;
     analyzedAt: string;
     accountId?: string;

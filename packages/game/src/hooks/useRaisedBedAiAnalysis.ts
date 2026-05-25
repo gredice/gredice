@@ -12,12 +12,12 @@ export function useRaisedBedAiAnalysis() {
         mutationFn: async ({
             gardenId,
             raisedBedId,
-            imageUrl,
+            imageUrls,
             onChunk,
         }: {
             gardenId: number;
             raisedBedId: number;
-            imageUrl: string;
+            imageUrls: string[];
             onChunk?: (accumulated: string) => void;
         }) => {
             const response = await client({
@@ -30,7 +30,7 @@ export function useRaisedBedAiAnalysis() {
                     raisedBedId: raisedBedId.toString(),
                 },
                 json: {
-                    imageUrl,
+                    imageUrls,
                 },
             });
 
