@@ -180,7 +180,7 @@ export default function McpTestPage() {
             <section className="border-b border-border bg-background">
                 <div className="mx-auto grid max-w-6xl gap-5 px-4 py-8 md:grid-cols-[minmax(0,1fr)_280px]">
                     <div>
-                        <p className="text-sm font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300">
+                        <p className="text-sm font-medium uppercase tracking-wide text-primary">
                             Model Context Protocol
                         </p>
                         <h1 className="mt-2 text-3xl font-semibold tracking-normal md:text-4xl">
