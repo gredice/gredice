@@ -60,6 +60,12 @@ export function BlockGrassCorner({
             <mesh
                 castShadow
                 receiveShadow
+                geometry={nodes.Block_Grass_Corner_1_1.geometry}
+                material={nodes.Block_Grass_Corner_1_1.material}
+            />
+            <mesh
+                castShadow
+                receiveShadow
                 geometry={nodes.Block_Grass_Corner_1_2.geometry}
                 material={nodes.Block_Grass_Corner_1_2.material}
             />

@@ -244,6 +244,15 @@ export function EntityInstances({
                 assetName="BlockTerrainCorner"
                 stacks={stacks}
                 name="Block_Grass_Corner"
+                yOffset={0.2}
+                geometry={(gltf) => gltf.nodes.Block_Grass_Corner_1_1.geometry}
+                material={(gltf) => gltf.nodes.Block_Grass_Corner_1_1.material}
+                {...commonSnowProps}
+            />
+            <EntityInstancesAssetBlock
+                assetName="BlockTerrainCorner"
+                stacks={stacks}
+                name="Block_Grass_Corner"
                 renderRainWetOverlay
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Grass_Corner_1_2.geometry}
