@@ -2,7 +2,7 @@ import { getEntitiesFormatted, getOperations } from '@gredice/storage';
 import { streamText } from 'ai';
 import { validateHostedImageUrl } from '../http/safeUrls';
 
-const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5';
+const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5.5';
 
 export const AI_REQUEST_QUOTA_WINDOW_DAYS = 7;
 export const AI_REQUEST_QUOTA_WINDOW_MS =
