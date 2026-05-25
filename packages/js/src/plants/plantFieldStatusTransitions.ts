@@ -5,10 +5,13 @@
  * statuses the user can transition to from that state.
  *
  * Allowed transitions:
- * - sowed → sprouted
- * - sprouted → notSprouted, died, ready
+ * - sowed ↔ sprouted
+ * - sprouted ↔ notSprouted, died, ready
  */
 export const userAllowedPlantStatusTransitions: Record<string, string[]> = {
     sowed: ['sprouted'],
-    sprouted: ['notSprouted', 'died', 'ready'],
+    sprouted: ['sowed', 'notSprouted', 'died', 'ready'],
+    notSprouted: ['sprouted'],
+    died: ['sprouted'],
+    ready: ['sprouted'],
 };
