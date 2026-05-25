@@ -47,6 +47,7 @@ import {
     type RaisedBedFieldSowingLocation,
 } from './eventsRepo';
 import { getFarms } from './farmsRepo';
+import { processReferralRewardsForAccount } from './referralsRepo';
 
 const RAISED_BED_FIELDS_PER_BLOCK = 9;
 const PLANT_CYCLE_EVENT_TYPES = [
@@ -1748,6 +1749,10 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                 }
                 case knownEventTypes.raisedBeds.abandon: {
                     name = 'Gredica napuštena';
+                    description =
+                        data?.reason === 'inactivity'
+                            ? 'Gredica je napuštena zbog neaktivnosti.'
+                            : '';
                     break;
                 }
             }
@@ -1799,11 +1804,33 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
 }
 
 export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {
+    const previousRaisedBed =
+        raisedBed.status === 'active'
+            ? (
+                  await storage()
+                      .select({
+                          accountId: raisedBeds.accountId,
+                          status: raisedBeds.status,
+                      })
+                      .from(raisedBeds)
+                      .where(eq(raisedBeds.id, raisedBed.id))
+                      .limit(1)
+              )[0]
+            : null;
+
     await storage()
         .update(raisedBeds)
         .set(raisedBed)
         .where(eq(raisedBeds.id, raisedBed.id));
     await bustScheduleCache();
+
+    const activatedAccountId =
+        previousRaisedBed?.status !== 'active'
+            ? (raisedBed.accountId ?? previousRaisedBed?.accountId)
+            : null;
+    if (raisedBed.status === 'active' && activatedAccountId) {
+        await processReferralRewardsForAccount(activatedAccountId);
+    }
 }
 
 export async function abandonRaisedBed({
@@ -1811,12 +1838,14 @@ export async function abandonRaisedBed({
     gardenId,
     operationEntityId,
     operationEntityTypeName,
+    reason,
     raisedBedId,
 }: {
     accountId: string;
     gardenId: number;
     operationEntityId: number;
     operationEntityTypeName: string;
+    reason?: 'inactivity' | 'user';
     raisedBedId: number;
 }) {
     const operation = await storage().transaction(async (tx) => {
@@ -1836,9 +1865,11 @@ export async function abandonRaisedBed({
             .set({ status: 'abandoned' })
             .where(eq(raisedBeds.id, raisedBedId));
 
-        await tx
-            .insert(events)
-            .values(knownEvents.raisedBeds.abandonV1(raisedBedId.toString()));
+        await tx.insert(events).values(
+            knownEvents.raisedBeds.abandonV1(raisedBedId.toString(), {
+                reason,
+            }),
+        );
 
         return createdOperation;
     });

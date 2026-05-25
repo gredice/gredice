@@ -1,4 +1,8 @@
 import {
+    isRaisedBedAbandoned,
+    RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
+} from '@gredice/js/raisedBeds';
+import {
     type EntityStandardized,
     getEntitiesFormatted,
     getInventory,
@@ -56,6 +60,12 @@ export function getNewRaisedBedPlantingNote(
         newRaisedBedCount === 1 ? 'u ovoj gredici' : 'u novim gredicama';
 
     return `${neededPlural} još ${missingItemsCount} ${plantPlural} ${raisedBedsLocation} za postavljanje ${raisedBedsPlural}.`;
+}
+
+export function getAbandonedRaisedBedCartNote(raisedBedName?: string | null) {
+    const prefix = raisedBedName?.trim() ? raisedBedName.trim() : 'Gredica';
+
+    return `${prefix} je napuštena zbog neaktivnosti. ${RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE}`;
 }
 
 export async function getCartInfo(
@@ -213,6 +223,21 @@ export async function getCartInfo(
     const newRaisedBeds = mentionedRaisedBeds.filter(
         (rb) => rb && rb.status === 'new',
     );
+    const abandonedRaisedBeds = mentionedRaisedBeds.filter(
+        (rb) => rb && isRaisedBedAbandoned(rb.status),
+    );
+    for (const raisedBed of abandonedRaisedBeds) {
+        if (!raisedBed) continue;
+
+        const hasOpenCartItems = cartItemsWithShopInfo.some(
+            (item) =>
+                item.status !== 'paid' && item.raisedBedId === raisedBed.id,
+        );
+        if (!hasOpenCartItems) continue;
+
+        notes.push(getAbandonedRaisedBedCartNote(raisedBed.name));
+        allowPurchase = false;
+    }
     const requiredItemsCount =
         getNewRaisedBedCount(newRaisedBeds.length) *
         REQUIRED_PLANT_ITEMS_PER_NEW_RAISED_BED;

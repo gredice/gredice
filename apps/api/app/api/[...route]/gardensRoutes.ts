@@ -1,4 +1,9 @@
 import { userAllowedPlantStatusTransitions } from '@gredice/js/plants';
+import {
+    isRaisedBedAbandoned,
+    RAISED_BED_ABANDON_OPERATION_ENTITY_ID,
+    RAISED_BED_OPERATION_ENTITY_TYPE_NAME,
+} from '@gredice/js/raisedBeds';
 import { signalcoClient } from '@gredice/signalco';
 import {
     abandonRaisedBed,
@@ -64,10 +69,6 @@ import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
-// CMS operation directory (`/entities/operation`) ID 591 is the raised-bed abandonment operation queued for farm follow-up.
-const ABANDON_RAISED_BED_OPERATION_ID = 591;
-// Operations are stored as CMS entities with entityTypeName='operation'.
-const OPERATION_ENTITY_TYPE_NAME = 'operation';
 
 async function countRecentAiRequests(
     accountId: string,
@@ -264,6 +265,18 @@ function serializeGardenOperation(
     };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function getAbandonReason(data: unknown) {
+    if (!isRecord(data) || typeof data.reason !== 'string') {
+        return null;
+    }
+
+    return data.reason;
+}
+
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
         '/',
@@ -420,6 +433,30 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const raisedBedsById = new Map(
                 garden.raisedBeds.map((raisedBed) => [raisedBed.id, raisedBed]),
             );
+            const abandonedRaisedBedAggregateIds = garden.raisedBeds
+                .filter((raisedBed) => isRaisedBedAbandoned(raisedBed.status))
+                .map((raisedBed) => raisedBed.id.toString());
+            const raisedBedAbandonEvents =
+                abandonedRaisedBedAggregateIds.length > 0
+                    ? await getEvents(
+                          knownEventTypes.raisedBeds.abandon,
+                          abandonedRaisedBedAggregateIds,
+                          0,
+                          10000,
+                      )
+                    : [];
+            const abandonReasonByRaisedBedId = raisedBedAbandonEvents.reduce(
+                (acc, event) => {
+                    const raisedBedId = Number(event.aggregateId);
+                    if (!Number.isInteger(raisedBedId)) {
+                        return acc;
+                    }
+
+                    acc.set(raisedBedId, getAbandonReason(event.data));
+                    return acc;
+                },
+                new Map<number, string | null>(),
+            );
             const appliedOperationsByRaisedBedId = operations.reduce(
                 (acc, operation) => {
                     if (
@@ -511,6 +548,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         physicalId: raisedBed.physicalId,
                         blockId: raisedBed.blockId,
                         status: raisedBed.status,
+                        abandonReason:
+                            abandonReasonByRaisedBedId.get(raisedBed.id) ??
+                            null,
                         orientation: raisedBed.orientation,
                         fields: raisedBed.fields,
                         appliedOperations:
@@ -1648,7 +1688,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             ) {
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
-            if (raisedBed.status === 'abandoned') {
+            if (isRaisedBedAbandoned(raisedBed.status)) {
                 return context.json(
                     { error: 'Raised bed is already abandoned' },
                     409,
@@ -1658,9 +1698,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const operationId = await abandonRaisedBed({
                 accountId,
                 gardenId: gardenIdNumber,
-                operationEntityId: ABANDON_RAISED_BED_OPERATION_ID,
-                operationEntityTypeName: OPERATION_ENTITY_TYPE_NAME,
+                operationEntityId: RAISED_BED_ABANDON_OPERATION_ENTITY_ID,
+                operationEntityTypeName: RAISED_BED_OPERATION_ENTITY_TYPE_NAME,
                 raisedBedId: raisedBedIdNumber,
+                reason: 'user',
             });
 
             return context.json({ id: operationId }, 201);
@@ -2045,6 +2086,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 raisedBed.accountId !== accountId
             ) {
                 return context.json({ error: 'Raised bed not found' }, 404);
+            }
+            if (isRaisedBedAbandoned(raisedBed.status)) {
+                return context.json({ error: 'Raised bed is abandoned' }, 409);
             }
 
             // Find the field to validate it exists and can be updated
