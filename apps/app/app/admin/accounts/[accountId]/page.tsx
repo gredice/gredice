@@ -1,4 +1,4 @@
-import { getAccountGardens, getAccountReferralDetails } from '@gredice/storage';
+import { getAccountGardens, getAccountReferralState } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
@@ -33,6 +33,7 @@ import { ShoppingCartsTable } from '../../shopping-carts/ShoppingCartsTable';
 import { AccountAchievementsCard } from './AccountAchievementsCard';
 import { AccountEventsCard } from './AccountEventsCard';
 import { AccountInventoryCard } from './AccountInventoryCard';
+import { AccountReferralsCard } from './AccountReferralsCard';
 import { AccountSunflowersCard } from './AccountSunflowersCard';
 import { AccountTimeZonePicker } from './AccountTimeZonePicker';
 import { AccountTransactionsCard } from './AccountTransactionsCard';
@@ -57,33 +58,31 @@ export default async function AccountPage({
     await auth(['admin']);
 
     const actionBound = sendDeleteAccountEmail.bind(null, accountId);
-    const [currentTimeZone, gardens, referralDetails] = await Promise.all([
+    const [currentTimeZone, gardens, referralState] = await Promise.all([
         getAccountTimeZone(accountId),
         getAccountGardens(accountId),
-        getAccountReferralDetails(accountId, {
-            includeUsedReferralSource: true,
-        }),
+        getAccountReferralState(accountId),
     ]);
     const usedReferralCodeValue =
-        referralDetails.usedReferralCode &&
-        referralDetails.usedReferralSourceAccountId ? (
+        referralState.usedReferralCode &&
+        referralState.usedReferralOwnerAccountId ? (
             <Link
                 href={KnownPages.Account(
-                    referralDetails.usedReferralSourceAccountId,
+                    referralState.usedReferralOwnerAccountId,
                 )}
-                title={`Izvorni račun: ${referralDetails.usedReferralSourceAccountId}`}
+                title={`Izvorni račun: ${referralState.usedReferralOwnerAccountId}`}
             >
-                {referralDetails.usedReferralCode}
+                {referralState.usedReferralCode}
             </Link>
         ) : (
-            referralDetails.usedReferralCode
+            referralState.usedReferralCode
         );
     const propertyItems: EntityDetailsPropertyListItem[] = [
         { id: 'account-id', label: 'ID računa', value: accountId, mono: true },
         {
             id: 'own-referral-code',
             label: 'Vlastiti kod preporuke',
-            value: referralDetails.myCode,
+            value: referralState.myCode,
             mono: true,
         },
         {
@@ -168,6 +167,7 @@ export default async function AccountPage({
                             </CardOverflow>
                         </Card>
                         <AccountSunflowersCard accountId={accountId} />
+                        <AccountReferralsCard accountId={accountId} />
                         <AccountAchievementsCard accountId={accountId} />
                         <AccountTransactionsCard accountId={accountId} />
                         <RaisedBedsTableCard accountId={accountId} scroll />

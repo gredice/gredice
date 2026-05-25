@@ -47,6 +47,7 @@ import {
     type RaisedBedFieldSowingLocation,
 } from './eventsRepo';
 import { getFarms } from './farmsRepo';
+import { processReferralRewardsForAccount } from './referralsRepo';
 
 const RAISED_BED_FIELDS_PER_BLOCK = 9;
 const PLANT_CYCLE_EVENT_TYPES = [
@@ -1799,11 +1800,33 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
 }
 
 export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {
+    const previousRaisedBed =
+        raisedBed.status === 'active'
+            ? (
+                  await storage()
+                      .select({
+                          accountId: raisedBeds.accountId,
+                          status: raisedBeds.status,
+                      })
+                      .from(raisedBeds)
+                      .where(eq(raisedBeds.id, raisedBed.id))
+                      .limit(1)
+              )[0]
+            : null;
+
     await storage()
         .update(raisedBeds)
         .set(raisedBed)
         .where(eq(raisedBeds.id, raisedBed.id));
     await bustScheduleCache();
+
+    const activatedAccountId =
+        previousRaisedBed?.status !== 'active'
+            ? (raisedBed.accountId ?? previousRaisedBed?.accountId)
+            : null;
+    if (raisedBed.status === 'active' && activatedAccountId) {
+        await processReferralRewardsForAccount(activatedAccountId);
+    }
 }
 
 export async function abandonRaisedBed({

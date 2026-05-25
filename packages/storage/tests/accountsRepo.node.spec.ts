@@ -1,15 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-    ACCOUNT_REFERRAL_EVENT_TYPE,
     assignStripeCustomerId,
-    createEvent,
     earnSunflowers,
     getAccount,
-    getAccountReferralDetails,
     getAccounts,
     getAccountUsers,
-    getReferralCodeOwnerAccountId,
     getSunflowers,
     getSunflowersHistory,
     spendSunflowers,
@@ -55,82 +51,6 @@ test('getAccountUsers returns empty array for new account', async () => {
     const users = await getAccountUsers(accountId);
     assert.ok(Array.isArray(users));
     assert.strictEqual(users.length, 0);
-});
-
-test('getAccountReferralDetails returns default own code', async () => {
-    createTestDb();
-    const accountId = await createTestAccount();
-    const details = await getAccountReferralDetails(accountId);
-    assert.strictEqual(details.myCode, accountId.slice(0, 12));
-    assert.strictEqual(details.usedReferralCode, null);
-    assert.strictEqual(details.usedReferralSourceAccountId, null);
-    assert.deepStrictEqual(details.referredAccounts, []);
-});
-
-test('getAccountReferralDetails resolves used referral source account', async () => {
-    createTestDb();
-    const sourceAccountId = await createTestAccount();
-    const referredAccountId = await createTestAccount();
-    const sourceCode = `source-code-${sourceAccountId.slice(0, 8)}`;
-
-    await createEvent({
-        type: ACCOUNT_REFERRAL_EVENT_TYPE,
-        version: 1,
-        aggregateId: sourceAccountId,
-        data: { action: 'code_set', code: sourceCode },
-    });
-    await createEvent({
-        type: ACCOUNT_REFERRAL_EVENT_TYPE,
-        version: 1,
-        aggregateId: referredAccountId,
-        data: { action: 'used_code', code: sourceCode },
-    });
-
-    const details = await getAccountReferralDetails(referredAccountId, {
-        includeUsedReferralSource: true,
-    });
-    assert.strictEqual(details.usedReferralCode, sourceCode);
-    assert.strictEqual(details.usedReferralSourceAccountId, sourceAccountId);
-    assert.strictEqual(
-        await getReferralCodeOwnerAccountId(sourceCode),
-        sourceAccountId,
-    );
-});
-
-test('getAccountReferralDetails resolves used referral source at time of use', async () => {
-    createTestDb();
-    const sourceAccountId = await createTestAccount();
-    const referredAccountId = await createTestAccount();
-    const sourceCode = `source-code-${sourceAccountId.slice(0, 8)}`;
-
-    await createEvent({
-        type: ACCOUNT_REFERRAL_EVENT_TYPE,
-        version: 1,
-        aggregateId: sourceAccountId,
-        createdAt: new Date('2030-01-01T00:00:00.000Z'),
-        data: { action: 'code_set', code: sourceCode },
-    });
-    await createEvent({
-        type: ACCOUNT_REFERRAL_EVENT_TYPE,
-        version: 1,
-        aggregateId: referredAccountId,
-        createdAt: new Date('2030-01-02T00:00:00.000Z'),
-        data: { action: 'used_code', code: sourceCode },
-    });
-    await createEvent({
-        type: ACCOUNT_REFERRAL_EVENT_TYPE,
-        version: 1,
-        aggregateId: sourceAccountId,
-        createdAt: new Date('2030-01-03T00:00:00.000Z'),
-        data: { action: 'code_set', code: 'new-source-code' },
-    });
-
-    const details = await getAccountReferralDetails(referredAccountId, {
-        includeUsedReferralSource: true,
-    });
-    assert.strictEqual(details.usedReferralCode, sourceCode);
-    assert.strictEqual(details.usedReferralSourceAccountId, sourceAccountId);
-    assert.strictEqual(await getReferralCodeOwnerAccountId(sourceCode), null);
 });
 
 test('getSunflowers returns initial sunflowers after registration', async () => {

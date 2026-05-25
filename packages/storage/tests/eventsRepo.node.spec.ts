@@ -76,3 +76,45 @@ test('getLatestEvents returns newest events first and paginates', async () => {
         ['2026-01-01T12:00:00.000Z'],
     );
 });
+
+test('getLatestEvents can list multiple event types for an aggregate', async () => {
+    createTestDb();
+    const aggregateId = 'account-1';
+
+    await createEvent({
+        ...knownEvents.accounts.sunflowersEarnedV1(aggregateId, {
+            amount: 100,
+            reason: 'test',
+        }),
+        createdAt: new Date('2026-01-01T12:00:00.000Z'),
+    });
+    await createEvent({
+        type: knownEventTypes.accounts.referral,
+        version: 1,
+        aggregateId,
+        data: { action: 'used_code', code: 'abc123' },
+        createdAt: new Date('2026-01-02T12:00:00.000Z'),
+    });
+    await createEvent(
+        knownEvents.accounts.sunflowersEarnedV1('other-account', {
+            amount: 50,
+            reason: 'other',
+        }),
+    );
+
+    const events = await getLatestEvents(
+        [
+            knownEventTypes.accounts.earnSunflowers,
+            knownEventTypes.accounts.referral,
+        ],
+        [aggregateId],
+    );
+
+    assert.deepStrictEqual(
+        events.map((event) => event.type),
+        [
+            knownEventTypes.accounts.referral,
+            knownEventTypes.accounts.earnSunflowers,
+        ],
+    );
+});
