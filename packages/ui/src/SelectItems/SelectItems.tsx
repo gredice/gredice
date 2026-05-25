@@ -264,8 +264,14 @@ export function SelectItems<T extends string>({
                                         ref={searchInputRef}
                                         aria-label={searchPlaceholder}
                                         className="min-w-0 flex-1 bg-transparent px-2 py-1 text-sm outline-hidden placeholder:text-muted-foreground"
+                                        onClick={(event) =>
+                                            event.stopPropagation()
+                                        }
                                         onChange={handleSearchChange}
                                         onKeyDown={handleSearchKeyDown}
+                                        onPointerDown={(event) =>
+                                            event.stopPropagation()
+                                        }
                                         placeholder={searchPlaceholder}
                                         type="search"
                                         value={searchQuery}
