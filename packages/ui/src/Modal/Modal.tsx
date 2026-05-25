@@ -21,6 +21,7 @@ export type ModalProps = Omit<HTMLAttributes<HTMLDivElement>, 'title'> & {
     disableMobile?: boolean;
     mobileOverride?: boolean;
     dismissible?: boolean;
+    overlayClassName?: string;
 };
 
 export function Modal({
@@ -32,6 +33,7 @@ export function Modal({
     mobileOverride,
     disableMobile,
     onOpenChange,
+    overlayClassName,
     open,
     title,
     trigger,
@@ -47,6 +49,7 @@ export function Modal({
                 dismissible={dismissible}
                 modal={modal}
                 onOpenChange={onOpenChange}
+                overlayClassName={overlayClassName}
                 open={open}
                 title={title}
                 trigger={trigger}
@@ -64,6 +67,7 @@ export function Modal({
             hideClose={hideClose}
             modal={modal}
             onOpenChange={onOpenChange}
+            overlayClassName={overlayClassName}
             open={open}
             title={title}
             trigger={trigger}
@@ -81,6 +85,7 @@ function DesktopModal({
     hideClose,
     modal,
     onOpenChange,
+    overlayClassName,
     open,
     title,
     trigger,
@@ -104,7 +109,12 @@ function DesktopModal({
                 </DialogPrimitive.Trigger>
             ) : null}
             <DialogPrimitive.Portal>
-                <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-background/80 backdrop-blur-xs data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+                <DialogPrimitive.Overlay
+                    className={cx(
+                        'fixed inset-0 z-50 bg-background/80 backdrop-blur-xs data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
+                        overlayClassName,
+                    )}
+                />
                 <DialogPrimitive.Content
                     aria-describedby={undefined}
                     className={cx(
@@ -137,6 +147,7 @@ function MobileModal({
     dismissible = true,
     modal,
     onOpenChange,
+    overlayClassName,
     open,
     title,
     trigger,
@@ -154,7 +165,12 @@ function MobileModal({
                 <Drawer.Trigger asChild>{trigger}</Drawer.Trigger>
             ) : null}
             <Drawer.Portal>
-                <Drawer.Overlay className="fixed inset-0 z-50 bg-black/50" />
+                <Drawer.Overlay
+                    className={cx(
+                        'fixed inset-0 z-50 bg-black/50',
+                        overlayClassName,
+                    )}
+                />
                 <Drawer.Content
                     className={cx(
                         'fixed inset-x-0 bottom-0 z-50 mt-4 flex max-h-[calc(100dvh-1rem)] flex-col rounded-t-[10px] border bg-background',

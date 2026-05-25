@@ -215,7 +215,7 @@ function SunflowersAmount() {
 
 export function SunflowersHud() {
     return (
-        <HudCard position="floating" open className="static z-[55]">
+        <HudCard position="floating" open className="static z-[48]">
             <SunflowersAmount />
         </HudCard>
     );
