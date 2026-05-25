@@ -122,7 +122,7 @@ export function CreateAttributeDefinitionButton({
                                 onValueChange={setSelectedDataType}
                             />
                             {selectedDataType === 'range' && (
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
                                     <Input
                                         type="number"
                                         name="rangeMin"
@@ -131,6 +131,7 @@ export function CreateAttributeDefinitionButton({
                                         onChange={(event) =>
                                             setRangeMinValue(event.target.value)
                                         }
+                                        fullWidth
                                     />
                                     <Input
                                         type="number"
@@ -140,6 +141,7 @@ export function CreateAttributeDefinitionButton({
                                         onChange={(event) =>
                                             setRangeMaxValue(event.target.value)
                                         }
+                                        fullWidth
                                     />
                                 </div>
                             )}

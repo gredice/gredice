@@ -2,6 +2,10 @@ import { getAccount, getEvents, knownEventTypes } from '@gredice/storage';
 import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
 import { Stack } from '@gredice/ui/Stack';
 import type { ReactNode } from 'react';
+import {
+    scrollableTableCardClassName,
+    scrollableTableCardOverflowClassName,
+} from '../../../../components/admin/cards/tableCardLayout';
 import { EventsTable } from '../../../../components/shared/events/EventsTable';
 
 interface AccountEventsCardProps {
@@ -88,8 +92,8 @@ export async function AccountEventsCard({ accountId }: AccountEventsCardProps) {
         if (!accountUser.user) {
             continue;
         }
-        const { id, userName, email } = accountUser.user;
-        userLabels.set(id, userName ?? email ?? id);
+        const { id, userName } = accountUser.user;
+        userLabels.set(id, userName || id);
     }
 
     const sortedEvents = [...events].sort(
@@ -98,11 +102,11 @@ export async function AccountEventsCard({ accountId }: AccountEventsCardProps) {
     );
 
     return (
-        <Card>
+        <Card className={scrollableTableCardClassName}>
             <CardHeader>
                 <CardTitle>Događaji</CardTitle>
             </CardHeader>
-            <CardOverflow className="overflow-auto">
+            <CardOverflow className={scrollableTableCardOverflowClassName}>
                 <EventsTable
                     events={sortedEvents}
                     renderType={(event) =>

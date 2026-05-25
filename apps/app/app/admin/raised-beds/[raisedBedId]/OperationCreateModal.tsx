@@ -54,13 +54,14 @@ export function OperationCreateModal({
                 <Typography level="h5">Nova operacija</Typography>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <Stack spacing={4}>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
                             <Input
                                 name="entityTypeName"
                                 label="Tip entiteta"
                                 defaultValue="operation"
                                 required
                                 hidden
+                                fullWidth
                             />
                             <SelectEntity
                                 name="entityId"
@@ -73,12 +74,14 @@ export function OperationCreateModal({
                                 defaultValue={accountId}
                                 label="Account ID"
                                 required
+                                fullWidth
                             />
                             <Input
                                 name="gardenId"
                                 defaultValue={gardenId}
                                 label="Vrt ID (opcionalno)"
                                 type="number"
+                                fullWidth
                             />
                             <SelectRaisedBed
                                 name="raisedBedId"

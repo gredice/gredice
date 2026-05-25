@@ -13,6 +13,10 @@ import {
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Stack } from '@gredice/ui/Stack';
 import { Table } from '@gredice/ui/Table';
+import {
+    scrollableTableCardClassName,
+    scrollableTableCardOverflowClassName,
+} from '../../../../components/admin/cards/tableCardLayout';
 import { Field } from '../../../../components/shared/fields/Field';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
@@ -61,7 +65,7 @@ export async function AccountInventoryCard({
     const totalCount = inventory.reduce((sum, item) => sum + item.amount, 0);
 
     return (
-        <Card>
+        <Card className={scrollableTableCardClassName}>
             <CardHeader>
                 <CardTitle>Ruksak</CardTitle>
             </CardHeader>
@@ -84,46 +88,42 @@ export async function AccountInventoryCard({
                     </Stack>
                 </div>
             </CardContent>
-            <CardOverflow>
-                <div className="max-h-80 overflow-auto">
-                    <Table>
-                        <Table.Header>
+            <CardOverflow className={scrollableTableCardOverflowClassName}>
+                <Table>
+                    <Table.Header>
+                        <Table.Row>
+                            <Table.Head>Entitet</Table.Head>
+                            <Table.Head>Tip</Table.Head>
+                            <Table.Head>Količina</Table.Head>
+                            <Table.Head>Ažurirano</Table.Head>
+                        </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
+                        {itemsWithNames.length === 0 && (
                             <Table.Row>
-                                <Table.Head>Entitet</Table.Head>
-                                <Table.Head>Tip</Table.Head>
-                                <Table.Head>Količina</Table.Head>
-                                <Table.Head>Ažurirano</Table.Head>
+                                <Table.Cell colSpan={4}>
+                                    <NoDataPlaceholder>
+                                        Nema predmeta u ruksaku
+                                    </NoDataPlaceholder>
+                                </Table.Cell>
                             </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {itemsWithNames.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={4}>
-                                        <NoDataPlaceholder>
-                                            Nema predmeta u ruksaku
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
-                            {itemsWithNames.map((item) => (
-                                <Table.Row
-                                    key={`${item.entityTypeName}-${item.entityId}`}
-                                >
-                                    <Table.Cell>{item.label}</Table.Cell>
-                                    <Table.Cell>
-                                        {item.entityTypeName}
-                                    </Table.Cell>
-                                    <Table.Cell>{item.amount}</Table.Cell>
-                                    <Table.Cell>
-                                        <LocalDateTime time={false}>
-                                            {item.updatedAt}
-                                        </LocalDateTime>
-                                    </Table.Cell>
-                                </Table.Row>
-                            ))}
-                        </Table.Body>
-                    </Table>
-                </div>
+                        )}
+                        {itemsWithNames.map((item) => (
+                            <Table.Row
+                                key={`${item.entityTypeName}-${item.entityId}`}
+                            >
+                                <Table.Cell>{item.label}</Table.Cell>
+                                <Table.Cell>{item.entityTypeName}</Table.Cell>
+                                <Table.Cell>{item.amount}</Table.Cell>
+                                <Table.Cell>
+                                    <LocalDateTime time={false}>
+                                        {item.updatedAt}
+                                    </LocalDateTime>
+                                </Table.Cell>
+                            </Table.Row>
+                        ))}
+                    </Table.Body>
+                </Table>
             </CardOverflow>
         </Card>
     );

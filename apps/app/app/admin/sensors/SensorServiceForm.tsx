@@ -2,7 +2,6 @@
 
 import type { SelectRaisedBedSensor } from '@gredice/storage';
 import { Input } from '@gredice/ui/Input';
-import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { useState } from 'react';
 import { updateSensor } from '../../(actions)/sensorActions';
@@ -39,20 +38,22 @@ export function SensorServiceForm({
     };
 
     return (
-        <Row spacing={2}>
-            <Input label="ID" value={sensor.id} readOnly />
+        <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
+            <Input label="ID" value={sensor.id} readOnly fullWidth />
             <Input
                 label="Signalco ID"
                 value={signalcoId}
                 onChange={(e) => setSignalcoId(e.target.value)}
                 onBlur={handleBlur}
+                fullWidth
             />
             <SelectItems
+                className="min-w-0"
                 label="Status"
                 value={status}
                 onValueChange={handleStatusChange}
                 items={statusOptions}
             />
-        </Row>
+        </div>
     );
 }

@@ -11,6 +11,10 @@ import { Row } from '@gredice/ui/Row';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
 import { Table } from '@gredice/ui/Table';
 import Link from 'next/link';
+import {
+    scrollableTableCardClassName,
+    scrollableTableCardOverflowClassName,
+} from '../../../../components/admin/cards/tableCardLayout';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../../src/KnownPages';
 import { RaisedBedStatusItems } from '../../raised-beds/[raisedBedId]/RaisedBedStatusItems';
@@ -19,10 +23,12 @@ export async function RaisedBedsTableCard({
     accountId,
     gardenId,
     searchParams,
+    scroll,
 }: {
     accountId?: string;
     gardenId?: number;
     searchParams?: { [key: string]: string | string[] | undefined };
+    scroll?: boolean;
 }) {
     // Get filter parameters
     const statusFilter =
@@ -47,7 +53,7 @@ export async function RaisedBedsTableCard({
           : await getAllRaisedBedsFiltered(filters);
 
     return (
-        <Card>
+        <Card className={scroll ? scrollableTableCardClassName : undefined}>
             <CardHeader>
                 <div
                     style={{
@@ -59,7 +65,11 @@ export async function RaisedBedsTableCard({
                     <CardTitle>Gredice</CardTitle>
                 </div>
             </CardHeader>
-            <CardOverflow>
+            <CardOverflow
+                className={
+                    scroll ? scrollableTableCardOverflowClassName : undefined
+                }
+            >
                 <Table>
                     <Table.Header>
                         <Table.Row>

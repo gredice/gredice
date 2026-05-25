@@ -110,7 +110,7 @@ export default async function AccountPage({
                         <AccountSunflowersCard accountId={accountId} />
                         <AccountAchievementsCard accountId={accountId} />
                         <AccountTransactionsCard accountId={accountId} />
-                        <RaisedBedsTableCard accountId={accountId} />
+                        <RaisedBedsTableCard accountId={accountId} scroll />
                         <AccountEventsCard accountId={accountId} />
                         <NotificationsTableCard accountId={accountId} scroll />
                         <AccountInventoryCard accountId={accountId} />

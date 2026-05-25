@@ -11,13 +11,20 @@ import {
     CardOverflow,
     CardTitle,
 } from '@gredice/ui/Card';
+import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
 import { Add } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { Popper } from '@gredice/ui/Popper';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import { revalidatePath } from 'next/cache';
+import {
+    scrollableTableCardClassName,
+    scrollableTableCardOverflowClassName,
+} from '../../../../components/admin/cards/tableCardLayout';
 import { Field } from '../../../../components/shared/fields/Field';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../../lib/auth/auth';
@@ -41,82 +48,90 @@ export async function AccountSunflowersCard({
     }
 
     return (
-        <Card>
-            <CardHeader>
+        <Card className={scrollableTableCardClassName}>
+            <CardHeader className="flex-row items-center justify-between gap-2">
                 <CardTitle>Suncokreti</CardTitle>
+                <Popper
+                    align="end"
+                    className="w-80 p-3"
+                    trigger={
+                        <IconButton title="Dodjeli suncokrete">
+                            <Add className="size-5" />
+                        </IconButton>
+                    }
+                >
+                    <Stack spacing={4}>
+                        <Typography level="h5">Dodjeli suncokrete</Typography>
+                        <form action={submitGiftSunflowers} className="min-w-0">
+                            <Stack className="min-w-0" spacing={4}>
+                                <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <Input
+                                        label="Iznos"
+                                        type="number"
+                                        name="amount"
+                                        defaultValue="0"
+                                        fullWidth
+                                    />
+                                    <SelectItems
+                                        className="min-w-0"
+                                        label="Razlog"
+                                        name="reason"
+                                        defaultValue="gift"
+                                        items={[
+                                            { value: 'gift', label: 'Poklon' },
+                                        ]}
+                                    />
+                                </div>
+                                <Button
+                                    type="submit"
+                                    startDecorator={<Add className="size-5" />}
+                                >
+                                    Dodjeli
+                                </Button>
+                            </Stack>
+                        </form>
+                    </Stack>
+                </Popper>
             </CardHeader>
             <CardContent className="pb-4">
-                <div className="grid grid-cols-2 gap-2">
-                    <Stack spacing={4}>
-                        <Field
-                            name="Ukupno suncokreta"
-                            value={currentSunflowers}
-                        />
-                    </Stack>
-                    <form action={submitGiftSunflowers}>
-                        <Stack spacing={2}>
-                            <div className="grid grid-cols-2 gap-2">
-                                <Input
-                                    label="Iznos"
-                                    type="number"
-                                    name="amount"
-                                    defaultValue="0"
-                                />
-                                <SelectItems
-                                    label="Razlog"
-                                    name="reason"
-                                    defaultValue="gift"
-                                    items={[{ value: 'gift', label: 'Poklon' }]}
-                                />
-                            </div>
-                            <Button
-                                type="submit"
-                                startDecorator={<Add className="size-5" />}
-                            >
-                                Dodjeli
-                            </Button>
-                        </Stack>
-                    </form>
-                </div>
+                <Field name="Ukupno suncokreta" value={currentSunflowers} />
             </CardContent>
-            <CardOverflow>
-                <div className="max-h-80 overflow-auto">
-                    <Table>
-                        <Table.Header>
+            <CardOverflow className={scrollableTableCardOverflowClassName}>
+                <Table>
+                    <Table.Header>
+                        <Table.Row>
+                            <Table.Head>Tip</Table.Head>
+                            <Table.Head>Podaci</Table.Head>
+                            <Table.Head>Iznos</Table.Head>
+                            <Table.Head>Datum kreiranja</Table.Head>
+                        </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
+                        {history.length === 0 && (
                             <Table.Row>
-                                <Table.Head>Tip</Table.Head>
-                                <Table.Head>Podaci</Table.Head>
-                                <Table.Head>Iznos</Table.Head>
-                                <Table.Head>Datum kreiranja</Table.Head>
+                                <Table.Cell colSpan={3}>
+                                    <NoDataPlaceholder>
+                                        Nema suncokreta
+                                    </NoDataPlaceholder>
+                                </Table.Cell>
                             </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {history.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={3}>
-                                        <NoDataPlaceholder>
-                                            Nema suncokreta
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
-                            {history.map((sunflower) => (
-                                <Table.Row key={sunflower.id}>
-                                    <Table.Cell>{sunflower.type}</Table.Cell>
-                                    <Table.Cell>
-                                        {JSON.stringify(sunflower.data)}
-                                    </Table.Cell>
-                                    <Table.Cell>{sunflower.amount}</Table.Cell>
-                                    <Table.Cell>
-                                        <LocalDateTime>
-                                            {sunflower.createdAt}
-                                        </LocalDateTime>
-                                    </Table.Cell>
-                                </Table.Row>
-                            ))}
-                        </Table.Body>
-                    </Table>
-                </div>
+                        )}
+                        {history.map((sunflower) => (
+                            <Table.Row key={sunflower.id}>
+                                <Table.Cell>{sunflower.type}</Table.Cell>
+                                <Table.Cell>
+                                    {JSON.stringify(sunflower.data)}
+                                </Table.Cell>
+                                <Table.Cell>{sunflower.amount}</Table.Cell>
+                                <Table.Cell>
+                                    <LocalDateTime>
+                                        {sunflower.createdAt}
+                                    </LocalDateTime>
+                                </Table.Cell>
+                            </Table.Row>
+                        ))}
+                    </Table.Body>
+                </Table>
             </CardOverflow>
         </Card>
     );

@@ -1,4 +1,8 @@
 import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
+import {
+    scrollableTableCardClassName,
+    scrollableTableCardOverflowClassName,
+} from '../../../../components/admin/cards/tableCardLayout';
 import { auth } from '../../../../lib/auth/auth';
 import { ShoppingCartsTable } from '../../shopping-carts/ShoppingCartsTable';
 
@@ -10,11 +14,11 @@ export async function AccountShoppingCartsCard({
     await auth(['admin']);
 
     return (
-        <Card>
+        <Card className={scrollableTableCardClassName}>
             <CardHeader>
                 <CardTitle>Košarice</CardTitle>
             </CardHeader>
-            <CardOverflow>
+            <CardOverflow className={scrollableTableCardOverflowClassName}>
                 <ShoppingCartsTable accountId={accountId} />
             </CardOverflow>
         </Card>
