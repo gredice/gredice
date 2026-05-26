@@ -9,6 +9,7 @@ import {
     useState,
 } from 'react';
 import { Controls } from './controls/Controls';
+import { Birds } from './entities/birds/Birds';
 import { EntityFactory } from './entities/EntityFactory';
 import {
     EntityInstances,
@@ -238,6 +239,11 @@ export function GameScene({
                                 stacks={garden?.stacks}
                                 renderDetails={renderDetails}
                             />
+                            {renderDetails && zoom !== 'far' && (
+                                <Suspense fallback={null}>
+                                    <Birds stacks={garden?.stacks} />
+                                </Suspense>
+                            )}
                         </group>
                         {!noControls && <Controls />}
                     </ParticleSystemProvider>

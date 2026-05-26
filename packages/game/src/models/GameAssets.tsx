@@ -6,8 +6,29 @@ Command: npx gltfjsx@6.5.3 ./apps/garden/.tmp/GameAssetsTypes.glb --types --type
 import type * as THREE from 'three';
 import type { GLTF } from 'three-stdlib';
 
+type ActionName = 'BirdSmall_Idle' | 'BirdSmall_Flap';
+
+interface GLTFAction extends THREE.AnimationClip {
+    name: ActionName;
+}
+
 export type GLTFResult = GLTF & {
     nodes: {
+        BirdSmall_Beak: THREE.Mesh;
+        BirdSmall_Eye_L: THREE.Mesh;
+        BirdSmall_Eye_R: THREE.Mesh;
+        BirdSmall_Head: THREE.Mesh;
+        BirdSmall_Pupil_L: THREE.Mesh;
+        BirdSmall_Pupil_R: THREE.Mesh;
+        BirdSmall_Tail: THREE.Mesh;
+        BirdSmall_Wing_L: THREE.Mesh;
+        BirdSmall_Wing_R: THREE.Mesh;
+        BirdSmall_Foot_L: THREE.Mesh;
+        BirdSmall_Leg_L: THREE.Mesh;
+        BirdSmall_Foot_R: THREE.Mesh;
+        BirdSmall_Leg_R: THREE.Mesh;
+        BirdSmall_BellyPatch: THREE.Mesh;
+        BirdSmall_Body: THREE.Mesh;
         Block_Ground_1_1: THREE.Mesh;
         Block_Ground_1_2: THREE.Mesh;
         Block_Ground_2_1: THREE.Mesh;
@@ -131,6 +152,13 @@ export type GLTFResult = GLTF & {
         BH_flat_dark_wood: THREE.MeshStandardMaterial;
         BH_flat_light_wood: THREE.MeshStandardMaterial;
         BH_flat_warm_gray_roof: THREE.MeshStandardMaterial;
+        'Material.BirdSmall.Beak': THREE.MeshStandardMaterial;
+        'Material.BirdSmall.Belly': THREE.MeshStandardMaterial;
+        'Material.BirdSmall.Body': THREE.MeshStandardMaterial;
+        'Material.BirdSmall.Eye': THREE.MeshStandardMaterial;
+        'Material.BirdSmall.Leg': THREE.MeshStandardMaterial;
+        'Material.BirdSmall.Pupil': THREE.MeshStandardMaterial;
+        'Material.BirdSmall.Wing': THREE.MeshStandardMaterial;
         'Material.ColorPaletteMain': THREE.MeshStandardMaterial;
         'Material.Dirt': THREE.MeshStandardMaterial;
         'Material.Dirt.001': THREE.MeshStandardMaterial;
@@ -153,4 +181,5 @@ export type GLTFResult = GLTF & {
         'Material.WateringCan.Dark': THREE.MeshStandardMaterial;
         'Material.WateringCan.Trim': THREE.MeshStandardMaterial;
     };
+    animations: GLTFAction[];
 };
