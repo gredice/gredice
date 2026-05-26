@@ -195,19 +195,16 @@
             "name": "WateringCan",
             "source": "WateringCan.blend",
             "output": "WateringCan.glb",
-            "version": "f5a1d2ac7a12",
+            "version": "6e20e7c163f7",
             "preload": "lazy",
             "objects": [
                 "WateringCan_Base_Ring",
                 "WateringCan_Body",
-                "WateringCan_Body_Facet_Strips",
                 "WateringCan_Fill_Rim",
                 "WateringCan_Handle",
-                "WateringCan_Handle_Mounts",
                 "WateringCan_Rose_Face_Dots",
                 "WateringCan_Rose_Head",
                 "WateringCan_Spout",
-                "WateringCan_Spout_Collar",
                 "WateringCan_Water"
             ]
         },

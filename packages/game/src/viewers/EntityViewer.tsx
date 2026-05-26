@@ -5,7 +5,7 @@ import { type HTMLAttributes, useRef } from 'react';
 import { Vector3 } from 'three';
 import { v4 as uuidv4 } from 'uuid';
 import { EntityFactory } from '../entities/EntityFactory';
-import { Environment } from '../scene/Environment';
+import { Environment, StaticEnvironment } from '../scene/Environment';
 import { Scene } from '../scene/Scene';
 import type { Block } from '../types/Block';
 import {
@@ -21,6 +21,8 @@ export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
     entityName: string;
     appBaseUrl?: string;
     className?: string;
+    noControl?: boolean;
+    staticEnvironment?: boolean;
     /**
      * Zoom level of the camera
      * @default 90
@@ -40,6 +42,8 @@ export function EntityViewer({
     zoom,
     itemPosition,
     className,
+    noControl,
+    staticEnvironment,
     rotation = 0,
     ...rest
 }: EntityViewerProps) {
@@ -82,11 +86,16 @@ export function EntityViewer({
                     className={className}
                     {...rest}
                 >
-                    <Environment noBackground noSound noWeather />
+                    {staticEnvironment ? (
+                        <StaticEnvironment noBackground />
+                    ) : (
+                        <Environment noBackground noSound noWeather />
+                    )}
                     <EntityFactory
                         name={entityName}
                         stack={stack}
                         block={block}
+                        noControl={noControl}
                         rotation={normalizedRotation}
                         variant={variant}
                     />
