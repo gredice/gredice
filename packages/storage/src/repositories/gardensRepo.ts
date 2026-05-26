@@ -57,6 +57,12 @@ const PLANT_CYCLE_EVENT_TYPES = [
     knownEventTypes.raisedBedFields.plantReplaceSort,
 ] as const;
 
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = TransactionClient | StorageClient;
+
 type CanonicalRaisedBedField = {
     id: number;
     positionIndex: number;
@@ -1122,7 +1128,7 @@ export async function getGardenBlock(gardenId: number, blockId: string) {
 export async function createGardenBlock(
     gardenId: number,
     blockName: string,
-    db: ReturnType<typeof storage> = storage(),
+    db: DatabaseClient = storage(),
 ) {
     const blockId = uuidV4();
 
@@ -1153,8 +1159,12 @@ export async function updateGardenBlock({ id, ...values }: UpdateGardenBlock) {
         .where(eq(gardenBlocks.id, id));
 }
 
-export async function deleteGardenBlock(gardenId: number, blockId: string) {
-    await storage()
+export async function deleteGardenBlock(
+    gardenId: number,
+    blockId: string,
+    db: DatabaseClient = storage(),
+) {
+    await db
         .update(gardenBlocks)
         .set({ isDeleted: true })
         .where(
@@ -1167,6 +1177,7 @@ export async function deleteGardenBlock(gardenId: number, blockId: string) {
         knownEvents.gardens.blockRemovedV1(gardenId.toString(), {
             id: blockId,
         }),
+        db,
     );
 }
 
@@ -1198,7 +1209,7 @@ export async function getGardenStack(
 export async function createGardenStack(
     gardenId: number,
     { x, y }: { x: number; y: number },
-    db: ReturnType<typeof storage> = storage(),
+    db: DatabaseClient = storage(),
 ) {
     // Check if stack at location already exists
     const [{ count: existingStacksCount }] = await db
@@ -1225,7 +1236,7 @@ export async function createGardenStack(
 export async function updateGardenStack(
     gardenId: number,
     stacks: Omit<UpdateGardenStack, 'id'> & { x: number; y: number },
-    db: ReturnType<typeof storage> = storage(),
+    db: DatabaseClient = storage(),
 ) {
     const stackId = (
         await db.query.gardenStacks.findFirst({

@@ -7,6 +7,7 @@ import {
 import { signalcoClient } from '@gredice/signalco';
 import {
     abandonRaisedBed,
+    addGardenBoxInventoryItem,
     buildRaisedBedFieldPlantUpdatePayload,
     countAiRequestEventsSince,
     createDefaultGardenForAccount,
@@ -30,6 +31,7 @@ import {
     knownEvents,
     knownEventTypes,
     spendSunflowers,
+    storage,
     deleteGardenBlock as storageDeleteGardenBlock,
     updateGarden,
     updateGardenBlock,
@@ -41,7 +43,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getBlockData } from '../../../lib/blocks/blockDataService';
-import { publicSecurity } from '../../../lib/docs/security';
+import { authSecurity, publicSecurity } from '../../../lib/docs/security';
 import { isAppliedOperationCurrentForRaisedBedFields } from '../../../lib/garden/appliedRaisedBedOperations';
 import { resolveGardenBlockPlacement } from '../../../lib/garden/blockPlacementService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
@@ -80,6 +82,15 @@ const analyzeImageBodySchema = z
     });
 
 type AnalyzeImageBody = z.infer<typeof analyzeImageBodySchema>;
+
+const storeBlockInGardenBoxBodySchema = z.object({
+    gardenBoxBlockId: z.string().trim().min(1).max(128),
+    sourcePosition: z.object({
+        x: z.number().int(),
+        z: z.number().int(),
+    }),
+    blockIndex: z.number().int().min(0),
+});
 
 function normalizeAnalysisImageUrls(body: AnalyzeImageBody) {
     const imageUrls = body.imageUrls?.length
@@ -1250,6 +1261,145 @@ const app = new Hono<{ Variables: AuthVariables }>()
             await synchronizeGardenStacksAndRaisedBeds(gardenIdNumber);
 
             return context.json(null, 200);
+        },
+    )
+    .post(
+        '/:gardenId/blocks/:blockId/store-in-garden-box',
+        describeRoute({
+            description:
+                'Move a garden block into a garden box inventory for the current user.',
+            security: authSecurity,
+            tags: ['Gardens'],
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                blockId: z.string(),
+            }),
+        ),
+        zValidator('json', storeBlockInGardenBoxBodySchema),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, blockId } = context.req.valid('param');
+            const { blockIndex, gardenBoxBlockId, sourcePosition } =
+                context.req.valid('json');
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber) || gardenIdNumber <= 0) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            const [gardenBlocks, sourceStack, blockData] = await Promise.all([
+                getGardenBlocks(gardenIdNumber),
+                getGardenStack(gardenIdNumber, {
+                    x: sourcePosition.x,
+                    y: sourcePosition.z,
+                }),
+                getBlockData(),
+            ]);
+
+            if (!sourceStack) {
+                return context.json({ error: 'Source stack not found' }, 400);
+            }
+
+            if (sourceStack.blocks[blockIndex] !== blockId) {
+                return context.json(
+                    { error: 'Source block no longer matches the garden' },
+                    409,
+                );
+            }
+
+            const block = gardenBlocks.find(
+                (candidate) => candidate.id === blockId,
+            );
+            if (!block) {
+                return context.json({ error: 'Block not found' }, 404);
+            }
+
+            const gardenBox = gardenBlocks.find(
+                (candidate) => candidate.id === gardenBoxBlockId,
+            );
+            if (!gardenBox || gardenBox.name !== 'GardenBox') {
+                return context.json({ error: 'Garden box not found' }, 404);
+            }
+
+            const gardenBoxStack = garden.stacks.find((stack) =>
+                stack.blocks.includes(gardenBoxBlockId),
+            );
+            if (!gardenBoxStack) {
+                return context.json(
+                    { error: 'Garden box is not placed in this garden' },
+                    400,
+                );
+            }
+
+            if (block.id === gardenBoxBlockId || block.name === 'GardenBox') {
+                return context.json(
+                    { error: 'Garden boxes cannot be stored in garden boxes' },
+                    400,
+                );
+            }
+
+            if (block.name === 'Raised_Bed') {
+                return context.json(
+                    { error: 'Raised beds cannot be stored in garden boxes' },
+                    400,
+                );
+            }
+
+            const inventoryBlock = blockData.find(
+                (candidate) => candidate.information?.name === block.name,
+            );
+            if (!inventoryBlock) {
+                return context.json(
+                    { error: 'Block directory data not found' },
+                    404,
+                );
+            }
+            const inventoryEntityId = inventoryBlock.id.toString();
+            const nextSourceBlocks = sourceStack.blocks.filter(
+                (_sourceBlockId, index) => index !== blockIndex,
+            );
+
+            await storage().transaction(async (tx) => {
+                await updateGardenStack(
+                    gardenIdNumber,
+                    {
+                        x: sourcePosition.x,
+                        y: sourcePosition.z,
+                        blocks: nextSourceBlocks,
+                    },
+                    tx,
+                );
+                await storageDeleteGardenBlock(gardenIdNumber, block.id, tx);
+                await addGardenBoxInventoryItem(
+                    accountId,
+                    gardenIdNumber,
+                    gardenBoxBlockId,
+                    {
+                        entityTypeName: 'block',
+                        entityId: inventoryEntityId,
+                        amount: 1,
+                        source: 'gardenBox:drop',
+                    },
+                    tx,
+                );
+            });
+
+            return context.json({
+                gardenBoxBlockId,
+                item: {
+                    entityTypeName: 'block',
+                    entityId: inventoryEntityId,
+                    amount: 1,
+                },
+            });
         },
     )
     .post(
