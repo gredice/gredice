@@ -12,6 +12,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
+import { formatAiCostUsd } from '../../../src/ai/aiAnalyticsCost';
 import type { DashboardQuickActionOption } from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { FactCard } from '../cards/FactCard';
@@ -49,6 +50,7 @@ function getTodayDateValue() {
 type AiData = {
     count: number;
     totalTokens: number;
+    totalCostUsd: number;
 };
 
 function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
@@ -345,6 +347,11 @@ export function AdminDashboardClient({
                         value={initialAiData.totalTokens.toLocaleString(
                             'hr-HR',
                         )}
+                        href={KnownPages.AiAnalytics}
+                    />
+                    <FactCard
+                        header="Trošak"
+                        value={formatAiCostUsd(initialAiData.totalCostUsd)}
                         href={KnownPages.AiAnalytics}
                     />
                 </div>

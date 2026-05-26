@@ -1,19 +1,34 @@
-import { getAiAnalysisEvents, getAiAnalysisTotals } from '@gredice/storage';
+import {
+    getAiAnalysisEvents,
+    getAiAnalysisTotals,
+    getAllRaisedBeds,
+} from '@gredice/storage';
 import { Card, CardOverflow } from '@gredice/ui/Card';
-import { Chip } from '@gredice/ui/Chip';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
-import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
+import {
+    formatAiCostUsd,
+    sumAiAnalysisCostUsd,
+} from '../../../src/ai/aiAnalyticsCost';
+import { type AiAnalyticsRow, AiAnalyticsTable } from './AiAnalyticsTable';
 
 export const dynamic = 'force-dynamic';
 
 function formatTokens(value: number | undefined | null) {
     if (value == null) return '-';
     return value.toLocaleString('hr-HR');
+}
+
+function parseRaisedBedAggregateId(aggregateId: string) {
+    const [raisedBedIdRaw, positionIndexRaw] = aggregateId.split('|');
+    const raisedBedId = Number.parseInt(raisedBedIdRaw ?? '', 10);
+    const positionIndex = Number.parseInt(positionIndexRaw ?? '', 10);
+
+    return {
+        raisedBedId: Number.isFinite(raisedBedId) ? raisedBedId : null,
+        positionIndex: Number.isFinite(positionIndex) ? positionIndex : null,
+    };
 }
 
 export default async function AiAnalyticsPage() {
@@ -23,11 +38,15 @@ export default async function AiAnalyticsPage() {
     const last30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-    const [events, totals30d, totals24h] = await Promise.all([
+    const [events, totals30d, totals24h, raisedBeds] = await Promise.all([
         getAiAnalysisEvents(),
         getAiAnalysisTotals({ from: last30d }),
         getAiAnalysisTotals({ from: last24h }),
+        getAllRaisedBeds(),
     ]);
+    const raisedBedsById = new Map(
+        raisedBeds.map((raisedBed) => [raisedBed.id, raisedBed]),
+    );
 
     const totalInputTokens = events.reduce(
         (sum, e) => sum + (e.data?.inputTokens ?? 0),
@@ -41,13 +60,42 @@ export default async function AiAnalyticsPage() {
         (sum, e) => sum + (e.data?.totalTokens ?? 0),
         0,
     );
+    const totalCostUsd = sumAiAnalysisCostUsd(events);
+    const rows: AiAnalyticsRow[] = events.map((event) => {
+        const { raisedBedId, positionIndex } = parseRaisedBedAggregateId(
+            event.aggregateId,
+        );
+        const raisedBed =
+            raisedBedId == null ? undefined : raisedBedsById.get(raisedBedId);
+        const raisedBedName =
+            raisedBed?.name?.trim() ||
+            (raisedBed?.physicalId
+                ? `Gredica ${raisedBed.physicalId}`
+                : 'Nepoznata gredica');
+
+        return {
+            id: event.id,
+            createdAt: event.createdAt.toISOString(),
+            raisedBedName,
+            raisedBedPhysicalId: raisedBed?.physicalId ?? null,
+            positionIndex,
+            data: event.data
+                ? {
+                      markdown: event.data.markdown,
+                      imageUrl: event.data.imageUrl,
+                      imageUrls: event.data.imageUrls,
+                      model: event.data.model,
+                      inputTokens: event.data.inputTokens,
+                      outputTokens: event.data.outputTokens,
+                      totalTokens: event.data.totalTokens,
+                  }
+                : null,
+        };
+    });
 
     return (
         <Stack spacing={4}>
-            <Row spacing={2}>
-                <Chip color="primary">{events.length}</Chip>
-            </Row>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                 <Card>
                     <CardOverflow>
                         <Stack className="p-2">
@@ -88,6 +136,16 @@ export default async function AiAnalyticsPage() {
                             <Typography level="body3">Ukupno tokena</Typography>
                             <Typography level="h4" semiBold>
                                 {formatTokens(totalTokens)}
+                            </Typography>
+                        </Stack>
+                    </CardOverflow>
+                </Card>
+                <Card>
+                    <CardOverflow>
+                        <Stack className="p-2">
+                            <Typography level="body3">Ukupni trošak</Typography>
+                            <Typography level="h4" semiBold>
+                                {formatAiCostUsd(totalCostUsd)}
                             </Typography>
                         </Stack>
                     </CardOverflow>
@@ -135,65 +193,7 @@ export default async function AiAnalyticsPage() {
                     </CardOverflow>
                 </Card>
             </div>
-            <Card>
-                <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>ID</Table.Head>
-                                <Table.Head>Gredica | Polje</Table.Head>
-                                <Table.Head>Model</Table.Head>
-                                <Table.Head className="text-right">
-                                    Ulazni tokeni
-                                </Table.Head>
-                                <Table.Head className="text-right">
-                                    Izlazni tokeni
-                                </Table.Head>
-                                <Table.Head className="text-right">
-                                    Ukupno tokeni
-                                </Table.Head>
-                                <Table.Head>Datum</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {events.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={7}>
-                                        <NoDataPlaceholder>
-                                            Nema AI analiza
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
-                            {events.map((event) => (
-                                <Table.Row key={event.id}>
-                                    <Table.Cell>{event.id}</Table.Cell>
-                                    <Table.Cell>{event.aggregateId}</Table.Cell>
-                                    <Table.Cell>
-                                        <Chip size="sm">
-                                            {event.data?.model ?? '-'}
-                                        </Chip>
-                                    </Table.Cell>
-                                    <Table.Cell className="text-right">
-                                        {formatTokens(event.data?.inputTokens)}
-                                    </Table.Cell>
-                                    <Table.Cell className="text-right">
-                                        {formatTokens(event.data?.outputTokens)}
-                                    </Table.Cell>
-                                    <Table.Cell className="text-right">
-                                        {formatTokens(event.data?.totalTokens)}
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <LocalDateTime>
-                                            {event.createdAt}
-                                        </LocalDateTime>
-                                    </Table.Cell>
-                                </Table.Row>
-                            ))}
-                        </Table.Body>
-                    </Table>
-                </CardOverflow>
-            </Card>
+            <AiAnalyticsTable rows={rows} />
         </Stack>
     );
 }

@@ -4,6 +4,8 @@ import test from 'node:test';
 import {
     countAiRequestEventsSince,
     createEvent,
+    getAiAnalysisEvents,
+    getAiAnalysisTotals,
     getEvents,
     getLatestEvents,
     knownEvents,
@@ -164,6 +166,53 @@ test('countAiRequestEventsSince counts account-kind events with legacy aggregate
     });
 
     assert.strictEqual(count, 2);
+});
+
+test('getAiAnalysisEvents and totals include raised-bed and field analyses', async () => {
+    createTestDb();
+    const from = new Date('2026-03-01T00:00:00.000Z');
+    const to = new Date('2026-03-10T00:00:00.000Z');
+
+    await createEvent({
+        ...knownEvents.raisedBeds.aiAnalysisV1(
+            'raised-bed-1',
+            aiAnalysisData({
+                inputTokens: 100,
+                outputTokens: 25,
+                totalTokens: 125,
+            }),
+        ),
+        createdAt: new Date('2026-03-02T12:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.raisedBedFields.aiAnalysisV1(
+            'raised-bed-1|0',
+            aiAnalysisData({
+                inputTokens: 200,
+                outputTokens: 50,
+                totalTokens: 250,
+            }),
+        ),
+        createdAt: new Date('2026-03-03T12:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.raisedBeds.aiAnalysisV1(
+            'old-raised-bed',
+            aiAnalysisData(),
+        ),
+        createdAt: new Date('2026-01-31T12:00:00.000Z'),
+    });
+
+    const [events, totals] = await Promise.all([
+        getAiAnalysisEvents({ from, to }),
+        getAiAnalysisTotals({ from, to }),
+    ]);
+
+    assert.deepStrictEqual(
+        events.map((event) => event.aggregateId),
+        ['raised-bed-1|0', 'raised-bed-1'],
+    );
+    assert.strictEqual(totals.count, 2);
 });
 
 test('getLatestEvents can list multiple event types for an aggregate', async () => {

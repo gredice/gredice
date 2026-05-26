@@ -25,6 +25,11 @@ import type {
 
 type DatabaseClient = ReturnType<typeof storage>;
 
+const aiAnalysisEventTypes = [
+    knownEventTypes.raisedBeds.aiAnalysis,
+    knownEventTypes.raisedBedFields.aiAnalysis,
+];
+
 const scheduleInvalidatingEventTypes = new Set<string>([
     knownEventTypes.operations.assign,
     knownEventTypes.operations.schedule,
@@ -223,7 +228,7 @@ export async function createEvent(
 export async function getAiAnalysisEvents(filter?: { from?: Date; to?: Date }) {
     const results = await storage().query.events.findMany({
         where: and(
-            eq(events.type, knownEventTypes.raisedBedFields.aiAnalysis),
+            inArray(events.type, aiAnalysisEventTypes),
             filter?.from ? gte(events.createdAt, filter.from) : undefined,
             filter?.to ? lte(events.createdAt, filter.to) : undefined,
         ),
@@ -238,7 +243,7 @@ export async function getAiAnalysisEvents(filter?: { from?: Date; to?: Date }) {
 
 export async function getAiAnalysisTotals(filter?: { from?: Date; to?: Date }) {
     const whereConditions = [
-        eq(events.type, knownEventTypes.raisedBedFields.aiAnalysis),
+        inArray(events.type, aiAnalysisEventTypes),
         ...(filter?.from ? [gte(events.createdAt, filter.from)] : []),
         ...(filter?.to ? [lte(events.createdAt, filter.to)] : []),
     ];
