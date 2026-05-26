@@ -37,9 +37,11 @@ export const gameAssetModels = {
     StoneLarge: { url: '/assets/models/StoneLarge.glb' },
     Stool: { url: '/assets/models/Stool.glb' },
     Tulip: { url: '/assets/models/Tulip.glb' },
-    CactusBarrel: { url: '/assets/models/CactusBarrel.glb' },
+    CactusBarrel: { url: '/assets/models/CactusBarrel.glb?v=13eb69f97166' },
     CactusColumnCluster: { url: '/assets/models/CactusColumnCluster.glb' },
-    CactusPricklyPear: { url: '/assets/models/CactusPricklyPear.glb' },
+    CactusPricklyPear: {
+        url: '/assets/models/CactusPricklyPear.glb?v=20b55dc5e922',
+    },
     PotLowBowl: { url: '/assets/models/PotLowBowl.glb' },
     PotRoundedBowl: { url: '/assets/models/PotRoundedBowl.glb' },
     PotBulbousNeck: { url: '/assets/models/PotBulbousNeck.glb' },

@@ -15,6 +15,7 @@ type CactusVariantConfig = {
     bodyNode: CactusNodeName;
     spineNode: CactusNodeName;
     scale: number;
+    groundSink: number;
 };
 
 const cactusVariants = {
@@ -23,18 +24,21 @@ const cactusVariants = {
         bodyNode: 'Cactus_Barrel_Body',
         spineNode: 'Cactus_Barrel_Spines',
         scale: 0.95,
+        groundSink: 0.06,
     },
     CactusColumnCluster: {
         assetName: 'CactusColumnCluster',
         bodyNode: 'Cactus_ColumnCluster_Body',
         spineNode: 'Cactus_ColumnCluster_Spines',
         scale: 0.9,
+        groundSink: 0.04,
     },
     CactusPricklyPear: {
         assetName: 'CactusPricklyPear',
         bodyNode: 'Cactus_PricklyPear_Body',
         spineNode: 'Cactus_PricklyPear_Spines',
         scale: 0.9,
+        groundSink: 0.045,
     },
 } satisfies Record<string, CactusVariantConfig>;
 
@@ -43,13 +47,13 @@ const cactusVariantByName = new Map<string, CactusVariantConfig>(
 );
 
 const cactusBodyMaterial = {
-    color: '#314007',
+    color: '#4a6411',
     roughness: 0.82,
     metalness: 0,
 };
 
 const cactusSpineMaterial = {
-    color: '#4d1f10',
+    color: '#8a5a2b',
     roughness: 0.78,
     metalness: 0,
 };
@@ -68,7 +72,9 @@ function CactusEntity({
 
     return (
         <animated.group
-            position={stack.position.clone().setY(currentStackHeight)}
+            position={stack.position
+                .clone()
+                .setY(currentStackHeight - config.groundSink)}
             rotation={animatedRotation as unknown as [number, number, number]}
             scale={config.scale}
         >
