@@ -308,7 +308,7 @@ test('createDefaultGardenForAccount creates garden with default layout', async (
     );
 });
 
-test('getRaisedBedMetadataByIds returns lightweight raised-bed labels', async () => {
+test('getRaisedBedMetadataByIds returns lightweight raised-bed metadata', async () => {
     createTestDb();
     const accountId = await createAccount();
     const farmId = await ensureFarmId();
@@ -348,6 +348,10 @@ test('getRaisedBedMetadataByIds returns lightweight raised-bed labels', async ()
         name: 'Test Raised Bed',
         physicalId: 'G-001',
     });
+    assert.strictEqual(metadata[1].id, secondRaisedBedId);
+    assert.strictEqual(typeof metadata[1].name, 'string');
+    assert.ok(metadata[1].name.length > 0);
+    assert.strictEqual(metadata[1].physicalId, null);
     assert.ok(!('fields' in metadata[0]));
 });
 
