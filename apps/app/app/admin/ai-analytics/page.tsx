@@ -1,7 +1,7 @@
 import {
     getAiAnalysisEvents,
     getAiAnalysisTotals,
-    getAllRaisedBeds,
+    getRaisedBedMetadataByIds,
 } from '@gredice/storage';
 import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Stack } from '@gredice/ui/Stack';
@@ -38,12 +38,17 @@ export default async function AiAnalyticsPage() {
     const last30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-    const [events, totals30d, totals24h, raisedBeds] = await Promise.all([
+    const [events, totals30d, totals24h] = await Promise.all([
         getAiAnalysisEvents(),
         getAiAnalysisTotals({ from: last30d }),
         getAiAnalysisTotals({ from: last24h }),
-        getAllRaisedBeds(),
     ]);
+    const raisedBedIds = events
+        .map(
+            (event) => parseRaisedBedAggregateId(event.aggregateId).raisedBedId,
+        )
+        .filter((raisedBedId): raisedBedId is number => raisedBedId != null);
+    const raisedBeds = await getRaisedBedMetadataByIds(raisedBedIds);
     const raisedBedsById = new Map(
         raisedBeds.map((raisedBed) => [raisedBed.id, raisedBed]),
     );

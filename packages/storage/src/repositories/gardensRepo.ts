@@ -1344,6 +1344,28 @@ export async function getRaisedBedIdsByAccount(accountId: string) {
     return beds.map((b) => b.id);
 }
 
+export async function getRaisedBedMetadataByIds(raisedBedIds: number[]) {
+    const uniqueRaisedBedIds = Array.from(new Set(raisedBedIds));
+    if (uniqueRaisedBedIds.length === 0) {
+        return [];
+    }
+
+    return storage()
+        .select({
+            id: raisedBeds.id,
+            name: raisedBeds.name,
+            physicalId: raisedBeds.physicalId,
+        })
+        .from(raisedBeds)
+        .where(
+            and(
+                inArray(raisedBeds.id, uniqueRaisedBedIds),
+                eq(raisedBeds.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(raisedBeds.id));
+}
+
 export async function getRaisedBeds(
     gardenId: number,
     filters?: {
