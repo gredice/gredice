@@ -18,7 +18,7 @@ export function BlockGroundCorner({
 
     return (
         <animated.group
-            position={stack.position.clone().setY(currentStackHeight + 1)}
+            position={stack.position.clone().setY(currentStackHeight + 0.2)}
             rotation={animatedRotation as unknown as [number, number, number]}
         >
             <mesh

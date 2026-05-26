@@ -33,6 +33,12 @@ const darkNodeNames = [
     'WateringCan_Rose_Face_Dots',
 ] satisfies WateringCanNodeName[];
 
+const metalMaterial = {
+    color: '#555555',
+    metalness: 0,
+    roughness: 0.5,
+};
+
 export function WateringCan({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes } = useGameGLTF('WateringCan');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
@@ -51,11 +57,7 @@ export function WateringCan({ stack, block, rotation }: EntityInstanceProps) {
                     geometry={nodes[nodeName].geometry}
                     key={nodeName}
                 >
-                    <meshStandardMaterial
-                        color="#5f9f93"
-                        metalness={0.05}
-                        roughness={0.72}
-                    />
+                    <meshStandardMaterial {...metalMaterial} />
                     <SnowOverlay
                         geometry={nodes[nodeName].geometry}
                         {...snowPresets.tool}
@@ -75,11 +77,7 @@ export function WateringCan({ stack, block, rotation }: EntityInstanceProps) {
                     geometry={nodes[nodeName].geometry}
                     key={nodeName}
                 >
-                    <meshStandardMaterial
-                        color="#d2dbcf"
-                        metalness={0.18}
-                        roughness={0.55}
-                    />
+                    <meshStandardMaterial {...metalMaterial} />
                     <SnowOverlay
                         geometry={nodes[nodeName].geometry}
                         {...snowPresets.tool}
@@ -99,11 +97,7 @@ export function WateringCan({ stack, block, rotation }: EntityInstanceProps) {
                     geometry={nodes[nodeName].geometry}
                     key={nodeName}
                 >
-                    <meshStandardMaterial
-                        color="#213833"
-                        metalness={0.2}
-                        roughness={0.6}
-                    />
+                    <meshStandardMaterial {...metalMaterial} />
                     <SnowOverlay
                         geometry={nodes[nodeName].geometry}
                         {...snowPresets.tool}
