@@ -15,12 +15,19 @@ import {
     getGardenStack,
     getGardenStacks,
     getGardens,
+    getRaisedBedMetadataByIds,
     getRaisedBeds,
     updateGarden,
     updateGardenBlock,
     updateGardenStack,
+    updateRaisedBed,
 } from '@gredice/storage';
-import { createTestGarden, ensureFarmId } from './helpers/testHelpers';
+import {
+    createTestBlock,
+    createTestGarden,
+    createTestRaisedBed,
+    ensureFarmId,
+} from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
 test('can create and retrieve a garden', async () => {
@@ -299,6 +306,53 @@ test('createDefaultGardenForAccount creates garden with default layout', async (
         2,
         'Stack (1,0) should have 2 blocks (grass + raised bed)',
     );
+});
+
+test('getRaisedBedMetadataByIds returns lightweight raised-bed metadata', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const firstBlockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const secondBlockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const firstRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        firstBlockId,
+    );
+    const secondRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        secondBlockId,
+    );
+
+    await updateRaisedBed({
+        id: firstRaisedBedId,
+        name: 'Test Raised Bed',
+        physicalId: 'G-001',
+    });
+
+    const metadata = await getRaisedBedMetadataByIds([
+        secondRaisedBedId,
+        firstRaisedBedId,
+        firstRaisedBedId,
+        99999,
+    ]);
+
+    assert.deepStrictEqual(
+        metadata.map((raisedBed) => raisedBed.id),
+        [firstRaisedBedId, secondRaisedBedId],
+    );
+    assert.deepStrictEqual(metadata[0], {
+        id: firstRaisedBedId,
+        name: 'Test Raised Bed',
+        physicalId: 'G-001',
+    });
+    assert.strictEqual(metadata[1].id, secondRaisedBedId);
+    assert.strictEqual(typeof metadata[1].name, 'string');
+    assert.ok(metadata[1].name.length > 0);
+    assert.strictEqual(metadata[1].physicalId, null);
+    assert.ok(!('fields' in metadata[0]));
 });
 
 test('createDefaultGardenForAccount uses default name when not provided', async () => {

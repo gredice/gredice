@@ -16,6 +16,7 @@ import {
     redisCached,
 } from '@gredice/storage';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
+import { sumAiAnalysisCostUsd } from '../../../src/ai/aiAnalyticsCost';
 
 type OperationsDurationPoint = {
     date: string;
@@ -609,6 +610,7 @@ async function getAnalyticsDataUncached(
         (sum, e) => sum + (e.data?.totalTokens ?? 0),
         0,
     );
+    const aiTotalCostUsd = sumAiAnalysisCostUsd(aiEvents);
 
     return {
         analytics: analyticsResult,
@@ -618,6 +620,7 @@ async function getAnalyticsDataUncached(
         ai: {
             count: aiTotals.count,
             totalTokens: aiTotalTokens,
+            totalCostUsd: aiTotalCostUsd,
         },
         sunflowers: sunflowersDailyTotals,
     };

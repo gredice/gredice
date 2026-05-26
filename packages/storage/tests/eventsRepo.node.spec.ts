@@ -219,6 +219,10 @@ test('AI analysis analytics includes raised-bed and field events', async () => {
             knownEventTypes.raisedBeds.aiAnalysis,
         ],
     );
+    assert.deepStrictEqual(
+        events.map((event) => event.aggregateId),
+        [fieldAggregateId, raisedBedAggregateId],
+    );
 
     const allTotals = await getAiAnalysisTotals({ from, to });
     assert.strictEqual(allTotals.count, 2);
