@@ -1344,6 +1344,10 @@ export async function getRaisedBedIdsByAccount(accountId: string) {
     return beds.map((b) => b.id);
 }
 
+/**
+ * Returns lightweight raised-bed label metadata for the provided IDs.
+ * Duplicate IDs are ignored, deleted raised beds are excluded, and results are ordered by ID.
+ */
 export async function getRaisedBedMetadataByIds(raisedBedIds: number[]) {
     const uniqueRaisedBedIds = Array.from(new Set(raisedBedIds));
     if (uniqueRaisedBedIds.length === 0) {

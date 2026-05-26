@@ -328,7 +328,7 @@ test('getRaisedBedMetadataByIds returns lightweight raised-bed labels', async ()
 
     await updateRaisedBed({
         id: firstRaisedBedId,
-        name: 'Testna gredica',
+        name: 'Test Raised Bed',
         physicalId: 'G-001',
     });
 
@@ -345,7 +345,7 @@ test('getRaisedBedMetadataByIds returns lightweight raised-bed labels', async ()
     );
     assert.deepStrictEqual(metadata[0], {
         id: firstRaisedBedId,
-        name: 'Testna gredica',
+        name: 'Test Raised Bed',
         physicalId: 'G-001',
     });
     assert.ok(!('fields' in metadata[0]));
