@@ -1,4 +1,5 @@
 import { animated } from '@react-spring/three';
+import { DoubleSide } from 'three';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -10,12 +11,14 @@ const birdHouseWoodMaterial = {
     color: '#956247',
     metalness: 0.5,
     roughness: 0.9,
+    side: DoubleSide,
 };
 
 const birdHouseRoofMaterial = {
     color: '#2f3437',
     metalness: 0,
     roughness: 0.62,
+    side: DoubleSide,
 };
 
 export function BirdHouse({ stack, block, rotation }: EntityInstanceProps) {

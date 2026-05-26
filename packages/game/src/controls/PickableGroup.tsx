@@ -17,6 +17,7 @@ import { useBlockData } from '../hooks/useBlockData';
 import { useBlockMove } from '../hooks/useBlockMove';
 import { useBlockRecycle } from '../hooks/useBlockRecycle';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useGardenBoxStoreBlock } from '../hooks/useGardenBoxStoreBlock';
 import {
     resolveBlockParticleType,
     useParticles,
@@ -115,6 +116,7 @@ export function PickableGroup({
     // Block mechanic
     const [isBlocked, setIsBlocked] = useState(false);
     const moveBlock = useBlockMove();
+    const storeBlockInGardenBox = useGardenBoxStoreBlock();
 
     // Recycle block functionality
     const [isOverRecycler, setIsOverRecycler] = useState(false);
@@ -472,15 +474,22 @@ export function PickableGroup({
             placementPreviews.find(
                 (preview) => preview.blockUnderName === 'GardenBox',
             )?.blockUnderId ?? null;
+        const canStoreInGardenBox =
+            hoveredGardenBoxBlockId !== null &&
+            block.name !== 'GardenBox' &&
+            block.name !== 'Raised_Bed' &&
+            attachedPlacement === null;
         const heightsMismatch =
             attachedPlacement !== null &&
             Math.abs(sourceHoverHeight - attachedHoverHeight) > 0.0001;
         const nextIsOverRecycler = sourcePreview?.isRecycler ?? false;
         const nextIsBlocked = nextIsOverRecycler
             ? false
-            : placementPreviews.some((preview) => preview.isBlocked) ||
-              heightsMismatch ||
-              raisedBedPlacementBlocked;
+            : canStoreInGardenBox
+              ? false
+              : placementPreviews.some((preview) => preview.isBlocked) ||
+                heightsMismatch ||
+                raisedBedPlacementBlocked;
 
         if (isOverRecycler !== nextIsOverRecycler) {
             setIsOverRecycler(nextIsOverRecycler);
@@ -505,6 +514,43 @@ export function PickableGroup({
             if (nextIsBlocked) {
                 // Revert to start position if released above blocked stack
                 dragSpringsApi.start({ internalPosition: [0, 0, 0] });
+            } else if (canStoreInGardenBox && hoveredGardenBoxBlockId) {
+                dragSpringsApi.start({
+                    internalPosition: [
+                        relative.x,
+                        previewHoverHeight + 0.2,
+                        relative.z,
+                    ],
+                    scale: 0.1,
+                });
+                dropSound.play();
+                triggerPlaceHaptic();
+                spawn(
+                    resolveBlockParticleType(block.name),
+                    stack.position
+                        .clone()
+                        .add(relative)
+                        .setY(previewHoverHeight + currentStackHeight),
+                    12,
+                );
+                const blockDataForInventory = getBlockDataByName(
+                    blocksData,
+                    block.name,
+                );
+
+                await storeBlockInGardenBox.mutateAsync({
+                    sourcePosition: {
+                        x: stack.position.x,
+                        z: stack.position.z,
+                    },
+                    blockIndex: stack.blocks.indexOf(block),
+                    sourceBlockId: block.id,
+                    blockName: block.name,
+                    blockEntityId: blockDataForInventory?.id.toString(),
+                    blockLabel:
+                        blockDataForInventory?.information?.label ?? block.name,
+                    gardenBoxBlockId: hoveredGardenBoxBlockId,
+                });
             } else if (nextIsOverRecycler) {
                 dragSpringsApi.start({
                     internalPosition: [relative.x, -1.5, relative.z],

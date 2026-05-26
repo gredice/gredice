@@ -14,6 +14,7 @@ import {
     type ShoppingCartItemData,
     useShoppingCart,
 } from '../../../hooks/useShoppingCart';
+import { ScrollView } from '../../../shared-ui/ScrollView';
 import { useShoppingCartOpenParam } from '../../../useUrlState';
 import { OperationListItemSkeleton } from '../OperationListItemSkeleton';
 import { OperationsListItem } from './OperationsListItem';
@@ -65,30 +66,39 @@ const OperationsListContent = memo(function OperationsListContent({
     shoppingCartOperationIds: Set<number>;
 }) {
     return (
-        <List variant="outlined" className="bg-card max-h-96 overflow-y-auto">
-            {!isLoading && operations?.length === 0 && (
-                <NoDataPlaceholder className="p-4">
-                    {search.length > 0
-                        ? 'Nema rezultata pretrage'
-                        : 'Nema dostupnih radnji'}
-                </NoDataPlaceholder>
-            )}
-            {isLoading &&
-                Array.from({ length: 3 }).map((_, index) => (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: Array indexed, skeletons
-                    <OperationListItemSkeleton key={index} />
+        <ScrollView
+            className="overflow-hidden rounded-lg border bg-card"
+            viewportClassName="max-h-96"
+            topFadeClassName="from-card"
+            bottomFadeClassName="from-card"
+        >
+            <List className="divide-y">
+                {!isLoading && operations?.length === 0 && (
+                    <NoDataPlaceholder className="p-4">
+                        {search.length > 0
+                            ? 'Nema rezultata pretrage'
+                            : 'Nema dostupnih radnji'}
+                    </NoDataPlaceholder>
+                )}
+                {isLoading &&
+                    Array.from({ length: 3 }).map((_, index) => (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: Array indexed, skeletons
+                        <OperationListItemSkeleton key={index} />
+                    ))}
+                {operations?.map((operation) => (
+                    <MemoizedOperationsListItem
+                        inShoppingCart={shoppingCartOperationIds.has(
+                            operation.id,
+                        )}
+                        key={operation.id}
+                        operation={operation}
+                        gardenId={gardenId}
+                        raisedBedId={raisedBedId}
+                        positionIndex={positionIndex}
+                    />
                 ))}
-            {operations?.map((operation) => (
-                <MemoizedOperationsListItem
-                    inShoppingCart={shoppingCartOperationIds.has(operation.id)}
-                    key={operation.id}
-                    operation={operation}
-                    gardenId={gardenId}
-                    raisedBedId={raisedBedId}
-                    positionIndex={positionIndex}
-                />
-            ))}
-        </List>
+            </List>
+        </ScrollView>
     );
 });
 

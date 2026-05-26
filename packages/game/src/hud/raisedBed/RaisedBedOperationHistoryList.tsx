@@ -3,6 +3,7 @@ import { Button } from '@gredice/ui/Button';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
+import { useQueries } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
@@ -13,6 +14,11 @@ import {
 import { useLiveTime } from '../../hooks/useLiveTime';
 import { useOperations } from '../../hooks/useOperations';
 import { useSorts } from '../../hooks/usePlantSorts';
+import { useRaisedBedDiaryEntries } from '../../hooks/useRaisedBedDiaryEntries';
+import {
+    raisedBedFieldDiaryEntriesQueryOptions,
+    useRaisedBedFieldDiaryEntries,
+} from '../../hooks/useRaisedBedFieldDiaryEntries';
 import {
     buildSowingOperationItems,
     cartPlantSortEntityType,
@@ -20,6 +26,14 @@ import {
     sortNewestFirst,
 } from '../GardenOperationsHud';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
+
+type AiHistoryEntry = {
+    id: number;
+    description: string | undefined;
+    timestamp: Date;
+    imageUrls?: string[] | null;
+    isMarkdown?: boolean;
+};
 
 function buildFieldPositionById(
     garden: ReturnType<typeof useCurrentGarden>['data'],
@@ -76,6 +90,47 @@ function filterOperationsByTarget({
     });
 }
 
+function getAiHistoryForOperation({
+    imageUrls,
+    entries,
+}: {
+    imageUrls: string[];
+    entries: AiHistoryEntry[] | undefined;
+}) {
+    if (!imageUrls.length || !entries?.length) {
+        return undefined;
+    }
+
+    const relatedEntries = entries.filter((entry) => {
+        if (!entry.isMarkdown || !entry.imageUrls?.length) {
+            return false;
+        }
+
+        return imageUrls.some((imageUrl) =>
+            entry.imageUrls?.includes(imageUrl),
+        );
+    });
+
+    return relatedEntries.length
+        ? relatedEntries.sort(
+              (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
+          )
+        : undefined;
+}
+
+function getRaisedBedFieldPositionIndexes(
+    garden: ReturnType<typeof useCurrentGarden>['data'],
+    raisedBedId: number | undefined,
+) {
+    const raisedBed = garden?.raisedBeds.find(
+        (candidate) => candidate.id === raisedBedId,
+    );
+
+    return Array.from(
+        new Set(raisedBed?.fields.map((field) => field.positionIndex) ?? []),
+    );
+}
+
 export function RaisedBedOperationHistoryList({
     raisedBedId,
     positionIndex,
@@ -91,6 +146,46 @@ export function RaisedBedOperationHistoryList({
     const flags = useGameFlags();
     const { data: currentGarden } = useCurrentGarden();
     const { data: operationsData } = useOperations();
+    const shouldLoadAiHistory = Boolean(
+        flags.raisedBedImageAI && currentGarden?.id && raisedBedId,
+    );
+    const { data: raisedBedDiaryEntries } = useRaisedBedDiaryEntries(
+        currentGarden?.id ?? 0,
+        raisedBedId ?? 0,
+        { enabled: shouldLoadAiHistory && positionIndex === undefined },
+    );
+    const { data: raisedBedFieldDiaryEntries } = useRaisedBedFieldDiaryEntries(
+        currentGarden?.id ?? 0,
+        raisedBedId ?? 0,
+        positionIndex ?? 0,
+        {
+            enabled: shouldLoadAiHistory && typeof positionIndex === 'number',
+        },
+    );
+    const raisedBedFieldPositionIndexes = useMemo(
+        () => getRaisedBedFieldPositionIndexes(currentGarden, raisedBedId),
+        [currentGarden, raisedBedId],
+    );
+    const raisedBedFieldDiaryQueries = useQueries({
+        queries: raisedBedFieldPositionIndexes.map((fieldPositionIndex) =>
+            raisedBedFieldDiaryEntriesQueryOptions(
+                currentGarden?.id ?? 0,
+                raisedBedId ?? 0,
+                fieldPositionIndex,
+                {
+                    enabled: shouldLoadAiHistory && positionIndex === undefined,
+                },
+            ),
+        ),
+    });
+    const raisedBedWideAiHistoryEntries = [
+        ...(raisedBedDiaryEntries ?? []),
+        ...raisedBedFieldDiaryQueries.flatMap((query) => query.data ?? []),
+    ];
+    const aiHistoryEntries =
+        typeof positionIndex === 'number'
+            ? raisedBedFieldDiaryEntries
+            : raisedBedWideAiHistoryEntries;
     const fieldPositionById = useMemo(
         () => buildFieldPositionById(currentGarden),
         [currentGarden],
@@ -193,7 +288,10 @@ export function RaisedBedOperationHistoryList({
     }
 
     return (
-        <Stack spacing={3}>
+        <Stack
+            spacing={2}
+            className="w-full min-w-0 max-w-full overflow-hidden"
+        >
             {operations.map((operation) => {
                 const operationData =
                     operation.entityTypeName === 'operation'
@@ -205,6 +303,11 @@ export function RaisedBedOperationHistoryList({
                         : undefined;
                 const operationName = operationData?.information.label;
                 const actionRaisedBedId = operation.raisedBedId ?? raisedBedId;
+                const actionPositionIndex =
+                    positionIndex ??
+                    (operation.raisedBedFieldId
+                        ? fieldPositionById.get(operation.raisedBedFieldId)
+                        : undefined);
                 const action =
                     flags.raisedBedImageAI &&
                     !disableActions &&
@@ -214,13 +317,17 @@ export function RaisedBedOperationHistoryList({
                         <RaisedBedDiaryAiAction
                             gardenId={currentGarden.id}
                             raisedBedId={actionRaisedBedId}
-                            positionIndex={positionIndex}
+                            positionIndex={actionPositionIndex}
                             entryName={
                                 operationName ??
                                 plantSortData?.information.name ??
                                 operation.targetLabel
                             }
                             imageUrls={operation.imageUrls}
+                            historyEntries={getAiHistoryForOperation({
+                                imageUrls: operation.imageUrls,
+                                entries: aiHistoryEntries,
+                            })}
                         />
                     ) : undefined;
 

@@ -156,6 +156,7 @@
             "name": "BirdSmall",
             "source": "BirdSmall.blend",
             "output": "BirdSmall.glb",
+            "version": "9f3f492cf895",
             "preload": "lazy",
             "objects": [
                 "BirdSmall_Root",
@@ -194,6 +195,7 @@
             "name": "WateringCan",
             "source": "WateringCan.blend",
             "output": "WateringCan.glb",
+            "version": "f5a1d2ac7a12",
             "preload": "lazy",
             "objects": [
                 "WateringCan_Base_Ring",
@@ -220,7 +222,7 @@
             "name": "BirdHouse",
             "source": "BirdHouse.blend",
             "output": "BirdHouse.glb",
-            "version": "2e0de8b19af3",
+            "version": "b3510616ea13",
             "preload": "lazy",
             "objects": [
                 "Birdhouse_Angled_Supports",
