@@ -1,5 +1,10 @@
 'use server';
 
+import {
+    isRaisedBedAbandoned,
+    RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
+    RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE,
+} from '@gredice/js/raisedBeds';
 import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
 import { notifyOperationUpdate } from '@gredice/notifications';
 import {
@@ -36,6 +41,36 @@ function normalizeCompletionNotes(notes?: string) {
     }
 
     return normalizedNotes;
+}
+
+async function assertRaisedBedAllowsNewOperation(raisedBedId?: number) {
+    if (!raisedBedId) {
+        return;
+    }
+
+    const raisedBed = await getRaisedBed(raisedBedId);
+    if (raisedBed && isRaisedBedAbandoned(raisedBed.status)) {
+        throw new Error(
+            `${RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE} ${RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE}`,
+        );
+    }
+}
+
+async function assertRaisedBedTargetsAllowNewOperations(
+    targets: ParsedOperationTarget[],
+) {
+    const raisedBedIds = Array.from(
+        new Set(
+            targets
+                .map((target) => target.raisedBedId)
+                .filter(
+                    (raisedBedId): raisedBedId is number =>
+                        raisedBedId !== undefined,
+                ),
+        ),
+    );
+
+    await Promise.all(raisedBedIds.map(assertRaisedBedAllowsNewOperation));
 }
 
 export async function createOperationAction(formData: FormData) {
@@ -75,6 +110,7 @@ export async function createOperationAction(formData: FormData) {
             ? new Date(formData.get('timestamp') as string)
             : undefined,
     };
+    await assertRaisedBedAllowsNewOperation(operation.raisedBedId);
     const operationId = await createOperation(operation);
     if (scheduledDate) {
         await createEvent(
@@ -180,6 +216,7 @@ export async function singleCreateOperationAction(
             : undefined;
 
         const parsedTarget = parseOperationTarget(target);
+        await assertRaisedBedAllowsNewOperation(parsedTarget.raisedBedId);
 
         if (selectedAssignedUserId && parsedTarget.farmId) {
             const assignableFarmUsersByFarmId =
@@ -287,6 +324,7 @@ export async function bulkCreateOperationsAction(
             throw new Error('Odaberite barem jednu ciljnu lokaciju.');
         }
         const parsedTargets = targets.map(parseOperationTarget);
+        await assertRaisedBedTargetsAllowNewOperations(parsedTargets);
 
         if (selectedAssignedUserId) {
             const uniqueFarmIds = Array.from(

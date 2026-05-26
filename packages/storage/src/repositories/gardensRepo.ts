@@ -47,6 +47,7 @@ import {
     type RaisedBedFieldSowingLocation,
 } from './eventsRepo';
 import { getFarms } from './farmsRepo';
+import { processReferralRewardsForAccount } from './referralsRepo';
 
 const RAISED_BED_FIELDS_PER_BLOCK = 9;
 const PLANT_CYCLE_EVENT_TYPES = [
@@ -55,6 +56,12 @@ const PLANT_CYCLE_EVENT_TYPES = [
     knownEventTypes.raisedBedFields.plantUpdate,
     knownEventTypes.raisedBedFields.plantReplaceSort,
 ] as const;
+
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = TransactionClient | StorageClient;
 
 type CanonicalRaisedBedField = {
     id: number;
@@ -1121,7 +1128,7 @@ export async function getGardenBlock(gardenId: number, blockId: string) {
 export async function createGardenBlock(
     gardenId: number,
     blockName: string,
-    db: ReturnType<typeof storage> = storage(),
+    db: DatabaseClient = storage(),
 ) {
     const blockId = uuidV4();
 
@@ -1152,8 +1159,12 @@ export async function updateGardenBlock({ id, ...values }: UpdateGardenBlock) {
         .where(eq(gardenBlocks.id, id));
 }
 
-export async function deleteGardenBlock(gardenId: number, blockId: string) {
-    await storage()
+export async function deleteGardenBlock(
+    gardenId: number,
+    blockId: string,
+    db: DatabaseClient = storage(),
+) {
+    await db
         .update(gardenBlocks)
         .set({ isDeleted: true })
         .where(
@@ -1166,6 +1177,7 @@ export async function deleteGardenBlock(gardenId: number, blockId: string) {
         knownEvents.gardens.blockRemovedV1(gardenId.toString(), {
             id: blockId,
         }),
+        db,
     );
 }
 
@@ -1194,10 +1206,32 @@ export async function getGardenStack(
     );
 }
 
+export async function getGardenStackForUpdate(
+    gardenId: number,
+    { x, y }: { x: number; y: number },
+    db: DatabaseClient,
+) {
+    const [stack] = await db
+        .select()
+        .from(gardenStacks)
+        .where(
+            and(
+                eq(gardenStacks.gardenId, gardenId),
+                eq(gardenStacks.positionX, x),
+                eq(gardenStacks.positionY, y),
+                eq(gardenStacks.isDeleted, false),
+            ),
+        )
+        .for('update')
+        .limit(1);
+
+    return stack ?? null;
+}
+
 export async function createGardenStack(
     gardenId: number,
     { x, y }: { x: number; y: number },
-    db: ReturnType<typeof storage> = storage(),
+    db: DatabaseClient = storage(),
 ) {
     // Check if stack at location already exists
     const [{ count: existingStacksCount }] = await db
@@ -1224,7 +1258,7 @@ export async function createGardenStack(
 export async function updateGardenStack(
     gardenId: number,
     stacks: Omit<UpdateGardenStack, 'id'> & { x: number; y: number },
-    db: ReturnType<typeof storage> = storage(),
+    db: DatabaseClient = storage(),
 ) {
     const stackId = (
         await db.query.gardenStacks.findFirst({
@@ -1232,6 +1266,7 @@ export async function updateGardenStack(
                 eq(gardenStacks.gardenId, gardenId),
                 eq(gardenStacks.positionX, stacks.x),
                 eq(gardenStacks.positionY, stacks.y),
+                eq(gardenStacks.isDeleted, false),
             ),
         })
     )?.id;
@@ -1251,6 +1286,7 @@ export async function updateGardenStack(
             and(
                 eq(gardenStacks.gardenId, gardenId),
                 eq(gardenStacks.id, stackId),
+                eq(gardenStacks.isDeleted, false),
             ),
         );
 }
@@ -1735,7 +1771,7 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                     break;
                 }
                 case knownEventTypes.raisedBeds.aiAnalysis: {
-                    name = 'AI analiza gredice';
+                    name = 'Savjeti suncokreta';
                     description =
                         typeof data?.markdown === 'string'
                             ? data.markdown
@@ -1748,6 +1784,10 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                 }
                 case knownEventTypes.raisedBeds.abandon: {
                     name = 'Gredica napuštena';
+                    description =
+                        data?.reason === 'inactivity'
+                            ? 'Gredica je napuštena zbog neaktivnosti.'
+                            : '';
                     break;
                 }
             }
@@ -1799,11 +1839,33 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
 }
 
 export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {
+    const previousRaisedBed =
+        raisedBed.status === 'active'
+            ? (
+                  await storage()
+                      .select({
+                          accountId: raisedBeds.accountId,
+                          status: raisedBeds.status,
+                      })
+                      .from(raisedBeds)
+                      .where(eq(raisedBeds.id, raisedBed.id))
+                      .limit(1)
+              )[0]
+            : null;
+
     await storage()
         .update(raisedBeds)
         .set(raisedBed)
         .where(eq(raisedBeds.id, raisedBed.id));
     await bustScheduleCache();
+
+    const activatedAccountId =
+        previousRaisedBed?.status !== 'active'
+            ? (raisedBed.accountId ?? previousRaisedBed?.accountId)
+            : null;
+    if (raisedBed.status === 'active' && activatedAccountId) {
+        await processReferralRewardsForAccount(activatedAccountId);
+    }
 }
 
 export async function abandonRaisedBed({
@@ -1811,12 +1873,14 @@ export async function abandonRaisedBed({
     gardenId,
     operationEntityId,
     operationEntityTypeName,
+    reason,
     raisedBedId,
 }: {
     accountId: string;
     gardenId: number;
     operationEntityId: number;
     operationEntityTypeName: string;
+    reason?: 'inactivity' | 'user';
     raisedBedId: number;
 }) {
     const operation = await storage().transaction(async (tx) => {
@@ -1836,9 +1900,11 @@ export async function abandonRaisedBed({
             .set({ status: 'abandoned' })
             .where(eq(raisedBeds.id, raisedBedId));
 
-        await tx
-            .insert(events)
-            .values(knownEvents.raisedBeds.abandonV1(raisedBedId.toString()));
+        await tx.insert(events).values(
+            knownEvents.raisedBeds.abandonV1(raisedBedId.toString(), {
+                reason,
+            }),
+        );
 
         return createdOperation;
     });
@@ -2184,7 +2250,7 @@ export async function getRaisedBedFieldDiaryEntries(
                     break;
                 }
                 case knownEventTypes.raisedBedFields.aiAnalysis: {
-                    name = 'AI analiza vrta';
+                    name = 'Savjeti suncokreta';
                     description =
                         typeof data?.markdown === 'string'
                             ? data.markdown

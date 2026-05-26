@@ -190,14 +190,16 @@ export function SocialPublishingComposer({
                     value={submissionToken}
                 />
 
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-5">
                     <SelectItems
+                        className="min-w-0"
                         label="Račun"
                         value={selectedAccountId}
                         items={accountItems}
                         onValueChange={handleAccountChange}
                     />
                     <SelectItems
+                        className="min-w-0"
                         label="Provider"
                         name="provider"
                         value={provider}
@@ -227,6 +229,7 @@ export function SocialPublishingComposer({
                         }
                         disabled={Boolean(selectedAccount)}
                         required
+                        fullWidth
                     />
                     {selectedAccount ? (
                         <input
@@ -247,8 +250,10 @@ export function SocialPublishingComposer({
                             )
                         }
                         required
+                        fullWidth
                     />
                     <SelectItems
+                        className="min-w-0"
                         label="Tip objave"
                         name="postType"
                         value={postType}
@@ -258,18 +263,20 @@ export function SocialPublishingComposer({
                     />
                 </div>
 
-                <div className="grid gap-4 lg:grid-cols-2">
+                <div className="grid min-w-0 gap-4 lg:grid-cols-2">
                     <Input
                         label="Naslov"
                         name="title"
                         maxLength={300}
                         required={providerDefinition.requiresTitle}
+                        fullWidth
                     />
                     <Input
                         label="URL"
                         name="url"
                         type="url"
                         placeholder="https://gredice.com"
+                        fullWidth
                     />
                 </div>
 
@@ -289,11 +296,12 @@ export function SocialPublishingComposer({
                     />
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid min-w-0 gap-4 md:grid-cols-2">
                     <Input
                         label="Zakazano vrijeme"
                         name="scheduledAt"
                         type="datetime-local"
+                        fullWidth
                     />
                     <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
                         {providerDefinition.label} podržava:{' '}

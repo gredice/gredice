@@ -54,3 +54,38 @@ export const NotDismissible: Story = {
         dismissible: false,
     },
 };
+
+export const LongContent: Story = {
+    args: {
+        title: 'Dugacki modal',
+        className: 'max-w-5xl',
+    },
+    render: (args) => (
+        <Modal {...args} trigger={<Button>Otvori dugacki modal</Button>}>
+            <Stack spacing={5}>
+                <Stack spacing={1}>
+                    <Typography level="h5">Dugacki modal</Typography>
+                    <Typography level="body2" secondary>
+                        Modal ostaje unutar vidljivog dijela ekrana, a sadrzaj
+                        se skrola unutar modala.
+                    </Typography>
+                </Stack>
+                <div className="rounded-lg border bg-muted/20 p-6">
+                    <div className="h-[44rem] rounded-md border border-dashed bg-background p-4">
+                        <Typography level="body2" semiBold>
+                            Visoki sadrzaj
+                        </Typography>
+                        <Typography level="body3" secondary>
+                            Ovaj blok simulira preview, tablicu ili formu koja
+                            je visa od desktop viewporta.
+                        </Typography>
+                    </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                    <Button variant="outlined">Odustani</Button>
+                    <Button>Spremi</Button>
+                </div>
+            </Stack>
+        </Modal>
+    ),
+};

@@ -1,9 +1,15 @@
 import { userAllowedPlantStatusTransitions } from '@gredice/js/plants';
+import {
+    isRaisedBedAbandoned,
+    RAISED_BED_ABANDON_OPERATION_ENTITY_ID,
+    RAISED_BED_OPERATION_ENTITY_TYPE_NAME,
+} from '@gredice/js/raisedBeds';
 import { signalcoClient } from '@gredice/signalco';
 import {
     abandonRaisedBed,
+    addGardenBoxInventoryItem,
     buildRaisedBedFieldPlantUpdatePayload,
-    countEventsSince,
+    countAiRequestEventsSince,
     createDefaultGardenForAccount,
     createEvent,
     createGardenBlock,
@@ -15,6 +21,7 @@ import {
     getGarden,
     getGardenBlocks,
     getGardenStack,
+    getGardenStackForUpdate,
     getOperations,
     getOperationsPage,
     getRaisedBed,
@@ -25,6 +32,7 @@ import {
     knownEvents,
     knownEventTypes,
     spendSunflowers,
+    storage,
     deleteGardenBlock as storageDeleteGardenBlock,
     updateGarden,
     updateGardenBlock,
@@ -36,16 +44,18 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { getBlockData } from '../../../lib/blocks/blockDataService';
-import { publicSecurity } from '../../../lib/docs/security';
+import { authSecurity, publicSecurity } from '../../../lib/docs/security';
 import { isAppliedOperationCurrentForRaisedBedFields } from '../../../lib/garden/appliedRaisedBedOperations';
 import { resolveGardenBlockPlacement } from '../../../lib/garden/blockPlacementService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
 import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
 import {
-    AI_ANALYSIS_DAILY_LIMIT,
+    AI_REQUEST_QUOTAS,
+    type AiRequestKind,
+    RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
     streamRaisedBedImageAnalysis,
-    validateImageUrl,
+    validateImageUrls,
 } from '../../../lib/garden/raisedBedAiAnalysisService';
 import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
@@ -62,14 +72,82 @@ import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
-// CMS operation directory (`/entities/operation`) ID 591 is the raised-bed abandonment operation queued for farm follow-up.
-const ABANDON_RAISED_BED_OPERATION_ID = 591;
-// Operations are stored as CMS entities with entityTypeName='operation'.
-const OPERATION_ENTITY_TYPE_NAME = 'operation';
 
-async function countRecentRaisedBedAiAnalyses(accountId: string) {
+const analyzeImageBodySchema = z
+    .object({
+        imageUrl: z.url().optional(),
+        imageUrls: z.array(z.url()).min(1).optional(),
+    })
+    .refine((body) => Boolean(body.imageUrl || body.imageUrls?.length), {
+        message: 'At least one image URL is required',
+    });
+
+type AnalyzeImageBody = z.infer<typeof analyzeImageBodySchema>;
+
+const storeBlockInGardenBoxBodySchema = z.object({
+    gardenBoxBlockId: z.string().trim().min(1).max(128),
+    sourcePosition: z.object({
+        x: z.number().int(),
+        z: z.number().int(),
+    }),
+    blockIndex: z.number().int().min(0),
+});
+
+function normalizeAnalysisImageUrls(body: AnalyzeImageBody) {
+    const imageUrls = body.imageUrls?.length
+        ? body.imageUrls
+        : body.imageUrl
+          ? [body.imageUrl]
+          : [];
+
+    return Array.from(new Set(imageUrls));
+}
+
+const aiTextStreamResponseInit = {
+    headers: {
+        'Cache-Control': 'no-cache, no-transform',
+        'Content-Encoding': 'none',
+        Connection: 'keep-alive',
+        'Transfer-Encoding': 'chunked',
+        'X-Accel-Buffering': 'no',
+    },
+} satisfies ResponseInit;
+
+async function countRecentAiRequests(
+    accountId: string,
+    requestKind: AiRequestKind,
+) {
+    const quota = AI_REQUEST_QUOTAS[requestKind];
+    const since = new Date(Date.now() - quota.windowMs);
+
+    switch (requestKind) {
+        case RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND:
+            return countRecentRaisedBedImageAnalyses(accountId, since);
+    }
+
+    const unreachable: never = requestKind;
+    throw new Error(`Unsupported AI request kind: ${unreachable}`);
+}
+
+async function getAiRequestQuotaUsage(
+    accountId: string,
+    requestKind: AiRequestKind,
+) {
+    const quota = AI_REQUEST_QUOTAS[requestKind];
+    const used = await countRecentAiRequests(accountId, requestKind);
+
+    return {
+        ...quota,
+        used,
+        remaining: Math.max(0, quota.limit - used),
+    };
+}
+
+async function countRecentRaisedBedImageAnalyses(
+    accountId: string,
+    since: Date,
+) {
     const accountBedIds = await getRaisedBedIdsByAccount(accountId);
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const raisedBedAggregateIds = accountBedIds.map((bedId) =>
         bedId.toString(),
     );
@@ -80,20 +158,30 @@ async function countRecentRaisedBedAiAnalyses(accountId: string) {
         ),
     );
 
-    const [raisedBedCount, raisedBedFieldCount] = await Promise.all([
-        countEventsSince(
+    return countAiRequestEventsSince({
+        type: knownEventTypes.accounts.aiRequest,
+        legacyType: [
             knownEventTypes.raisedBeds.aiAnalysis,
-            since,
-            raisedBedAggregateIds,
-        ),
-        countEventsSince(
             knownEventTypes.raisedBedFields.aiAnalysis,
-            since,
-            raisedBedFieldAggregateIds,
-        ),
-    ]);
+        ],
+        since,
+        accountId,
+        requestKind: RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
+        legacyAggregateIds: [
+            ...raisedBedAggregateIds,
+            ...raisedBedFieldAggregateIds,
+        ],
+    });
+}
 
-    return raisedBedCount + raisedBedFieldCount;
+async function recordAiRequest(accountId: string, requestKind: AiRequestKind) {
+    await createEvent(
+        knownEvents.accounts.aiRequestV1(accountId, {
+            accountId,
+            aiRequestKind: requestKind,
+            requestedAt: new Date().toISOString(),
+        }),
+    );
 }
 
 async function trackGardenCreated(input: {
@@ -208,6 +296,8 @@ function serializeGardenOperation(
         completedAt: operation.completedAt?.toISOString() ?? null,
         verifiedAt: operation.verifiedAt?.toISOString() ?? null,
         canceledAt: operation.canceledAt?.toISOString() ?? null,
+        imageUrls: operation.imageUrls ?? [],
+        completionNotes: operation.completionNotes ?? null,
         targetLabel:
             (operation.raisedBedFieldId
                 ? targetsByRaisedBedFieldId.get(operation.raisedBedFieldId)
@@ -218,6 +308,18 @@ function serializeGardenOperation(
             'Vrt',
         statusHistory,
     };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function getAbandonReason(data: unknown) {
+    if (!isRecord(data) || typeof data.reason !== 'string') {
+        return null;
+    }
+
+    return data.reason;
 }
 
 const app = new Hono<{ Variables: AuthVariables }>()
@@ -266,7 +368,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId/operations',
         describeRoute({
             description:
-                'Get garden operations for timeline and history with cursor pagination',
+                'Get garden operations for timeline and history with cursor pagination and optional raised bed or field filters',
         }),
         zValidator(
             'param',
@@ -280,13 +382,22 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 cursor: z.coerce.number().int().min(0).optional(),
                 limit: z.coerce.number().int().min(1).max(50).optional(),
                 includeCompleted: queryBooleanSchema.optional(),
+                raisedBedId: z.coerce.number().int().min(1).optional(),
+                raisedBedFieldId: z.coerce.number().int().min(1).optional(),
+                positionIndex: z.coerce.number().int().min(0).optional(),
             }),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId } = context.req.valid('param');
-            const { cursor, limit, includeCompleted } =
-                context.req.valid('query');
+            const {
+                cursor,
+                limit,
+                includeCompleted,
+                raisedBedId,
+                raisedBedFieldId,
+                positionIndex,
+            } = context.req.valid('query');
             const gardenIdNumber = Number.parseInt(gardenId, 10);
 
             if (Number.isNaN(gardenIdNumber)) {
@@ -300,9 +411,51 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
+            const scopedRaisedBed = raisedBedId
+                ? garden.raisedBeds.find(
+                      (raisedBed) => raisedBed.id === raisedBedId,
+                  )
+                : undefined;
+
+            if (raisedBedId && !scopedRaisedBed) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            if (positionIndex !== undefined && !raisedBedId) {
+                return context.json(
+                    { error: 'raisedBedId is required with positionIndex' },
+                    400,
+                );
+            }
+
+            const positionFieldIds =
+                scopedRaisedBed && positionIndex !== undefined
+                    ? scopedRaisedBed.fields
+                          .filter(
+                              (field) => field.positionIndex === positionIndex,
+                          )
+                          .map((field) => field.id)
+                    : undefined;
+            const raisedBedFieldIds = raisedBedFieldId
+                ? [raisedBedFieldId]
+                : positionFieldIds;
+
+            if (
+                positionIndex !== undefined &&
+                raisedBedFieldIds?.length === 0
+            ) {
+                return context.json({
+                    items: [],
+                    nextCursor: null,
+                    total: 0,
+                });
+            }
+
             const operationsPage = await getOperationsPage({
                 accountId,
                 gardenId: gardenIdNumber,
+                raisedBedId,
+                raisedBedFieldIds,
                 cursor,
                 limit,
                 includeCompleted,
@@ -375,6 +528,30 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
             const raisedBedsById = new Map(
                 garden.raisedBeds.map((raisedBed) => [raisedBed.id, raisedBed]),
+            );
+            const abandonedRaisedBedAggregateIds = garden.raisedBeds
+                .filter((raisedBed) => isRaisedBedAbandoned(raisedBed.status))
+                .map((raisedBed) => raisedBed.id.toString());
+            const raisedBedAbandonEvents =
+                abandonedRaisedBedAggregateIds.length > 0
+                    ? await getEvents(
+                          knownEventTypes.raisedBeds.abandon,
+                          abandonedRaisedBedAggregateIds,
+                          0,
+                          10000,
+                      )
+                    : [];
+            const abandonReasonByRaisedBedId = raisedBedAbandonEvents.reduce(
+                (acc, event) => {
+                    const raisedBedId = Number(event.aggregateId);
+                    if (!Number.isInteger(raisedBedId)) {
+                        return acc;
+                    }
+
+                    acc.set(raisedBedId, getAbandonReason(event.data));
+                    return acc;
+                },
+                new Map<number, string | null>(),
             );
             const appliedOperationsByRaisedBedId = operations.reduce(
                 (acc, operation) => {
@@ -467,6 +644,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         physicalId: raisedBed.physicalId,
                         blockId: raisedBed.blockId,
                         status: raisedBed.status,
+                        abandonReason:
+                            abandonReasonByRaisedBedId.get(raisedBed.id) ??
+                            null,
                         orientation: raisedBed.orientation,
                         fields: raisedBed.fields,
                         appliedOperations:
@@ -1148,6 +1328,168 @@ const app = new Hono<{ Variables: AuthVariables }>()
         },
     )
     .post(
+        '/:gardenId/blocks/:blockId/store-in-garden-box',
+        describeRoute({
+            description:
+                'Move a garden block into a garden box inventory for the current user.',
+            security: authSecurity,
+            tags: ['Gardens'],
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                blockId: z.string(),
+            }),
+        ),
+        zValidator('json', storeBlockInGardenBoxBodySchema),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, blockId } = context.req.valid('param');
+            const { blockIndex, gardenBoxBlockId, sourcePosition } =
+                context.req.valid('json');
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber) || gardenIdNumber <= 0) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            const [gardenBlocks, sourceStack, blockData] = await Promise.all([
+                getGardenBlocks(gardenIdNumber),
+                getGardenStack(gardenIdNumber, {
+                    x: sourcePosition.x,
+                    y: sourcePosition.z,
+                }),
+                getBlockData(),
+            ]);
+
+            if (!sourceStack) {
+                return context.json({ error: 'Source stack not found' }, 400);
+            }
+
+            if (sourceStack.blocks[blockIndex] !== blockId) {
+                return context.json(
+                    { error: 'Source block no longer matches the garden' },
+                    409,
+                );
+            }
+
+            const block = gardenBlocks.find(
+                (candidate) => candidate.id === blockId,
+            );
+            if (!block) {
+                return context.json({ error: 'Block not found' }, 404);
+            }
+
+            const gardenBox = gardenBlocks.find(
+                (candidate) => candidate.id === gardenBoxBlockId,
+            );
+            if (!gardenBox || gardenBox.name !== 'GardenBox') {
+                return context.json({ error: 'Garden box not found' }, 404);
+            }
+
+            const gardenBoxStack = garden.stacks.find(
+                (stack) =>
+                    !stack.isDeleted && stack.blocks.includes(gardenBoxBlockId),
+            );
+            if (!gardenBoxStack) {
+                return context.json(
+                    { error: 'Garden box is not placed in this garden' },
+                    400,
+                );
+            }
+
+            if (block.id === gardenBoxBlockId || block.name === 'GardenBox') {
+                return context.json(
+                    { error: 'Garden boxes cannot be stored in garden boxes' },
+                    400,
+                );
+            }
+
+            if (block.name === 'Raised_Bed') {
+                return context.json(
+                    { error: 'Raised beds cannot be stored in garden boxes' },
+                    400,
+                );
+            }
+
+            const inventoryBlock = blockData.find(
+                (candidate) => candidate.information?.name === block.name,
+            );
+            if (!inventoryBlock) {
+                return context.json(
+                    { error: 'Block directory data not found' },
+                    404,
+                );
+            }
+            const inventoryEntityId = inventoryBlock.id.toString();
+            const result = await storage().transaction(async (tx) => {
+                const currentSourceStack = await getGardenStackForUpdate(
+                    gardenIdNumber,
+                    {
+                        x: sourcePosition.x,
+                        y: sourcePosition.z,
+                    },
+                    tx,
+                );
+                if (
+                    !currentSourceStack ||
+                    currentSourceStack.blocks[blockIndex] !== blockId
+                ) {
+                    return {
+                        ok: false,
+                        error: 'Source block no longer matches the garden',
+                        status: 409,
+                    } as const;
+                }
+
+                const nextSourceBlocks = currentSourceStack.blocks.filter(
+                    (_sourceBlockId, index) => index !== blockIndex,
+                );
+                await updateGardenStack(
+                    gardenIdNumber,
+                    {
+                        x: sourcePosition.x,
+                        y: sourcePosition.z,
+                        blocks: nextSourceBlocks,
+                    },
+                    tx,
+                );
+                await storageDeleteGardenBlock(gardenIdNumber, block.id, tx);
+                await addGardenBoxInventoryItem(
+                    accountId,
+                    gardenIdNumber,
+                    gardenBoxBlockId,
+                    {
+                        entityTypeName: 'block',
+                        entityId: inventoryEntityId,
+                        amount: 1,
+                        source: 'gardenBox:drop',
+                    },
+                    tx,
+                );
+                return { ok: true } as const;
+            });
+            if (!result.ok) {
+                return context.json({ error: result.error }, result.status);
+            }
+
+            return context.json({
+                gardenBoxBlockId,
+                item: {
+                    entityTypeName: 'block',
+                    entityId: inventoryEntityId,
+                    amount: 1,
+                },
+            });
+        },
+    )
+    .post(
         '/:gardenId/blocks/:blockId/open-gift-box',
         describeRoute({
             description: 'Open an advent gift box and receive a reward.',
@@ -1604,7 +1946,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             ) {
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
-            if (raisedBed.status === 'abandoned') {
+            if (isRaisedBedAbandoned(raisedBed.status)) {
                 return context.json(
                     { error: 'Raised bed is already abandoned' },
                     409,
@@ -1614,9 +1956,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const operationId = await abandonRaisedBed({
                 accountId,
                 gardenId: gardenIdNumber,
-                operationEntityId: ABANDON_RAISED_BED_OPERATION_ID,
-                operationEntityTypeName: OPERATION_ENTITY_TYPE_NAME,
+                operationEntityId: RAISED_BED_ABANDON_OPERATION_ENTITY_ID,
+                operationEntityTypeName: RAISED_BED_OPERATION_ENTITY_TYPE_NAME,
                 raisedBedId: raisedBedIdNumber,
+                reason: 'user',
             });
 
             return context.json({ id: operationId }, 201);
@@ -1665,7 +2008,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId/raised-beds/:raisedBedId/analyze-image',
         describeRoute({
             description:
-                'Analyze raised bed image with AI and save response to diary',
+                'Stream AI analysis for raised bed images and save the final response to diary',
         }),
         zValidator(
             'param',
@@ -1674,18 +2017,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 raisedBedId: z.string(),
             }),
         ),
-        zValidator(
-            'json',
-            z.object({
-                imageUrl: z.url(),
-            }),
-        ),
+        zValidator('json', analyzeImageBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId } = context.req.valid('param');
-            const { imageUrl } = context.req.valid('json');
+            const imageUrls = normalizeAnalysisImageUrls(
+                context.req.valid('json'),
+            );
+            const firstImageUrl = imageUrls[0];
+            if (!firstImageUrl) {
+                return context.json({ error: 'Image URL is required' }, 400);
+            }
 
-            const urlError = validateImageUrl(imageUrl);
+            const urlError = validateImageUrls(imageUrls);
             if (urlError) {
                 return context.json({ error: urlError }, 400);
             }
@@ -1710,11 +2054,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
 
-            const recentCount = await countRecentRaisedBedAiAnalyses(accountId);
-            if (recentCount >= AI_ANALYSIS_DAILY_LIMIT) {
+            const aiQuota = await getAiRequestQuotaUsage(
+                accountId,
+                RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
+            );
+            if (aiQuota.used >= aiQuota.limit) {
                 return context.json(
                     {
-                        error: `Daily AI analysis limit reached (${AI_ANALYSIS_DAILY_LIMIT.toString()}/day). Try again tomorrow.`,
+                        error: `Dosegnut je tjedni limit AI zahtjeva (${aiQuota.limit.toString()}/tjedan). Pokušaj ponovno kasnije.`,
                     },
                     429,
                 );
@@ -1727,12 +2074,17 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            await recordAiRequest(
+                accountId,
+                RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
+            );
+
             const result = await streamRaisedBedImageAnalysis(
                 {
                     accountId,
                     gardenId: gardenIdNumber,
                     raisedBed,
-                    imageUrl,
+                    imageUrls,
                 },
                 async (analysis) => {
                     await createEvent(
@@ -1740,9 +2092,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             raisedBedIdNumber.toString(),
                             {
                                 markdown: analysis.markdown,
-                                imageUrl,
+                                imageUrl: firstImageUrl,
+                                imageUrls,
                                 model: analysis.model,
                                 analyzedAt: analysis.analyzedAt,
+                                accountId,
+                                aiRequestKind:
+                                    RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
                                 inputTokens: analysis.inputTokens,
                                 outputTokens: analysis.outputTokens,
                                 totalTokens: analysis.totalTokens,
@@ -1752,7 +2108,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 },
             );
 
-            return result.toTextStreamResponse();
+            return result.toTextStreamResponse(aiTextStreamResponseInit);
         },
     )
     .get(
@@ -1991,6 +2347,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
             ) {
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
+            if (isRaisedBedAbandoned(raisedBed.status)) {
+                return context.json({ error: 'Raised bed is abandoned' }, 409);
+            }
 
             // Find the field to validate it exists and can be updated
             const field = raisedBed.fields.find(
@@ -2088,7 +2447,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex/analyze-image',
         describeRoute({
             description:
-                'Analyze raised bed field image with AI and save response to diary',
+                'Stream AI analysis for raised bed field images and save the final response to diary',
         }),
         zValidator(
             'param',
@@ -2098,20 +2457,21 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 positionIndex: z.string(),
             }),
         ),
-        zValidator(
-            'json',
-            z.object({
-                imageUrl: z.url(),
-            }),
-        ),
+        zValidator('json', analyzeImageBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId, positionIndex } =
                 context.req.valid('param');
-            const { imageUrl } = context.req.valid('json');
+            const imageUrls = normalizeAnalysisImageUrls(
+                context.req.valid('json'),
+            );
+            const firstImageUrl = imageUrls[0];
+            if (!firstImageUrl) {
+                return context.json({ error: 'Image URL is required' }, 400);
+            }
 
-            // Validate image URL against allowed hosts
-            const urlError = validateImageUrl(imageUrl);
+            // Validate image URLs against allowed hosts
+            const urlError = validateImageUrls(imageUrls);
             if (urlError) {
                 return context.json({ error: urlError }, 400);
             }
@@ -2156,11 +2516,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const recentCount = await countRecentRaisedBedAiAnalyses(accountId);
-            if (recentCount >= AI_ANALYSIS_DAILY_LIMIT) {
+            const aiQuota = await getAiRequestQuotaUsage(
+                accountId,
+                RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
+            );
+            if (aiQuota.used >= aiQuota.limit) {
                 return context.json(
                     {
-                        error: `Daily AI analysis limit reached (${AI_ANALYSIS_DAILY_LIMIT.toString()}/day). Try again tomorrow.`,
+                        error: `Dosegnut je tjedni limit AI zahtjeva (${aiQuota.limit.toString()}/tjedan). Pokušaj ponovno kasnije.`,
                     },
                     429,
                 );
@@ -2173,13 +2536,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            await recordAiRequest(
+                accountId,
+                RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
+            );
+
             const result = await streamRaisedBedImageAnalysis(
                 {
                     accountId,
                     gardenId: gardenIdNumber,
                     raisedBed,
                     positionIndex: positionIndexNumber,
-                    imageUrl,
+                    imageUrls,
                 },
                 async (analysis) => {
                     await createEvent(
@@ -2187,9 +2555,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
                             {
                                 markdown: analysis.markdown,
-                                imageUrl,
+                                imageUrl: firstImageUrl,
+                                imageUrls,
                                 model: analysis.model,
                                 analyzedAt: analysis.analyzedAt,
+                                accountId,
+                                aiRequestKind:
+                                    RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
                                 inputTokens: analysis.inputTokens,
                                 outputTokens: analysis.outputTokens,
                                 totalTokens: analysis.totalTokens,
@@ -2199,7 +2571,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 },
             );
 
-            return result.toTextStreamResponse();
+            return result.toTextStreamResponse(aiTextStreamResponseInit);
         },
     )
     .get(

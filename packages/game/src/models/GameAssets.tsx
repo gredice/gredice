@@ -6,8 +6,29 @@ Command: npx gltfjsx@6.5.3 ./apps/garden/.tmp/GameAssetsTypes.glb --types --type
 import type * as THREE from 'three';
 import type { GLTF } from 'three-stdlib';
 
+type ActionName = 'BirdSmall_Idle' | 'BirdSmall_Flap';
+
+interface GLTFAction extends THREE.AnimationClip {
+    name: ActionName;
+}
+
 export type GLTFResult = GLTF & {
     nodes: {
+        BirdSmall_Beak: THREE.Mesh;
+        BirdSmall_Eye_L: THREE.Mesh;
+        BirdSmall_Eye_R: THREE.Mesh;
+        BirdSmall_Head: THREE.Mesh;
+        BirdSmall_Pupil_L: THREE.Mesh;
+        BirdSmall_Pupil_R: THREE.Mesh;
+        BirdSmall_Tail: THREE.Mesh;
+        BirdSmall_Wing_L: THREE.Mesh;
+        BirdSmall_Wing_R: THREE.Mesh;
+        BirdSmall_Foot_L: THREE.Mesh;
+        BirdSmall_Leg_L: THREE.Mesh;
+        BirdSmall_Foot_R: THREE.Mesh;
+        BirdSmall_Leg_R: THREE.Mesh;
+        BirdSmall_BellyPatch: THREE.Mesh;
+        BirdSmall_Body: THREE.Mesh;
         Block_Ground_1_1: THREE.Mesh;
         Block_Ground_1_2: THREE.Mesh;
         Block_Ground_2_1: THREE.Mesh;
@@ -20,6 +41,11 @@ export type GLTFResult = GLTF & {
         Block_Grass_Angle_1_2: THREE.Mesh;
         Block_Sand_1: THREE.Mesh;
         Block_Sand_Angle_1: THREE.Mesh;
+        Block_Ground_Corner_1_1: THREE.Mesh;
+        Block_Ground_Corner_1_2: THREE.Mesh;
+        Block_Grass_Corner_1_1: THREE.Mesh;
+        Block_Grass_Corner_1_2: THREE.Mesh;
+        Block_Sand_Corner_1: THREE.Mesh;
         Raised_Bed_O_1: THREE.Mesh;
         Raised_Bed_O_2: THREE.Mesh;
         Raised_Bed_I_1: THREE.Mesh;
@@ -52,8 +78,26 @@ export type GLTFResult = GLTF & {
         Bucket_2: THREE.Mesh;
         Bucket_3: THREE.Mesh;
         'Bucket_-_Handle': THREE.Mesh;
+        WateringCan_Base_Ring: THREE.Mesh;
+        WateringCan_Body: THREE.Mesh;
+        WateringCan_Body_Facet_Strips: THREE.Mesh;
+        WateringCan_Fill_Rim: THREE.Mesh;
+        WateringCan_Handle: THREE.Mesh;
+        WateringCan_Handle_Mounts: THREE.Mesh;
+        WateringCan_Rose_Face_Dots: THREE.Mesh;
+        WateringCan_Rose_Head: THREE.Mesh;
+        WateringCan_Spout: THREE.Mesh;
+        WateringCan_Spout_Collar: THREE.Mesh;
+        WateringCan_Water: THREE.Mesh;
         Composter_1: THREE.Mesh;
         Composter_2: THREE.Mesh;
+        Birdhouse_Angled_Supports: THREE.Mesh;
+        Birdhouse_Cabin_Walls: THREE.Mesh;
+        Birdhouse_Center_Post: THREE.Mesh;
+        Birdhouse_Perch: THREE.Mesh;
+        Birdhouse_Ridge_Cap: THREE.Mesh;
+        Birdhouse_Roof_Panels: THREE.Mesh;
+        Birdhouse_Upper_Platform: THREE.Mesh;
         Fence_Corner: THREE.Mesh;
         Fence_Cross: THREE.Mesh;
         Fence_Middle: THREE.Mesh;
@@ -83,8 +127,38 @@ export type GLTFResult = GLTF & {
         Stone_Large: THREE.Mesh;
         Stool: THREE.Mesh;
         Tulip: THREE.Mesh;
+        PotVariant_01_Low_Bowl: THREE.Mesh;
+        PotVariant_Soil_01: THREE.Mesh;
+        PotVariant_02_Rounded_Bowl: THREE.Mesh;
+        PotVariant_Soil_02: THREE.Mesh;
+        PotVariant_03_Bulbous_Neck: THREE.Mesh;
+        PotVariant_Soil_03: THREE.Mesh;
+        PotVariant_04_Tall_Tapered: THREE.Mesh;
+        PotVariant_Soil_04: THREE.Mesh;
+        PotVariant_05_Hourglass: THREE.Mesh;
+        PotVariant_Soil_05: THREE.Mesh;
+        PotVariant_06_Straight_Short_Tub: THREE.Mesh;
+        PotVariant_Soil_06: THREE.Mesh;
+        PotVariant_07_Narrow_Foot_Bowl: THREE.Mesh;
+        PotVariant_Soil_07: THREE.Mesh;
+        PotVariant_08_Squat_Ridged_Pot: THREE.Mesh;
+        PotVariant_Soil_08: THREE.Mesh;
+        PotVariant_09_Tall_Slender_Cone: THREE.Mesh;
+        PotVariant_Soil_09: THREE.Mesh;
+        PotVariant_10_Wide_Lipped_Cup: THREE.Mesh;
+        PotVariant_Soil_10: THREE.Mesh;
     };
     materials: {
+        BH_flat_dark_wood: THREE.MeshStandardMaterial;
+        BH_flat_light_wood: THREE.MeshStandardMaterial;
+        BH_flat_warm_gray_roof: THREE.MeshStandardMaterial;
+        'Material.BirdSmall.Beak': THREE.MeshStandardMaterial;
+        'Material.BirdSmall.Belly': THREE.MeshStandardMaterial;
+        'Material.BirdSmall.Body': THREE.MeshStandardMaterial;
+        'Material.BirdSmall.Eye': THREE.MeshStandardMaterial;
+        'Material.BirdSmall.Leg': THREE.MeshStandardMaterial;
+        'Material.BirdSmall.Pupil': THREE.MeshStandardMaterial;
+        'Material.BirdSmall.Wing': THREE.MeshStandardMaterial;
         'Material.ColorPaletteMain': THREE.MeshStandardMaterial;
         'Material.Dirt': THREE.MeshStandardMaterial;
         'Material.Dirt.001': THREE.MeshStandardMaterial;
@@ -103,5 +177,9 @@ export type GLTFResult = GLTF & {
         'Material.Stone.002': THREE.MeshStandardMaterial;
         'Material.Stone.003': THREE.MeshStandardMaterial;
         'Material.Water': THREE.MeshStandardMaterial;
+        'Material.WateringCan.Body': THREE.MeshStandardMaterial;
+        'Material.WateringCan.Dark': THREE.MeshStandardMaterial;
+        'Material.WateringCan.Trim': THREE.MeshStandardMaterial;
     };
+    animations: GLTFAction[];
 };

@@ -1,15 +1,21 @@
 import { Button, type ButtonProps } from '../Button';
 import { Chip } from '../Chip';
+import { cx } from '../utils';
 
 export function GoogleLoginButton({
+    className,
     lastUsed,
     ...props
 }: ButtonProps & { lastUsed?: boolean }) {
     return (
         <Button
             type="button"
+            color="neutral"
             variant="outlined"
-            className="bg-white dark:text-black dark:hover:bg-white/80"
+            className={cx(
+                'bg-white text-black hover:bg-white/90 dark:text-black dark:hover:bg-white/80',
+                className,
+            )}
             fullWidth
             endDecorator={
                 lastUsed && (
@@ -23,7 +29,7 @@ export function GoogleLoginButton({
             }
             {...props}
         >
-            <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+            <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
                 <title>Google</title>
                 <path
                     fill="#4285F4"

@@ -1,5 +1,6 @@
 'use client';
 
+import { isRaisedBedAbandoned } from '@gredice/js/raisedBeds';
 import { useControllableState } from '@gredice/ui/hooks';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { useEffect, useState } from 'react';
@@ -15,6 +16,7 @@ export type SelectRaisedBedProps = {
     label?: string;
     required?: boolean;
     disabled?: boolean;
+    disableAbandoned?: boolean;
 };
 
 export function SelectRaisedBed({
@@ -27,6 +29,7 @@ export function SelectRaisedBed({
     label,
     required,
     disabled,
+    disableAbandoned,
 }: SelectRaisedBedProps) {
     const [internalValue, setValue] = useControllableState(
         value,
@@ -67,7 +70,11 @@ export function SelectRaisedBed({
         },
         ...(raisedBeds?.map((raisedBed) => ({
             value: raisedBed.id.toString(),
-            label: raisedBed.name || `Gredica ${raisedBed.id}`,
+            label: `${raisedBed.name || `Gredica ${raisedBed.id}`}${
+                isRaisedBedAbandoned(raisedBed.status) ? ' (napuštena)' : ''
+            }`,
+            disabled:
+                disableAbandoned && isRaisedBedAbandoned(raisedBed.status),
         })) ?? []),
     ];
 

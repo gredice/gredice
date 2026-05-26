@@ -17,6 +17,7 @@ import {
 import { AdminClientProvider } from '../../components/admin/providers';
 import { AuthAppProvider } from '../../components/providers/AuthAppProvider';
 import { auth } from '../../lib/auth/auth';
+import { getPendingAdminApprovalTaskCount } from '../../src/approvalTasks';
 import {
     buildDashboardQuickActionOptions,
     getDashboardQuickActionsFromConfig,
@@ -47,10 +48,12 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
     const [
         { categorizedTypes, uncategorizedTypes, shadowTypes },
         pendingAchievementsCount,
+        pendingApprovalTasksCount,
         dashboardQuickActionsSetting,
     ] = await Promise.all([
         getEntityTypesOrganizedByCategories(),
         getPendingAchievementsCount(),
+        getPendingAdminApprovalTaskCount(),
         getSetting(SettingsKeys.DashboardQuickActions),
     ]);
 
@@ -82,6 +85,7 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
                 uncategorizedTypes={uncategorizedTypes}
                 shadowTypes={shadowTypes}
                 pendingAchievementsCount={pendingAchievementsCount}
+                pendingApprovalTasksCount={pendingApprovalTasksCount}
                 quickActions={quickActions}
             >
                 <div className="grow bg-secondary/40" data-gredice-admin-shell>

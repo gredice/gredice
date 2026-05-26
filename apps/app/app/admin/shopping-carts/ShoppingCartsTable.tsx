@@ -10,8 +10,12 @@ import { KnownPages } from '../../../src/KnownPages';
 
 export async function ShoppingCartsTable({
     accountId,
+    showIdColumn = true,
+    showAccountColumn = !accountId,
 }: {
     accountId?: string;
+    showIdColumn?: boolean;
+    showAccountColumn?: boolean;
 }) {
     await auth(['admin']);
     const allShoppingCarts = await getAllShoppingCarts({
@@ -24,15 +28,16 @@ export async function ShoppingCartsTable({
         (a, b) =>
             new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
-    const hasAccountFilter = !!accountId;
+    const columnCount =
+        (showIdColumn ? 1 : 0) + (showAccountColumn ? 1 : 0) + 4;
 
     return (
         <Table>
             <Table.Header>
                 <Table.Row>
-                    <Table.Head>ID</Table.Head>
-                    <Table.Head>Račun</Table.Head>
-                    {!hasAccountFilter && <Table.Head>Korisnik</Table.Head>}
+                    {showIdColumn && <Table.Head>ID</Table.Head>}
+                    {showAccountColumn && <Table.Head>Račun</Table.Head>}
+                    <Table.Head>Korisnik</Table.Head>
                     <Table.Head>Broj stavki</Table.Head>
                     <Table.Head>Status</Table.Head>
                     <Table.Head>Datum izmjene</Table.Head>
@@ -41,21 +46,30 @@ export async function ShoppingCartsTable({
             <Table.Body>
                 {shoppingCarts.length === 0 && (
                     <Table.Row>
-                        <Table.Cell colSpan={3}>
+                        <Table.Cell colSpan={columnCount}>
                             <NoDataPlaceholder>Nema košarica</NoDataPlaceholder>
                         </Table.Cell>
                     </Table.Row>
                 )}
                 {shoppingCarts.map((cart) => {
                     const user = cart.account?.accountUsers.at(0)?.user;
+                    const itemCount = (
+                        <Chip className="w-fit">
+                            {cart.items.length} stavke
+                        </Chip>
+                    );
                     return (
                         <Table.Row key={cart.id}>
-                            <Table.Cell>
-                                <Link href={KnownPages.ShoppingCart(cart.id)}>
-                                    {cart.id}
-                                </Link>
-                            </Table.Cell>
-                            {!hasAccountFilter && (
+                            {showIdColumn && (
+                                <Table.Cell>
+                                    <Link
+                                        href={KnownPages.ShoppingCart(cart.id)}
+                                    >
+                                        {cart.id}
+                                    </Link>
+                                </Table.Cell>
+                            )}
+                            {showAccountColumn && (
                                 <Table.Cell>
                                     {cart.accountId ? (
                                         <Link
@@ -84,9 +98,15 @@ export async function ShoppingCartsTable({
                                 )}
                             </Table.Cell>
                             <Table.Cell>
-                                <Chip className="w-fit">
-                                    {cart.items.length} stavke
-                                </Chip>
+                                {showIdColumn ? (
+                                    itemCount
+                                ) : (
+                                    <Link
+                                        href={KnownPages.ShoppingCart(cart.id)}
+                                    >
+                                        {itemCount}
+                                    </Link>
+                                )}
                             </Table.Cell>
                             <Table.Cell>
                                 <Chip

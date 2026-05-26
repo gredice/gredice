@@ -20,13 +20,14 @@ const groundAssetNames = [
     'BlockGrassAngle',
     'BlockSand',
     'BlockSandAngle',
+    'BlockTerrainCorner',
 ];
 
 test.beforeEach(async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     for (const assetName of groundAssetNames) {
         await page.route(
-            `https://vrt.gredice.com/assets/models/${assetName}.glb`,
+            `**/assets/models/${assetName}.glb*`,
             async (route) => {
                 const gameAssetsModelPath = resolve(
                     `../garden/public/assets/models/${assetName}.glb`,

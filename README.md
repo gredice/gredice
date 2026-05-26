@@ -75,6 +75,7 @@ For fresh worktrees, copy each app's `.env.example` into `.env` before smoke tes
 - [RELIABILITY.md](./RELIABILITY.md): data integrity, migrations, background work, observability, and failure handling.
 - [SECURITY.md](./SECURITY.md): auth, secrets, data exposure, validation, payments, and unsafe rendering.
 - [SEO.md](./SEO.md): metadata, structured data, sitemap, canonical URL, and public page rules.
+- [docs/game-entity-creation.md](./docs/game-entity-creation.md): model-to-shop workflow for garden game entities and purchasable blocks.
 
 ## API Reference
 

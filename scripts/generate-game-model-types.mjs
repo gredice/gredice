@@ -44,6 +44,14 @@ function readManifest() {
     return JSON.parse(readFileSync(manifestPath, 'utf8'));
 }
 
+function getAssetModelUrl(asset) {
+    const version =
+        typeof asset.version === 'string' && asset.version.length > 0
+            ? `?v=${asset.version}`
+            : '';
+    return `/assets/models/${asset.output}${version}`;
+}
+
 function writeGeneratedModels(manifest) {
     const assets = manifest.assets;
     const lines = [
@@ -53,7 +61,7 @@ function writeGeneratedModels(manifest) {
         'export const gameAssetModels = {',
         ...assets.map(
             (asset) =>
-                `    ${asset.name}: { url: '/assets/models/${asset.output}' },`,
+                `    ${asset.name}: { url: ${JSON.stringify(getAssetModelUrl(asset))} },`,
         ),
         '} satisfies Record<string, { url: string }>;',
         '',

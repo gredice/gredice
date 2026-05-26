@@ -92,7 +92,7 @@ export function SocialIntegrationAccountForm({
                 />
             ) : null}
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <Input
                     label="Ključ računa"
                     name="providerAccountKey"
@@ -101,6 +101,7 @@ export function SocialIntegrationAccountForm({
                     disabled={Boolean(account)}
                     helperText={fieldHelp?.providerAccountKey}
                     required
+                    fullWidth
                 />
                 <Input
                     label="Naziv"
@@ -109,6 +110,7 @@ export function SocialIntegrationAccountForm({
                     placeholder={`Gredice ${definition?.label ?? provider}`}
                     helperText={fieldHelp?.label}
                     required
+                    fullWidth
                 />
                 <Input
                     label="Handle"
@@ -116,9 +118,11 @@ export function SocialIntegrationAccountForm({
                     defaultValue={account?.handle ?? ''}
                     placeholder="@gredice"
                     helperText={fieldHelp?.handle}
+                    fullWidth
                 />
-                <div className="space-y-1">
+                <div className="min-w-0 space-y-1">
                     <SelectItems
+                        className="min-w-0"
                         label="Status"
                         name="status"
                         defaultValue={status}
@@ -133,7 +137,7 @@ export function SocialIntegrationAccountForm({
                 </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <Input
                     label="Vanjski ID računa"
                     name="externalAccountId"
@@ -143,6 +147,7 @@ export function SocialIntegrationAccountForm({
                         '17841400000000000'
                     }
                     helperText={fieldHelp?.externalAccountId}
+                    fullWidth
                 />
                 <Input
                     label="Zadano odredište"
@@ -152,6 +157,7 @@ export function SocialIntegrationAccountForm({
                         definition?.destinationPlaceholder ?? 'gredice'
                     }
                     helperText={fieldHelp?.defaultDestination}
+                    fullWidth
                 />
                 <Input
                     label="Interna referenca"
@@ -162,6 +168,7 @@ export function SocialIntegrationAccountForm({
                         account?.providerAccountKey,
                     )}
                     helperText={fieldHelp?.credentialReference}
+                    fullWidth
                 />
             </div>
 

@@ -40,6 +40,8 @@
         --ring: 28 20.2% 65.1%;
 
         --radius: 0.5rem;
+        --game-scrollbar-thumb: 28 35% 42%;
+        --game-scrollbar-thumb-hover: 28 42% 32%;
 
         --light-display: visible;
         --dark-display: none;
@@ -87,6 +89,8 @@
         --ring: var(--hue) 20% 65%;
 
         --radius: 0.5rem;
+        --game-scrollbar-thumb: 28 28% 58%;
+        --game-scrollbar-thumb-hover: 28 36% 68%;
 
         --light-display: visible;
         --dark-display: none;
@@ -115,6 +119,38 @@
     ::selection {
         background: var(--bg-selection);
         color: var(--text-selection);
+    }
+
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: hsl(var(--game-scrollbar-thumb) / 0.72) transparent;
+    }
+
+    *::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    *::-webkit-scrollbar-track {
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+    }
+
+    *::-webkit-scrollbar-corner {
+        background: transparent;
+    }
+
+    *::-webkit-scrollbar-thumb {
+        min-height: 32px;
+        border: 0;
+        border-radius: 9999px;
+        background-color: hsl(var(--game-scrollbar-thumb) / 0.62);
+        box-shadow: none;
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+        background-color: hsl(var(--game-scrollbar-thumb-hover) / 0.78);
     }
 }
 

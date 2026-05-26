@@ -1,7 +1,13 @@
 import {
+    isRaisedBedAbandoned,
+    RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
+    RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE,
+} from '@gredice/js/raisedBeds';
+import {
     cartContainsDeliverableItems,
     deleteShoppingCart,
     getOrCreateShoppingCart,
+    getRaisedBed,
     getSunflowers,
     normalizeShoppingCartInventoryUsage,
     normalizeShoppingCartScheduledDates,
@@ -139,6 +145,21 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 forceCreate,
             } = context.req.valid('json');
             const { accountId } = context.get('authContext');
+            if (amount > 0 && raisedBedId) {
+                const raisedBed = await getRaisedBed(raisedBedId);
+                if (!raisedBed || raisedBed.accountId !== accountId) {
+                    return context.json({ error: 'Raised bed not found' }, 404);
+                }
+
+                if (isRaisedBedAbandoned(raisedBed.status)) {
+                    return context.json(
+                        {
+                            error: `${RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE} ${RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE}`,
+                        },
+                        409,
+                    );
+                }
+            }
             await upsertOrRemoveCartItem(
                 id,
                 cartId,

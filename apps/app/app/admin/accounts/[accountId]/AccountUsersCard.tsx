@@ -3,6 +3,10 @@ import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Table } from '@gredice/ui/Table';
 import Link from 'next/link';
+import {
+    scrollableTableCardClassName,
+    scrollableTableCardOverflowClassName,
+} from '../../../../components/admin/cards/tableCardLayout';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../../src/KnownPages';
 
@@ -10,11 +14,11 @@ export async function AccountUsersCard({ accountId }: { accountId: string }) {
     const users = await getAccountUsers(accountId);
 
     return (
-        <Card>
+        <Card className={scrollableTableCardClassName}>
             <CardHeader>
                 <CardTitle>Korisnici</CardTitle>
             </CardHeader>
-            <CardOverflow>
+            <CardOverflow className={scrollableTableCardOverflowClassName}>
                 <Table>
                     <Table.Header>
                         <Table.Row>

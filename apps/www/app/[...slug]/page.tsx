@@ -1,14 +1,39 @@
 import { clientPublic } from '@gredice/client';
 import { SectionsView } from '@gredice/ui/cms';
 import type { Metadata } from 'next';
-import { draftMode } from 'next/headers';
+import { draftMode, headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { sectionsComponentRegistry } from '../../components/shared/sectionsComponentRegistry';
 import {
     hasReservedFirstSegment,
     normalizeCmsRouteSlug,
+    parseCmsPageRenderMaxWidth,
+    parseCmsPageRenderMode,
     parseCmsSectionData,
 } from './cmsPageRouteUtils';
+
+const localCmsPagePreviewSecret = 'local-preview-secret';
+
+function isLocalPreviewHost(hostname: string) {
+    return (
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname.endsWith('.gredice.test')
+    );
+}
+
+async function cmsPagePreviewSecret() {
+    const configuredSecret = process.env.CMS_PAGES_PREVIEW_SECRET?.trim();
+    if (configuredSecret) {
+        return configuredSecret;
+    }
+
+    const requestHost = (await headers()).get('host') ?? '';
+    const hostname = requestHost
+        ? new URL(`http://${requestHost}`).hostname
+        : '';
+    return isLocalPreviewHost(hostname) ? localCmsPagePreviewSecret : null;
+}
 
 export default async function CmsPublishedPageRoute({
     params,
@@ -23,7 +48,7 @@ export default async function CmsPublishedPageRoute({
     }
 
     const { isEnabled } = await draftMode();
-    const previewSecret = process.env.CMS_PAGES_PREVIEW_SECRET;
+    const previewSecret = isEnabled ? await cmsPagePreviewSecret() : null;
 
     const response = await clientPublic().api.directories.pages[
         ':slug{.+}'
@@ -50,6 +75,8 @@ export default async function CmsPublishedPageRoute({
             <SectionsView
                 sectionsData={parseCmsSectionData(page.content)}
                 componentsRegistry={sectionsComponentRegistry}
+                renderMode={parseCmsPageRenderMode(page.renderMode)}
+                renderMaxWidth={parseCmsPageRenderMaxWidth(page.renderMaxWidth)}
             />
         </main>
     );

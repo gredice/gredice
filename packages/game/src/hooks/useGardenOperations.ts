@@ -37,11 +37,19 @@ export type GardenOperationItem = {
     completedAt: string | null;
     verifiedAt: string | null;
     canceledAt: string | null;
+    imageUrls: string[];
+    completionNotes: string | null;
     targetLabel: string;
     statusHistory: {
         status: GardenOperationStatus;
         changedAt: string;
     }[];
+};
+
+type GardenOperationsScope = {
+    raisedBedId?: number;
+    raisedBedFieldId?: number;
+    positionIndex?: number;
 };
 
 type GardenOperationsPage = {
@@ -52,9 +60,15 @@ type GardenOperationsPage = {
 
 type GardenOperationItemResponse = Omit<
     GardenOperationItem,
-    'entityTypeName' | 'status' | 'statusHistory'
+    | 'completionNotes'
+    | 'entityTypeName'
+    | 'imageUrls'
+    | 'status'
+    | 'statusHistory'
 > & {
+    completionNotes?: string | null;
     entityTypeName?: string;
+    imageUrls?: string[] | null;
     status: string;
     statusHistory: ({
         status: string;
@@ -80,7 +94,9 @@ function parseGardenOperationItem(
 ): GardenOperationItem {
     return {
         ...item,
+        completionNotes: item.completionNotes ?? null,
         entityTypeName: item.entityTypeName ?? 'operation',
+        imageUrls: item.imageUrls ?? [],
         status: parseGardenOperationStatus(item.status),
         statusHistory: item.statusHistory.flatMap((entry) => {
             if (!entry) {
@@ -107,12 +123,14 @@ function parseGardenOperationsPage(
     };
 }
 
-async function getGardenOperationsPage(input: {
-    gardenId: number;
-    includeCompleted: boolean;
-    pageSize: number;
-    cursor: number;
-}): Promise<GardenOperationsPage> {
+async function getGardenOperationsPage(
+    input: {
+        gardenId: number;
+        includeCompleted: boolean;
+        pageSize: number;
+        cursor: number;
+    } & GardenOperationsScope,
+): Promise<GardenOperationsPage> {
     const response = await clientAuthenticated().api.gardens[
         ':gardenId'
     ].operations.$get({
@@ -123,6 +141,15 @@ async function getGardenOperationsPage(input: {
             cursor: input.cursor.toString(),
             limit: input.pageSize.toString(),
             includeCompleted: input.includeCompleted.toString(),
+            ...(input.raisedBedId !== undefined
+                ? { raisedBedId: input.raisedBedId.toString() }
+                : {}),
+            ...(input.raisedBedFieldId !== undefined
+                ? { raisedBedFieldId: input.raisedBedFieldId.toString() }
+                : {}),
+            ...(input.positionIndex !== undefined
+                ? { positionIndex: input.positionIndex.toString() }
+                : {}),
         },
     });
 
@@ -133,22 +160,50 @@ async function getGardenOperationsPage(input: {
     return parseGardenOperationsPage(await response.json());
 }
 
+export function gardenOperationsQueryKey({
+    gardenId,
+    includeCompleted,
+    pageSize,
+    raisedBedId,
+    raisedBedFieldId,
+    positionIndex,
+}: {
+    gardenId: number | undefined;
+    includeCompleted: boolean;
+    pageSize: number;
+} & GardenOperationsScope) {
+    return [
+        'garden-operations',
+        gardenId,
+        includeCompleted,
+        pageSize,
+        raisedBedId ?? null,
+        raisedBedFieldId ?? null,
+        positionIndex ?? null,
+    ] as const;
+}
+
 export function useGardenOperations({
     includeCompleted,
     pageSize = DEFAULT_PAGE_SIZE,
+    raisedBedId,
+    raisedBedFieldId,
+    positionIndex,
 }: {
     includeCompleted: boolean;
     pageSize?: number;
-}) {
+} & GardenOperationsScope) {
     const { data: currentGarden } = useCurrentGarden();
 
     return useInfiniteQuery({
-        queryKey: [
-            'garden-operations',
-            currentGarden?.id,
+        queryKey: gardenOperationsQueryKey({
+            gardenId: currentGarden?.id,
             includeCompleted,
             pageSize,
-        ],
+            raisedBedId,
+            raisedBedFieldId,
+            positionIndex,
+        }),
         queryFn: async ({ pageParam }) => {
             if (!currentGarden?.id) {
                 return {
@@ -162,6 +217,9 @@ export function useGardenOperations({
                 gardenId: currentGarden.id,
                 includeCompleted,
                 pageSize,
+                raisedBedId,
+                raisedBedFieldId,
+                positionIndex,
                 cursor: pageParam,
             });
         },

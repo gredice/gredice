@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { getNewRaisedBedPlantingNote } from './cartInfo';
+import {
+    getAbandonedRaisedBedCartNote,
+    getNewRaisedBedPlantingNote,
+} from './cartInfo';
 
 describe('getNewRaisedBedPlantingNote', () => {
     it('uses singular raised-bed copy for two raised-bed blocks', () => {
@@ -14,6 +17,15 @@ describe('getNewRaisedBedPlantingNote', () => {
         assert.strictEqual(
             getNewRaisedBedPlantingNote(18, 4),
             'Potrebno je još 18 biljaka u novim gredicama za postavljanje novih gredica.',
+        );
+    });
+});
+
+describe('getAbandonedRaisedBedCartNote', () => {
+    it('explains that abandoned raised beds cannot receive new work', () => {
+        assert.strictEqual(
+            getAbandonedRaisedBedCartNote('Gredica 12'),
+            'Gredica 12 je napuštena zbog neaktivnosti. Nove sjetve i radnje više nisu dostupne za ovu gredicu.',
         );
     });
 });

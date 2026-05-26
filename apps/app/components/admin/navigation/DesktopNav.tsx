@@ -1,10 +1,17 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
+import { isAdminChromeHiddenPath } from './adminChromeVisibility';
 import { useDesktopNav } from './DesktopNavProvider';
 import { Nav } from './Nav';
 
 export function DesktopNav() {
+    const pathname = usePathname();
     const { isExpanded } = useDesktopNav();
+
+    if (isAdminChromeHiddenPath(pathname)) {
+        return null;
+    }
 
     if (!isExpanded) {
         return null;

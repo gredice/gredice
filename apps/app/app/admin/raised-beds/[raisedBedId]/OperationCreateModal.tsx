@@ -1,9 +1,10 @@
 'use client';
 
+import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
-import { Add } from '@gredice/ui/icons';
+import { Add, Warning } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -29,15 +30,30 @@ export function OperationCreateModal({
     const [selectedRaisedBedId, setSelectedRaisedBedId] = useState<
         string | null
     >(raisedBedId?.toString() ?? null);
+    const [message, setMessage] = useState<string | null>(null);
+    const [isError, setIsError] = useState(false);
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-        const result = await createOperationAction(formData);
-        if (result.success) {
-            // TODO: Handle successful operation creation (e.g., close modal, show notification)
-        } else {
-            // TODO: Handle error (e.g., show error message)
+        setMessage(null);
+        setIsError(false);
+
+        try {
+            const formData = new FormData(event.currentTarget);
+            const result = await createOperationAction(formData);
+            setMessage(
+                result.success
+                    ? 'Radnja je uspješno kreirana.'
+                    : 'Došlo je do greške pri kreiranju radnje.',
+            );
+            setIsError(!result.success);
+        } catch (error) {
+            setMessage(
+                error instanceof Error
+                    ? error.message
+                    : 'Došlo je do greške pri kreiranju radnje.',
+            );
+            setIsError(true);
         }
     };
 
@@ -54,13 +70,14 @@ export function OperationCreateModal({
                 <Typography level="h5">Nova operacija</Typography>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <Stack spacing={4}>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
                             <Input
                                 name="entityTypeName"
                                 label="Tip entiteta"
                                 defaultValue="operation"
                                 required
                                 hidden
+                                fullWidth
                             />
                             <SelectEntity
                                 name="entityId"
@@ -73,18 +90,21 @@ export function OperationCreateModal({
                                 defaultValue={accountId}
                                 label="Account ID"
                                 required
+                                fullWidth
                             />
                             <Input
                                 name="gardenId"
                                 defaultValue={gardenId}
                                 label="Vrt ID (opcionalno)"
                                 type="number"
+                                fullWidth
                             />
                             <SelectRaisedBed
                                 name="raisedBedId"
                                 label="Gredica"
                                 accountId={accountId}
                                 gardenId={gardenId}
+                                disableAbandoned
                                 value={selectedRaisedBedId}
                                 onChange={setSelectedRaisedBedId}
                                 disabled={!gardenId}
@@ -112,6 +132,18 @@ export function OperationCreateModal({
                                 label="Planirani datum (opcionalno)"
                             />
                         </div>
+                        {message && (
+                            <Alert
+                                color={isError ? 'danger' : 'success'}
+                                startDecorator={
+                                    isError ? (
+                                        <Warning className="size-4 shrink-0" />
+                                    ) : undefined
+                                }
+                            >
+                                <Typography level="body2">{message}</Typography>
+                            </Alert>
+                        )}
                         <Button type="submit">Kreiraj</Button>
                     </Stack>
                 </form>

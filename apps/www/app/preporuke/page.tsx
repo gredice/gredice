@@ -56,7 +56,7 @@ const referralFlows = [
             },
             {
                 title: 'Dobivaš nagradu',
-                rule: 'Kada pozvani račun ispuni uvjet aktivne gredice, tvoj račun dobiva 10.000 🌻.',
+                rule: 'Kada pozvani račun posadi svoje prvo povrće u gredici, tvoj račun dobiva 10.000 🌻.',
             },
         ],
     },
@@ -74,7 +74,7 @@ const referralFlows = [
             },
             {
                 title: 'Dobivaš nagradu',
-                rule: 'Kada tvoj račun ispuni uvjet aktivne gredice, dobivaš 10.000 🌻.',
+                rule: 'Kada tvoj račun posadi svoje prvo povrće u gredici, dobivaš 10.000 🌻.',
             },
         ],
     },
@@ -86,7 +86,7 @@ export default function ReferralsLandingPage() {
             <Stack spacing={10}>
                 <PageHeader
                     header="Preporuke"
-                    subHeader={`Podijeli svoj kod, pozovi nekoga u Gredice i zajedno ostvarite ukupno ${formattedCombinedReferralReward} 🌻 kada pozvani račun ispuni uvjet aktivne gredice.`}
+                    subHeader={`Podijeli svoj kod, pozovi nekoga u Gredice i zajedno ostvarite ukupno ${formattedCombinedReferralReward} 🌻 kada pozvani račun posadi svoje prvo povrće u gredici.`}
                     padded
                     visual={
                         <Image
@@ -104,8 +104,8 @@ export default function ReferralsLandingPage() {
                         Program preporuka je jednostavan: podijeli svoj kod s
                         osobom koja želi koristiti Gredice. Ta osoba može
                         unijeti tvoj kod u aplikaciji, a nagrada se povezuje s
-                        oba računa kada pozvani račun ispuni uvjet aktivne
-                        gredice.
+                        oba računa kada pozvani račun posadi svoje prvo povrće u
+                        gredici.
                     </p>
                     <p>
                         Kodovi nisu jednokratne pozivnice. Isti kod možeš
@@ -176,8 +176,8 @@ export default function ReferralsLandingPage() {
                         >
                             Odaberi tok koji odgovara tvojoj situaciji: podijeli
                             svoj kod ili unesi kod prijatelja. Nagrada se
-                            dodjeljuje kada preporučeni račun ispuni uvjet
-                            aktivne gredice.
+                            dodjeljuje kada preporučeni račun posadi svoje prvo
+                            povrće u gredici.
                         </Typography>
                     </Stack>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

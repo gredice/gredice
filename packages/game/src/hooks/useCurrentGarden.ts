@@ -301,6 +301,7 @@ function mockGarden(winterMode: WinterMode): useCurrentGardenResponse {
             fields: mockRaisedBedFields(1, 0),
             appliedOperations: [],
             status: 'new',
+            abandonReason: null,
             updatedAt: now,
             createdAt: now,
             isValid: true,
@@ -314,6 +315,7 @@ function mockGarden(winterMode: WinterMode): useCurrentGardenResponse {
             fields: mockRaisedBedFields(2, 100),
             appliedOperations: [],
             status: 'new',
+            abandonReason: null,
             updatedAt: now,
             createdAt: now,
             isValid: true,
@@ -374,6 +376,11 @@ function mockGarden(winterMode: WinterMode): useCurrentGardenResponse {
                     {
                         id: '4',
                         name: 'Block_Grass',
+                        rotation: 0,
+                    },
+                    {
+                        id: '17',
+                        name: 'BirdHouse',
                         rotation: 0,
                     },
                 ],

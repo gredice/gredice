@@ -2,10 +2,8 @@ import { tz } from '@date-fns/tz';
 import { sendEmail } from '@gredice/email/acs';
 import {
     acceptAccountInvitation,
-    accounts as accountRecords,
     cancelAccountInvitation,
     createAccountInvitation,
-    createEvent,
     deleteAccountWithDependencies,
     earnSunflowers,
     getAccount,
@@ -14,21 +12,28 @@ import {
     getAccountInvitationByToken,
     getAccountInvitations,
     getAccountInvitationsByEmail,
+    getAccountReferralState,
     getAccountUsers,
-    getEvents,
     getRaisedBeds,
+    getReferralAccountSummary,
     getSunflowers,
     getSunflowersHistory,
     getUser,
     knownEventTypes,
-    sql,
-    storage,
-    events as storedEvents,
+    REFERRAL_REWARD_AMOUNT,
+    ReferralCodeAlreadyExistsError,
+    ReferralCodeAlreadyUsedError,
+    ReferralCodeInvalidError,
+    ReferralCodeNotFoundError,
+    ReferralCodeReciprocalUseError,
+    ReferralCodeReservedError,
+    ReferralCodeSelfUseError,
+    redeemReferralCodeForAccount,
+    setReferralCodeForAccount,
     updateAccountTimeZone,
 } from '@gredice/storage';
 import AccountDeleteConfirmationTemplate from '@gredice/transactional/emails/Account/delete-confirmation';
 import { addDays, differenceInCalendarDays, startOfDay } from 'date-fns';
-import { asc, eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { setCookie as honoSetCookie } from 'hono/cookie';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
@@ -192,72 +197,6 @@ async function getDailyRewardState(accountId: string) {
     };
 }
 
-const REFERRAL_REWARD = 10000;
-const REFERRAL_EVENT_TYPE = 'account.referral.v1';
-
-class ReferralCodeAlreadyExistsError extends Error {}
-
-function normalizeReferralCode(code: string) {
-    return code
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9_-]/g, '')
-        .slice(0, 32);
-}
-
-function codeFromCodeSetEventData(data: unknown) {
-    if (!data || typeof data !== 'object') {
-        return null;
-    }
-    if (!('action' in data) || data.action !== 'code_set') {
-        return null;
-    }
-    if (!('code' in data) || typeof data.code !== 'string') {
-        return null;
-    }
-    return normalizeReferralCode(data.code);
-}
-
-async function getReferralCodeOwnerAccountId(
-    code: string,
-    db: Pick<ReturnType<typeof storage>, 'select'>,
-) {
-    const [accounts, events] = await Promise.all([
-        db.select({ id: accountRecords.id }).from(accountRecords),
-        db
-            .select({
-                aggregateId: storedEvents.aggregateId,
-                data: storedEvents.data,
-            })
-            .from(storedEvents)
-            .where(eq(storedEvents.type, REFERRAL_EVENT_TYPE))
-            .orderBy(asc(storedEvents.createdAt), asc(storedEvents.id)),
-    ]);
-
-    const currentCodes = new Map<string, string>();
-    for (const account of accounts) {
-        currentCodes.set(
-            account.id,
-            normalizeReferralCode(account.id.slice(0, 12)),
-        );
-    }
-
-    for (const event of events) {
-        const eventCode = codeFromCodeSetEventData(event.data);
-        if (eventCode) {
-            currentCodes.set(event.aggregateId, eventCode);
-        }
-    }
-
-    for (const [accountId, currentCode] of currentCodes) {
-        if (currentCode === code) {
-            return accountId;
-        }
-    }
-
-    return null;
-}
-
 async function hasActiveRaisedBed(accountId: string) {
     const gardens = await getAccountGardens(accountId);
     for (const garden of gardens) {
@@ -352,55 +291,20 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { accountId } = context.get('authContext');
-            const events = await getEvents(
-                REFERRAL_EVENT_TYPE,
-                [accountId],
-                0,
-                1000,
-            );
-
-            let myCode = '';
-            let usedReferralCode: string | null = null;
-            const referredAccounts: Array<{
-                accountId: string;
-                rewarded: boolean;
-            }> = [];
-
-            for (const event of events) {
-                const data = event.data as Record<string, unknown> | null;
-                if (
-                    data?.action === 'code_set' &&
-                    typeof data.code === 'string'
-                ) {
-                    myCode = data.code;
-                }
-                if (
-                    data?.action === 'used_code' &&
-                    typeof data.code === 'string'
-                ) {
-                    usedReferralCode = data.code;
-                }
-                if (
-                    data?.action === 'referred_account' &&
-                    typeof data.referredAccountId === 'string'
-                ) {
-                    referredAccounts.push({
-                        accountId: data.referredAccountId,
-                        rewarded: data.rewarded === true,
-                    });
-                }
-            }
-
-            if (!myCode) {
-                myCode = normalizeReferralCode(accountId.slice(0, 12));
+            const referralState = await getAccountReferralState(accountId, {
+                createDefaultCode: true,
+            });
+            if (!referralState.myCode) {
+                return context.json(
+                    { error: 'Kod preporuke nije dostupan' },
+                    500,
+                );
             }
 
             return context.json({
-                myCode,
-                usedReferralCode,
-                referredAccounts,
-                rewardAmount: REFERRAL_REWARD,
-                referralLink: getReferralLink(myCode),
+                ...referralState,
+                rewardAmount: REFERRAL_REWARD_AMOUNT,
+                referralLink: getReferralLink(referralState.myCode),
             });
         },
     )
@@ -410,8 +314,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { accountId } = context.get('authContext');
             const body = await context.req.json<{ code?: string }>();
-            const code = normalizeReferralCode(body.code ?? '');
-            if (!code) return context.json({ error: 'Neispravan kod' }, 400);
             if (await hasActiveRaisedBed(accountId)) {
                 return context.json(
                     { error: 'Kod se ne može mijenjati nakon aktivne gredice' },
@@ -420,37 +322,32 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             try {
-                await storage().transaction(async (tx) => {
-                    await tx.execute(
-                        sql`select pg_advisory_xact_lock(hashtext(${`referral-code:${code}`}));`,
-                    );
-
-                    const ownerAccountId = await getReferralCodeOwnerAccountId(
-                        code,
-                        tx,
-                    );
-                    if (ownerAccountId && ownerAccountId !== accountId) {
-                        throw new ReferralCodeAlreadyExistsError();
-                    }
-
-                    await tx.insert(storedEvents).values({
-                        type: REFERRAL_EVENT_TYPE,
-                        version: 1,
-                        aggregateId: accountId,
-                        data: { action: 'code_set', code },
-                    });
-                });
+                const code = await setReferralCodeForAccount(
+                    accountId,
+                    body.code ?? '',
+                    { source: 'user' },
+                );
+                return context.json({ code });
             } catch (error) {
+                if (error instanceof ReferralCodeInvalidError) {
+                    return context.json({ error: 'Neispravan kod' }, 400);
+                }
                 if (error instanceof ReferralCodeAlreadyExistsError) {
                     return context.json(
                         { error: 'Kod preporuke je već zauzet' },
                         409,
                     );
                 }
+                if (error instanceof ReferralCodeReservedError) {
+                    return context.json(
+                        {
+                            error: 'Kod preporuke ne može biti dio ID-a računa',
+                        },
+                        400,
+                    );
+                }
                 throw error;
             }
-
-            return context.json({ code });
         },
     )
     .post(
@@ -459,35 +356,58 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { accountId } = context.get('authContext');
             const body = await context.req.json<{ code?: string }>();
-            const code = normalizeReferralCode(body.code ?? '');
-            if (!code) return context.json({ error: 'Neispravan kod' }, 400);
 
-            const myEvents = await getEvents(
-                REFERRAL_EVENT_TYPE,
-                [accountId],
-                0,
-                1000,
-            );
-            if (
-                myEvents.some(
-                    (e) =>
-                        (e.data as Record<string, unknown> | null)?.action ===
-                        'used_code',
-                )
-            ) {
-                return context.json(
-                    { error: 'Referral kod je već iskorišten' },
-                    400,
+            try {
+                const usedReferral = await redeemReferralCodeForAccount(
+                    accountId,
+                    body.code ?? '',
                 );
+                return context.json({
+                    ok: true,
+                    usedReferral: {
+                        code: usedReferral.code,
+                        account: await getReferralAccountSummary(
+                            usedReferral.ownerAccountId,
+                        ),
+                    },
+                    reward: usedReferral.reward,
+                });
+            } catch (error) {
+                if (error instanceof ReferralCodeInvalidError) {
+                    return context.json({ error: 'Neispravan kod' }, 400);
+                }
+                if (error instanceof ReferralCodeAlreadyUsedError) {
+                    return context.json(
+                        {
+                            error: 'Nagrada za kod preporuke je već dodijeljena',
+                        },
+                        400,
+                    );
+                }
+                if (error instanceof ReferralCodeNotFoundError) {
+                    return context.json(
+                        { error: 'Kod preporuke nije pronađen' },
+                        400,
+                    );
+                }
+                if (error instanceof ReferralCodeSelfUseError) {
+                    return context.json(
+                        {
+                            error: 'Ne možeš iskoristiti vlastiti kod preporuke',
+                        },
+                        400,
+                    );
+                }
+                if (error instanceof ReferralCodeReciprocalUseError) {
+                    return context.json(
+                        {
+                            error: 'Ne možeš iskoristiti kod računa kojem si ti preporučitelj',
+                        },
+                        400,
+                    );
+                }
+                throw error;
             }
-
-            await createEvent({
-                type: REFERRAL_EVENT_TYPE,
-                version: 1,
-                aggregateId: accountId,
-                data: { action: 'used_code', code },
-            });
-            return context.json({ ok: true });
         },
     )
 

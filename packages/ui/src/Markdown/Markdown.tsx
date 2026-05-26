@@ -55,7 +55,12 @@ const components: Components = {
 export function Markdown({
     children,
     ...rest
-}: Omit<HTMLAttributes<HTMLDivElement>, 'children'> & { children: string }) {
+}: Omit<
+    HTMLAttributes<HTMLDivElement>,
+    'children' | 'dangerouslySetInnerHTML'
+> & {
+    children: string;
+}) {
     return (
         <StyledHtml {...rest}>
             <ReactMarkdown components={components}>{children}</ReactMarkdown>

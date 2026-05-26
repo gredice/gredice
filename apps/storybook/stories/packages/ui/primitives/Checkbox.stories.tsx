@@ -46,6 +46,15 @@ export const ReadOnly: Story = {
     },
 };
 
+export const Circle: Story = {
+    args: {
+        defaultChecked: true,
+        label: 'Zadatak je dovrsen',
+        readOnly: true,
+        variant: 'circle',
+    },
+};
+
 export const WithoutIcon: Story = {
     args: {
         defaultChecked: true,

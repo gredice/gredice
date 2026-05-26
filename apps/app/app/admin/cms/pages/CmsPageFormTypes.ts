@@ -8,8 +8,12 @@ export type CmsPageCtaData = {
 
 export type CmsPageFeatureData = {
     id?: string;
+    tagline?: string;
     header?: string;
     description?: string;
+    assetUrl?: string;
+    assetDarkUrl?: string;
+    assetAlt?: string;
     ctas?: CmsPageCtaData[];
 };
 

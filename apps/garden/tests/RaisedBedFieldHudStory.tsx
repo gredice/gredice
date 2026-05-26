@@ -1,11 +1,17 @@
+import { Modal } from '@gredice/ui/Modal';
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useMemo, useState } from 'react';
 import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/GameAnalyticsContext';
 import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
+import { useCurrentGarden } from '../../../packages/game/src/hooks/useCurrentGarden';
+import { gardenOperationsQueryKey } from '../../../packages/game/src/hooks/useGardenOperations';
+import { queryKeys as raisedBedDiaryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedDiaryEntries';
+import { queryKeys as raisedBedFieldDiaryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedFieldDiaryEntries';
 import { RaisedBedField } from '../../../packages/game/src/hud/raisedBed/RaisedBedField';
 import { RaisedBedFieldItem } from '../../../packages/game/src/hud/raisedBed/RaisedBedFieldItem';
 import { RaisedBedFieldSuggestions } from '../../../packages/game/src/hud/raisedBed/RaisedBedFieldSuggestions';
+import { RaisedBedInfo } from '../../../packages/game/src/hud/raisedBed/RaisedBedInfo';
 import {
     createGameState,
     GameStateContext,
@@ -38,8 +44,9 @@ function buildGarden(scenario: RaisedBedScenario) {
                 physicalId: '1',
                 fields,
                 appliedOperations: [],
-                status: 'new',
-                isValid: true,
+                status: scenario.raisedBedStatus ?? 'new',
+                abandonReason: scenario.raisedBedAbandonReason ?? null,
+                isValid: scenario.isRaisedBedValid ?? true,
                 orientation: 'horizontal' as const,
                 createdAt: now,
                 updatedAt: now,
@@ -70,6 +77,71 @@ function createScenarioQueryClient(scenario: RaisedBedScenario) {
     queryClient.setQueryData(['plants'], allPlants);
     queryClient.setQueryData(['sorts'], allSorts);
     queryClient.setQueryData(['operations'], scenario.operations ?? []);
+    const operationHistoryItems = scenario.operationHistoryItems ?? [];
+    const raisedBedOperationDiaryEntries =
+        scenario.raisedBedOperationDiaryEntries ?? [];
+    const operationDiaryEntries = scenario.operationDiaryEntries ?? [];
+    queryClient.setQueryData(
+        raisedBedDiaryQueryKeys.byId(TEST_RAISED_BED_ID),
+        raisedBedOperationDiaryEntries,
+    );
+    queryClient.setQueryData(
+        gardenOperationsQueryKey({
+            gardenId: TEST_GARDEN_ID,
+            includeCompleted: true,
+            pageSize: 20,
+            raisedBedId: TEST_RAISED_BED_ID,
+        }),
+        {
+            pages: [
+                {
+                    items: operationHistoryItems,
+                    nextCursor: null,
+                    total: operationHistoryItems.length,
+                },
+            ],
+            pageParams: [0],
+        },
+    );
+
+    for (const field of garden.raisedBeds[0]?.fields ?? []) {
+        const fieldIds = garden.raisedBeds[0].fields
+            .filter(
+                (candidate) => candidate.positionIndex === field.positionIndex,
+            )
+            .map((candidate) => candidate.id);
+        const fieldOperationHistoryItems = operationHistoryItems.filter(
+            (operation) =>
+                operation.raisedBedFieldId !== null &&
+                fieldIds.includes(operation.raisedBedFieldId),
+        );
+        queryClient.setQueryData(
+            raisedBedFieldDiaryQueryKeys.byId(
+                TEST_RAISED_BED_ID,
+                field.positionIndex,
+            ),
+            operationDiaryEntries,
+        );
+        queryClient.setQueryData(
+            gardenOperationsQueryKey({
+                gardenId: TEST_GARDEN_ID,
+                includeCompleted: true,
+                pageSize: 20,
+                raisedBedId: TEST_RAISED_BED_ID,
+                positionIndex: field.positionIndex,
+            }),
+            {
+                pages: [
+                    {
+                        items: fieldOperationHistoryItems,
+                        nextCursor: null,
+                        total: fieldOperationHistoryItems.length,
+                    },
+                ],
+                pageParams: [0],
+            },
+        );
+    }
 
     return queryClient;
 }
@@ -77,12 +149,14 @@ function createScenarioQueryClient(scenario: RaisedBedScenario) {
 type ProvidersProps = PropsWithChildren<{
     scenario: RaisedBedScenario;
     enablePlantHistory?: boolean;
+    enableRaisedBedImageAI?: boolean;
 }>;
 
 function RaisedBedHudTestProviders({
     children,
     scenario,
     enablePlantHistory = true,
+    enableRaisedBedImageAI = false,
 }: ProvidersProps) {
     const queryClient = useMemo(
         () => createScenarioQueryClient(scenario),
@@ -104,7 +178,10 @@ function RaisedBedHudTestProviders({
             <ReactQuery.QueryClientProvider client={queryClient}>
                 <GameStateContext.Provider value={gameStore}>
                     <GameFlagsContext.Provider
-                        value={{ enablePlantHistoryFlag: enablePlantHistory }}
+                        value={{
+                            enablePlantHistoryFlag: enablePlantHistory,
+                            raisedBedImageAI: enableRaisedBedImageAI,
+                        }}
                     >
                         <GameAnalyticsProvider capture={() => undefined}>
                             {children}
@@ -120,11 +197,13 @@ export function RaisedBedFieldHudStory({
     scenario,
     positionIndex,
     enablePlantHistory = true,
+    enableRaisedBedImageAI = false,
     cellSize = 80,
 }: {
     scenario: RaisedBedScenario;
     positionIndex: number;
     enablePlantHistory?: boolean;
+    enableRaisedBedImageAI?: boolean;
     cellSize?: number;
 }) {
     const cartItem =
@@ -135,6 +214,7 @@ export function RaisedBedFieldHudStory({
         <RaisedBedHudTestProviders
             scenario={scenario}
             enablePlantHistory={enablePlantHistory}
+            enableRaisedBedImageAI={enableRaisedBedImageAI}
         >
             <div
                 data-testid="hud-cell"
@@ -154,6 +234,43 @@ export function RaisedBedFieldHudStory({
                 />
             </div>
         </RaisedBedHudTestProviders>
+    );
+}
+
+export function RaisedBedInfoModalStory({
+    scenario,
+    enableRaisedBedImageAI = false,
+}: {
+    scenario: RaisedBedScenario;
+    enableRaisedBedImageAI?: boolean;
+}) {
+    return (
+        <RaisedBedHudTestProviders
+            scenario={scenario}
+            enableRaisedBedImageAI={enableRaisedBedImageAI}
+        >
+            <RaisedBedInfoModalStoryContent />
+        </RaisedBedHudTestProviders>
+    );
+}
+
+function RaisedBedInfoModalStoryContent() {
+    const { data: garden } = useCurrentGarden();
+    const raisedBed = garden?.raisedBeds[0];
+
+    if (!garden || !raisedBed) {
+        return null;
+    }
+
+    return (
+        <Modal
+            open
+            title="Informacije o gredici"
+            modal={false}
+            className="overflow-x-hidden md:border-tertiary md:border-b-4"
+        >
+            <RaisedBedInfo gardenId={garden.id} raisedBed={raisedBed} />
+        </Modal>
     );
 }
 

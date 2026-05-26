@@ -1,4 +1,15 @@
-import { and, asc, count, desc, eq, gte, inArray, lte } from 'drizzle-orm';
+import {
+    and,
+    asc,
+    count,
+    desc,
+    eq,
+    gte,
+    inArray,
+    lte,
+    or,
+    sql,
+} from 'drizzle-orm';
 import {
     bustDeliveryRequestsCache,
     bustScheduleCache,
@@ -21,6 +32,9 @@ const scheduleInvalidatingEventTypes = new Set<string>([
     knownEventTypes.operations.verify,
     knownEventTypes.operations.fail,
     knownEventTypes.operations.cancel,
+    knownEventTypes.approvalRequests.create,
+    knownEventTypes.approvalRequests.approve,
+    knownEventTypes.approvalRequests.reject,
     knownEventTypes.raisedBedFields.create,
     knownEventTypes.raisedBedFields.delete,
     knownEventTypes.raisedBedFields.plantPlace,
@@ -68,6 +82,26 @@ export function getEvents(
                 : eq(events.type, type),
         ),
         orderBy: [asc(events.createdAt), asc(events.id)],
+        offset,
+        limit,
+    });
+}
+
+export function getLatestEvents(
+    type: string | string[],
+    aggregateIds: string[],
+    offset: number = 0,
+    limit: number = 1000,
+    db: DatabaseClient = storage(),
+) {
+    return db.query.events.findMany({
+        where: and(
+            inArray(events.aggregateId, aggregateIds),
+            Array.isArray(type)
+                ? inArray(events.type, type)
+                : eq(events.type, type),
+        ),
+        orderBy: [desc(events.createdAt), desc(events.id)],
         offset,
         limit,
     });
@@ -128,6 +162,50 @@ export async function countEventsSince(
     return result[0]?.count ?? 0;
 }
 
+export async function countAiRequestEventsSince({
+    type,
+    legacyType,
+    since,
+    accountId,
+    requestKind,
+    legacyAggregateIds = [],
+}: {
+    type: string | string[];
+    legacyType?: string | string[];
+    since: Date;
+    accountId: string;
+    requestKind: string;
+    legacyAggregateIds?: string[];
+}) {
+    const typeFilter = Array.isArray(type)
+        ? inArray(events.type, type)
+        : eq(events.type, type);
+    const accountRequestFilter = and(
+        typeFilter,
+        sql<boolean>`(${events.data}->>'accountId') = ${accountId}`,
+        sql<boolean>`(${events.data}->>'aiRequestKind') = ${requestKind}`,
+    );
+    const legacyRequestFilter =
+        legacyType && legacyAggregateIds.length > 0
+            ? and(
+                  Array.isArray(legacyType)
+                      ? inArray(events.type, legacyType)
+                      : eq(events.type, legacyType),
+                  inArray(events.aggregateId, legacyAggregateIds),
+                  sql<boolean>`(${events.data}->>'aiRequestKind') is null`,
+              )
+            : undefined;
+    const requestFilter = legacyRequestFilter
+        ? or(accountRequestFilter, legacyRequestFilter)
+        : accountRequestFilter;
+
+    const result = await storage()
+        .select({ count: count() })
+        .from(events)
+        .where(and(gte(events.createdAt, since), requestFilter));
+    return result[0]?.count ?? 0;
+}
+
 export async function createEvent(
     { type, version, aggregateId, data, createdAt }: Event,
     db: DatabaseClient = storage(),
@@ -145,7 +223,10 @@ export async function createEvent(
 export async function getAiAnalysisEvents(filter?: { from?: Date; to?: Date }) {
     const results = await storage().query.events.findMany({
         where: and(
-            eq(events.type, knownEventTypes.raisedBedFields.aiAnalysis),
+            inArray(events.type, [
+                knownEventTypes.raisedBeds.aiAnalysis,
+                knownEventTypes.raisedBedFields.aiAnalysis,
+            ]),
             filter?.from ? gte(events.createdAt, filter.from) : undefined,
             filter?.to ? lte(events.createdAt, filter.to) : undefined,
         ),
@@ -160,7 +241,10 @@ export async function getAiAnalysisEvents(filter?: { from?: Date; to?: Date }) {
 
 export async function getAiAnalysisTotals(filter?: { from?: Date; to?: Date }) {
     const whereConditions = [
-        eq(events.type, knownEventTypes.raisedBedFields.aiAnalysis),
+        inArray(events.type, [
+            knownEventTypes.raisedBeds.aiAnalysis,
+            knownEventTypes.raisedBedFields.aiAnalysis,
+        ]),
         ...(filter?.from ? [gte(events.createdAt, filter.from)] : []),
         ...(filter?.to ? [lte(events.createdAt, filter.to)] : []),
     ];

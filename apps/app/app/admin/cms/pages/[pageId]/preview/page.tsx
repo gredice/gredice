@@ -1,5 +1,5 @@
 import { getCmsPage } from '@gredice/storage';
-import { parseSectionDataJson, SectionsView } from '@gredice/ui/cms';
+import { parseCmsPageContentJson, SectionsView } from '@gredice/ui/cms';
 import { notFound } from 'next/navigation';
 import { sectionsComponentRegistry } from '../../../../../../components/shared/sectionsComponentRegistry';
 import { auth } from '../../../../../../lib/auth/auth';
@@ -23,12 +23,15 @@ export default async function CmsPagePreviewPage({
     if (!page) {
         notFound();
     }
+    const content = parseCmsPageContentJson(page.content);
 
     return (
         <main>
             <SectionsView
-                sectionsData={parseSectionDataJson(page.content)}
+                sectionsData={content.sectionsData}
                 componentsRegistry={sectionsComponentRegistry}
+                renderMode={content.renderMode}
+                renderMaxWidth={content.renderMaxWidth}
             />
         </main>
     );

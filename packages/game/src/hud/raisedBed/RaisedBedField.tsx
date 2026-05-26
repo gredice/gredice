@@ -17,9 +17,11 @@ import {
     useShoppingCart,
 } from '../../hooks/useShoppingCart';
 import { useSwapShoppingCartPositions } from '../../hooks/useSwapShoppingCartPositions';
+import { isRaisedBedAbandoned } from '../../raisedBedConstants';
 import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import { getPositionIndexFromGrid } from '../../utils/raisedBedOrientation';
+import { RaisedBedFieldAbandoned } from './RaisedBedFieldAbandoned';
 import { RaisedBedFieldInvalidShape } from './RaisedBedFieldInvalidShape';
 import { RaisedBedFieldItem } from './RaisedBedFieldItem';
 import { SortableFieldItem } from './SortableFieldItem';
@@ -171,6 +173,10 @@ export function RaisedBedField({
             setPendingMove(null);
         }
     }, [baseCartItemsByPosition, pendingMove]);
+
+    if (isRaisedBedAbandoned(raisedBed?.status)) {
+        return <RaisedBedFieldAbandoned reason={raisedBed?.abandonReason} />;
+    }
 
     if (!raisedBed?.isValid) {
         return <RaisedBedFieldInvalidShape />;

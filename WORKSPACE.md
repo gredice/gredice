@@ -261,6 +261,10 @@ Unix-like systems or `.\export.ps1` from `assets` on Windows, then run
 To recreate the split Blender files from an old monolithic source, run Blender
 against `assets/split-game-assets.py` with `-- --source /path/to/GameAssets.blend`.
 
+For the complete workflow that turns a model into a placeable and purchasable
+game entity, including runtime component registration, public block screenshots,
+and the directory CMS row, see [docs/game-entity-creation.md](./docs/game-entity-creation.md).
+
 ### Decoration sprite atlas
 
 The decoration atlas pipeline lives in `packages/cdn/scripts` and currently processes source sheets from `apps/garden/data/sriptes`. Regenerate the ground-cover atlas with:

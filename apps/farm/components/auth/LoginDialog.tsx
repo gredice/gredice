@@ -142,7 +142,7 @@ export function LoginDialog() {
                             svojom farmom.
                         </Typography>
                     </Stack>
-                    <form action={submitAction} className="space-y-4">
+                    <form action={submitAction} className="w-full space-y-4">
                         <Stack spacing={6}>
                             <Stack spacing={2}>
                                 <Input
@@ -151,6 +151,7 @@ export function LoginDialog() {
                                     placeholder="ime@primjer.com"
                                     type="email"
                                     autoComplete="email"
+                                    fullWidth
                                     required
                                 />
                                 <Input
@@ -158,6 +159,7 @@ export function LoginDialog() {
                                     label="Zaporka"
                                     type="password"
                                     autoComplete="current-password"
+                                    fullWidth
                                     required
                                 />
                             </Stack>

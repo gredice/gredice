@@ -9,10 +9,11 @@ export const KnownPages = {
     DirectoriesActivity: '/admin/directories/activity',
     CmsPages: '/admin/cms/pages',
     CmsPageCreate: '/admin/cms/pages/create',
-    CmsPage: (pageId: number) => `/admin/cms/pages/${pageId}` as Route,
     CmsPageEdit: (pageId: number) => `/admin/cms/pages/${pageId}/edit` as Route,
     CmsPagePreview: (pageId: number) =>
         `/admin/cms/pages/${pageId}/preview` as Route,
+    CmsPageWwwPreview: (pageId: number) =>
+        `/admin/cms/pages/${pageId}/preview/www` as Route,
     DirectoryEntityTypePath: '/admin/directories/[entityType]',
     DirectoryEntityType: (entityTypeName: string) =>
         `/admin/directories/${entityTypeName}` as Route,
@@ -42,6 +43,7 @@ export const KnownPages = {
     Users: '/admin/users',
     User: (userId: string) => `/admin/users/${userId}` as Route,
     Schedule: '/admin/schedule',
+    Approvals: '/admin/approvals',
     SowingStatistics: '/admin/statistics/sowing',
     Accounts: '/admin/accounts',
     Account: (accountId: string) => `/admin/accounts/${accountId}` as Route,

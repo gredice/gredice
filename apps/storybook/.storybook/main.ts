@@ -22,6 +22,40 @@ const config: StorybookConfig = {
             nextConfigPath: resolve(appRoot, 'next.config.ts'),
         },
     },
+    typescript: {
+        reactDocgen: 'react-docgen-typescript',
+        reactDocgenTypescriptOptions: {
+            tsconfigPath: resolve(appRoot, 'tsconfig.json'),
+            include: [
+                '../../packages/ui/src/**/*.tsx',
+                '../../packages/game/src/hud/**/*.tsx',
+                '../app/components/admin/cards/FactCard.tsx',
+                '../app/components/shared/ServerActionButton.tsx',
+                '../app/components/shared/ServerActionIconButton.tsx',
+                '../app/components/shared/fields/Field.tsx',
+                '../app/components/shared/fields/FieldSet.tsx',
+                '../app/components/shared/fields/FormFields.tsx',
+                '../app/components/shared/placeholders/NoDataPlaceholder.tsx',
+                '../farm/app/schedule/FarmScheduleSectionSkeleton.tsx',
+                '../farm/app/schedule/ScheduleDateNavigation.tsx',
+                '../farm/components/HomeButton.tsx',
+                '../garden/components/Logotype.tsx',
+                '../www/app/sjetva/SowingCalendarPreview.tsx',
+                '../www/components/Logotype.tsx',
+                '../www/components/attributes/DetailCard.tsx',
+                '../www/components/shared/ExpandableText.tsx',
+                '../www/components/shared/ItemCard.tsx',
+                '../www/components/shared/ListCollapsable.tsx',
+                '../www/components/social/SocialCard.tsx',
+            ],
+            shouldExtractLiteralValuesFromEnum: true,
+            shouldRemoveUndefinedFromOptional: true,
+            propFilter: (prop) =>
+                prop.parent
+                    ? !prop.parent.fileName.includes('node_modules')
+                    : true,
+        },
+    },
     docs: {
         defaultName: 'Documentation',
     },

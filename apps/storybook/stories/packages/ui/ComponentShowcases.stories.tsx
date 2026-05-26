@@ -31,11 +31,17 @@ import { Collapse } from '@gredice/ui/Collapse';
 import { Container } from '@gredice/ui/Container';
 import { CountingNumber } from '@gredice/ui/CountingNumber';
 import {
+    CardGrid,
+    CtaBand,
     Faq1,
     Feature1,
     Footer1,
     Heading1,
+    HtmlBlock,
+    MarkdownBlock,
+    MediaBlock,
     SectionsView,
+    TextBlock,
 } from '@gredice/ui/cms';
 import { DailySchedule } from '@gredice/ui/DailySchedule';
 import { DebugPanel, DebugPanelSection } from '@gredice/ui/DebugControls';
@@ -169,6 +175,19 @@ const sampleImages = [
         alt: 'Farmerka',
     },
 ];
+
+const cmsMediaPreviewUrl = `data:image/svg+xml,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540">
+  <rect width="960" height="540" fill="#f6f0e8"/>
+  <rect x="88" y="92" width="784" height="356" rx="32" fill="#ffffff" stroke="#d8cbbb" stroke-width="4"/>
+  <rect x="144" y="148" width="420" height="28" rx="14" fill="#3a2a1f"/>
+  <rect x="144" y="204" width="560" height="18" rx="9" fill="#8c7665"/>
+  <rect x="144" y="244" width="488" height="18" rx="9" fill="#8c7665"/>
+  <rect x="144" y="316" width="164" height="54" rx="12" fill="#3a2a1f"/>
+  <circle cx="730" cy="224" r="72" fill="#c8e08f"/>
+  <circle cx="776" cy="312" r="96" fill="#9fc36f"/>
+</svg>
+`)}`;
 
 const tableFilters: FilterOption[] = [
     TIME_FILTER_OPTIONS,
@@ -868,6 +887,69 @@ function PublicContentShowcase() {
                         ]}
                     />
 
+                    <TextBlock
+                        tagline="Tekstualna sekcija"
+                        header="Reusable CMS text block"
+                        description="TextBlock keeps long-form CMS copy in a readable width while preserving optional calls to action."
+                        ctas={[
+                            { label: 'Primary link', href: '/' },
+                            {
+                                label: 'Secondary link',
+                                href: '/',
+                                secondary: true,
+                            },
+                        ]}
+                    />
+
+                    <MarkdownBlock markdown="## Markdown CMS section\n\nMarkdownBlock renders author-provided Markdown with the shared Markdown and StyledHtml primitives.\n\n- Supports lists\n- Supports **emphasis**\n- Supports [links](/)" />
+
+                    <HtmlBlock html="<h2>HTML CMS section</h2><p>HtmlBlock renders trusted author-provided HTML with the shared StyledHtml primitive.</p><ul><li>Styled lists</li><li>Styled text</li></ul>" />
+
+                    <MediaBlock
+                        tagline="Media layout"
+                        header="Text can pair with a managed visual"
+                        description="MediaBlock is a generic two-column CMS section for image-led explanations, product context, or editorial content."
+                        assetUrl={cmsMediaPreviewUrl}
+                        assetAlt="CMS section visual preview"
+                    />
+
+                    <CardGrid
+                        tagline="Grid layout"
+                        header="Cards for repeated section content"
+                        description="CardGrid supports reusable cards without tying the section store to one page or product flow."
+                        features={[
+                            {
+                                header: 'First card',
+                                description:
+                                    'Short content for the first reusable card.',
+                            },
+                            {
+                                header: 'Second card',
+                                description:
+                                    'Short content for the second reusable card.',
+                            },
+                            {
+                                header: 'Third card',
+                                description:
+                                    'Short content for the third reusable card.',
+                            },
+                        ]}
+                    />
+
+                    <CtaBand
+                        tagline="Next step"
+                        header="Focused call to action"
+                        description="CtaBand gives CMS authors a reusable conversion section with primary and secondary actions."
+                        ctas={[
+                            { label: 'Continue', href: '/' },
+                            {
+                                label: 'Learn more',
+                                href: '/',
+                                secondary: true,
+                            },
+                        ]}
+                    />
+
                     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
                         <Card>
                             <CardHeader>
@@ -996,6 +1078,34 @@ function PublicContentShowcase() {
                                             'Sjetveni kalendar pomaze odabrati pravo vrijeme.',
                                     },
                                 ],
+                            },
+                        ]}
+                    />
+
+                    <SectionsView
+                        componentsRegistry={{
+                            MediaBlock,
+                            TextBlock,
+                        }}
+                        renderMode="container"
+                        renderMaxWidth="sm"
+                        sectionsData={[
+                            {
+                                component: 'TextBlock',
+                                tagline: 'Page layout',
+                                header: 'Page-level container',
+                                description:
+                                    'This section inherits a narrow page container.',
+                            },
+                            {
+                                component: 'MediaBlock',
+                                renderMode: 'fullWidth',
+                                tagline: 'Section override',
+                                header: 'Break out when needed',
+                                description:
+                                    'Individual CMS sections can override the page layout.',
+                                assetUrl: cmsMediaPreviewUrl,
+                                assetAlt: 'CMS layout override preview',
                             },
                         ]}
                     />

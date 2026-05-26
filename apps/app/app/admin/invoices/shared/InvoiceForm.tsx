@@ -542,7 +542,7 @@ export default function InvoiceForm({
                                 <CardContent>
                                     <Stack spacing={2}>
                                         {mode === 'create' && (
-                                            <Row spacing={4}>
+                                            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
                                                 <Input
                                                     label="Account ID"
                                                     value={formData.accountId}
@@ -554,6 +554,7 @@ export default function InvoiceForm({
                                                     }
                                                     placeholder="Unesite account ID"
                                                     required
+                                                    fullWidth
                                                 />
                                                 <Input
                                                     label="Transaction ID (neobavezno)"
@@ -568,8 +569,9 @@ export default function InvoiceForm({
                                                     }
                                                     placeholder="ID povezane transakcije"
                                                     type="number"
+                                                    fullWidth
                                                 />
-                                            </Row>
+                                            </div>
                                         )}
                                         <Row spacing={4}>
                                             <SelectItems
@@ -695,6 +697,7 @@ export default function InvoiceForm({
                                                     placeholder="Naziv kupca"
                                                     required
                                                     disabled={isAccountReadOnly}
+                                                    fullWidth
                                                 />
                                                 {isAccountReadOnly && (
                                                     <Typography level="body3">
@@ -719,6 +722,7 @@ export default function InvoiceForm({
                                                     }
                                                     placeholder="email@example.com"
                                                     disabled={isAccountReadOnly}
+                                                    fullWidth
                                                 />
                                                 {isAccountReadOnly && (
                                                     <Typography level="body3">
@@ -886,6 +890,7 @@ export default function InvoiceForm({
                                                             }
                                                             placeholder="Opis proizvoda/usluge"
                                                             required
+                                                            fullWidth
                                                         />
                                                     </Stack>
                                                     <IconButton
@@ -925,6 +930,7 @@ export default function InvoiceForm({
                                                                 )
                                                             }
                                                             required
+                                                            fullWidth
                                                         />
                                                     </Stack>
                                                     <Stack
@@ -950,6 +956,7 @@ export default function InvoiceForm({
                                                                 )
                                                             }
                                                             required
+                                                            fullWidth
                                                         />
                                                     </Stack>
                                                     <Stack
@@ -965,6 +972,7 @@ export default function InvoiceForm({
                                                             }
                                                             disabled
                                                             readOnly
+                                                            fullWidth
                                                         />
                                                     </Stack>
                                                 </Row>

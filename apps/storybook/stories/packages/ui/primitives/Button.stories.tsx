@@ -16,8 +16,68 @@ const meta = {
             },
         },
     },
+    argTypes: {
+        children: { control: 'text' },
+        color: {
+            control: 'select',
+            options: [
+                'primary',
+                'secondary',
+                'danger',
+                'error',
+                'warning',
+                'info',
+                'success',
+                'neutral',
+            ],
+        },
+        variant: {
+            control: 'select',
+            options: ['solid', 'soft', 'outlined', 'plain', 'link'],
+        },
+        size: {
+            control: 'inline-radio',
+            options: ['xs', 'sm', 'md', 'lg'],
+        },
+        loading: { control: 'boolean' },
+        disabled: { control: 'boolean' },
+        fullWidth: { control: 'boolean' },
+        href: { control: 'text' },
+        type: {
+            control: 'inline-radio',
+            options: ['button', 'submit', 'reset'],
+        },
+        startDecorator: {
+            control: 'select',
+            options: ['none', 'check', 'edit', 'warning'],
+            mapping: {
+                none: undefined,
+                check: <Check className="size-4" />,
+                edit: <Edit className="size-4" />,
+                warning: <Warning className="size-4" />,
+            },
+        },
+        endDecorator: {
+            control: 'select',
+            options: ['none', 'navigate', 'check'],
+            mapping: {
+                none: undefined,
+                navigate: <Navigate className="size-4" />,
+                check: <Check className="size-4" />,
+            },
+        },
+    },
     args: {
         children: 'Spremi promjenu',
+        color: 'primary',
+        disabled: false,
+        fullWidth: false,
+        loading: false,
+        size: 'md',
+        startDecorator: undefined,
+        endDecorator: undefined,
+        type: 'button',
+        variant: 'solid',
     },
 } satisfies Meta<typeof Button>;
 

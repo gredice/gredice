@@ -602,13 +602,21 @@ export async function openApiDocs(
                 { $ref: '#/components/schemas/page-summary' },
                 {
                     type: 'object',
-                    required: ['content'],
+                    required: ['content', 'renderMode', 'renderMaxWidth'],
                     properties: {
                         content: {
                             type: 'array',
                             items: {
                                 $ref: '#/components/schemas/section-data',
                             },
+                        },
+                        renderMode: {
+                            type: 'string',
+                            enum: ['container', 'fullWidth'],
+                        },
+                        renderMaxWidth: {
+                            type: 'string',
+                            enum: ['xs', 'sm', 'md', 'lg', 'xl'],
                         },
                     },
                 },

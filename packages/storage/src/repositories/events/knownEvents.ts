@@ -1,8 +1,11 @@
 import { knownEventTypes } from './knownEventTypes';
 import type {
+    AccountAiRequestPayload,
     AccountAssignUserPayload,
     AccountSunflowersPayload,
     AdventCalendarOpenPayload,
+    ApprovalRequestCreatePayload,
+    ApprovalRequestReviewPayload,
     DeliveryRequestAddressChangedPayload,
     DeliveryRequestCancelledPayload,
     DeliveryRequestCreatePayload,
@@ -70,6 +73,12 @@ export const knownEvents = {
             data: AccountSunflowersPayload,
         ) => ({
             type: knownEventTypes.accounts.spendSunflowers,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        aiRequestV1: (aggregateId: string, data: AccountAiRequestPayload) => ({
+            type: knownEventTypes.accounts.aiRequest,
             version: 1,
             aggregateId,
             data,
@@ -203,11 +212,17 @@ export const knownEvents = {
             version: 1,
             aggregateId,
         }),
-        abandonV1: (aggregateId: string) => ({
+        abandonV1: (
+            aggregateId: string,
+            data?: Omit<RaisedBedAbandonPayload, 'status'>,
+        ) => ({
             type: knownEventTypes.raisedBeds.abandon,
             version: 1,
             aggregateId,
-            data: { status: 'abandoned' } satisfies RaisedBedAbandonPayload,
+            data: {
+                status: 'abandoned',
+                ...(data?.reason ? { reason: data.reason } : {}),
+            } satisfies RaisedBedAbandonPayload,
         }),
         aiAnalysisV1: (
             aggregateId: string,
@@ -313,6 +328,35 @@ export const knownEvents = {
         }),
         canceledV1: (aggregateId: string, data: OperationCancelPayload) => ({
             type: knownEventTypes.operations.cancel,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+    },
+    approvalRequests: {
+        createdV1: (
+            aggregateId: string,
+            data: ApprovalRequestCreatePayload,
+        ) => ({
+            type: knownEventTypes.approvalRequests.create,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        approvedV1: (
+            aggregateId: string,
+            data: ApprovalRequestReviewPayload,
+        ) => ({
+            type: knownEventTypes.approvalRequests.approve,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        rejectedV1: (
+            aggregateId: string,
+            data: ApprovalRequestReviewPayload,
+        ) => ({
+            type: knownEventTypes.approvalRequests.reject,
             version: 1,
             aggregateId,
             data,

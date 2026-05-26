@@ -317,31 +317,36 @@ export function NotificationCreateModal({
                             </>
                         )}
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <Input
-                                name="header"
-                                label="Naslov"
-                                required
-                                disabled={pending}
-                                className="col-span-2"
-                                value={header}
-                                onChange={(e) => setHeader(e.target.value)}
-                            />
-                            <Input
-                                name="content"
-                                label="Sadržaj"
-                                required
-                                disabled={pending}
-                                className="col-span-2"
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                            />
+                        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div className="sm:col-span-2">
+                                <Input
+                                    name="header"
+                                    label="Naslov"
+                                    required
+                                    disabled={pending}
+                                    value={header}
+                                    onChange={(e) => setHeader(e.target.value)}
+                                    fullWidth
+                                />
+                            </div>
+                            <div className="sm:col-span-2">
+                                <Input
+                                    name="content"
+                                    label="Sadržaj"
+                                    required
+                                    disabled={pending}
+                                    value={content}
+                                    onChange={(e) => setContent(e.target.value)}
+                                    fullWidth
+                                />
+                            </div>
                             <Input
                                 name="iconUrl"
                                 label="URL ikone (opcionalno)"
                                 disabled={pending}
                                 value={iconUrl}
                                 onChange={(e) => setIconUrl(e.target.value)}
+                                fullWidth
                             />
                             <Input
                                 name="imageUrl"
@@ -349,6 +354,7 @@ export function NotificationCreateModal({
                                 disabled={pending}
                                 value={imageUrl}
                                 onChange={(e) => setImageUrl(e.target.value)}
+                                fullWidth
                             />
                             <Input
                                 name="linkUrl"
@@ -356,16 +362,21 @@ export function NotificationCreateModal({
                                 disabled={pending}
                                 value={linkUrl}
                                 onChange={(e) => setLinkUrl(e.target.value)}
+                                fullWidth
                             />
-                            <Input
-                                name="timestamp"
-                                type="datetime-local"
-                                label="Datum obavijesti (opcionalno)"
-                                disabled={pending}
-                                value={timestamp}
-                                onChange={(e) => setTimestamp(e.target.value)}
-                                className="col-span-2"
-                            />
+                            <div className="sm:col-span-2">
+                                <Input
+                                    name="timestamp"
+                                    type="datetime-local"
+                                    label="Datum obavijesti (opcionalno)"
+                                    disabled={pending}
+                                    value={timestamp}
+                                    onChange={(e) =>
+                                        setTimestamp(e.target.value)
+                                    }
+                                    fullWidth
+                                />
+                            </div>
                         </div>
 
                         {target === 'selected' && (

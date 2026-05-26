@@ -1,4 +1,3 @@
-import { Card, CardOverflow } from '@gredice/ui/Card';
 import {
     Book,
     Check,
@@ -22,12 +21,12 @@ import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { KnownPages } from '../../knownPages';
+import { ScrollView } from '../../shared-ui/ScrollView';
 import {
     findRaisedBedFieldWithPlant,
     findRaisedBedOccupiedField,
     type RaisedBedFieldPlantHistoryEntry,
 } from '../../utils/raisedBedFields';
-import { RaisedBedFieldDiary } from './RaisedBedDiary';
 import { RaisedBedFieldIconStack } from './RaisedBedFieldIconStack';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import {
@@ -36,6 +35,11 @@ import {
 } from './RaisedBedFieldLifecycleTab';
 import { RaisedBedFieldOperationsTab } from './RaisedBedFieldOperationsTab';
 import { RaisedBedFieldPlantHistoryModal } from './RaisedBedFieldPlantHistoryModal';
+import { RaisedBedOperationHistoryList } from './RaisedBedOperationHistoryList';
+import {
+    parseScheduledSowingDateValue,
+    ScheduledSowingDateBadge,
+} from './ScheduledSowingDateBadge';
 
 type RaisedBedFieldTabValue = 'lifecycle' | 'diary' | 'operations';
 
@@ -198,6 +202,13 @@ export function RaisedBedFieldItemPlanted({
                   icon: <Check className="size-4 text-white" />,
               }
             : null;
+    const scheduledSowingDate = parseScheduledSowingDateValue(
+        field.plantScheduledDate,
+    );
+    const shouldShowScheduledSowingDate =
+        triggerVariant === 'field' &&
+        Boolean(scheduledSowingDate) &&
+        !field.plantSowDate;
     const visiblePlantHistory =
         triggerVariant === 'field' ? plantHistory.slice(-2) : [];
     const shouldShowAllPlantHistory =
@@ -237,6 +248,9 @@ export function RaisedBedFieldItemPlanted({
                     height={52}
                 />
             </SegmentedCircularProgress>
+            {shouldShowScheduledSowingDate && scheduledSowingDate && (
+                <ScheduledSowingDateBadge date={scheduledSowingDate} />
+            )}
         </RaisedBedFieldItemButton>
     );
     const indicatorStack = shouldShowIndicatorStack ? (
@@ -306,10 +320,10 @@ export function RaisedBedFieldItemPlanted({
                 onOpenChange?.(nextOpen);
             }}
             title={title}
-            className="md:border-tertiary md:border-b-4 max-w-xl"
+            className="max-w-xl overflow-x-hidden md:border-tertiary md:border-b-4"
             trigger={trigger ?? undefined}
         >
-            <Stack spacing={4}>
+            <Stack spacing={4} className="min-w-0 max-w-full">
                 <Row spacing={4}>
                     <PlantOrSortImage
                         plantSort={plantSort}
@@ -392,16 +406,17 @@ export function RaisedBedFieldItemPlanted({
                     )}
                     <TabsContent value="diary">
                         {garden && (
-                            <Card>
-                                <CardOverflow className="max-h-96 overflow-y-auto overflow-x-hidden">
-                                    <RaisedBedFieldDiary
-                                        gardenId={garden.id}
-                                        raisedBedId={raisedBed.id}
-                                        positionIndex={positionIndex}
-                                        disableActions={isHistorical}
-                                    />
-                                </CardOverflow>
-                            </Card>
+                            <ScrollView
+                                className="-mx-4 md:-mx-6"
+                                viewportClassName="max-h-96"
+                                contentClassName="pl-4 pr-2 md:pl-6 md:pr-2"
+                            >
+                                <RaisedBedOperationHistoryList
+                                    raisedBedId={raisedBed.id}
+                                    positionIndex={positionIndex}
+                                    disableActions={isHistorical}
+                                />
+                            </ScrollView>
                         )}
                     </TabsContent>
                     <TabsContent value="lifecycle">
