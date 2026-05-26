@@ -6,9 +6,21 @@ import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
+const birdHouseWoodMaterial = {
+    color: '#956247',
+    metalness: 0.5,
+    roughness: 0.9,
+};
+
+const birdHouseRoofMaterial = {
+    color: '#2f3437',
+    metalness: 0,
+    roughness: 0.62,
+};
+
 export function BirdHouse({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes } = useGameGLTF('BirdHouse');
-    const [animatedRotation] = useAnimatedEntityRotation(rotation);
+    const [animatedRotation] = useAnimatedEntityRotation(rotation + 2);
     const currentStackHeight = useStackHeight(stack, block);
 
     return (
@@ -20,8 +32,8 @@ export function BirdHouse({ stack, block, rotation }: EntityInstanceProps) {
                 castShadow
                 receiveShadow
                 geometry={nodes.Birdhouse_Angled_Supports.geometry}
-                material={nodes.Birdhouse_Angled_Supports.material}
             >
+                <meshStandardMaterial {...birdHouseWoodMaterial} />
                 <SnowOverlay
                     geometry={nodes.Birdhouse_Angled_Supports.geometry}
                     maxThickness={0.08}
@@ -36,8 +48,8 @@ export function BirdHouse({ stack, block, rotation }: EntityInstanceProps) {
                 castShadow
                 receiveShadow
                 geometry={nodes.Birdhouse_Center_Post.geometry}
-                material={nodes.Birdhouse_Center_Post.material}
             >
+                <meshStandardMaterial {...birdHouseWoodMaterial} />
                 <SnowOverlay
                     geometry={nodes.Birdhouse_Center_Post.geometry}
                     maxThickness={0.04}
@@ -53,8 +65,8 @@ export function BirdHouse({ stack, block, rotation }: EntityInstanceProps) {
                 castShadow
                 receiveShadow
                 geometry={nodes.Birdhouse_Upper_Platform.geometry}
-                material={nodes.Birdhouse_Upper_Platform.material}
             >
+                <meshStandardMaterial {...birdHouseWoodMaterial} />
                 <SnowOverlay
                     geometry={nodes.Birdhouse_Upper_Platform.geometry}
                     maxThickness={0.07}
@@ -69,8 +81,8 @@ export function BirdHouse({ stack, block, rotation }: EntityInstanceProps) {
                 castShadow
                 receiveShadow
                 geometry={nodes.Birdhouse_Cabin_Walls.geometry}
-                material={nodes.Birdhouse_Cabin_Walls.material}
             >
+                <meshStandardMaterial {...birdHouseWoodMaterial} />
                 <SnowOverlay
                     geometry={nodes.Birdhouse_Cabin_Walls.geometry}
                     maxThickness={0.05}
@@ -86,8 +98,8 @@ export function BirdHouse({ stack, block, rotation }: EntityInstanceProps) {
                 castShadow
                 receiveShadow
                 geometry={nodes.Birdhouse_Perch.geometry}
-                material={nodes.Birdhouse_Perch.material}
             >
+                <meshStandardMaterial {...birdHouseWoodMaterial} />
                 <SnowOverlay
                     geometry={nodes.Birdhouse_Perch.geometry}
                     maxThickness={0.03}
@@ -101,8 +113,8 @@ export function BirdHouse({ stack, block, rotation }: EntityInstanceProps) {
                 castShadow
                 receiveShadow
                 geometry={nodes.Birdhouse_Roof_Panels.geometry}
-                material={nodes.Birdhouse_Roof_Panels.material}
             >
+                <meshStandardMaterial {...birdHouseRoofMaterial} />
                 <SnowOverlay
                     geometry={nodes.Birdhouse_Roof_Panels.geometry}
                     maxThickness={0.12}
@@ -119,8 +131,8 @@ export function BirdHouse({ stack, block, rotation }: EntityInstanceProps) {
                 castShadow
                 receiveShadow
                 geometry={nodes.Birdhouse_Ridge_Cap.geometry}
-                material={nodes.Birdhouse_Ridge_Cap.material}
             >
+                <meshStandardMaterial {...birdHouseRoofMaterial} />
                 <SnowOverlay
                     geometry={nodes.Birdhouse_Ridge_Cap.geometry}
                     maxThickness={0.08}

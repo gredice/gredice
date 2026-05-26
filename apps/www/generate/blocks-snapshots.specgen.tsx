@@ -16,7 +16,7 @@ test.beforeEach(async ({ page }) => {
 
     for (const assetName of allGameAssetNames) {
         await page.route(
-            `https://vrt.gredice.com/assets/models/${assetName}.glb`,
+            `**/assets/models/${assetName}.glb*`,
             async (route) => {
                 const gameAssetsModelPath = resolve(
                     `../garden/public/assets/models/${assetName}.glb`,
