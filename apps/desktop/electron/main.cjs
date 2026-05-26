@@ -18,6 +18,7 @@ let mainWindow = null;
 let pendingAuthCallbackUrl = null;
 let runtimeConfig = null;
 let trustedNavigationOrigins = new Set();
+let trustedPermissionOrigins = new Set();
 
 const desktopShellStyles = `
 :root {
@@ -322,6 +323,10 @@ function parseTrustedOrigins(config) {
     );
 }
 
+function parseTrustedPermissionOrigins(config) {
+    return new Set([originForUrl(config.url)]);
+}
+
 function canNavigateInApp(targetUrl) {
     try {
         const parsedUrl = new URL(targetUrl);
@@ -509,7 +514,7 @@ function configureSessionPermissions() {
             const requestingOrigin = safeOriginForUrl(requestingUrl);
             const isTrustedOrigin =
                 requestingOrigin !== null &&
-                trustedNavigationOrigins.has(requestingOrigin);
+                trustedPermissionOrigins.has(requestingOrigin);
 
             callback(isTrustedOrigin && allowedPermissionNames.has(permission));
         },
@@ -778,6 +783,8 @@ if (!gotSingleInstanceLock) {
     app.whenReady()
         .then(() => {
             trustedNavigationOrigins = parseTrustedOrigins(runtimeConfig);
+            trustedPermissionOrigins =
+                parseTrustedPermissionOrigins(runtimeConfig);
             app.setAppUserModelId(runtimeConfig.appId);
             app.setName(runtimeConfig.productName);
             configureSessionPermissions();
