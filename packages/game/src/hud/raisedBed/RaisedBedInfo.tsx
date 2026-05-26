@@ -17,6 +17,7 @@ import {
     RAISED_BED_ABANDON_FAILED_MESSAGE,
     RAISED_BED_STATUS_ABANDONED,
 } from '../../raisedBedConstants';
+import { ScrollView } from '../../shared-ui/ScrollView';
 import { useGameState } from '../../useGameState';
 import { RaisedBedInfoTab } from './RaisedBedInfoTab';
 import { RaisedBedOperationHistoryList } from './RaisedBedOperationHistoryList';
@@ -66,22 +67,44 @@ export function RaisedBedInfo({
     }
 
     return (
-        <Stack spacing={4}>
-            <Row spacing={6}>
-                <BlockImage
-                    blockName="Raised_Bed"
-                    width={80}
-                    height={80}
-                    className="size-20"
-                />
-                <Stack>
-                    <Typography level="body2">Naziv gredice</Typography>
-                    <EditableInput
-                        value={raisedBed.name}
-                        onChange={handleNameChange}
-                        className="w-full"
+        <Stack spacing={4} className="min-w-0 max-w-full">
+            <Row
+                spacing={3}
+                alignItems="start"
+                justifyContent="space-between"
+                className="min-w-0 max-w-full"
+            >
+                <Row spacing={4} className="min-w-0 flex-1 items-start">
+                    <BlockImage
+                        blockName="Raised_Bed"
+                        width={80}
+                        height={80}
+                        className="size-20 shrink-0"
                     />
-                </Stack>
+                    <Stack className="min-w-0 flex-1">
+                        <Typography level="body2">Naziv gredice</Typography>
+                        <EditableInput
+                            value={raisedBed.name}
+                            onChange={handleNameChange}
+                            className="w-full"
+                        />
+                    </Stack>
+                </Row>
+                <Button
+                    type="button"
+                    variant="plain"
+                    size="sm"
+                    aria-label="Prikaži dodatne opcije gredice"
+                    className={cx(
+                        'size-8 min-w-8 shrink-0 rounded-full p-0',
+                        activeTab === 'more'
+                            ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'
+                            : undefined,
+                    )}
+                    onClick={() => setActiveTab('more')}
+                >
+                    <MoreHorizontal className="size-4" />
+                </Button>
             </Row>
             <Tabs
                 value={activeTab}
@@ -90,7 +113,7 @@ export function RaisedBedInfo({
                 }
                 className="flex flex-col"
             >
-                <div className="relative flex justify-center">
+                <div className="flex justify-center">
                     <TabsList className="border w-fit self-center">
                         <TabsTrigger value="diary">
                             <Row spacing={2}>
@@ -111,20 +134,6 @@ export function RaisedBedInfo({
                             </Row>
                         </TabsTrigger>
                     </TabsList>
-                    <Button
-                        type="button"
-                        variant="plain"
-                        aria-label="Prikaži dodatne opcije gredice"
-                        className={cx(
-                            'absolute right-0 top-0 h-full min-w-10 rounded-full px-3',
-                            activeTab === 'more'
-                                ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'
-                                : undefined,
-                        )}
-                        onClick={() => setActiveTab('more')}
-                    >
-                        <MoreHorizontal className="size-4" />
-                    </Button>
                 </div>
                 <TabsContent value="info">
                     <RaisedBedInfoTab
@@ -225,11 +234,15 @@ export function RaisedBedInfo({
                     </Stack>
                 </TabsContent>
                 <TabsContent value="diary">
-                    <div className="max-h-96 overflow-y-auto overflow-x-hidden pr-1">
+                    <ScrollView
+                        className="-mx-4 md:-mx-6"
+                        viewportClassName="max-h-96"
+                        contentClassName="pl-4 pr-2 md:pl-6 md:pr-2"
+                    >
                         <RaisedBedOperationHistoryList
                             raisedBedId={raisedBed.id}
                         />
-                    </div>
+                    </ScrollView>
                 </TabsContent>
                 <TabsContent value="operations">
                     <RaisedBedOperationsTab

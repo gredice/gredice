@@ -106,7 +106,7 @@ export function RaisedBedFieldHud(_props: {
                         }}
                         title="Informacije o gredici"
                         modal={false}
-                        className="md:border-tertiary md:border-b-4"
+                        className="overflow-x-hidden md:border-tertiary md:border-b-4"
                         trigger={
                             <ButtonGreen
                                 fullWidth

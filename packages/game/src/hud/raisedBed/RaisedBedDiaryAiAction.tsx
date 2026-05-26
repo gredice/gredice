@@ -256,7 +256,7 @@ export function RaisedBedDiaryAiAction({
                     }
                 >
                     {latestCompleteHistoryEntry
-                        ? 'Pogledaj savjete suncokreta'
+                        ? 'Pregledaj savjete suncokreta'
                         : 'Pitaj suncokret za savjete'}
                 </ButtonGreen>
             </Stack>
@@ -397,19 +397,6 @@ export function RaisedBedDiaryAiAction({
                                     >
                                         {`Analizirano ${formattedAnalysisTimestamp}`}
                                     </Typography>
-                                )}
-                                {phase === 'thinking' && (
-                                    <div className="inline-flex items-center gap-1.5">
-                                        <span
-                                            className={`${styles.thinkingDot} size-1.5 rounded-full bg-lime-500`}
-                                        />
-                                        <span
-                                            className={`${styles.thinkingDot} ${styles.thinkingDotDelay2} size-1.5 rounded-full bg-lime-500`}
-                                        />
-                                        <span
-                                            className={`${styles.thinkingDot} ${styles.thinkingDotDelay3} size-1.5 rounded-full bg-lime-500`}
-                                        />
-                                    </div>
                                 )}
                             </Stack>
                         </Row>

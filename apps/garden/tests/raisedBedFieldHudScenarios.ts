@@ -152,6 +152,24 @@ export type RaisedBedScenario = {
     cartItems?: ShoppingCartItemData[];
     operations?: OperationData[];
     operationHistoryItems?: GardenOperationItem[];
+    raisedBedOperationDiaryEntries?: Array<{
+        id: number;
+        name: string;
+        description?: string;
+        status: string | null;
+        timestamp: Date;
+        imageUrls?: string[] | null;
+        isMarkdown?: boolean;
+    }>;
+    operationDiaryEntries?: Array<{
+        id: number;
+        name: string;
+        description?: string;
+        status: string | null;
+        timestamp: Date;
+        imageUrls?: string[] | null;
+        isMarkdown?: boolean;
+    }>;
     raisedBedStatus?: string;
     raisedBedAbandonReason?: string | null;
     isRaisedBedValid?: boolean;

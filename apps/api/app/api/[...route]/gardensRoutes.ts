@@ -91,6 +91,16 @@ function normalizeAnalysisImageUrls(body: AnalyzeImageBody) {
     return Array.from(new Set(imageUrls));
 }
 
+const aiTextStreamResponseInit = {
+    headers: {
+        'Cache-Control': 'no-cache, no-transform',
+        'Content-Encoding': 'none',
+        Connection: 'keep-alive',
+        'Transfer-Encoding': 'chunked',
+        'X-Accel-Buffering': 'no',
+    },
+} satisfies ResponseInit;
+
 async function countRecentAiRequests(
     accountId: string,
     requestKind: AiRequestKind,
@@ -1824,7 +1834,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId/raised-beds/:raisedBedId/analyze-image',
         describeRoute({
             description:
-                'Analyze raised bed images with AI and save response to diary',
+                'Stream AI analysis for raised bed images and save the final response to diary',
         }),
         zValidator(
             'param',
@@ -1924,7 +1934,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 },
             );
 
-            return result.toTextStreamResponse();
+            return result.toTextStreamResponse(aiTextStreamResponseInit);
         },
     )
     .get(
@@ -2263,7 +2273,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex/analyze-image',
         describeRoute({
             description:
-                'Analyze raised bed field images with AI and save response to diary',
+                'Stream AI analysis for raised bed field images and save the final response to diary',
         }),
         zValidator(
             'param',
@@ -2387,7 +2397,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 },
             );
 
-            return result.toTextStreamResponse();
+            return result.toTextStreamResponse(aiTextStreamResponseInit);
         },
     )
     .get(
