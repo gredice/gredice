@@ -414,6 +414,7 @@ export function RaisedBedFieldItemPlanted({
                                 <RaisedBedOperationHistoryList
                                     raisedBedId={raisedBed.id}
                                     positionIndex={positionIndex}
+                                    disableActions={isHistorical}
                                 />
                             </ScrollView>
                         )}
