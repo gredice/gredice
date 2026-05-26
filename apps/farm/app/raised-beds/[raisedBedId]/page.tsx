@@ -1,4 +1,5 @@
 import {
+    plantFieldStatusEmoji,
     plantFieldStatusLabel,
     userAllowedPlantStatusTransitions,
 } from '@gredice/js/plants';
@@ -72,6 +73,24 @@ function getPendingPlantStatusRequest(
             request.target.kind === 'raisedBedField.plantStatus' &&
             request.target.raisedBedId === raisedBedId &&
             request.target.positionIndex === positionIndex,
+    );
+}
+
+function isRequestForCurrentStatus(
+    request: ApprovalRequest | undefined,
+    currentStatus?: string | null,
+) {
+    if (
+        !request ||
+        !currentStatus ||
+        request.target.kind !== 'raisedBedField.plantStatus'
+    ) {
+        return false;
+    }
+
+    return (
+        !request.target.currentStatus ||
+        request.target.currentStatus === currentStatus
     );
 }
 
@@ -166,12 +185,21 @@ async function RaisedBedDetailPageContent({
                                             raisedBed.id,
                                             positionIndex,
                                         );
-                                    const displayStatus =
-                                        pendingRequest?.target.kind ===
+                                    const currentStatus =
+                                        field?.plantStatus ?? null;
+                                    const activePendingRequest =
+                                        isRequestForCurrentStatus(
+                                            pendingRequest,
+                                            currentStatus,
+                                        )
+                                            ? pendingRequest
+                                            : undefined;
+                                    const pendingRequestedStatus =
+                                        activePendingRequest?.target.kind ===
                                         'raisedBedField.plantStatus'
-                                            ? pendingRequest.target
+                                            ? activePendingRequest.target
                                                   .requestedStatus
-                                            : field?.plantStatus;
+                                            : null;
                                     const hasAllowedChange =
                                         Boolean(field?.plantStatus) &&
                                         Boolean(
@@ -198,18 +226,34 @@ async function RaisedBedDetailPageContent({
                                                     spacing={1}
                                                     className="items-center flex-wrap"
                                                 >
+                                                    {currentStatus && (
+                                                        <span
+                                                            className="text-base leading-none"
+                                                            aria-hidden="true"
+                                                        >
+                                                            {plantFieldStatusEmoji(
+                                                                currentStatus,
+                                                            )}
+                                                        </span>
+                                                    )}
                                                     <Typography level="body2">
                                                         {statusLabel(
-                                                            displayStatus,
+                                                            currentStatus,
                                                         )}
                                                     </Typography>
-                                                    {pendingRequest && (
+                                                    {pendingRequestedStatus && (
                                                         <Chip
                                                             color="warning"
                                                             size="sm"
                                                             variant="soft"
                                                         >
-                                                            Čeka odobrenje
+                                                            Čeka odobrenje:{' '}
+                                                            {plantFieldStatusEmoji(
+                                                                pendingRequestedStatus,
+                                                            )}{' '}
+                                                            {statusLabel(
+                                                                pendingRequestedStatus,
+                                                            )}
                                                         </Chip>
                                                     )}
                                                 </Row>
@@ -227,14 +271,7 @@ async function RaisedBedDetailPageContent({
                                                             field.plantStatus
                                                         }
                                                         pendingRequestedStatus={
-                                                            pendingRequest
-                                                                ?.target
-                                                                .kind ===
-                                                            'raisedBedField.plantStatus'
-                                                                ? pendingRequest
-                                                                      .target
-                                                                      .requestedStatus
-                                                                : null
+                                                            pendingRequestedStatus
                                                         }
                                                     />
                                                 ) : (
