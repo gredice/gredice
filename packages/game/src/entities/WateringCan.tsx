@@ -1,5 +1,6 @@
 import { animated } from '@react-spring/three';
 import { MeshDistortMaterial } from '@react-three/drei';
+import { DoubleSide } from 'three';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
@@ -37,6 +38,7 @@ const metalMaterial = {
     color: '#555555',
     metalness: 0,
     roughness: 0.5,
+    side: DoubleSide,
 };
 
 export function WateringCan({ stack, block, rotation }: EntityInstanceProps) {
@@ -117,6 +119,7 @@ export function WateringCan({ stack, block, rotation }: EntityInstanceProps) {
                     metalness={0}
                     opacity={0.68}
                     roughness={0.18}
+                    side={DoubleSide}
                     speed={1.4}
                     transparent
                 />
