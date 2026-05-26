@@ -79,6 +79,77 @@ function plantedGrowingWithRecommendedOperationsScenario(): RaisedBedScenario {
     };
 }
 
+function plantedGrowingWithOperationHistoryScenario(): RaisedBedScenario {
+    const wateringOperation = buildOperation({
+        id: 301,
+        name: 'mock-history-watering',
+        label: 'Zalijevanje',
+        stageName: 'maintenance',
+        stageLabel: 'Održavanje',
+    });
+
+    return {
+        ...plantedGrowingScenario(),
+        operations: [wateringOperation],
+        operationHistoryItems: [
+            {
+                id: 901,
+                entityId: wateringOperation.id,
+                entityTypeName: 'operation',
+                raisedBedId: 1,
+                raisedBedFieldId: 1,
+                status: 'completed',
+                createdAt: '2026-05-10T00:00:00.000Z',
+                scheduledDate: '2026-05-10T00:00:00.000Z',
+                scheduledAt: '2026-05-09T00:00:00.000Z',
+                completedAt: '2026-05-10T08:00:00.000Z',
+                verifiedAt: '2026-05-10T09:00:00.000Z',
+                canceledAt: null,
+                imageUrls: ['https://example.com/watering.jpg'],
+                completionNotes: 'Biljka je zalivena nakon pregleda tla.',
+                targetLabel: 'Polje 1 • Raised Bed 1',
+                statusHistory: [
+                    {
+                        status: 'new',
+                        changedAt: '2026-05-09T00:00:00.000Z',
+                    },
+                    {
+                        status: 'planned',
+                        changedAt: '2026-05-09T00:00:00.000Z',
+                    },
+                    {
+                        status: 'completed',
+                        changedAt: '2026-05-10T09:00:00.000Z',
+                    },
+                ],
+            },
+            {
+                id: 902,
+                entityId: wateringOperation.id,
+                entityTypeName: 'operation',
+                raisedBedId: 1,
+                raisedBedFieldId: 99,
+                status: 'completed',
+                createdAt: '2026-05-10T00:00:00.000Z',
+                scheduledDate: null,
+                scheduledAt: null,
+                completedAt: '2026-05-10T08:00:00.000Z',
+                verifiedAt: '2026-05-10T09:00:00.000Z',
+                canceledAt: null,
+                imageUrls: [],
+                completionNotes: 'Ovo je zapis za drugo polje.',
+                targetLabel: 'Polje 99 • Raised Bed 1',
+                statusHistory: [
+                    {
+                        status: 'completed',
+                        changedAt: '2026-05-10T09:00:00.000Z',
+                    },
+                ],
+            },
+        ],
+    };
+}
+
 function plantedSownWithScheduledScenario(): RaisedBedScenario {
     return {
         fields: [
@@ -506,6 +577,38 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(
             dialog.getByRole('tab', { name: /Radnje/ }),
         ).toHaveAttribute('aria-selected', 'true');
+    });
+
+    test('diary tab shows filtered operation history with photos and notes', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedGrowingWithOperationHistoryScenario()}
+                positionIndex={0}
+                enableRaisedBedImageAI
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        await dialog.getByRole('tab', { name: /Dnevnik/ }).click();
+
+        await expect(dialog.getByText('Zalijevanje')).toBeVisible();
+        await expect(
+            dialog.getByText('Biljka je zalivena nakon pregleda tla.'),
+        ).toBeVisible();
+        await expect(dialog.locator('[data-operation-images]')).toBeVisible();
+        await expect(
+            dialog.getByRole('button', {
+                name: /Pitaj suncokret za savjete/u,
+            }),
+        ).toBeVisible();
+        await expect(
+            dialog.getByText('Ovo je zapis za drugo polje.'),
+        ).toHaveCount(0);
     });
 
     test('lifecycle modal opens status change popover from current state', async ({

@@ -274,6 +274,8 @@ function serializeGardenOperation(
         completedAt: operation.completedAt?.toISOString() ?? null,
         verifiedAt: operation.verifiedAt?.toISOString() ?? null,
         canceledAt: operation.canceledAt?.toISOString() ?? null,
+        imageUrls: operation.imageUrls ?? [],
+        completionNotes: operation.completionNotes ?? null,
         targetLabel:
             (operation.raisedBedFieldId
                 ? targetsByRaisedBedFieldId.get(operation.raisedBedFieldId)
@@ -344,7 +346,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId/operations',
         describeRoute({
             description:
-                'Get garden operations for timeline and history with cursor pagination',
+                'Get garden operations for timeline and history with cursor pagination and optional raised bed or field filters',
         }),
         zValidator(
             'param',
@@ -358,13 +360,22 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 cursor: z.coerce.number().int().min(0).optional(),
                 limit: z.coerce.number().int().min(1).max(50).optional(),
                 includeCompleted: queryBooleanSchema.optional(),
+                raisedBedId: z.coerce.number().int().min(1).optional(),
+                raisedBedFieldId: z.coerce.number().int().min(1).optional(),
+                positionIndex: z.coerce.number().int().min(0).optional(),
             }),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId } = context.req.valid('param');
-            const { cursor, limit, includeCompleted } =
-                context.req.valid('query');
+            const {
+                cursor,
+                limit,
+                includeCompleted,
+                raisedBedId,
+                raisedBedFieldId,
+                positionIndex,
+            } = context.req.valid('query');
             const gardenIdNumber = Number.parseInt(gardenId, 10);
 
             if (Number.isNaN(gardenIdNumber)) {
@@ -378,9 +389,51 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
+            const scopedRaisedBed = raisedBedId
+                ? garden.raisedBeds.find(
+                      (raisedBed) => raisedBed.id === raisedBedId,
+                  )
+                : undefined;
+
+            if (raisedBedId && !scopedRaisedBed) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            if (positionIndex !== undefined && !raisedBedId) {
+                return context.json(
+                    { error: 'raisedBedId is required with positionIndex' },
+                    400,
+                );
+            }
+
+            const positionFieldIds =
+                scopedRaisedBed && positionIndex !== undefined
+                    ? scopedRaisedBed.fields
+                          .filter(
+                              (field) => field.positionIndex === positionIndex,
+                          )
+                          .map((field) => field.id)
+                    : undefined;
+            const raisedBedFieldIds = raisedBedFieldId
+                ? [raisedBedFieldId]
+                : positionFieldIds;
+
+            if (
+                positionIndex !== undefined &&
+                raisedBedFieldIds?.length === 0
+            ) {
+                return context.json({
+                    items: [],
+                    nextCursor: null,
+                    total: 0,
+                });
+            }
+
             const operationsPage = await getOperationsPage({
                 accountId,
                 gardenId: gardenIdNumber,
+                raisedBedId,
+                raisedBedFieldIds,
                 cursor,
                 limit,
                 includeCompleted,

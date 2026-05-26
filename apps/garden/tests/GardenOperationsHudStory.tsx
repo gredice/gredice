@@ -3,6 +3,7 @@ import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useMemo } from 'react';
 import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/GameAnalyticsContext';
+import { gardenOperationsQueryKey } from '../../../packages/game/src/hooks/useGardenOperations';
 import type { ShoppingCartItemData } from '../../../packages/game/src/hooks/useShoppingCart';
 import { GardenOperationsHud } from '../../../packages/game/src/hud/GardenOperationsHud';
 import {
@@ -166,6 +167,8 @@ function createQueryClient() {
                         completedAt: null,
                         verifiedAt: null,
                         canceledAt: null,
+                        imageUrls: [],
+                        completionNotes: null,
                         targetLabel: 'Polje 1 • Raised Bed 1',
                         statusHistory: [
                             {
@@ -215,11 +218,19 @@ function createQueryClient() {
         ],
     });
     queryClient.setQueryData(
-        ['garden-operations', TEST_GARDEN_ID, false, 10],
+        gardenOperationsQueryKey({
+            gardenId: TEST_GARDEN_ID,
+            includeCompleted: false,
+            pageSize: 10,
+        }),
         pendingOperationPage,
     );
     queryClient.setQueryData(
-        ['garden-operations', TEST_GARDEN_ID, true, 20],
+        gardenOperationsQueryKey({
+            gardenId: TEST_GARDEN_ID,
+            includeCompleted: true,
+            pageSize: 20,
+        }),
         emptyOperationPage,
     );
 
