@@ -1,9 +1,14 @@
 import {
+    plantFieldStatusLabel,
+    userAllowedPlantStatusTransitions,
+} from '@gredice/js/plants';
+import {
     Book,
     Check,
     ExternalLink,
     Hammer,
     History,
+    Home,
     MoreHorizontal,
     Sprout,
     Warning,
@@ -27,6 +32,14 @@ import {
     findRaisedBedOccupiedField,
     type RaisedBedFieldPlantHistoryEntry,
 } from '../../utils/raisedBedFields';
+import { GreenhouseSeedlingPlantVisual } from './GreenhouseSeedlingPlantVisual';
+import { GreenhouseSeedlingProgress } from './GreenhouseSeedlingProgress';
+import { GreenhouseSeedlingTransplantAction } from './GreenhouseSeedlingTransplantAction';
+import {
+    isGreenhouseSeedlingField,
+    useGreenhouseSeedlingProgressData,
+} from './greenhouseSeedlings';
+import { plantFieldStatusEmoji } from './PlantFieldStatusEmoji';
 import { RaisedBedFieldIconStack } from './RaisedBedFieldIconStack';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import {
@@ -35,7 +48,9 @@ import {
 } from './RaisedBedFieldLifecycleTab';
 import { RaisedBedFieldOperationsTab } from './RaisedBedFieldOperationsTab';
 import { RaisedBedFieldPlantHistoryModal } from './RaisedBedFieldPlantHistoryModal';
+import { RaisedBedFieldStatusChange } from './RaisedBedFieldStatusChange';
 import { RaisedBedOperationHistoryList } from './RaisedBedOperationHistoryList';
+import { RecommendationsCard } from './RecommendationsCard';
 import {
     parseScheduledSowingDateValue,
     ScheduledSowingDateBadge,
@@ -75,6 +90,12 @@ export function RaisedBedFieldItemPlanted({
     const plantSortId = field?.plantSortId;
     const { data: plantSort, isLoading: isPlantSortLoading } =
         usePlantSort(plantSortId);
+    const lifecycleData = useRaisedBedFieldLifecycleData(
+        raisedBedId,
+        positionIndex,
+        isHistorical,
+        fieldOverride,
+    );
     const {
         germinationValue,
         germinationPercentage,
@@ -82,12 +103,14 @@ export function RaisedBedFieldItemPlanted({
         growthPercentage,
         harvestValue,
         harvestPercentage,
-    } = useRaisedBedFieldLifecycleData(
-        raisedBedId,
-        positionIndex,
-        isHistorical,
-        fieldOverride,
+    } = lifecycleData;
+    const plantAttributes = plantSort?.information.plant.attributes;
+    const greenhouseSeedlingLifecycleData = useGreenhouseSeedlingProgressData(
+        field,
+        plantAttributes,
     );
+    const isGreenhouseSeedling =
+        !isHistorical && isGreenhouseSeedlingField(field);
     const isHarvested = field?.plantHarvestedDate;
     const [internalOpen, setInternalOpen] = useState(false);
     const [activeTab, setActiveTab] =
@@ -186,22 +209,30 @@ export function RaisedBedFieldItemPlanted({
         plantSort.information.name,
     );
     const title = `${isHistorical ? 'Prethodna biljka' : 'Biljka'} "${plantSort.information.name}"`;
+    const modalTitle = isGreenhouseSeedling
+        ? `Sadnica u stakleniku "${plantSort.information.name}"`
+        : title;
     const fieldBadge = isHistorical
         ? {
               className: 'bg-muted',
               icon: <History className="size-4 text-muted-foreground" />,
           }
-        : harvestValue && !isHarvested
+        : isGreenhouseSeedling
           ? {
-                className: 'bg-blue-600',
-                icon: <Sprout className="size-4 text-white" />,
+                className: 'bg-emerald-600',
+                icon: <Home className="size-4 text-white" />,
             }
-          : isHarvested
+          : harvestValue && !isHarvested
             ? {
-                  className: 'bg-green-600',
-                  icon: <Check className="size-4 text-white" />,
+                  className: 'bg-blue-600',
+                  icon: <Sprout className="size-4 text-white" />,
               }
-            : null;
+            : isHarvested
+              ? {
+                    className: 'bg-green-600',
+                    icon: <Check className="size-4 text-white" />,
+                }
+              : null;
     const scheduledSowingDate = parseScheduledSowingDateValue(
         field.plantScheduledDate,
     );
@@ -216,6 +247,50 @@ export function RaisedBedFieldItemPlanted({
     const shouldShowIndicatorStack =
         triggerVariant === 'field' &&
         (Boolean(fieldBadge) || plantHistory.length > 0);
+    const greenhouseRecommendationStatus =
+        isGreenhouseSeedling &&
+        (field.plantStatus === 'pendingVerification' ||
+            field.plantStatus === 'sowed' ||
+            field.plantStatus === 'sprouted')
+            ? field.plantStatus
+            : undefined;
+    const localizedStatus = plantFieldStatusLabel(
+        field.plantStatus ?? undefined,
+    );
+    const canChangeStatus = Boolean(
+        field.plantStatus &&
+            userAllowedPlantStatusTransitions[field.plantStatus]?.length,
+    );
+    const statusContent = (
+        <>
+            <span className="text-2xl leading-none" aria-hidden="true">
+                {plantFieldStatusEmoji(field.plantStatus ?? undefined)}
+            </span>
+            <Typography level="body1" className="text-center" semiBold>
+                {localizedStatus.shortLabel}
+            </Typography>
+        </>
+    );
+    const statusTrigger = field.active ? (
+        <button
+            type="button"
+            className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex flex-col gap-1 items-center justify-center pointer-events-auto transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
+            aria-label={
+                canChangeStatus
+                    ? `Promijeni stanje biljke: ${localizedStatus.shortLabel}`
+                    : `Stanje biljke: ${localizedStatus.shortLabel}`
+            }
+        >
+            {statusContent}
+        </button>
+    ) : (
+        <Stack
+            alignItems="center"
+            className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex items-center justify-center"
+        >
+            {statusContent}
+        </Stack>
+    );
     const avatarTrigger = (
         <button
             type="button"
@@ -234,19 +309,48 @@ export function RaisedBedFieldItemPlanted({
             />
         </button>
     );
+    const greenhouseSeedlingSegments = [
+        {
+            value: greenhouseSeedlingLifecycleData.germinationValue,
+            percentage: greenhouseSeedlingLifecycleData.germinationPercentage,
+            color: 'stroke-yellow-500',
+            trackColor: 'stroke-yellow-50 dark:stroke-yellow-50/80',
+            pulse: !field.plantGrowthDate,
+            borderColor: 'stroke-yellow-500',
+        },
+        {
+            value: greenhouseSeedlingLifecycleData.seedlingValue,
+            percentage: greenhouseSeedlingLifecycleData.seedlingPercentage,
+            color: 'stroke-emerald-500',
+            trackColor: 'stroke-emerald-50 dark:stroke-emerald-50/80',
+            pulse:
+                Boolean(field.plantGrowthDate) &&
+                greenhouseSeedlingLifecycleData.seedlingValue < 100,
+            borderColor: 'stroke-emerald-500',
+        },
+    ];
     const fieldTrigger = (
         <RaisedBedFieldItemButton positionIndex={positionIndex}>
             <SegmentedCircularProgress
                 size={70}
                 strokeWidth={4}
-                segments={segments}
+                segments={
+                    isGreenhouseSeedling ? greenhouseSeedlingSegments : segments
+                }
             >
-                <PlantOrSortImage
-                    plantSort={plantSort}
-                    className="absolute top-1/2 start-1/2 transform -translate-y-1/2 -translate-x-1/2"
-                    width={52}
-                    height={52}
-                />
+                {isGreenhouseSeedling ? (
+                    <GreenhouseSeedlingPlantVisual
+                        plantSort={plantSort}
+                        imageSize={52}
+                    />
+                ) : (
+                    <PlantOrSortImage
+                        plantSort={plantSort}
+                        className="absolute top-1/2 start-1/2 transform -translate-y-1/2 -translate-x-1/2"
+                        width={52}
+                        height={52}
+                    />
+                )}
             </SegmentedCircularProgress>
             {shouldShowScheduledSowingDate && scheduledSowingDate && (
                 <ScheduledSowingDateBadge date={scheduledSowingDate} />
@@ -319,17 +423,24 @@ export function RaisedBedFieldItemPlanted({
                 }
                 onOpenChange?.(nextOpen);
             }}
-            title={title}
+            title={modalTitle}
             className="max-w-xl overflow-x-hidden md:border-tertiary md:border-b-4"
             trigger={trigger ?? undefined}
         >
             <Stack spacing={4} className="min-w-0 max-w-full">
                 <Row spacing={4}>
-                    <PlantOrSortImage
-                        plantSort={plantSort}
-                        width={60}
-                        height={60}
-                    />
+                    {isGreenhouseSeedling ? (
+                        <GreenhouseSeedlingPlantVisual
+                            plantSort={plantSort}
+                            imageSize={60}
+                        />
+                    ) : (
+                        <PlantOrSortImage
+                            plantSort={plantSort}
+                            width={60}
+                            height={60}
+                        />
+                    )}
                     <Stack spacing={1} className="min-w-0 flex-1">
                         <Typography
                             level="h4"
@@ -420,13 +531,67 @@ export function RaisedBedFieldItemPlanted({
                         )}
                     </TabsContent>
                     <TabsContent value="lifecycle">
-                        <RaisedBedFieldLifecycleTab
-                            raisedBedId={raisedBedId}
-                            positionIndex={positionIndex}
-                            fieldOverride={fieldOverride}
-                            includeInactive={isHistorical}
-                            onShowOperations={() => setActiveTab('operations')}
-                        />
+                        <Stack spacing={4}>
+                            {isGreenhouseSeedling ? (
+                                <GreenhouseSeedlingProgress
+                                    field={field}
+                                    plantAttributes={plantAttributes}
+                                    lifecycleData={
+                                        greenhouseSeedlingLifecycleData
+                                    }
+                                    plantDetailsUrl={plantDetailsUrl}
+                                    statusTrigger={
+                                        field.active ? (
+                                            <RaisedBedFieldStatusChange
+                                                raisedBedId={raisedBedId}
+                                                positionIndex={positionIndex}
+                                                currentStatus={
+                                                    field.plantStatus ??
+                                                    undefined
+                                                }
+                                                trigger={statusTrigger}
+                                            />
+                                        ) : (
+                                            statusTrigger
+                                        )
+                                    }
+                                />
+                            ) : (
+                                <RaisedBedFieldLifecycleTab
+                                    raisedBedId={raisedBedId}
+                                    positionIndex={positionIndex}
+                                    fieldOverride={fieldOverride}
+                                    includeInactive={isHistorical}
+                                    onShowOperations={() =>
+                                        setActiveTab('operations')
+                                    }
+                                />
+                            )}
+                            {isGreenhouseSeedling && garden && (
+                                <GreenhouseSeedlingTransplantAction
+                                    gardenId={garden.id}
+                                    raisedBedId={raisedBedId}
+                                    positionIndex={positionIndex}
+                                />
+                            )}
+                            {isGreenhouseSeedling &&
+                                garden &&
+                                greenhouseRecommendationStatus &&
+                                typeof field.plantSortId === 'number' && (
+                                    <RecommendationsCard
+                                        onShowOperations={() =>
+                                            setActiveTab('operations')
+                                        }
+                                        gardenId={garden.id}
+                                        raisedBedId={raisedBedId}
+                                        positionIndex={positionIndex}
+                                        plantStatus={
+                                            greenhouseRecommendationStatus
+                                        }
+                                        plantSortId={field.plantSortId}
+                                    />
+                                )}
+                        </Stack>
                     </TabsContent>
                 </Tabs>
                 <button

@@ -10,6 +10,7 @@ type RaisedBedFieldPlantLifecycleLike = {
     plantScheduledDate?: Date | string | null;
     plantSowDate?: Date | string | null;
     plantStatus?: string | null;
+    sowingLocation?: 'direct' | 'greenhouse' | null;
     startedAt?: Date | string | null;
     stoppedDate?: Date | string | null;
     toBeRemoved?: boolean | null;
