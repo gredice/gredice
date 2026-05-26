@@ -71,6 +71,7 @@ type MovingBirdState = FlightFlapState & {
     motion: BirdMotion;
     airUntil: number | null;
     airWaypointIndex: number;
+    speedProfile: FlightSpeedProfile;
 };
 
 type CirclingBirdState = FlightFlapState & {
@@ -92,17 +93,38 @@ type SettledBirdState = {
 
 type BirdRuntimeState = MovingBirdState | CirclingBirdState | SettledBirdState;
 
+type FlightSpeedProfile = {
+    flutter: number;
+    phase: number;
+    total: number;
+};
+
+type BirdRigNode = {
+    baseRotationX: number;
+    baseRotationZ: number;
+    object: Object3D | null;
+};
+
+type BirdRigParts = {
+    flightLegPoseAmount: number;
+    footLeft: BirdRigNode;
+    footRight: BirdRigNode;
+    legPivotLeft: BirdRigNode;
+    legPivotRight: BirdRigNode;
+};
+
 const birdScale = 0.28;
 const birdGroundLift = 0.02;
 const birdHousePerchYOffset = 1.3;
-const birdHouseEntranceYawOffset = 0;
+const birdHouseEntranceYawOffset = Math.PI;
 const birdFlightFlapLeadSeconds = 0.2;
 const birdFlightFlapSpeed = 2.4;
-const birdFlightSpeedBlocksPerSecond = 1.35;
+const birdFlightSpeedBlocksPerSecond = 1.62;
 const birdFlightTurnDamping = 3.4;
 const birdFlightLookAheadProgress = 0.045;
 const birdWalkSpeedBlocksPerSecond = 0.24;
-const birdCircleSpeedBlocksPerSecond = 1.2;
+const birdCircleSpeedBlocksPerSecond = 1.35;
+const birdFlightLegTuckDamping = 10;
 const airMinHeight = 1.45;
 const airHeightVariance = 1.05;
 const airArcMaxHeight = 1;
@@ -462,9 +484,9 @@ function movementDuration(
     }
 
     const speed = isBirdNight(timeOfDay)
-        ? birdFlightSpeedBlocksPerSecond * 0.78
+        ? birdFlightSpeedBlocksPerSecond * 0.82
         : birdFlightSpeedBlocksPerSecond;
-    return MathUtils.clamp(distance / speed, 1.25, 8.5);
+    return MathUtils.clamp(distance / speed, 1.05, 7.6);
 }
 
 function createFlightTangent(from: Vector3, to: Vector3) {
@@ -522,6 +544,62 @@ function flightPositionAt(runtime: MovingBirdState, progress: number) {
         MathUtils.clamp(distance * 0.12, 0.15, airArcMaxHeight);
     position.y += arc;
     return position;
+}
+
+function flightSpeedWeight(profile: FlightSpeedProfile, progress: number) {
+    const cruiseLift = 0.78 + Math.sin(progress * Math.PI) * 0.42;
+    const wingPulse =
+        1 +
+        Math.sin(progress * fullTurn * 2.35 + profile.phase) * profile.flutter +
+        Math.sin(progress * fullTurn * 4.7 + profile.phase * 0.72) *
+            profile.flutter *
+            0.42;
+    return Math.max(0.42, cruiseLift * wingPulse);
+}
+
+function integrateFlightSpeedProfile(
+    profile: FlightSpeedProfile,
+    progress: number,
+) {
+    const steps = 10;
+    const stepSize = progress / steps;
+    let total = 0;
+    for (let step = 0; step < steps; step += 1) {
+        const start = step * stepSize;
+        const end = start + stepSize;
+        total +=
+            ((flightSpeedWeight(profile, start) +
+                flightSpeedWeight(profile, end)) /
+                2) *
+            stepSize;
+    }
+    return total;
+}
+
+function createFlightSpeedProfile(random: () => number): FlightSpeedProfile {
+    const profile = {
+        flutter: 0.055 + random() * 0.035,
+        phase: random() * fullTurn,
+        total: 1,
+    };
+    profile.total = integrateFlightSpeedProfile(profile, 1);
+    return profile;
+}
+
+function flightProgressAt(runtime: MovingBirdState, progress: number) {
+    if (progress <= 0) {
+        return 0;
+    }
+    if (progress >= 1) {
+        return 1;
+    }
+
+    return MathUtils.clamp(
+        integrateFlightSpeedProfile(runtime.speedProfile, progress) /
+            runtime.speedProfile.total,
+        0,
+        1,
+    );
 }
 
 function facePosition(
@@ -699,6 +777,7 @@ function makeMovingState({
         motion,
         airUntil: nextAirUntil,
         airWaypointIndex,
+        speedProfile: createFlightSpeedProfile(random),
         flapBurstDuration: 0.7 + random() * 0.16,
         flapBurstStartedAt: motion === 'fly' ? now : null,
         nextFlapBurstAt: motion === 'fly' ? now : Number.POSITIVE_INFINITY,
@@ -858,6 +937,63 @@ function isMesh(object: Object3D): object is Mesh {
     return object instanceof Mesh;
 }
 
+function getBirdRigNode(scene: Object3D, name: string): BirdRigNode {
+    const object = scene.getObjectByName(name) ?? null;
+    return {
+        baseRotationX: object?.rotation.x ?? 0,
+        baseRotationZ: object?.rotation.z ?? 0,
+        object,
+    };
+}
+
+function updateFlightLegPose({
+    delta,
+    flying,
+    now,
+    rig,
+    seed,
+}: {
+    delta: number;
+    flying: boolean;
+    now: number;
+    rig: BirdRigParts;
+    seed: number;
+}) {
+    const targetAmount = flying ? 1 : 0;
+    rig.flightLegPoseAmount = MathUtils.damp(
+        rig.flightLegPoseAmount,
+        targetAmount,
+        birdFlightLegTuckDamping,
+        delta,
+    );
+
+    const amount = rig.flightLegPoseAmount;
+    const pulse = Math.sin(now * 13.5 + seed) * 0.045 * amount;
+    const legRotationX = (1.08 + pulse) * amount;
+    const footRotationX = -0.42 * amount;
+
+    if (rig.legPivotLeft.object) {
+        rig.legPivotLeft.object.rotation.x =
+            rig.legPivotLeft.baseRotationX + legRotationX;
+        rig.legPivotLeft.object.rotation.z =
+            rig.legPivotLeft.baseRotationZ + 0.08 * amount;
+    }
+    if (rig.legPivotRight.object) {
+        rig.legPivotRight.object.rotation.x =
+            rig.legPivotRight.baseRotationX + legRotationX;
+        rig.legPivotRight.object.rotation.z =
+            rig.legPivotRight.baseRotationZ - 0.08 * amount;
+    }
+    if (rig.footLeft.object) {
+        rig.footLeft.object.rotation.x =
+            rig.footLeft.baseRotationX + footRotationX;
+    }
+    if (rig.footRight.object) {
+        rig.footRight.object.rotation.x =
+            rig.footRight.baseRotationX + footRotationX;
+    }
+}
+
 function Bird({ habitat }: { habitat: BirdHabitat }) {
     const gltf = useGameGLTF('BirdSmall');
     const groupRef = useRef<Group>(null);
@@ -867,7 +1003,7 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     const [isFlapping, setIsFlapping] = useState(false);
     const timeOfDay = useGameState((state) => state.timeOfDay);
 
-    const birdScene = useMemo(() => {
+    const birdModel = useMemo(() => {
         const clone = gltf.scene.clone(true);
         clone.traverse((object) => {
             if (isMesh(object)) {
@@ -875,9 +1011,18 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
                 object.receiveShadow = true;
             }
         });
-        return clone;
+        return {
+            rig: {
+                flightLegPoseAmount: 0,
+                footLeft: getBirdRigNode(clone, 'BirdSmall_Foot_L'),
+                footRight: getBirdRigNode(clone, 'BirdSmall_Foot_R'),
+                legPivotLeft: getBirdRigNode(clone, 'BirdSmall_LegPivot_L'),
+                legPivotRight: getBirdRigNode(clone, 'BirdSmall_LegPivot_R'),
+            } satisfies BirdRigParts,
+            scene: clone,
+        };
     }, [gltf.scene]);
-    const { actions } = useAnimations(gltf.animations, birdScene);
+    const { actions } = useAnimations(gltf.animations, birdModel.scene);
 
     useEffect(() => {
         const idleAction = actions.BirdSmall_Idle;
@@ -984,12 +1129,14 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
                 0,
                 1,
             );
+            const movementProgress =
+                runtime.motion === 'fly'
+                    ? flightProgressAt(runtime, progress)
+                    : smoothProgress(progress);
             const nextPosition =
                 runtime.motion === 'fly'
-                    ? flightPositionAt(runtime, progress)
-                    : runtime.from
-                          .clone()
-                          .lerp(runtime.to, smoothProgress(progress));
+                    ? flightPositionAt(runtime, movementProgress)
+                    : runtime.from.clone().lerp(runtime.to, movementProgress);
 
             if (runtime.motion === 'walk') {
                 nextPosition.y +=
@@ -1005,10 +1152,13 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
                 runtime.motion === 'fly'
                     ? flightPositionAt(
                           runtime,
-                          MathUtils.clamp(
-                              progress + birdFlightLookAheadProgress,
-                              0,
-                              1,
+                          flightProgressAt(
+                              runtime,
+                              MathUtils.clamp(
+                                  progress + birdFlightLookAheadProgress,
+                                  0,
+                                  1,
+                              ),
                           ),
                       )
                     : runtime.to,
@@ -1150,9 +1300,22 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
         });
     });
 
+    useFrame(({ clock }, delta) => {
+        const runtime = runtimeRef.current;
+        updateFlightLegPose({
+            delta,
+            flying:
+                runtime?.phase === 'circling' ||
+                (runtime?.phase === 'moving' && runtime.motion === 'fly'),
+            now: clock.elapsedTime,
+            rig: birdModel.rig,
+            seed: habitat.seed,
+        });
+    });
+
     return (
         <group ref={groupRef} scale={birdScale}>
-            <primitive object={birdScene} />
+            <primitive object={birdModel.scene} />
         </group>
     );
 }

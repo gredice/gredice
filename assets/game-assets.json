@@ -330,6 +330,7 @@
             "name": "CactusBarrel",
             "source": "CactusBarrel.blend",
             "output": "CactusBarrel.glb",
+            "version": "13eb69f97166",
             "preload": "lazy",
             "objects": ["Cactus_Barrel_Body", "Cactus_Barrel_Spines"]
         },
@@ -347,6 +348,7 @@
             "name": "CactusPricklyPear",
             "source": "CactusPricklyPear.blend",
             "output": "CactusPricklyPear.glb",
+            "version": "20b55dc5e922",
             "preload": "lazy",
             "objects": [
                 "Cactus_PricklyPear_Body",
