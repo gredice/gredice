@@ -15,7 +15,7 @@ const lidOpenRotation = -Math.PI / 2;
 
 export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials } = useGameGLTF('GardenBox');
-    const [animatedRotation] = useAnimatedEntityRotation(rotation);
+    const [animatedRotation] = useAnimatedEntityRotation(rotation + 2);
     const currentStackHeight = useStackHeight(stack, block);
     const hovered =
         useHoveredBlockStore((state) => state.hoveredBlock) === block;
