@@ -18,6 +18,7 @@ import {
 } from './BlockTerrainCorner';
 import { Bucket } from './Bucket';
 import { Bush } from './Bush';
+import { Cactus } from './Cactus';
 import { Composter } from './Composter';
 import { Fence } from './Fence';
 import { GardenBox } from './GardenBox';
@@ -89,6 +90,9 @@ export const entityNameMap: Record<
     ShovelSmall: ShovelSmall,
     Snowman: Snowman,
     Tulip: Tulip,
+    CactusBarrel: Cactus,
+    CactusColumnCluster: Cactus,
+    CactusPricklyPear: Cactus,
     BaleHey: BaleHey,
     PotLowBowl: Pot,
     PotRoundedBowl: Pot,

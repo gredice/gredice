@@ -327,6 +327,33 @@
             "objects": ["Tulip"]
         },
         {
+            "name": "CactusBarrel",
+            "source": "CactusBarrel.blend",
+            "output": "CactusBarrel.glb",
+            "preload": "lazy",
+            "objects": ["Cactus_Barrel_Body", "Cactus_Barrel_Spines"]
+        },
+        {
+            "name": "CactusColumnCluster",
+            "source": "CactusColumnCluster.blend",
+            "output": "CactusColumnCluster.glb",
+            "preload": "lazy",
+            "objects": [
+                "Cactus_ColumnCluster_Body",
+                "Cactus_ColumnCluster_Spines"
+            ]
+        },
+        {
+            "name": "CactusPricklyPear",
+            "source": "CactusPricklyPear.blend",
+            "output": "CactusPricklyPear.glb",
+            "preload": "lazy",
+            "objects": [
+                "Cactus_PricklyPear_Body",
+                "Cactus_PricklyPear_Spines"
+            ]
+        },
+        {
             "name": "PotLowBowl",
             "source": "PotLowBowl.blend",
             "output": "PotLowBowl.glb",
