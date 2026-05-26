@@ -119,6 +119,13 @@ jobs:
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
               - turbo.json
+            app_desktop:
+              - apps/desktop/**
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - turbo.json
             packages_storage:
               - packages/storage/**
               - .github/workflows/**

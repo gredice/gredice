@@ -1,9 +1,6 @@
 import { cookies } from 'next/headers';
-import {
-    cookieDomain,
-    refreshTokenCookieName,
-    refreshTokenExpiryMs,
-} from './sessionConfig';
+import { authCookieSettings } from './cookieSecurity';
+import { refreshTokenCookieName, refreshTokenExpiryMs } from './sessionConfig';
 
 export async function getRefreshTokenCookie() {
     const cookieStore = await cookies();
@@ -13,22 +10,24 @@ export async function getRefreshTokenCookie() {
 
 export async function setRefreshCookie(token: string) {
     const cookieStore = await cookies();
+    const cookieSettings = await authCookieSettings();
     cookieStore.set(refreshTokenCookieName, token, {
         httpOnly: true,
-        secure: true,
+        secure: cookieSettings.secure,
         sameSite: 'lax',
-        domain: cookieDomain,
+        domain: cookieSettings.domain,
         expires: new Date(Date.now() + refreshTokenExpiryMs),
     });
 }
 
 export async function clearRefreshCookie() {
     const cookieStore = await cookies();
+    const cookieSettings = await authCookieSettings();
     cookieStore.set(refreshTokenCookieName, '', {
         httpOnly: true,
-        secure: true,
+        secure: cookieSettings.secure,
         sameSite: 'lax',
-        domain: cookieDomain,
+        domain: cookieSettings.domain,
         maxAge: 0,
     });
 }
