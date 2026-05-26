@@ -4,6 +4,8 @@ import test from 'node:test';
 import {
     countAiRequestEventsSince,
     createEvent,
+    getAiAnalysisEvents,
+    getAiAnalysisTotals,
     getEvents,
     getLatestEvents,
     knownEvents,
@@ -164,6 +166,68 @@ test('countAiRequestEventsSince counts account-kind events with legacy aggregate
     });
 
     assert.strictEqual(count, 2);
+});
+
+test('AI analysis analytics includes raised-bed and field events', async () => {
+    createTestDb();
+    const raisedBedAggregateId = `raised-bed-${randomUUID()}`;
+    const fieldAggregateId = `${raisedBedAggregateId}|0`;
+    const from = new Date('2036-03-01T00:00:00.000Z');
+    const to = new Date('2036-03-31T23:59:59.999Z');
+
+    await createEvent({
+        ...knownEvents.raisedBeds.aiAnalysisV1(
+            raisedBedAggregateId,
+            aiAnalysisData({
+                model: 'raised-bed-model',
+                inputTokens: 100,
+                outputTokens: 50,
+                totalTokens: 150,
+            }),
+        ),
+        createdAt: new Date('2036-03-03T12:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.raisedBedFields.aiAnalysisV1(
+            fieldAggregateId,
+            aiAnalysisData({
+                model: 'field-model',
+                inputTokens: 200,
+                outputTokens: 100,
+                totalTokens: 300,
+            }),
+        ),
+        createdAt: new Date('2036-03-04T12:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.accounts.sunflowersEarnedV1(
+            `unrelated-account-${randomUUID()}`,
+            {
+                amount: 10,
+                reason: 'unrelated',
+            },
+        ),
+        createdAt: new Date('2036-03-05T12:00:00.000Z'),
+    });
+
+    const events = await getAiAnalysisEvents({ from, to });
+
+    assert.deepStrictEqual(
+        events.map((event) => event.type),
+        [
+            knownEventTypes.raisedBedFields.aiAnalysis,
+            knownEventTypes.raisedBeds.aiAnalysis,
+        ],
+    );
+
+    const allTotals = await getAiAnalysisTotals({ from, to });
+    assert.strictEqual(allTotals.count, 2);
+
+    const filteredTotals = await getAiAnalysisTotals({
+        from: new Date('2036-03-04T00:00:00.000Z'),
+        to,
+    });
+    assert.strictEqual(filteredTotals.count, 1);
 });
 
 test('getLatestEvents can list multiple event types for an aggregate', async () => {
