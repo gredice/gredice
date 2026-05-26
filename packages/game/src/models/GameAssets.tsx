@@ -127,6 +127,12 @@ export type GLTFResult = GLTF & {
         Stone_Large: THREE.Mesh;
         Stool: THREE.Mesh;
         Tulip: THREE.Mesh;
+        Cactus_Barrel_Body: THREE.Mesh;
+        Cactus_Barrel_Spines: THREE.Mesh;
+        Cactus_ColumnCluster_Body: THREE.Mesh;
+        Cactus_ColumnCluster_Spines: THREE.Mesh;
+        Cactus_PricklyPear_Body: THREE.Mesh;
+        Cactus_PricklyPear_Spines: THREE.Mesh;
         PotVariant_01_Low_Bowl: THREE.Mesh;
         PotVariant_Soil_01: THREE.Mesh;
         PotVariant_02_Rounded_Bowl: THREE.Mesh;
@@ -159,6 +165,8 @@ export type GLTFResult = GLTF & {
         'Material.BirdSmall.Leg': THREE.MeshStandardMaterial;
         'Material.BirdSmall.Pupil': THREE.MeshStandardMaterial;
         'Material.BirdSmall.Wing': THREE.MeshStandardMaterial;
+        'Material.Cactus.Body': THREE.MeshStandardMaterial;
+        'Material.Cactus.Spines': THREE.MeshStandardMaterial;
         'Material.ColorPaletteMain': THREE.MeshStandardMaterial;
         'Material.Dirt': THREE.MeshStandardMaterial;
         'Material.Dirt.001': THREE.MeshStandardMaterial;
