@@ -21,6 +21,7 @@ import {
     getGarden,
     getGardenBlocks,
     getGardenStack,
+    getGardenStackForUpdate,
     getOperations,
     getOperationsPage,
     getRaisedBed,
@@ -1329,8 +1330,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Garden box not found' }, 404);
             }
 
-            const gardenBoxStack = garden.stacks.find((stack) =>
-                stack.blocks.includes(gardenBoxBlockId),
+            const gardenBoxStack = garden.stacks.find(
+                (stack) =>
+                    !stack.isDeleted && stack.blocks.includes(gardenBoxBlockId),
             );
             if (!gardenBoxStack) {
                 return context.json(
@@ -1363,11 +1365,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
             const inventoryEntityId = inventoryBlock.id.toString();
-            const nextSourceBlocks = sourceStack.blocks.filter(
-                (_sourceBlockId, index) => index !== blockIndex,
-            );
+            const result = await storage().transaction(async (tx) => {
+                const currentSourceStack = await getGardenStackForUpdate(
+                    gardenIdNumber,
+                    {
+                        x: sourcePosition.x,
+                        y: sourcePosition.z,
+                    },
+                    tx,
+                );
+                if (
+                    !currentSourceStack ||
+                    currentSourceStack.blocks[blockIndex] !== blockId
+                ) {
+                    return {
+                        ok: false,
+                        error: 'Source block no longer matches the garden',
+                        status: 409,
+                    } as const;
+                }
 
-            await storage().transaction(async (tx) => {
+                const nextSourceBlocks = currentSourceStack.blocks.filter(
+                    (_sourceBlockId, index) => index !== blockIndex,
+                );
                 await updateGardenStack(
                     gardenIdNumber,
                     {
@@ -1390,7 +1410,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     },
                     tx,
                 );
+                return { ok: true } as const;
             });
+            if (!result.ok) {
+                return context.json({ error: result.error }, result.status);
+            }
 
             return context.json({
                 gardenBoxBlockId,

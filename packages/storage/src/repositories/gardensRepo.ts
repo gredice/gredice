@@ -1206,6 +1206,28 @@ export async function getGardenStack(
     );
 }
 
+export async function getGardenStackForUpdate(
+    gardenId: number,
+    { x, y }: { x: number; y: number },
+    db: DatabaseClient,
+) {
+    const [stack] = await db
+        .select()
+        .from(gardenStacks)
+        .where(
+            and(
+                eq(gardenStacks.gardenId, gardenId),
+                eq(gardenStacks.positionX, x),
+                eq(gardenStacks.positionY, y),
+                eq(gardenStacks.isDeleted, false),
+            ),
+        )
+        .for('update')
+        .limit(1);
+
+    return stack ?? null;
+}
+
 export async function createGardenStack(
     gardenId: number,
     { x, y }: { x: number; y: number },
@@ -1244,6 +1266,7 @@ export async function updateGardenStack(
                 eq(gardenStacks.gardenId, gardenId),
                 eq(gardenStacks.positionX, stacks.x),
                 eq(gardenStacks.positionY, stacks.y),
+                eq(gardenStacks.isDeleted, false),
             ),
         })
     )?.id;
@@ -1263,6 +1286,7 @@ export async function updateGardenStack(
             and(
                 eq(gardenStacks.gardenId, gardenId),
                 eq(gardenStacks.id, stackId),
+                eq(gardenStacks.isDeleted, false),
             ),
         );
 }
