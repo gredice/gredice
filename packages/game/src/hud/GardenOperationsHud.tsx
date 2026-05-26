@@ -12,6 +12,7 @@ import {
     Inbox,
     ListTodo,
     MailCheck,
+    Navigate,
     ShoppingCart,
 } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
@@ -45,6 +46,7 @@ import {
     type ShoppingCartItemData,
     useShoppingCart,
 } from '../hooks/useShoppingCart';
+import { ScrollView } from '../shared-ui/ScrollView';
 import { useShoppingCartOpenParam } from '../useUrlState';
 
 type OperationData = NonNullable<
@@ -85,6 +87,13 @@ type SowingPlantLifecycleEntry = {
     stoppedDate?: string | Date | null;
     updatedAt?: string | Date | null;
 };
+
+function formatRaisedBedTargetLabel(
+    raisedBedName: string,
+    fieldLabel: string | null,
+) {
+    return fieldLabel ? `${raisedBedName} › ${fieldLabel}` : raisedBedName;
+}
 
 const uiPipeline: GardenOperationStatus[] = [
     'new',
@@ -459,9 +468,10 @@ export function buildSowingOperationItems(
                         canceledAt,
                         imageUrls: [],
                         completionNotes: null,
-                        targetLabel: `Polje ${field.positionIndex + 1} • ${
-                            raisedBed.name
-                        }`,
+                        targetLabel: formatRaisedBedTargetLabel(
+                            raisedBed.name,
+                            `Polje ${field.positionIndex + 1}`,
+                        ),
                         statusHistory: buildSowingStatusHistory(
                             entry,
                             field,
@@ -472,25 +482,6 @@ export function buildSowingOperationItems(
             }),
         ),
     );
-}
-
-function getCartOperationTargetLabel(
-    item: ShoppingCartItemData,
-    garden: CurrentGardenData,
-) {
-    const raisedBed = item.raisedBedId
-        ? garden.raisedBeds.find((bed) => bed.id === item.raisedBedId)
-        : null;
-
-    if (raisedBed && typeof item.positionIndex === 'number') {
-        return `Polje ${item.positionIndex + 1} • ${raisedBed.name}`;
-    }
-
-    if (raisedBed) {
-        return `Gredica: ${raisedBed.name}`;
-    }
-
-    return garden.name || 'Vrt';
 }
 
 function getRaisedBedFieldLabel(
@@ -523,15 +514,17 @@ function getOperationTargetDetails(
         };
     }
 
+    const fieldLabel = getRaisedBedFieldLabel(
+        raisedBed,
+        operation.raisedBedFieldId,
+    );
+
     return {
         type: 'raisedBed',
-        fieldLabel: getRaisedBedFieldLabel(
-            raisedBed,
-            operation.raisedBedFieldId,
-        ),
+        fieldLabel,
         raisedBedName: raisedBed.name,
         raisedBedPhysicalId: raisedBed.physicalId,
-        fallbackLabel: operation.targetLabel,
+        fallbackLabel: formatRaisedBedTargetLabel(raisedBed.name, fieldLabel),
     };
 }
 
@@ -550,15 +543,17 @@ function getCartOperationTargetDetails(
         };
     }
 
+    const fieldLabel =
+        typeof item.positionIndex === 'number'
+            ? `Polje ${item.positionIndex + 1}`
+            : null;
+
     return {
         type: 'raisedBed',
-        fieldLabel:
-            typeof item.positionIndex === 'number'
-                ? `Polje ${item.positionIndex + 1}`
-                : null,
+        fieldLabel,
         raisedBedName: raisedBed.name,
         raisedBedPhysicalId: raisedBed.physicalId,
-        fallbackLabel: getCartOperationTargetLabel(item, garden),
+        fallbackLabel: formatRaisedBedTargetLabel(raisedBed.name, fieldLabel),
     };
 }
 
@@ -584,9 +579,12 @@ function StatusBadge({
     const iconSize = size === 'md' ? 'size-4' : 'size-3.5';
     const textLevel = size === 'md' ? 'body2' : 'body3';
     return (
-        <Row spacing={1} className={cx(config.colorClass, className)}>
+        <Row
+            spacing={1}
+            className={cx('min-w-0 max-w-full', config.colorClass, className)}
+        >
             <Icon className={cx(iconSize, 'shrink-0')} />
-            <Typography level={textLevel} semiBold noWrap>
+            <Typography level={textLevel} semiBold noWrap className="min-w-0">
                 {config.label}
             </Typography>
         </Row>
@@ -745,7 +743,7 @@ function OperationProgress({
     return (
         <SegmentedProgress
             aria-label="Tijek radnje"
-            className={cx('pb-5 pr-4', className)}
+            className={cx('w-full min-w-0 max-w-full px-4 pb-6', className)}
             segments={segments}
         />
     );
@@ -825,32 +823,14 @@ function OperationTargetLabel({
     return (
         <Row
             spacing={1}
-            className="min-w-0 max-w-full flex-wrap items-center gap-y-0.5"
+            className="min-w-0 max-w-full items-center"
             aria-label={targetDetails.fallbackLabel}
         >
-            <Typography
-                level="body3"
-                secondary
-                component="span"
-                className={className}
-            >
-                {targetDetails.fieldLabel ?? 'Gredica:'}
-            </Typography>
-            {targetDetails.fieldLabel && (
-                <Typography
-                    level="body3"
-                    secondary
-                    component="span"
-                    className={className}
-                >
-                    •
-                </Typography>
-            )}
-            <Row spacing={1} className="min-w-0 max-w-full items-center">
+            <Row spacing={1} className="min-w-0 flex-1 items-center">
                 <RaisedBedIcon
                     physicalId={targetDetails.raisedBedPhysicalId}
                     className={cx(
-                        'size-6 text-tertiary-foreground',
+                        'size-5 text-tertiary-foreground',
                         iconClassName,
                     )}
                 />
@@ -864,6 +844,23 @@ function OperationTargetLabel({
                     {targetDetails.raisedBedName}
                 </Typography>
             </Row>
+            {targetDetails.fieldLabel && (
+                <>
+                    <Navigate
+                        aria-hidden
+                        className="size-3 shrink-0 text-tertiary-foreground"
+                    />
+                    <Typography
+                        level="body3"
+                        secondary
+                        noWrap
+                        component="span"
+                        className={cx('shrink-0', className)}
+                    >
+                        {targetDetails.fieldLabel}
+                    </Typography>
+                </>
+            )}
         </Row>
     );
 }
@@ -925,8 +922,15 @@ export function GardenOperationCard({
     );
 
     return (
-        <div className="rounded-xl border p-3">
-            <Row spacing={3} alignItems="start">
+        <div
+            className="w-full max-w-full shrink-0 overflow-hidden rounded-xl border bg-card p-3 shadow-xs"
+            data-garden-operation-card
+        >
+            <Row
+                spacing={3}
+                alignItems="start"
+                className="w-full min-w-0 max-w-full"
+            >
                 <div className="size-12 rounded-lg bg-card flex items-center justify-center overflow-hidden shrink-0">
                     {plantSortData ? (
                         <PlantOrSortImage
@@ -943,9 +947,16 @@ export function GardenOperationCard({
                         </Typography>
                     )}
                 </div>
-                <Stack spacing={1.5} className="min-w-0 flex-1">
+                <Stack
+                    spacing={1.5}
+                    className="min-w-0 max-w-full flex-1 overflow-hidden"
+                >
                     <Stack spacing={0.5}>
-                        <Row spacing={1} alignItems="start" className="min-w-0">
+                        <Row
+                            spacing={1}
+                            alignItems="start"
+                            className="min-w-0 max-w-full flex-wrap gap-y-1"
+                        >
                             <Typography
                                 level="body2"
                                 semiBold
@@ -1007,7 +1018,7 @@ function CartOperationCard({
               `Radnja #${item.entityId}`);
 
     return (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-400/60 dark:bg-amber-900/30">
+        <div className="shrink-0 rounded-xl border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-400/60 dark:bg-amber-900/30">
             <Row spacing={3} alignItems="start">
                 <div className="size-12 rounded-lg bg-card flex items-center justify-center overflow-hidden shrink-0">
                     {plantSort ? (
@@ -1116,50 +1127,55 @@ function HistoryModal({
                     </Typography>
                 </Stack>
                 <Divider />
-                <Stack
-                    spacing={3}
-                    data-infinite-scroll-root
-                    className="max-h-[70vh] overflow-y-auto pr-1"
+                <ScrollView
+                    className="-mx-6"
+                    viewportClassName="max-h-[70vh]"
+                    contentClassName="px-6 pr-4"
+                    viewportProps={{ 'data-infinite-scroll-root': 'true' }}
                 >
-                    {operations.length === 0 ? (
-                        <Typography level="body3" secondary>
-                            Nema radnji.
-                        </Typography>
-                    ) : (
-                        operations.map((operation) => (
-                            <GardenOperationCard
-                                key={`${operation.entityTypeName}-${operation.id}`}
-                                operation={operation}
-                                operationName={
-                                    operation.entityTypeName ===
-                                    cartOperationEntityType
-                                        ? operationDataById.get(
-                                              operation.entityId,
-                                          )?.information.label
-                                        : undefined
-                                }
-                                operationData={
-                                    operation.entityTypeName ===
-                                    cartOperationEntityType
-                                        ? operationDataById.get(
-                                              operation.entityId,
-                                          )
-                                        : undefined
-                                }
-                                plantSortData={
-                                    operation.entityTypeName ===
-                                    cartPlantSortEntityType
-                                        ? plantSortById.get(operation.entityId)
-                                        : undefined
-                                }
-                                currentGarden={currentGarden}
-                                referenceDate={referenceDate}
-                                progressClassName="md:max-w-80"
-                            />
-                        ))
-                    )}
-                    <div ref={listRef} className="h-1" />
-                </Stack>
+                    <Stack spacing={2}>
+                        {operations.length === 0 ? (
+                            <Typography level="body3" secondary>
+                                Nema radnji.
+                            </Typography>
+                        ) : (
+                            operations.map((operation) => (
+                                <GardenOperationCard
+                                    key={`${operation.entityTypeName}-${operation.id}`}
+                                    operation={operation}
+                                    operationName={
+                                        operation.entityTypeName ===
+                                        cartOperationEntityType
+                                            ? operationDataById.get(
+                                                  operation.entityId,
+                                              )?.information.label
+                                            : undefined
+                                    }
+                                    operationData={
+                                        operation.entityTypeName ===
+                                        cartOperationEntityType
+                                            ? operationDataById.get(
+                                                  operation.entityId,
+                                              )
+                                            : undefined
+                                    }
+                                    plantSortData={
+                                        operation.entityTypeName ===
+                                        cartPlantSortEntityType
+                                            ? plantSortById.get(
+                                                  operation.entityId,
+                                              )
+                                            : undefined
+                                    }
+                                    currentGarden={currentGarden}
+                                    referenceDate={referenceDate}
+                                    progressClassName="md:max-w-80"
+                                />
+                            ))
+                        )}
+                        <div ref={listRef} className="h-1" />
+                    </Stack>
+                </ScrollView>
             </Stack>
         </Modal>
     );
@@ -1358,92 +1374,94 @@ export function GardenOperationsHud() {
                     </Typography>
                 </Row>
                 <Divider />
-                <Stack
-                    spacing={2}
-                    data-infinite-scroll-root
-                    className="max-h-[50vh] overflow-y-auto p-3"
+                <ScrollView
+                    viewportClassName="max-h-[50vh]"
+                    contentClassName="py-2 pl-3 pr-1"
+                    viewportProps={{ 'data-infinite-scroll-root': 'true' }}
                 >
-                    {activeOperationCount === 0 ? (
-                        <Typography level="body3" secondary>
-                            Nema nedovršenih radnji.
-                        </Typography>
-                    ) : (
-                        <>
-                            {cartOperations.length > 0 && (
-                                <Stack spacing={2}>
-                                    <Row
-                                        justifyContent="space-between"
-                                        alignItems="center"
-                                    >
-                                        <Typography level="body3" semiBold>
-                                            Radnje u košari
-                                        </Typography>
-                                        <Button
-                                            variant="link"
-                                            size="sm"
-                                            className="px-0"
-                                            onClick={() =>
-                                                setShoppingCartOpen(true)
-                                            }
+                    <Stack spacing={1.5}>
+                        {activeOperationCount === 0 ? (
+                            <Typography level="body3" secondary>
+                                Nema nedovršenih radnji.
+                            </Typography>
+                        ) : (
+                            <>
+                                {cartOperations.length > 0 && (
+                                    <Stack spacing={1.5}>
+                                        <Row
+                                            justifyContent="space-between"
+                                            alignItems="center"
                                         >
-                                            Otvori košaru
-                                        </Button>
-                                    </Row>
-                                    {cartOperations.map((cartOperation) => (
-                                        <CartOperationCard
-                                            key={cartOperation.item.id}
-                                            item={cartOperation.item}
-                                            operationData={
-                                                cartOperation.operationData
-                                            }
-                                            targetDetails={
-                                                cartOperation.targetDetails
-                                            }
-                                            onOpenCart={() =>
-                                                setShoppingCartOpen(true)
-                                            }
-                                        />
-                                    ))}
-                                </Stack>
-                            )}
-                            {cartOperations.length > 0 &&
-                                pendingOperations.length > 0 && <Divider />}
-                            {pendingOperations.map((operation) => (
-                                <GardenOperationCard
-                                    key={`${operation.entityTypeName}-${operation.id}`}
-                                    operation={operation}
-                                    operationName={
-                                        operation.entityTypeName ===
-                                        cartOperationEntityType
-                                            ? operationDataById.get(
-                                                  operation.entityId,
-                                              )?.information.label
-                                            : undefined
-                                    }
-                                    operationData={
-                                        operation.entityTypeName ===
-                                        cartOperationEntityType
-                                            ? operationDataById.get(
-                                                  operation.entityId,
-                                              )
-                                            : undefined
-                                    }
-                                    plantSortData={
-                                        operation.entityTypeName ===
-                                        cartPlantSortEntityType
-                                            ? plantSortById.get(
-                                                  operation.entityId,
-                                              )
-                                            : undefined
-                                    }
-                                    currentGarden={currentGarden}
-                                    referenceDate={referenceDate}
-                                />
-                            ))}
-                        </>
-                    )}
-                    <div ref={pendingRef} className="h-1" />
-                </Stack>
+                                            <Typography level="body3" semiBold>
+                                                Radnje u košari
+                                            </Typography>
+                                            <Button
+                                                variant="link"
+                                                size="sm"
+                                                className="px-0"
+                                                onClick={() =>
+                                                    setShoppingCartOpen(true)
+                                                }
+                                            >
+                                                Otvori košaru
+                                            </Button>
+                                        </Row>
+                                        {cartOperations.map((cartOperation) => (
+                                            <CartOperationCard
+                                                key={cartOperation.item.id}
+                                                item={cartOperation.item}
+                                                operationData={
+                                                    cartOperation.operationData
+                                                }
+                                                targetDetails={
+                                                    cartOperation.targetDetails
+                                                }
+                                                onOpenCart={() =>
+                                                    setShoppingCartOpen(true)
+                                                }
+                                            />
+                                        ))}
+                                    </Stack>
+                                )}
+                                {cartOperations.length > 0 &&
+                                    pendingOperations.length > 0 && <Divider />}
+                                {pendingOperations.map((operation) => (
+                                    <GardenOperationCard
+                                        key={`${operation.entityTypeName}-${operation.id}`}
+                                        operation={operation}
+                                        operationName={
+                                            operation.entityTypeName ===
+                                            cartOperationEntityType
+                                                ? operationDataById.get(
+                                                      operation.entityId,
+                                                  )?.information.label
+                                                : undefined
+                                        }
+                                        operationData={
+                                            operation.entityTypeName ===
+                                            cartOperationEntityType
+                                                ? operationDataById.get(
+                                                      operation.entityId,
+                                                  )
+                                                : undefined
+                                        }
+                                        plantSortData={
+                                            operation.entityTypeName ===
+                                            cartPlantSortEntityType
+                                                ? plantSortById.get(
+                                                      operation.entityId,
+                                                  )
+                                                : undefined
+                                        }
+                                        currentGarden={currentGarden}
+                                        referenceDate={referenceDate}
+                                    />
+                                ))}
+                            </>
+                        )}
+                        <div ref={pendingRef} className="h-1" />
+                    </Stack>
+                </ScrollView>
                 <Divider />
                 <HistoryModal
                     operations={historyOperations}

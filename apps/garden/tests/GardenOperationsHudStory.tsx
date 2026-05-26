@@ -3,7 +3,10 @@ import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useMemo } from 'react';
 import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/GameAnalyticsContext';
-import { gardenOperationsQueryKey } from '../../../packages/game/src/hooks/useGardenOperations';
+import {
+    type GardenOperationItem,
+    gardenOperationsQueryKey,
+} from '../../../packages/game/src/hooks/useGardenOperations';
 import type { ShoppingCartItemData } from '../../../packages/game/src/hooks/useShoppingCart';
 import { GardenOperationsHud } from '../../../packages/game/src/hud/GardenOperationsHud';
 import {
@@ -143,49 +146,116 @@ function buildOperationCartItem({
     };
 }
 
-function createQueryClient() {
+function buildHudOperationItem({
+    id,
+    status,
+}: {
+    id: number;
+    status: GardenOperationItem['status'];
+}): GardenOperationItem {
+    const day = String(Math.max(1, 30 - (id % 20))).padStart(2, '0');
+
+    return {
+        id,
+        entityId: cartOperation.id,
+        entityTypeName: 'operation',
+        raisedBedId: TEST_RAISED_BED_ID,
+        raisedBedFieldId: 1,
+        status,
+        createdAt: `2026-05-${day}T00:00:00.000Z`,
+        scheduledDate: `2026-05-${day}T00:00:00.000Z`,
+        scheduledAt: `2026-05-${day}T00:00:00.000Z`,
+        completedAt:
+            status === 'confirmed' || status === 'completed'
+                ? `2026-05-${day}T08:00:00.000Z`
+                : null,
+        verifiedAt:
+            status === 'completed' ? `2026-05-${day}T09:00:00.000Z` : null,
+        canceledAt: null,
+        imageUrls: [],
+        completionNotes: `Zapis radnje ${id.toString()}.`,
+        targetLabel: 'Raised Bed 1 › Polje 3',
+        statusHistory: [
+            { status: 'new', changedAt: `2026-05-${day}T00:00:00.000Z` },
+            { status: 'planned', changedAt: `2026-05-${day}T01:00:00.000Z` },
+            { status: 'assigned', changedAt: `2026-05-${day}T02:00:00.000Z` },
+            {
+                status: status === 'completed' ? 'completed' : 'confirmed',
+                changedAt: `2026-05-${day}T08:00:00.000Z`,
+            },
+        ],
+    };
+}
+
+function createQueryClient({
+    denseOperations = false,
+}: {
+    denseOperations?: boolean;
+} = {}) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
             queries: { retry: false, staleTime: Infinity },
         },
     });
     const garden = buildGarden();
+    const pendingOperationItems = denseOperations
+        ? Array.from({ length: 14 }, (_, index) =>
+              buildHudOperationItem({
+                  id: 700 + index,
+                  status: index % 2 === 0 ? 'confirmed' : 'assigned',
+              }),
+          )
+        : [
+              {
+                  id: 601,
+                  entityId: 999_001,
+                  entityTypeName: 'operation',
+                  raisedBedId: TEST_RAISED_BED_ID,
+                  raisedBedFieldId: 1,
+                  status: 'planned',
+                  createdAt: now,
+                  scheduledDate: '2026-05-22T00:00:00.000Z',
+                  scheduledAt: '2026-05-22T00:00:00.000Z',
+                  completedAt: null,
+                  verifiedAt: null,
+                  canceledAt: null,
+                  imageUrls: [],
+                  completionNotes: null,
+                  targetLabel: 'Raised Bed 1 › Polje 3',
+                  statusHistory: [
+                      {
+                          status: 'planned',
+                          changedAt: now,
+                      },
+                  ],
+              } satisfies GardenOperationItem,
+          ];
+    const historyOperationItems = denseOperations
+        ? Array.from({ length: 18 }, (_, index) =>
+              buildHudOperationItem({
+                  id: 800 + index,
+                  status: index % 3 === 0 ? 'completed' : 'confirmed',
+              }),
+          )
+        : [];
     const pendingOperationPage = {
         pages: [
             {
-                items: [
-                    {
-                        id: 601,
-                        entityId: 999_001,
-                        entityTypeName: 'operation',
-                        raisedBedId: TEST_RAISED_BED_ID,
-                        raisedBedFieldId: 1,
-                        status: 'planned',
-                        createdAt: now,
-                        scheduledDate: '2026-05-22T00:00:00.000Z',
-                        scheduledAt: '2026-05-22T00:00:00.000Z',
-                        completedAt: null,
-                        verifiedAt: null,
-                        canceledAt: null,
-                        imageUrls: [],
-                        completionNotes: null,
-                        targetLabel: 'Polje 1 • Raised Bed 1',
-                        statusHistory: [
-                            {
-                                status: 'planned',
-                                changedAt: now,
-                            },
-                        ],
-                    },
-                ],
+                items: pendingOperationItems,
                 nextCursor: null,
-                total: 1,
+                total: pendingOperationItems.length,
             },
         ],
         pageParams: [0],
     };
-    const emptyOperationPage = {
-        pages: [{ items: [], nextCursor: null, total: 0 }],
+    const historyOperationPage = {
+        pages: [
+            {
+                items: historyOperationItems,
+                nextCursor: null,
+                total: historyOperationItems.length,
+            },
+        ],
         pageParams: [0],
     };
 
@@ -231,14 +301,20 @@ function createQueryClient() {
             includeCompleted: true,
             pageSize: 20,
         }),
-        emptyOperationPage,
+        historyOperationPage,
     );
 
     return queryClient;
 }
 
-function Providers({ children }: PropsWithChildren) {
-    const queryClient = useMemo(() => createQueryClient(), []);
+function Providers({
+    children,
+    denseOperations = false,
+}: PropsWithChildren<{ denseOperations?: boolean }>) {
+    const queryClient = useMemo(
+        () => createQueryClient({ denseOperations }),
+        [denseOperations],
+    );
     const gameStore = useMemo(
         () =>
             createGameState({
@@ -266,6 +342,14 @@ function Providers({ children }: PropsWithChildren) {
 export function GardenOperationsHudStory() {
     return (
         <Providers>
+            <GardenOperationsHud />
+        </Providers>
+    );
+}
+
+export function DenseGardenOperationsHudStory() {
+    return (
+        <Providers denseOperations>
             <GardenOperationsHud />
         </Providers>
     );
