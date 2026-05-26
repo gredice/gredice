@@ -378,6 +378,11 @@ function mockGarden(winterMode: WinterMode): useCurrentGardenResponse {
                         name: 'Block_Grass',
                         rotation: 0,
                     },
+                    {
+                        id: '17',
+                        name: 'BirdHouse',
+                        rotation: 0,
+                    },
                 ],
             },
             {

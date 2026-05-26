@@ -8,6 +8,7 @@ export const gameAssetModels = {
     BlockGrassAngle: { url: '/assets/models/BlockGrassAngle.glb' },
     BlockSand: { url: '/assets/models/BlockSand.glb' },
     BlockSandAngle: { url: '/assets/models/BlockSandAngle.glb' },
+    BlockTerrainCorner: { url: '/assets/models/BlockTerrainCorner.glb' },
     RaisedBed: { url: '/assets/models/RaisedBed.glb' },
     GardenBox: { url: '/assets/models/GardenBox.glb' },
     GiftBox: { url: '/assets/models/GiftBox.glb' },
@@ -21,8 +22,11 @@ export const gameAssetModels = {
     MulchCoconut: { url: '/assets/models/MulchCoconut.glb' },
     MulchWood: { url: '/assets/models/MulchWood.glb' },
     BaleHey: { url: '/assets/models/BaleHey.glb' },
+    BirdSmall: { url: '/assets/models/BirdSmall.glb' },
     Bucket: { url: '/assets/models/Bucket.glb' },
+    WateringCan: { url: '/assets/models/WateringCan.glb' },
     Composter: { url: '/assets/models/Composter.glb' },
+    BirdHouse: { url: '/assets/models/BirdHouse.glb?v=2e0de8b19af3' },
     Fence: { url: '/assets/models/Fence.glb' },
     Greenhouse: { url: '/assets/models/Greenhouse.glb' },
     GroundEnvironment: { url: '/assets/models/GroundEnvironment.glb' },
@@ -33,6 +37,16 @@ export const gameAssetModels = {
     StoneLarge: { url: '/assets/models/StoneLarge.glb' },
     Stool: { url: '/assets/models/Stool.glb' },
     Tulip: { url: '/assets/models/Tulip.glb' },
+    PotLowBowl: { url: '/assets/models/PotLowBowl.glb' },
+    PotRoundedBowl: { url: '/assets/models/PotRoundedBowl.glb' },
+    PotBulbousNeck: { url: '/assets/models/PotBulbousNeck.glb' },
+    PotTallTapered: { url: '/assets/models/PotTallTapered.glb' },
+    PotHourglass: { url: '/assets/models/PotHourglass.glb' },
+    PotStraightShortTub: { url: '/assets/models/PotStraightShortTub.glb' },
+    PotNarrowFootBowl: { url: '/assets/models/PotNarrowFootBowl.glb' },
+    PotSquatRidged: { url: '/assets/models/PotSquatRidged.glb' },
+    PotTallSlenderCone: { url: '/assets/models/PotTallSlenderCone.glb' },
+    PotWideLippedCup: { url: '/assets/models/PotWideLippedCup.glb' },
 } satisfies Record<string, { url: string }>;
 
 export type GameAssetName = keyof typeof gameAssetModels;
@@ -44,6 +58,7 @@ export const groundGameAssetNames = [
     'BlockGrassAngle',
     'BlockSand',
     'BlockSandAngle',
+    'BlockTerrainCorner',
 ] satisfies GameAssetName[];
 
 export const primaryGameAssetNames = [
@@ -63,8 +78,11 @@ export const primaryGameAssetNames = [
 
 export const lazyGameAssetNames = [
     'BaleHey',
+    'BirdSmall',
     'Bucket',
+    'WateringCan',
     'Composter',
+    'BirdHouse',
     'Fence',
     'Greenhouse',
     'GroundEnvironment',
@@ -75,6 +93,16 @@ export const lazyGameAssetNames = [
     'StoneLarge',
     'Stool',
     'Tulip',
+    'PotLowBowl',
+    'PotRoundedBowl',
+    'PotBulbousNeck',
+    'PotTallTapered',
+    'PotHourglass',
+    'PotStraightShortTub',
+    'PotNarrowFootBowl',
+    'PotSquatRidged',
+    'PotTallSlenderCone',
+    'PotWideLippedCup',
 ] satisfies GameAssetName[];
 
 export const allGameAssetNames = [
@@ -84,6 +112,7 @@ export const allGameAssetNames = [
     'BlockGrassAngle',
     'BlockSand',
     'BlockSandAngle',
+    'BlockTerrainCorner',
     'RaisedBed',
     'GardenBox',
     'GiftBox',
@@ -97,8 +126,11 @@ export const allGameAssetNames = [
     'MulchCoconut',
     'MulchWood',
     'BaleHey',
+    'BirdSmall',
     'Bucket',
+    'WateringCan',
     'Composter',
+    'BirdHouse',
     'Fence',
     'Greenhouse',
     'GroundEnvironment',
@@ -109,4 +141,14 @@ export const allGameAssetNames = [
     'StoneLarge',
     'Stool',
     'Tulip',
+    'PotLowBowl',
+    'PotRoundedBowl',
+    'PotBulbousNeck',
+    'PotTallTapered',
+    'PotHourglass',
+    'PotStraightShortTub',
+    'PotNarrowFootBowl',
+    'PotSquatRidged',
+    'PotTallSlenderCone',
+    'PotWideLippedCup',
 ] satisfies GameAssetName[];

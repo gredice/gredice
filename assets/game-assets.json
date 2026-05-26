@@ -45,6 +45,17 @@
             "objects": ["Block Sand Angle 1"]
         },
         {
+            "name": "BlockTerrainCorner",
+            "source": "BlockTerrainCorner.blend",
+            "output": "BlockTerrainCorner.glb",
+            "preload": "ground",
+            "objects": [
+                "Block Ground Corner 1",
+                "Block Grass Corner 1",
+                "Block Sand Corner 1"
+            ]
+        },
+        {
             "name": "RaisedBed",
             "source": "RaisedBed.blend",
             "output": "RaisedBed.glb",
@@ -142,6 +153,37 @@
             "objects": ["BaleHey"]
         },
         {
+            "name": "BirdSmall",
+            "source": "BirdSmall.blend",
+            "output": "BirdSmall.glb",
+            "preload": "lazy",
+            "objects": [
+                "BirdSmall_Root",
+                "BirdSmall_BodyPivot",
+                "BirdSmall_HeadPivot",
+                "BirdSmall_WingPivot_L",
+                "BirdSmall_WingPivot_R",
+                "BirdSmall_TailPivot",
+                "BirdSmall_LegPivot_L",
+                "BirdSmall_LegPivot_R",
+                "BirdSmall_Body",
+                "BirdSmall_BellyPatch",
+                "BirdSmall_Head",
+                "BirdSmall_Beak",
+                "BirdSmall_Eye_L",
+                "BirdSmall_Pupil_L",
+                "BirdSmall_Eye_R",
+                "BirdSmall_Pupil_R",
+                "BirdSmall_Wing_L",
+                "BirdSmall_Wing_R",
+                "BirdSmall_Tail",
+                "BirdSmall_Leg_L",
+                "BirdSmall_Leg_R",
+                "BirdSmall_Foot_L",
+                "BirdSmall_Foot_R"
+            ]
+        },
+        {
             "name": "Bucket",
             "source": "Bucket.blend",
             "output": "Bucket.glb",
@@ -149,11 +191,46 @@
             "objects": ["Bucket", "Bucket - Handle"]
         },
         {
+            "name": "WateringCan",
+            "source": "WateringCan.blend",
+            "output": "WateringCan.glb",
+            "preload": "lazy",
+            "objects": [
+                "WateringCan_Base_Ring",
+                "WateringCan_Body",
+                "WateringCan_Body_Facet_Strips",
+                "WateringCan_Fill_Rim",
+                "WateringCan_Handle",
+                "WateringCan_Handle_Mounts",
+                "WateringCan_Rose_Face_Dots",
+                "WateringCan_Rose_Head",
+                "WateringCan_Spout",
+                "WateringCan_Spout_Collar",
+                "WateringCan_Water"
+            ]
+        },
+        {
             "name": "Composter",
             "source": "Composter.blend",
             "output": "Composter.glb",
             "preload": "lazy",
             "objects": ["Composter"]
+        },
+        {
+            "name": "BirdHouse",
+            "source": "BirdHouse.blend",
+            "output": "BirdHouse.glb",
+            "version": "2e0de8b19af3",
+            "preload": "lazy",
+            "objects": [
+                "Birdhouse_Angled_Supports",
+                "Birdhouse_Cabin_Walls",
+                "Birdhouse_Center_Post",
+                "Birdhouse_Perch",
+                "Birdhouse_Ridge_Cap",
+                "Birdhouse_Roof_Panels",
+                "Birdhouse_Upper_Platform"
+            ]
         },
         {
             "name": "Fence",
@@ -248,6 +325,91 @@
             "output": "Tulip.glb",
             "preload": "lazy",
             "objects": ["Tulip"]
+        },
+        {
+            "name": "PotLowBowl",
+            "source": "PotLowBowl.blend",
+            "output": "PotLowBowl.glb",
+            "preload": "lazy",
+            "objects": ["PotVariant_01_Low_Bowl", "PotVariant_Soil_01"]
+        },
+        {
+            "name": "PotRoundedBowl",
+            "source": "PotRoundedBowl.blend",
+            "output": "PotRoundedBowl.glb",
+            "preload": "lazy",
+            "objects": ["PotVariant_02_Rounded_Bowl", "PotVariant_Soil_02"]
+        },
+        {
+            "name": "PotBulbousNeck",
+            "source": "PotBulbousNeck.blend",
+            "output": "PotBulbousNeck.glb",
+            "preload": "lazy",
+            "objects": ["PotVariant_03_Bulbous_Neck", "PotVariant_Soil_03"]
+        },
+        {
+            "name": "PotTallTapered",
+            "source": "PotTallTapered.blend",
+            "output": "PotTallTapered.glb",
+            "preload": "lazy",
+            "objects": ["PotVariant_04_Tall_Tapered", "PotVariant_Soil_04"]
+        },
+        {
+            "name": "PotHourglass",
+            "source": "PotHourglass.blend",
+            "output": "PotHourglass.glb",
+            "preload": "lazy",
+            "objects": ["PotVariant_05_Hourglass", "PotVariant_Soil_05"]
+        },
+        {
+            "name": "PotStraightShortTub",
+            "source": "PotStraightShortTub.blend",
+            "output": "PotStraightShortTub.glb",
+            "preload": "lazy",
+            "objects": [
+                "PotVariant_06_Straight_Short_Tub",
+                "PotVariant_Soil_06"
+            ]
+        },
+        {
+            "name": "PotNarrowFootBowl",
+            "source": "PotNarrowFootBowl.blend",
+            "output": "PotNarrowFootBowl.glb",
+            "preload": "lazy",
+            "objects": [
+                "PotVariant_07_Narrow_Foot_Bowl",
+                "PotVariant_Soil_07"
+            ]
+        },
+        {
+            "name": "PotSquatRidged",
+            "source": "PotSquatRidged.blend",
+            "output": "PotSquatRidged.glb",
+            "preload": "lazy",
+            "objects": [
+                "PotVariant_08_Squat_Ridged_Pot",
+                "PotVariant_Soil_08"
+            ]
+        },
+        {
+            "name": "PotTallSlenderCone",
+            "source": "PotTallSlenderCone.blend",
+            "output": "PotTallSlenderCone.glb",
+            "preload": "lazy",
+            "objects": [
+                "PotVariant_09_Tall_Slender_Cone",
+                "PotVariant_Soil_09"
+            ]
+        },
+        {
+            "name": "PotWideLippedCup",
+            "source": "PotWideLippedCup.blend",
+            "output": "PotWideLippedCup.glb",
+            "preload": "lazy",
+            "objects": [
+                "PotVariant_10_Wide_Lipped_Cup",
+                "PotVariant_Soil_10"
+            ]
         }
     ]
 }

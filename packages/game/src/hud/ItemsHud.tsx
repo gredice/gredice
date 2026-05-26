@@ -31,6 +31,19 @@ type HudItemPicker = {
 
 type HudItem = HudItemEntity | HudItemPicker | { type: 'separator' };
 
+const potItems: HudItemEntity[] = [
+    { type: 'entity', name: 'PotLowBowl' },
+    { type: 'entity', name: 'PotRoundedBowl' },
+    { type: 'entity', name: 'PotBulbousNeck' },
+    { type: 'entity', name: 'PotTallTapered' },
+    { type: 'entity', name: 'PotHourglass' },
+    { type: 'entity', name: 'PotStraightShortTub' },
+    { type: 'entity', name: 'PotNarrowFootBowl' },
+    { type: 'entity', name: 'PotSquatRidged' },
+    { type: 'entity', name: 'PotTallSlenderCone' },
+    { type: 'entity', name: 'PotWideLippedCup' },
+];
+
 const items: HudItem[] = [
     {
         type: 'picker',
@@ -45,6 +58,7 @@ const items: HudItem[] = [
         imageSrc: 'https://www.gredice.com/assets/blocks/Bucket.png',
         items: [
             { type: 'entity', name: 'Bucket' },
+            { type: 'entity', name: 'WateringCan' },
             { type: 'entity', name: 'Composter' },
             { type: 'entity', name: 'GardenBox' },
         ],
@@ -54,12 +68,14 @@ const items: HudItem[] = [
         label: 'Dekoracija',
         imageSrc: 'https://www.gredice.com/assets/blocks/Shade.png',
         items: [
+            ...potItems,
             { type: 'entity', name: 'Shade' },
             { type: 'entity', name: 'Stool' },
             { type: 'entity', name: 'Fence' },
             { type: 'entity', name: 'StoneSmall' },
             { type: 'entity', name: 'StoneMedium' },
             { type: 'entity', name: 'StoneLarge' },
+            { type: 'entity', name: 'BirdHouse' },
             { type: 'entity', name: 'Bush' },
             { type: 'entity', name: 'Tree' },
             { type: 'entity', name: 'Pine' },
@@ -85,6 +101,10 @@ const items: HudItem[] = [
             { type: 'entity', name: 'Block_Ground_Angle' },
             { type: 'entity', name: 'Block_Sand_Angle' },
             { type: 'entity', name: 'Block_Snow_Angle' },
+            { type: 'entity', name: 'Block_Grass_Corner' },
+            { type: 'entity', name: 'Block_Ground_Corner' },
+            { type: 'entity', name: 'Block_Sand_Corner' },
+            { type: 'entity', name: 'Block_Snow_Corner' },
         ],
     },
 ];
@@ -127,12 +147,13 @@ function PlaceEntityButton({
                 )}
                 onClick={placeEntity}
                 size={simple ? 'sm' : 'md'}
+                variant="soft"
                 disabled={!block.prices.sunflowers || placeBlock.isPending}
                 endDecorator={
                     <Row
                         className={cx(
                             !simple &&
-                                'rounded-full p-1 gap border bg-muted w-fit pr-2',
+                                'rounded-full p-1 gap border border-primary/15 bg-primary/15 text-primary w-fit pr-2',
                             !block.prices.sunflowers && 'pl-2',
                         )}
                     >

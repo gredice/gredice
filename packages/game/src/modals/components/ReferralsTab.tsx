@@ -488,10 +488,50 @@ export function ReferralsTab() {
                             <div className="text-sm font-semibold">
                                 Preporučeni računi
                             </div>
-                            <ul className="space-y-1 text-sm">
+                            <ul className="space-y-2">
                                 {referredAccounts.map((u) => (
-                                    <li key={u.accountId}>
-                                        {u.accountId} {u.rewarded ? '✅' : '⏳'}
+                                    <li
+                                        key={u.accountId}
+                                        className="flex items-center gap-3 rounded-md border bg-muted/40 p-3"
+                                    >
+                                        <UserAvatar
+                                            avatarUrl={u.account?.avatarUrl}
+                                            displayName={
+                                                u.account?.displayName ??
+                                                'Nepoznat račun'
+                                            }
+                                            className="size-9"
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                            <Typography
+                                                level="body2"
+                                                semiBold
+                                                noWrap
+                                            >
+                                                {u.account?.displayName ??
+                                                    'Nepoznat račun'}
+                                            </Typography>
+                                            <Typography
+                                                level="body3"
+                                                tertiary
+                                                noWrap
+                                            >
+                                                {u.rewarded
+                                                    ? 'Nagrada dodijeljena'
+                                                    : 'Čeka aktivnu gredicu'}
+                                            </Typography>
+                                        </div>
+                                        <span
+                                            aria-label={
+                                                u.rewarded
+                                                    ? 'Nagrada dodijeljena'
+                                                    : 'Čeka aktivnu gredicu'
+                                            }
+                                            className="text-base"
+                                            role="img"
+                                        >
+                                            {u.rewarded ? '✅' : '⏳'}
+                                        </span>
                                     </li>
                                 ))}
                             </ul>

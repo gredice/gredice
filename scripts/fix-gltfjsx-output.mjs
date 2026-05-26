@@ -8,7 +8,7 @@
  * - Exports GLTFResult type
  * - Fixes JSX namespace references
  * - Removes the generated Model component and preload call
- * - Removes unused GLTFAction[] animations
+ * - Preserves generated animation clip types when assets include animations
  * - Fixes type assertions
  * - Runs biome again for final cleanup
  */
@@ -139,9 +139,6 @@ async function fixGltfjsxOutput() {
         content = content.replace(/^import React from 'react';\n/m, '');
         content = content.replace(/^import type React from 'react';\n/m, '');
         content = content.replace(/^import { useGLTF } from '@react-three\/drei';\n/m, '');
-
-        // Remove GLTFAction[] animations property (not used)
-        content = content.replace(/\s+animations: GLTFAction\[\];?\n/m, '\n');
 
         // Export GLTFResult type
         content = content.replace(

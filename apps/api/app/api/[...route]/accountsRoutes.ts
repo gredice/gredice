@@ -25,6 +25,7 @@ import {
     ReferralCodeAlreadyUsedError,
     ReferralCodeInvalidError,
     ReferralCodeNotFoundError,
+    ReferralCodeReciprocalUseError,
     ReferralCodeReservedError,
     ReferralCodeSelfUseError,
     redeemReferralCodeForAccount,
@@ -393,6 +394,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     return context.json(
                         {
                             error: 'Ne možeš iskoristiti vlastiti kod preporuke',
+                        },
+                        400,
+                    );
+                }
+                if (error instanceof ReferralCodeReciprocalUseError) {
+                    return context.json(
+                        {
+                            error: 'Ne možeš iskoristiti kod računa kojem si ti preporučitelj',
                         },
                         400,
                     );

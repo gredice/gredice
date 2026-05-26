@@ -8,7 +8,7 @@ import { signalcoClient } from '@gredice/signalco';
 import {
     abandonRaisedBed,
     buildRaisedBedFieldPlantUpdatePayload,
-    countEventsSince,
+    countAiRequestEventsSince,
     createDefaultGardenForAccount,
     createEvent,
     createGardenBlock,
@@ -48,9 +48,11 @@ import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
 import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
 import {
-    AI_ANALYSIS_DAILY_LIMIT,
+    AI_REQUEST_QUOTAS,
+    type AiRequestKind,
+    RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
     streamRaisedBedImageAnalysis,
-    validateImageUrl,
+    validateImageUrls,
 } from '../../../lib/garden/raisedBedAiAnalysisService';
 import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
@@ -67,9 +69,63 @@ import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
-async function countRecentRaisedBedAiAnalyses(accountId: string) {
+
+const analyzeImageBodySchema = z
+    .object({
+        imageUrl: z.url().optional(),
+        imageUrls: z.array(z.url()).min(1).optional(),
+    })
+    .refine((body) => Boolean(body.imageUrl || body.imageUrls?.length), {
+        message: 'At least one image URL is required',
+    });
+
+type AnalyzeImageBody = z.infer<typeof analyzeImageBodySchema>;
+
+function normalizeAnalysisImageUrls(body: AnalyzeImageBody) {
+    const imageUrls = body.imageUrls?.length
+        ? body.imageUrls
+        : body.imageUrl
+          ? [body.imageUrl]
+          : [];
+
+    return Array.from(new Set(imageUrls));
+}
+
+async function countRecentAiRequests(
+    accountId: string,
+    requestKind: AiRequestKind,
+) {
+    const quota = AI_REQUEST_QUOTAS[requestKind];
+    const since = new Date(Date.now() - quota.windowMs);
+
+    switch (requestKind) {
+        case RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND:
+            return countRecentRaisedBedImageAnalyses(accountId, since);
+    }
+
+    const unreachable: never = requestKind;
+    throw new Error(`Unsupported AI request kind: ${unreachable}`);
+}
+
+async function getAiRequestQuotaUsage(
+    accountId: string,
+    requestKind: AiRequestKind,
+) {
+    const quota = AI_REQUEST_QUOTAS[requestKind];
+    const used = await countRecentAiRequests(accountId, requestKind);
+
+    return {
+        ...quota,
+        used,
+        remaining: Math.max(0, quota.limit - used),
+    };
+}
+
+async function countRecentRaisedBedImageAnalyses(
+    accountId: string,
+    since: Date,
+) {
     const accountBedIds = await getRaisedBedIdsByAccount(accountId);
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const raisedBedAggregateIds = accountBedIds.map((bedId) =>
         bedId.toString(),
     );
@@ -80,20 +136,30 @@ async function countRecentRaisedBedAiAnalyses(accountId: string) {
         ),
     );
 
-    const [raisedBedCount, raisedBedFieldCount] = await Promise.all([
-        countEventsSince(
+    return countAiRequestEventsSince({
+        type: knownEventTypes.accounts.aiRequest,
+        legacyType: [
             knownEventTypes.raisedBeds.aiAnalysis,
-            since,
-            raisedBedAggregateIds,
-        ),
-        countEventsSince(
             knownEventTypes.raisedBedFields.aiAnalysis,
-            since,
-            raisedBedFieldAggregateIds,
-        ),
-    ]);
+        ],
+        since,
+        accountId,
+        requestKind: RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
+        legacyAggregateIds: [
+            ...raisedBedAggregateIds,
+            ...raisedBedFieldAggregateIds,
+        ],
+    });
+}
 
-    return raisedBedCount + raisedBedFieldCount;
+async function recordAiRequest(accountId: string, requestKind: AiRequestKind) {
+    await createEvent(
+        knownEvents.accounts.aiRequestV1(accountId, {
+            accountId,
+            aiRequestKind: requestKind,
+            requestedAt: new Date().toISOString(),
+        }),
+    );
 }
 
 async function trackGardenCreated(input: {
@@ -1758,7 +1824,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId/raised-beds/:raisedBedId/analyze-image',
         describeRoute({
             description:
-                'Analyze raised bed image with AI and save response to diary',
+                'Analyze raised bed images with AI and save response to diary',
         }),
         zValidator(
             'param',
@@ -1767,18 +1833,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 raisedBedId: z.string(),
             }),
         ),
-        zValidator(
-            'json',
-            z.object({
-                imageUrl: z.url(),
-            }),
-        ),
+        zValidator('json', analyzeImageBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId } = context.req.valid('param');
-            const { imageUrl } = context.req.valid('json');
+            const imageUrls = normalizeAnalysisImageUrls(
+                context.req.valid('json'),
+            );
+            const firstImageUrl = imageUrls[0];
+            if (!firstImageUrl) {
+                return context.json({ error: 'Image URL is required' }, 400);
+            }
 
-            const urlError = validateImageUrl(imageUrl);
+            const urlError = validateImageUrls(imageUrls);
             if (urlError) {
                 return context.json({ error: urlError }, 400);
             }
@@ -1803,11 +1870,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
 
-            const recentCount = await countRecentRaisedBedAiAnalyses(accountId);
-            if (recentCount >= AI_ANALYSIS_DAILY_LIMIT) {
+            const aiQuota = await getAiRequestQuotaUsage(
+                accountId,
+                RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
+            );
+            if (aiQuota.used >= aiQuota.limit) {
                 return context.json(
                     {
-                        error: `Daily AI analysis limit reached (${AI_ANALYSIS_DAILY_LIMIT.toString()}/day). Try again tomorrow.`,
+                        error: `Dosegnut je tjedni limit AI zahtjeva (${aiQuota.limit.toString()}/tjedan). Pokušaj ponovno kasnije.`,
                     },
                     429,
                 );
@@ -1820,12 +1890,17 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            await recordAiRequest(
+                accountId,
+                RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
+            );
+
             const result = await streamRaisedBedImageAnalysis(
                 {
                     accountId,
                     gardenId: gardenIdNumber,
                     raisedBed,
-                    imageUrl,
+                    imageUrls,
                 },
                 async (analysis) => {
                     await createEvent(
@@ -1833,9 +1908,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             raisedBedIdNumber.toString(),
                             {
                                 markdown: analysis.markdown,
-                                imageUrl,
+                                imageUrl: firstImageUrl,
+                                imageUrls,
                                 model: analysis.model,
                                 analyzedAt: analysis.analyzedAt,
+                                accountId,
+                                aiRequestKind:
+                                    RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
                                 inputTokens: analysis.inputTokens,
                                 outputTokens: analysis.outputTokens,
                                 totalTokens: analysis.totalTokens,
@@ -2184,7 +2263,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex/analyze-image',
         describeRoute({
             description:
-                'Analyze raised bed field image with AI and save response to diary',
+                'Analyze raised bed field images with AI and save response to diary',
         }),
         zValidator(
             'param',
@@ -2194,20 +2273,21 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 positionIndex: z.string(),
             }),
         ),
-        zValidator(
-            'json',
-            z.object({
-                imageUrl: z.url(),
-            }),
-        ),
+        zValidator('json', analyzeImageBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId, positionIndex } =
                 context.req.valid('param');
-            const { imageUrl } = context.req.valid('json');
+            const imageUrls = normalizeAnalysisImageUrls(
+                context.req.valid('json'),
+            );
+            const firstImageUrl = imageUrls[0];
+            if (!firstImageUrl) {
+                return context.json({ error: 'Image URL is required' }, 400);
+            }
 
-            // Validate image URL against allowed hosts
-            const urlError = validateImageUrl(imageUrl);
+            // Validate image URLs against allowed hosts
+            const urlError = validateImageUrls(imageUrls);
             if (urlError) {
                 return context.json({ error: urlError }, 400);
             }
@@ -2252,11 +2332,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const recentCount = await countRecentRaisedBedAiAnalyses(accountId);
-            if (recentCount >= AI_ANALYSIS_DAILY_LIMIT) {
+            const aiQuota = await getAiRequestQuotaUsage(
+                accountId,
+                RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
+            );
+            if (aiQuota.used >= aiQuota.limit) {
                 return context.json(
                     {
-                        error: `Daily AI analysis limit reached (${AI_ANALYSIS_DAILY_LIMIT.toString()}/day). Try again tomorrow.`,
+                        error: `Dosegnut je tjedni limit AI zahtjeva (${aiQuota.limit.toString()}/tjedan). Pokušaj ponovno kasnije.`,
                     },
                     429,
                 );
@@ -2269,13 +2352,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            await recordAiRequest(
+                accountId,
+                RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
+            );
+
             const result = await streamRaisedBedImageAnalysis(
                 {
                     accountId,
                     gardenId: gardenIdNumber,
                     raisedBed,
                     positionIndex: positionIndexNumber,
-                    imageUrl,
+                    imageUrls,
                 },
                 async (analysis) => {
                     await createEvent(
@@ -2283,9 +2371,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
                             {
                                 markdown: analysis.markdown,
-                                imageUrl,
+                                imageUrl: firstImageUrl,
+                                imageUrls,
                                 model: analysis.model,
                                 analyzedAt: analysis.analyzedAt,
+                                accountId,
+                                aiRequestKind:
+                                    RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
                                 inputTokens: analysis.inputTokens,
                                 outputTokens: analysis.outputTokens,
                                 totalTokens: analysis.totalTokens,

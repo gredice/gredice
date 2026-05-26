@@ -13,13 +13,13 @@ export function useRaisedBedFieldAiAnalysis() {
             gardenId,
             raisedBedId,
             positionIndex,
-            imageUrl,
+            imageUrls,
             onChunk,
         }: {
             gardenId: number;
             raisedBedId: number;
             positionIndex: number;
-            imageUrl: string;
+            imageUrls: string[];
             onChunk?: (accumulated: string) => void;
         }) => {
             const response = await client({
@@ -33,7 +33,7 @@ export function useRaisedBedFieldAiAnalysis() {
                     positionIndex: positionIndex.toString(),
                 },
                 json: {
-                    imageUrl,
+                    imageUrls,
                 },
             });
 
