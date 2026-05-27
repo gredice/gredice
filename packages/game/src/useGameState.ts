@@ -11,6 +11,7 @@ import {
     setGameQualityCustomProfile as persistGameQualityCustomProfile,
     setGameQualitySetting as persistGameQualitySetting,
 } from './scene/gameQuality';
+import { defaultWaterColors, type WaterColors } from './scene/waterColors';
 import type { Block } from './types/Block';
 import { getAudioConfig } from './utils/audioConfig';
 import {
@@ -190,6 +191,8 @@ export type GameState = {
     // Environment derived state
     snowCoverage: number;
     setSnowCoverage: (snowCoverage: number) => void;
+    waterColors: WaterColors;
+    setWaterColors: (waterColors: WaterColors) => void;
 
     // World
     orbitControls: OrbitControls | null;
@@ -365,6 +368,15 @@ export function createGameState({
         setWeather: (weather) => set({ weather }),
         snowCoverage: 0,
         setSnowCoverage: (snowCoverage) => set({ snowCoverage }),
+        waterColors: defaultWaterColors,
+        setWaterColors: (waterColors) =>
+            set((state) =>
+                state.waterColors.deep === waterColors.deep &&
+                state.waterColors.shallow === waterColors.shallow &&
+                state.waterColors.foam === waterColors.foam
+                    ? state
+                    : { waterColors },
+            ),
     }));
 }
 
