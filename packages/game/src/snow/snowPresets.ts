@@ -19,6 +19,12 @@ export const snowPresets = {
         noiseScale: 0.2,
         coverageMultiplier: 1.3,
     },
+    grassReverseCorner: {
+        maxThickness: 0.16,
+        slopeExponent: 1.8,
+        noiseScale: 0.2,
+        coverageMultiplier: 1.3,
+    },
     sand: {
         maxThickness: 0.12,
         slopeExponent: 2.8,
@@ -37,6 +43,12 @@ export const snowPresets = {
         noiseScale: 0.2,
         coverageMultiplier: 0.8,
     },
+    sandReverseCorner: {
+        maxThickness: 0.12,
+        slopeExponent: 1.2,
+        noiseScale: 0.2,
+        coverageMultiplier: 0.8,
+    },
     snow: {
         maxThickness: 0.15,
         slopeExponent: 3,
@@ -49,6 +61,12 @@ export const snowPresets = {
         coverageMultiplier: 0.8,
     },
     snowCorner: {
+        maxThickness: 0.15,
+        slopeExponent: 1,
+        noiseScale: 0.2,
+        coverageMultiplier: 0.75,
+    },
+    snowReverseCorner: {
         maxThickness: 0.15,
         slopeExponent: 1,
         noiseScale: 0.2,

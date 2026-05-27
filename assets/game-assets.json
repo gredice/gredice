@@ -56,6 +56,17 @@
             ]
         },
         {
+            "name": "BlockTerrainReverseCorner",
+            "source": "BlockTerrainReverseCorner.blend",
+            "output": "BlockTerrainReverseCorner.glb",
+            "preload": "ground",
+            "objects": [
+                "Block Ground Reverse Corner 1",
+                "Block Grass Reverse Corner 1",
+                "Block Sand Reverse Corner 1"
+            ]
+        },
+        {
             "name": "RaisedBed",
             "source": "RaisedBed.blend",
             "output": "RaisedBed.glb",

@@ -13,6 +13,7 @@ const SNOW_BLOCK_NAMES = [
     'Block_Snow',
     'Block_Snow_Angle',
     'Block_Snow_Corner',
+    'Block_Snow_Reverse_Corner',
     'Block_Snow_Falling',
 ];
 

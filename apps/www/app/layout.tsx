@@ -31,6 +31,7 @@ const gardenModelPreloadUrls = [
     'BlockSand',
     'BlockSandAngle',
     'BlockTerrainCorner',
+    'BlockTerrainReverseCorner',
 ].map((assetName) => `https://vrt.gredice.com/assets/models/${assetName}.glb`);
 
 function NavLinkButton({
