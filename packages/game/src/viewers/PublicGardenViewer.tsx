@@ -96,6 +96,7 @@ export function PublicGardenViewer({
                                         name={block.name}
                                         stack={stack}
                                         block={block}
+                                        stacks={normalizedStacks}
                                         rotation={block.rotation}
                                         variant={block.variant}
                                         noRenderInView={instancedBlockNames}
