@@ -6,6 +6,7 @@ import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/Game
 import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
 import { useCurrentGarden } from '../../../packages/game/src/hooks/useCurrentGarden';
 import { gardenOperationsQueryKey } from '../../../packages/game/src/hooks/useGardenOperations';
+import { queryKeys as raisedBedAiHistoryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedAiHistory';
 import { queryKeys as raisedBedDiaryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedDiaryEntries';
 import { queryKeys as raisedBedFieldDiaryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedFieldDiaryEntries';
 import { RaisedBedField } from '../../../packages/game/src/hud/raisedBed/RaisedBedField';
@@ -84,6 +85,10 @@ function createScenarioQueryClient(scenario: RaisedBedScenario) {
     queryClient.setQueryData(
         raisedBedDiaryQueryKeys.byId(TEST_RAISED_BED_ID),
         raisedBedOperationDiaryEntries,
+    );
+    queryClient.setQueryData(
+        raisedBedAiHistoryQueryKeys.byId(TEST_RAISED_BED_ID),
+        [...raisedBedOperationDiaryEntries, ...operationDiaryEntries],
     );
     queryClient.setQueryData(
         gardenOperationsQueryKey({

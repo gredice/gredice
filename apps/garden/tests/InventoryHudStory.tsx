@@ -2,6 +2,10 @@ import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useMemo } from 'react';
 import { InventoryHud } from '../../../packages/game/src/hud/InventoryHud';
+import {
+    createGameState,
+    GameStateContext,
+} from '../../../packages/game/src/useGameState';
 
 function createInventoryHudQueryClient() {
     const queryClient = new ReactQuery.QueryClient({
@@ -39,11 +43,23 @@ function InventoryHudTestProviders({
     searchParams,
 }: PropsWithChildren<{ searchParams?: string }>) {
     const queryClient = useMemo(() => createInventoryHudQueryClient(), []);
+    const gameStore = useMemo(
+        () =>
+            createGameState({
+                appBaseUrl: 'http://localhost',
+                freezeTime: new Date('2026-05-13T12:00:00.000Z'),
+                isMock: false,
+                winterMode: 'summer',
+            }),
+        [],
+    );
 
     return (
         <NuqsTestingAdapter hasMemory searchParams={searchParams}>
             <ReactQuery.QueryClientProvider client={queryClient}>
-                {children}
+                <GameStateContext.Provider value={gameStore}>
+                    {children}
+                </GameStateContext.Provider>
             </ReactQuery.QueryClientProvider>
         </NuqsTestingAdapter>
     );

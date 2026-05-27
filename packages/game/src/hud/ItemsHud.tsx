@@ -1,3 +1,4 @@
+import { isNightOnlyBlockName, isNightTimeOfDay } from '@gredice/js/blocks';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
@@ -15,6 +16,7 @@ import { useBlockData } from '../hooks/useBlockData';
 import { useBlockPlace } from '../hooks/useBlockPlace';
 import { useIsEditMode } from '../hooks/useIsEditMode';
 import { KnownPages } from '../knownPages';
+import { useGameState } from '../useGameState';
 import { HudCard } from './components/HudCard';
 
 type HudItemEntity = {
@@ -76,6 +78,7 @@ const items: HudItem[] = [
             { type: 'entity', name: 'StoneMedium' },
             { type: 'entity', name: 'StoneLarge' },
             { type: 'entity', name: 'BirdHouse' },
+            { type: 'entity', name: 'FireflyJar' },
             { type: 'entity', name: 'Bush' },
             { type: 'entity', name: 'Tree' },
             { type: 'entity', name: 'Pine' },
@@ -121,9 +124,13 @@ function PlaceEntityButton({
 }) {
     const { data: blockData } = useBlockData();
     const placeBlock = useBlockPlace();
+    const timeOfDay = useGameState((state) => state.timeOfDay);
 
     const block = blockData?.find((block) => block.information.name === name);
     if (!block) return null;
+    const hasSunflowerPrice = Boolean(block.prices.sunflowers);
+    const isAvailableNow =
+        !isNightOnlyBlockName(name) || isNightTimeOfDay(timeOfDay);
 
     async function placeEntity() {
         if (!blockData) {
@@ -136,10 +143,12 @@ function PlaceEntityButton({
         });
     }
 
-    if (!block.prices.sunflowers && simple) return null;
+    if (!hasSunflowerPrice && simple) return null;
 
     const errorMessage =
         placeBlock.error instanceof Error ? placeBlock.error.message : null;
+    const availabilityMessage =
+        !isAvailableNow && hasSunflowerPrice ? 'Dostupno samo noću.' : null;
 
     return (
         <Stack spacing={1}>
@@ -151,7 +160,11 @@ function PlaceEntityButton({
                 onClick={placeEntity}
                 size={simple ? 'sm' : 'md'}
                 variant="soft"
-                disabled={!block.prices.sunflowers || placeBlock.isPending}
+                disabled={
+                    !hasSunflowerPrice ||
+                    !isAvailableNow ||
+                    placeBlock.isPending
+                }
                 endDecorator={
                     <Row
                         className={cx(
@@ -160,14 +173,21 @@ function PlaceEntityButton({
                             !block.prices.sunflowers && 'pl-2',
                         )}
                     >
-                        {block.prices.sunflowers
+                        {hasSunflowerPrice && isAvailableNow
                             ? `${placeBlock.isPending ? '⏳' : '🌻'} ${block.prices.sunflowers}`
-                            : 'Nedostupno'}
+                            : availabilityMessage
+                              ? 'Noću'
+                              : 'Nedostupno'}
                     </Row>
                 }
             >
                 {!simple && <span className="self-center">Postavi</span>}
             </Button>
+            {availabilityMessage && !simple && (
+                <Typography level="body3" className="text-muted-foreground">
+                    {availabilityMessage}
+                </Typography>
+            )}
             {errorMessage && (
                 <Typography level="body3" className="text-red-600">
                     {errorMessage}

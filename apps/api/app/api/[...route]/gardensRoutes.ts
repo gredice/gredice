@@ -50,6 +50,7 @@ import { isAppliedOperationCurrentForRaisedBedFields } from '../../../lib/garden
 import { resolveGardenBlockPlacement } from '../../../lib/garden/blockPlacementService';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
+import { isBlockPurchaseAvailableNow } from '../../../lib/garden/nightOnlyBlockPurchases';
 import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
 import {
     AI_REQUEST_QUOTAS,
@@ -1598,6 +1599,23 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (cost <= 0) {
                 return context.json(
                     { error: 'Requested block not for sale' },
+                    400,
+                );
+            }
+
+            if (
+                !isBlockPurchaseAvailableNow({
+                    blockName,
+                    location: {
+                        lat: garden.farm?.latitude,
+                        lon: garden.farm?.longitude,
+                    },
+                })
+            ) {
+                return context.json(
+                    {
+                        error: 'Ovaj blok moguće je kupiti samo noću.',
+                    },
                     400,
                 );
             }
