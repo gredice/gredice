@@ -81,7 +81,13 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
                     geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
                     material={materials['Material.Planks']}
                 >
-                    <HoverOutline hovered={hovered} variant="outlines" />
+                    <HoverOutline
+                        hovered={hovered || isLidOpen}
+                        variant="outlines"
+                        thickness={7}
+                        color="#f8fafc"
+                        backingColor="#0f172a"
+                    />
                 </mesh>
                 <SnowOverlay
                     geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
