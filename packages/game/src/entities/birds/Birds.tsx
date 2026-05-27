@@ -188,6 +188,7 @@ const visualPerchYOffsets: Record<string, number> = {
     StoneSmall: 0.22,
     Stool: 0.52,
     Tulip: 0.5,
+    WaterWell: 1.05,
     BaleHey: 0.5,
     PotLowBowl: 0.56,
     PotRoundedBowl: 0.66,

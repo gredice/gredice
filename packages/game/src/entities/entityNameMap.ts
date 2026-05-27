@@ -48,6 +48,7 @@ import { Stool } from './Stool';
 import { Tree } from './Tree';
 import { Tulip } from './Tulip';
 import { WateringCan } from './WateringCan';
+import { WaterWell } from './WaterWell';
 
 export const entityNameMap: Record<
     string,
@@ -74,6 +75,7 @@ export const entityNameMap: Record<
     Stool: Stool,
     Bucket: Bucket,
     WateringCan: WateringCan,
+    WaterWell: WaterWell,
     BirdHouse: BirdHouse,
     FireflyJar: FireflyJar,
     GiftBox_RedWhite: GiftBoxRedWhite,

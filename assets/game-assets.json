@@ -209,6 +209,20 @@
             ]
         },
         {
+            "name": "WaterWell",
+            "source": "WaterWell.blend",
+            "output": "WaterWell.glb",
+            "preload": "lazy",
+            "objects": [
+                "WaterWell_Stone_Mid",
+                "WaterWell_Stone_Light",
+                "WaterWell_Stone_Dark",
+                "WaterWell_Wood_Frame",
+                "WaterWell_Rope",
+                "WaterWell_Water"
+            ]
+        },
+        {
             "name": "Composter",
             "source": "Composter.blend",
             "output": "Composter.glb",
