@@ -3,7 +3,6 @@ import { resolve } from 'node:path';
 import type { BlockData } from '@gredice/client';
 import { EntityViewer } from '@gredice/game';
 import { test } from '@playwright/experimental-ct-react';
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { allGameAssetNames } from '../../../packages/game/src/data/models';
 
 test.use({
@@ -96,16 +95,16 @@ test.describe('block screenshots', async () => {
                 );
                 const component = await mount(
                     <div style={{ width: 160, height: 160 }}>
-                        <NuqsTestingAdapter>
-                            <EntityViewer
-                                style={{ width: 160, height: 160 }}
-                                zoom={zoom}
-                                itemPosition={itemPosition}
-                                entityName={entity.information.name}
-                                appBaseUrl={gameAssetBaseUrl}
-                                rotation={rotation}
-                            />
-                        </NuqsTestingAdapter>
+                        <EntityViewer
+                            style={{ width: 160, height: 160 }}
+                            zoom={zoom}
+                            itemPosition={itemPosition}
+                            entityName={entity.information.name}
+                            appBaseUrl={gameAssetBaseUrl}
+                            noControl
+                            rotation={rotation}
+                            staticEnvironment
+                        />
                     </div>,
                 );
 

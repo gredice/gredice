@@ -80,14 +80,11 @@ export type GLTFResult = GLTF & {
         'Bucket_-_Handle': THREE.Mesh;
         WateringCan_Base_Ring: THREE.Mesh;
         WateringCan_Body: THREE.Mesh;
-        WateringCan_Body_Facet_Strips: THREE.Mesh;
         WateringCan_Fill_Rim: THREE.Mesh;
         WateringCan_Handle: THREE.Mesh;
-        WateringCan_Handle_Mounts: THREE.Mesh;
         WateringCan_Rose_Face_Dots: THREE.Mesh;
         WateringCan_Rose_Head: THREE.Mesh;
         WateringCan_Spout: THREE.Mesh;
-        WateringCan_Spout_Collar: THREE.Mesh;
         WateringCan_Water: THREE.Mesh;
         Composter_1: THREE.Mesh;
         Composter_2: THREE.Mesh;

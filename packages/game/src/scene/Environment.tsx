@@ -405,6 +405,65 @@ function useEnvironmentElements({
     };
 }
 
+const baseCameraShadowSize = 20;
+const defaultLocation = { lat: 45.739, lon: 16.572 };
+
+export function StaticEnvironment({
+    noBackground,
+    quality,
+}: Pick<EnvironmentProps, 'noBackground' | 'quality'>) {
+    const qualityProfile = quality ?? resolveGameQualityProfile();
+    const currentTime = useSnapshotTime();
+    const timeOfDay = useGameState((state) => state.timeOfDay);
+    const { background, ambient, hemisphere, directionalLight } =
+        useEnvironmentElements({
+            location: defaultLocation,
+            currentTime,
+            timeOfDay,
+            weather: undefined,
+        });
+
+    return (
+        <>
+            {!noBackground && (
+                <color
+                    attach="background"
+                    args={[background.r, background.g, background.b]}
+                />
+            )}
+            <ambientLight intensity={ambient.intensity} />
+            <hemisphereLight
+                position={[0, 1, 0]}
+                color={hemisphere.color}
+                groundColor={hemisphere.groundColor}
+                intensity={hemisphere.intensity}
+            />
+            <directionalLight
+                intensity={directionalLight.intensity}
+                color={directionalLight.color}
+                position={directionalLight.position}
+                shadow-intensity={qualityProfile.shadows ? 1 : 0}
+                shadow-mapSize={
+                    qualityProfile.shadows ? qualityProfile.shadowMapSize : 1
+                }
+                shadow-radius={2.2}
+                shadow-normalBias={0.03}
+                castShadow={qualityProfile.shadows}
+            >
+                <orthographicCamera
+                    attach="shadow-camera"
+                    args={[
+                        -baseCameraShadowSize,
+                        baseCameraShadowSize,
+                        baseCameraShadowSize,
+                        -baseCameraShadowSize,
+                    ]}
+                />
+            </directionalLight>
+        </>
+    );
+}
+
 export function Environment({
     noBackground,
     noSound,
@@ -413,7 +472,6 @@ export function Environment({
     weather,
 }: EnvironmentProps) {
     const qualityProfile = quality ?? resolveGameQualityProfile();
-    const baseCameraShadowSize = 20;
 
     const currentTime = useSnapshotTime();
     const timeOfDay = useGameState((state) => state.timeOfDay);

@@ -22,12 +22,9 @@ const bodyNodeNames = [
 
 const trimNodeNames = [
     'WateringCan_Base_Ring',
-    'WateringCan_Body_Facet_Strips',
     'WateringCan_Fill_Rim',
     'WateringCan_Handle',
-    'WateringCan_Handle_Mounts',
     'WateringCan_Rose_Head',
-    'WateringCan_Spout_Collar',
 ] satisfies WateringCanNodeName[];
 
 const darkNodeNames = [
