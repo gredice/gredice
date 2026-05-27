@@ -1,8 +1,20 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useGameState } from '../useGameState';
+import {
+    createOptimisticBlockPlacement,
+    replaceOptimisticBlockId,
+} from './optimisticBlockPlacement';
+import { useBlockData } from './useBlockData';
+import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 import { inventoryQueryKey } from './useInventory';
 
 const mutationKey = ['inventory', 'gardenBoxPlaceBlock'];
+const optimisticBlockIdPrefix = 'optimistic-garden-box-block';
+
+type CurrentGardenData = NonNullable<
+    ReturnType<typeof useCurrentGarden>['data']
+>;
 
 type InventoryItemData = {
     entityTypeName: string;
@@ -81,6 +93,9 @@ async function getGardenBoxPlaceBlockError(response: Response) {
 
 export function useGardenBoxPlaceBlock() {
     const queryClient = useQueryClient();
+    const { data: currentGarden } = useCurrentGarden();
+    const { data: blockData } = useBlockData();
+    const winterMode = useGameState((state) => state.winterMode);
 
     return useMutation({
         mutationKey,
@@ -106,9 +121,18 @@ export function useGardenBoxPlaceBlock() {
             return await response.json();
         },
         onMutate: async (args) => {
-            await queryClient.cancelQueries({ queryKey: inventoryQueryKey });
+            const gardenQueryKey = currentGardenKeys(winterMode, args.gardenId);
+            await Promise.all([
+                queryClient.cancelQueries({ queryKey: inventoryQueryKey }),
+                queryClient.cancelQueries({ queryKey: gardenQueryKey }),
+            ]);
             const previousInventory =
                 queryClient.getQueryData<InventoryData>(inventoryQueryKey);
+            const previousGarden =
+                queryClient.getQueryData<CurrentGardenData>(gardenQueryKey) ??
+                (currentGarden?.id === args.gardenId
+                    ? currentGarden
+                    : undefined);
 
             if (previousInventory) {
                 queryClient.setQueryData(
@@ -117,7 +141,55 @@ export function useGardenBoxPlaceBlock() {
                 );
             }
 
-            return { previousInventory };
+            const targetBlockData = blockData?.find(
+                (block) => block.id.toString() === args.entityId,
+            );
+            const blockName = targetBlockData?.information.name;
+            const garden = previousGarden ?? currentGarden;
+            const optimisticBlockId = blockName
+                ? `${optimisticBlockIdPrefix}:${blockName}:${Date.now().toString(36)}`
+                : null;
+            const optimisticPlacement =
+                garden && blockName && optimisticBlockId
+                    ? createOptimisticBlockPlacement(
+                          garden,
+                          blockData,
+                          blockName,
+                          optimisticBlockId,
+                      )
+                    : null;
+
+            if (garden && optimisticPlacement) {
+                queryClient.setQueryData<CurrentGardenData>(gardenQueryKey, {
+                    ...garden,
+                    stacks: optimisticPlacement.stacks,
+                });
+            }
+
+            return {
+                gardenQueryKey,
+                optimisticBlockId,
+                previousGarden,
+                previousInventory,
+            };
+        },
+        onSuccess: (data, _variables, context) => {
+            if (!context?.optimisticBlockId) {
+                return;
+            }
+
+            const optimisticBlockId = context.optimisticBlockId;
+            queryClient.setQueryData<CurrentGardenData | null>(
+                context.gardenQueryKey,
+                (garden) =>
+                    garden
+                        ? replaceOptimisticBlockId(
+                              garden,
+                              optimisticBlockId,
+                              data.id,
+                          )
+                        : garden,
+            );
         },
         onError: (error, _variables, context) => {
             console.error('Error placing block from garden box', error);
@@ -127,14 +199,24 @@ export function useGardenBoxPlaceBlock() {
                     context.previousInventory,
                 );
             }
+            if (context?.previousGarden) {
+                queryClient.setQueryData(
+                    context.gardenQueryKey,
+                    context.previousGarden,
+                );
+            }
         },
-        onSettled: async () => {
+        onSettled: async (_data, _error, variables) => {
+            const gardenQueryKey = currentGardenKeys(
+                winterMode,
+                variables.gardenId,
+            );
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({
                     queryKey: inventoryQueryKey,
                 });
                 await queryClient.invalidateQueries({
-                    queryKey: ['gardens', 'current'],
+                    queryKey: gardenQueryKey,
                 });
             }
         },
