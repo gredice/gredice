@@ -68,6 +68,8 @@ const blockNames = [
     'Bush',
     'Tree',
     'Pine',
+    'DeadTreeTall',
+    'DeadTreeStump',
     'ShovelSmall',
     'Tulip',
     'CactusBarrel',

@@ -20,6 +20,7 @@ import { Bucket } from './Bucket';
 import { Bush } from './Bush';
 import { Cactus } from './Cactus';
 import { Composter } from './Composter';
+import { DeadTree } from './DeadTree';
 import { Fence } from './Fence';
 import { FireflyJar } from './FireflyJar';
 import { GardenBox } from './GardenBox';
@@ -85,6 +86,8 @@ export const entityNameMap: Record<
     Bush: Bush,
     Tree: Tree,
     Pine: Pine,
+    DeadTreeTall: DeadTree,
+    DeadTreeStump: DeadTree,
     PineAdvent: PineAdvent,
     StoneSmall: StoneSmall,
     StoneMedium: StoneMedium,
