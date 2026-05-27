@@ -113,7 +113,7 @@ function useWaterBlockMaterial(foamEdges: Vector4) {
             vertexShader: waterVertexShader,
             fragmentShader: waterFragmentShader,
             transparent: true,
-            depthWrite: true,
+            depthWrite: false,
             depthTest: true,
             side: DoubleSide,
             uniforms: {
