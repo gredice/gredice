@@ -4,18 +4,47 @@ type GameProfileSearchParams = Promise<
     Record<string, string | string[] | undefined>
 >;
 
-type GameProfileMode = 'baseline' | 'details' | 'rain' | 'snow';
+type GameProfileMode =
+    | 'baseline'
+    | 'details'
+    | 'rain'
+    | 'snow'
+    | 'night'
+    | 'storm'
+    | 'autumn';
+
+const clearWeather = {
+    cloudy: 0,
+    rainy: 0,
+    snowy: 0,
+    foggy: 0,
+    windSpeed: 0,
+    windDirection: 0,
+    snowAccumulation: 0,
+} satisfies NonNullable<GameSceneProps['weather']>;
+
+const debugGameFlags = {
+    enableDebugHudFlag: true,
+    enableRainWetOverlayFlag: true,
+} satisfies NonNullable<GameSceneProps['flags']>;
 
 function firstValue(value: string | string[] | undefined) {
     return Array.isArray(value) ? value[0] : value;
 }
 
 function resolveMode(value: string | undefined): GameProfileMode {
+    if (value === 'autum') {
+        return 'autumn';
+    }
+
     if (
         value === 'baseline' ||
         value === 'details' ||
         value === 'rain' ||
-        value === 'snow'
+        value === 'snow' ||
+        value === 'night' ||
+        value === 'storm' ||
+        value === 'autumn'
     ) {
         return value;
     }
@@ -33,7 +62,7 @@ function resolveQuality(value: string | undefined): GameSceneProps['quality'] {
 
 function resolveWeather(
     mode: GameProfileMode,
-): GameSceneProps['weather'] | undefined {
+): NonNullable<GameSceneProps['weather']> {
     if (mode === 'rain') {
         return {
             cloudy: 0.85,
@@ -58,7 +87,55 @@ function resolveWeather(
         };
     }
 
-    return undefined;
+    if (mode === 'night') {
+        return {
+            ...clearWeather,
+            cloudy: 0.1,
+            windSpeed: 0.2,
+            windDirection: 45,
+        };
+    }
+
+    if (mode === 'storm') {
+        return {
+            cloudy: 1,
+            rainy: 1,
+            snowy: 0,
+            foggy: 0.35,
+            thundery: 1,
+            windSpeed: 3,
+            windDirection: 135,
+            snowAccumulation: 0,
+        };
+    }
+
+    if (mode === 'autumn') {
+        return {
+            ...clearWeather,
+            cloudy: 0.35,
+            foggy: 0.08,
+            windSpeed: 0.7,
+            windDirection: 270,
+        };
+    }
+
+    return clearWeather;
+}
+
+function resolveFreezeTime(mode: GameProfileMode) {
+    if (mode === 'night') {
+        return new Date(2024, 5, 21, 22, 30, 0);
+    }
+
+    if (mode === 'storm') {
+        return new Date(2024, 5, 21, 18, 30, 0);
+    }
+
+    if (mode === 'autumn') {
+        return new Date(2024, 8, 22, 16, 30, 0);
+    }
+
+    return new Date(2024, 5, 21, 12, 0, 0);
 }
 
 export default async function GameProfilePage({
@@ -74,21 +151,24 @@ export default async function GameProfilePage({
     const enableControls = firstValue(params.controls) !== '0';
     const quality = resolveQuality(firstValue(params.quality));
     const weather = resolveWeather(mode);
+    const freezeTime = resolveFreezeTime(mode);
 
     return (
         <main
-            className="h-screen w-screen overflow-hidden bg-neutral-950"
+            className="h-screen w-screen overflow-hidden bg-[#e7e2cc]"
             data-game-profile-mode={mode}
             data-game-profile-quality={quality ?? 'auto'}
         >
             <GameScene
                 className="h-full w-full"
+                dayNightCycleDisabled={false}
                 deferDetails={!renderDetails}
+                flags={debugGameFlags}
+                freezeTime={freezeTime}
                 hideHud={!showHud}
                 mockGarden
                 noControls={!enableControls}
                 noSound
-                noWeather={!weather}
                 quality={quality}
                 weather={weather}
                 winterMode={mode === 'snow' ? 'winter' : 'summer'}

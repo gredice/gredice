@@ -27,6 +27,7 @@ function createBlockData(name: string, index: number) {
         },
         attributes: {
             height: 1,
+            nightOnlyPurchase: name === 'FireflyJar',
             stackable: true,
             type: name === 'Raised_Bed' ? 'raisedBed' : 'decoration',
         },
@@ -63,6 +64,7 @@ const blockNames = [
     'StoneMedium',
     'StoneLarge',
     'BirdHouse',
+    'FireflyJar',
     'Bush',
     'Tree',
     'Pine',

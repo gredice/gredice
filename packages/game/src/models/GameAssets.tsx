@@ -95,6 +95,13 @@ export type GLTFResult = GLTF & {
         Birdhouse_Ridge_Cap: THREE.Mesh;
         Birdhouse_Roof_Panels: THREE.Mesh;
         Birdhouse_Upper_Platform: THREE.Mesh;
+        FireflyJar_Glass_Jar: THREE.Mesh;
+        FireflyJar_Glass_Base_Thickness: THREE.Mesh;
+        FireflyJar_Glass_Top_Rim: THREE.Mesh;
+        FireflyJar_Lid: THREE.Mesh;
+        FireflyJar_Firefly_Body: THREE.Mesh;
+        FireflyJar_Firefly_Glow_Abdomen: THREE.Mesh;
+        FireflyJar_Firefly_Wings: THREE.Mesh;
         Fence_Corner: THREE.Mesh;
         Fence_Cross: THREE.Mesh;
         Fence_Middle: THREE.Mesh;
@@ -155,6 +162,11 @@ export type GLTFResult = GLTF & {
         BH_flat_dark_wood: THREE.MeshStandardMaterial;
         BH_flat_light_wood: THREE.MeshStandardMaterial;
         BH_flat_warm_gray_roof: THREE.MeshStandardMaterial;
+        FJ_flat_brass_lid: THREE.MeshStandardMaterial;
+        FJ_flat_firefly_body: THREE.MeshStandardMaterial;
+        FJ_soft_firefly_wings: THREE.MeshStandardMaterial;
+        FJ_soft_transparent_glass: THREE.MeshStandardMaterial;
+        FJ_warm_firefly_glow: THREE.MeshStandardMaterial;
         'Material.BirdSmall.Beak': THREE.MeshStandardMaterial;
         'Material.BirdSmall.Belly': THREE.MeshStandardMaterial;
         'Material.BirdSmall.Body': THREE.MeshStandardMaterial;

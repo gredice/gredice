@@ -232,6 +232,21 @@
             ]
         },
         {
+            "name": "FireflyJar",
+            "source": "FireflyJar.blend",
+            "output": "FireflyJar.glb",
+            "preload": "lazy",
+            "objects": [
+                "FireflyJar_Glass_Jar",
+                "FireflyJar_Glass_Base_Thickness",
+                "FireflyJar_Glass_Top_Rim",
+                "FireflyJar_Lid",
+                "FireflyJar_Firefly_Body",
+                "FireflyJar_Firefly_Glow_Abdomen",
+                "FireflyJar_Firefly_Wings"
+            ]
+        },
+        {
             "name": "Fence",
             "source": "Fence.blend",
             "output": "Fence.glb",

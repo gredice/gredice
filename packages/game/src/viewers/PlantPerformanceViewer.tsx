@@ -4,6 +4,7 @@ import { Html } from '@react-three/drei';
 import { useMemo, useRef } from 'react';
 import { RaisedBedGeneratedPlantBatch } from '../entities/raisedBed/RaisedBedGeneratedPlantBatch';
 import { plantTypes } from '../generators/plant/lib/plant-presets';
+import { DebugHud } from '../hud/DebugHud';
 import { Environment } from '../scene/Environment';
 import { Scene } from '../scene/Scene';
 import {
@@ -15,6 +16,7 @@ import {
 
 export interface PlantPerformanceViewerProps {
     className?: string;
+    debugHud?: boolean;
 }
 
 const PRESET_COLUMNS = 5;
@@ -24,11 +26,13 @@ const INSTANCE_SPACING = 0.42;
 
 export function PlantPerformanceViewer({
     className,
+    debugHud,
 }: PlantPerformanceViewerProps) {
     const storeRef = useRef<GameStateStore>(null);
     if (!storeRef.current) {
         storeRef.current = createGameState({
             appBaseUrl: '',
+            dayNightCycleDisabled: false,
             freezeTime: new Date(2024, 5, 21, 12, 0, 0),
             isMock: true,
             winterMode: 'summer',
@@ -131,6 +135,7 @@ export function PlantPerformanceViewer({
                     ))}
                 </group>
             </Scene>
+            {debugHud && <DebugHud />}
         </GameStateContext.Provider>
     );
 }

@@ -21,16 +21,9 @@ test('garden box block item can be placed back into the garden', async ({
     page,
 }) => {
     let placeRequestCount = 0;
-    await page.route('**/api/gredice/**', async (route) => {
-        const url = new URL(route.request().url());
-        const method = route.request().method();
-
-        if (
-            method === 'POST' &&
-            url.pathname.endsWith(
-                '/api/inventory/garden-boxes/1/garden-box-1/items/block/1/place',
-            )
-        ) {
+    await page.route(
+        /\/api(?:\/gredice)?\/inventory\/garden-boxes\/1\/garden-box-1\/items\/block\/1\/place$/u,
+        async (route) => {
             placeRequestCount += 1;
             await route.fulfill({
                 status: 200,
@@ -45,48 +38,19 @@ test('garden box block item can be placed back into the garden', async ({
                     },
                 }),
             });
-            return;
-        }
-
-        if (method === 'GET' && url.pathname.endsWith('/api/inventory')) {
-            await route.fulfill({
-                status: 200,
-                contentType: 'application/json',
-                body: JSON.stringify({
-                    items: [],
-                    gardenBoxes: [
-                        {
-                            blockId: 'garden-box-1',
-                            gardenId: 1,
-                            gardenName: 'Test garden',
-                            items: [
-                                {
-                                    amount: 1,
-                                    entityId: '1',
-                                    entityTypeName: 'block',
-                                    name: 'Bucket',
-                                },
-                            ],
-                        },
-                    ],
-                }),
-            });
-            return;
-        }
-
-        await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({}),
-        });
-    });
+        },
+    );
 
     await mount(<InventoryHudGardenBoxesOpenStory />);
 
-    await page.getByRole('button', { name: 'Bucket' }).click();
+    await page
+        .locator('button', { has: page.getByRole('img', { name: 'Bucket' }) })
+        .click();
 
-    await expect(page.getByText(/Dodaj ovaj blok natrag u vrt/u)).toBeVisible();
-    await expect(page.getByText(/bez trošenja suncokreta/u)).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Bucket' })).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u vrt' }),
+    ).toBeVisible();
 
     await page.getByRole('button', { name: 'Dodaj u vrt' }).click();
 
