@@ -1,4 +1,4 @@
-import type { OperationData, PlantSortData } from '@gredice/client';
+import type { BlockData, OperationData, PlantSortData } from '@gredice/client';
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { IconButton } from '@gredice/ui/IconButton';
@@ -10,11 +10,13 @@ import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import { useBlockData } from '../hooks/useBlockData';
 import { useInventory } from '../hooks/useInventory';
 import { useOperations } from '../hooks/useOperations';
 import { useSorts } from '../hooks/usePlantSorts';
+import { useGameState } from '../useGameState';
 import { useBackpackOpenParam } from '../useUrlState';
 import { HudCard } from './components/HudCard';
 
@@ -40,6 +42,12 @@ type InventoryData = {
     gardenBoxes?: GardenBoxInventoryData[];
 };
 
+type InventoryTab = 'backpack' | 'gardenBoxes';
+
+function isInventoryTab(value: string): value is InventoryTab {
+    return value === 'backpack' || value === 'gardenBoxes';
+}
+
 function inventoryItemKey(
     item: Pick<InventoryItemData, 'entityTypeName' | 'entityId'>,
 ) {
@@ -50,15 +58,62 @@ function inventoryItemTotal(items: InventoryItemData[]) {
     return items.reduce((sum, item) => sum + item.amount, 0);
 }
 
+function getInventoryBlockData(
+    blockData: BlockData[] | null | undefined,
+    item: InventoryItemData | null | undefined,
+) {
+    if (item?.entityTypeName !== 'block') {
+        return undefined;
+    }
+
+    const blockById = blockData?.find(
+        (block) => block.id.toString() === item.entityId,
+    );
+    if (blockById) {
+        return blockById;
+    }
+
+    return blockData?.find(
+        (block) =>
+            block.information.name === item.entityId ||
+            block.information.name === item.name ||
+            block.information.label === item.entityId ||
+            block.information.label === item.name,
+    );
+}
+
+function inventoryItemDisplayName({
+    item,
+    sortData,
+    operationData,
+    blockData,
+}: {
+    item: InventoryItemData;
+    sortData?: PlantSortData;
+    operationData?: OperationData;
+    blockData?: BlockData;
+}) {
+    return (
+        sortData?.information?.name ??
+        operationData?.information?.label ??
+        blockData?.information.label ??
+        item.name ??
+        operationData?.information?.name ??
+        item.entityTypeName
+    );
+}
+
 function InventoryItemCell({
     item,
     sortData,
     operationData,
+    blockData,
     onClick,
 }: {
     item?: InventoryItemData;
     sortData?: PlantSortData;
     operationData?: OperationData;
+    blockData?: BlockData;
     onClick: () => void;
 }) {
     if (!item) {
@@ -68,11 +123,18 @@ function InventoryItemCell({
         );
     }
 
+    const displayName = inventoryItemDisplayName({
+        item,
+        sortData,
+        operationData,
+        blockData,
+    });
+
     return (
         <button
             type="button"
             onClick={onClick}
-            className="aspect-square rounded-lg border p-0.5 relative transition-all bg-card hover:bg-primary/10"
+            className="relative aspect-square overflow-visible rounded-lg border bg-card p-0.5 transition-all hover:bg-primary/10"
         >
             {sortData ? (
                 <PlantOrSortImage
@@ -85,18 +147,26 @@ function InventoryItemCell({
                 <div className="flex items-center justify-center h-full w-full rounded-md bg-card">
                     <OperationImage operation={operationData} size={48} />
                 </div>
+            ) : blockData ? (
+                <div className="flex items-center justify-center h-full w-full rounded-md bg-card">
+                    <BlockImage
+                        blockName={blockData.information.name}
+                        alt={blockData.information.label}
+                        width={48}
+                        height={48}
+                        className="size-full object-contain"
+                    />
+                </div>
             ) : (
                 <div className="flex items-center justify-center h-full w-full rounded-md bg-muted">
                     <Typography level="body2" className="text-center">
-                        {item.name ?? item.entityTypeName}
+                        {displayName}
                     </Typography>
                 </div>
             )}
 
-            <div className="absolute -top-1.5 -right-1.5">
-                <div className="size-[18px] rounded-full bg-tertiary text-tertiary-foreground text-[10px] font-semibold leading-none flex items-center justify-center shadow-xs border border-tertiary-foreground/30">
-                    {item.amount?.toString()}
-                </div>
+            <div className="absolute right-1 top-1 flex h-5 min-w-5 items-center justify-center rounded-full border border-tertiary-foreground/30 bg-tertiary px-1 text-[10px] font-semibold leading-none text-tertiary-foreground shadow-xs">
+                {item.amount > 99 ? '99+' : item.amount}
             </div>
         </button>
     );
@@ -107,12 +177,14 @@ function InventoryItemsGrid({
     keyPrefix,
     operationLookup,
     sortData,
+    blockData,
     onItemClick,
 }: {
     items: InventoryItemData[];
     keyPrefix: string;
     operationLookup: Map<string, OperationData>;
     sortData?: PlantSortData[];
+    blockData?: BlockData[] | null;
     onItemClick: (item: InventoryItemData) => void;
 }) {
     const gridItems = useMemo(() => {
@@ -136,6 +208,7 @@ function InventoryItemsGrid({
                 const itemOperationData = item
                     ? operationLookup.get(inventoryItemKey(item))
                     : undefined;
+                const itemBlockData = getInventoryBlockData(blockData, item);
 
                 return (
                     <InventoryItemCell
@@ -143,6 +216,7 @@ function InventoryItemsGrid({
                         item={item ?? undefined}
                         sortData={itemSortData}
                         operationData={itemOperationData}
+                        blockData={itemBlockData}
                         onClick={() => {
                             if (item) {
                                 onItemClick(item);
@@ -159,25 +233,30 @@ function InventoryItemModal({
     item,
     sortData,
     operationData,
+    blockData,
     open,
     onClose,
 }: {
     item: InventoryItemData;
     sortData?: PlantSortData;
     operationData?: OperationData;
+    blockData?: BlockData;
     open: boolean;
     onClose: () => void;
 }) {
-    const displayName =
-        sortData?.information?.name ??
-        operationData?.information?.label ??
-        operationData?.information?.name ??
-        item.name ??
-        'Nepoznati predmet';
+    const displayName = inventoryItemDisplayName({
+        item,
+        sortData,
+        operationData,
+        blockData,
+    });
     const description =
+        blockData?.information.shortDescription ??
         sortData?.information?.shortDescription ??
         sortData?.information?.plant?.information?.description ??
-        operationData?.information?.shortDescription;
+        operationData?.information?.shortDescription ??
+        blockData?.information.fullDescription;
+    const showHowTo = item.entityTypeName !== 'block';
 
     return (
         <Modal
@@ -201,10 +280,18 @@ function InventoryItemModal({
                                 size={64}
                             />
                         </div>
+                    ) : blockData ? (
+                        <BlockImage
+                            blockName={blockData.information.name}
+                            alt={blockData.information.label}
+                            width={80}
+                            height={80}
+                            className="size-20 rounded-lg border shrink-0 bg-card object-contain"
+                        />
                     ) : (
                         <div className="size-20 rounded-lg border shrink-0 flex items-center justify-center bg-muted">
                             <Typography level="body2" center>
-                                {item.name ?? item.entityTypeName}
+                                {displayName}
                             </Typography>
                         </div>
                     )}
@@ -218,39 +305,44 @@ function InventoryItemModal({
                     </Stack>
                 </div>
 
-                <Stack spacing={3} className="bg-card rounded-lg p-3 border">
-                    <Typography level="body2">Kako koristiti:</Typography>
-                    <Stack spacing={2}>
-                        {item.entityTypeName === 'plantSort' ? (
-                            <>
-                                <Typography level="body3">
-                                    1. Odaberi prazno polje na gredici
-                                </Typography>
-                                <Typography level="body3">
-                                    2. Klikni &quot;Posadi biljku&quot; i
-                                    odaberi ovu sortu
-                                </Typography>
-                                <Typography level="body3">
-                                    3. U košari označi &quot;Koristi iz
-                                    ruksaka&quot;
-                                </Typography>
-                            </>
-                        ) : (
-                            <>
-                                <Typography level="body3">
-                                    1. Odaberi gredicu u vrtu
-                                </Typography>
-                                <Typography level="body3">
-                                    2. Dodaj radnju u košaru
-                                </Typography>
-                                <Typography level="body3">
-                                    3. U košari označi &quot;Koristi iz
-                                    ruksaka&quot;
-                                </Typography>
-                            </>
-                        )}
+                {showHowTo && (
+                    <Stack
+                        spacing={3}
+                        className="bg-card rounded-lg p-3 border"
+                    >
+                        <Typography level="body2">Kako koristiti:</Typography>
+                        <Stack spacing={2}>
+                            {item.entityTypeName === 'plantSort' ? (
+                                <>
+                                    <Typography level="body3">
+                                        1. Odaberi prazno polje na gredici
+                                    </Typography>
+                                    <Typography level="body3">
+                                        2. Klikni &quot;Posadi biljku&quot; i
+                                        odaberi ovu sortu
+                                    </Typography>
+                                    <Typography level="body3">
+                                        3. U košari označi &quot;Koristi iz
+                                        ruksaka&quot;
+                                    </Typography>
+                                </>
+                            ) : (
+                                <>
+                                    <Typography level="body3">
+                                        1. Odaberi gredicu u vrtu
+                                    </Typography>
+                                    <Typography level="body3">
+                                        2. Dodaj radnju u košaru
+                                    </Typography>
+                                    <Typography level="body3">
+                                        3. U košari označi &quot;Koristi iz
+                                        ruksaka&quot;
+                                    </Typography>
+                                </>
+                            )}
+                        </Stack>
                     </Stack>
-                </Stack>
+                )}
             </Stack>
         </Modal>
     );
@@ -261,12 +353,14 @@ function GardenBoxInventoryGroup({
     index,
     operationLookup,
     sortData,
+    blockData,
     onItemClick,
 }: {
     gardenBox: GardenBoxInventoryData;
     index: number;
     operationLookup: Map<string, OperationData>;
     sortData?: PlantSortData[];
+    blockData?: BlockData[] | null;
     onItemClick: (item: InventoryItemData) => void;
 }) {
     const itemTotal = inventoryItemTotal(gardenBox.items);
@@ -297,6 +391,7 @@ function GardenBoxInventoryGroup({
                 keyPrefix={`garden-box-${gardenBox.gardenId}-${gardenBox.blockId}`}
                 operationLookup={operationLookup}
                 sortData={sortData}
+                blockData={blockData}
                 onItemClick={onItemClick}
             />
             {gardenBox.items.length === 0 && (
@@ -311,8 +406,17 @@ function GardenBoxInventoryGroup({
 export function InventoryHud() {
     const { data: inventory } = useInventory();
     const { data: operations } = useOperations();
+    const { data: blockData } = useBlockData();
     const { track } = useGameAnalytics();
     const [isOpen, setIsOpen] = useBackpackOpenParam();
+    const openGardenBoxBlockId = useGameState(
+        (state) => state.openGardenBoxBlockId,
+    );
+    const setOpenGardenBoxBlockId = useGameState(
+        (state) => state.setOpenGardenBoxBlockId,
+    );
+    const wasOpenRef = useRef(isOpen);
+    const [activeTab, setActiveTab] = useState<InventoryTab>('backpack');
     const [selectedItem, setSelectedItem] = useState<InventoryItemData | null>(
         null,
     );
@@ -369,6 +473,22 @@ export function InventoryHud() {
         [backpackItemsTotal, gardenBoxItemsTotal],
     );
 
+    useEffect(() => {
+        if (!openGardenBoxBlockId) return;
+
+        setActiveTab('gardenBoxes');
+        setIsOpen(true);
+    }, [openGardenBoxBlockId, setIsOpen]);
+
+    useEffect(() => {
+        if (wasOpenRef.current && !isOpen) {
+            setSelectedItem(null);
+            setOpenGardenBoxBlockId(null);
+        }
+
+        wasOpenRef.current = isOpen;
+    }, [isOpen, setOpenGardenBoxBlockId]);
+
     const selectedSortData =
         selectedItem?.entityTypeName === 'plantSort'
             ? sortData?.find((s) => s.id === Number(selectedItem.entityId))
@@ -376,6 +496,7 @@ export function InventoryHud() {
     const selectedOperationData = selectedItem
         ? operationLookup.get(inventoryItemKey(selectedItem))
         : undefined;
+    const selectedBlockData = getInventoryBlockData(blockData, selectedItem);
 
     const handleItemClick = (
         item: InventoryItemData,
@@ -391,12 +512,17 @@ export function InventoryHud() {
 
     const handleOpenChange = (open: boolean) => {
         if (open) {
+            if (!openGardenBoxBlockId) {
+                setActiveTab('backpack');
+            }
             track('game_inventory_opened', {
                 total_items: totalItems,
             });
+        } else {
+            setSelectedItem(null);
+            setOpenGardenBoxBlockId(null);
         }
         setIsOpen(open);
-        if (!open) setSelectedItem(null);
     };
 
     const tabCountClassName =
@@ -437,7 +563,15 @@ export function InventoryHud() {
                             Inventar
                         </Typography>
                     </Row>
-                    <Tabs defaultValue="backpack" className="flex flex-col">
+                    <Tabs
+                        value={activeTab}
+                        onValueChange={(value) => {
+                            if (isInventoryTab(value)) {
+                                setActiveTab(value);
+                            }
+                        }}
+                        className="flex flex-col"
+                    >
                         <TabsList className="grid grid-cols-2 border">
                             <TabsTrigger value="backpack">
                                 <Row spacing={2} alignItems="center">
@@ -481,6 +615,7 @@ export function InventoryHud() {
                                     keyPrefix="backpack"
                                     operationLookup={operationLookup}
                                     sortData={sortData}
+                                    blockData={blockData}
                                     onItemClick={(item) =>
                                         handleItemClick(item, 'backpack')
                                     }
@@ -515,6 +650,7 @@ export function InventoryHud() {
                                             index={index}
                                             operationLookup={operationLookup}
                                             sortData={sortData}
+                                            blockData={blockData}
                                             onItemClick={(item) =>
                                                 handleItemClick(
                                                     item,
@@ -535,6 +671,7 @@ export function InventoryHud() {
                     item={selectedItem}
                     sortData={selectedSortData}
                     operationData={selectedOperationData}
+                    blockData={selectedBlockData}
                     open={Boolean(selectedItem)}
                     onClose={() => setSelectedItem(null)}
                 />

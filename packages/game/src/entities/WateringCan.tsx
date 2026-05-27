@@ -1,5 +1,6 @@
 import { animated } from '@react-spring/three';
 import { MeshDistortMaterial } from '@react-three/drei';
+import type { ReactNode } from 'react';
 import { DoubleSide } from 'three';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
@@ -14,6 +15,7 @@ type WateringCanNodeName = Extract<
     keyof GLTFResult['nodes'],
     `WateringCan_${string}`
 >;
+type WateringCanNode = GLTFResult['nodes'][WateringCanNodeName];
 
 const bodyNodeNames = [
     'WateringCan_Body',
@@ -38,6 +40,29 @@ const metalMaterial = {
     side: DoubleSide,
 };
 
+const wateringCanScale = 0.35;
+
+function WateringCanPart({
+    children,
+    node,
+}: {
+    children: ReactNode;
+    node: WateringCanNode;
+}) {
+    return (
+        <mesh
+            castShadow
+            receiveShadow
+            geometry={node.geometry}
+            position={node.position}
+            rotation={node.rotation}
+            scale={node.scale}
+        >
+            {children}
+        </mesh>
+    );
+}
+
 export function WateringCan({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes } = useGameGLTF('WateringCan');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
@@ -47,68 +72,61 @@ export function WateringCan({ stack, block, rotation }: EntityInstanceProps) {
         <animated.group
             position={stack.position.clone().setY(currentStackHeight)}
             rotation={animatedRotation as unknown as [number, number, number]}
-            scale={0.8}
+            scale={wateringCanScale}
         >
-            {bodyNodeNames.map((nodeName) => (
-                <mesh
-                    castShadow
-                    receiveShadow
-                    geometry={nodes[nodeName].geometry}
-                    key={nodeName}
-                >
-                    <meshStandardMaterial {...metalMaterial} />
-                    <SnowOverlay
-                        geometry={nodes[nodeName].geometry}
-                        {...snowPresets.tool}
-                    />
-                    <RainWetOverlay
-                        geometry={nodes[nodeName].geometry}
-                        topSurfaceBias={2.8}
-                        darkness={0.82}
-                        glossiness={0.88}
-                    />
-                </mesh>
-            ))}
-            {trimNodeNames.map((nodeName) => (
-                <mesh
-                    castShadow
-                    receiveShadow
-                    geometry={nodes[nodeName].geometry}
-                    key={nodeName}
-                >
-                    <meshStandardMaterial {...metalMaterial} />
-                    <SnowOverlay
-                        geometry={nodes[nodeName].geometry}
-                        {...snowPresets.tool}
-                    />
-                    <RainWetOverlay
-                        geometry={nodes[nodeName].geometry}
-                        topSurfaceBias={3}
-                        darkness={0.75}
-                        glossiness={0.9}
-                    />
-                </mesh>
-            ))}
-            {darkNodeNames.map((nodeName) => (
-                <mesh
-                    castShadow
-                    receiveShadow
-                    geometry={nodes[nodeName].geometry}
-                    key={nodeName}
-                >
-                    <meshStandardMaterial {...metalMaterial} />
-                    <SnowOverlay
-                        geometry={nodes[nodeName].geometry}
-                        {...snowPresets.tool}
-                    />
-                    <RainWetOverlay geometry={nodes[nodeName].geometry} />
-                </mesh>
-            ))}
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes.WateringCan_Water.geometry}
-            >
+            {bodyNodeNames.map((nodeName) => {
+                const node = nodes[nodeName];
+
+                return (
+                    <WateringCanPart key={nodeName} node={node}>
+                        <meshStandardMaterial {...metalMaterial} />
+                        <SnowOverlay
+                            geometry={node.geometry}
+                            {...snowPresets.tool}
+                        />
+                        <RainWetOverlay
+                            geometry={node.geometry}
+                            topSurfaceBias={2.8}
+                            darkness={0.82}
+                            glossiness={0.88}
+                        />
+                    </WateringCanPart>
+                );
+            })}
+            {trimNodeNames.map((nodeName) => {
+                const node = nodes[nodeName];
+
+                return (
+                    <WateringCanPart key={nodeName} node={node}>
+                        <meshStandardMaterial {...metalMaterial} />
+                        <SnowOverlay
+                            geometry={node.geometry}
+                            {...snowPresets.tool}
+                        />
+                        <RainWetOverlay
+                            geometry={node.geometry}
+                            topSurfaceBias={3}
+                            darkness={0.75}
+                            glossiness={0.9}
+                        />
+                    </WateringCanPart>
+                );
+            })}
+            {darkNodeNames.map((nodeName) => {
+                const node = nodes[nodeName];
+
+                return (
+                    <WateringCanPart key={nodeName} node={node}>
+                        <meshStandardMaterial {...metalMaterial} />
+                        <SnowOverlay
+                            geometry={node.geometry}
+                            {...snowPresets.tool}
+                        />
+                        <RainWetOverlay geometry={node.geometry} />
+                    </WateringCanPart>
+                );
+            })}
+            <WateringCanPart node={nodes.WateringCan_Water}>
                 <MeshDistortMaterial
                     color="#7cc7e8"
                     depthWrite={false}
@@ -120,7 +138,7 @@ export function WateringCan({ stack, block, rotation }: EntityInstanceProps) {
                     speed={1.4}
                     transparent
                 />
-            </mesh>
+            </WateringCanPart>
         </animated.group>
     );
 }
