@@ -142,6 +142,7 @@ export type FieldConfig = {
     plantHarvestedDate?: string;
     plantDeadDate?: string;
     plantRemovedDate?: string;
+    sowingLocation?: 'direct' | 'greenhouse';
     toBeRemoved?: boolean;
     active?: boolean;
     stoppedDate?: string;
@@ -193,6 +194,7 @@ export function buildField(config: FieldConfig, id: number) {
         plantDeadDate: config.plantDeadDate,
         plantHarvestedDate: config.plantHarvestedDate,
         plantRemovedDate: config.plantRemovedDate,
+        sowingLocation: config.sowingLocation ?? 'direct',
         plantCycles: [],
         assignedUserId: null,
         assignedUserIds: [],
