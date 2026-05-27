@@ -84,8 +84,11 @@ test('positions reverse corner decorations away from the low local corner', () =
 });
 
 test('adds larger colored flower clusters to grass decorations', () => {
+    const flowerOptions = groundDecorationOptions.grass.flowers;
     const flowerColors = new Set<string>();
     let flowerCount = 0;
+
+    assert.ok(flowerOptions);
 
     for (let index = 0; index < 16; index += 1) {
         const block = {
@@ -99,12 +102,15 @@ test('adds larger colored flower clusters to grass decorations', () => {
             surface: 'grass',
         });
 
-        for (const flower of placements.flatMap(
-            (placement) => placement.flowers,
-        )) {
+        for (const flower of placements) {
+            if (flower.kind !== 'flower') {
+                continue;
+            }
+
             flowerCount += 1;
             flowerColors.add(flower.color);
-            assert.ok(flower.height >= 0.045);
+            assert.ok(flower.scale >= flowerOptions.scaleRange[0]);
+            assert.ok(flower.scale <= flowerOptions.scaleRange[1]);
         }
     }
 
@@ -125,10 +131,7 @@ test('does not add flower clusters to sand decorations', () => {
     });
 
     assert.equal(
-        placements.reduce(
-            (sum, placement) => sum + placement.flowers.length,
-            0,
-        ),
+        placements.filter((placement) => placement.kind === 'flower').length,
         0,
     );
 });

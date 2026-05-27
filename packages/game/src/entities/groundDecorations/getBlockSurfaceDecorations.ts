@@ -6,21 +6,25 @@ import {
     groundDecorationOptions,
 } from './groundDecorationConfig';
 
-export type BlockSurfaceDecorationPlacement = {
-    flowers: BlockSurfaceFlowerPlacement[];
+export type BlockSurfaceSpriteDecorationPlacement = {
+    kind: 'sprite';
     height: number;
     opacity: number;
     position: [number, number, number];
     spriteName: string;
 };
 
-export type BlockSurfaceFlowerPlacement = {
+export type BlockSurfaceFlowerDecorationPlacement = {
     color: string;
-    height: number;
-    opacity: number;
+    kind: 'flower';
     position: [number, number, number];
     rotation: number;
+    scale: number;
 };
+
+export type BlockSurfaceDecorationPlacement =
+    | BlockSurfaceSpriteDecorationPlacement
+    | BlockSurfaceFlowerDecorationPlacement;
 
 const angledBlockHighEdgeX = 0.5;
 
@@ -113,6 +117,10 @@ function findDecorationPosition(
             options.positionRange,
         );
         const isTooClose = placements.some((placement) => {
+            if (placement.kind !== 'sprite') {
+                return false;
+            }
+
             const distanceX = placement.position[0] - candidateX;
             const distanceZ = placement.position[2] - candidateZ;
 
@@ -186,7 +194,7 @@ function getFlowerPlacements({
         return [];
     }
 
-    const flowers: BlockSurfaceFlowerPlacement[] = [];
+    const flowers: BlockSurfaceFlowerDecorationPlacement[] = [];
 
     for (let index = 0; index < count; index += 1) {
         let flowerX = x;
@@ -225,14 +233,7 @@ function getFlowerPlacements({
 
         flowers.push({
             color,
-            height: rng.nextRange(
-                flowerOptions.heightRange[0],
-                flowerOptions.heightRange[1],
-            ),
-            opacity: rng.nextRange(
-                flowerOptions.opacityRange[0],
-                flowerOptions.opacityRange[1],
-            ),
+            kind: 'flower',
             position: [
                 flowerX,
                 resolveDecorationBaseY(
@@ -246,7 +247,11 @@ function getFlowerPlacements({
                     index * 0.001,
                 flowerZ,
             ],
-            rotation: rng.nextRange(-0.32, 0.32),
+            rotation: rng.nextRange(0, Math.PI * 2),
+            scale: rng.nextRange(
+                flowerOptions.scaleRange[0],
+                flowerOptions.scaleRange[1],
+            ),
         });
     }
 
@@ -304,7 +309,14 @@ export function getBlockSurfaceDecorations(options: {
         );
 
         placements.push({
-            flowers: getFlowerPlacements({
+            height,
+            kind: 'sprite',
+            opacity,
+            position,
+            spriteName,
+        });
+        placements.push(
+            ...getFlowerPlacements({
                 block,
                 decorationIndex: index,
                 decorationOptions,
@@ -312,11 +324,7 @@ export function getBlockSurfaceDecorations(options: {
                 x,
                 z,
             }),
-            height,
-            opacity,
-            position,
-            spriteName,
-        });
+        );
     }
 
     return placements;

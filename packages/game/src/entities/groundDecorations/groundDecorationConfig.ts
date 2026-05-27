@@ -3,10 +3,9 @@ export type GroundDecorationSurface = 'grass' | 'sand';
 type GroundFlowerOptions = {
     clusterChance: number;
     colors: readonly string[];
-    heightRange: [number, number];
     maxCount: number;
     minDistance: number;
-    opacityRange: [number, number];
+    scaleRange: [number, number];
     spread: number;
     spawnChance: number;
 };
@@ -49,10 +48,9 @@ export const groundDecorationOptions: Record<
                 '#73c7ff',
                 '#ff9f6e',
             ],
-            heightRange: [0.045, 0.068],
             maxCount: 2,
             minDistance: 0.055,
-            opacityRange: [0.88, 1],
+            scaleRange: [0.11, 0.16],
             spread: 0.085,
             spawnChance: 0.7,
         },
