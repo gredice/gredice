@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
 import { SpriteAtlasBillboard } from '../../sprites/SpriteAtlasBillboard';
 import type { Block } from '../../types/Block';
 import { useGameState } from '../../useGameState';
+import { GroundFlowerBillboard } from './GroundFlowerBillboard';
 import type { BlockSurfaceDecorationPlacement } from './getBlockSurfaceDecorations';
 import { getBlockSurfaceDecorations } from './getBlockSurfaceDecorations';
 import {
@@ -95,18 +96,38 @@ export function PrecomputedBlockSurfaceDecorationSprites({
             .join(':');
 
         return (
-            <SpriteAtlasBillboard
+            <Fragment
                 key={`${blockId}:${surface}:${placement.spriteName}:${positionKey}`}
-                alphaTest={0.06}
-                atlasBasePath={groundDecorationAtlasBasePath}
-                height={placement.height}
-                opacity={placement.opacity}
-                position={placement.position}
-                renderOrder={20}
-                spriteName={placement.spriteName}
-                windDirection={windDirection}
-                windSpeed={windSpeed}
-            />
+            >
+                <SpriteAtlasBillboard
+                    alphaTest={0.06}
+                    atlasBasePath={groundDecorationAtlasBasePath}
+                    height={placement.height}
+                    opacity={placement.opacity}
+                    position={placement.position}
+                    renderOrder={20}
+                    spriteName={placement.spriteName}
+                    windDirection={windDirection}
+                    windSpeed={windSpeed}
+                />
+                {placement.flowers.map((flower) => {
+                    const flowerPositionKey = flower.position
+                        .map((value) => value.toFixed(3))
+                        .join(':');
+
+                    return (
+                        <GroundFlowerBillboard
+                            key={`${blockId}:${surface}:flower:${flower.color}:${flower.height.toFixed(3)}:${flower.rotation.toFixed(3)}:${flowerPositionKey}`}
+                            color={flower.color}
+                            height={flower.height}
+                            opacity={flower.opacity}
+                            position={flower.position}
+                            renderOrder={21}
+                            rotation={flower.rotation}
+                        />
+                    );
+                })}
+            </Fragment>
         );
     });
 }

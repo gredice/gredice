@@ -1,4 +1,5 @@
 import { animated } from '@react-spring/three';
+import { CircleGeometry, DoubleSide, Shape, ShapeGeometry } from 'three';
 import type { GameAssetName } from '../data/models';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
@@ -16,6 +17,16 @@ type CactusVariantConfig = {
     spineNode: CactusNodeName;
     scale: number;
     groundSink: number;
+    flowers?: readonly CactusFlowerConfig[];
+};
+
+type CactusFlowerConfig = {
+    key: string;
+    position: [number, number, number];
+    rotation: [number, number, number];
+    scale: number;
+    petalColor: string;
+    centerColor: string;
 };
 
 const cactusVariants = {
@@ -32,6 +43,24 @@ const cactusVariants = {
         spineNode: 'Cactus_ColumnCluster_Spines',
         scale: 0.9,
         groundSink: 0.04,
+        flowers: [
+            {
+                key: 'center-column',
+                position: [0.027, 1.12, 0.029],
+                rotation: [-Math.PI / 2, 0, 0.28],
+                scale: 0.13,
+                petalColor: '#e4f7c9',
+                centerColor: '#d4b036',
+            },
+            {
+                key: 'right-column',
+                position: [0.233, 0.93, -0.15],
+                rotation: [-Math.PI / 2, 0, -0.24],
+                scale: 0.12,
+                petalColor: '#d184f2',
+                centerColor: '#d2ab2d',
+            },
+        ],
     },
     CactusPricklyPear: {
         assetName: 'CactusPricklyPear',
@@ -39,6 +68,24 @@ const cactusVariants = {
         spineNode: 'Cactus_PricklyPear_Spines',
         scale: 0.9,
         groundSink: 0.045,
+        flowers: [
+            {
+                key: 'top-pad',
+                position: [0.029, 1.045, 0.056],
+                rotation: [-Math.PI / 2, 0.1, -0.18],
+                scale: 0.11,
+                petalColor: '#b345bc',
+                centerColor: '#d2ab2d',
+            },
+            {
+                key: 'right-pad',
+                position: [0.204, 0.855, -0.14],
+                rotation: [-Math.PI / 2, -0.35, 0.25],
+                scale: 0.095,
+                petalColor: '#e4f7c9',
+                centerColor: '#d4b036',
+            },
+        ],
     },
 } satisfies Record<string, CactusVariantConfig>;
 
@@ -57,6 +104,52 @@ const cactusSpineMaterial = {
     roughness: 0.78,
     metalness: 0,
 };
+
+const cactusFlowerGeometry = (() => {
+    const shape = new Shape();
+    const petalCount = 6;
+    for (let i = 0; i < petalCount * 2; i += 1) {
+        const angle = (i / (petalCount * 2)) * Math.PI * 2;
+        const radius = i % 2 === 0 ? 0.42 : 1;
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        if (i === 0) {
+            shape.moveTo(x, y);
+        } else {
+            shape.lineTo(x, y);
+        }
+    }
+    shape.closePath();
+    return new ShapeGeometry(shape);
+})();
+const cactusFlowerCenterGeometry = new CircleGeometry(0.28, 18);
+
+function CactusFlower({ flower }: { flower: CactusFlowerConfig }) {
+    return (
+        <group
+            position={flower.position}
+            rotation={flower.rotation}
+            scale={flower.scale}
+        >
+            <mesh castShadow geometry={cactusFlowerGeometry}>
+                <meshBasicMaterial
+                    color={flower.petalColor}
+                    side={DoubleSide}
+                />
+            </mesh>
+            <mesh
+                castShadow
+                geometry={cactusFlowerCenterGeometry}
+                position={[0, 0, 0.006]}
+            >
+                <meshBasicMaterial
+                    color={flower.centerColor}
+                    side={DoubleSide}
+                />
+            </mesh>
+        </group>
+    );
+}
 
 function CactusEntity({
     stack,
@@ -97,6 +190,9 @@ function CactusEntity({
             <mesh castShadow receiveShadow geometry={spineGeometry}>
                 <meshStandardMaterial {...cactusSpineMaterial} />
             </mesh>
+            {config.flowers?.map((flower) => (
+                <CactusFlower key={flower.key} flower={flower} />
+            ))}
         </animated.group>
     );
 }

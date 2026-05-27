@@ -7,6 +7,7 @@ import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
+import { useGameState } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
@@ -67,6 +68,7 @@ export function WateringCan({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes } = useGameGLTF('WateringCan');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const waterColor = useGameState((state) => state.waterColors.shallow);
 
     return (
         <animated.group
@@ -128,7 +130,7 @@ export function WateringCan({ stack, block, rotation }: EntityInstanceProps) {
             })}
             <WateringCanPart node={nodes.WateringCan_Water}>
                 <MeshDistortMaterial
-                    color="#3598e7"
+                    color={waterColor}
                     depthWrite={false}
                     distort={0.2}
                     metalness={0.8}

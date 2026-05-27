@@ -2,7 +2,9 @@ import { animated } from '@react-spring/three';
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
 import { Color, DoubleSide, ShaderMaterial, type Vector4 } from 'three';
+import { defaultWaterColors } from '../scene/waterColors';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
+import { useGameState } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { resolveWaterFoamEdges } from './waterBlockFoam';
@@ -98,7 +100,7 @@ void main() {
     water *= 0.86 + light * 0.16 + topness * 0.05;
 
     float glint = pow(max(0.0, sin((worldUv.x - worldUv.y + uTime * 0.18) * 12.0)), 20.0) * topness * 0.08;
-    vec3 color = mix(water + glint, uFoamColor, foam);
+    vec3 color = mix(water + uFoamColor * glint, uFoamColor, foam);
     float baseAlpha = mix(0.52, 0.38, topness);
     float alpha = clamp(baseAlpha + foam * 0.22 + sideness * 0.12, 0.36, 0.76);
 
@@ -108,6 +110,7 @@ void main() {
 `;
 
 function useWaterBlockMaterial(foamEdges: Vector4) {
+    const waterColors = useGameState((state) => state.waterColors);
     const material = useMemo(() => {
         const waterMaterial = new ShaderMaterial({
             vertexShader: waterVertexShader,
@@ -118,9 +121,11 @@ function useWaterBlockMaterial(foamEdges: Vector4) {
             side: DoubleSide,
             uniforms: {
                 uTime: { value: 0 },
-                uDeepColor: { value: new Color('#8fcfc4') },
-                uShallowColor: { value: new Color('#d6eee3') },
-                uFoamColor: { value: new Color('#f8fff8') },
+                uDeepColor: { value: new Color(defaultWaterColors.deep) },
+                uShallowColor: {
+                    value: new Color(defaultWaterColors.shallow),
+                },
+                uFoamColor: { value: new Color(defaultWaterColors.foam) },
                 uFoamEdges: { value: foamEdges.clone() },
             },
         });
@@ -133,6 +138,12 @@ function useWaterBlockMaterial(foamEdges: Vector4) {
     useEffect(() => {
         material.uniforms.uFoamEdges.value.copy(foamEdges);
     }, [foamEdges, material]);
+
+    useEffect(() => {
+        material.uniforms.uDeepColor.value.set(waterColors.deep);
+        material.uniforms.uShallowColor.value.set(waterColors.shallow);
+        material.uniforms.uFoamColor.value.set(waterColors.foam);
+    }, [material, waterColors.deep, waterColors.foam, waterColors.shallow]);
 
     useEffect(() => () => material.dispose(), [material]);
 
