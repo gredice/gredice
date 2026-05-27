@@ -103,6 +103,11 @@ export type ActiveDragPreview = {
     isOverRecycler: boolean;
 };
 
+export type PlacedBlockEffect = {
+    kind: 'sunflowers';
+    amount: number;
+};
+
 export type AnimalDebugEntry = {
     id: string;
     species: string;
@@ -152,6 +157,12 @@ export type GameState = {
     setActiveDragPreview: (dragPreview: ActiveDragPreview | null) => void;
     openGardenBoxBlockId: string | null;
     setOpenGardenBoxBlockId: (blockId: string | null) => void;
+    placedBlockEffects: Record<string, PlacedBlockEffect>;
+    queuePlacedBlockEffect: (
+        blockId: string,
+        effect: PlacedBlockEffect,
+    ) => void;
+    consumePlacedBlockEffect: (blockId: string) => PlacedBlockEffect | null;
     animalDebugEntries: AnimalDebugEntry[];
     setAnimalDebugEntry: (entry: AnimalDebugEntry) => void;
     removeAnimalDebugEntry: (id: string) => void;
@@ -303,6 +314,27 @@ export function createGameState({
         openGardenBoxBlockId: null,
         setOpenGardenBoxBlockId: (openGardenBoxBlockId) =>
             set({ openGardenBoxBlockId }),
+        placedBlockEffects: {},
+        queuePlacedBlockEffect: (blockId, effect) =>
+            set((state) => ({
+                placedBlockEffects: {
+                    ...state.placedBlockEffects,
+                    [blockId]: effect,
+                },
+            })),
+        consumePlacedBlockEffect: (blockId) => {
+            const effect = get().placedBlockEffects[blockId] ?? null;
+            if (!effect) {
+                return null;
+            }
+
+            set((state) => {
+                const placedBlockEffects = { ...state.placedBlockEffects };
+                delete placedBlockEffects[blockId];
+                return { placedBlockEffects };
+            });
+            return effect;
+        },
         animalDebugEntries: [],
         setAnimalDebugEntry: (entry) =>
             set((state) => {
