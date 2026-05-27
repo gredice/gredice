@@ -24,7 +24,7 @@ export const addressDistanceVerificationFlag = flag<boolean>({
 export const raisedBedImageAIFlag = flag<boolean>({
     key: 'raisedBedImageAI',
     description: 'Enable AI analysis of raised-bed images.',
-    decide: () => false,
+    decide: () => true,
     options: booleanOptions,
 });
 
