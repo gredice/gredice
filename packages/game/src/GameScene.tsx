@@ -218,6 +218,7 @@ export function GameScene({
                                             name={block.name}
                                             stack={stack}
                                             block={block}
+                                            stacks={garden.stacks}
                                             rotation={block.rotation}
                                             variant={block.variant}
                                             noRenderInView={instancedBlockNames}

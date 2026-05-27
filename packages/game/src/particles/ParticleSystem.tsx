@@ -41,6 +41,9 @@ export function resolveBlockParticleType(
         case 'StoneSmall':
         case 'StoneMedium':
         case 'StoneLarge':
+        case 'DesertStoneSmall':
+        case 'DesertStoneMedium':
+        case 'DesertStoneLarge':
             return ParticleType.Stone;
         default:
             return null;

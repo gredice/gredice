@@ -858,17 +858,20 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(topFade).toHaveAttribute('data-visible', 'false');
         await expect(bottomFade).toHaveAttribute('data-visible', 'true');
 
-        const dialogBox = await dialog.boundingBox();
-        const viewportBox = await viewport.boundingBox();
-        expect(dialogBox).not.toBeNull();
-        expect(viewportBox).not.toBeNull();
-        expect(
-            Math.abs(
-                (viewportBox?.x ?? 0) +
-                    (viewportBox?.width ?? 0) -
-                    ((dialogBox?.x ?? 0) + (dialogBox?.width ?? 0)),
-            ),
-        ).toBeLessThanOrEqual(2);
+        await expect
+            .poll(async () => {
+                const dialogBox = await dialog.boundingBox();
+                const viewportBox = await viewport.boundingBox();
+                if (!dialogBox || !viewportBox) {
+                    return Number.POSITIVE_INFINITY;
+                }
+                return Math.abs(
+                    viewportBox.x +
+                        viewportBox.width -
+                        (dialogBox.x + dialogBox.width),
+                );
+            })
+            .toBeLessThanOrEqual(2);
 
         await viewport.evaluate((element) => {
             element.scrollTop = 120;

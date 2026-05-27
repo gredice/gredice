@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useMemo } from 'react';
-import { type Material, MeshStandardMaterial } from 'three';
+import { DoubleSide, type Material, MeshStandardMaterial } from 'three';
 import type { GameAssetName } from '../data/models';
 import type { GLTFResult } from '../models/GameAssets';
 import { updateGameProfileMetadata } from '../scene/gameProfileMetadata';
@@ -16,6 +16,7 @@ import {
     type EntityInstancesBlockBaseProps,
 } from './EntityInstancesBlock';
 import { GroundBlockDecorations } from './groundDecorations/GroundBlockDecorations';
+import { tulipBouquetStems } from './tulipBouquet';
 
 export const instancedBlockNames = [
     'Block_Grass',
@@ -41,6 +42,9 @@ export const instancedBlockNames = [
     'StoneSmall',
     'StoneMedium',
     'StoneLarge',
+    'DesertStoneSmall',
+    'DesertStoneMedium',
+    'DesertStoneLarge',
 ];
 
 const instancedSnowOverlayCounts = {
@@ -64,8 +68,11 @@ const instancedSnowOverlayCounts = {
     StoneLarge: 1,
     StoneMedium: 1,
     StoneSmall: 1,
+    DesertStoneLarge: 1,
+    DesertStoneMedium: 1,
+    DesertStoneSmall: 1,
     Tree: 1,
-    Tulip: 1,
+    Tulip: tulipBouquetStems.length * 2,
 } satisfies Partial<Record<(typeof instancedBlockNames)[number], number>>;
 
 function getInstancedSnowOverlayCount(blockName: string) {
@@ -181,6 +188,25 @@ export function EntityInstances({
                 color: '#FFFFFF',
                 roughness: 1,
                 metalness: 0,
+            }),
+        [],
+    );
+    const desertStoneBodyMaterial = useMemo(
+        () =>
+            new MeshStandardMaterial({
+                color: '#d86a2f',
+                roughness: 0.88,
+                metalness: 0,
+            }),
+        [],
+    );
+    const desertStoneGrooveMaterial = useMemo(
+        () =>
+            new MeshStandardMaterial({
+                color: '#a04322',
+                roughness: 0.94,
+                metalness: 0,
+                side: DoubleSide,
             }),
         [],
     );
@@ -424,16 +450,38 @@ export function EntityInstances({
                 snowLift={0.002}
                 {...commonSnowProps}
             />
-            <EntityInstancesAssetBlock
-                assetName="Tulip"
-                stacks={stacks}
-                name="Tulip"
-                geometry={(gltf) => gltf.nodes.Tulip.geometry}
-                material={(gltf) => gltf.nodes.Tulip.material}
-                snow={snowPresets.tulip}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
+            {tulipBouquetStems.map((stem) => (
+                <EntityInstancesAssetBlock
+                    key={`Tulip-${stem.key}`}
+                    assetName="Tulip"
+                    stacks={stacks}
+                    name="Tulip"
+                    localPosition={stem.position}
+                    localRotation={stem.rotation}
+                    scale={stem.scale}
+                    geometry={(gltf) => gltf.nodes.Tulip.geometry}
+                    material={(gltf) => gltf.nodes.Tulip.material}
+                    snow={snowPresets.tulip}
+                    snowLift={0.002}
+                    {...commonSnowProps}
+                />
+            ))}
+            {tulipBouquetStems.map((stem) => (
+                <EntityInstancesAssetBlock
+                    key={`TulipLeaves-${stem.key}`}
+                    assetName="Tulip"
+                    stacks={stacks}
+                    name="Tulip"
+                    localPosition={stem.position}
+                    localRotation={stem.rotation}
+                    scale={stem.scale}
+                    geometry={(gltf) => gltf.nodes.Tulip_Leaves.geometry}
+                    material={(gltf) => gltf.nodes.Tulip_Leaves.material}
+                    snow={snowPresets.tulip}
+                    snowLift={0.002}
+                    {...commonSnowProps}
+                />
+            ))}
             <EntityInstancesAssetBlock
                 assetName="Bush"
                 stacks={stacks}
@@ -497,6 +545,75 @@ export function EntityInstances({
                 scale={[0.263, 0.426, 0.291]}
                 snow={snowPresets.stone}
                 snowLift={0.002}
+                {...commonSnowProps}
+            />
+            <EntityInstancesAssetBlock
+                assetName="DesertStoneSmall"
+                stacks={stacks}
+                name="DesertStoneSmall"
+                geometry={(gltf) => gltf.nodes.DesertStoneSmall_Body.geometry}
+                material={() => desertStoneBodyMaterial}
+                scale={[0.165, 0.165, 0.165]}
+                renderRainWetOverlay
+                snow={snowPresets.stone}
+                snowLift={0.002}
+                {...commonSnowProps}
+            />
+            <EntityInstancesAssetBlock
+                assetName="DesertStoneSmall"
+                stacks={stacks}
+                name="DesertStoneSmall"
+                geometry={(gltf) =>
+                    gltf.nodes.DesertStoneSmall_Crevices.geometry
+                }
+                material={() => desertStoneGrooveMaterial}
+                scale={[0.165, 0.165, 0.165]}
+                {...commonSnowProps}
+            />
+            <EntityInstancesAssetBlock
+                assetName="DesertStoneMedium"
+                stacks={stacks}
+                name="DesertStoneMedium"
+                geometry={(gltf) => gltf.nodes.DesertStoneMedium_Body.geometry}
+                material={() => desertStoneBodyMaterial}
+                scale={[0.236, 0.269, 0.205]}
+                renderRainWetOverlay
+                snow={snowPresets.stone}
+                snowLift={0.002}
+                {...commonSnowProps}
+            />
+            <EntityInstancesAssetBlock
+                assetName="DesertStoneMedium"
+                stacks={stacks}
+                name="DesertStoneMedium"
+                geometry={(gltf) =>
+                    gltf.nodes.DesertStoneMedium_Crevices.geometry
+                }
+                material={() => desertStoneGrooveMaterial}
+                scale={[0.236, 0.269, 0.205]}
+                {...commonSnowProps}
+            />
+            <EntityInstancesAssetBlock
+                assetName="DesertStoneLarge"
+                stacks={stacks}
+                name="DesertStoneLarge"
+                geometry={(gltf) => gltf.nodes.DesertStoneLarge_Body.geometry}
+                material={() => desertStoneBodyMaterial}
+                scale={[0.263, 0.426, 0.291]}
+                renderRainWetOverlay
+                snow={snowPresets.stone}
+                snowLift={0.002}
+                {...commonSnowProps}
+            />
+            <EntityInstancesAssetBlock
+                assetName="DesertStoneLarge"
+                stacks={stacks}
+                name="DesertStoneLarge"
+                geometry={(gltf) =>
+                    gltf.nodes.DesertStoneLarge_Crevices.geometry
+                }
+                material={() => desertStoneGrooveMaterial}
+                scale={[0.263, 0.426, 0.291]}
                 {...commonSnowProps}
             />
             <EntityInstancesAssetBlock

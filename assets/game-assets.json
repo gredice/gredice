@@ -209,6 +209,20 @@
             ]
         },
         {
+            "name": "WaterWell",
+            "source": "WaterWell.blend",
+            "output": "WaterWell.glb",
+            "preload": "lazy",
+            "objects": [
+                "WaterWell_Stone_Mid",
+                "WaterWell_Stone_Light",
+                "WaterWell_Stone_Dark",
+                "WaterWell_Wood_Frame",
+                "WaterWell_Rope",
+                "WaterWell_Water"
+            ]
+        },
+        {
             "name": "Composter",
             "source": "Composter.blend",
             "output": "Composter.glb",
@@ -219,7 +233,7 @@
             "name": "BirdHouse",
             "source": "BirdHouse.blend",
             "output": "BirdHouse.glb",
-            "version": "b3510616ea13",
+            "version": "c2d30fb8026b",
             "preload": "lazy",
             "objects": [
                 "Birdhouse_Angled_Supports",
@@ -327,6 +341,30 @@
             "objects": ["Stone Large"]
         },
         {
+            "name": "DesertStoneSmall",
+            "source": "DesertStoneSmall.blend",
+            "output": "DesertStoneSmall.glb",
+            "preload": "lazy",
+            "objects": ["DesertStoneSmall_Body", "DesertStoneSmall_Crevices"]
+        },
+        {
+            "name": "DesertStoneMedium",
+            "source": "DesertStoneMedium.blend",
+            "output": "DesertStoneMedium.glb",
+            "preload": "lazy",
+            "objects": [
+                "DesertStoneMedium_Body",
+                "DesertStoneMedium_Crevices"
+            ]
+        },
+        {
+            "name": "DesertStoneLarge",
+            "source": "DesertStoneLarge.blend",
+            "output": "DesertStoneLarge.glb",
+            "preload": "lazy",
+            "objects": ["DesertStoneLarge_Body", "DesertStoneLarge_Crevices"]
+        },
+        {
             "name": "Stool",
             "source": "Stool.blend",
             "output": "Stool.glb",
@@ -337,8 +375,9 @@
             "name": "Tulip",
             "source": "Tulip.blend",
             "output": "Tulip.glb",
+            "version": "64901b969f37",
             "preload": "lazy",
-            "objects": ["Tulip"]
+            "objects": ["Tulip", "Tulip_Leaves"]
         },
         {
             "name": "GardenFlower",
