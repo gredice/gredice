@@ -8,7 +8,7 @@ describe('isBlockPurchaseAvailableNow', () => {
     it('allows ordinary blocks at any time', () => {
         assert.equal(
             isBlockPurchaseAvailableNow({
-                blockName: 'Bucket',
+                block: { attributes: { nightOnlyPurchase: false } },
                 currentTime: new Date('2026-06-21T12:00:00+02:00'),
                 location: zagreb,
             }),
@@ -16,10 +16,10 @@ describe('isBlockPurchaseAvailableNow', () => {
         );
     });
 
-    it('blocks FireflyJar purchases during daylight', () => {
+    it('blocks night-only purchases during daylight', () => {
         assert.equal(
             isBlockPurchaseAvailableNow({
-                blockName: 'FireflyJar',
+                block: { attributes: { nightOnlyPurchase: true } },
                 currentTime: new Date('2026-06-21T12:00:00+02:00'),
                 location: zagreb,
             }),
@@ -27,10 +27,10 @@ describe('isBlockPurchaseAvailableNow', () => {
         );
     });
 
-    it('allows FireflyJar purchases after sunset', () => {
+    it('allows night-only purchases after sunset', () => {
         assert.equal(
             isBlockPurchaseAvailableNow({
-                blockName: 'FireflyJar',
+                block: { attributes: { nightOnlyPurchase: true } },
                 currentTime: new Date('2026-06-21T23:30:00+02:00'),
                 location: zagreb,
             }),

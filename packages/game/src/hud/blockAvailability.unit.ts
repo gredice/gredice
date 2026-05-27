@@ -1,10 +1,20 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { isNightOnlyBlockName, isNightTimeOfDay } from '@gredice/js/blocks';
+import { isNightOnlyBlockPurchase, isNightTimeOfDay } from '@gredice/js/blocks';
 
-test('marks FireflyJar as night-only', () => {
-    assert.equal(isNightOnlyBlockName('FireflyJar'), true);
-    assert.equal(isNightOnlyBlockName('Bucket'), false);
+test('marks blocks with the night-only purchase attribute', () => {
+    assert.equal(
+        isNightOnlyBlockPurchase({
+            attributes: { nightOnlyPurchase: true },
+        }),
+        true,
+    );
+    assert.equal(
+        isNightOnlyBlockPurchase({
+            attributes: { nightOnlyPurchase: false },
+        }),
+        false,
+    );
 });
 
 test('matches the game day-night thresholds', () => {

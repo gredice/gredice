@@ -1,9 +1,13 @@
-export const nightOnlyBlockNames = ['FireflyJar'] as const;
+export type BlockPurchaseAvailability = {
+    attributes?: {
+        nightOnlyPurchase?: boolean | null;
+    } | null;
+};
 
-export function isNightOnlyBlockName(blockName: string) {
-    return nightOnlyBlockNames.some(
-        (nightOnlyBlockName) => nightOnlyBlockName === blockName,
-    );
+export function isNightOnlyBlockPurchase(
+    block: BlockPurchaseAvailability | null | undefined,
+) {
+    return block?.attributes?.nightOnlyPurchase === true;
 }
 
 export function isNightTimeOfDay(timeOfDay: number) {

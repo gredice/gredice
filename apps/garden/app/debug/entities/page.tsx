@@ -2,8 +2,8 @@ import { EntityGridViewerDynamic } from './EntityGridViewerDynamic';
 
 export default function DebugEntitiesPage() {
     return (
-        <div className="h-screen w-screen bg-neutral-900 flex flex-col">
-            <div className="p-4 border-b border-neutral-700">
+        <div className="flex h-screen w-screen flex-col bg-[#e7e2cc]">
+            <div className="border-b border-neutral-700 bg-neutral-950 p-4">
                 <h1 className="text-xl font-bold text-white">
                     Entity Debug View
                 </h1>

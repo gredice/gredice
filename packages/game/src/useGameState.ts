@@ -171,6 +171,7 @@ export type GameState = {
         rainy: number;
         snowy: number;
         foggy: number;
+        thundery?: number;
         windSpeed?: number;
         windDirection?: number;
         snowAccumulation?: number;
@@ -180,6 +181,7 @@ export type GameState = {
         rainy: number;
         snowy: number;
         foggy: number;
+        thundery?: number;
         windSpeed?: number;
         windDirection?: number;
         snowAccumulation?: number;
@@ -204,17 +206,20 @@ const defaultLocation = { lat: 45.739, lon: 16.572 };
 export function createGameState({
     appBaseUrl,
     spriteBaseUrl,
+    dayNightCycleDisabled: initialDayNightCycleDisabled,
     freezeTime,
     isMock,
     winterMode,
 }: {
     appBaseUrl: string;
     spriteBaseUrl?: string;
+    dayNightCycleDisabled?: boolean;
     freezeTime: Date | null;
     isMock: boolean;
     winterMode?: WinterMode;
 }) {
-    const dayNightCycleDisabled = isDayNightCycleDisabled();
+    const dayNightCycleDisabled =
+        initialDayNightCycleDisabled ?? isDayNightCycleDisabled();
     const gameQualityCustomProfile = getGameQualityCustomProfile();
     const gameQualitySetting = getGameQualitySetting();
     const weatherVisualizationDisabled = isWeatherVisualizationDisabled();

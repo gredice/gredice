@@ -30,6 +30,7 @@ import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useDeferredSceneDetails } from './hooks/useDeferredSceneDetails';
 import { useFocusPlacedBlock } from './hooks/useFocusPlacedBlock';
 import { useWeatherNow } from './hooks/useWeatherNow';
+import { DebugHud } from './hud/DebugHud';
 import { EditModeGrid } from './indicators/EditModeGrid';
 import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
@@ -52,6 +53,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
 
     // Demo purposes only
     freezeTime?: Date;
+    dayNightCycleDisabled?: boolean;
     noBackground?: boolean;
     noControls?: boolean;
     hideHud?: boolean;
@@ -250,6 +252,7 @@ export function GameScene({
                 </Scene>
             </GameSceneDetailContext.Provider>
             {!hideHud && <GameHud flags={flags} noWeather={noWeather} />}
+            {hideHud && Boolean(flags?.enableDebugHudFlag) && <DebugHud />}
         </div>
     );
 }

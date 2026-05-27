@@ -1,4 +1,7 @@
-import { isNightOnlyBlockName } from '@gredice/js/blocks';
+import {
+    type BlockPurchaseAvailability,
+    isNightOnlyBlockPurchase,
+} from '@gredice/js/blocks';
 import SunCalc from 'suncalc';
 
 const DEFAULT_LOCATION = { lat: 45.739, lon: 16.572 };
@@ -39,15 +42,15 @@ function isNightAtLocation(
 }
 
 export function isBlockPurchaseAvailableNow({
-    blockName,
+    block,
     currentTime = new Date(),
     location,
 }: {
-    blockName: string;
+    block: BlockPurchaseAvailability;
     currentTime?: Date;
     location?: GardenLocation | null;
 }) {
-    if (!isNightOnlyBlockName(blockName)) {
+    if (!isNightOnlyBlockPurchase(block)) {
         return true;
     }
 

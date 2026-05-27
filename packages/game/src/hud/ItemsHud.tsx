@@ -1,4 +1,4 @@
-import { isNightOnlyBlockName, isNightTimeOfDay } from '@gredice/js/blocks';
+import { isNightOnlyBlockPurchase, isNightTimeOfDay } from '@gredice/js/blocks';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
@@ -130,7 +130,7 @@ function PlaceEntityButton({
     if (!block) return null;
     const hasSunflowerPrice = Boolean(block.prices.sunflowers);
     const isAvailableNow =
-        !isNightOnlyBlockName(name) || isNightTimeOfDay(timeOfDay);
+        !isNightOnlyBlockPurchase(block) || isNightTimeOfDay(timeOfDay);
 
     async function placeEntity() {
         if (!blockData) {

@@ -17,6 +17,7 @@ export function GameSceneWrapper({
     spriteBaseUrl,
     flags,
     freezeTime,
+    dayNightCycleDisabled,
     mockGarden,
     winterMode,
     ...rest
@@ -26,6 +27,7 @@ export function GameSceneWrapper({
         storeRef.current = createGameState({
             appBaseUrl: appBaseUrl || '',
             spriteBaseUrl,
+            dayNightCycleDisabled,
             freezeTime: freezeTime || null,
             isMock: mockGarden || false,
             winterMode: winterMode ?? 'summer',

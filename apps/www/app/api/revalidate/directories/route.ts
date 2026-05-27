@@ -1,7 +1,7 @@
 import { revalidatePath } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 
-type PublicDirectoryEntityType = 'plant' | 'plantSort' | 'operation';
+type PublicDirectoryEntityType = 'block' | 'plant' | 'plantSort' | 'operation';
 type RevalidationPath = {
     path: string;
     type?: 'page' | 'layout';
@@ -11,6 +11,7 @@ const revalidationPathsByEntityType: Record<
     PublicDirectoryEntityType,
     RevalidationPath[]
 > = {
+    block: [{ path: '/blokovi' }, { path: '/blokovi/[alias]', type: 'page' }],
     plant: [
         { path: '/' },
         { path: '/biljke' },
@@ -41,6 +42,7 @@ function publicDirectoryEntityType(
     value: unknown,
 ): PublicDirectoryEntityType | null {
     switch (value) {
+        case 'block':
         case 'plant':
         case 'plantSort':
         case 'operation':

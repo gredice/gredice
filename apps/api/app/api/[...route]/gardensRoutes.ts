@@ -1605,7 +1605,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             if (
                 !isBlockPurchaseAvailableNow({
-                    blockName,
+                    block,
                     location: {
                         lat: garden.farm?.latitude,
                         lon: garden.farm?.longitude,

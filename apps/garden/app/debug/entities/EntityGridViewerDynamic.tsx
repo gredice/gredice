@@ -25,11 +25,13 @@ export function EntityGridViewerDynamic() {
 
     if (!EntityGridViewer) {
         return (
-            <div className="flex h-full items-center justify-center text-sm text-neutral-400">
+            <div className="flex h-full items-center justify-center text-sm text-neutral-700">
                 Loading entity scene...
             </div>
         );
     }
 
-    return <EntityGridViewer className="w-full h-full" />;
+    return (
+        <EntityGridViewer className="w-full h-full" debugHud showBackground />
+    );
 }

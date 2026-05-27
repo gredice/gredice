@@ -7,6 +7,8 @@ import { MOUSE, Vector3 } from 'three';
 import { v4 as uuidv4 } from 'uuid';
 import { EntityFactory } from '../entities/EntityFactory';
 import { entityNameMap } from '../entities/entityNameMap';
+import { GameFlagsContext } from '../GameFlagsContext';
+import { DebugHud } from '../hud/DebugHud';
 import { Environment } from '../scene/Environment';
 import { Scene } from '../scene/Scene';
 import type { Block } from '../types/Block';
@@ -34,6 +36,8 @@ export type EntityGridViewerProps = {
      * @default 28
      */
     zoom?: number;
+    debugHud?: boolean;
+    showBackground?: boolean;
 };
 
 export function EntityGridViewer({
@@ -41,11 +45,14 @@ export function EntityGridViewer({
     columns = 6,
     spacing = 5,
     zoom = 28,
+    debugHud,
+    showBackground,
 }: EntityGridViewerProps) {
     const storeRef = useRef<GameStateStore>(null);
     if (!storeRef.current) {
         storeRef.current = createGameState({
             appBaseUrl: '',
+            dayNightCycleDisabled: false,
             freezeTime: new Date(2024, 5, 21, 12, 0, 0),
             isMock: true,
             winterMode: 'summer',
@@ -89,55 +96,67 @@ export function EntityGridViewer({
     return (
         <QueryClientProvider client={client}>
             <GameStateContext.Provider value={storeRef.current}>
-                <Scene position={100} zoom={zoom} className={className}>
-                    <Environment noBackground noSound noWeather />
-                    <OrbitControls
-                        enableDamping
-                        screenSpacePanning={false}
-                        minZoom={10}
-                        maxZoom={120}
-                        mouseButtons={{
-                            LEFT: MOUSE.PAN,
-                            MIDDLE: MOUSE.DOLLY,
-                            RIGHT: MOUSE.ROTATE,
-                        }}
-                    />
-                    <group position={[-centerX, 0, -centerZ]}>
-                        {entities.map(
-                            ({
-                                entityName,
-                                stack,
-                                block,
-                                variant,
-                                position,
-                            }) => (
-                                <group key={entityName}>
-                                    <EntityFactory
-                                        name={entityName}
-                                        stack={stack}
-                                        block={block}
-                                        rotation={0}
-                                        variant={variant}
-                                    />
-                                    <Html
-                                        position={[
-                                            position.x + 0.5,
-                                            -0.5,
-                                            position.z + 0.5,
-                                        ]}
-                                        center
-                                        distanceFactor={15}
-                                        style={{ pointerEvents: 'none' }}
-                                    >
-                                        <div className="text-white text-xs bg-black/70 px-2 py-1 rounded whitespace-nowrap pointer-events-none">
-                                            {entityName}
-                                        </div>
-                                    </Html>
-                                </group>
-                            ),
-                        )}
-                    </group>
-                </Scene>
+                <GameFlagsContext.Provider
+                    value={{
+                        enableDebugHudFlag: debugHud,
+                        enableRainWetOverlayFlag: debugHud,
+                    }}
+                >
+                    <Scene position={100} zoom={zoom} className={className}>
+                        <Environment
+                            noBackground={!showBackground}
+                            noSound
+                            noWeather
+                        />
+                        <OrbitControls
+                            enableDamping
+                            screenSpacePanning={false}
+                            minZoom={10}
+                            maxZoom={120}
+                            mouseButtons={{
+                                LEFT: MOUSE.PAN,
+                                MIDDLE: MOUSE.DOLLY,
+                                RIGHT: MOUSE.ROTATE,
+                            }}
+                        />
+                        <group position={[-centerX, 0, -centerZ]}>
+                            {entities.map(
+                                ({
+                                    entityName,
+                                    stack,
+                                    block,
+                                    variant,
+                                    position,
+                                }) => (
+                                    <group key={entityName}>
+                                        <EntityFactory
+                                            name={entityName}
+                                            stack={stack}
+                                            block={block}
+                                            rotation={0}
+                                            variant={variant}
+                                        />
+                                        <Html
+                                            position={[
+                                                position.x + 0.5,
+                                                -0.5,
+                                                position.z + 0.5,
+                                            ]}
+                                            center
+                                            distanceFactor={15}
+                                            style={{ pointerEvents: 'none' }}
+                                        >
+                                            <div className="text-white text-xs bg-black/70 px-2 py-1 rounded whitespace-nowrap pointer-events-none">
+                                                {entityName}
+                                            </div>
+                                        </Html>
+                                    </group>
+                                ),
+                            )}
+                        </group>
+                    </Scene>
+                    {debugHud && <DebugHud />}
+                </GameFlagsContext.Provider>
             </GameStateContext.Provider>
         </QueryClientProvider>
     );

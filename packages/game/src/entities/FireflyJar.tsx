@@ -38,6 +38,9 @@ const fireflyBodyNodeNames = [
 const fireflyJarScale = 1.55;
 const fireflyScale = 1.7;
 const fireflyCenter = [0.015, 0.255, -0.018] as const;
+const fireflyVerticalBaseOffset = -0.095;
+const fireflyVerticalPrimaryAmplitude = 0.068;
+const fireflyVerticalSecondaryAmplitude = 0.014;
 const glowColor = '#ffe66d';
 const bodyColor = '#1f2018';
 const wingColor = '#d7f4ff';
@@ -123,10 +126,17 @@ export function FireflyJar({ stack, block, rotation }: EntityInstanceProps) {
         const elapsed = clock.elapsedTime + phase;
         const fireflyGroup = fireflyGroupRef.current;
         if (fireflyGroup) {
+            const verticalOffset =
+                fireflyVerticalBaseOffset +
+                Math.sin(elapsed * 0.16 + 0.8) *
+                    fireflyVerticalPrimaryAmplitude +
+                Math.sin(elapsed * 0.07 + 2.1) *
+                    fireflyVerticalSecondaryAmplitude;
+
             fireflyGroup.position.set(
                 Math.sin(elapsed * 0.23) * 0.055 +
                     Math.sin(elapsed * 0.11 + 1.3) * 0.025,
-                Math.sin(elapsed * 0.31 + 0.8) * 0.035,
+                verticalOffset,
                 Math.cos(elapsed * 0.19 + 1.9) * 0.045,
             );
             fireflyGroup.rotation.set(

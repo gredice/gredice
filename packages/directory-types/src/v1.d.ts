@@ -710,6 +710,10 @@ export interface components {
         };
         "page-detail": components["schemas"]["page-summary"] & {
             content: components["schemas"]["section-data"][];
+            /** @enum {string} */
+            renderMode: "container" | "fullWidth";
+            /** @enum {string} */
+            renderMaxWidth: "xs" | "sm" | "md" | "lg" | "xl";
         };
         "directory-search-result": {
             entityId: number;
@@ -2020,6 +2024,8 @@ export interface components {
                 stackable: boolean;
                 /** @description (jedan od: decoration, raisedBed, raisedBedPart, plant, plantPart) */
                 type: string;
+                /** @description Blok je moguće kupiti samo tijekom noći. */
+                nightOnlyPurchase: boolean;
             };
             prices: {
                 sunflowers: number;

@@ -8,5 +8,5 @@ const PlantPerformanceViewer = dynamic(
 );
 
 export function PlantPerformanceViewerDynamic() {
-    return <PlantPerformanceViewer className="h-full w-full" />;
+    return <PlantPerformanceViewer className="h-full w-full" debugHud />;
 }
