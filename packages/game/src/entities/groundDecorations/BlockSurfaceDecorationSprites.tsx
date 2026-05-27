@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useMemo } from 'react';
+import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
 import { SpriteAtlasBillboard } from '../../sprites/SpriteAtlasBillboard';
 import type { Block } from '../../types/Block';
@@ -47,6 +48,7 @@ function ResolvedBlockSurfaceDecorationSprites({
     density = 1,
     surface,
 }: DirectBlockSurfaceDecorationSpritesProps) {
+    const { data: garden } = useCurrentGarden();
     const gameWeather = useGameState((state) => state.weather);
     const { data: weatherNow } = useWeatherNow();
     const placements = useMemo(
@@ -54,10 +56,10 @@ function ResolvedBlockSurfaceDecorationSprites({
             getBlockSurfaceDecorations({
                 block,
                 density,
-                gardenId: null,
+                gardenId: garden?.id,
                 surface,
             }),
-        [block, density, surface],
+        [block, density, garden?.id, surface],
     );
     const windSpeed =
         typeof gameWeather?.windSpeed === 'number'
@@ -96,7 +98,7 @@ export function PrecomputedBlockSurfaceDecorationSprites({
         if (placement.kind === 'flower') {
             return (
                 <Suspense
-                    key={`${blockId}:${surface}:flower:${positionKey}`}
+                    key={`${blockId}:${surface}:flower:${placement.color}:${placement.scale.toFixed(3)}:${positionKey}`}
                     fallback={null}
                 >
                     <GardenFlowerModel

@@ -83,23 +83,55 @@ test('positions reverse corner decorations away from the low local corner', () =
     assert.equal(round(firstPlacement.position[1]), round(expectedY));
 });
 
-test('occasionally adds tiny white flower decorations to grass', () => {
+test('adds larger colored flower clusters to grass decorations', () => {
+    const flowerOptions = groundDecorationOptions.grass.flowers;
+    const flowerColors = new Set<string>();
+    let flowerCount = 0;
+
+    assert.ok(flowerOptions);
+
+    for (let index = 0; index < 16; index += 1) {
+        const block = {
+            id: `flower-grass-test-${index}`,
+            name: 'Block_Grass',
+            rotation: 0,
+        } satisfies Block;
+        const placements = getBlockSurfaceDecorations({
+            block,
+            gardenId: 42,
+            surface: 'grass',
+        });
+
+        for (const flower of placements) {
+            if (flower.kind !== 'flower') {
+                continue;
+            }
+
+            flowerCount += 1;
+            flowerColors.add(flower.color);
+            assert.ok(flower.scale >= flowerOptions.scaleRange[0]);
+            assert.ok(flower.scale <= flowerOptions.scaleRange[1]);
+        }
+    }
+
+    assert.ok(flowerCount > 0);
+    assert.ok(flowerColors.size >= 3);
+});
+
+test('does not add flower clusters to sand decorations', () => {
     const block = {
-        id: 'grass-8',
-        name: 'Block_Grass',
+        id: 'flower-sand-test',
+        name: 'Block_Sand',
         rotation: 0,
     } satisfies Block;
     const placements = getBlockSurfaceDecorations({
         block,
         gardenId: 42,
-        surface: 'grass',
+        surface: 'sand',
     });
-    const flower = placements.find((placement) => placement.kind === 'flower');
-    const flowerScaleRange = groundDecorationOptions.grass.flowerScaleRange;
 
-    assert.ok(flower);
-    assert.ok(flowerScaleRange);
-    assert.equal(flower.color, groundDecorationOptions.grass.flowerColor);
-    assert.equal(flower.scale >= flowerScaleRange[0], true);
-    assert.equal(flower.scale <= flowerScaleRange[1], true);
+    assert.equal(
+        placements.filter((placement) => placement.kind === 'flower').length,
+        0,
+    );
 });
