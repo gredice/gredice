@@ -9,10 +9,15 @@ import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { getStackHeight } from '../utils/getStackHeight';
 
+const defaultLocalPosition: [number, number, number] = [0, 0, 0];
+const defaultLocalRotation: [number, number, number] = [0, 0, 0];
+
 export type EntityInstancesBlockBaseProps = {
     stacks: Stack[] | undefined;
     name: string;
     renderSnow?: boolean;
+    localPosition?: [number, number, number];
+    localRotation?: [number, number, number];
     yOffset?: number;
     snowLift?: number;
     snowOverlayMinCoverage?: number;
@@ -39,6 +44,8 @@ export function EntityInstancesBlock(
         stacks,
         name,
         renderSnow = true,
+        localPosition,
+        localRotation,
         yOffset,
         snowLift = 0,
         snowOverlayMinCoverage,
@@ -75,14 +82,24 @@ export function EntityInstancesBlock(
 
     const limit = Math.max((blockInstances?.length ?? 0) + 10, 100);
 
+    const localTransform = {
+        position: localPosition ?? defaultLocalPosition,
+        rotation: localRotation ?? defaultLocalRotation,
+    };
+
     const renderInstances = (suffix: string) =>
         (blockInstances ?? []).map((data) => (
-            <Instance
+            <group
                 key={`block-${name}-${suffix}-${data.id}`}
                 position={data.position}
-                scale={scale}
                 rotation={[0, data.rotation * (Math.PI / 2), 0]}
-            />
+            >
+                <Instance
+                    position={localTransform.position}
+                    rotation={localTransform.rotation}
+                    scale={scale}
+                />
+            </group>
         ));
 
     const renderSnowOverlays = () =>
@@ -97,13 +114,18 @@ export function EntityInstancesBlock(
                           data.position[2],
                       ]}
                       rotation={[0, data.rotation * (Math.PI / 2), 0]}
-                      scale={scale}
                   >
-                      <SnowOverlay
-                          geometry={geometry}
-                          minCoverage={snowOverlayMinCoverage}
-                          {...snow}
-                      />
+                      <group
+                          position={localTransform.position}
+                          rotation={localTransform.rotation}
+                          scale={scale}
+                      >
+                          <SnowOverlay
+                              geometry={geometry}
+                              minCoverage={snowOverlayMinCoverage}
+                              {...snow}
+                          />
+                      </group>
                   </group>
               ));
 
@@ -115,9 +137,14 @@ export function EntityInstancesBlock(
                       key={`block-${name}-rain-${data.id}`}
                       position={data.position}
                       rotation={[0, data.rotation * (Math.PI / 2), 0]}
-                      scale={scale}
                   >
-                      <RainWetOverlay geometry={geometry} />
+                      <group
+                          position={localTransform.position}
+                          rotation={localTransform.rotation}
+                          scale={scale}
+                      >
+                          <RainWetOverlay geometry={geometry} />
+                      </group>
                   </group>
               ));
 

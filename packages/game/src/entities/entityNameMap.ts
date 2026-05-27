@@ -16,11 +16,13 @@ import {
     BlockSandCorner,
     BlockSnowCorner,
 } from './BlockTerrainCorner';
+import { BlockWater } from './BlockWater';
 import { Bucket } from './Bucket';
 import { Bush } from './Bush';
 import { Cactus } from './Cactus';
 import { Composter } from './Composter';
 import { DeadTree } from './DeadTree';
+import { DesertStone } from './DesertStone';
 import { Fence } from './Fence';
 import { FireflyJar } from './FireflyJar';
 import { GardenBox } from './GardenBox';
@@ -49,6 +51,7 @@ import { Stool } from './Stool';
 import { Tree } from './Tree';
 import { Tulip } from './Tulip';
 import { WateringCan } from './WateringCan';
+import { WaterWell } from './WaterWell';
 
 export const entityNameMap: Record<
     string,
@@ -57,6 +60,7 @@ export const entityNameMap: Record<
     Block_Ground: BlockGround,
     Block_Grass: BlockGrass,
     Block_Sand: BlockSand,
+    Block_Water: BlockWater,
     Block_Ground_Angle: BlockGroundAngle,
     Block_Grass_Angle: BlockGrassAngle,
     Block_Sand_Angle: BlockSandAngle,
@@ -75,6 +79,7 @@ export const entityNameMap: Record<
     Stool: Stool,
     Bucket: Bucket,
     WateringCan: WateringCan,
+    WaterWell: WaterWell,
     BirdHouse: BirdHouse,
     FireflyJar: FireflyJar,
     GiftBox_RedWhite: GiftBoxRedWhite,
@@ -92,6 +97,9 @@ export const entityNameMap: Record<
     StoneSmall: StoneSmall,
     StoneMedium: StoneMedium,
     StoneLarge: StoneLarge,
+    DesertStoneSmall: DesertStone,
+    DesertStoneMedium: DesertStone,
+    DesertStoneLarge: DesertStone,
     ShovelSmall: ShovelSmall,
     Snowman: Snowman,
     Tulip: Tulip,

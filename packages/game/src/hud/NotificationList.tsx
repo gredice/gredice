@@ -25,6 +25,7 @@ import { NoNotificationsPlaceholder } from '../shared-ui/NoNotificationsPlacehol
 interface NotificationProps {
     read?: boolean;
     short?: boolean;
+    unreadOnly?: boolean;
     onNotificationSelected?: () => void;
 }
 
@@ -195,6 +196,7 @@ export function NotificationList({
     onNotificationSelected,
     read,
     short,
+    unreadOnly,
 }: NotificationProps) {
     const { data: currentUser } = useCurrentUser();
     const { data: notifications, error } = useNotifications(
@@ -229,13 +231,17 @@ export function NotificationList({
         );
     }
 
-    if (!notifications?.length) {
+    const visibleNotifications = unreadOnly
+        ? notifications?.filter((notification) => !notification.readAt)
+        : notifications;
+
+    if (!visibleNotifications?.length) {
         return <NoNotificationsPlaceholder />;
     }
 
     return (
         <List variant="outlined" className="border-none">
-            {notifications.map((notification) => (
+            {visibleNotifications.map((notification) => (
                 <NotificationListItem
                     key={notification.id}
                     notification={notification}

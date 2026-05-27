@@ -97,6 +97,12 @@ export type GLTFResult = GLTF & {
         WateringCan_Rose_Head: THREE.Mesh;
         WateringCan_Spout: THREE.Mesh;
         WateringCan_Water: THREE.Mesh;
+        WaterWell_Stone_Mid: THREE.Mesh;
+        WaterWell_Stone_Light: THREE.Mesh;
+        WaterWell_Stone_Dark: THREE.Mesh;
+        WaterWell_Wood_Frame: THREE.Mesh;
+        WaterWell_Rope: THREE.Mesh;
+        WaterWell_Water: THREE.Mesh;
         Composter_1: THREE.Mesh;
         Composter_2: THREE.Mesh;
         Birdhouse_Angled_Supports: THREE.Mesh;
@@ -140,8 +146,15 @@ export type GLTFResult = GLTF & {
         Snowman: THREE.Mesh;
         Stone_Medium: THREE.Mesh;
         Stone_Large: THREE.Mesh;
+        DesertStoneSmall_Body: THREE.Mesh;
+        DesertStoneSmall_Crevices: THREE.Mesh;
+        DesertStoneMedium_Body: THREE.Mesh;
+        DesertStoneMedium_Crevices: THREE.Mesh;
+        DesertStoneLarge_Body: THREE.Mesh;
+        DesertStoneLarge_Crevices: THREE.Mesh;
         Stool: THREE.Mesh;
         Tulip: THREE.Mesh;
+        Tulip_Leaves: THREE.Mesh;
         Cactus_Barrel_Body: THREE.Mesh;
         Cactus_Barrel_Spines: THREE.Mesh;
         Cactus_ColumnCluster_Body: THREE.Mesh;
@@ -190,6 +203,8 @@ export type GLTFResult = GLTF & {
         'Material.ColorPaletteMain': THREE.MeshStandardMaterial;
         'Material.DeadTree.Bark': THREE.MeshStandardMaterial;
         'Material.DeadTree.Bark.001': THREE.MeshStandardMaterial;
+        'Material.DesertStone.Body': THREE.MeshStandardMaterial;
+        'Material.DesertStone.Groove': THREE.MeshStandardMaterial;
         'Material.Dirt': THREE.MeshStandardMaterial;
         'Material.Dirt.001': THREE.MeshStandardMaterial;
         'Material.Grass': THREE.MeshStandardMaterial;
@@ -210,6 +225,7 @@ export type GLTFResult = GLTF & {
         'Material.WateringCan.Body': THREE.MeshStandardMaterial;
         'Material.WateringCan.Dark': THREE.MeshStandardMaterial;
         'Material.WateringCan.Trim': THREE.MeshStandardMaterial;
+        'Material.WaterWell.Rope': THREE.MeshStandardMaterial;
     };
     animations: GLTFAction[];
 };
