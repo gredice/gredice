@@ -31,8 +31,42 @@ permissions:
   contents: write
 
 jobs:
+  resolve_version:
+    name: "Resolve release version"
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: 🏷️ Resolve release version
+        id: version
+        shell: bash
+        env:
+          DISPATCH_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${DISPATCH_VERSION}" ]; then
+            VERSION="${DISPATCH_VERSION}"
+          elif [[ "${GITHUB_REF}" == refs/tags/desktop-app-v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/desktop-app-v}"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Single timestamp shared across all downstream jobs so the DMG
+            # filenames, package version, tag, and release name agree.
+            VERSION="0.0.0-$(date -u +%Y%m%d%H%M%S)"
+          else
+            echo "::error::Unable to resolve release version. Trigger this workflow with a desktop-app-v* tag or provide a workflow_dispatch version input." >&2
+            exit 1
+          fi
+          TAG="desktop-app-v${VERSION}"
+          echo "Resolved version: ${VERSION}"
+          echo "Resolved tag: ${TAG}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
   build:
     name: "Build macOS DMG"
+    needs: resolve_version
     runs-on: macos-latest
     timeout-minutes: 45
     strategy:
@@ -43,20 +77,6 @@ jobs:
       - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 1
-
-      - name: 🏷️ Resolve release version
-        id: version
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
-            VERSION="${{ inputs.version }}"
-          elif [[ "${GITHUB_REF}" == refs/tags/desktop-app-v* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/desktop-app-v}"
-          else
-            VERSION="0.0.0-$(date -u +%Y%m%d%H%M%S)"
-          fi
-          echo "Resolved version: ${VERSION}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - uses: pnpm/action-setup@v6.0.4
         name: ✨ Install pnpm
@@ -94,7 +114,7 @@ jobs:
 
       - name: 🛠️ Build Gredice Admin desktop DMG (${{ matrix.arch }})
         env:
-          GREDICE_DESKTOP_VERSION: ${{ steps.version.outputs.version }}
+          GREDICE_DESKTOP_VERSION: ${{ needs.resolve_version.outputs.version }}
           # electron-builder publishing is disabled in the config; the workflow
           # uploads artifacts to the GitHub release in a later step.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
@@ -113,27 +133,10 @@ jobs:
 
   release:
     name: "Publish GitHub Release"
-    needs: build
+    needs: [resolve_version, build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: 🏷️ Resolve release version
-        id: version
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
-            VERSION="${{ inputs.version }}"
-          elif [[ "${GITHUB_REF}" == refs/tags/desktop-app-v* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/desktop-app-v}"
-          else
-            VERSION="0.0.0-$(date -u +%Y%m%d%H%M%S)"
-          fi
-          TAG="desktop-app-v${VERSION}"
-          echo "Resolved version: ${VERSION}"
-          echo "Resolved tag: ${TAG}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-
       - name: 📥 Download DMG artifacts
         uses: actions/download-artifact@v6.0.0
         with:
@@ -148,8 +151,8 @@ jobs:
       - name: 🚀 Create or update GitHub release
         uses: softprops/action-gh-release@v2.2.2
         with:
-          name: "Gredice Admin Desktop ${{ steps.version.outputs.version }}"
-          tag_name: ${{ steps.version.outputs.tag }}
+          name: "Gredice Admin Desktop ${{ needs.resolve_version.outputs.version }}"
+          tag_name: ${{ needs.resolve_version.outputs.tag }}
           draft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft || false }}
           prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
           generate_release_notes: true
