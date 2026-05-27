@@ -116,6 +116,10 @@ const items: HudItem[] = [
             { type: 'entity', name: 'Block_Ground_Corner' },
             { type: 'entity', name: 'Block_Sand_Corner' },
             { type: 'entity', name: 'Block_Snow_Corner' },
+            { type: 'entity', name: 'Block_Grass_Reverse_Corner' },
+            { type: 'entity', name: 'Block_Ground_Reverse_Corner' },
+            { type: 'entity', name: 'Block_Sand_Reverse_Corner' },
+            { type: 'entity', name: 'Block_Snow_Reverse_Corner' },
         ],
     },
 ];

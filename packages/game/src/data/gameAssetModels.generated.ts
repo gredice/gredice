@@ -9,6 +9,9 @@ export const gameAssetModels = {
     BlockSand: { url: '/assets/models/BlockSand.glb' },
     BlockSandAngle: { url: '/assets/models/BlockSandAngle.glb' },
     BlockTerrainCorner: { url: '/assets/models/BlockTerrainCorner.glb' },
+    BlockTerrainReverseCorner: {
+        url: '/assets/models/BlockTerrainReverseCorner.glb',
+    },
     RaisedBed: { url: '/assets/models/RaisedBed.glb' },
     GardenBox: { url: '/assets/models/GardenBox.glb' },
     GiftBox: { url: '/assets/models/GiftBox.glb' },
@@ -69,6 +72,7 @@ export const groundGameAssetNames = [
     'BlockSand',
     'BlockSandAngle',
     'BlockTerrainCorner',
+    'BlockTerrainReverseCorner',
 ] satisfies GameAssetName[];
 
 export const primaryGameAssetNames = [
@@ -131,6 +135,7 @@ export const allGameAssetNames = [
     'BlockSand',
     'BlockSandAngle',
     'BlockTerrainCorner',
+    'BlockTerrainReverseCorner',
     'RaisedBed',
     'GardenBox',
     'GiftBox',

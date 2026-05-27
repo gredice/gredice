@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
 import { SpriteAtlasBillboard } from '../../sprites/SpriteAtlasBillboard';
 import type { Block } from '../../types/Block';
@@ -47,7 +46,6 @@ function ResolvedBlockSurfaceDecorationSprites({
     density = 1,
     surface,
 }: DirectBlockSurfaceDecorationSpritesProps) {
-    const { data: garden } = useCurrentGarden();
     const gameWeather = useGameState((state) => state.weather);
     const { data: weatherNow } = useWeatherNow();
     const placements = useMemo(
@@ -55,10 +53,10 @@ function ResolvedBlockSurfaceDecorationSprites({
             getBlockSurfaceDecorations({
                 block,
                 density,
-                gardenId: garden?.id,
+                gardenId: null,
                 surface,
             }),
-        [block, density, garden?.id, surface],
+        [block, density, surface],
     );
     const windSpeed =
         typeof gameWeather?.windSpeed === 'number'

@@ -21,6 +21,13 @@ function resolveDecorationBaseY(
     x: number,
     z: number,
 ) {
+    if (block.name.endsWith('_Reverse_Corner')) {
+        return (
+            options.baseY +
+            (Math.max(x, z) - angledBlockHighEdgeX) * options.angleLiftPerUnit
+        );
+    }
+
     if (block.name.endsWith('_Corner')) {
         return (
             options.baseY +
