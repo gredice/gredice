@@ -16,6 +16,7 @@ import {
     type EntityInstancesBlockBaseProps,
 } from './EntityInstancesBlock';
 import { GroundBlockDecorations } from './groundDecorations/GroundBlockDecorations';
+import { tulipBouquetStems } from './tulipBouquet';
 
 export const instancedBlockNames = [
     'Block_Grass',
@@ -71,7 +72,7 @@ const instancedSnowOverlayCounts = {
     DesertStoneMedium: 1,
     DesertStoneSmall: 1,
     Tree: 1,
-    Tulip: 1,
+    Tulip: tulipBouquetStems.length * 2,
 } satisfies Partial<Record<(typeof instancedBlockNames)[number], number>>;
 
 function getInstancedSnowOverlayCount(blockName: string) {
@@ -449,16 +450,38 @@ export function EntityInstances({
                 snowLift={0.002}
                 {...commonSnowProps}
             />
-            <EntityInstancesAssetBlock
-                assetName="Tulip"
-                stacks={stacks}
-                name="Tulip"
-                geometry={(gltf) => gltf.nodes.Tulip.geometry}
-                material={(gltf) => gltf.nodes.Tulip.material}
-                snow={snowPresets.tulip}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
+            {tulipBouquetStems.map((stem) => (
+                <EntityInstancesAssetBlock
+                    key={`Tulip-${stem.key}`}
+                    assetName="Tulip"
+                    stacks={stacks}
+                    name="Tulip"
+                    localPosition={stem.position}
+                    localRotation={stem.rotation}
+                    scale={stem.scale}
+                    geometry={(gltf) => gltf.nodes.Tulip.geometry}
+                    material={(gltf) => gltf.nodes.Tulip.material}
+                    snow={snowPresets.tulip}
+                    snowLift={0.002}
+                    {...commonSnowProps}
+                />
+            ))}
+            {tulipBouquetStems.map((stem) => (
+                <EntityInstancesAssetBlock
+                    key={`TulipLeaves-${stem.key}`}
+                    assetName="Tulip"
+                    stacks={stacks}
+                    name="Tulip"
+                    localPosition={stem.position}
+                    localRotation={stem.rotation}
+                    scale={stem.scale}
+                    geometry={(gltf) => gltf.nodes.Tulip_Leaves.geometry}
+                    material={(gltf) => gltf.nodes.Tulip_Leaves.material}
+                    snow={snowPresets.tulip}
+                    snowLift={0.002}
+                    {...commonSnowProps}
+                />
+            ))}
             <EntityInstancesAssetBlock
                 assetName="Bush"
                 stacks={stacks}

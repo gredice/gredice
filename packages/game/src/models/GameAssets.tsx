@@ -137,6 +137,7 @@ export type GLTFResult = GLTF & {
         DesertStoneLarge_Crevices: THREE.Mesh;
         Stool: THREE.Mesh;
         Tulip: THREE.Mesh;
+        Tulip_Leaves: THREE.Mesh;
         Cactus_Barrel_Body: THREE.Mesh;
         Cactus_Barrel_Spines: THREE.Mesh;
         Cactus_ColumnCluster_Body: THREE.Mesh;
