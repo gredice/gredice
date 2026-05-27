@@ -128,14 +128,14 @@ export function WateringCan({ stack, block, rotation }: EntityInstanceProps) {
             })}
             <WateringCanPart node={nodes.WateringCan_Water}>
                 <MeshDistortMaterial
-                    color="#7cc7e8"
+                    color="#3598e7"
                     depthWrite={false}
-                    distort={0.04}
-                    metalness={0}
-                    opacity={0.68}
-                    roughness={0.18}
+                    distort={0.2}
+                    metalness={0.8}
+                    opacity={0.6}
+                    roughness={0.2}
                     side={DoubleSide}
-                    speed={1.4}
+                    speed={2}
                     transparent
                 />
             </WateringCanPart>
