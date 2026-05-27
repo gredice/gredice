@@ -47,6 +47,11 @@ function NotificationsCard({
     const [, setProfileModalOpen] = useSearchParam('pregled');
     const markAllNotificationsRead = useMarkAllNotificationsRead();
     const { track } = useGameAnalytics();
+    const { data: currentUser } = useCurrentUser();
+    const { data: notifications } = useNotifications(currentUser?.id, false);
+    const hasUnreadNotifications = notifications?.some(
+        (notification) => !notification.readAt,
+    );
 
     const handleMarkAllNotificationsRead = () => {
         track('game_notifications_mark_all_read', {
@@ -75,10 +80,31 @@ function NotificationsCard({
             </Row>
             <Divider />
             <div className="overflow-y-auto max-h-[50vh]">
-                <NotificationList
-                    short
-                    onNotificationSelected={onNotificationSelected}
-                />
+                {hasUnreadNotifications || !notifications ? (
+                    <NotificationList
+                        short
+                        unreadOnly
+                        onNotificationSelected={onNotificationSelected}
+                    />
+                ) : (
+                    <Stack className="p-4" spacing={2} alignItems="center">
+                        <Typography level="body3" className="text-center">
+                            Nema nepročitanih obavijesti.
+                        </Typography>
+                        <Button
+                            variant="plain"
+                            size="sm"
+                            onClick={() => {
+                                track('game_notifications_view_all_opened', {
+                                    source: 'quick_panel_no_unread',
+                                });
+                                setProfileModalOpen('obavijesti');
+                            }}
+                        >
+                            Prikaži sve pročitane
+                        </Button>
+                    </Stack>
+                )}
             </div>
             <Divider />
             <Stack>
