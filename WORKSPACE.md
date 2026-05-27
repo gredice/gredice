@@ -160,6 +160,15 @@ pnpm env:pull
 
 `pnpm env:pull` runs `vercel env pull .env` in `apps/www`, `apps/garden`, `apps/farm`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
 
+### Turborepo remote cache
+
+Turbo build/test results are cached remotely through Vercel for the `gredice` team, which speeds up cold builds locally and in CI.
+
+- Local and worktrees: `pnpm bootstrap` runs `pnpm turbo link --yes --scope=gredice`, which writes `.turbo/config.json` for the current worktree. The link relies on Vercel CLI auth, so run `vercel login` first if it has not been done on the machine. Each linked worktree gets its own `.turbo/config.json` (the `.turbo` directory is gitignored).
+- CI: the `TURBO_TOKEN` (set to `VERCEL_TOKEN`) and `TURBO_TEAM=gredice` environment variables are wired in `.github/workflows/ci.yml` and `.github/workflows/nextjs_ci_reusable.yml`. No per-repo link file is needed.
+
+`pnpm doctor` reports the link status under the optional "Turbo remote cache" check.
+
 ### Public page revalidation
 
 `apps/app` triggers public `apps/www` ISR revalidation after admin changes to directory plants, plant sorts, and operations. Configure the same `GREDICE_WWW_REVALIDATE_SECRET` in both apps. In production the admin app calls `https://www.gredice.com/api/revalidate/directories`; for preview or custom environments, set `GREDICE_WWW_REVALIDATE_URL` in `apps/app` to the target `www` deployment URL.
