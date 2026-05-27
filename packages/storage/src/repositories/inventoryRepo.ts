@@ -113,7 +113,10 @@ export async function consumeInventoryItem(
     payload: InventoryItemEventPayload,
     db: DatabaseClient = storage(),
 ) {
-    const inventory = await getInventory(accountId);
+    const inventory = await getInventoryForAggregateIds(
+        [getInventoryAggregateId(accountId)],
+        db,
+    );
     const currentAmount =
         inventory.find(
             (item) =>
@@ -171,7 +174,10 @@ export async function consumeGardenBoxInventoryItem(
     payload: InventoryItemEventPayload,
     db: DatabaseClient = storage(),
 ) {
-    const inventory = await getGardenBoxInventory(accountId, gardenId, blockId);
+    const inventory = await getInventoryForAggregateIds(
+        [getGardenBoxInventoryAggregateId({ accountId, gardenId, blockId })],
+        db,
+    );
     const currentAmount =
         inventory.find(
             (item) =>

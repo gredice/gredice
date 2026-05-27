@@ -1,7 +1,9 @@
 import type { OperationData, PlantSortData } from '@gredice/client';
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
+import { Add } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
@@ -12,10 +14,15 @@ import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { useMemo, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import { useGardenBoxPlaceBlock } from '../hooks/useGardenBoxPlaceBlock';
 import { useInventory } from '../hooks/useInventory';
 import { useOperations } from '../hooks/useOperations';
 import { useSorts } from '../hooks/usePlantSorts';
-import { useBackpackOpenParam } from '../useUrlState';
+import {
+    normalizeBackpackTab,
+    useBackpackOpenParam,
+    useBackpackTabParam,
+} from '../useUrlState';
 import { HudCard } from './components/HudCard';
 
 const GRID_SIZE = 24; // 3x4 grid
@@ -40,6 +47,12 @@ type InventoryData = {
     gardenBoxes?: GardenBoxInventoryData[];
 };
 
+type SelectedInventoryItem = {
+    item: InventoryItemData;
+    source: 'backpack' | 'gardenBox';
+    gardenBox?: GardenBoxInventoryData;
+};
+
 function inventoryItemKey(
     item: Pick<InventoryItemData, 'entityTypeName' | 'entityId'>,
 ) {
@@ -48,6 +61,15 @@ function inventoryItemKey(
 
 function inventoryItemTotal(items: InventoryItemData[]) {
     return items.reduce((sum, item) => sum + item.amount, 0);
+}
+
+function resolveBlockImageName(item?: InventoryItemData) {
+    if (!item || item.entityTypeName !== 'block') {
+        return null;
+    }
+
+    const blockName = item.name ?? item.entityId;
+    return /^\d+$/u.test(blockName) ? null : blockName;
 }
 
 function InventoryItemCell({
@@ -68,11 +90,13 @@ function InventoryItemCell({
         );
     }
 
+    const blockImageName = resolveBlockImageName(item);
+
     return (
         <button
             type="button"
             onClick={onClick}
-            className="aspect-square rounded-lg border p-0.5 relative transition-all bg-card hover:bg-primary/10"
+            className="aspect-square overflow-hidden rounded-lg border bg-card p-0.5 relative transition-all hover:bg-primary/10"
         >
             {sortData ? (
                 <PlantOrSortImage
@@ -85,9 +109,22 @@ function InventoryItemCell({
                 <div className="flex items-center justify-center h-full w-full rounded-md bg-card">
                     <OperationImage operation={operationData} size={48} />
                 </div>
+            ) : blockImageName ? (
+                <div className="flex items-center justify-center h-full w-full rounded-md bg-muted/40">
+                    <BlockImage
+                        blockName={blockImageName}
+                        alt={item.name ?? blockImageName}
+                        width={64}
+                        height={64}
+                        className="size-full object-contain p-2"
+                    />
+                </div>
             ) : (
-                <div className="flex items-center justify-center h-full w-full rounded-md bg-muted">
-                    <Typography level="body2" className="text-center">
+                <div className="flex items-center justify-center h-full w-full rounded-md bg-muted px-1">
+                    <Typography
+                        level="body3"
+                        className="line-clamp-2 max-w-full break-all text-center text-xs leading-tight"
+                    >
                         {item.name ?? item.entityTypeName}
                     </Typography>
                 </div>
@@ -157,17 +194,25 @@ function InventoryItemsGrid({
 
 function InventoryItemModal({
     item,
+    source,
+    gardenBox,
     sortData,
     operationData,
     open,
     onClose,
 }: {
     item: InventoryItemData;
+    source: SelectedInventoryItem['source'];
+    gardenBox?: GardenBoxInventoryData;
     sortData?: PlantSortData;
     operationData?: OperationData;
     open: boolean;
     onClose: () => void;
 }) {
+    const placeGardenBoxBlock = useGardenBoxPlaceBlock();
+    const blockImageName = resolveBlockImageName(item);
+    const isGardenBoxBlock =
+        source === 'gardenBox' && item.entityTypeName === 'block';
     const displayName =
         sortData?.information?.name ??
         operationData?.information?.label ??
@@ -177,7 +222,27 @@ function InventoryItemModal({
     const description =
         sortData?.information?.shortDescription ??
         sortData?.information?.plant?.information?.description ??
-        operationData?.information?.shortDescription;
+        operationData?.information?.shortDescription ??
+        (isGardenBoxBlock
+            ? 'Dodaj ovaj blok natrag u vrt. Postavit će se na prvo slobodno mjesto, bez trošenja suncokreta.'
+            : undefined);
+    const placeGardenBoxBlockError =
+        placeGardenBoxBlock.error instanceof Error
+            ? placeGardenBoxBlock.error.message
+            : null;
+
+    async function handlePlaceGardenBoxBlock() {
+        if (!gardenBox) {
+            return;
+        }
+
+        await placeGardenBoxBlock.mutateAsync({
+            gardenId: gardenBox.gardenId,
+            gardenBoxBlockId: gardenBox.blockId,
+            entityId: item.entityId,
+        });
+        onClose();
+    }
 
     return (
         <Modal
@@ -199,6 +264,16 @@ function InventoryItemModal({
                             <OperationImage
                                 operation={operationData}
                                 size={64}
+                            />
+                        </div>
+                    ) : blockImageName ? (
+                        <div className="size-20 rounded-lg border shrink-0 flex items-center justify-center bg-muted/40">
+                            <BlockImage
+                                blockName={blockImageName}
+                                alt={displayName}
+                                width={72}
+                                height={72}
+                                className="size-full object-contain p-2"
                             />
                         </div>
                     ) : (
@@ -235,6 +310,20 @@ function InventoryItemModal({
                                     ruksaka&quot;
                                 </Typography>
                             </>
+                        ) : isGardenBoxBlock ? (
+                            <>
+                                <Typography level="body3">
+                                    1. Klikni &quot;Dodaj u vrt&quot;
+                                </Typography>
+                                <Typography level="body3">
+                                    2. Blok će se postaviti na prvo slobodno
+                                    mjesto
+                                </Typography>
+                                <Typography level="body3">
+                                    3. Iz vrtne kutije uklonit će se jedan
+                                    predmet
+                                </Typography>
+                            </>
                         ) : (
                             <>
                                 <Typography level="body3">
@@ -250,6 +339,31 @@ function InventoryItemModal({
                             </>
                         )}
                     </Stack>
+                    {isGardenBoxBlock && (
+                        <Stack spacing={1}>
+                            <Button
+                                type="button"
+                                variant="soft"
+                                color="primary"
+                                startDecorator={<Add className="size-4" />}
+                                loading={placeGardenBoxBlock.isPending}
+                                disabled={
+                                    !gardenBox || placeGardenBoxBlock.isPending
+                                }
+                                onClick={handlePlaceGardenBoxBlock}
+                            >
+                                Dodaj u vrt
+                            </Button>
+                            {placeGardenBoxBlockError && (
+                                <Typography
+                                    level="body3"
+                                    className="text-red-600"
+                                >
+                                    {placeGardenBoxBlockError}
+                                </Typography>
+                            )}
+                        </Stack>
+                    )}
                 </Stack>
             </Stack>
         </Modal>
@@ -313,9 +427,10 @@ export function InventoryHud() {
     const { data: operations } = useOperations();
     const { track } = useGameAnalytics();
     const [isOpen, setIsOpen] = useBackpackOpenParam();
-    const [selectedItem, setSelectedItem] = useState<InventoryItemData | null>(
-        null,
-    );
+    const [backpackTabParam, setBackpackTabParam] = useBackpackTabParam();
+    const backpackTab = normalizeBackpackTab(backpackTabParam);
+    const [selectedItem, setSelectedItem] =
+        useState<SelectedInventoryItem | null>(null);
 
     const inventoryData = inventory as InventoryData | null | undefined;
     const items = inventoryData?.items ?? [];
@@ -370,23 +485,28 @@ export function InventoryHud() {
     );
 
     const selectedSortData =
-        selectedItem?.entityTypeName === 'plantSort'
-            ? sortData?.find((s) => s.id === Number(selectedItem.entityId))
+        selectedItem?.item.entityTypeName === 'plantSort'
+            ? sortData?.find((s) => s.id === Number(selectedItem.item.entityId))
             : undefined;
     const selectedOperationData = selectedItem
-        ? operationLookup.get(inventoryItemKey(selectedItem))
+        ? operationLookup.get(inventoryItemKey(selectedItem.item))
         : undefined;
 
     const handleItemClick = (
         item: InventoryItemData,
         source: 'backpack' | 'gardenBox',
+        gardenBox?: GardenBoxInventoryData,
     ) => {
         track('game_inventory_item_opened', {
             entity_id: item.entityId,
             entity_type: item.entityTypeName,
             source,
         });
-        setSelectedItem(item);
+        setSelectedItem({
+            item,
+            source,
+            gardenBox,
+        });
     };
 
     const handleOpenChange = (open: boolean) => {
@@ -397,6 +517,9 @@ export function InventoryHud() {
         }
         setIsOpen(open);
         if (!open) setSelectedItem(null);
+    };
+    const handleTabChange = (value: string) => {
+        setBackpackTabParam(normalizeBackpackTab(value));
     };
 
     const tabCountClassName =
@@ -437,7 +560,11 @@ export function InventoryHud() {
                             Inventar
                         </Typography>
                     </Row>
-                    <Tabs defaultValue="backpack" className="flex flex-col">
+                    <Tabs
+                        value={backpackTab}
+                        onValueChange={handleTabChange}
+                        className="flex flex-col"
+                    >
                         <TabsList className="grid grid-cols-2 border">
                             <TabsTrigger value="backpack">
                                 <Row spacing={2} alignItems="center">
@@ -519,6 +646,7 @@ export function InventoryHud() {
                                                 handleItemClick(
                                                     item,
                                                     'gardenBox',
+                                                    gardenBox,
                                                 )
                                             }
                                         />
@@ -532,7 +660,9 @@ export function InventoryHud() {
 
             {selectedItem && (
                 <InventoryItemModal
-                    item={selectedItem}
+                    item={selectedItem.item}
+                    source={selectedItem.source}
+                    gardenBox={selectedItem.gardenBox}
                     sortData={selectedSortData}
                     operationData={selectedOperationData}
                     open={Boolean(selectedItem)}

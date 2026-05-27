@@ -55,11 +55,12 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
                 rotation={lidRotation as unknown as [number, number, number]}
             >
                 <mesh
-                    castShadow
                     receiveShadow
                     geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
                     material={materials['Material.Planks']}
-                />
+                >
+                    <HoverOutline hovered={hovered} variant="outlines" />
+                </mesh>
                 <SnowOverlay
                     geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
                     {...snowPresets.giftBox}
