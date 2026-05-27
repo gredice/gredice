@@ -1,4 +1,5 @@
 import { animated, useSpring } from '@react-spring/three';
+import type { ThreeEvent } from '@react-three/fiber';
 import { useHoveredBlockStore } from '../../controls/useHoveredBlockStore';
 import { RainWetOverlay } from '../../rain/RainWetOverlay';
 import { SnowOverlay } from '../../snow/SnowOverlay';
@@ -19,10 +20,17 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
     const currentStackHeight = useStackHeight(stack, block);
     const hovered =
         useHoveredBlockStore((state) => state.hoveredBlock) === block;
-    const isLidOpen = useGameState(
-        (state) =>
-            state.activeDragPreview?.hoveredGardenBoxBlockId === block.id,
+    const mode = useGameState((state) => state.mode);
+    const activeDragPreview = useGameState((state) => state.activeDragPreview);
+    const openGardenBoxBlockId = useGameState(
+        (state) => state.openGardenBoxBlockId,
     );
+    const setOpenGardenBoxBlockId = useGameState(
+        (state) => state.setOpenGardenBoxBlockId,
+    );
+    const isLidOpen =
+        activeDragPreview?.hoveredGardenBoxBlockId === block.id ||
+        openGardenBoxBlockId === block.id;
     const { rotation: lidRotation } = useSpring({
         config: {
             mass: 0.18,
@@ -32,8 +40,16 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
         rotation: [isLidOpen ? lidOpenRotation : lidClosedRotation, 0, 0],
     });
 
+    function handleClick(event: ThreeEvent<MouseEvent>) {
+        event.stopPropagation();
+        if (mode !== 'normal' || activeDragPreview) return;
+
+        setOpenGardenBoxBlockId(block.id);
+    }
+
     return (
         <animated.group
+            onClick={handleClick}
             position={stack.position.clone().setY(currentStackHeight)}
             rotation={animatedRotation as unknown as [number, number, number]}
         >
@@ -43,7 +59,13 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
                 geometry={nodes.GardenBox_Body_Planks.geometry}
                 material={materials['Material.Planks']}
             >
-                <HoverOutline hovered={hovered} variant="outlines" />
+                <HoverOutline
+                    hovered={hovered || isLidOpen}
+                    variant="outlines"
+                    thickness={7}
+                    color="#f8fafc"
+                    backingColor="#0f172a"
+                />
             </mesh>
             <SnowOverlay
                 geometry={nodes.GardenBox_Body_Planks.geometry}

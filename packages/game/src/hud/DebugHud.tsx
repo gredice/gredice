@@ -14,7 +14,7 @@ import {
     type GameProfileMetadata,
     readGameProfileMetadata,
 } from '../scene/gameProfileMetadata';
-import { useGameState } from '../useGameState';
+import { type AnimalDebugEntry, useGameState } from '../useGameState';
 
 function getTimeOfDayFromDate(date: Date) {
     const totalSeconds =
@@ -68,6 +68,10 @@ function formatMetric(value: number | null | undefined, suffix = '') {
     return typeof value === 'number' && Number.isFinite(value)
         ? `${Math.round(value * 10) / 10}${suffix}`
         : 'n/a';
+}
+
+function formatAnimalPosition(position: AnimalDebugEntry['position']) {
+    return `${formatMetric(position.x)}, ${formatMetric(position.y)}, ${formatMetric(position.z)}`;
 }
 
 type FrameStats = {
@@ -177,6 +181,7 @@ export function DebugHud() {
     const setWeather = useGameState((s) => s.setWeather);
     const currentTime = useLiveTime();
     const setFreezeTime = useGameState((s) => s.setFreezeTime);
+    const animalDebugEntries = useGameState((s) => s.animalDebugEntries);
     const frameStats = useFrameStats();
     const profileSnapshot = useProfileHudSnapshot();
 
@@ -631,6 +636,42 @@ export function DebugHud() {
                                     {profileSnapshot?.groundDecorationCount ??
                                         0}
                                 </div>
+                            </Stack>
+                        </DebugPanelSection>
+                        <DebugPanelSection title="Animals">
+                            <Stack
+                                spacing={2}
+                                className="text-xs font-mono leading-5"
+                            >
+                                {animalDebugEntries.length === 0 ? (
+                                    <div>No active animals</div>
+                                ) : (
+                                    animalDebugEntries.map((entry) => (
+                                        <div
+                                            key={entry.id}
+                                            className="rounded-md border border-border/50 bg-card/60 p-2"
+                                        >
+                                            <div className="flex justify-between gap-3">
+                                                <span>
+                                                    {entry.species}{' '}
+                                                    {entry.label}
+                                                </span>
+                                                <span>{entry.phase}</span>
+                                            </div>
+                                            <div>Playing {entry.activity}</div>
+                                            <div>
+                                                Behavior {entry.behavior} /{' '}
+                                                target {entry.targetId}
+                                            </div>
+                                            <div>
+                                                Pos{' '}
+                                                {formatAnimalPosition(
+                                                    entry.position,
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                             </Stack>
                         </DebugPanelSection>
                         <DebugPanelSection title="Time">

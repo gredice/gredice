@@ -103,6 +103,22 @@ export type ActiveDragPreview = {
     isOverRecycler: boolean;
 };
 
+export type AnimalDebugEntry = {
+    id: string;
+    species: string;
+    label: string;
+    phase: string;
+    behavior: string;
+    activity: string;
+    targetId: string;
+    position: {
+        x: number;
+        y: number;
+        z: number;
+    };
+    updatedAt: number;
+};
+
 export type GameState = {
     // General
     isMock: boolean;
@@ -134,6 +150,11 @@ export type GameState = {
     setPickupBlock: (block: Block | null) => void;
     activeDragPreview: ActiveDragPreview | null;
     setActiveDragPreview: (dragPreview: ActiveDragPreview | null) => void;
+    openGardenBoxBlockId: string | null;
+    setOpenGardenBoxBlockId: (blockId: string | null) => void;
+    animalDebugEntries: AnimalDebugEntry[];
+    setAnimalDebugEntry: (entry: AnimalDebugEntry) => void;
+    removeAnimalDebugEntry: (id: string) => void;
 
     // Camera
     view: 'normal' | 'closeup';
@@ -274,6 +295,36 @@ export function createGameState({
         setPickupBlock: (block: Block | null) => set({ pickupBlock: block }),
         activeDragPreview: null,
         setActiveDragPreview: (activeDragPreview) => set({ activeDragPreview }),
+        openGardenBoxBlockId: null,
+        setOpenGardenBoxBlockId: (openGardenBoxBlockId) =>
+            set({ openGardenBoxBlockId }),
+        animalDebugEntries: [],
+        setAnimalDebugEntry: (entry) =>
+            set((state) => {
+                const existingIndex = state.animalDebugEntries.findIndex(
+                    (candidate) => candidate.id === entry.id,
+                );
+                if (existingIndex === -1) {
+                    return {
+                        animalDebugEntries: [
+                            ...state.animalDebugEntries,
+                            entry,
+                        ].sort((left, right) =>
+                            left.label.localeCompare(right.label),
+                        ),
+                    };
+                }
+
+                const animalDebugEntries = [...state.animalDebugEntries];
+                animalDebugEntries[existingIndex] = entry;
+                return { animalDebugEntries };
+            }),
+        removeAnimalDebugEntry: (id) =>
+            set((state) => ({
+                animalDebugEntries: state.animalDebugEntries.filter(
+                    (entry) => entry.id !== id,
+                ),
+            })),
 
         // Camera
         view: 'normal',
