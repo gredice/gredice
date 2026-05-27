@@ -26,6 +26,7 @@ interface NotificationProps {
     read?: boolean;
     short?: boolean;
     unreadOnly?: boolean;
+    onNotificationSelected?: () => void;
 }
 
 type NotificationListItemProps = {
@@ -40,9 +41,13 @@ type NotificationListItemProps = {
         timestamp: Date;
         raisedBedId: number | null;
     };
+    onNotificationSelected?: () => void;
 };
 
-function NotificationListItem({ notification }: NotificationListItemProps) {
+function NotificationListItem({
+    notification,
+    onNotificationSelected,
+}: NotificationListItemProps) {
     const router = useRouter();
     const { id, header, content, linkUrl, readAt, timestamp, raisedBedId } =
         notification;
@@ -108,6 +113,8 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
         if (computedLinkUrl !== '#') {
             router.push(computedLinkUrl as Route);
         }
+
+        onNotificationSelected?.();
     }
 
     return (
@@ -186,6 +193,7 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
 }
 
 export function NotificationList({
+    onNotificationSelected,
     read,
     short,
     unreadOnly,
@@ -237,6 +245,7 @@ export function NotificationList({
                 <NotificationListItem
                     key={notification.id}
                     notification={notification}
+                    onNotificationSelected={onNotificationSelected}
                 />
             ))}
         </List>

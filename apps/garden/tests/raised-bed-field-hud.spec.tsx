@@ -93,6 +93,39 @@ function plantedGrowingWithRecommendedOperationsScenario(): RaisedBedScenario {
     };
 }
 
+function greenhouseSeedlingScenario(): RaisedBedScenario {
+    return {
+        fields: [
+            {
+                positionIndex: 0,
+                plantSortId: testSorts.tomato.id,
+                plantStatus: 'sprouted',
+                sowingLocation: 'greenhouse',
+                plantSowDate: '2026-05-01T00:00:00.000Z',
+                plantGrowthDate: '2026-05-10T00:00:00.000Z',
+            },
+        ],
+        operations: [
+            buildOperation({
+                id: 402,
+                name: 'mock-seedling-check',
+                label: 'Kontrola sadnice',
+                stageName: 'maintenance',
+                stageLabel: 'Održavanje',
+                relativeDays: 2,
+            }),
+            buildOperation({
+                id: 593,
+                name: 'seedlingTranslanting',
+                label: 'Presađivanje sadnice',
+                stageName: 'planting',
+                stageLabel: 'Sadnja',
+                relativeDays: 14,
+            }),
+        ],
+    };
+}
+
 function plantedGrowingWithOperationHistoryScenario(): RaisedBedScenario {
     const wateringOperation = buildOperation({
         id: 301,
@@ -457,6 +490,53 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
 
         await expect(page.locator('svg circle').first()).toBeVisible();
         await expect(page.locator('[data-field-icon-stack]')).toHaveCount(0);
+    });
+
+    test('greenhouse seedling field shows two-stage progress, diary, standard operations, and transplant action', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={greenhouseSeedlingScenario()}
+                positionIndex={0}
+            />,
+        );
+
+        await expect(
+            page.locator('[data-greenhouse-seedling-visual]').first(),
+        ).toBeVisible();
+        await expect(page.locator('[data-field-icon-stack]')).toBeVisible();
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(
+            dialog.getByRole('heading', {
+                name: /Sadnica u stakleniku "Cherry rajčica"/,
+            }),
+        ).toBeVisible();
+        await expect(
+            dialog.locator('[data-greenhouse-seedling-progress] svg'),
+        ).toHaveCount(2);
+        await expect(dialog.getByText('Sadnica je u stakleniku')).toBeVisible();
+        await expect(
+            dialog.getByRole('button', { name: 'Klijanje: 9 dana' }),
+        ).toBeVisible();
+        await expect(
+            dialog.getByRole('button', {
+                name: /Presađivanje: \d+ dana/,
+            }),
+        ).toBeVisible();
+        await expect(
+            dialog.getByRole('tab', { name: /Dnevnik/ }),
+        ).toBeVisible();
+        await expect(
+            dialog.getByRole('button', { name: /Kontrola sadnice/ }),
+        ).toBeVisible();
+        await expect(
+            dialog.locator('[data-greenhouse-transplant-action]'),
+        ).toContainText('Presađivanje sadnice');
     });
 
     test('ready-to-harvest field shows the sprout status badge', async ({

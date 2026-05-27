@@ -25,6 +25,7 @@ import { Row } from '@gredice/ui/Row';
 import { Skeleton } from '@gredice/ui/Skeleton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentUser } from '../hooks/useCurrentUser';
@@ -38,7 +39,11 @@ import { GardenAccountMenuItems } from './GardenAccountMenuItems';
 import { GardenOperationsHud } from './GardenOperationsHud';
 import { NotificationList } from './NotificationList';
 
-function NotificationsCard() {
+function NotificationsCard({
+    onNotificationSelected,
+}: {
+    onNotificationSelected: () => void;
+}) {
     const [, setProfileModalOpen] = useSearchParam('pregled');
     const markAllNotificationsRead = useMarkAllNotificationsRead();
     const { track } = useGameAnalytics();
@@ -75,8 +80,12 @@ function NotificationsCard() {
             </Row>
             <Divider />
             <div className="overflow-y-auto max-h-[50vh]">
-                {hasUnreadNotifications ? (
-                    <NotificationList short unreadOnly />
+                {hasUnreadNotifications || !notifications ? (
+                    <NotificationList
+                        short
+                        unreadOnly
+                        onNotificationSelected={onNotificationSelected}
+                    />
                 ) : (
                     <Stack className="p-4" spacing={2} alignItems="center">
                         <Typography level="body3" className="text-center">
@@ -203,6 +212,7 @@ function ProfileCard() {
 
 export function AccountHud() {
     const { track } = useGameAnalytics();
+    const [isNotificationsOpen, setNotificationsOpen] = useState(false);
     const { data: currentUser } = useCurrentUser();
     const { data: currentGarden, isLoading } = useCurrentGarden();
     const { data: notifications } = useNotifications(currentUser?.id, false);
@@ -267,6 +277,8 @@ export function AccountHud() {
                         className="w-[min(24rem,calc(100vw-1rem))] overflow-hidden border-tertiary border-b-4"
                         side="bottom"
                         sideOffset={12}
+                        open={isNotificationsOpen}
+                        onOpenChange={setNotificationsOpen}
                         trigger={
                             <Button
                                 className="relative rounded-full p-0 aspect-square"
@@ -287,7 +299,11 @@ export function AccountHud() {
                             </Button>
                         }
                     >
-                        <NotificationsCard />
+                        <NotificationsCard
+                            onNotificationSelected={() =>
+                                setNotificationsOpen(false)
+                            }
+                        />
                     </Popper>
                 </div>
             </Row>
