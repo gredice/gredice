@@ -63,9 +63,18 @@ function DeadTreeMeshes({
     nodeNames: readonly DeadTreeNodeName[];
 }) {
     return nodeNames.map((nodeName) => {
-        const geometry = nodes[nodeName].geometry;
+        const node = nodes[nodeName];
+        const geometry = node.geometry;
         return (
-            <mesh key={nodeName} castShadow receiveShadow geometry={geometry}>
+            <mesh
+                key={nodeName}
+                castShadow
+                receiveShadow
+                geometry={geometry}
+                position={[node.position.x, node.position.y, node.position.z]}
+                rotation={[node.rotation.x, node.rotation.y, node.rotation.z]}
+                scale={[node.scale.x, node.scale.y, node.scale.z]}
+            >
                 <meshStandardMaterial {...deadTreeMaterial} />
                 <SnowOverlay
                     geometry={geometry}
