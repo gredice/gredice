@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo } from 'react';
+import { Suspense, useMemo } from 'react';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
 import { SpriteAtlasBillboard } from '../../sprites/SpriteAtlasBillboard';
 import type { Block } from '../../types/Block';
 import { useGameState } from '../../useGameState';
+import { GardenFlowerModel } from '../helpers/GardenFlowerModel';
 import type { BlockSurfaceDecorationPlacement } from './getBlockSurfaceDecorations';
 import { getBlockSurfaceDecorations } from './getBlockSurfaceDecorations';
 import {
@@ -91,6 +92,22 @@ export function PrecomputedBlockSurfaceDecorationSprites({
         const positionKey = placement.position
             .map((value) => value.toFixed(3))
             .join(':');
+
+        if (placement.kind === 'flower') {
+            return (
+                <Suspense
+                    key={`${blockId}:${surface}:flower:${positionKey}`}
+                    fallback={null}
+                >
+                    <GardenFlowerModel
+                        petalColor={placement.color}
+                        position={placement.position}
+                        rotation={[0, placement.rotation, 0]}
+                        scale={placement.scale}
+                    />
+                </Suspense>
+            );
+        }
 
         return (
             <SpriteAtlasBillboard

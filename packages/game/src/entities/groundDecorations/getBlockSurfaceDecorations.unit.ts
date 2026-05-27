@@ -82,3 +82,24 @@ test('positions reverse corner decorations away from the low local corner', () =
 
     assert.equal(round(firstPlacement.position[1]), round(expectedY));
 });
+
+test('occasionally adds tiny white flower decorations to grass', () => {
+    const block = {
+        id: 'grass-8',
+        name: 'Block_Grass',
+        rotation: 0,
+    } satisfies Block;
+    const placements = getBlockSurfaceDecorations({
+        block,
+        gardenId: 42,
+        surface: 'grass',
+    });
+    const flower = placements.find((placement) => placement.kind === 'flower');
+    const flowerScaleRange = groundDecorationOptions.grass.flowerScaleRange;
+
+    assert.ok(flower);
+    assert.ok(flowerScaleRange);
+    assert.equal(flower.color, groundDecorationOptions.grass.flowerColor);
+    assert.equal(flower.scale >= flowerScaleRange[0], true);
+    assert.equal(flower.scale <= flowerScaleRange[1], true);
+});

@@ -14,6 +14,7 @@ export enum ParticleType {
     Leaf = 'leaf',
     TreeLeaf = 'treeLeaf',
     Stone = 'stone',
+    Water = 'water',
 }
 
 interface ParticleContextValue {
@@ -45,6 +46,8 @@ export function resolveBlockParticleType(
         case 'DesertStoneMedium':
         case 'DesertStoneLarge':
             return ParticleType.Stone;
+        case 'Block_Water':
+            return ParticleType.Water;
         default:
             return null;
     }
@@ -66,6 +69,7 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
     const meshLeaf = useRef<InstancedMesh>(null);
     const meshTreeLeaf = useRef<InstancedMesh>(null);
     const meshStone = useRef<InstancedMesh>(null);
+    const meshWater = useRef<InstancedMesh>(null);
     const count = 500;
     const particles = useMemo(() => {
         const temp = [];
@@ -158,6 +162,20 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
                     (Math.random() - 0.5) * 1.5,
                 ),
         },
+        [ParticleType.Water]: {
+            life: 0.9,
+            offset: () => ({
+                x: (Math.random() - 0.5) * 0.5,
+                y: 0,
+                z: (Math.random() - 0.5) * 0.5,
+            }),
+            velocity: () =>
+                new Vector3(
+                    (Math.random() - 0.5) * 2.0,
+                    Math.random() * 2 + 1.5,
+                    (Math.random() - 0.5) * 2.0,
+                ),
+        },
     };
 
     const spawn = (
@@ -205,6 +223,7 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
         let updateLeafMesh = false;
         let updateTreeLeafMesh = false;
         let updateStoneMesh = false;
+        let updateWaterMesh = false;
         for (const p of particles) {
             i++;
             if (p.life >= p.maxLife) {
@@ -269,6 +288,11 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
                     p.rotation.z += p.velocity.x * -1 * delta;
                     break;
                 }
+                case ParticleType.Water: {
+                    p.velocity.x *= 0.99 ** (delta * 60);
+                    p.velocity.z *= 0.99 ** (delta * 60);
+                    break;
+                }
                 default: {
                     // Basic physics with simple tumbling rotation
                     p.velocity.x *= 0.98 ** (delta * 60);
@@ -329,6 +353,10 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
                     targetMesh = meshStone.current;
                     updateStoneMesh = true;
                     break;
+                case ParticleType.Water:
+                    targetMesh = meshWater.current;
+                    updateWaterMesh = true;
+                    break;
             }
             targetMesh?.setMatrixAt(
                 i,
@@ -352,6 +380,9 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
         }
         if (updateStoneMesh && meshStone.current) {
             meshStone.current.instanceMatrix.needsUpdate = true;
+        }
+        if (updateWaterMesh && meshWater.current) {
+            meshWater.current.instanceMatrix.needsUpdate = true;
         }
     });
 
@@ -392,6 +423,16 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
             <instancedMesh ref={meshStone} args={[undefined, undefined, count]}>
                 <sphereGeometry args={[0.04, 4, 4]} />
                 <meshStandardMaterial color="#555566" />
+            </instancedMesh>
+
+            {/* Water mesh */}
+            <instancedMesh ref={meshWater} args={[undefined, undefined, count]}>
+                <sphereGeometry args={[0.035, 6, 6]} />
+                <meshStandardMaterial
+                    color="#8fcfc4"
+                    transparent
+                    opacity={0.85}
+                />
             </instancedMesh>
         </ParticleContext.Provider>
     );

@@ -229,6 +229,22 @@ test('deleteGardenStack marks stack as deleted', async () => {
     assert.strictEqual(stack, null);
 });
 
+test('getGarden excludes deleted stacks', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    await createGardenStack(gardenId, { x: 1, y: 1 });
+    await createGardenStack(gardenId, { x: 2, y: 2 });
+    await deleteGardenStack(gardenId, { x: 1, y: 1 });
+
+    const garden = await getGarden(gardenId);
+    assert.ok(garden);
+    assert.strictEqual(garden.stacks.length, 1);
+    assert.strictEqual(garden.stacks[0].positionX, 2);
+    assert.strictEqual(garden.stacks[0].positionY, 2);
+});
+
 // Edge cases
 
 test('getGarden returns null for non-existent garden', async () => {

@@ -122,6 +122,33 @@
             "objects": ["Tree 2"]
         },
         {
+            "name": "DeadTreeTall",
+            "source": "DeadTreeTall.blend",
+            "output": "DeadTreeTall.glb",
+            "preload": "lazy",
+            "objects": [
+                "DeadTreeTall_Trunk",
+                "DeadTreeTall_LeftBranch",
+                "DeadTreeTall_LeftSubBranch",
+                "DeadTreeTall_LeftTip",
+                "DeadTreeTall_RightBranch",
+                "DeadTreeTall_RightSubBranch",
+                "DeadTreeTall_RightTip"
+            ]
+        },
+        {
+            "name": "DeadTreeStump",
+            "source": "DeadTreeStump.blend",
+            "output": "DeadTreeStump.glb",
+            "preload": "lazy",
+            "objects": [
+                "DeadTreeStump_Trunk",
+                "DeadTreeStump_BrokenTop",
+                "DeadTreeStump_BrokenTop.001",
+                "DeadTreeStump_SideStub"
+            ]
+        },
+        {
             "name": "Bush",
             "source": "Bush.blend",
             "output": "Bush.glb",
@@ -389,6 +416,18 @@
             "version": "64901b969f37",
             "preload": "lazy",
             "objects": ["Tulip", "Tulip_Leaves"]
+        },
+        {
+            "name": "GardenFlower",
+            "source": "GardenFlower.blend",
+            "output": "GardenFlower.glb",
+            "preload": "ground",
+            "objects": [
+                "GardenFlower_Stem",
+                "GardenFlower_Leaves",
+                "GardenFlower_Petals",
+                "GardenFlower_Center"
+            ]
         },
         {
             "name": "CactusBarrel",

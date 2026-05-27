@@ -19,6 +19,8 @@ export const gameAssetModels = {
     Stick: { url: '/assets/models/Stick.glb' },
     Tree: { url: '/assets/models/Tree.glb' },
     Pine: { url: '/assets/models/Pine.glb' },
+    DeadTreeTall: { url: '/assets/models/DeadTreeTall.glb' },
+    DeadTreeStump: { url: '/assets/models/DeadTreeStump.glb' },
     Bush: { url: '/assets/models/Bush.glb' },
     StoneSmall: { url: '/assets/models/StoneSmall.glb' },
     MulchHey: { url: '/assets/models/MulchHey.glb' },
@@ -44,6 +46,7 @@ export const gameAssetModels = {
     DesertStoneMedium: { url: '/assets/models/DesertStoneMedium.glb' },
     DesertStoneLarge: { url: '/assets/models/DesertStoneLarge.glb' },
     Stool: { url: '/assets/models/Stool.glb' },
+    GardenFlower: { url: '/assets/models/GardenFlower.glb' },
     Tulip: { url: '/assets/models/Tulip.glb?v=64901b969f37' },
     CactusBarrel: { url: '/assets/models/CactusBarrel.glb?v=13eb69f97166' },
     CactusColumnCluster: { url: '/assets/models/CactusColumnCluster.glb' },
@@ -73,6 +76,7 @@ export const groundGameAssetNames = [
     'BlockSandAngle',
     'BlockTerrainCorner',
     'BlockTerrainReverseCorner',
+    'GardenFlower',
 ] satisfies GameAssetName[];
 
 export const primaryGameAssetNames = [
@@ -91,6 +95,8 @@ export const primaryGameAssetNames = [
 ] satisfies GameAssetName[];
 
 export const lazyGameAssetNames = [
+    'DeadTreeTall',
+    'DeadTreeStump',
     'BaleHey',
     'BirdSmall',
     'Bucket',
@@ -143,6 +149,8 @@ export const allGameAssetNames = [
     'Stick',
     'Tree',
     'Pine',
+    'DeadTreeTall',
+    'DeadTreeStump',
     'Bush',
     'StoneSmall',
     'MulchHey',
@@ -169,6 +177,7 @@ export const allGameAssetNames = [
     'DesertStoneLarge',
     'Stool',
     'Tulip',
+    'GardenFlower',
     'CactusBarrel',
     'CactusColumnCluster',
     'CactusPricklyPear',
