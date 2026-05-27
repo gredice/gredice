@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { type HTMLAttributes, useRef } from 'react';
 import { MOUSE, Vector3 } from 'three';
 import { v4 as uuidv4 } from 'uuid';
+import { Birds } from '../entities/birds/Birds';
 import { EntityFactory } from '../entities/EntityFactory';
 import { GameFlagsContext } from '../GameFlagsContext';
 import { DebugHud } from '../hud/DebugHud';
@@ -118,6 +119,7 @@ export function EntityViewer({
                             rotation={normalizedRotation}
                             variant={variant}
                         />
+                        <Birds stacks={[stack]} />
                         {!noControl && (
                             <OrbitControls
                                 enableDamping
