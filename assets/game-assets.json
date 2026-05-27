@@ -327,6 +327,30 @@
             "objects": ["Stone Large"]
         },
         {
+            "name": "DesertStoneSmall",
+            "source": "DesertStoneSmall.blend",
+            "output": "DesertStoneSmall.glb",
+            "preload": "lazy",
+            "objects": ["DesertStoneSmall_Body", "DesertStoneSmall_Crevices"]
+        },
+        {
+            "name": "DesertStoneMedium",
+            "source": "DesertStoneMedium.blend",
+            "output": "DesertStoneMedium.glb",
+            "preload": "lazy",
+            "objects": [
+                "DesertStoneMedium_Body",
+                "DesertStoneMedium_Crevices"
+            ]
+        },
+        {
+            "name": "DesertStoneLarge",
+            "source": "DesertStoneLarge.blend",
+            "output": "DesertStoneLarge.glb",
+            "preload": "lazy",
+            "objects": ["DesertStoneLarge_Body", "DesertStoneLarge_Crevices"]
+        },
+        {
             "name": "Stool",
             "source": "Stool.blend",
             "output": "Stool.glb",

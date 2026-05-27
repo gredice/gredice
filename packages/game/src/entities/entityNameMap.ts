@@ -20,6 +20,7 @@ import { Bucket } from './Bucket';
 import { Bush } from './Bush';
 import { Cactus } from './Cactus';
 import { Composter } from './Composter';
+import { DesertStone } from './DesertStone';
 import { Fence } from './Fence';
 import { FireflyJar } from './FireflyJar';
 import { GardenBox } from './GardenBox';
@@ -89,6 +90,9 @@ export const entityNameMap: Record<
     StoneSmall: StoneSmall,
     StoneMedium: StoneMedium,
     StoneLarge: StoneLarge,
+    DesertStoneSmall: DesertStone,
+    DesertStoneMedium: DesertStone,
+    DesertStoneLarge: DesertStone,
     ShovelSmall: ShovelSmall,
     Snowman: Snowman,
     Tulip: Tulip,
