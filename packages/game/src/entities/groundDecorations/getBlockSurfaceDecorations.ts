@@ -6,25 +6,21 @@ import {
     groundDecorationOptions,
 } from './groundDecorationConfig';
 
-export type BlockSurfaceSpriteDecorationPlacement = {
-    kind: 'sprite';
+export type BlockSurfaceDecorationPlacement = {
+    flowers: BlockSurfaceFlowerPlacement[];
     height: number;
     opacity: number;
     position: [number, number, number];
     spriteName: string;
 };
 
-export type BlockSurfaceFlowerDecorationPlacement = {
+export type BlockSurfaceFlowerPlacement = {
     color: string;
-    kind: 'flower';
+    height: number;
+    opacity: number;
     position: [number, number, number];
     rotation: number;
-    scale: number;
 };
-
-export type BlockSurfaceDecorationPlacement =
-    | BlockSurfaceSpriteDecorationPlacement
-    | BlockSurfaceFlowerDecorationPlacement;
 
 const angledBlockHighEdgeX = 0.5;
 
@@ -80,39 +76,139 @@ function pickSpriteName(rng: SeededRNG, surface: GroundDecorationSurface) {
     return sprites[spriteIndex] ?? sprites[0];
 }
 
-function findDecorationPosition(
+function pickFlowerColor(
     rng: SeededRNG,
-    options: (typeof groundDecorationOptions)[GroundDecorationSurface],
-    placements: BlockSurfaceDecorationPlacement[],
+    colors: readonly string[],
+): string | undefined {
+    const colorIndex = Math.min(
+        colors.length - 1,
+        Math.floor(rng.nextFloat() * colors.length),
+    );
+
+    return colors[colorIndex];
+}
+
+function getFlowerCount(
+    rng: SeededRNG,
+    flowerOptions: NonNullable<
+        (typeof groundDecorationOptions)[GroundDecorationSurface]['flowers']
+    >,
 ) {
-    let x = 0;
-    let z = 0;
-
-    for (let attempt = 0; attempt < 8; attempt += 1) {
-        const candidateX = rng.nextRange(
-            -options.positionRange,
-            options.positionRange,
-        );
-        const candidateZ = rng.nextRange(
-            -options.positionRange,
-            options.positionRange,
-        );
-        const isTooClose = placements.some((placement) => {
-            const distanceX = placement.position[0] - candidateX;
-            const distanceZ = placement.position[2] - candidateZ;
-
-            return Math.hypot(distanceX, distanceZ) < options.minDistance;
-        });
-
-        x = candidateX;
-        z = candidateZ;
-
-        if (!isTooClose) {
-            break;
-        }
+    if (rng.nextFloat() > flowerOptions.spawnChance) {
+        return 0;
     }
 
-    return { x, z };
+    let count = 1;
+    while (
+        count < flowerOptions.maxCount &&
+        rng.nextFloat() < flowerOptions.clusterChance
+    ) {
+        count += 1;
+    }
+
+    return count;
+}
+
+function clampToPositionRange(
+    value: number,
+    decorationOptions: (typeof groundDecorationOptions)[GroundDecorationSurface],
+) {
+    return Math.max(
+        -decorationOptions.positionRange,
+        Math.min(decorationOptions.positionRange, value),
+    );
+}
+
+function getFlowerPlacements({
+    block,
+    decorationIndex,
+    decorationOptions,
+    rng,
+    x,
+    z,
+}: {
+    block: Block;
+    decorationIndex: number;
+    decorationOptions: (typeof groundDecorationOptions)[GroundDecorationSurface];
+    rng: SeededRNG;
+    x: number;
+    z: number;
+}) {
+    const flowerOptions = decorationOptions.flowers;
+    if (!flowerOptions) {
+        return [];
+    }
+
+    const count = getFlowerCount(rng, flowerOptions);
+    if (count < 1) {
+        return [];
+    }
+
+    const flowers: BlockSurfaceFlowerPlacement[] = [];
+
+    for (let index = 0; index < count; index += 1) {
+        let flowerX = x;
+        let flowerZ = z;
+
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+            const candidateX = clampToPositionRange(
+                x + rng.nextRange(-flowerOptions.spread, flowerOptions.spread),
+                decorationOptions,
+            );
+            const candidateZ = clampToPositionRange(
+                z + rng.nextRange(-flowerOptions.spread, flowerOptions.spread),
+                decorationOptions,
+            );
+            const isTooClose = flowers.some((flower) => {
+                const distanceX = flower.position[0] - candidateX;
+                const distanceZ = flower.position[2] - candidateZ;
+
+                return (
+                    Math.hypot(distanceX, distanceZ) < flowerOptions.minDistance
+                );
+            });
+
+            flowerX = candidateX;
+            flowerZ = candidateZ;
+
+            if (!isTooClose) {
+                break;
+            }
+        }
+
+        const color = pickFlowerColor(rng, flowerOptions.colors);
+        if (!color) {
+            continue;
+        }
+
+        flowers.push({
+            color,
+            height: rng.nextRange(
+                flowerOptions.heightRange[0],
+                flowerOptions.heightRange[1],
+            ),
+            opacity: rng.nextRange(
+                flowerOptions.opacityRange[0],
+                flowerOptions.opacityRange[1],
+            ),
+            position: [
+                flowerX,
+                resolveDecorationBaseY(
+                    block,
+                    decorationOptions,
+                    flowerX,
+                    flowerZ,
+                ) +
+                    decorationIndex * 0.002 +
+                    0.01 +
+                    index * 0.001,
+                flowerZ,
+            ],
+            rotation: rng.nextRange(-0.32, 0.32),
+        });
+    }
+
+    return flowers;
 }
 
 export function getBlockSurfaceDecorations(options: {
@@ -141,55 +237,68 @@ export function getBlockSurfaceDecorations(options: {
     const placements: BlockSurfaceDecorationPlacement[] = [];
 
     for (let index = 0; index < count; index += 1) {
-        const { x, z } = findDecorationPosition(
-            rng,
-            decorationOptions,
-            placements,
+        let x = 0;
+        let z = 0;
+
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+            const candidateX = rng.nextRange(
+                -decorationOptions.positionRange,
+                decorationOptions.positionRange,
+            );
+            const candidateZ = rng.nextRange(
+                -decorationOptions.positionRange,
+                decorationOptions.positionRange,
+            );
+            const isTooClose = placements.some((placement) => {
+                const distanceX = placement.position[0] - candidateX;
+                const distanceZ = placement.position[2] - candidateZ;
+
+                return (
+                    Math.hypot(distanceX, distanceZ) <
+                    decorationOptions.minDistance
+                );
+            });
+
+            x = candidateX;
+            z = candidateZ;
+
+            if (!isTooClose) {
+                break;
+            }
+        }
+
+        const height = rng.nextRange(
+            decorationOptions.heightRange[0],
+            decorationOptions.heightRange[1],
+        );
+        const opacity = rng.nextRange(
+            decorationOptions.opacityRange[0],
+            decorationOptions.opacityRange[1],
+        );
+        const position: [number, number, number] = [
+            x,
+            resolveDecorationBaseY(block, decorationOptions, x, z) +
+                index * 0.002,
+            z,
+        ];
+        const spriteName = pickSpriteName(rng, surface);
+        const flowerRng = new SeededRNG(
+            `${gardenId ?? 'garden'}:${block.id}:${surface}:flowers:${index}:${x.toFixed(3)}:${z.toFixed(3)}`,
         );
 
         placements.push({
-            kind: 'sprite',
-            height: rng.nextRange(
-                decorationOptions.heightRange[0],
-                decorationOptions.heightRange[1],
-            ),
-            opacity: rng.nextRange(
-                decorationOptions.opacityRange[0],
-                decorationOptions.opacityRange[1],
-            ),
-            position: [
+            flowers: getFlowerPlacements({
+                block,
+                decorationIndex: index,
+                decorationOptions,
+                rng: flowerRng,
                 x,
-                resolveDecorationBaseY(block, decorationOptions, x, z) +
-                    index * 0.002,
                 z,
-            ],
-            spriteName: pickSpriteName(rng, surface),
-        });
-    }
-
-    const flowerChance = decorationOptions.flowerChance ?? 0;
-    const flowerScaleRange = decorationOptions.flowerScaleRange;
-    if (
-        flowerScaleRange &&
-        flowerChance > 0 &&
-        rng.nextFloat() < flowerChance * density
-    ) {
-        const { x, z } = findDecorationPosition(
-            rng,
-            decorationOptions,
-            placements,
-        );
-
-        placements.push({
-            color: decorationOptions.flowerColor ?? '#fffdf4',
-            kind: 'flower',
-            position: [
-                x,
-                resolveDecorationBaseY(block, decorationOptions, x, z) + 0.003,
-                z,
-            ],
-            rotation: rng.nextRange(0, Math.PI * 2),
-            scale: rng.nextRange(flowerScaleRange[0], flowerScaleRange[1]),
+            }),
+            height,
+            opacity,
+            position,
+            spriteName,
         });
     }
 
