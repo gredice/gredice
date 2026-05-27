@@ -25,6 +25,7 @@ import {
     getOperations,
     getOperationsPage,
     getRaisedBed,
+    getRaisedBedAiHistoryEntries,
     getRaisedBedDiaryEntries,
     getRaisedBedFieldDiaryEntries,
     getRaisedBedIdsByAccount,
@@ -2002,6 +2003,46 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const diaryEntries =
                 await getRaisedBedDiaryEntries(raisedBedIdNumber);
             return context.json(diaryEntries);
+        },
+    )
+    .get(
+        '/:gardenId/raised-beds/:raisedBedId/ai-history',
+        describeRoute({
+            description:
+                'Get the combined AI analysis history for a raised bed and all of its fields',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            if (Number.isNaN(raisedBedIdNumber)) {
+                return context.json({ error: 'Invalid raised bed ID' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const raisedBed = await getRaisedBed(raisedBedIdNumber);
+            if (
+                !raisedBed ||
+                raisedBed.gardenId !== gardenIdNumber ||
+                raisedBed.accountId !== accountId
+            ) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            const entries =
+                await getRaisedBedAiHistoryEntries(raisedBedIdNumber);
+            return context.json(entries);
         },
     )
     .post(

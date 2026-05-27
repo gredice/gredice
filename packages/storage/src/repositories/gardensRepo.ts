@@ -2334,6 +2334,57 @@ export async function getRaisedBedFieldDiaryEntries(
     );
 }
 
+export async function getRaisedBedAiHistoryEntries(raisedBedId: number) {
+    const raisedBed = await getRaisedBed(raisedBedId);
+    if (!raisedBed) {
+        return [];
+    }
+
+    const fieldPositionIndexes = Array.from(
+        new Set(raisedBed.fields.map((field) => field.positionIndex)),
+    );
+    const aggregateIds = [
+        raisedBedId.toString(),
+        ...fieldPositionIndexes.map(
+            (positionIndex) =>
+                `${raisedBedId.toString()}|${positionIndex.toString()}`,
+        ),
+    ];
+
+    const events = await getEvents(
+        [
+            knownEventTypes.raisedBeds.aiAnalysis,
+            knownEventTypes.raisedBedFields.aiAnalysis,
+        ],
+        aggregateIds,
+        0,
+        10000,
+    );
+
+    return events
+        .map((event) => {
+            const data = event.data as Record<string, unknown> | undefined;
+            const imageUrls = Array.isArray(data?.imageUrls)
+                ? data.imageUrls.filter(
+                      (url: unknown): url is string => typeof url === 'string',
+                  )
+                : typeof data?.imageUrl === 'string'
+                  ? [data.imageUrl]
+                  : undefined;
+            return {
+                id: event.id,
+                description:
+                    typeof data?.markdown === 'string'
+                        ? data.markdown
+                        : undefined,
+                timestamp: event.createdAt,
+                imageUrls,
+                isMarkdown: true,
+            };
+        })
+        .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+}
+
 function operationStatusToLabel(status: string) {
     switch (status) {
         case 'new':

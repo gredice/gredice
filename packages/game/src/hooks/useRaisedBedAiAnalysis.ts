@@ -1,5 +1,6 @@
 import { client } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { queryKeys as raisedBedAiHistoryQueryKeys } from './useRaisedBedAiHistory';
 import { queryKeys as raisedBedDiaryQueryKeys } from './useRaisedBedDiaryEntries';
 
 const mutationKey = ['gardens', 'current', 'raisedBedAiAnalysis'];
@@ -59,9 +60,18 @@ export function useRaisedBedAiAnalysis() {
             return { markdown };
         },
         onSuccess: async (_data, variables) => {
-            await queryClient.invalidateQueries({
-                queryKey: raisedBedDiaryQueryKeys.byId(variables.raisedBedId),
-            });
+            await Promise.all([
+                queryClient.invalidateQueries({
+                    queryKey: raisedBedDiaryQueryKeys.byId(
+                        variables.raisedBedId,
+                    ),
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: raisedBedAiHistoryQueryKeys.byId(
+                        variables.raisedBedId,
+                    ),
+                }),
+            ]);
         },
     });
 }
