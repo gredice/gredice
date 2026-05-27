@@ -181,6 +181,27 @@ async function writeBuilderConfig(stageDir, desktopApp, electronVersion) {
             icon: 'icon.png',
             target: ['dmg', 'zip'],
         },
+        dmg: {
+            icon: 'icon.png',
+            iconSize: 100,
+            window: {
+                width: 540,
+                height: 380,
+            },
+            contents: [
+                {
+                    x: 140,
+                    y: 220,
+                    type: 'file',
+                },
+                {
+                    x: 400,
+                    y: 220,
+                    type: 'link',
+                    path: '/Applications',
+                },
+            ],
+        },
         nsis: {
             allowToChangeInstallationDirectory: true,
             installerIcon: 'favicon.ico',
