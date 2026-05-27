@@ -129,6 +129,12 @@ export type GLTFResult = GLTF & {
         Snowman: THREE.Mesh;
         Stone_Medium: THREE.Mesh;
         Stone_Large: THREE.Mesh;
+        DesertStoneSmall_Body: THREE.Mesh;
+        DesertStoneSmall_Crevices: THREE.Mesh;
+        DesertStoneMedium_Body: THREE.Mesh;
+        DesertStoneMedium_Crevices: THREE.Mesh;
+        DesertStoneLarge_Body: THREE.Mesh;
+        DesertStoneLarge_Crevices: THREE.Mesh;
         Stool: THREE.Mesh;
         Tulip: THREE.Mesh;
         Cactus_Barrel_Body: THREE.Mesh;
@@ -177,6 +183,8 @@ export type GLTFResult = GLTF & {
         'Material.Cactus.Body': THREE.MeshStandardMaterial;
         'Material.Cactus.Spines': THREE.MeshStandardMaterial;
         'Material.ColorPaletteMain': THREE.MeshStandardMaterial;
+        'Material.DesertStone.Body': THREE.MeshStandardMaterial;
+        'Material.DesertStone.Groove': THREE.MeshStandardMaterial;
         'Material.Dirt': THREE.MeshStandardMaterial;
         'Material.Dirt.001': THREE.MeshStandardMaterial;
         'Material.Grass': THREE.MeshStandardMaterial;
