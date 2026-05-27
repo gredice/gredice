@@ -6,13 +6,23 @@ import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { GardenFlowerModel } from './helpers/GardenFlowerModel';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 type CactusNodeName = Extract<keyof GLTFResult['nodes'], `Cactus_${string}`>;
 
+type CactusFlowerPlacement = {
+    color: string;
+    id: string;
+    position: [number, number, number];
+    rotation: [number, number, number];
+    scale: number;
+};
+
 type CactusVariantConfig = {
     assetName: GameAssetName;
     bodyNode: CactusNodeName;
+    flowers: CactusFlowerPlacement[];
     spineNode: CactusNodeName;
     scale: number;
     groundSink: number;
@@ -22,6 +32,15 @@ const cactusVariants = {
     CactusBarrel: {
         assetName: 'CactusBarrel',
         bodyNode: 'Cactus_Barrel_Body',
+        flowers: [
+            {
+                color: '#ff7ab8',
+                id: 'crown',
+                position: [0.02, 0.63, 0],
+                rotation: [0.18, 0.4, -0.1],
+                scale: 2.75,
+            },
+        ],
         spineNode: 'Cactus_Barrel_Spines',
         scale: 0.95,
         groundSink: 0.06,
@@ -29,6 +48,22 @@ const cactusVariants = {
     CactusColumnCluster: {
         assetName: 'CactusColumnCluster',
         bodyNode: 'Cactus_ColumnCluster_Body',
+        flowers: [
+            {
+                color: '#ff9f43',
+                id: 'tall-column',
+                position: [0.12, 1.07, -0.04],
+                rotation: [0.12, 1.1, 0.18],
+                scale: 2.35,
+            },
+            {
+                color: '#e66dff',
+                id: 'side-column',
+                position: [-0.21, 0.73, 0.14],
+                rotation: [0.05, -0.7, -0.2],
+                scale: 1.95,
+            },
+        ],
         spineNode: 'Cactus_ColumnCluster_Spines',
         scale: 0.9,
         groundSink: 0.04,
@@ -36,6 +71,22 @@ const cactusVariants = {
     CactusPricklyPear: {
         assetName: 'CactusPricklyPear',
         bodyNode: 'Cactus_PricklyPear_Body',
+        flowers: [
+            {
+                color: '#ff5f8f',
+                id: 'top-pad',
+                position: [0.13, 1.01, 0.02],
+                rotation: [0.16, 0.15, -0.24],
+                scale: 2.15,
+            },
+            {
+                color: '#ffd166',
+                id: 'side-pad',
+                position: [-0.22, 0.64, -0.03],
+                rotation: [0.2, -0.55, 0.16],
+                scale: 1.85,
+            },
+        ],
         spineNode: 'Cactus_PricklyPear_Spines',
         scale: 0.9,
         groundSink: 0.045,
@@ -97,6 +148,16 @@ function CactusEntity({
             <mesh castShadow receiveShadow geometry={spineGeometry}>
                 <meshStandardMaterial {...cactusSpineMaterial} />
             </mesh>
+            {config.flowers.map((flower) => (
+                <GardenFlowerModel
+                    key={`${config.assetName}-flower-${flower.id}`}
+                    bloomOnly
+                    petalColor={flower.color}
+                    position={flower.position}
+                    rotation={flower.rotation}
+                    scale={flower.scale}
+                />
+            ))}
         </animated.group>
     );
 }
