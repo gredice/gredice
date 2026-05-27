@@ -59,6 +59,30 @@ test('positions corner block decorations toward the raised local corner', () => 
     assert.equal(round(firstPlacement.position[1]), round(expectedY));
 });
 
+test('positions reverse corner decorations away from the low local corner', () => {
+    const block = {
+        id: 'reverse-corner-grass-test',
+        name: 'Block_Grass_Reverse_Corner',
+        rotation: 0,
+    } satisfies Block;
+    const placements = getBlockSurfaceDecorations({
+        block,
+        gardenId: 42,
+        surface: 'grass',
+    });
+    const firstPlacement = placements[0];
+
+    assert.ok(firstPlacement);
+
+    const expectedY =
+        groundDecorationOptions.grass.baseY +
+        (Math.max(firstPlacement.position[0], firstPlacement.position[2]) -
+            0.5) *
+            groundDecorationOptions.grass.angleLiftPerUnit;
+
+    assert.equal(round(firstPlacement.position[1]), round(expectedY));
+});
+
 test('adds larger colored flower clusters to grass decorations', () => {
     const flowerColors = new Set<string>();
     let flowerCount = 0;

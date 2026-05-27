@@ -249,6 +249,29 @@ function startSunflowerTransfer({
     ).then(cleanup);
 }
 
+export function animateSunflowerHudToPoint({
+    amount = 0,
+    to,
+}: {
+    amount?: number;
+    to: Point;
+}) {
+    if (getPrefersReducedMotion() || typeof document === 'undefined') {
+        return;
+    }
+
+    const hudElement = document.querySelector<HTMLElement>(HUD_TARGET_SELECTOR);
+    if (!hudElement) {
+        return;
+    }
+
+    startSunflowerTransfer({
+        amount,
+        from: getElementCenter(hudElement),
+        to,
+    });
+}
+
 export function useSunflowerTransferAnimation() {
     const prefersReducedMotion = usePrefersReducedMotion();
 

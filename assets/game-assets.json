@@ -56,6 +56,17 @@
             ]
         },
         {
+            "name": "BlockTerrainReverseCorner",
+            "source": "BlockTerrainReverseCorner.blend",
+            "output": "BlockTerrainReverseCorner.glb",
+            "preload": "ground",
+            "objects": [
+                "Block Ground Reverse Corner 1",
+                "Block Grass Reverse Corner 1",
+                "Block Sand Reverse Corner 1"
+            ]
+        },
+        {
             "name": "RaisedBed",
             "source": "RaisedBed.blend",
             "output": "RaisedBed.glb",
@@ -209,6 +220,44 @@
                 "BirdSmall_Leg_R",
                 "BirdSmall_Foot_L",
                 "BirdSmall_Foot_R"
+            ]
+        },
+        {
+            "name": "Bee",
+            "source": "Bee.blend",
+            "output": "Bee.glb",
+            "preload": "lazy",
+            "objects": [
+                "Bee_Root",
+                "Bee_BodyPivot",
+                "Bee_HeadPivot",
+                "Bee_WingPivot_L",
+                "Bee_WingPivot_R",
+                "Bee_Body",
+                "Bee_Thorax",
+                "Bee_Head",
+                "Bee_StripeFront",
+                "Bee_StripeMiddle",
+                "Bee_StripeBack",
+                "Bee_BodyHighlight",
+                "Bee_Stinger",
+                "Bee_Eye_L",
+                "Bee_Eye_R",
+                "Bee_Cheek_L",
+                "Bee_Cheek_R",
+                "Bee_Mouth",
+                "Bee_Antenna_L",
+                "Bee_Antenna_R",
+                "Bee_AntennaTip_L",
+                "Bee_AntennaTip_R",
+                "Bee_Wing_L",
+                "Bee_Wing_R",
+                "Bee_Leg_L1",
+                "Bee_Leg_L2",
+                "Bee_Leg_L3",
+                "Bee_Leg_R1",
+                "Bee_Leg_R2",
+                "Bee_Leg_R3"
             ]
         },
         {

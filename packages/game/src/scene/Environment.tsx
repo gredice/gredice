@@ -20,6 +20,7 @@ import { Drops } from './Rain/Drops';
 import Snow from './Snow/Snow';
 import { Stars } from './Stars';
 import { SunMoon } from './SunMoon';
+import { resolveWaterColors } from './waterColors';
 
 const backgroundColorScale = chroma
     .scale([
@@ -369,6 +370,12 @@ function useEnvironmentElements({
         ); // * (weather.cloudy > 0.9 ? 0.8 : (weather.cloudy > 0.4 ? 0.9 : 0.95)));
     }
 
+    const waterColors = resolveWaterColors({
+        skyColor: backgroundColor.current,
+        timeOfDay,
+        weather: weather ?? undefined,
+    });
+
     const hemisphereColor = useRef<Color>(new Color());
     hemisphereColor.current.setRGB(
         (hemisphereSkyColor[0] / 255) * -0,
@@ -402,6 +409,7 @@ function useEnvironmentElements({
             position: directionalLightPosition,
             intensity: directionalLightIntensity,
         },
+        waterColors,
     };
 }
 
@@ -415,13 +423,25 @@ export function StaticEnvironment({
     const qualityProfile = quality ?? resolveGameQualityProfile();
     const currentTime = useSnapshotTime();
     const timeOfDay = useGameState((state) => state.timeOfDay);
-    const { background, ambient, hemisphere, directionalLight } =
+    const setWaterColors = useGameState((state) => state.setWaterColors);
+    const { background, ambient, hemisphere, directionalLight, waterColors } =
         useEnvironmentElements({
             location: defaultLocation,
             currentTime,
             timeOfDay,
             weather: undefined,
         });
+    const waterDeep = waterColors.deep;
+    const waterFoam = waterColors.foam;
+    const waterShallow = waterColors.shallow;
+
+    useEffect(() => {
+        setWaterColors({
+            deep: waterDeep,
+            foam: waterFoam,
+            shallow: waterShallow,
+        });
+    }, [setWaterColors, waterDeep, waterFoam, waterShallow]);
 
     return (
         <>
@@ -477,6 +497,7 @@ export function Environment({
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const ambientAudioMixer = useGameState((state) => state.audio.ambient);
     const setSnowCoverage = useGameState((state) => state.setSnowCoverage);
+    const setWaterColors = useGameState((state) => state.setWaterColors);
     const weatherVisualizationDisabled = useGameState(
         (state) => state.weatherVisualizationDisabled,
     );
@@ -647,13 +668,24 @@ export function Environment({
         blendConfig,
     );
 
-    const { background, ambient, hemisphere, directionalLight } =
+    const { background, ambient, hemisphere, directionalLight, waterColors } =
         useEnvironmentElements({
             location,
             currentTime,
             timeOfDay,
             weather: blendedWeather,
         });
+    const waterDeep = waterColors.deep;
+    const waterFoam = waterColors.foam;
+    const waterShallow = waterColors.shallow;
+
+    useEffect(() => {
+        setWaterColors({
+            deep: waterDeep,
+            foam: waterFoam,
+            shallow: waterShallow,
+        });
+    }, [setWaterColors, waterDeep, waterFoam, waterShallow]);
 
     // Handle fog
     const fog = blendedWeather?.foggy ?? 0;

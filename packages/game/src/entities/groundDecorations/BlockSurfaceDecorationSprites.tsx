@@ -1,12 +1,12 @@
 'use client';
 
-import { Fragment, useMemo } from 'react';
+import { Suspense, useMemo } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
 import { SpriteAtlasBillboard } from '../../sprites/SpriteAtlasBillboard';
 import type { Block } from '../../types/Block';
 import { useGameState } from '../../useGameState';
-import { GroundFlowerBillboard } from './GroundFlowerBillboard';
+import { GardenFlowerModel } from '../helpers/GardenFlowerModel';
 import type { BlockSurfaceDecorationPlacement } from './getBlockSurfaceDecorations';
 import { getBlockSurfaceDecorations } from './getBlockSurfaceDecorations';
 import {
@@ -95,39 +95,35 @@ export function PrecomputedBlockSurfaceDecorationSprites({
             .map((value) => value.toFixed(3))
             .join(':');
 
-        return (
-            <Fragment
-                key={`${blockId}:${surface}:${placement.spriteName}:${positionKey}`}
-            >
-                <SpriteAtlasBillboard
-                    alphaTest={0.06}
-                    atlasBasePath={groundDecorationAtlasBasePath}
-                    height={placement.height}
-                    opacity={placement.opacity}
-                    position={placement.position}
-                    renderOrder={20}
-                    spriteName={placement.spriteName}
-                    windDirection={windDirection}
-                    windSpeed={windSpeed}
-                />
-                {placement.flowers.map((flower) => {
-                    const flowerPositionKey = flower.position
-                        .map((value) => value.toFixed(3))
-                        .join(':');
+        if (placement.kind === 'flower') {
+            return (
+                <Suspense
+                    key={`${blockId}:${surface}:flower:${placement.color}:${placement.scale.toFixed(3)}:${positionKey}`}
+                    fallback={null}
+                >
+                    <GardenFlowerModel
+                        petalColor={placement.color}
+                        position={placement.position}
+                        rotation={[0, placement.rotation, 0]}
+                        scale={placement.scale}
+                    />
+                </Suspense>
+            );
+        }
 
-                    return (
-                        <GroundFlowerBillboard
-                            key={`${blockId}:${surface}:flower:${flower.color}:${flower.height.toFixed(3)}:${flower.rotation.toFixed(3)}:${flowerPositionKey}`}
-                            color={flower.color}
-                            height={flower.height}
-                            opacity={flower.opacity}
-                            position={flower.position}
-                            renderOrder={21}
-                            rotation={flower.rotation}
-                        />
-                    );
-                })}
-            </Fragment>
+        return (
+            <SpriteAtlasBillboard
+                key={`${blockId}:${surface}:${placement.spriteName}:${positionKey}`}
+                alphaTest={0.06}
+                atlasBasePath={groundDecorationAtlasBasePath}
+                height={placement.height}
+                opacity={placement.opacity}
+                position={placement.position}
+                renderOrder={20}
+                spriteName={placement.spriteName}
+                windDirection={windDirection}
+                windSpeed={windSpeed}
+            />
         );
     });
 }

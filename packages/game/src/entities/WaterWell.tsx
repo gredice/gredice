@@ -7,6 +7,7 @@ import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
+import { useGameState } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
@@ -53,6 +54,7 @@ export function WaterWell({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes } = useGameGLTF('WaterWell');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const waterColor = useGameState((state) => state.waterColors.shallow);
 
     return (
         <animated.group
@@ -108,7 +110,7 @@ export function WaterWell({ stack, block, rotation }: EntityInstanceProps) {
                 scale={nodes.WaterWell_Water.scale}
             >
                 <MeshDistortMaterial
-                    color="#3598e7"
+                    color={waterColor}
                     depthWrite={false}
                     distort={0.14}
                     metalness={0.6}

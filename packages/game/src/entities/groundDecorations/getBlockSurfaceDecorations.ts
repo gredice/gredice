@@ -30,6 +30,13 @@ function resolveDecorationBaseY(
     x: number,
     z: number,
 ) {
+    if (block.name.endsWith('_Reverse_Corner')) {
+        return (
+            options.baseY +
+            (Math.max(x, z) - angledBlockHighEdgeX) * options.angleLiftPerUnit
+        );
+    }
+
     if (block.name.endsWith('_Corner')) {
         return (
             options.baseY +
@@ -88,6 +95,41 @@ function pickFlowerColor(
     return colors[colorIndex];
 }
 
+function findDecorationPosition(
+    rng: SeededRNG,
+    options: (typeof groundDecorationOptions)[GroundDecorationSurface],
+    placements: BlockSurfaceDecorationPlacement[],
+) {
+    let x = 0;
+    let z = 0;
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+        const candidateX = rng.nextRange(
+            -options.positionRange,
+            options.positionRange,
+        );
+        const candidateZ = rng.nextRange(
+            -options.positionRange,
+            options.positionRange,
+        );
+        const isTooClose = placements.some((placement) => {
+            const distanceX = placement.position[0] - candidateX;
+            const distanceZ = placement.position[2] - candidateZ;
+
+            return Math.hypot(distanceX, distanceZ) < options.minDistance;
+        });
+
+        x = candidateX;
+        z = candidateZ;
+
+        if (!isTooClose) {
+            break;
+        }
+    }
+
+    return { x, z };
+}
+
 function getFlowerCount(
     rng: SeededRNG,
     flowerOptions: NonNullable<
@@ -133,7 +175,7 @@ function getFlowerPlacements({
     rng: SeededRNG;
     x: number;
     z: number;
-}) {
+}): BlockSurfaceFlowerDecorationPlacement[] {
     const flowerOptions = decorationOptions.flowers;
     if (!flowerOptions) {
         return [];
@@ -237,36 +279,11 @@ export function getBlockSurfaceDecorations(options: {
     const placements: BlockSurfaceDecorationPlacement[] = [];
 
     for (let index = 0; index < count; index += 1) {
-        let x = 0;
-        let z = 0;
-
-        for (let attempt = 0; attempt < 8; attempt += 1) {
-            const candidateX = rng.nextRange(
-                -decorationOptions.positionRange,
-                decorationOptions.positionRange,
-            );
-            const candidateZ = rng.nextRange(
-                -decorationOptions.positionRange,
-                decorationOptions.positionRange,
-            );
-            const isTooClose = placements.some((placement) => {
-                const distanceX = placement.position[0] - candidateX;
-                const distanceZ = placement.position[2] - candidateZ;
-
-                return (
-                    Math.hypot(distanceX, distanceZ) <
-                    decorationOptions.minDistance
-                );
-            });
-
-            x = candidateX;
-            z = candidateZ;
-
-            if (!isTooClose) {
-                break;
-            }
-        }
-
+        const { x, z } = findDecorationPosition(
+            rng,
+            decorationOptions,
+            placements,
+        );
         const height = rng.nextRange(
             decorationOptions.heightRange[0],
             decorationOptions.heightRange[1],

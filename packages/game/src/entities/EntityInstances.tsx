@@ -22,12 +22,15 @@ export const instancedBlockNames = [
     'Block_Grass',
     'Block_Grass_Angle',
     'Block_Grass_Corner',
+    'Block_Grass_Reverse_Corner',
     'Block_Sand',
     'Block_Sand_Angle',
     'Block_Sand_Corner',
+    'Block_Sand_Reverse_Corner',
     'Block_Snow',
     'Block_Snow_Angle',
     'Block_Snow_Corner',
+    'Block_Snow_Reverse_Corner',
     'Bush',
     'Pine',
     'Tree',
@@ -52,12 +55,15 @@ const instancedSnowOverlayCounts = {
     Block_Grass: 1,
     Block_Grass_Angle: 1,
     Block_Grass_Corner: 1,
+    Block_Grass_Reverse_Corner: 1,
     Block_Sand: 1,
     Block_Sand_Angle: 1,
     Block_Sand_Corner: 1,
+    Block_Sand_Reverse_Corner: 1,
     Block_Snow: 1,
     Block_Snow_Angle: 1,
     Block_Snow_Corner: 1,
+    Block_Snow_Reverse_Corner: 1,
     Bush: 2,
     MulchCoconut: 1,
     MulchHey: 1,
@@ -288,6 +294,35 @@ export function EntityInstances({
                 {...commonSnowProps}
             />
             <EntityInstancesAssetBlock
+                assetName="BlockTerrainReverseCorner"
+                stacks={stacks}
+                name="Block_Grass_Reverse_Corner"
+                yOffset={0.2}
+                geometry={(gltf) =>
+                    gltf.nodes.Block_Grass_Reverse_Corner_1_1.geometry
+                }
+                material={(gltf) =>
+                    gltf.nodes.Block_Grass_Reverse_Corner_1_1.material
+                }
+                {...commonSnowProps}
+            />
+            <EntityInstancesAssetBlock
+                assetName="BlockTerrainReverseCorner"
+                stacks={stacks}
+                name="Block_Grass_Reverse_Corner"
+                renderRainWetOverlay
+                yOffset={0.2}
+                geometry={(gltf) =>
+                    gltf.nodes.Block_Grass_Reverse_Corner_1_2.geometry
+                }
+                material={(gltf) =>
+                    gltf.nodes.Block_Grass_Reverse_Corner_1_2.material
+                }
+                snow={snowPresets.grassReverseCorner}
+                snowLift={0.003}
+                {...commonSnowProps}
+            />
+            <EntityInstancesAssetBlock
                 assetName="BlockSand"
                 stacks={stacks}
                 name="Block_Sand"
@@ -324,6 +359,22 @@ export function EntityInstances({
                 {...commonSnowProps}
             />
             <EntityInstancesAssetBlock
+                assetName="BlockTerrainReverseCorner"
+                stacks={stacks}
+                name="Block_Sand_Reverse_Corner"
+                renderRainWetOverlay
+                yOffset={0.2}
+                geometry={(gltf) =>
+                    gltf.nodes.Block_Sand_Reverse_Corner_1.geometry
+                }
+                material={(gltf) =>
+                    gltf.nodes.Block_Sand_Reverse_Corner_1.material
+                }
+                snow={snowPresets.sandReverseCorner}
+                snowLift={0.003}
+                {...commonSnowProps}
+            />
+            <EntityInstancesAssetBlock
                 assetName="BlockSand"
                 stacks={stacks}
                 name="Block_Snow"
@@ -353,6 +404,19 @@ export function EntityInstances({
                 geometry={(gltf) => gltf.nodes.Block_Sand_Corner_1.geometry}
                 material={() => snowMaterial}
                 snow={snowPresets.snowCorner}
+                snowLift={0.003}
+                {...commonSnowProps}
+            />
+            <EntityInstancesAssetBlock
+                assetName="BlockTerrainReverseCorner"
+                stacks={stacks}
+                name="Block_Snow_Reverse_Corner"
+                yOffset={0.2}
+                geometry={(gltf) =>
+                    gltf.nodes.Block_Sand_Reverse_Corner_1.geometry
+                }
+                material={() => snowMaterial}
+                snow={snowPresets.snowReverseCorner}
                 snowLift={0.003}
                 {...commonSnowProps}
             />
