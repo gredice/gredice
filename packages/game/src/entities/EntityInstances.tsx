@@ -65,7 +65,7 @@ const instancedSnowOverlayCounts = {
     StoneMedium: 1,
     StoneSmall: 1,
     Tree: 1,
-    Tulip: 1,
+    Tulip: 2,
 } satisfies Partial<Record<(typeof instancedBlockNames)[number], number>>;
 
 function getInstancedSnowOverlayCount(blockName: string) {
@@ -430,6 +430,16 @@ export function EntityInstances({
                 name="Tulip"
                 geometry={(gltf) => gltf.nodes.Tulip.geometry}
                 material={(gltf) => gltf.nodes.Tulip.material}
+                snow={snowPresets.tulip}
+                snowLift={0.002}
+                {...commonSnowProps}
+            />
+            <EntityInstancesAssetBlock
+                assetName="Tulip"
+                stacks={stacks}
+                name="Tulip"
+                geometry={(gltf) => gltf.nodes.Tulip_Leaves.geometry}
+                material={(gltf) => gltf.nodes.Tulip_Leaves.material}
                 snow={snowPresets.tulip}
                 snowLift={0.002}
                 {...commonSnowProps}

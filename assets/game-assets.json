@@ -337,8 +337,9 @@
             "name": "Tulip",
             "source": "Tulip.blend",
             "output": "Tulip.glb",
+            "version": "64901b969f37",
             "preload": "lazy",
-            "objects": ["Tulip"]
+            "objects": ["Tulip", "Tulip_Leaves"]
         },
         {
             "name": "CactusBarrel",

@@ -37,7 +37,7 @@ export const gameAssetModels = {
     StoneMedium: { url: '/assets/models/StoneMedium.glb' },
     StoneLarge: { url: '/assets/models/StoneLarge.glb' },
     Stool: { url: '/assets/models/Stool.glb' },
-    Tulip: { url: '/assets/models/Tulip.glb' },
+    Tulip: { url: '/assets/models/Tulip.glb?v=64901b969f37' },
     CactusBarrel: { url: '/assets/models/CactusBarrel.glb?v=13eb69f97166' },
     CactusColumnCluster: { url: '/assets/models/CactusColumnCluster.glb' },
     CactusPricklyPear: {
