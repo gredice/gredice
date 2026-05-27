@@ -25,6 +25,7 @@ import { NoNotificationsPlaceholder } from '../shared-ui/NoNotificationsPlacehol
 interface NotificationProps {
     read?: boolean;
     short?: boolean;
+    onNotificationSelected?: () => void;
 }
 
 type NotificationListItemProps = {
@@ -39,9 +40,13 @@ type NotificationListItemProps = {
         timestamp: Date;
         raisedBedId: number | null;
     };
+    onNotificationSelected?: () => void;
 };
 
-function NotificationListItem({ notification }: NotificationListItemProps) {
+function NotificationListItem({
+    notification,
+    onNotificationSelected,
+}: NotificationListItemProps) {
     const router = useRouter();
     const { id, header, content, linkUrl, readAt, timestamp, raisedBedId } =
         notification;
@@ -107,6 +112,8 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
         if (computedLinkUrl !== '#') {
             router.push(computedLinkUrl as Route);
         }
+
+        onNotificationSelected?.();
     }
 
     return (
@@ -184,7 +191,11 @@ function NotificationListItem({ notification }: NotificationListItemProps) {
     );
 }
 
-export function NotificationList({ read, short }: NotificationProps) {
+export function NotificationList({
+    onNotificationSelected,
+    read,
+    short,
+}: NotificationProps) {
     const { data: currentUser } = useCurrentUser();
     const { data: notifications, error } = useNotifications(
         currentUser?.id,
@@ -228,6 +239,7 @@ export function NotificationList({ read, short }: NotificationProps) {
                 <NotificationListItem
                     key={notification.id}
                     notification={notification}
+                    onNotificationSelected={onNotificationSelected}
                 />
             ))}
         </List>

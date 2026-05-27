@@ -4,6 +4,7 @@ import {
     parseAsInteger,
     parseAsString,
     useQueryState,
+    useQueryStates,
 } from 'nuqs';
 
 // Game mode parameter (Croatian: "uredivanje" = editing)
@@ -20,6 +21,31 @@ export function useShoppingCartOpenParam() {
 // Backpack/Inventory modal parameter (Croatian: "ruksak" = backpack)
 export function useBackpackOpenParam() {
     return useQueryState('ruksak', parseAsBoolean.withDefault(false));
+}
+
+export const backpackInventoryTab = 'backpack';
+export const gardenBoxesInventoryTab = 'gardenBoxes';
+const backpackInventoryParamParsers = {
+    ruksak: parseAsBoolean.withDefault(false),
+    'ruksak-kartica': parseAsString.withDefault(backpackInventoryTab),
+};
+
+// Backpack/Inventory tab parameter (Croatian: "ruksak-kartica" = backpack tab)
+export function useBackpackTabParam() {
+    return useQueryState(
+        'ruksak-kartica',
+        parseAsString.withDefault(backpackInventoryTab),
+    );
+}
+
+export function normalizeBackpackTab(value: string | null | undefined) {
+    return value === gardenBoxesInventoryTab
+        ? gardenBoxesInventoryTab
+        : backpackInventoryTab;
+}
+
+export function useBackpackInventoryParams() {
+    return useQueryStates(backpackInventoryParamParsers);
 }
 
 // Raised bed closeup parameter (Croatian: "gredica" = raised bed)
@@ -42,6 +68,7 @@ export const urlStateSerializer = createSerializer({
     uredivanje: parseAsBoolean,
     kosarica: parseAsBoolean,
     ruksak: parseAsBoolean,
+    'ruksak-kartica': parseAsString,
     gredica: parseAsString,
     'poklon-kutija': parseAsString,
     vrt: parseAsInteger,

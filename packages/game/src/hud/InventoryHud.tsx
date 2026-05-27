@@ -1,7 +1,9 @@
 import type { BlockData, OperationData, PlantSortData } from '@gredice/client';
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
+import { Add } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
@@ -13,11 +15,16 @@ import { cx } from '@gredice/ui/utils';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useBlockData } from '../hooks/useBlockData';
+import { useGardenBoxPlaceBlock } from '../hooks/useGardenBoxPlaceBlock';
 import { useInventory } from '../hooks/useInventory';
 import { useOperations } from '../hooks/useOperations';
 import { useSorts } from '../hooks/usePlantSorts';
 import { useGameState } from '../useGameState';
-import { useBackpackOpenParam } from '../useUrlState';
+import {
+    normalizeBackpackTab,
+    useBackpackOpenParam,
+    useBackpackTabParam,
+} from '../useUrlState';
 import { HudCard } from './components/HudCard';
 
 const GRID_SIZE = 24; // 3x4 grid
@@ -42,11 +49,11 @@ type InventoryData = {
     gardenBoxes?: GardenBoxInventoryData[];
 };
 
-type InventoryTab = 'backpack' | 'gardenBoxes';
-
-function isInventoryTab(value: string): value is InventoryTab {
-    return value === 'backpack' || value === 'gardenBoxes';
-}
+type SelectedInventoryItem = {
+    item: InventoryItemData;
+    source: 'backpack' | 'gardenBox';
+    gardenBox?: GardenBoxInventoryData;
+};
 
 function inventoryItemKey(
     item: Pick<InventoryItemData, 'entityTypeName' | 'entityId'>,
@@ -103,6 +110,15 @@ function inventoryItemDisplayName({
     );
 }
 
+function resolveBlockImageName(item?: InventoryItemData) {
+    if (!item || item.entityTypeName !== 'block') {
+        return null;
+    }
+
+    const blockName = item.name ?? item.entityId;
+    return /^\d+$/u.test(blockName) ? null : blockName;
+}
+
 function InventoryItemCell({
     item,
     sortData,
@@ -129,6 +145,7 @@ function InventoryItemCell({
         operationData,
         blockData,
     });
+    const blockImageName = resolveBlockImageName(item);
 
     return (
         <button
@@ -157,9 +174,22 @@ function InventoryItemCell({
                         className="size-full object-contain"
                     />
                 </div>
+            ) : blockImageName ? (
+                <div className="flex items-center justify-center h-full w-full rounded-md bg-muted/40">
+                    <BlockImage
+                        blockName={blockImageName}
+                        alt={item.name ?? blockImageName}
+                        width={64}
+                        height={64}
+                        className="size-full object-contain p-2"
+                    />
+                </div>
             ) : (
-                <div className="flex items-center justify-center h-full w-full rounded-md bg-muted">
-                    <Typography level="body2" className="text-center">
+                <div className="flex items-center justify-center h-full w-full rounded-md bg-muted px-1">
+                    <Typography
+                        level="body3"
+                        className="line-clamp-2 max-w-full break-all text-center text-xs leading-tight"
+                    >
                         {displayName}
                     </Typography>
                 </div>
@@ -231,6 +261,8 @@ function InventoryItemsGrid({
 
 function InventoryItemModal({
     item,
+    source,
+    gardenBox,
     sortData,
     operationData,
     blockData,
@@ -238,12 +270,18 @@ function InventoryItemModal({
     onClose,
 }: {
     item: InventoryItemData;
+    source: SelectedInventoryItem['source'];
+    gardenBox?: GardenBoxInventoryData;
     sortData?: PlantSortData;
     operationData?: OperationData;
     blockData?: BlockData;
     open: boolean;
     onClose: () => void;
 }) {
+    const placeGardenBoxBlock = useGardenBoxPlaceBlock();
+    const blockImageName = resolveBlockImageName(item);
+    const isGardenBoxBlock =
+        source === 'gardenBox' && item.entityTypeName === 'block';
     const displayName = inventoryItemDisplayName({
         item,
         sortData,
@@ -257,6 +295,23 @@ function InventoryItemModal({
         operationData?.information?.shortDescription ??
         blockData?.information.fullDescription;
     const showHowTo = item.entityTypeName !== 'block';
+    const placeGardenBoxBlockError =
+        placeGardenBoxBlock.error instanceof Error
+            ? placeGardenBoxBlock.error.message
+            : null;
+
+    async function handlePlaceGardenBoxBlock() {
+        if (!gardenBox) {
+            return;
+        }
+
+        await placeGardenBoxBlock.mutateAsync({
+            gardenId: gardenBox.gardenId,
+            gardenBoxBlockId: gardenBox.blockId,
+            entityId: item.entityId,
+        });
+        onClose();
+    }
 
     return (
         <Modal
@@ -288,6 +343,16 @@ function InventoryItemModal({
                             height={80}
                             className="size-20 rounded-lg border shrink-0 bg-card object-contain"
                         />
+                    ) : blockImageName ? (
+                        <div className="size-20 rounded-lg border shrink-0 flex items-center justify-center bg-muted/40">
+                            <BlockImage
+                                blockName={blockImageName}
+                                alt={displayName}
+                                width={72}
+                                height={72}
+                                className="size-full object-contain p-2"
+                            />
+                        </div>
                     ) : (
                         <div className="size-20 rounded-lg border shrink-0 flex items-center justify-center bg-muted">
                             <Typography level="body2" center>
@@ -341,6 +406,28 @@ function InventoryItemModal({
                                 </>
                             )}
                         </Stack>
+                    </Stack>
+                )}
+                {isGardenBoxBlock && (
+                    <Stack spacing={1}>
+                        <Button
+                            type="button"
+                            variant="soft"
+                            color="primary"
+                            startDecorator={<Add className="size-4" />}
+                            loading={placeGardenBoxBlock.isPending}
+                            disabled={
+                                !gardenBox || placeGardenBoxBlock.isPending
+                            }
+                            onClick={handlePlaceGardenBoxBlock}
+                        >
+                            Dodaj u vrt
+                        </Button>
+                        {placeGardenBoxBlockError && (
+                            <Typography level="body3" className="text-red-600">
+                                {placeGardenBoxBlockError}
+                            </Typography>
+                        )}
                     </Stack>
                 )}
             </Stack>
@@ -409,6 +496,8 @@ export function InventoryHud() {
     const { data: blockData } = useBlockData();
     const { track } = useGameAnalytics();
     const [isOpen, setIsOpen] = useBackpackOpenParam();
+    const [backpackTabParam, setBackpackTabParam] = useBackpackTabParam();
+    const backpackTab = normalizeBackpackTab(backpackTabParam);
     const openGardenBoxBlockId = useGameState(
         (state) => state.openGardenBoxBlockId,
     );
@@ -416,10 +505,8 @@ export function InventoryHud() {
         (state) => state.setOpenGardenBoxBlockId,
     );
     const wasOpenRef = useRef(isOpen);
-    const [activeTab, setActiveTab] = useState<InventoryTab>('backpack');
-    const [selectedItem, setSelectedItem] = useState<InventoryItemData | null>(
-        null,
-    );
+    const [selectedItem, setSelectedItem] =
+        useState<SelectedInventoryItem | null>(null);
 
     const inventoryData = inventory as InventoryData | null | undefined;
     const items = inventoryData?.items ?? [];
@@ -476,9 +563,9 @@ export function InventoryHud() {
     useEffect(() => {
         if (!openGardenBoxBlockId) return;
 
-        setActiveTab('gardenBoxes');
+        setBackpackTabParam('gardenBoxes');
         setIsOpen(true);
-    }, [openGardenBoxBlockId, setIsOpen]);
+    }, [openGardenBoxBlockId, setBackpackTabParam, setIsOpen]);
 
     useEffect(() => {
         if (wasOpenRef.current && !isOpen) {
@@ -490,39 +577,48 @@ export function InventoryHud() {
     }, [isOpen, setOpenGardenBoxBlockId]);
 
     const selectedSortData =
-        selectedItem?.entityTypeName === 'plantSort'
-            ? sortData?.find((s) => s.id === Number(selectedItem.entityId))
+        selectedItem?.item.entityTypeName === 'plantSort'
+            ? sortData?.find((s) => s.id === Number(selectedItem.item.entityId))
             : undefined;
     const selectedOperationData = selectedItem
-        ? operationLookup.get(inventoryItemKey(selectedItem))
+        ? operationLookup.get(inventoryItemKey(selectedItem.item))
         : undefined;
-    const selectedBlockData = getInventoryBlockData(blockData, selectedItem);
+    const selectedBlockData = getInventoryBlockData(
+        blockData,
+        selectedItem?.item,
+    );
 
     const handleItemClick = (
         item: InventoryItemData,
         source: 'backpack' | 'gardenBox',
+        gardenBox?: GardenBoxInventoryData,
     ) => {
         track('game_inventory_item_opened', {
             entity_id: item.entityId,
             entity_type: item.entityTypeName,
             source,
         });
-        setSelectedItem(item);
+        setSelectedItem({
+            item,
+            source,
+            gardenBox,
+        });
     };
 
     const handleOpenChange = (open: boolean) => {
         if (open) {
-            if (!openGardenBoxBlockId) {
-                setActiveTab('backpack');
-            }
             track('game_inventory_opened', {
                 total_items: totalItems,
             });
-        } else {
+        }
+        setIsOpen(open);
+        if (!open) {
             setSelectedItem(null);
             setOpenGardenBoxBlockId(null);
         }
-        setIsOpen(open);
+    };
+    const handleTabChange = (value: string) => {
+        setBackpackTabParam(normalizeBackpackTab(value));
     };
 
     const tabCountClassName =
@@ -564,12 +660,8 @@ export function InventoryHud() {
                         </Typography>
                     </Row>
                     <Tabs
-                        value={activeTab}
-                        onValueChange={(value) => {
-                            if (isInventoryTab(value)) {
-                                setActiveTab(value);
-                            }
-                        }}
+                        value={backpackTab}
+                        onValueChange={handleTabChange}
                         className="flex flex-col"
                     >
                         <TabsList className="grid grid-cols-2 border">
@@ -655,6 +747,7 @@ export function InventoryHud() {
                                                 handleItemClick(
                                                     item,
                                                     'gardenBox',
+                                                    gardenBox,
                                                 )
                                             }
                                         />
@@ -668,7 +761,9 @@ export function InventoryHud() {
 
             {selectedItem && (
                 <InventoryItemModal
-                    item={selectedItem}
+                    item={selectedItem.item}
+                    source={selectedItem.source}
+                    gardenBox={selectedItem.gardenBox}
                     sortData={selectedSortData}
                     operationData={selectedOperationData}
                     blockData={selectedBlockData}
