@@ -86,6 +86,12 @@ export type GLTFResult = GLTF & {
         WateringCan_Rose_Head: THREE.Mesh;
         WateringCan_Spout: THREE.Mesh;
         WateringCan_Water: THREE.Mesh;
+        WaterWell_Stone_Mid: THREE.Mesh;
+        WaterWell_Stone_Light: THREE.Mesh;
+        WaterWell_Stone_Dark: THREE.Mesh;
+        WaterWell_Wood_Frame: THREE.Mesh;
+        WaterWell_Rope: THREE.Mesh;
+        WaterWell_Water: THREE.Mesh;
         Composter_1: THREE.Mesh;
         Composter_2: THREE.Mesh;
         Birdhouse_Angled_Supports: THREE.Mesh;
@@ -206,6 +212,7 @@ export type GLTFResult = GLTF & {
         'Material.WateringCan.Body': THREE.MeshStandardMaterial;
         'Material.WateringCan.Dark': THREE.MeshStandardMaterial;
         'Material.WateringCan.Trim': THREE.MeshStandardMaterial;
+        'Material.WaterWell.Rope': THREE.MeshStandardMaterial;
     };
     animations: GLTFAction[];
 };

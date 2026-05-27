@@ -77,6 +77,7 @@ const items: HudItem[] = [
             { type: 'entity', name: 'StoneSmall' },
             { type: 'entity', name: 'StoneMedium' },
             { type: 'entity', name: 'StoneLarge' },
+            { type: 'entity', name: 'WaterWell' },
             { type: 'entity', name: 'DesertStoneSmall' },
             { type: 'entity', name: 'DesertStoneMedium' },
             { type: 'entity', name: 'DesertStoneLarge' },
