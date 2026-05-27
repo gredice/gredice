@@ -26,7 +26,7 @@ export const gameAssetModels = {
     Bucket: { url: '/assets/models/Bucket.glb' },
     WateringCan: { url: '/assets/models/WateringCan.glb?v=5ba682be44df' },
     Composter: { url: '/assets/models/Composter.glb' },
-    BirdHouse: { url: '/assets/models/BirdHouse.glb?v=b3510616ea13' },
+    BirdHouse: { url: '/assets/models/BirdHouse.glb?v=c2d30fb8026b' },
     FireflyJar: { url: '/assets/models/FireflyJar.glb' },
     Fence: { url: '/assets/models/Fence.glb' },
     Greenhouse: { url: '/assets/models/Greenhouse.glb' },

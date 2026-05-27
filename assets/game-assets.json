@@ -219,7 +219,7 @@
             "name": "BirdHouse",
             "source": "BirdHouse.blend",
             "output": "BirdHouse.glb",
-            "version": "b3510616ea13",
+            "version": "c2d30fb8026b",
             "preload": "lazy",
             "objects": [
                 "Birdhouse_Angled_Supports",
