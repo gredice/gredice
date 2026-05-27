@@ -3,7 +3,6 @@ import { Button } from '@gredice/ui/Button';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
-import { useQueries } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
@@ -14,11 +13,7 @@ import {
 import { useLiveTime } from '../../hooks/useLiveTime';
 import { useOperations } from '../../hooks/useOperations';
 import { useSorts } from '../../hooks/usePlantSorts';
-import { useRaisedBedDiaryEntries } from '../../hooks/useRaisedBedDiaryEntries';
-import {
-    raisedBedFieldDiaryEntriesQueryOptions,
-    useRaisedBedFieldDiaryEntries,
-} from '../../hooks/useRaisedBedFieldDiaryEntries';
+import { useRaisedBedAiHistory } from '../../hooks/useRaisedBedAiHistory';
 import {
     buildSowingOperationItems,
     cartPlantSortEntityType,
@@ -118,19 +113,6 @@ function getAiHistoryForOperation({
         : undefined;
 }
 
-function getRaisedBedFieldPositionIndexes(
-    garden: ReturnType<typeof useCurrentGarden>['data'],
-    raisedBedId: number | undefined,
-) {
-    const raisedBed = garden?.raisedBeds.find(
-        (candidate) => candidate.id === raisedBedId,
-    );
-
-    return Array.from(
-        new Set(raisedBed?.fields.map((field) => field.positionIndex) ?? []),
-    );
-}
-
 export function RaisedBedOperationHistoryList({
     raisedBedId,
     positionIndex,
@@ -149,43 +131,11 @@ export function RaisedBedOperationHistoryList({
     const shouldLoadAiHistory = Boolean(
         flags.raisedBedImageAI && currentGarden?.id && raisedBedId,
     );
-    const { data: raisedBedDiaryEntries } = useRaisedBedDiaryEntries(
+    const { data: aiHistoryEntries } = useRaisedBedAiHistory(
         currentGarden?.id ?? 0,
         raisedBedId ?? 0,
-        { enabled: shouldLoadAiHistory && positionIndex === undefined },
+        { enabled: shouldLoadAiHistory },
     );
-    const { data: raisedBedFieldDiaryEntries } = useRaisedBedFieldDiaryEntries(
-        currentGarden?.id ?? 0,
-        raisedBedId ?? 0,
-        positionIndex ?? 0,
-        {
-            enabled: shouldLoadAiHistory && typeof positionIndex === 'number',
-        },
-    );
-    const raisedBedFieldPositionIndexes = useMemo(
-        () => getRaisedBedFieldPositionIndexes(currentGarden, raisedBedId),
-        [currentGarden, raisedBedId],
-    );
-    const raisedBedFieldDiaryQueries = useQueries({
-        queries: raisedBedFieldPositionIndexes.map((fieldPositionIndex) =>
-            raisedBedFieldDiaryEntriesQueryOptions(
-                currentGarden?.id ?? 0,
-                raisedBedId ?? 0,
-                fieldPositionIndex,
-                {
-                    enabled: shouldLoadAiHistory && positionIndex === undefined,
-                },
-            ),
-        ),
-    });
-    const raisedBedWideAiHistoryEntries = [
-        ...(raisedBedDiaryEntries ?? []),
-        ...raisedBedFieldDiaryQueries.flatMap((query) => query.data ?? []),
-    ];
-    const aiHistoryEntries =
-        typeof positionIndex === 'number'
-            ? raisedBedFieldDiaryEntries
-            : raisedBedWideAiHistoryEntries;
     const fieldPositionById = useMemo(
         () => buildFieldPositionById(currentGarden),
         [currentGarden],
