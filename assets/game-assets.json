@@ -111,6 +111,33 @@
             "objects": ["Tree 2"]
         },
         {
+            "name": "DeadTreeTall",
+            "source": "DeadTreeTall.blend",
+            "output": "DeadTreeTall.glb",
+            "preload": "lazy",
+            "objects": [
+                "DeadTreeTall_Trunk",
+                "DeadTreeTall_LeftBranch",
+                "DeadTreeTall_LeftSubBranch",
+                "DeadTreeTall_LeftTip",
+                "DeadTreeTall_RightBranch",
+                "DeadTreeTall_RightSubBranch",
+                "DeadTreeTall_RightTip"
+            ]
+        },
+        {
+            "name": "DeadTreeStump",
+            "source": "DeadTreeStump.blend",
+            "output": "DeadTreeStump.glb",
+            "preload": "lazy",
+            "objects": [
+                "DeadTreeStump_Trunk",
+                "DeadTreeStump_BrokenTop",
+                "DeadTreeStump_BrokenTop.001",
+                "DeadTreeStump_SideStub"
+            ]
+        },
+        {
             "name": "Bush",
             "source": "Bush.blend",
             "output": "Bush.glb",

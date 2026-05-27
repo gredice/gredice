@@ -16,6 +16,8 @@ export const gameAssetModels = {
     Stick: { url: '/assets/models/Stick.glb' },
     Tree: { url: '/assets/models/Tree.glb' },
     Pine: { url: '/assets/models/Pine.glb' },
+    DeadTreeTall: { url: '/assets/models/DeadTreeTall.glb' },
+    DeadTreeStump: { url: '/assets/models/DeadTreeStump.glb' },
     Bush: { url: '/assets/models/Bush.glb' },
     StoneSmall: { url: '/assets/models/StoneSmall.glb' },
     MulchHey: { url: '/assets/models/MulchHey.glb' },
@@ -89,6 +91,8 @@ export const primaryGameAssetNames = [
 ] satisfies GameAssetName[];
 
 export const lazyGameAssetNames = [
+    'DeadTreeTall',
+    'DeadTreeStump',
     'BaleHey',
     'BirdSmall',
     'Bucket',
@@ -140,6 +144,8 @@ export const allGameAssetNames = [
     'Stick',
     'Tree',
     'Pine',
+    'DeadTreeTall',
+    'DeadTreeStump',
     'Bush',
     'StoneSmall',
     'MulchHey',

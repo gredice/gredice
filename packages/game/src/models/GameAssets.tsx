@@ -67,6 +67,17 @@ export type GLTFResult = GLTF & {
         Tree_1_2: THREE.Mesh;
         Tree_1_3: THREE.Mesh;
         Tree_2: THREE.Mesh;
+        DeadTreeTall_Trunk: THREE.Mesh;
+        DeadTreeTall_LeftBranch: THREE.Mesh;
+        DeadTreeTall_LeftSubBranch: THREE.Mesh;
+        DeadTreeTall_LeftTip: THREE.Mesh;
+        DeadTreeTall_RightBranch: THREE.Mesh;
+        DeadTreeTall_RightSubBranch: THREE.Mesh;
+        DeadTreeTall_RightTip: THREE.Mesh;
+        DeadTreeStump_Trunk: THREE.Mesh;
+        DeadTreeStump_BrokenTop: THREE.Mesh;
+        DeadTreeStump_BrokenTop001: THREE.Mesh;
+        DeadTreeStump_SideStub: THREE.Mesh;
         Bush_1_1: THREE.Mesh;
         Bush_1_2: THREE.Mesh;
         Stone_Small: THREE.Mesh;
@@ -194,6 +205,8 @@ export type GLTFResult = GLTF & {
         'Material.Cactus.Body': THREE.MeshStandardMaterial;
         'Material.Cactus.Spines': THREE.MeshStandardMaterial;
         'Material.ColorPaletteMain': THREE.MeshStandardMaterial;
+        'Material.DeadTree.Bark': THREE.MeshStandardMaterial;
+        'Material.DeadTree.Bark.001': THREE.MeshStandardMaterial;
         'Material.DesertStone.Body': THREE.MeshStandardMaterial;
         'Material.DesertStone.Groove': THREE.MeshStandardMaterial;
         'Material.Dirt': THREE.MeshStandardMaterial;
