@@ -131,6 +131,10 @@ export type GLTFResult = GLTF & {
         Stone_Large: THREE.Mesh;
         Stool: THREE.Mesh;
         Tulip: THREE.Mesh;
+        GardenFlower_Stem: THREE.Mesh;
+        GardenFlower_Leaves: THREE.Mesh;
+        GardenFlower_Petals: THREE.Mesh;
+        GardenFlower_Center: THREE.Mesh;
         Cactus_Barrel_Body: THREE.Mesh;
         Cactus_Barrel_Spines: THREE.Mesh;
         Cactus_ColumnCluster_Body: THREE.Mesh;
@@ -179,6 +183,10 @@ export type GLTFResult = GLTF & {
         'Material.ColorPaletteMain': THREE.MeshStandardMaterial;
         'Material.Dirt': THREE.MeshStandardMaterial;
         'Material.Dirt.001': THREE.MeshStandardMaterial;
+        'Material.GardenFlower.Center': THREE.MeshStandardMaterial;
+        'Material.GardenFlower.Leaf': THREE.MeshStandardMaterial;
+        'Material.GardenFlower.PetalGradient': THREE.MeshStandardMaterial;
+        'Material.GardenFlower.Stem': THREE.MeshStandardMaterial;
         'Material.Grass': THREE.MeshStandardMaterial;
         'Material.Grass.001': THREE.MeshStandardMaterial;
         'Material.GrassPart': THREE.MeshStandardMaterial;

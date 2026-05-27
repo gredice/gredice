@@ -4,6 +4,9 @@ type GroundDecorationOptions = {
     angleLiftPerUnit: number;
     baseY: number;
     clusterChance: number;
+    flowerChance?: number;
+    flowerColor?: string;
+    flowerScaleRange?: [number, number];
     heightRange: [number, number];
     maxCount: number;
     minDistance: number;
@@ -27,6 +30,9 @@ export const groundDecorationOptions: Record<
         angleLiftPerUnit: 0.4,
         baseY: 0.16,
         clusterChance: 0.42,
+        flowerChance: 0.08,
+        flowerColor: '#fffdf4',
+        flowerScaleRange: [0.1, 0.13],
         heightRange: [0.09, 0.14],
         maxCount: 5,
         minDistance: 0.17,

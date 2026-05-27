@@ -341,6 +341,18 @@
             "objects": ["Tulip"]
         },
         {
+            "name": "GardenFlower",
+            "source": "GardenFlower.blend",
+            "output": "GardenFlower.glb",
+            "preload": "ground",
+            "objects": [
+                "GardenFlower_Stem",
+                "GardenFlower_Leaves",
+                "GardenFlower_Petals",
+                "GardenFlower_Center"
+            ]
+        },
+        {
             "name": "CactusBarrel",
             "source": "CactusBarrel.blend",
             "output": "CactusBarrel.glb",

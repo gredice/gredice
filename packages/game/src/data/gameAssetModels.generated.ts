@@ -38,6 +38,7 @@ export const gameAssetModels = {
     StoneLarge: { url: '/assets/models/StoneLarge.glb' },
     Stool: { url: '/assets/models/Stool.glb' },
     Tulip: { url: '/assets/models/Tulip.glb' },
+    GardenFlower: { url: '/assets/models/GardenFlower.glb' },
     CactusBarrel: { url: '/assets/models/CactusBarrel.glb?v=13eb69f97166' },
     CactusColumnCluster: { url: '/assets/models/CactusColumnCluster.glb' },
     CactusPricklyPear: {
@@ -65,6 +66,7 @@ export const groundGameAssetNames = [
     'BlockSand',
     'BlockSandAngle',
     'BlockTerrainCorner',
+    'GardenFlower',
 ] satisfies GameAssetName[];
 
 export const primaryGameAssetNames = [
@@ -152,6 +154,7 @@ export const allGameAssetNames = [
     'StoneLarge',
     'Stool',
     'Tulip',
+    'GardenFlower',
     'CactusBarrel',
     'CactusColumnCluster',
     'CactusPricklyPear',
