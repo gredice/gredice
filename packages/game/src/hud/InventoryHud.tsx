@@ -664,7 +664,7 @@ export function InventoryHud() {
                         onValueChange={handleTabChange}
                         className="flex flex-col"
                     >
-                        <TabsList className="grid grid-cols-2 border">
+                        <TabsList className="self-start bg-muted-foreground/10">
                             <TabsTrigger value="backpack">
                                 <Row spacing={2} alignItems="center">
                                     <BackpackIcon className="size-4 shrink-0" />
