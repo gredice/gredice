@@ -1042,7 +1042,9 @@ export async function getGarden(gardenId: number) {
             where: and(eq(gardens.id, gardenId), eq(gardens.isDeleted, false)),
             with: {
                 farm: true,
-                stacks: true,
+                stacks: {
+                    where: eq(gardenStacks.isDeleted, false),
+                },
             },
         }),
         getRaisedBeds(gardenId),
