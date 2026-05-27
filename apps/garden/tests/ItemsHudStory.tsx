@@ -85,6 +85,7 @@ const blockNames = [
     'Block_Ground',
     'Block_Sand',
     'Block_Snow',
+    'Block_Water',
     'Block_Grass_Angle',
     'Block_Ground_Angle',
     'Block_Sand_Angle',
