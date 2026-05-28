@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
     getBeeCount,
     getBeeDwellSeconds,
+    getBeeHabitatGroups,
     isBeeActive,
     isBeeDaytime,
     isBeeWeatherSuitable,
@@ -48,12 +49,34 @@ test('keeps bees away in heavy clouds, precipitation, fog, thunder, or wind', ()
     assert.equal(isBeeActive(0.5, { ...clearWeather, windSpeed: 2 }), false);
 });
 
-test('scales bee count by available flower targets', () => {
-    assert.equal(getBeeCount(0), 0);
-    assert.equal(getBeeCount(1), 1);
-    assert.equal(getBeeCount(6), 1);
-    assert.equal(getBeeCount(7), 2);
-    assert.equal(getBeeCount(50), 4);
+test('scales bee count by ten-block flower habitats', () => {
+    const closeFlowerTargets = [
+        { id: 'a', position: { x: 0, z: 0 } },
+        { id: 'b', position: { x: 0.5, z: 0.25 } },
+        { id: 'c', position: { x: 8, z: 1 } },
+    ];
+    const distantFlowerTargets = [
+        ...closeFlowerTargets,
+        { id: 'd', position: { x: 10.1, z: 0 } },
+        { id: 'e', position: { x: 21, z: 0 } },
+    ];
+
+    assert.equal(getBeeCount([]), 0);
+    assert.equal(getBeeCount(closeFlowerTargets), 1);
+    assert.equal(getBeeCount(distantFlowerTargets), 3);
+});
+
+test('groups nearby flowers into one bee habitat', () => {
+    const groups = getBeeHabitatGroups([
+        { id: 'a', position: { x: 0, z: 0 } },
+        { id: 'b', position: { x: 9.9, z: 0 } },
+        { id: 'c', position: { x: 10.1, z: 0 } },
+    ]);
+
+    assert.deepEqual(
+        groups.map((group) => group.map((target) => target.id)),
+        [['a', 'b'], ['c']],
+    );
 });
 
 test('uses short flower dwell windows', () => {
