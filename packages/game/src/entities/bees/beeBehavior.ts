@@ -51,6 +51,39 @@ export function getBeeDwellSeconds(random: () => number) {
     return 2.4 + random() * 3.6;
 }
 
+export function getBeeWanderHoverSeconds(random: () => number) {
+    return 0.2 + random() * 0.4;
+}
+
+export function shouldBeeWanderNext({
+    otherFlowerCount,
+    currentlyWandering,
+    random,
+}: {
+    otherFlowerCount: number;
+    currentlyWandering: boolean;
+    random: () => number;
+}) {
+    if (otherFlowerCount <= 0) {
+        return true;
+    }
+    if (currentlyWandering) {
+        return random() < 0.35;
+    }
+    return random() < 0.4;
+}
+
+export function createBeeWanderOffset(random: () => number) {
+    const angle = random() * Math.PI * 2;
+    const radius = 1.6 + random() * 3.8;
+    const lift = 0.5 + random() * 0.9;
+    return {
+        dx: Math.cos(angle) * radius,
+        dy: lift,
+        dz: Math.sin(angle) * radius,
+    };
+}
+
 function isWithinBeeHabitatRadius(
     left: BeeTargetPosition,
     right: BeeTargetPosition,

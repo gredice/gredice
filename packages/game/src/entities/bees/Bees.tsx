@@ -29,9 +29,12 @@ import { useGameGLTF } from '../../utils/useGameGLTF';
 import { tulipBouquetStems } from '../tulipBouquet';
 import {
     type BeeWeather,
+    createBeeWanderOffset,
     getBeeDwellSeconds,
     getBeeHabitatGroups,
+    getBeeWanderHoverSeconds,
     isBeeActive,
+    shouldBeeWanderNext,
 } from './beeBehavior';
 
 type BeeRaisedBedField = {
@@ -56,13 +59,14 @@ type BeeGarden = {
 
 type BeeTarget = {
     id: string;
-    kind: 'flower' | 'raised-bed-flower';
+    kind: 'flower' | 'raised-bed-flower' | 'wander';
     position: Vector3;
 };
 
 type BeeHabitat = {
     id: string;
     seed: number;
+    center: Vector3;
     startTarget: BeeTarget;
     targets: BeeTarget[];
 };
@@ -304,6 +308,18 @@ function createFlowerTargets(
     ];
 }
 
+function computeHabitatCenter(targets: BeeTarget[]) {
+    if (targets.length <= 0) {
+        return new Vector3();
+    }
+
+    const sum = new Vector3();
+    for (const target of targets) {
+        sum.add(target.position);
+    }
+    return sum.divideScalar(targets.length);
+}
+
 function createBeeHabitats(
     garden: BeeGarden | null | undefined,
     blockData: BlockData[] | null | undefined,
@@ -333,6 +349,7 @@ function createBeeHabitats(
             {
                 id: `bee-${index + 1}`,
                 seed,
+                center: computeHabitatCenter(targets),
                 startTarget:
                     targets[Math.floor(random() * targets.length)] ??
                     firstTarget,
@@ -501,27 +518,58 @@ function facePosition(
     faceYaw(group, Math.atan2(directionX, directionZ), delta, turnDamping);
 }
 
+function createWanderTarget(
+    habitatCenter: Vector3,
+    random: () => number,
+): BeeTarget {
+    const offset = createBeeWanderOffset(random);
+    const sequenceId = Math.floor(random() * 0xffffffff)
+        .toString(16)
+        .padStart(8, '0');
+    return {
+        id: `wander-${sequenceId}`,
+        kind: 'wander',
+        position: new Vector3(
+            habitatCenter.x + offset.dx,
+            habitatCenter.y + offset.dy,
+            habitatCenter.z + offset.dz,
+        ),
+    };
+}
+
 function chooseNextTarget({
     currentTarget,
+    habitatCenter,
     random,
     targets,
 }: {
     currentTarget: BeeTarget;
+    habitatCenter: Vector3;
     random: () => number;
     targets: BeeTarget[];
 }) {
-    const nearbyTargets = targets.filter(
-        (target) =>
-            target.id !== currentTarget.id &&
-            horizontalDistance(target.position, currentTarget.position) <= 6,
-    );
-    const fallbackTargets = targets.filter(
+    const otherTargets = targets.filter(
         (target) => target.id !== currentTarget.id,
+    );
+
+    if (
+        shouldBeeWanderNext({
+            otherFlowerCount: otherTargets.length,
+            currentlyWandering: currentTarget.kind === 'wander',
+            random,
+        })
+    ) {
+        return createWanderTarget(habitatCenter, random);
+    }
+
+    const nearbyTargets = otherTargets.filter(
+        (target) =>
+            horizontalDistance(target.position, currentTarget.position) <= 6,
     );
 
     return (
         pickCandidate(
-            nearbyTargets.length > 0 ? nearbyTargets : fallbackTargets,
+            nearbyTargets.length > 0 ? nearbyTargets : otherTargets,
             random,
         ) ?? currentTarget
     );
@@ -565,6 +613,10 @@ function yawTowardPosition(from: Vector3, to: Vector3) {
 }
 
 function createBeeLandingPosition(target: BeeTarget, random: () => number) {
+    if (target.kind === 'wander') {
+        return target.position.clone();
+    }
+
     const targetJitterRadius =
         target.kind === 'raised-bed-flower'
             ? 0.012 + random() * 0.018
@@ -582,11 +634,13 @@ function createBeeLandingPosition(target: BeeTarget, random: () => number) {
 }
 
 function makeForagingState({
+    flightYaw,
     landingPosition,
     now,
     random,
     target,
 }: {
+    flightYaw?: number;
     landingPosition?: Vector3;
     now: number;
     random: () => number;
@@ -594,11 +648,18 @@ function makeForagingState({
 }) {
     const position =
         landingPosition ?? createBeeLandingPosition(target, random);
+    const isWander = target.kind === 'wander';
     return {
         phase: 'foraging',
-        dwellUntil: now + getBeeDwellSeconds(random),
+        dwellUntil:
+            now +
+            (isWander
+                ? getBeeWanderHoverSeconds(random)
+                : getBeeDwellSeconds(random)),
         landingPosition: position,
-        landingYaw: yawTowardPosition(position, target.position),
+        landingYaw: isWander
+            ? (flightYaw ?? 0)
+            : yawTowardPosition(position, target.position),
         startedAt: now,
         target,
     } satisfies ForagingBeeState;
@@ -671,7 +732,9 @@ function updateBeeRig({
     runtime: BeeRuntimeState | null;
     seed: number;
 }) {
-    const flying = runtime?.phase === 'moving';
+    const flying =
+        runtime?.phase === 'moving' ||
+        (runtime?.phase === 'foraging' && runtime.target.kind === 'wander');
 
     if (!flying) {
         if (rig.wingLeft.object) {
@@ -739,6 +802,10 @@ function roundBeeDebugCoordinate(value: number) {
 function getBeeDebugActivity(runtime: BeeRuntimeState) {
     if (runtime.phase === 'moving') {
         return `flying to ${runtime.target.kind}`;
+    }
+
+    if (runtime.target.kind === 'wander') {
+        return 'hovering mid-air';
     }
 
     return 'visiting flower';
@@ -871,6 +938,7 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
 
             if (progress >= 1) {
                 runtimeRef.current = makeForagingState({
+                    flightYaw: yawTowardPosition(runtime.from, runtime.to),
                     landingPosition: runtime.to.clone(),
                     now,
                     random,
@@ -878,15 +946,33 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
                 });
             }
         } else {
-            const nextPosition = foragePositionAt(runtime);
-            group.position.copy(nextPosition);
-            group.rotation.x = -0.04;
-            group.rotation.y = runtime.landingYaw;
-            group.rotation.z = 0;
+            const isWander = runtime.target.kind === 'wander';
+            if (isWander) {
+                const seed = habitat.seed;
+                group.position.set(
+                    runtime.landingPosition.x +
+                        Math.cos(now * 1.7 + seed) * 0.05,
+                    runtime.landingPosition.y +
+                        Math.sin(now * 3 + seed) * 0.06,
+                    runtime.landingPosition.z +
+                        Math.sin(now * 2.1 + seed) * 0.05,
+                );
+                group.rotation.x =
+                    -0.05 + Math.sin(now * 6 + seed) * 0.04;
+                group.rotation.y =
+                    runtime.landingYaw + Math.sin(now * 1.3 + seed) * 0.2;
+                group.rotation.z = Math.sin(now * 4.2 + seed) * 0.08;
+            } else {
+                group.position.copy(foragePositionAt(runtime));
+                group.rotation.x = -0.04;
+                group.rotation.y = runtime.landingYaw;
+                group.rotation.z = 0;
+            }
 
             if (now >= runtime.dwellUntil) {
                 const target = chooseNextTarget({
                     currentTarget: runtime.target,
+                    habitatCenter: habitat.center,
                     random,
                     targets: habitat.targets,
                 });
