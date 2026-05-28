@@ -9,6 +9,7 @@ import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { RaisedBedFieldLocationSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldLocationSelector';
 import { RaisedBedFieldPlantSortSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantSortSelector';
 import { RaisedBedFieldPlantStatusSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantStatusSelector';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
@@ -24,6 +25,30 @@ type RaisedBedField = NonNullable<
 type RaisedBedFieldPlantCycle = Awaited<
     ReturnType<typeof getRaisedBedFieldPlantCycles>
 >[number];
+
+const STATUSES_BEFORE_TRANSPLANT = new Set([
+    'new',
+    'planned',
+    'pendingVerification',
+    'sowed',
+    'sprouted',
+]);
+
+function getCurrentLocation(
+    field: RaisedBedField,
+): 'greenhouse' | 'raisedBed' {
+    if (
+        field.active &&
+        field.sowingLocation === 'greenhouse' &&
+        STATUSES_BEFORE_TRANSPLANT.has(field.plantStatus ?? '') &&
+        !field.plantDeadDate &&
+        !field.plantHarvestedDate &&
+        !field.plantRemovedDate
+    ) {
+        return 'greenhouse';
+    }
+    return 'raisedBed';
+}
 
 const fieldStatusMetadata: Record<string, { label: string; icon: string }> = {
     new: { label: 'Novo', icon: '🆕' },
@@ -300,6 +325,16 @@ function RaisedBedFieldTile({
                             raisedBedId={raisedBedId}
                             fields={removedFields}
                             targetOptions={moveTargetOptions}
+                        />
+                    </div>
+                )}
+                {field?.active && field.plantSortId && (
+                    <div className="absolute top-2 left-2">
+                        <RaisedBedFieldLocationSelector
+                            raisedBedId={raisedBedId}
+                            positionIndex={positionIndex}
+                            sowingLocation={field.sowingLocation}
+                            currentLocation={getCurrentLocation(field)}
                         />
                     </div>
                 )}
