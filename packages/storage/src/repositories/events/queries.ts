@@ -318,6 +318,20 @@ export async function deleteEventById(eventId: number) {
     }
 }
 
+export async function updateEventCreatedAt(eventId: number, createdAt: Date) {
+    const event = await storage().query.events.findFirst({
+        where: eq(events.id, eventId),
+    });
+    if (!event) {
+        return;
+    }
+    await storage()
+        .update(events)
+        .set({ createdAt })
+        .where(eq(events.id, eventId));
+    await bustReadModelCachesForEvent(event);
+}
+
 export async function getLastBirthdayRewardEvent(userId: string) {
     const event = await storage().query.events.findFirst({
         where: and(
