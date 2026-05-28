@@ -11,6 +11,7 @@ export interface EventsTableProps<
     renderType: (event: TEvent) => ReactNode;
     renderDetails?: (event: TEvent) => ReactNode | null;
     renderLocation?: (event: TEvent) => ReactNode;
+    renderTime?: (event: TEvent) => ReactNode;
     renderActions?: (event: TEvent) => ReactNode;
     actionsColumnClassName?: string;
     labels?: {
@@ -30,6 +31,7 @@ export function EventsTable<
     renderType,
     renderDetails,
     renderLocation,
+    renderTime,
     renderActions,
     actionsColumnClassName,
     labels = {},
@@ -96,7 +98,13 @@ export function EventsTable<
                                 )}
                             </Table.Cell>
                             <Table.Cell>
-                                <LocalDateTime>{event.createdAt}</LocalDateTime>
+                                {renderTime ? (
+                                    renderTime(event)
+                                ) : (
+                                    <LocalDateTime>
+                                        {event.createdAt}
+                                    </LocalDateTime>
+                                )}
                             </Table.Cell>
                             {hasActions && (
                                 <Table.Cell className={actionsColumnClassName}>

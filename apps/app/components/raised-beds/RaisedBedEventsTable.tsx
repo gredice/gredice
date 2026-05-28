@@ -7,6 +7,8 @@ import {
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Stack } from '@gredice/ui/Stack';
 import type { ReactNode } from 'react';
+import { updateRaisedBedEventDateAction } from '../../app/(actions)/raisedBedEventsActions';
+import { EventDateEditButton } from '../shared/events/EventDateEditButton';
 import { EventsTable } from '../shared/events/EventsTable';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
 import { RaisedBedEventDeleteButton } from './RaisedBedEventDeleteButton';
@@ -176,6 +178,16 @@ export async function RaisedBedEventsTable({
             renderLocation={(event) =>
                 getEventLocationLabel(event.aggregateId, raisedBedId)
             }
+            renderTime={(event) => (
+                <EventDateEditButton
+                    date={event.createdAt}
+                    onSave={updateRaisedBedEventDateAction.bind(
+                        null,
+                        event.id,
+                        raisedBedId,
+                    )}
+                />
+            )}
             renderActions={(event) => (
                 <RaisedBedEventDeleteButton
                     eventId={event.id}

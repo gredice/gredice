@@ -19,6 +19,7 @@ export {
     getPlantPlaceEventsCount,
     getPlantUpdateEvents,
     getSunflowersDailyTotals,
+    updateEventCreatedAt,
 } from './queries';
 export type {
     // Account
