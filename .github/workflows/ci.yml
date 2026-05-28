@@ -168,6 +168,8 @@ jobs:
       name: "www"
       path: "apps/www"
       vercelProjectIdSecretName: "VERCEL_PROJECT_ID_WWW"
+      testShardMatrix: '[{"index":1,"total":2},{"index":2,"total":2}]'
+      testShardPrepareScript: "test:prepare:routes"
     secrets: inherit
 
   ci_garden:
