@@ -385,15 +385,18 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                 data-items-picker-scroll
                 className="grid gap-1 p-2 grid-cols-4 md:grid-cols-6 overflow-y-auto overscroll-contain"
             >
-                {currentItems.map((item, index) => {
+                {currentItems.map((item) => {
                     if (item.type === 'entity') {
-                        // biome-ignore lint/suspicious/noArrayIndexKey: Allowed
-                        return <EntityItem key={index} {...item} />;
+                        return (
+                            <EntityItem
+                                key={`entity:${item.name}`}
+                                {...item}
+                            />
+                        );
                     } else if (item.type === 'picker') {
                         return (
                             <SubPickerButton
-                                // biome-ignore lint/suspicious/noArrayIndexKey: Allowed
-                                key={index}
+                                key={`picker:${item.label}`}
                                 picker={item}
                                 onOpen={() => setActiveSubPicker(item)}
                             />
