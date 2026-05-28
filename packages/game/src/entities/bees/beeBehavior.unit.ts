@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    createBeeWanderOffset,
     getBeeCount,
     getBeeDwellSeconds,
     getBeeHabitatGroups,
+    getBeeWanderHoverSeconds,
     isBeeActive,
     isBeeDaytime,
     isBeeWeatherSuitable,
+    shouldBeeWanderNext,
 } from './beeBehavior';
 
 const clearWeather = {
@@ -88,4 +91,70 @@ test('uses short flower dwell windows', () => {
         getBeeDwellSeconds(() => 1),
         6,
     );
+});
+
+test('always wanders next when habitat has no other flowers', () => {
+    assert.equal(
+        shouldBeeWanderNext({
+            otherFlowerCount: 0,
+            currentlyWandering: false,
+            random: () => 0.99,
+        }),
+        true,
+    );
+});
+
+test('inserts wander between flower visits sometimes', () => {
+    assert.equal(
+        shouldBeeWanderNext({
+            otherFlowerCount: 3,
+            currentlyWandering: false,
+            random: () => 0.1,
+        }),
+        true,
+    );
+    assert.equal(
+        shouldBeeWanderNext({
+            otherFlowerCount: 3,
+            currentlyWandering: false,
+            random: () => 0.9,
+        }),
+        false,
+    );
+});
+
+test('chains wander hops less often than starting them', () => {
+    assert.equal(
+        shouldBeeWanderNext({
+            otherFlowerCount: 2,
+            currentlyWandering: true,
+            random: () => 0.34,
+        }),
+        true,
+    );
+    assert.equal(
+        shouldBeeWanderNext({
+            otherFlowerCount: 2,
+            currentlyWandering: true,
+            random: () => 0.36,
+        }),
+        false,
+    );
+});
+
+test('uses brief mid-air hover windows for wandering', () => {
+    const minHover = getBeeWanderHoverSeconds(() => 0);
+    const maxHover = getBeeWanderHoverSeconds(() => 1);
+    assert.ok(minHover >= 0.19 && minHover <= 0.21);
+    assert.ok(maxHover >= 0.59 && maxHover <= 0.61);
+    assert.ok(minHover < maxHover);
+});
+
+test('wander offsets stay within a small habitat radius', () => {
+    const minOffset = createBeeWanderOffset(() => 0);
+    const maxOffset = createBeeWanderOffset(() => 0.999);
+    assert.ok(Math.hypot(minOffset.dx, minOffset.dz) <= 1.61);
+    assert.ok(Math.hypot(maxOffset.dx, maxOffset.dz) <= 5.41);
+    assert.ok(minOffset.dy >= 0.5 && minOffset.dy <= 1.4);
+    assert.ok(maxOffset.dy >= 0.5 && maxOffset.dy <= 1.4);
 });
