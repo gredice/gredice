@@ -3,7 +3,7 @@ import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Info, Up } from '@gredice/ui/icons';
+import { Info, Left, Navigate, Up } from '@gredice/ui/icons';
 import { Link } from '@gredice/ui/Link';
 import { Popper } from '@gredice/ui/Popper';
 import { Row } from '@gredice/ui/Row';
@@ -46,6 +46,22 @@ const potItems: HudItemEntity[] = [
     { type: 'entity', name: 'PotWideLippedCup' },
 ];
 
+const rockItems: HudItemEntity[] = [
+    { type: 'entity', name: 'StoneSmall' },
+    { type: 'entity', name: 'StoneMedium' },
+    { type: 'entity', name: 'StoneLarge' },
+    { type: 'entity', name: 'DesertStoneSmall' },
+    { type: 'entity', name: 'DesertStoneMedium' },
+    { type: 'entity', name: 'DesertStoneLarge' },
+];
+
+const mulchItems: HudItemEntity[] = [
+    { type: 'entity', name: 'BaleHey' },
+    { type: 'entity', name: 'MulchHey' },
+    { type: 'entity', name: 'MulchCoconut' },
+    { type: 'entity', name: 'MulchWood' },
+];
+
 const items: HudItem[] = [
     {
         type: 'picker',
@@ -57,30 +73,44 @@ const items: HudItem[] = [
     {
         type: 'picker',
         label: 'Alat',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Bucket.png',
+        imageSrc: 'https://www.gredice.com/assets/blocks/GardenBox.png',
         items: [
             { type: 'entity', name: 'Bucket' },
             { type: 'entity', name: 'WateringCan' },
             { type: 'entity', name: 'Composter' },
             { type: 'entity', name: 'GardenBox' },
+            { type: 'entity', name: 'ShovelSmall' },
         ],
     },
     {
         type: 'picker',
         label: 'Dekoracija',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Shade.png',
+        imageSrc: 'https://www.gredice.com/assets/blocks/Tree.png',
         items: [
-            ...potItems,
+            {
+                type: 'picker',
+                label: 'Posude',
+                imageSrc:
+                    'https://www.gredice.com/assets/blocks/PotRoundedBowl.png',
+                items: potItems,
+            },
+            {
+                type: 'picker',
+                label: 'Kamenje',
+                imageSrc:
+                    'https://www.gredice.com/assets/blocks/StoneMedium.png',
+                items: rockItems,
+            },
+            {
+                type: 'picker',
+                label: 'Malč',
+                imageSrc: 'https://www.gredice.com/assets/blocks/MulchHey.png',
+                items: mulchItems,
+            },
             { type: 'entity', name: 'Shade' },
             { type: 'entity', name: 'Stool' },
             { type: 'entity', name: 'Fence' },
-            { type: 'entity', name: 'StoneSmall' },
-            { type: 'entity', name: 'StoneMedium' },
-            { type: 'entity', name: 'StoneLarge' },
             { type: 'entity', name: 'WaterWell' },
-            { type: 'entity', name: 'DesertStoneSmall' },
-            { type: 'entity', name: 'DesertStoneMedium' },
-            { type: 'entity', name: 'DesertStoneLarge' },
             { type: 'entity', name: 'BirdHouse' },
             { type: 'entity', name: 'FireflyJar' },
             { type: 'entity', name: 'Bush' },
@@ -88,15 +118,10 @@ const items: HudItem[] = [
             { type: 'entity', name: 'Pine' },
             { type: 'entity', name: 'DeadTreeTall' },
             { type: 'entity', name: 'DeadTreeStump' },
-            { type: 'entity', name: 'ShovelSmall' },
             { type: 'entity', name: 'Tulip' },
             { type: 'entity', name: 'CactusBarrel' },
             { type: 'entity', name: 'CactusColumnCluster' },
             { type: 'entity', name: 'CactusPricklyPear' },
-            { type: 'entity', name: 'BaleHey' },
-            { type: 'entity', name: 'MulchHey' },
-            { type: 'entity', name: 'MulchCoconut' },
-            { type: 'entity', name: 'MulchWood' },
         ],
     },
     {
@@ -279,11 +304,46 @@ function EntityItem({ name }: HudItemEntity) {
     );
 }
 
+function SubPickerButton({
+    picker,
+    onOpen,
+}: {
+    picker: HudItemPicker;
+    onOpen: () => void;
+}) {
+    return (
+        <IconButton
+            aria-label={picker.label}
+            size="lg"
+            className="size-16"
+            variant="plain"
+            onClick={onOpen}
+        >
+            <Image
+                src={picker.imageSrc}
+                alt={picker.label}
+                className="absolute size-10 -mb-4"
+                width={40}
+                height={40}
+            />
+            <Navigate className="absolute top-0.5 right-0.5 text-muted-foreground size-4" />
+        </IconButton>
+    );
+}
+
 function PickerItem({ label, items, imageSrc }: HudItemPicker) {
+    const [activeSubPicker, setActiveSubPicker] =
+        useState<HudItemPicker | null>(null);
+    const currentLabel = activeSubPicker?.label ?? label;
+    const currentItems = activeSubPicker?.items ?? items;
+
     return (
         <Popper
             className="w-fit overflow-hidden border-tertiary border-b-4 flex flex-col max-h-[var(--radix-popover-content-available-height)]"
             sideOffset={12}
+            onOpenChange={(open) => {
+                if (!open) setActiveSubPicker(null);
+            }}
             trigger={
                 <IconButton
                     aria-label={label}
@@ -302,19 +362,42 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                 </IconButton>
             }
         >
-            <div className="bg-muted p-2 border-b shrink-0">
+            <Row
+                spacing={1}
+                alignItems="center"
+                className="bg-muted p-2 border-b shrink-0"
+            >
+                {activeSubPicker && (
+                    <IconButton
+                        aria-label="Natrag"
+                        size="sm"
+                        variant="plain"
+                        onClick={() => setActiveSubPicker(null)}
+                    >
+                        <Left className="size-4" />
+                    </IconButton>
+                )}
                 <Typography semiBold level="body2">
-                    {label}
+                    {currentLabel}
                 </Typography>
-            </div>
+            </Row>
             <div
                 data-items-picker-scroll
                 className="grid gap-1 p-2 grid-cols-4 md:grid-cols-6 overflow-y-auto overscroll-contain"
             >
-                {items.map((item, index) => {
+                {currentItems.map((item, index) => {
                     if (item.type === 'entity') {
                         // biome-ignore lint/suspicious/noArrayIndexKey: Allowed
                         return <EntityItem key={index} {...item} />;
+                    } else if (item.type === 'picker') {
+                        return (
+                            <SubPickerButton
+                                // biome-ignore lint/suspicious/noArrayIndexKey: Allowed
+                                key={index}
+                                picker={item}
+                                onOpen={() => setActiveSubPicker(item)}
+                            />
+                        );
                     } else {
                         return null;
                     }
