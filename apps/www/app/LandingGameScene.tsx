@@ -204,12 +204,7 @@ export function LandingGameScene() {
                 }
                 data-testid="landing-game-scene"
             >
-                <div
-                    className={cx(
-                        'absolute inset-0',
-                        !interactiveMounted && 'top-20 -bottom-20 md:inset-0',
-                    )}
-                >
+                <div className="absolute inset-0">
                     <GameScene
                         key={isLoggedIn ? 'user-garden' : 'landing-mock'}
                         appBaseUrl="https://vrt.gredice.com"
