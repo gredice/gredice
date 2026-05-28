@@ -1,5 +1,4 @@
 import { animated } from '@react-spring/three';
-import { MeshDistortMaterial } from '@react-three/drei';
 import type { ReactNode } from 'react';
 import { DoubleSide } from 'three';
 import type { GLTFResult } from '../models/GameAssets';
@@ -7,10 +6,10 @@ import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
-import { useGameState } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
+import { WaterSurfaceMaterial } from './helpers/WaterSurfaceMaterial';
 
 type WateringCanNodeName = Extract<
     keyof GLTFResult['nodes'],
@@ -68,7 +67,6 @@ export function WateringCan({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes } = useGameGLTF('WateringCan');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
-    const waterColor = useGameState((state) => state.waterColors.shallow);
 
     return (
         <animated.group
@@ -129,17 +127,7 @@ export function WateringCan({ stack, block, rotation }: EntityInstanceProps) {
                 );
             })}
             <WateringCanPart node={nodes.WateringCan_Water}>
-                <MeshDistortMaterial
-                    color={waterColor}
-                    depthWrite={false}
-                    distort={0.2}
-                    metalness={0.8}
-                    opacity={0.6}
-                    roughness={0.2}
-                    side={DoubleSide}
-                    speed={2}
-                    transparent
-                />
+                <WaterSurfaceMaterial />
             </WateringCanPart>
         </animated.group>
     );

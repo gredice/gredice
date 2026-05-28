@@ -1,16 +1,14 @@
 import { animated } from '@react-spring/three';
-import { MeshDistortMaterial } from '@react-three/drei';
 import type { ReactNode } from 'react';
-import { DoubleSide } from 'three';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
-import { useGameState } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
+import { WaterSurfaceMaterial } from './helpers/WaterSurfaceMaterial';
 
 type WaterWellNodeName = Extract<
     keyof GLTFResult['nodes'],
@@ -54,7 +52,6 @@ export function WaterWell({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes } = useGameGLTF('WaterWell');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
-    const waterColor = useGameState((state) => state.waterColors.shallow);
 
     return (
         <animated.group
@@ -109,17 +106,7 @@ export function WaterWell({ stack, block, rotation }: EntityInstanceProps) {
                 rotation={nodes.WaterWell_Water.rotation}
                 scale={nodes.WaterWell_Water.scale}
             >
-                <MeshDistortMaterial
-                    color={waterColor}
-                    depthWrite={false}
-                    distort={0.14}
-                    metalness={0.6}
-                    opacity={0.58}
-                    roughness={0.24}
-                    side={DoubleSide}
-                    speed={1.4}
-                    transparent
-                />
+                <WaterSurfaceMaterial />
             </mesh>
         </animated.group>
     );
