@@ -212,6 +212,19 @@ export function RaisedBedFieldItemPlanted({
     const modalTitle = isGreenhouseSeedling
         ? `Sadnica u stakleniku "${plantSort.information.name}"`
         : title;
+    const openPlantDetails = () => {
+        track('game_planted_item_opened', {
+            active_tab: activeTab,
+            is_historical: isHistorical,
+            plant_sort_id: plantSort.id,
+            position_index: positionIndex,
+            raised_bed_id: raisedBedId,
+        });
+        if (!isOpenControlled) {
+            setInternalOpen(true);
+        }
+        onOpenChange?.(true);
+    };
     const fieldBadge = isHistorical
         ? {
               className: 'bg-muted',
@@ -392,11 +405,20 @@ export function RaisedBedFieldItemPlanted({
                 />
             ))}
             {fieldBadge && (
-                <span
-                    className={`inline-flex size-8 items-center justify-center p-1 ${fieldBadge.className} rounded-full border-2 border-white shadow-lg ring-1 ring-black/10`}
+                <button
+                    type="button"
+                    className={`inline-flex size-8 items-center justify-center p-1 ${fieldBadge.className} pointer-events-auto rounded-full border-2 border-white shadow-lg ring-1 ring-black/10 transition-transform hover:scale-105 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700`}
+                    title={modalTitle}
+                    aria-label={modalTitle}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        openPlantDetails();
+                    }}
                 >
                     {fieldBadge.icon}
-                </span>
+                </button>
             )}
         </RaisedBedFieldIconStack>
     ) : null;
