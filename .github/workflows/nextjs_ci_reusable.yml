@@ -17,6 +17,21 @@ on:
         required: true
         type: string
         description: "Name of the secret containing the Vercel project ID"
+      testShardMatrix:
+        required: false
+        type: string
+        description: "JSON matrix of Playwright test shards or named args to run"
+        default: '[{"index":1,"total":1}]'
+      testShardPrepareScript:
+        required: false
+        type: string
+        description: "Package script to run after build and before sharded tests"
+        default: ""
+      testShardRunScript:
+        required: false
+        type: string
+        description: "Package script that runs Playwright tests for a shard"
+        default: "test:run"
 
 env:
   VERCEL_PROJECT_ID: ${{ secrets[format(inputs.vercelProjectIdSecretName)] }}
@@ -64,6 +79,11 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    name: "test${{ matrix.shard.name && format(' ({0})', matrix.shard.name) || (matrix.shard.total != 1 && format(' ({0}/{1})', matrix.shard.index, matrix.shard.total) || '') }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(inputs.testShardMatrix) }}
     steps:
       - uses: actions/checkout@v6.0.2
         with:
@@ -115,8 +135,11 @@ jobs:
           };
           const hasPlaywright =
             '@playwright/test' in dependencies || 'playwright' in dependencies;
+          const playwrightVersion =
+            dependencies['@playwright/test'] ?? dependencies.playwright ?? 'none';
 
           fs.appendFileSync(process.env.GITHUB_OUTPUT, `enabled=${hasPlaywright}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${playwrightVersion}\n`);
           NODE
 
       - name: ✨ Cache Playwright browsers
@@ -125,7 +148,7 @@ jobs:
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-playwright-${{ steps.playwright.outputs.version }}
           restore-keys: |
             ${{ runner.os }}-playwright-
 
@@ -135,4 +158,15 @@ jobs:
         working-directory: ${{ inputs.path }}/
 
       - name: ⚒️ Test app
-        run: pnpm test --filter=${{ inputs.name }}
+        env:
+          TEST_ARGS: ${{ matrix.shard.args || (matrix.shard.total != 1 && format('--shard={0}/{1}', matrix.shard.index, matrix.shard.total)) || '' }}
+        run: |
+          if [ -z "$TEST_ARGS" ]; then
+            pnpm test --filter=${{ inputs.name }}
+          else
+            pnpm build --filter=${{ inputs.name }}
+            if [ -n "${{ inputs.testShardPrepareScript }}" ]; then
+              pnpm --dir ${{ inputs.path }} run ${{ inputs.testShardPrepareScript }}
+            fi
+            pnpm --dir ${{ inputs.path }} run ${{ inputs.testShardRunScript }} $TEST_ARGS
+          fi
