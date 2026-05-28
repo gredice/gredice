@@ -188,6 +188,12 @@ export function DebugHud() {
     const setEditHitboxDebugVisible = useGameState(
         (s) => s.setEditHitboxDebugVisible,
     );
+    const entityRenderModeDebugVisible = useGameState(
+        (s) => s.entityRenderModeDebugVisible,
+    );
+    const setEntityRenderModeDebugVisible = useGameState(
+        (s) => s.setEntityRenderModeDebugVisible,
+    );
     const frameStats = useFrameStats();
     const profileSnapshot = useProfileHudSnapshot();
 
@@ -565,6 +571,11 @@ export function DebugHud() {
     ) => {
         setEditHitboxDebugVisible(checked === true);
     };
+    const handleEntityRenderModeDebugChange = (
+        checked: boolean | 'indeterminate',
+    ) => {
+        setEntityRenderModeDebugVisible(checked === true);
+    };
 
     const weatherControlsDisabled = !overrideWeather;
 
@@ -686,11 +697,32 @@ export function DebugHud() {
                             </Stack>
                         </DebugPanelSection>
                         <DebugPanelSection title="Scene">
-                            <Checkbox
-                                label="Show edit hitboxes"
-                                checked={editHitboxDebugVisible}
-                                onCheckedChange={handleEditHitboxDebugChange}
-                            />
+                            <Stack spacing={2} className="text-xs">
+                                <Checkbox
+                                    label="Show edit hitboxes"
+                                    checked={editHitboxDebugVisible}
+                                    onCheckedChange={
+                                        handleEditHitboxDebugChange
+                                    }
+                                />
+                                <Checkbox
+                                    label="Show render modes"
+                                    checked={entityRenderModeDebugVisible}
+                                    onCheckedChange={
+                                        handleEntityRenderModeDebugChange
+                                    }
+                                />
+                                {entityRenderModeDebugVisible && (
+                                    <div className="grid gap-1 font-mono leading-5">
+                                        <span className="text-emerald-400">
+                                            Green instanced
+                                        </span>
+                                        <span className="text-amber-400">
+                                            Amber component
+                                        </span>
+                                    </div>
+                                )}
+                            </Stack>
                         </DebugPanelSection>
                         <DebugPanelSection title="Time">
                             <Slider

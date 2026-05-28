@@ -180,6 +180,8 @@ export type GameState = {
     // Debug (overrides)
     editHitboxDebugVisible: boolean;
     setEditHitboxDebugVisible: (visible: boolean) => void;
+    entityRenderModeDebugVisible: boolean;
+    setEntityRenderModeDebugVisible: (visible: boolean) => void;
     weather?: {
         cloudy: number;
         rainy: number;
@@ -402,6 +404,9 @@ export function createGameState({
         editHitboxDebugVisible: false,
         setEditHitboxDebugVisible: (editHitboxDebugVisible) =>
             set({ editHitboxDebugVisible }),
+        entityRenderModeDebugVisible: false,
+        setEntityRenderModeDebugVisible: (entityRenderModeDebugVisible) =>
+            set({ entityRenderModeDebugVisible }),
         setWeather: (weather) => set({ weather }),
         snowCoverage: 0,
         setSnowCoverage: (snowCoverage) => set({ snowCoverage }),

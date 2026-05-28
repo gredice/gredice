@@ -16,6 +16,54 @@ export type EntityFactoryProps = {
     noRenderInView?: string[];
 };
 
+const instancedRenderModeDebugColor = '#22c55e';
+const componentRenderModeDebugColor = '#f59e0b';
+
+function EntityRenderModeDebugOverlay({
+    stack,
+    block,
+    instanced,
+}: Pick<EntityInstanceProps, 'stack' | 'block'> & { instanced: boolean }) {
+    const { data: blockData } = useBlockData();
+    const currentStackHeight = useStackHeight(stack, block);
+    const visible = useGameState((state) => state.entityRenderModeDebugVisible);
+
+    if (!visible) {
+        return null;
+    }
+
+    const blockHeight =
+        blockData?.find((entity) => entity.information.name === block.name)
+            ?.attributes.height ?? 1;
+    const overlayHeight = Math.max(blockHeight, 0.35);
+    const overlayScale = 1.05;
+
+    return (
+        <mesh
+            position={[
+                stack.position.x,
+                currentStackHeight + overlayHeight / 2,
+                stack.position.z,
+            ]}
+            scale={[overlayScale, 1.02, overlayScale]}
+            renderOrder={10_001}
+            raycast={() => null}
+        >
+            <boxGeometry args={[1, overlayHeight, 1]} />
+            <meshBasicMaterial visible={false} />
+            <Edges
+                color={
+                    instanced
+                        ? instancedRenderModeDebugColor
+                        : componentRenderModeDebugColor
+                }
+                renderOrder={10_001}
+                threshold={1}
+            />
+        </mesh>
+    );
+}
+
 function InstancedEntityControlTarget({
     stack,
     block,
@@ -70,11 +118,24 @@ export function EntityFactory({
 
     if (isInstancedInView) {
         if (!isEditMode) {
-            return null;
+            return (
+                <EntityRenderModeDebugOverlay
+                    stack={stack}
+                    block={block}
+                    instanced
+                />
+            );
         }
 
         const controlTarget = (
-            <InstancedEntityControlTarget stack={stack} block={block} />
+            <>
+                <InstancedEntityControlTarget stack={stack} block={block} />
+                <EntityRenderModeDebugOverlay
+                    stack={stack}
+                    block={block}
+                    instanced
+                />
+            </>
         );
         const isTopBlock =
             stack.blocks.indexOf(block) === stack.blocks.length - 1;
@@ -94,7 +155,16 @@ export function EntityFactory({
 
     if (!isEditMode) {
         if (noControl) {
-            return <EntityComponent stack={stack} block={block} {...rest} />;
+            return (
+                <>
+                    <EntityRenderModeDebugOverlay
+                        stack={stack}
+                        block={block}
+                        instanced={false}
+                    />
+                    <EntityComponent stack={stack} block={block} {...rest} />
+                </>
+            );
         }
 
         const SelectableGroupWrapper =
@@ -104,6 +174,11 @@ export function EntityFactory({
 
         return (
             <SelectableGroupWrapper block={block}>
+                <EntityRenderModeDebugOverlay
+                    stack={stack}
+                    block={block}
+                    instanced={false}
+                />
                 <EntityComponent stack={stack} block={block} {...rest} />
             </SelectableGroupWrapper>
         );
@@ -114,6 +189,11 @@ export function EntityFactory({
     if (!isTopBlock) {
         return (
             <RotatableGroup block={block}>
+                <EntityRenderModeDebugOverlay
+                    stack={stack}
+                    block={block}
+                    instanced={false}
+                />
                 <EntityComponent stack={stack} block={block} {...rest} />
             </RotatableGroup>
         );
@@ -122,6 +202,11 @@ export function EntityFactory({
     return (
         <PickableGroup stack={stack} block={block} noControl={noControl}>
             <RotatableGroup block={block}>
+                <EntityRenderModeDebugOverlay
+                    stack={stack}
+                    block={block}
+                    instanced={false}
+                />
                 <EntityComponent stack={stack} block={block} {...rest} />
             </RotatableGroup>
         </PickableGroup>
