@@ -3,6 +3,7 @@ import { getTimes } from 'suncalc';
 import type { OrbitControls } from 'three-stdlib';
 import { createStore, useStore } from 'zustand';
 import { createGameAudio, type GameAudio } from './audio/audioMixer';
+import type { ActiveDragPreviewTarget } from './dragPreviewIdentity';
 import {
     type GameQualityCustomProfile,
     type GameQualitySetting,
@@ -91,8 +92,8 @@ type GameMode = 'normal' | 'edit';
 export type WinterMode = 'summer' | 'winter' | 'holiday';
 
 export type ActiveDragPreview = {
-    sourceBlockId: string;
-    attachedBlockId: string | null;
+    source: ActiveDragPreviewTarget;
+    attached: ActiveDragPreviewTarget | null;
     hoveredGardenBoxBlockId: string | null;
     relative: {
         x: number;

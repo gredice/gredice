@@ -2,6 +2,11 @@ import { Instance, Instances } from '@react-three/drei';
 import type { ReactNode } from 'react';
 import type { Material } from 'three';
 import type { BufferGeometry } from 'three/src/Three.Core.js';
+import {
+    type ActiveDragPreviewTarget,
+    activeDragPreviewTargetMatches,
+    createActiveDragPreviewTarget,
+} from '../dragPreviewIdentity';
 import { useBlockData } from '../hooks/useBlockData';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { type SnowMaterialOptions, SnowOverlay } from '../snow/SnowOverlay';
@@ -38,7 +43,7 @@ export type EntityInstancesBlockMaterialProps =
       };
 
 function getDragPreviewOffset(
-    blockId: string,
+    target: ActiveDragPreviewTarget,
     activeDragPreview: ActiveDragPreview | null,
 ) {
     if (!activeDragPreview) {
@@ -46,8 +51,8 @@ function getDragPreviewOffset(
     }
 
     if (
-        activeDragPreview.sourceBlockId !== blockId &&
-        activeDragPreview.attachedBlockId !== blockId
+        !activeDragPreviewTargetMatches(activeDragPreview.source, target) &&
+        !activeDragPreviewTargetMatches(activeDragPreview.attached, target)
     ) {
         return null;
     }
@@ -83,15 +88,21 @@ export function EntityInstancesBlock(
         ?.filter((stack) => stack.blocks.some((b) => b.name === name))
         .flatMap((stack) =>
             stack.blocks
-                ?.filter((block) => block.name === name)
-                .map((block) => {
+                ?.map((block, blockIndex) => ({ block, blockIndex }))
+                .filter(({ block }) => block.name === name)
+                .map(({ block, blockIndex }) => {
                     const y = getStackHeight(blockData, stack, block);
+                    const target = createActiveDragPreviewTarget({
+                        blockId: block.id,
+                        blockIndex,
+                        stackPosition: stack.position,
+                    });
                     const dragPreviewOffset = getDragPreviewOffset(
-                        block.id,
+                        target,
                         activeDragPreview,
                     );
                     return {
-                        id: block.id,
+                        id: `${stack.position.x}|${stack.position.z}|${block.id}|${blockIndex}`,
                         position: [
                             stack.position.x + (dragPreviewOffset?.x ?? 0),
                             y + (yOffset ?? 0) + (dragPreviewOffset?.y ?? 0),
