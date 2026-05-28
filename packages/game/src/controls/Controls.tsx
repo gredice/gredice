@@ -61,6 +61,13 @@ const panKeys: Record<string, [number, number]> = {
 
 const rotateValueByKey = (key: string) => rotateKeys[key];
 
+const isEditableTarget = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) return false;
+    if (target.isContentEditable) return true;
+    const tag = target.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+};
+
 const useKeyboardControls = () => {
     const [panDir, setPanDir] = useState<[number, number] | null>(null);
     const worldRotate = useGameState((state) => state.worldRotate);
@@ -71,6 +78,7 @@ const useKeyboardControls = () => {
 
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
+            if (isEditableTarget(e.target)) return;
 
             // Handle rotation
             const rotateValue = rotateValueByKey(e.code);
