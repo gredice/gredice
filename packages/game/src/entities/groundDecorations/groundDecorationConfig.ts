@@ -50,7 +50,7 @@ export const groundDecorationOptions: Record<
             ],
             maxCount: 2,
             minDistance: 0.055,
-            scaleRange: [0.11, 0.16],
+            scaleRange: [0.165, 0.4],
             spread: 0.085,
             spawnChance: 0.7,
         },
