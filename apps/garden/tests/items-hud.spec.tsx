@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import { ItemsHudAlignmentStory } from './ItemsHudStory';
 
 const TABLET_VIEWPORT = { width: 820, height: 1180 };
-const SHORT_MOBILE_VIEWPORT = { width: 414, height: 600 };
+const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 
 test('edit mode item picker stays centered on tablet layouts', async ({
     mount,
@@ -30,9 +30,10 @@ test('pots are listed under the decoration picker', async ({ mount, page }) => {
     await page.setViewportSize(TABLET_VIEWPORT);
     await mount(<ItemsHudAlignmentStory />);
 
-    await expect(page.getByRole('button', { name: 'Tegle' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Posude' })).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Posude' }).click();
 
     await expect(
         page.getByRole('button', { name: 'PotLowBowl' }),
@@ -84,8 +85,8 @@ test('decoration picker scrolls when the viewport is too short for all items', a
 
     await page.getByRole('button', { name: 'Dekoracija' }).click();
 
-    const firstItem = page.getByRole('button', { name: 'PotLowBowl' });
-    const lastItem = page.getByRole('button', { name: 'MulchWood' });
+    const firstItem = page.getByRole('button', { name: 'Posude' });
+    const lastItem = page.getByRole('button', { name: 'CactusPricklyPear' });
 
     await expect(firstItem).toBeVisible();
 
