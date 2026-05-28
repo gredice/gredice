@@ -52,14 +52,14 @@ const cactusVariants = {
             {
                 color: '#ff9f43',
                 id: 'tall-column',
-                position: [0.12, 1.07, -0.04],
+                position: [0.027, 1.12, 0.029],
                 rotation: [0.12, 1.1, 0.18],
                 scale: 2.35,
             },
             {
                 color: '#e66dff',
                 id: 'side-column',
-                position: [-0.21, 0.73, 0.14],
+                position: [0.233, 0.93, -0.15],
                 rotation: [0.05, -0.7, -0.2],
                 scale: 1.95,
             },
@@ -75,14 +75,14 @@ const cactusVariants = {
             {
                 color: '#ff5f8f',
                 id: 'top-pad',
-                position: [0.13, 1.01, 0.02],
+                position: [0.029, 1.045, 0.056],
                 rotation: [0.16, 0.15, -0.24],
                 scale: 2.15,
             },
             {
                 color: '#ffd166',
                 id: 'side-pad',
-                position: [-0.22, 0.64, -0.03],
+                position: [0.204, 0.855, -0.14],
                 rotation: [0.2, -0.55, 0.16],
                 scale: 1.85,
             },

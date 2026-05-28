@@ -111,9 +111,10 @@ void main() {
     float light = clamp(dot(normalize(vWorldNormal), normalize(vec3(-0.35, 0.9, 0.25))), 0.0, 1.0);
     water *= 0.86 + light * 0.16 + topness * 0.05;
 
-    vec3 color = mix(water, uFoamColor, foam);
-    float baseAlpha = mix(0.58, 0.42, topness);
-    float alpha = clamp(baseAlpha + foam * 0.22 + sideness * 0.08, 0.4, 0.82);
+    float glint = pow(max(0.0, sin((worldUv.x - worldUv.y + uTime * 0.18) * 12.0)), 20.0) * topness * 0.08;
+    vec3 color = mix(water + uFoamColor * glint, uFoamColor, foam);
+    float baseAlpha = mix(0.52, 0.38, topness);
+    float alpha = clamp(baseAlpha + foam * 0.22 + sideness * 0.12, 0.36, 0.76);
 
     gl_FragColor = vec4(color, alpha);
     #include <colorspace_fragment>
