@@ -37,7 +37,7 @@ export function ScheduleDateNavigation({ date }: ScheduleDateNavigationProps) {
     const nextDateParam = formatDateParam(getOffsetDate(date, 1));
 
     return (
-        <Row spacing={2}>
+        <Row spacing={2} className="shrink-0">
             <Link
                 href={`/schedule?date=${prevDateParam}`}
                 title="Prethodni dan"

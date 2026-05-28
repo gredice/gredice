@@ -54,7 +54,7 @@ export function ScheduleDaySummary({
         scheduledFields.length * PLANTING_TASK_DURATION_MINUTES;
 
     return (
-        <Row spacing={8}>
+        <Row spacing={8} className="flex-wrap gap-y-2">
             <SummaryItem label="Zadataka" value={taskCount} />
             <SummaryItem label="Gredica" value={raisedBedCount} />
             {totalMinutes > 0 && (

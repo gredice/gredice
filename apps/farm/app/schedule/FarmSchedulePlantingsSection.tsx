@@ -157,7 +157,7 @@ export function FarmSchedulePlantingsSection({
                                         >
                                             <Row
                                                 spacing={2}
-                                                className="items-start justify-between gap-3"
+                                                className="min-w-0 items-start justify-between gap-3"
                                             >
                                                 <Row
                                                     spacing={2}
@@ -194,8 +194,8 @@ export function FarmSchedulePlantingsSection({
                                                         <Typography
                                                             className={
                                                                 completed
-                                                                    ? 'line-through text-muted-foreground'
-                                                                    : undefined
+                                                                    ? 'line-through text-muted-foreground [overflow-wrap:anywhere]'
+                                                                    : '[overflow-wrap:anywhere]'
                                                             }
                                                         >
                                                             {field.label}

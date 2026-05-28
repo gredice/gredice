@@ -89,8 +89,11 @@ async function FarmerDashboard() {
             <Card>
                 <CardContent noHeader>
                     <Stack spacing={4}>
-                        <Row justifyContent="space-between">
-                            <Stack>
+                        <Row
+                            justifyContent="space-between"
+                            className="flex-wrap items-start gap-3"
+                        >
+                            <Stack className="min-w-0">
                                 <Typography level="h4" component="h1" semiBold>
                                     {`Dobrodošli, ${displayName}!`}
                                 </Typography>
@@ -105,7 +108,7 @@ async function FarmerDashboard() {
                             </Stack>
                             <LogoutButton />
                         </Row>
-                        <Row spacing={2}>
+                        <Row spacing={2} className="flex-wrap gap-y-2">
                             <Chip
                                 color={role?.color ?? 'neutral'}
                                 startDecorator={<RoleIcon className="size-4" />}

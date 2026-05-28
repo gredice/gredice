@@ -216,7 +216,10 @@ export function FarmScheduleOperationsSection({
                 key={operation.id}
                 className="rounded-lg border bg-white px-3 py-2"
             >
-                <Row spacing={2} className="items-start justify-between gap-3">
+                <Row
+                    spacing={2}
+                    className="min-w-0 items-start justify-between gap-3"
+                >
                     <Row spacing={2} className="min-w-0 grow items-start">
                         {completed ? (
                             <Checkbox className="size-5" checked disabled />
@@ -235,8 +238,8 @@ export function FarmScheduleOperationsSection({
                             <Typography
                                 className={
                                     completed
-                                        ? 'line-through text-muted-foreground'
-                                        : undefined
+                                        ? 'line-through text-muted-foreground [overflow-wrap:anywhere]'
+                                        : '[overflow-wrap:anywhere]'
                                 }
                             >
                                 {operation.label}
@@ -485,7 +488,7 @@ export function FarmScheduleOperationsSection({
                                         >
                                             <Row
                                                 spacing={2}
-                                                className="items-start justify-between gap-3"
+                                                className="min-w-0 items-start justify-between gap-3"
                                             >
                                                 <Row
                                                     spacing={2}
@@ -526,8 +529,8 @@ export function FarmScheduleOperationsSection({
                                                         <Typography
                                                             className={
                                                                 completed
-                                                                    ? 'line-through text-muted-foreground'
-                                                                    : undefined
+                                                                    ? 'line-through text-muted-foreground [overflow-wrap:anywhere]'
+                                                                    : '[overflow-wrap:anywhere]'
                                                             }
                                                         >
                                                             {operation.label}
