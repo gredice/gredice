@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import { ItemsHudAlignmentStory } from './ItemsHudStory';
 
 const TABLET_VIEWPORT = { width: 820, height: 1180 };
+const SHORT_MOBILE_VIEWPORT = { width: 414, height: 600 };
 
 test('edit mode item picker stays centered on tablet layouts', async ({
     mount,
@@ -72,4 +73,36 @@ test('item details place button keeps the soft color treatment', async ({
 
     const pricePill = placeButton.locator('div').filter({ hasText: '10' });
     await expect(pricePill).toHaveClass(/bg-primary\/15/u);
+});
+
+test('decoration picker scrolls when the viewport is too short for all items', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(SHORT_MOBILE_VIEWPORT);
+    await mount(<ItemsHudAlignmentStory />);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+
+    const firstItem = page.getByRole('button', { name: 'PotLowBowl' });
+    const lastItem = page.getByRole('button', { name: 'MulchWood' });
+
+    await expect(firstItem).toBeVisible();
+
+    const scrollArea = page.locator('[data-items-picker-scroll]');
+    const popoverBox = await scrollArea.boundingBox();
+    expect(popoverBox).not.toBeNull();
+    expect(
+        (popoverBox?.y ?? 0) + (popoverBox?.height ?? 0),
+    ).toBeLessThanOrEqual(SHORT_MOBILE_VIEWPORT.height + 1);
+
+    const scrollState = await scrollArea.evaluate((node) => ({
+        scrollHeight: node.scrollHeight,
+        clientHeight: node.clientHeight,
+    }));
+    expect(scrollState.scrollHeight).toBeGreaterThan(scrollState.clientHeight);
+
+    await expect(lastItem).not.toBeInViewport();
+    await lastItem.scrollIntoViewIfNeeded();
+    await expect(lastItem).toBeInViewport();
 });

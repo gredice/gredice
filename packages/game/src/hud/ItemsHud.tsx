@@ -282,7 +282,7 @@ function EntityItem({ name }: HudItemEntity) {
 function PickerItem({ label, items, imageSrc }: HudItemPicker) {
     return (
         <Popper
-            className="w-fit overflow-hidden border-tertiary border-b-4"
+            className="w-fit overflow-hidden border-tertiary border-b-4 flex flex-col max-h-[var(--radix-popover-content-available-height)]"
             sideOffset={12}
             trigger={
                 <IconButton
@@ -302,23 +302,24 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                 </IconButton>
             }
         >
-            <Stack spacing={2}>
-                <div className="bg-muted p-2 border-b">
-                    <Typography semiBold level="body2">
-                        {label}
-                    </Typography>
-                </div>
-                <div className="grid gap-1 p-2 pt-0 grid-cols-4 md:grid-cols-6">
-                    {items.map((item, index) => {
-                        if (item.type === 'entity') {
-                            // biome-ignore lint/suspicious/noArrayIndexKey: Allowed
-                            return <EntityItem key={index} {...item} />;
-                        } else {
-                            return null;
-                        }
-                    })}
-                </div>
-            </Stack>
+            <div className="bg-muted p-2 border-b shrink-0">
+                <Typography semiBold level="body2">
+                    {label}
+                </Typography>
+            </div>
+            <div
+                data-items-picker-scroll
+                className="grid gap-1 p-2 grid-cols-4 md:grid-cols-6 overflow-y-auto overscroll-contain"
+            >
+                {items.map((item, index) => {
+                    if (item.type === 'entity') {
+                        // biome-ignore lint/suspicious/noArrayIndexKey: Allowed
+                        return <EntityItem key={index} {...item} />;
+                    } else {
+                        return null;
+                    }
+                })}
+            </div>
         </Popper>
     );
 }
