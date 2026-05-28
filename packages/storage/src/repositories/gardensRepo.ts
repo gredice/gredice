@@ -1235,7 +1235,7 @@ export async function createGardenStack(
     { x, y }: { x: number; y: number },
     db: DatabaseClient = storage(),
 ) {
-    // Check if stack at location already exists
+    // Check if an active (non-deleted) stack already exists at this location.
     const [{ count: existingStacksCount }] = await db
         .select({ count: count() })
         .from(gardenStacks)
@@ -1249,6 +1249,26 @@ export async function createGardenStack(
         );
     if (existingStacksCount > 0) {
         return false;
+    }
+
+    // If a soft-deleted stack exists at this position, reuse it instead of
+    // inserting a new row. This keeps a single canonical row per (gardenId, x, y)
+    // and prevents soft-deleted duplicates from accumulating over time.
+    const reusableStack = await db.query.gardenStacks.findFirst({
+        where: and(
+            eq(gardenStacks.gardenId, gardenId),
+            eq(gardenStacks.positionX, x),
+            eq(gardenStacks.positionY, y),
+            eq(gardenStacks.isDeleted, true),
+        ),
+        orderBy: desc(gardenStacks.id),
+    });
+    if (reusableStack) {
+        await db
+            .update(gardenStacks)
+            .set({ isDeleted: false, blocks: [] })
+            .where(eq(gardenStacks.id, reusableStack.id));
+        return true;
     }
 
     await db

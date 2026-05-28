@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { and, eq } from 'drizzle-orm';
 import {
     createAccount,
     createDefaultGardenForAccount,
@@ -22,6 +23,7 @@ import {
     updateGardenStack,
     updateRaisedBed,
 } from '@gredice/storage';
+import { gardenStacks } from '../src/schema';
 import {
     createTestBlock,
     createTestGarden,
@@ -189,6 +191,44 @@ test('createGardenStack returns false if stack exists', async () => {
     await createGardenStack(gardenId, { x: 0, y: 0 });
     const result = await createGardenStack(gardenId, { x: 0, y: 0 });
     assert.strictEqual(result, false);
+});
+
+test('createGardenStack reuses a soft-deleted stack at the same position', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+
+    await createGardenStack(gardenId, { x: 7, y: 7 });
+    await updateGardenStack(gardenId, {
+        x: 7,
+        y: 7,
+        blocks: ['block-a', 'block-b'],
+    });
+    await deleteGardenStack(gardenId, { x: 7, y: 7 });
+
+    const result = await createGardenStack(gardenId, { x: 7, y: 7 });
+    assert.strictEqual(result, true);
+
+    const stack = await getGardenStack(gardenId, { x: 7, y: 7 });
+    assert.ok(stack);
+    assert.deepStrictEqual(stack.blocks, []);
+
+    // Only one row should exist at (7, 7) — the reused one — instead of
+    // accumulating a fresh insert alongside the soft-deleted original.
+    const db = createTestDb();
+    const allStacksAtPosition = await db
+        .select()
+        .from(gardenStacks)
+        .where(
+            and(
+                eq(gardenStacks.gardenId, gardenId),
+                eq(gardenStacks.positionX, 7),
+                eq(gardenStacks.positionY, 7),
+            ),
+        );
+    assert.strictEqual(allStacksAtPosition.length, 1);
+    assert.strictEqual(allStacksAtPosition[0].isDeleted, false);
 });
 
 test('updateGardenStack updates stack blocks', async () => {
