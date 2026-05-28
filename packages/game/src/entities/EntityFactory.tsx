@@ -2,9 +2,11 @@ import type { PropsWithChildren } from 'react';
 import { PickableGroup } from '../controls/PickableGroup';
 import { RotatableGroup } from '../controls/RotatableGroup';
 import { SelectableGroup } from '../controls/SelectableGroup';
+import { useBlockData } from '../hooks/useBlockData';
 import { useIsEditMode } from '../hooks/useIsEditMode';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
+import { useStackHeight } from '../utils/getStackHeight';
 import { entityNameMap } from './entityNameMap';
 
 export type EntityFactoryProps = {
@@ -12,6 +14,36 @@ export type EntityFactoryProps = {
     noControl?: boolean;
     noRenderInView?: string[];
 };
+
+function InstancedEntityControlTarget({
+    stack,
+    block,
+}: Pick<EntityInstanceProps, 'stack' | 'block'>) {
+    const { data: blockData } = useBlockData();
+    const currentStackHeight = useStackHeight(stack, block);
+    const blockHeight =
+        blockData?.find((entity) => entity.information.name === block.name)
+            ?.attributes.height ?? 1;
+    const hitboxHeight = Math.max(blockHeight, 0.35);
+
+    return (
+        <mesh
+            position={[
+                stack.position.x,
+                currentStackHeight + hitboxHeight / 2,
+                stack.position.z,
+            ]}
+        >
+            <boxGeometry args={[1, hitboxHeight, 1]} />
+            <meshBasicMaterial
+                colorWrite={false}
+                depthWrite={false}
+                opacity={0}
+                transparent
+            />
+        </mesh>
+    );
+}
 
 export function EntityFactory({
     name,
@@ -24,6 +56,7 @@ export function EntityFactory({
     const isEditMode = useIsEditMode();
     const EntityComponent = entityNameMap[name];
     const view = useGameState((state) => state.view);
+    const isInstancedInView = noRenderInView?.includes(name) ?? false;
 
     if (!EntityComponent) {
         console.error(
@@ -33,11 +66,31 @@ export function EntityFactory({
         return null;
     }
 
-    if (!isEditMode) {
-        if (noRenderInView?.includes(name)) {
+    if (isInstancedInView) {
+        if (!isEditMode) {
             return null;
         }
 
+        const controlTarget = (
+            <InstancedEntityControlTarget stack={stack} block={block} />
+        );
+        const isTopBlock =
+            stack.blocks.indexOf(block) === stack.blocks.length - 1;
+
+        if (!isTopBlock) {
+            return (
+                <RotatableGroup block={block}>{controlTarget}</RotatableGroup>
+            );
+        }
+
+        return (
+            <PickableGroup stack={stack} block={block} noControl={noControl}>
+                <RotatableGroup block={block}>{controlTarget}</RotatableGroup>
+            </PickableGroup>
+        );
+    }
+
+    if (!isEditMode) {
         if (noControl) {
             return <EntityComponent stack={stack} block={block} {...rest} />;
         }
