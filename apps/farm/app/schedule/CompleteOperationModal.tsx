@@ -486,7 +486,11 @@ export function CompleteOperationModal({
                         {errorMessage}
                     </Typography>
                 )}
-                <Row spacing={2} justifyContent="end">
+                <Row
+                    spacing={2}
+                    justifyContent="end"
+                    className="flex-wrap gap-y-2"
+                >
                     <Button
                         variant="outlined"
                         onClick={() => handleOpenChange(false)}

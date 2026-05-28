@@ -53,7 +53,11 @@ export function CompletePlantingModal({
                     Jeste li sigurni da želite označiti da je posijano:{' '}
                     <strong>{label}</strong>?
                 </Typography>
-                <Row spacing={2} justifyContent="end">
+                <Row
+                    spacing={2}
+                    justifyContent="end"
+                    className="flex-wrap gap-y-2"
+                >
                     <Button
                         variant="outlined"
                         onClick={() => setOpen(false)}

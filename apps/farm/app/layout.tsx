@@ -55,7 +55,7 @@ export default function RootLayout({
                 <meta name="theme-color" content="#8b5e34" />
                 <title>Gredice Farm</title>
             </Head>
-            <body className="antialiased min-h-screen flex bg-muted">
+            <body className="antialiased min-h-screen flex w-full min-w-0 overflow-x-hidden bg-muted">
                 {postHogApiKey ? (
                     <PostHogProvider
                         apiKey={postHogApiKey}

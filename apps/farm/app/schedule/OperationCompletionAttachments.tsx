@@ -65,7 +65,7 @@ export function OperationCompletionAttachments({
                         >
                             Radnja #{operationId}
                         </Typography>
-                        <Typography className="whitespace-pre-wrap">
+                        <Typography className="whitespace-pre-wrap [overflow-wrap:anywhere]">
                             {trimmedNotes}
                         </Typography>
                     </Stack>

@@ -9,7 +9,7 @@ import { UrlAuthForward } from '../../UrlAuthForward';
 export default function GoogleCallbackPage() {
     return (
         <div className="min-h-[100dvh] flex items-center justify-center bg-muted p-4">
-            <Card className="w-[350px] p-12">
+            <Card className="w-full max-w-[350px] p-6 sm:p-12">
                 <CardHeader>
                     <svg
                         className="mx-auto size-12 mb-4"
