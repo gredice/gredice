@@ -6,8 +6,10 @@ export function useWeatherNow(enabled = true) {
         queryKey: ['weather', 'now'],
         queryFn: async () => {
             const response = await clientPublic().api.data.weather.now.$get();
-            if (response.status === 500) {
-                console.error('Failed to fetch weather data', response);
+            if (!response.ok) {
+                console.debug('Weather data unavailable', {
+                    status: response.status,
+                });
                 return null;
             }
             return await response.json();

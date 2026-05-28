@@ -32,6 +32,6 @@ export function EntityGridViewerDynamic() {
     }
 
     return (
-        <EntityGridViewer className="w-full h-full" debugHud showBackground />
+        <EntityGridViewer className="h-full w-full" debugHud showBackground />
     );
 }

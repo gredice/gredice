@@ -28,13 +28,13 @@ export function DebugPanel({
     return (
         <Card
             className={cx(
-                'w-full max-w-sm border border-border/40 bg-background/95 shadow-lg backdrop-blur',
+                'flex max-h-[calc(100dvh-2rem)] w-full max-w-sm flex-col overflow-hidden border border-border/40 bg-background/95 shadow-lg backdrop-blur',
                 className,
             )}
         >
             <CardHeader
                 className={cx(
-                    'space-y-1',
+                    'shrink-0 space-y-1',
                     onDragHandlePointerDown
                         ? 'cursor-grab select-none touch-none active:cursor-grabbing'
                         : undefined,
@@ -69,7 +69,10 @@ export function DebugPanel({
                 ) : null}
             </CardHeader>
             {collapsed ? null : (
-                <CardContent noHeader className="space-y-3">
+                <CardContent
+                    noHeader
+                    className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain"
+                >
                     {children}
                 </CardContent>
             )}
