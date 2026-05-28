@@ -13,6 +13,7 @@ import {
     BookA,
     Calendar,
     Fence,
+    Settings,
     Shield,
     Sprout,
     User,
@@ -171,6 +172,15 @@ async function FarmerDashboard() {
                                 href="/plants"
                             >
                                 Priručnik biljaka
+                            </Button>
+                            <Button
+                                variant="soft"
+                                size="lg"
+                                className="justify-start"
+                                startDecorator={<Settings className="size-4" />}
+                                href="/settings"
+                            >
+                                Postavke
                             </Button>
                             {showDebugTools && (
                                 <Button

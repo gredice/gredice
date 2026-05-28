@@ -1,6 +1,7 @@
 import type { OperationData } from '@gredice/directory-types';
 import { postMessage } from '@gredice/slack';
 import {
+    createNotification,
     type DeliveryRequestState,
     getDeliveryRequest,
     getEntityFormatted,
@@ -396,6 +397,64 @@ export async function notifyNewUserRegistered(userId: string) {
     ];
 
     await sendSlackMessage(channel, lines.filter(Boolean).join('\n'));
+}
+
+export async function notifyOperationAssignedUsers(
+    operationId: number,
+    assignedUserIds: string[],
+) {
+    const uniqueUserIds = Array.from(
+        new Set(assignedUserIds.filter((id) => id && id.length > 0)),
+    );
+    if (uniqueUserIds.length === 0) {
+        return;
+    }
+
+    const context = await buildOperationContext(operationId);
+    const operationName = context?.operationName ?? `Radnja #${operationId}`;
+    const formattedScheduledDate = formatDateTime(context?.scheduledDate);
+
+    const header = 'Nova radnja je dodijeljena';
+    const locationLine = context?.locationDescription
+        ? ` (${context.locationDescription})`
+        : '';
+    const scheduleLine = formattedScheduledDate
+        ? ` Termin: ${formattedScheduledDate}.`
+        : '';
+    const content = `Dodijeljena ti je radnja **${operationName}**${locationLine}.${scheduleLine}`;
+
+    await Promise.all(
+        uniqueUserIds.map(async (userId) => {
+            try {
+                const user = await getUser(userId);
+                const accountId = user?.accounts?.[0]?.accountId;
+                if (!accountId) {
+                    console.warn(
+                        'Skipping operation assignment notification: no account for user',
+                        { userId, operationId },
+                    );
+                    return;
+                }
+
+                await createNotification({
+                    accountId,
+                    userId,
+                    header,
+                    content,
+                    category: 'garden',
+                    type: 'operation_assigned',
+                    primaryChannel: 'push',
+                    priority: 'normal',
+                    timestamp: new Date(),
+                });
+            } catch (error) {
+                console.error(
+                    'Failed to create operation assignment notification',
+                    { userId, operationId, error },
+                );
+            }
+        }),
+    );
 }
 
 export async function notifyPurchase(details: PurchaseNotificationDetails) {

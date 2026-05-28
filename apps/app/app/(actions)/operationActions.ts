@@ -6,7 +6,10 @@ import {
     RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE,
 } from '@gredice/js/raisedBeds';
 import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
-import { notifyOperationUpdate } from '@gredice/notifications';
+import {
+    notifyOperationAssignedUsers,
+    notifyOperationUpdate,
+} from '@gredice/notifications';
 import {
     acceptOperation,
     createEvent,
@@ -274,6 +277,9 @@ export async function singleCreateOperationAction(
                     assignedBy: userId,
                 }),
             );
+            await notifyOperationAssignedUsers(operationId, [
+                selectedAssignedUserId,
+            ]);
         }
 
         revalidatePath(KnownPages.Schedule);
@@ -405,6 +411,9 @@ export async function bulkCreateOperationsAction(
                         assignedBy: userId,
                     }),
                 );
+                await notifyOperationAssignedUsers(operationId, [
+                    selectedAssignedUserId,
+                ]);
             }
             createdCount += 1;
         }
@@ -551,6 +560,13 @@ export async function assignOperationUserAction(
             assignedBy: userId,
         }),
     );
+
+    const newlyAssignedUserIds = normalizedAssignedUserIds.filter(
+        (assignedUserId) => !operationAssignedUserIds.includes(assignedUserId),
+    );
+    if (newlyAssignedUserIds.length > 0) {
+        await notifyOperationAssignedUsers(operationId, newlyAssignedUserIds);
+    }
 
     revalidatePath(KnownPages.Schedule);
     if (operation.accountId)
