@@ -102,7 +102,11 @@ export function EntityGridViewer({
                         enableRainWetOverlayFlag: debugHud,
                     }}
                 >
-                    <Scene position={100} zoom={zoom} className={className}>
+                    <Scene
+                        position={[100, 100, 100]}
+                        zoom={zoom}
+                        className={className}
+                    >
                         <Environment
                             noBackground={!showBackground}
                             noSound
