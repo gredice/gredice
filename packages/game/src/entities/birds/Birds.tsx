@@ -6,7 +6,6 @@ import type { Group, Material, Object3D } from 'three';
 import { MathUtils, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
-import { useIsEditMode } from '../../hooks/useIsEditMode';
 import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
 import { type AnimalDebugEntry, useGameState } from '../../useGameState';
@@ -1637,13 +1636,12 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
 
 export function Birds({ stacks }: { stacks: Stack[] | undefined }) {
     const { data: blockData } = useBlockData();
-    const isEditMode = useIsEditMode();
     const habitats = useMemo(
         () => createBirdHabitats(stacks, blockData),
         [blockData, stacks],
     );
 
-    if (isEditMode || habitats.length <= 0) {
+    if (habitats.length <= 0) {
         return null;
     }
 
