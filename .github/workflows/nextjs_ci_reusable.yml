@@ -20,7 +20,7 @@ on:
       testShardMatrix:
         required: false
         type: string
-        description: "JSON matrix of Playwright test shards to run"
+        description: "JSON matrix of Playwright test shards or named args to run"
         default: '[{"index":1,"total":1}]'
       testShardPrepareScript:
         required: false
@@ -79,7 +79,7 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
-    name: "test${{ matrix.shard.total != 1 && format(' ({0}/{1})', matrix.shard.index, matrix.shard.total) || '' }}"
+    name: "test${{ matrix.shard.name && format(' ({0})', matrix.shard.name) || (matrix.shard.total != 1 && format(' ({0}/{1})', matrix.shard.index, matrix.shard.total) || '') }}"
     strategy:
       fail-fast: false
       matrix:
@@ -158,13 +158,15 @@ jobs:
         working-directory: ${{ inputs.path }}/
 
       - name: ⚒️ Test app
+        env:
+          TEST_ARGS: ${{ matrix.shard.args || (matrix.shard.total != 1 && format('--shard={0}/{1}', matrix.shard.index, matrix.shard.total)) || '' }}
         run: |
-          if [ "${{ matrix.shard.total }}" = "1" ]; then
+          if [ -z "$TEST_ARGS" ]; then
             pnpm test --filter=${{ inputs.name }}
           else
             pnpm build --filter=${{ inputs.name }}
             if [ -n "${{ inputs.testShardPrepareScript }}" ]; then
               pnpm --dir ${{ inputs.path }} run ${{ inputs.testShardPrepareScript }}
             fi
-            pnpm --dir ${{ inputs.path }} run ${{ inputs.testShardRunScript }} --shard=${{ matrix.shard.index }}/${{ matrix.shard.total }}
+            pnpm --dir ${{ inputs.path }} run ${{ inputs.testShardRunScript }} $TEST_ARGS
           fi
