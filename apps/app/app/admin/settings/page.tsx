@@ -29,6 +29,7 @@ import {
 } from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { SlackChannelSettingForm } from '../communication/slack/SlackChannelSettingForm';
+import { UserNotificationSettings } from './_components/UserNotificationSettings';
 import { AdminGeneralSettingForm } from './AdminGeneralSettingForm';
 import { DashboardQuickActionsSettingForm } from './DashboardQuickActionsSettingForm';
 import { GoogleCalendarSettingForm } from './GoogleCalendarSettingForm';
@@ -56,6 +57,10 @@ const SETTINGS_SECTIONS = [
     {
         id: 'notification-settings',
         title: 'Obavijesti',
+    },
+    {
+        id: 'personal-notification-settings',
+        title: 'Osobne obavijesti',
     },
 ] as const;
 
@@ -504,6 +509,30 @@ export default async function SettingsPage() {
                                     </CardContent>
                                 </Card>
                             </div>
+                        </Stack>
+                    </section>
+
+                    <section
+                        id="personal-notification-settings"
+                        className="scroll-mt-28"
+                        aria-labelledby="personal-notification-settings-heading"
+                    >
+                        <Stack spacing={6}>
+                            <Stack spacing={2}>
+                                <Typography
+                                    id="personal-notification-settings-heading"
+                                    level="h2"
+                                    semiBold
+                                >
+                                    Osobne obavijesti
+                                </Typography>
+                                <Typography level="body1">
+                                    Uključi web push obavijesti za svoj račun
+                                    kako bi te sustav obavijestio kad ti je
+                                    dodijeljena nova radnja.
+                                </Typography>
+                            </Stack>
+                            <UserNotificationSettings />
                         </Stack>
                     </section>
                 </div>
