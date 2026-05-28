@@ -12,16 +12,23 @@ async function expectMobileNavActionsDoNotOverlap(page: Page) {
     await expect(cta).toBeVisible();
     await expect(menuButton).toBeVisible();
 
-    const ctaBox = await cta.boundingBox();
-    const menuButtonBox = await menuButton.boundingBox();
-    expect(ctaBox).not.toBeNull();
-    expect(menuButtonBox).not.toBeNull();
-    if (!ctaBox || !menuButtonBox) {
-        throw new Error('Expected mobile nav CTA and menu button boxes.');
-    }
+    await expect
+        .poll(async () => {
+            const ctaBox = await cta.boundingBox();
+            const menuButtonBox = await menuButton.boundingBox();
+            if (!ctaBox || !menuButtonBox) {
+                return Number.NEGATIVE_INFINITY;
+            }
 
-    expect(menuButtonBox.x).toBeGreaterThanOrEqual(ctaBox.x + ctaBox.width + 4);
-    expect(ctaBox.width).toBeLessThanOrEqual(50);
+            return menuButtonBox.x - (ctaBox.x + ctaBox.width);
+        })
+        .toBeGreaterThanOrEqual(4);
+    await expect
+        .poll(async () => {
+            const ctaBox = await cta.boundingBox();
+            return ctaBox?.width ?? Number.POSITIVE_INFINITY;
+        })
+        .toBeLessThanOrEqual(50);
 }
 
 test('has title', async ({ page }) => {
@@ -180,14 +187,18 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
     await expect(header).toHaveCSS('border-bottom-width', '1px');
     await expectMobileNavActionsDoNotOverlap(page);
 
-    const mobileHeaderBox = await header.boundingBox();
-    expect(mobileHeaderBox).not.toBeNull();
-    if (!mobileHeaderBox) {
-        throw new Error('Expected mobile navbar to have a bounding box.');
-    }
-
-    expect(mobileHeaderBox.x).toBeGreaterThanOrEqual(7);
-    expect(mobileHeaderBox.y).toBeGreaterThanOrEqual(7);
+    await expect
+        .poll(async () => {
+            const mobileHeaderBox = await header.boundingBox();
+            return mobileHeaderBox?.x ?? Number.NEGATIVE_INFINITY;
+        })
+        .toBeGreaterThanOrEqual(7);
+    await expect
+        .poll(async () => {
+            const mobileHeaderBox = await header.boundingBox();
+            return mobileHeaderBox?.y ?? Number.NEGATIVE_INFINITY;
+        })
+        .toBeGreaterThanOrEqual(7);
 });
 
 test('desktop floating navbar keeps container width', async ({ page }) => {
