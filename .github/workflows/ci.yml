@@ -168,7 +168,13 @@ jobs:
       name: "www"
       path: "apps/www"
       vercelProjectIdSecretName: "VERCEL_PROJECT_ID_WWW"
-      testShardMatrix: '[{"index":1,"total":2},{"index":2,"total":2}]'
+      testShardMatrix: >-
+        [
+          {"name":"a11y 1/3","index":1,"total":4,"args":"tests/a11y.spec.ts --shard=1/3"},
+          {"name":"a11y 2/3","index":2,"total":4,"args":"tests/a11y.spec.ts --shard=2/3"},
+          {"name":"a11y 3/3","index":3,"total":4,"args":"tests/a11y.spec.ts --shard=3/3"},
+          {"name":"rest","index":4,"total":4,"args":"tests/landing.spec.ts tests/search.spec.ts tests/search-interactive.spec.tsx tests/titlesPresent.spec.ts"}
+        ]
       testShardPrepareScript: "test:prepare:routes"
     secrets: inherit
 
