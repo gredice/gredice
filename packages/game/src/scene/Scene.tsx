@@ -3,6 +3,10 @@
 import { Canvas, type Vector3 as FiberVector3 } from '@react-three/fiber';
 import { type HTMLAttributes, type PropsWithChildren, useEffect } from 'react';
 import { PCFShadowMap } from 'three';
+import {
+    HoverOutlineEffect,
+    HoverOutlineProvider,
+} from '../entities/helpers/HoverOutline';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import {
     type GameQualityProfile,
@@ -56,7 +60,10 @@ export function Scene({
             }}
             {...rest}
         >
-            {children}
+            <HoverOutlineProvider>
+                {children}
+                <HoverOutlineEffect />
+            </HoverOutlineProvider>
         </Canvas>
     );
 }
