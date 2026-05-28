@@ -140,6 +140,26 @@ function checkVercelLinks() {
   addCheck('Vercel project links', true, missing.length === 0, missing.length === 0 ? 'All apps linked.' : `Missing links: ${missing.map((m) => m.name).join(', ')}.`, 'Run `pnpm vercel:link`.');
 }
 
+function checkTurboRemoteCache() {
+  const configPath = resolve(rootDir, '.turbo', 'config.json');
+  let ok = existsSync(configPath);
+  let detail = ok ? `Turbo remote cache linked at ${configPath}.` : 'Turbo remote cache config not found.';
+  if (ok) {
+    try {
+      const config = JSON.parse(readFileSync(configPath, 'utf8'));
+      const slug = typeof config?.teamSlug === 'string' ? config.teamSlug : '';
+      if (slug && slug !== 'gredice') {
+        ok = false;
+        detail = `Turbo remote cache linked to "${slug}"; expected "gredice".`;
+      }
+    } catch (error) {
+      ok = false;
+      detail = `Could not parse ${configPath}: ${error instanceof Error ? error.message : String(error)}.`;
+    }
+  }
+  addCheck('Turbo remote cache', false, ok, detail, 'Run `pnpm bootstrap` (or `pnpm turbo link --yes --scope=gredice`) after `vercel login`.');
+}
+
 function checkEnvFiles() {
   const missing = appRegistry.filter((app) => !existsSync(resolve(rootDir, app.packagePath, '.env')));
   addCheck('App env files', true, missing.length === 0, missing.length === 0 ? 'All app .env files present.' : `Missing .env in: ${missing.map((m) => m.name).join(', ')}.`, 'Run `pnpm env:pull`.');
@@ -359,6 +379,14 @@ async function maybeRunSetupActions() {
   if (failure) {
     process.exit(failure.code || 1);
   }
+
+  const turboChain = [
+    { label: 'Linking Turbo remote cache to "gredice"', cmd: 'pnpm', args: ['turbo', 'link', '--yes', '--scope=gredice'] },
+  ];
+  const turboResult = await runChain('turbo', turboChain);
+  if (turboResult) {
+    process.exit(turboResult.code || 1);
+  }
 }
 
 function printResults() {
@@ -388,6 +416,7 @@ async function runChecks() {
   checkDocker();
   checkVercelAuth();
   checkVercelLinks();
+  checkTurboRemoteCache();
   checkEnvFiles();
   checkPlaywright();
   checkHosts();

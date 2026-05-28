@@ -1,5 +1,4 @@
 import { animated } from '@react-spring/three';
-import { CircleGeometry, DoubleSide, Shape, ShapeGeometry } from 'three';
 import type { GameAssetName } from '../data/models';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
@@ -7,32 +6,41 @@ import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { GardenFlowerModel } from './helpers/GardenFlowerModel';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 type CactusNodeName = Extract<keyof GLTFResult['nodes'], `Cactus_${string}`>;
 
-type CactusVariantConfig = {
-    assetName: GameAssetName;
-    bodyNode: CactusNodeName;
-    spineNode: CactusNodeName;
-    scale: number;
-    groundSink: number;
-    flowers?: readonly CactusFlowerConfig[];
-};
-
-type CactusFlowerConfig = {
-    key: string;
+type CactusFlowerPlacement = {
+    color: string;
+    id: string;
     position: [number, number, number];
     rotation: [number, number, number];
     scale: number;
-    petalColor: string;
-    centerColor: string;
+};
+
+type CactusVariantConfig = {
+    assetName: GameAssetName;
+    bodyNode: CactusNodeName;
+    flowers: CactusFlowerPlacement[];
+    spineNode: CactusNodeName;
+    scale: number;
+    groundSink: number;
 };
 
 const cactusVariants = {
     CactusBarrel: {
         assetName: 'CactusBarrel',
         bodyNode: 'Cactus_Barrel_Body',
+        flowers: [
+            {
+                color: '#ff7ab8',
+                id: 'crown',
+                position: [0.02, 0.63, 0],
+                rotation: [0.18, 0.4, -0.1],
+                scale: 2.75,
+            },
+        ],
         spineNode: 'Cactus_Barrel_Spines',
         scale: 0.95,
         groundSink: 0.06,
@@ -40,52 +48,48 @@ const cactusVariants = {
     CactusColumnCluster: {
         assetName: 'CactusColumnCluster',
         bodyNode: 'Cactus_ColumnCluster_Body',
+        flowers: [
+            {
+                color: '#ff9f43',
+                id: 'tall-column',
+                position: [0.027, 1.12, 0.029],
+                rotation: [0.12, 1.1, 0.18],
+                scale: 2.35,
+            },
+            {
+                color: '#e66dff',
+                id: 'side-column',
+                position: [0.233, 0.93, -0.15],
+                rotation: [0.05, -0.7, -0.2],
+                scale: 1.95,
+            },
+        ],
         spineNode: 'Cactus_ColumnCluster_Spines',
         scale: 0.9,
         groundSink: 0.04,
-        flowers: [
-            {
-                key: 'center-column',
-                position: [0.027, 1.12, 0.029],
-                rotation: [-Math.PI / 2, 0, 0.28],
-                scale: 0.13,
-                petalColor: '#e4f7c9',
-                centerColor: '#d4b036',
-            },
-            {
-                key: 'right-column',
-                position: [0.233, 0.93, -0.15],
-                rotation: [-Math.PI / 2, 0, -0.24],
-                scale: 0.12,
-                petalColor: '#d184f2',
-                centerColor: '#d2ab2d',
-            },
-        ],
     },
     CactusPricklyPear: {
         assetName: 'CactusPricklyPear',
         bodyNode: 'Cactus_PricklyPear_Body',
+        flowers: [
+            {
+                color: '#ff5f8f',
+                id: 'top-pad',
+                position: [0.029, 1.045, 0.056],
+                rotation: [0.16, 0.15, -0.24],
+                scale: 2.15,
+            },
+            {
+                color: '#ffd166',
+                id: 'side-pad',
+                position: [0.204, 0.855, -0.14],
+                rotation: [0.2, -0.55, 0.16],
+                scale: 1.85,
+            },
+        ],
         spineNode: 'Cactus_PricklyPear_Spines',
         scale: 0.9,
         groundSink: 0.045,
-        flowers: [
-            {
-                key: 'top-pad',
-                position: [0.029, 1.045, 0.056],
-                rotation: [-Math.PI / 2, 0.1, -0.18],
-                scale: 0.11,
-                petalColor: '#b345bc',
-                centerColor: '#d2ab2d',
-            },
-            {
-                key: 'right-pad',
-                position: [0.204, 0.855, -0.14],
-                rotation: [-Math.PI / 2, -0.35, 0.25],
-                scale: 0.095,
-                petalColor: '#e4f7c9',
-                centerColor: '#d4b036',
-            },
-        ],
     },
 } satisfies Record<string, CactusVariantConfig>;
 
@@ -104,52 +108,6 @@ const cactusSpineMaterial = {
     roughness: 0.78,
     metalness: 0,
 };
-
-const cactusFlowerGeometry = (() => {
-    const shape = new Shape();
-    const petalCount = 6;
-    for (let i = 0; i < petalCount * 2; i += 1) {
-        const angle = (i / (petalCount * 2)) * Math.PI * 2;
-        const radius = i % 2 === 0 ? 0.42 : 1;
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
-        if (i === 0) {
-            shape.moveTo(x, y);
-        } else {
-            shape.lineTo(x, y);
-        }
-    }
-    shape.closePath();
-    return new ShapeGeometry(shape);
-})();
-const cactusFlowerCenterGeometry = new CircleGeometry(0.28, 18);
-
-function CactusFlower({ flower }: { flower: CactusFlowerConfig }) {
-    return (
-        <group
-            position={flower.position}
-            rotation={flower.rotation}
-            scale={flower.scale}
-        >
-            <mesh castShadow geometry={cactusFlowerGeometry}>
-                <meshBasicMaterial
-                    color={flower.petalColor}
-                    side={DoubleSide}
-                />
-            </mesh>
-            <mesh
-                castShadow
-                geometry={cactusFlowerCenterGeometry}
-                position={[0, 0, 0.006]}
-            >
-                <meshBasicMaterial
-                    color={flower.centerColor}
-                    side={DoubleSide}
-                />
-            </mesh>
-        </group>
-    );
-}
 
 function CactusEntity({
     stack,
@@ -190,8 +148,15 @@ function CactusEntity({
             <mesh castShadow receiveShadow geometry={spineGeometry}>
                 <meshStandardMaterial {...cactusSpineMaterial} />
             </mesh>
-            {config.flowers?.map((flower) => (
-                <CactusFlower key={flower.key} flower={flower} />
+            {config.flowers.map((flower) => (
+                <GardenFlowerModel
+                    key={`${config.assetName}-flower-${flower.id}`}
+                    bloomOnly
+                    petalColor={flower.color}
+                    position={flower.position}
+                    rotation={flower.rotation}
+                    scale={flower.scale}
+                />
             ))}
         </animated.group>
     );

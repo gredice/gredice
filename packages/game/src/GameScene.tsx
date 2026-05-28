@@ -9,6 +9,7 @@ import {
     useState,
 } from 'react';
 import { Controls } from './controls/Controls';
+import { Bees } from './entities/bees/Bees';
 import { Birds } from './entities/birds/Birds';
 import { EntityFactory } from './entities/EntityFactory';
 import {
@@ -245,6 +246,15 @@ export function GameScene({
                             {renderDetails && zoom !== 'far' && (
                                 <Suspense fallback={null}>
                                     <Birds stacks={garden?.stacks} />
+                                </Suspense>
+                            )}
+                            {renderDetails && zoom !== 'far' && (
+                                <Suspense fallback={null}>
+                                    <Bees
+                                        garden={garden}
+                                        weather={weather}
+                                        weatherDisabled={weatherDisabled}
+                                    />
                                 </Suspense>
                             )}
                         </group>

@@ -16,11 +16,18 @@ import {
     BlockSandCorner,
     BlockSnowCorner,
 } from './BlockTerrainCorner';
+import {
+    BlockGrassReverseCorner,
+    BlockGroundReverseCorner,
+    BlockSandReverseCorner,
+    BlockSnowReverseCorner,
+} from './BlockTerrainReverseCorner';
 import { BlockWater } from './BlockWater';
 import { Bucket } from './Bucket';
 import { Bush } from './Bush';
 import { Cactus } from './Cactus';
 import { Composter } from './Composter';
+import { DeadTree } from './DeadTree';
 import { DesertStone } from './DesertStone';
 import { Fence } from './Fence';
 import { FireflyJar } from './FireflyJar';
@@ -66,9 +73,13 @@ export const entityNameMap: Record<
     Block_Ground_Corner: BlockGroundCorner,
     Block_Grass_Corner: BlockGrassCorner,
     Block_Sand_Corner: BlockSandCorner,
+    Block_Ground_Reverse_Corner: BlockGroundReverseCorner,
+    Block_Grass_Reverse_Corner: BlockGrassReverseCorner,
+    Block_Sand_Reverse_Corner: BlockSandReverseCorner,
     Block_Snow: BlockSnow,
     Block_Snow_Angle: BlockSnowAngle,
     Block_Snow_Corner: BlockSnowCorner,
+    Block_Snow_Reverse_Corner: BlockSnowReverseCorner,
     Block_Snow_Falling: BlockSnowFalling,
     Composter: Composter,
     Raised_Bed: RaisedBed,
@@ -90,6 +101,8 @@ export const entityNameMap: Record<
     Bush: Bush,
     Tree: Tree,
     Pine: Pine,
+    DeadTreeTall: DeadTree,
+    DeadTreeStump: DeadTree,
     PineAdvent: PineAdvent,
     StoneSmall: StoneSmall,
     StoneMedium: StoneMedium,

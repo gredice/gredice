@@ -9,6 +9,9 @@ export const gameAssetModels = {
     BlockSand: { url: '/assets/models/BlockSand.glb' },
     BlockSandAngle: { url: '/assets/models/BlockSandAngle.glb' },
     BlockTerrainCorner: { url: '/assets/models/BlockTerrainCorner.glb' },
+    BlockTerrainReverseCorner: {
+        url: '/assets/models/BlockTerrainReverseCorner.glb',
+    },
     RaisedBed: { url: '/assets/models/RaisedBed.glb' },
     GardenBox: { url: '/assets/models/GardenBox.glb' },
     GiftBox: { url: '/assets/models/GiftBox.glb' },
@@ -16,6 +19,8 @@ export const gameAssetModels = {
     Stick: { url: '/assets/models/Stick.glb' },
     Tree: { url: '/assets/models/Tree.glb' },
     Pine: { url: '/assets/models/Pine.glb' },
+    DeadTreeTall: { url: '/assets/models/DeadTreeTall.glb' },
+    DeadTreeStump: { url: '/assets/models/DeadTreeStump.glb' },
     Bush: { url: '/assets/models/Bush.glb' },
     StoneSmall: { url: '/assets/models/StoneSmall.glb' },
     MulchHey: { url: '/assets/models/MulchHey.glb' },
@@ -23,6 +28,7 @@ export const gameAssetModels = {
     MulchWood: { url: '/assets/models/MulchWood.glb' },
     BaleHey: { url: '/assets/models/BaleHey.glb' },
     BirdSmall: { url: '/assets/models/BirdSmall.glb?v=9f3f492cf895' },
+    Bee: { url: '/assets/models/Bee.glb' },
     Bucket: { url: '/assets/models/Bucket.glb' },
     WateringCan: { url: '/assets/models/WateringCan.glb?v=5ba682be44df' },
     WaterWell: { url: '/assets/models/WaterWell.glb' },
@@ -41,6 +47,7 @@ export const gameAssetModels = {
     DesertStoneMedium: { url: '/assets/models/DesertStoneMedium.glb' },
     DesertStoneLarge: { url: '/assets/models/DesertStoneLarge.glb' },
     Stool: { url: '/assets/models/Stool.glb' },
+    GardenFlower: { url: '/assets/models/GardenFlower.glb' },
     Tulip: { url: '/assets/models/Tulip.glb?v=64901b969f37' },
     CactusBarrel: { url: '/assets/models/CactusBarrel.glb?v=13eb69f97166' },
     CactusColumnCluster: { url: '/assets/models/CactusColumnCluster.glb' },
@@ -69,6 +76,8 @@ export const groundGameAssetNames = [
     'BlockSand',
     'BlockSandAngle',
     'BlockTerrainCorner',
+    'BlockTerrainReverseCorner',
+    'GardenFlower',
 ] satisfies GameAssetName[];
 
 export const primaryGameAssetNames = [
@@ -87,8 +96,11 @@ export const primaryGameAssetNames = [
 ] satisfies GameAssetName[];
 
 export const lazyGameAssetNames = [
+    'DeadTreeTall',
+    'DeadTreeStump',
     'BaleHey',
     'BirdSmall',
+    'Bee',
     'Bucket',
     'WateringCan',
     'WaterWell',
@@ -131,6 +143,7 @@ export const allGameAssetNames = [
     'BlockSand',
     'BlockSandAngle',
     'BlockTerrainCorner',
+    'BlockTerrainReverseCorner',
     'RaisedBed',
     'GardenBox',
     'GiftBox',
@@ -138,6 +151,8 @@ export const allGameAssetNames = [
     'Stick',
     'Tree',
     'Pine',
+    'DeadTreeTall',
+    'DeadTreeStump',
     'Bush',
     'StoneSmall',
     'MulchHey',
@@ -145,6 +160,7 @@ export const allGameAssetNames = [
     'MulchWood',
     'BaleHey',
     'BirdSmall',
+    'Bee',
     'Bucket',
     'WateringCan',
     'WaterWell',
@@ -164,6 +180,7 @@ export const allGameAssetNames = [
     'DesertStoneLarge',
     'Stool',
     'Tulip',
+    'GardenFlower',
     'CactusBarrel',
     'CactusColumnCluster',
     'CactusPricklyPear',

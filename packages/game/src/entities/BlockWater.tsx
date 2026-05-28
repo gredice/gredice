@@ -10,29 +10,14 @@ import { useGameGLTF } from '../utils/useGameGLTF';
 import { resolveWaterFoamEdges } from './waterBlockFoam';
 
 const waterVertexShader = `
-uniform float uTime;
-
 varying vec3 vLocalPosition;
+varying vec3 vLocalNormal;
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
 varying float vTopness;
 
 void main() {
-    vec3 transformed = position;
-
-    vec4 baseWorldPosition = vec4(position, 1.0);
-    #ifdef USE_INSTANCING
-        baseWorldPosition = instanceMatrix * baseWorldPosition;
-    #endif
-    baseWorldPosition = modelMatrix * baseWorldPosition;
-
-    float topness = smoothstep(0.35, 0.95, normal.y);
-    float waveA = sin((baseWorldPosition.x * 1.65 + uTime * 0.16) * 6.28318530718);
-    float waveB = sin((baseWorldPosition.z * 1.35 - uTime * 0.13) * 6.28318530718);
-    float waveC = sin(((baseWorldPosition.x + baseWorldPosition.z) * 1.05 + uTime * 0.11) * 6.28318530718);
-    transformed.y += (waveA * 0.012 + waveB * 0.01 + waveC * 0.006) * topness;
-
-    vec4 worldPosition = vec4(transformed, 1.0);
+    vec4 worldPosition = vec4(position, 1.0);
     #ifdef USE_INSTANCING
         worldPosition = instanceMatrix * worldPosition;
     #endif
@@ -44,9 +29,10 @@ void main() {
     #endif
 
     vLocalPosition = position;
+    vLocalNormal = normal;
     vWorldPosition = worldPosition.xyz;
     vWorldNormal = normalize(mat3(modelMatrix) * objectNormal);
-    vTopness = topness;
+    vTopness = smoothstep(0.5, 0.95, normal.y);
 
     gl_Position = projectionMatrix * viewMatrix * worldPosition;
 }
@@ -60,40 +46,66 @@ uniform vec3 uFoamColor;
 uniform vec4 uFoamEdges;
 
 varying vec3 vLocalPosition;
+varying vec3 vLocalNormal;
 varying vec3 vWorldPosition;
 varying vec3 vWorldNormal;
 varying float vTopness;
 
-float edgeBand(float distanceToEdge, float width) {
-    return 1.0 - smoothstep(0.0, width, distanceToEdge);
+float hash21(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float valueNoise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    float a = hash21(i);
+    float b = hash21(i + vec2(1.0, 0.0));
+    float c = hash21(i + vec2(0.0, 1.0));
+    float d = hash21(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
 void main() {
+    // Hide inner walls that face an adjacent water block — keeps the
+    // tiled surface continuous instead of revealing internal partitions.
+    if (vLocalNormal.x < -0.7 && uFoamEdges.x < 0.5) discard;
+    if (vLocalNormal.x > 0.7 && uFoamEdges.y < 0.5) discard;
+    if (vLocalNormal.z < -0.7 && uFoamEdges.z < 0.5) discard;
+    if (vLocalNormal.z > 0.7 && uFoamEdges.w < 0.5) discard;
+
     vec2 worldUv = vWorldPosition.xz;
     float topness = clamp(vTopness, 0.0, 1.0);
     float sideness = 1.0 - topness;
 
-    float negXEdge = edgeBand(vLocalPosition.x + 0.5, 0.12) * uFoamEdges.x;
-    float posXEdge = edgeBand(0.5 - vLocalPosition.x, 0.12) * uFoamEdges.y;
-    float negZEdge = edgeBand(vLocalPosition.z + 0.5, 0.12) * uFoamEdges.z;
-    float posZEdge = edgeBand(0.5 - vLocalPosition.z, 0.12) * uFoamEdges.w;
+    // Two scrolling noise layers — one lighter, one darker — fading in
+    // and out as they pass over each other.
+    vec2 scrollA = vec2(uTime * 0.045, uTime * 0.028);
+    vec2 scrollB = vec2(-uTime * 0.032, uTime * 0.05);
+    float noiseA = valueNoise(worldUv * 2.4 + scrollA);
+    float noiseB = valueNoise(worldUv * 4.1 + scrollB);
+    float lightLayer = smoothstep(0.42, 0.88, noiseA);
+    float darkLayer = smoothstep(0.42, 0.88, 1.0 - noiseB);
+    float tonalShift = lightLayer * 0.18 - darkLayer * 0.16;
+
+    // Edge foam — only on edges facing non-water neighbours, animated
+    // along the edge so it looks like the water is breaking against the bank.
+    float edgeWidth = 0.14;
+    float negXEdge = (1.0 - smoothstep(0.0, edgeWidth, vLocalPosition.x + 0.5)) * uFoamEdges.x;
+    float posXEdge = (1.0 - smoothstep(0.0, edgeWidth, 0.5 - vLocalPosition.x)) * uFoamEdges.y;
+    float negZEdge = (1.0 - smoothstep(0.0, edgeWidth, vLocalPosition.z + 0.5)) * uFoamEdges.z;
+    float posZEdge = (1.0 - smoothstep(0.0, edgeWidth, 0.5 - vLocalPosition.z)) * uFoamEdges.w;
     float edgeFoam = max(max(negXEdge, posXEdge), max(negZEdge, posZEdge));
 
-    float broadWave = sin((worldUv.x * 1.15 + worldUv.y * 0.62 + uTime * 0.08) * 6.28318530718);
-    float crossWave = sin((worldUv.x * -0.74 + worldUv.y * 1.18 - uTime * 0.065) * 6.28318530718);
-    float softWave = broadWave * 0.5 + crossWave * 0.5;
-    float surfaceGlow = smoothstep(-0.72, 0.9, softWave);
+    float foamNoise = valueNoise(worldUv * 5.5 + vec2(uTime * 0.22, -uTime * 0.18));
+    float foamPulse = 0.35 + 0.65 * smoothstep(0.2, 0.85, foamNoise);
+    edgeFoam *= foamPulse;
 
-    vec2 foamCenter = vec2(0.08, -0.03);
-    float centerMask = 1.0 - smoothstep(0.07, 0.34, length(vLocalPosition.xz - foamCenter));
-    float centerBreak = sin((worldUv.x * 5.0 - worldUv.y * 3.6 + uTime * 0.12) * 6.28318530718);
-    float foamPatch = smoothstep(0.2, 0.96, centerBreak) * centerMask * topness * 0.42;
+    float topFoam = edgeFoam * topness * 0.62;
+    float fallingFoam = edgeFoam * sideness * 0.38;
+    float foam = clamp(max(topFoam, fallingFoam), 0.0, 1.0);
 
-    float topFoam = edgeFoam * topness * 0.48;
-    float fallingFoam = edgeFoam * sideness * (0.28 + surfaceGlow * 0.26);
-    float foam = clamp(max(max(topFoam, fallingFoam), foamPatch), 0.0, 1.0);
-
-    float depth = clamp(0.38 + surfaceGlow * 0.26 + topness * 0.12, 0.0, 1.0);
+    float depth = clamp(0.42 + tonalShift + topness * 0.08, 0.0, 1.0);
     vec3 water = mix(uDeepColor, uShallowColor, depth);
 
     float light = clamp(dot(normalize(vWorldNormal), normalize(vec3(-0.35, 0.9, 0.25))), 0.0, 1.0);
@@ -165,7 +177,7 @@ export function BlockWater({ stack, block, stacks }: EntityInstanceProps) {
 
     return (
         <animated.group
-            position={stack.position.clone().setY(currentStackHeight + 0.2)}
+            position={stack.position.clone().setY(currentStackHeight + 0.14)}
         >
             <mesh
                 receiveShadow
