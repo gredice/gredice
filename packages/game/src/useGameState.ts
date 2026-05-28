@@ -178,6 +178,8 @@ export type GameState = {
     ) => void;
 
     // Debug (overrides)
+    editHitboxDebugVisible: boolean;
+    setEditHitboxDebugVisible: (visible: boolean) => void;
     weather?: {
         cloudy: number;
         rainy: number;
@@ -397,6 +399,9 @@ export function createGameState({
             })),
         setWorldRotation: (worldRotation) => set({ worldRotation }),
         setIsDragging: (isDragging) => set({ isDragging }),
+        editHitboxDebugVisible: false,
+        setEditHitboxDebugVisible: (editHitboxDebugVisible) =>
+            set({ editHitboxDebugVisible }),
         setWeather: (weather) => set({ weather }),
         snowCoverage: 0,
         setSnowCoverage: (snowCoverage) => set({ snowCoverage }),

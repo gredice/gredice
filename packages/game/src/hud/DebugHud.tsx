@@ -182,6 +182,12 @@ export function DebugHud() {
     const currentTime = useLiveTime();
     const setFreezeTime = useGameState((s) => s.setFreezeTime);
     const animalDebugEntries = useGameState((s) => s.animalDebugEntries);
+    const editHitboxDebugVisible = useGameState(
+        (s) => s.editHitboxDebugVisible,
+    );
+    const setEditHitboxDebugVisible = useGameState(
+        (s) => s.setEditHitboxDebugVisible,
+    );
     const frameStats = useFrameStats();
     const profileSnapshot = useProfileHudSnapshot();
 
@@ -554,6 +560,11 @@ export function DebugHud() {
     const handleOverrideChange = (checked: boolean | 'indeterminate') => {
         setOverrideWeather(checked === true);
     };
+    const handleEditHitboxDebugChange = (
+        checked: boolean | 'indeterminate',
+    ) => {
+        setEditHitboxDebugVisible(checked === true);
+    };
 
     const weatherControlsDisabled = !overrideWeather;
 
@@ -673,6 +684,13 @@ export function DebugHud() {
                                     ))
                                 )}
                             </Stack>
+                        </DebugPanelSection>
+                        <DebugPanelSection title="Scene">
+                            <Checkbox
+                                label="Show edit hitboxes"
+                                checked={editHitboxDebugVisible}
+                                onCheckedChange={handleEditHitboxDebugChange}
+                            />
                         </DebugPanelSection>
                         <DebugPanelSection title="Time">
                             <Slider

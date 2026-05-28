@@ -1,3 +1,4 @@
+import { Edges } from '@react-three/drei';
 import type { PropsWithChildren } from 'react';
 import { PickableGroup } from '../controls/PickableGroup';
 import { RotatableGroup } from '../controls/RotatableGroup';
@@ -21,6 +22,9 @@ function InstancedEntityControlTarget({
 }: Pick<EntityInstanceProps, 'stack' | 'block'>) {
     const { data: blockData } = useBlockData();
     const currentStackHeight = useStackHeight(stack, block);
+    const editHitboxDebugVisible = useGameState(
+        (state) => state.editHitboxDebugVisible,
+    );
     const blockHeight =
         blockData?.find((entity) => entity.information.name === block.name)
             ?.attributes.height ?? 1;
@@ -35,12 +39,10 @@ function InstancedEntityControlTarget({
             ]}
         >
             <boxGeometry args={[1, hitboxHeight, 1]} />
-            <meshBasicMaterial
-                colorWrite={false}
-                depthWrite={false}
-                opacity={0}
-                transparent
-            />
+            <meshBasicMaterial visible={false} />
+            {editHitboxDebugVisible && (
+                <Edges color="#22d3ee" renderOrder={10_000} threshold={1} />
+            )}
         </mesh>
     );
 }
