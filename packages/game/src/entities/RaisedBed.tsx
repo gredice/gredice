@@ -1,10 +1,15 @@
 import { animated } from '@react-spring/three';
 import { Vector3 } from 'three';
 import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
+import {
+    findRaisedBedByBlockId,
+    getRaisedBedBlockIds,
+} from '../utils/raisedBedBlocks';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { HoverOutline } from './helpers/HoverOutline';
 import { useEntityNeighbors } from './helpers/useEntityNeighbors';
@@ -16,8 +21,18 @@ const halfOverlap = combinedOverlap / 2;
 export function RaisedBed({ stack, block }: EntityInstanceProps) {
     const { nodes, materials } = useGameGLTF('RaisedBed');
     const currentStackHeight = useStackHeight(stack, block);
-    const hovered =
-        useHoveredBlockStore((state) => state.hoveredBlock) === block;
+    const hoveredBlock = useHoveredBlockStore((state) => state.hoveredBlock);
+    const { data: garden } = useCurrentGarden();
+    const hoveredRaisedBed = hoveredBlock
+        ? findRaisedBedByBlockId(garden, hoveredBlock.id)
+        : null;
+    const hovered = Boolean(
+        garden &&
+            hoveredRaisedBed &&
+            getRaisedBedBlockIds(garden, hoveredRaisedBed.id).includes(
+                block.id,
+            ),
+    );
 
     // Switch between shapes (O, L, I, U) based on neighbors
     let shape2:
@@ -97,55 +112,53 @@ export function RaisedBed({ stack, block }: EntityInstanceProps) {
 
     return (
         <>
-            <animated.group
-                position={raisedBedPosition}
-                rotation={[0, shapeRotation * (Math.PI / 2), 0]}
-            >
-                <mesh
-                    castShadow
-                    receiveShadow
-                    geometry={nodes[shape1].geometry}
-                    material={
-                        materials[
-                            shape1 === 'Raised_Bed_O_1'
-                                ? 'Material.Planks'
-                                : 'Material.Dirt'
-                        ]
-                    }
+            <HoverOutline hovered={hovered}>
+                <animated.group
+                    position={raisedBedPosition}
+                    rotation={[0, shapeRotation * (Math.PI / 2), 0]}
                 >
-                    <HoverOutline hovered={hovered} />
-                </mesh>
-                <SnowOverlay
-                    geometry={nodes[shape1].geometry}
-                    maxThickness={0.16}
-                    slopeExponent={2.8}
-                    noiseScale={3}
-                    coverageMultiplier={0.9}
-                />
-                <RainWetOverlay geometry={nodes[shape1].geometry} />
-                <mesh
-                    castShadow
-                    receiveShadow
-                    geometry={nodes[shape2].geometry}
-                    material={
-                        materials[
-                            shape2 === 'Raised_Bed_O_2'
-                                ? 'Material.Dirt'
-                                : 'Material.Planks'
-                        ]
-                    }
-                >
-                    <HoverOutline hovered={hovered} />
-                </mesh>
-                <SnowOverlay
-                    geometry={nodes[shape2].geometry}
-                    maxThickness={0.16}
-                    slopeExponent={2.8}
-                    noiseScale={3}
-                    coverageMultiplier={0.9}
-                />
-                <RainWetOverlay geometry={nodes[shape2].geometry} />
-            </animated.group>
+                    <mesh
+                        castShadow
+                        receiveShadow
+                        geometry={nodes[shape1].geometry}
+                        material={
+                            materials[
+                                shape1 === 'Raised_Bed_O_1'
+                                    ? 'Material.Planks'
+                                    : 'Material.Dirt'
+                            ]
+                        }
+                    />
+                    <SnowOverlay
+                        geometry={nodes[shape1].geometry}
+                        maxThickness={0.16}
+                        slopeExponent={2.8}
+                        noiseScale={3}
+                        coverageMultiplier={0.9}
+                    />
+                    <RainWetOverlay geometry={nodes[shape1].geometry} />
+                    <mesh
+                        castShadow
+                        receiveShadow
+                        geometry={nodes[shape2].geometry}
+                        material={
+                            materials[
+                                shape2 === 'Raised_Bed_O_2'
+                                    ? 'Material.Dirt'
+                                    : 'Material.Planks'
+                            ]
+                        }
+                    />
+                    <SnowOverlay
+                        geometry={nodes[shape2].geometry}
+                        maxThickness={0.16}
+                        slopeExponent={2.8}
+                        noiseScale={3}
+                        coverageMultiplier={0.9}
+                    />
+                    <RainWetOverlay geometry={nodes[shape2].geometry} />
+                </animated.group>
+            </HoverOutline>
             <group position={raisedBedPosition}>
                 <RaisedBedFields blockId={block.id} />
             </group>

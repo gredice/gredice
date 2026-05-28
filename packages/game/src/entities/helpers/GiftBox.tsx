@@ -31,58 +31,63 @@ export function GiftBox({
         useHoveredBlockStore((state) => state.hoveredBlock) === block;
 
     return (
-        <animated.group
-            position={stack.position.clone().setY(currentStackHeight + 0.25)}
-            rotation={animatedRotation as unknown as [number, number, number]}
-        >
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes.GiftBox_Box.geometry}
+        <HoverOutline hovered={hovered}>
+            <animated.group
+                position={stack.position
+                    .clone()
+                    .setY(currentStackHeight + 0.25)}
+                rotation={
+                    animatedRotation as unknown as [number, number, number]
+                }
             >
-                <meshStandardMaterial
-                    color={boxColor}
-                    metalness={boxMetalness}
-                    roughness={boxRoughness}
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes.GiftBox_Box.geometry}
+                >
+                    <meshStandardMaterial
+                        color={boxColor}
+                        metalness={boxMetalness}
+                        roughness={boxRoughness}
+                    />
+                </mesh>
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes.GiftBox_Strip.geometry}
+                >
+                    <meshStandardMaterial
+                        color={ribbonColor}
+                        metalness={0.5}
+                        roughness={0.3}
+                    />
+                </mesh>
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes.GiftBox_Bow.geometry}
+                    position={[0, 0.25, 0]}
+                    rotation={[0, -Math.PI / 4, 0]}
+                >
+                    <meshStandardMaterial
+                        color={ribbonColor}
+                        metalness={0.5}
+                        roughness={0.3}
+                    />
+                </mesh>
+                <SnowOverlay
+                    geometry={nodes.GiftBox_Box.geometry}
+                    {...snowPresets.giftBox}
                 />
-                <HoverOutline hovered={hovered} variant="outlines" />
-            </mesh>
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes.GiftBox_Strip.geometry}
-            >
-                <meshStandardMaterial
-                    color={ribbonColor}
-                    metalness={0.5}
-                    roughness={0.3}
+                <SnowOverlay
+                    geometry={nodes.GiftBox_Strip.geometry}
+                    {...snowPresets.giftBox}
                 />
-            </mesh>
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes.GiftBox_Bow.geometry}
-                position={[0, 0.25, 0]}
-                rotation={[0, -Math.PI / 4, 0]}
-            >
-                <meshStandardMaterial
-                    color={ribbonColor}
-                    metalness={0.5}
-                    roughness={0.3}
+                <SnowOverlay
+                    geometry={nodes.GiftBox_Bow.geometry}
+                    {...snowPresets.giftBox}
                 />
-            </mesh>
-            <SnowOverlay
-                geometry={nodes.GiftBox_Box.geometry}
-                {...snowPresets.giftBox}
-            />
-            <SnowOverlay
-                geometry={nodes.GiftBox_Strip.geometry}
-                {...snowPresets.giftBox}
-            />
-            <SnowOverlay
-                geometry={nodes.GiftBox_Bow.geometry}
-                {...snowPresets.giftBox}
-            />
-        </animated.group>
+            </animated.group>
+        </HoverOutline>
     );
 }

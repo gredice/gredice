@@ -48,55 +48,51 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
     }
 
     return (
-        <animated.group
-            onClick={handleClick}
-            position={stack.position.clone().setY(currentStackHeight)}
-            rotation={animatedRotation as unknown as [number, number, number]}
+        <HoverOutline
+            hovered={hovered || isLidOpen}
+            thickness={7}
+            color="#f8fafc"
         >
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes.GardenBox_Body_Planks.geometry}
-                material={materials['Material.Planks']}
-            >
-                <HoverOutline
-                    hovered={hovered || isLidOpen}
-                    variant="outlines"
-                    thickness={7}
-                    color="#f8fafc"
-                    backingColor="#0f172a"
-                />
-            </mesh>
-            <SnowOverlay
-                geometry={nodes.GardenBox_Body_Planks.geometry}
-                {...snowPresets.giftBox}
-            />
-            <RainWetOverlay geometry={nodes.GardenBox_Body_Planks.geometry} />
             <animated.group
-                position={[0, 0.6, -0.38]}
-                rotation={lidRotation as unknown as [number, number, number]}
+                onClick={handleClick}
+                position={stack.position.clone().setY(currentStackHeight)}
+                rotation={
+                    animatedRotation as unknown as [number, number, number]
+                }
             >
                 <mesh
+                    castShadow
                     receiveShadow
-                    geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
+                    geometry={nodes.GardenBox_Body_Planks.geometry}
                     material={materials['Material.Planks']}
-                >
-                    <HoverOutline
-                        hovered={hovered || isLidOpen}
-                        variant="outlines"
-                        thickness={7}
-                        color="#f8fafc"
-                        backingColor="#0f172a"
-                    />
-                </mesh>
+                />
                 <SnowOverlay
-                    geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
+                    geometry={nodes.GardenBox_Body_Planks.geometry}
                     {...snowPresets.giftBox}
                 />
                 <RainWetOverlay
-                    geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
+                    geometry={nodes.GardenBox_Body_Planks.geometry}
                 />
+                <animated.group
+                    position={[0, 0.6, -0.38]}
+                    rotation={
+                        lidRotation as unknown as [number, number, number]
+                    }
+                >
+                    <mesh
+                        receiveShadow
+                        geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
+                        material={materials['Material.Planks']}
+                    />
+                    <SnowOverlay
+                        geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
+                        {...snowPresets.giftBox}
+                    />
+                    <RainWetOverlay
+                        geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
+                    />
+                </animated.group>
             </animated.group>
-        </animated.group>
+        </HoverOutline>
     );
 }
