@@ -1,11 +1,11 @@
 import { animated } from '@react-spring/three';
-import { MeshDistortMaterial } from '@react-three/drei';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
+import { WaterSurfaceMaterial } from './helpers/WaterSurfaceMaterial';
 
 export function Bucket({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials } = useGameGLTF('Bucket');
@@ -18,17 +18,8 @@ export function Bucket({ stack, block, rotation }: EntityInstanceProps) {
             scale={[0.3, 0.25, 0.3]}
             rotation={animatedRotation as unknown as [number, number, number]}
         >
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes.Bucket_1.geometry}
-                material={materials['Material.Water']}
-            >
-                <MeshDistortMaterial
-                    {...materials['Material.Water']}
-                    distort={0.2}
-                    speed={2}
-                />
+            <mesh castShadow receiveShadow geometry={nodes.Bucket_1.geometry}>
+                <WaterSurfaceMaterial />
             </mesh>
             <mesh
                 castShadow

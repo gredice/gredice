@@ -271,7 +271,7 @@
             "name": "WateringCan",
             "source": "WateringCan.blend",
             "output": "WateringCan.glb",
-            "version": "5ba682be44df",
+            "version": "8b128e30b990",
             "preload": "lazy",
             "objects": [
                 "WateringCan_Base_Ring",
