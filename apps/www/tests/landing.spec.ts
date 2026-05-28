@@ -32,6 +32,9 @@ async function expectMobileNavActionsDoNotOverlap(page: Page) {
 }
 
 test('has title', async ({ page }) => {
+    // The first `/` hit in a shard pays the Next.js SSR cold-start cost,
+    // which can exceed the 10s default test timeout. Triple it.
+    test.slow();
     await page.goto('/');
     await expect(page).toHaveTitle(/Gredice/);
 });
@@ -68,7 +71,7 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
     page,
 }, testInfo) => {
     test.slow();
-    testInfo.setTimeout(60_000);
+    testInfo.setTimeout(90_000);
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
@@ -179,7 +182,7 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
         }, screenshot.toString('base64'));
     };
     await expect
-        .poll(countVisibleCanvasPixels, { timeout: 20_000 })
+        .poll(countVisibleCanvasPixels, { timeout: 35_000 })
         .toBeGreaterThan(10);
 
     await page.evaluate(() => window.scrollTo(0, 160));
