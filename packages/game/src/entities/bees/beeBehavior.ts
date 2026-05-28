@@ -12,6 +12,14 @@ const BEE_DAY_END = 0.74;
 const MAX_BEE_CLOUD_COVER = 0.42;
 const MAX_BEE_WIND_SPEED = 1.2;
 const MAX_BEE_BAD_WEATHER = 0.05;
+const BEE_HABITAT_RADIUS_BLOCKS = 10;
+
+export type BeeTargetPosition = {
+    position: {
+        x: number;
+        z: number;
+    };
+};
 
 export function isBeeDaytime(timeOfDay: number) {
     return timeOfDay >= BEE_DAY_START && timeOfDay <= BEE_DAY_END;
@@ -43,10 +51,41 @@ export function getBeeDwellSeconds(random: () => number) {
     return 2.4 + random() * 3.6;
 }
 
-export function getBeeCount(flowerTargetCount: number) {
-    if (flowerTargetCount <= 0) {
-        return 0;
+function isWithinBeeHabitatRadius(
+    left: BeeTargetPosition,
+    right: BeeTargetPosition,
+    radiusSquared: number,
+) {
+    const x = left.position.x - right.position.x;
+    const z = left.position.z - right.position.z;
+    return x * x + z * z <= radiusSquared;
+}
+
+export function getBeeHabitatGroups<T extends BeeTargetPosition>(
+    flowerTargets: readonly T[],
+) {
+    const groups: T[][] = [];
+    const radiusSquared = BEE_HABITAT_RADIUS_BLOCKS * BEE_HABITAT_RADIUS_BLOCKS;
+
+    for (const target of flowerTargets) {
+        const habitat = groups.find((group) => {
+            const anchor = group[0];
+            return (
+                anchor !== undefined &&
+                isWithinBeeHabitatRadius(anchor, target, radiusSquared)
+            );
+        });
+
+        if (habitat) {
+            habitat.push(target);
+        } else {
+            groups.push([target]);
+        }
     }
 
-    return Math.min(4, Math.max(1, Math.ceil(flowerTargetCount / 6)));
+    return groups;
+}
+
+export function getBeeCount(flowerTargets: readonly BeeTargetPosition[]) {
+    return getBeeHabitatGroups(flowerTargets).length;
 }

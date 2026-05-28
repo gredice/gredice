@@ -30,8 +30,8 @@ import { useGameGLTF } from '../../utils/useGameGLTF';
 import { tulipBouquetStems } from '../tulipBouquet';
 import {
     type BeeWeather,
-    getBeeCount,
     getBeeDwellSeconds,
+    getBeeHabitatGroups,
     isBeeActive,
 } from './beeBehavior';
 
@@ -89,12 +89,9 @@ type MovingBeeState = {
 
 type ForagingBeeState = {
     phase: 'foraging';
-    dipPhase: number;
     dwellUntil: number;
-    orbitDirection: -1 | 1;
-    orbitPhase: number;
-    orbitRadius: number;
-    orbitSpeed: number;
+    landingPosition: Vector3;
+    landingYaw: number;
     startedAt: number;
     target: BeeTarget;
 };
@@ -125,12 +122,12 @@ const clearBeeWeather = {
     windSpeed: 0,
 } satisfies BeeWeather;
 
-const beeScale = 0.16;
+const beeScale = 0.095;
 const beeFlightSpeedBlocksPerSecond = 1.1;
 const beeFlightTurnDamping = 7.5;
 const beeFlightLookAheadProgress = 0.06;
 const beeFlightArcMaxHeight = 0.42;
-const beeForageHoverHeight = 0.08;
+const beeFlowerRestHeight = 0.025;
 const defaultTurnDamping = 9;
 const raisedBedFlowerHoverHeight = 0.42;
 const tulipFlowerHoverHeight = 0.52;
@@ -316,25 +313,33 @@ function createBeeHabitats(
         return [];
     }
 
-    const targets = createFlowerTargets(garden, blockData);
-    const beeCount = getBeeCount(targets.length);
-    const firstTarget = targets[0];
-    if (!firstTarget) {
+    const targetGroups = getBeeHabitatGroups(
+        createFlowerTargets(garden, blockData),
+    );
+    if (targetGroups.length <= 0) {
         return [];
     }
 
-    return Array.from({ length: beeCount }, (_, index) => {
+    return targetGroups.flatMap((targets, index) => {
+        const firstTarget = targets[0];
+        if (!firstTarget) {
+            return [];
+        }
+
         const seed = hashString(
-            `${garden.id ?? 'garden'}-bee-${index}-${targets.length}`,
+            `${garden.id ?? 'garden'}-bee-${index}-${firstTarget.id}-${targets.length}`,
         );
         const random = createRandom(seed);
-        return {
-            id: `bee-${index + 1}`,
-            seed,
-            startTarget:
-                targets[Math.floor(random() * targets.length)] ?? firstTarget,
-            targets,
-        } satisfies BeeHabitat;
+        return [
+            {
+                id: `bee-${index + 1}`,
+                seed,
+                startTarget:
+                    targets[Math.floor(random() * targets.length)] ??
+                    firstTarget,
+                targets,
+            } satisfies BeeHabitat,
+        ];
     });
 }
 
@@ -534,17 +539,7 @@ function makeMovingState({
     random: () => number;
     target: BeeTarget;
 }) {
-    const targetJitterRadius = 0.035 + random() * 0.04;
-    const targetJitterAngle = random() * fullTurn;
-    const to = target.position
-        .clone()
-        .add(
-            new Vector3(
-                Math.cos(targetJitterAngle) * targetJitterRadius,
-                beeForageHoverHeight + random() * 0.035,
-                Math.sin(targetJitterAngle) * targetJitterRadius,
-            ),
-        );
+    const to = createBeeLandingPosition(target, random);
     const directFlightTangent = createFlightTangent(from, to);
     return {
         phase: 'moving',
@@ -560,43 +555,58 @@ function makeMovingState({
     } satisfies MovingBeeState;
 }
 
+function yawTowardPosition(from: Vector3, to: Vector3) {
+    const directionX = to.x - from.x;
+    const directionZ = to.z - from.z;
+    if (Math.hypot(directionX, directionZ) <= 0.001) {
+        return 0;
+    }
+
+    return Math.atan2(directionX, directionZ);
+}
+
+function createBeeLandingPosition(target: BeeTarget, random: () => number) {
+    const targetJitterRadius =
+        target.kind === 'raised-bed-flower'
+            ? 0.012 + random() * 0.018
+            : 0.02 + random() * 0.028;
+    const targetJitterAngle = random() * fullTurn;
+    return target.position
+        .clone()
+        .add(
+            new Vector3(
+                Math.cos(targetJitterAngle) * targetJitterRadius,
+                beeFlowerRestHeight,
+                Math.sin(targetJitterAngle) * targetJitterRadius,
+            ),
+        );
+}
+
 function makeForagingState({
+    landingPosition,
     now,
     random,
     target,
 }: {
+    landingPosition?: Vector3;
     now: number;
     random: () => number;
     target: BeeTarget;
 }) {
+    const position =
+        landingPosition ?? createBeeLandingPosition(target, random);
     return {
         phase: 'foraging',
-        dipPhase: random() * fullTurn,
         dwellUntil: now + getBeeDwellSeconds(random),
-        orbitDirection: random() < 0.5 ? -1 : 1,
-        orbitPhase: random() * fullTurn,
-        orbitRadius: 0.045 + random() * 0.055,
-        orbitSpeed: 4.2 + random() * 2.8,
+        landingPosition: position,
+        landingYaw: yawTowardPosition(position, target.position),
         startedAt: now,
         target,
     } satisfies ForagingBeeState;
 }
 
-function foragePositionAt(runtime: ForagingBeeState, now: number) {
-    const elapsed = now - runtime.startedAt;
-    const angle =
-        runtime.orbitPhase +
-        elapsed * runtime.orbitSpeed * runtime.orbitDirection;
-    const dip = Math.max(0, Math.sin(elapsed * 5.2 + runtime.dipPhase)) * 0.035;
-    return runtime.target.position
-        .clone()
-        .add(
-            new Vector3(
-                Math.cos(angle) * runtime.orbitRadius,
-                beeForageHoverHeight + Math.sin(elapsed * 8.4) * 0.018 - dip,
-                Math.sin(angle) * runtime.orbitRadius * 0.72,
-            ),
-        );
+function foragePositionAt(runtime: ForagingBeeState) {
+    return runtime.landingPosition.clone();
 }
 
 function cloneBeeMaterial(material: Material, objectName: string) {
@@ -609,6 +619,12 @@ function cloneBeeMaterial(material: Material, objectName: string) {
             clone.roughness = 0.34;
             clone.side = DoubleSide;
             clone.transparent = true;
+        } else if (clone.name === 'Material.Bee.Yellow') {
+            clone.color.set('#f4c400');
+            clone.roughness = 0.7;
+        } else if (clone.name === 'Material.Bee.Gold') {
+            clone.color.set('#d68a00');
+            clone.roughness = 0.74;
         } else {
             clone.roughness = 0.72;
         }
@@ -657,9 +673,35 @@ function updateBeeRig({
     seed: number;
 }) {
     const flying = runtime?.phase === 'moving';
-    const wingSpeed = flying ? 72 : 54;
+
+    if (!flying) {
+        if (rig.wingLeft.object) {
+            rig.wingLeft.object.rotation.x = rig.wingLeft.baseRotationX;
+            rig.wingLeft.object.rotation.y = rig.wingLeft.baseRotationY;
+            rig.wingLeft.object.rotation.z = rig.wingLeft.baseRotationZ;
+        }
+        if (rig.wingRight.object) {
+            rig.wingRight.object.rotation.x = rig.wingRight.baseRotationX;
+            rig.wingRight.object.rotation.y = rig.wingRight.baseRotationY;
+            rig.wingRight.object.rotation.z = rig.wingRight.baseRotationZ;
+        }
+        if (rig.bodyPivot.object) {
+            rig.bodyPivot.object.position.y = rig.bodyPivot.basePositionY;
+            rig.bodyPivot.object.rotation.x = rig.bodyPivot.baseRotationX;
+            rig.bodyPivot.object.rotation.y = rig.bodyPivot.baseRotationY;
+            rig.bodyPivot.object.rotation.z = rig.bodyPivot.baseRotationZ;
+        }
+        if (rig.headPivot.object) {
+            rig.headPivot.object.rotation.x = rig.headPivot.baseRotationX;
+            rig.headPivot.object.rotation.y = rig.headPivot.baseRotationY;
+            rig.headPivot.object.rotation.z = rig.headPivot.baseRotationZ;
+        }
+        return;
+    }
+
+    const wingSpeed = 72;
     const wingPulse = Math.abs(Math.sin(now * wingSpeed + seed));
-    const wingLift = 0.24 + wingPulse * (flying ? 1.05 : 0.82);
+    const wingLift = 0.24 + wingPulse * 1.05;
 
     if (rig.wingLeft.object) {
         rig.wingLeft.object.rotation.x =
@@ -673,14 +715,6 @@ function updateBeeRig({
             rig.wingRight.baseRotationZ + wingLift;
     }
 
-    const forageAmount =
-        runtime?.phase === 'foraging'
-            ? Math.max(
-                  0,
-                  Math.sin((now - runtime.startedAt) * 5.2 + runtime.dipPhase),
-              )
-            : 0;
-
     if (rig.bodyPivot.object) {
         rig.bodyPivot.object.position.y = MathUtils.damp(
             rig.bodyPivot.object.position.y,
@@ -689,17 +723,13 @@ function updateBeeRig({
             delta,
         );
         rig.bodyPivot.object.rotation.x =
-            rig.bodyPivot.baseRotationX +
-            Math.sin(now * 7.2 + seed) * (flying ? 0.075 : 0.035) -
-            forageAmount * 0.05;
+            rig.bodyPivot.baseRotationX + Math.sin(now * 7.2 + seed) * 0.075;
         rig.bodyPivot.object.rotation.z =
-            rig.bodyPivot.baseRotationZ +
-            Math.sin(now * 5.4 + seed) * (flying ? 0.09 : 0.045);
+            rig.bodyPivot.baseRotationZ + Math.sin(now * 5.4 + seed) * 0.09;
     }
 
     if (rig.headPivot.object) {
-        rig.headPivot.object.rotation.x =
-            rig.headPivot.baseRotationX + forageAmount * 0.12;
+        rig.headPivot.object.rotation.x = rig.headPivot.baseRotationX;
     }
 }
 
@@ -808,7 +838,7 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
                 target: habitat.startTarget,
             });
             runtimeRef.current = runtime;
-            group.position.copy(foragePositionAt(runtime, now));
+            group.position.copy(foragePositionAt(runtime));
         }
 
         if (runtime.phase === 'moving') {
@@ -842,17 +872,18 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
 
             if (progress >= 1) {
                 runtimeRef.current = makeForagingState({
+                    landingPosition: runtime.to.clone(),
                     now,
                     random,
                     target: runtime.target,
                 });
             }
         } else {
-            const nextPosition = foragePositionAt(runtime, now);
+            const nextPosition = foragePositionAt(runtime);
             group.position.copy(nextPosition);
-            facePosition(group, runtime.target.position, delta);
-            group.rotation.x = -0.02 + Math.sin(now * 7 + habitat.seed) * 0.025;
-            group.rotation.z = Math.sin(now * 6 + habitat.seed) * 0.055;
+            group.rotation.x = -0.04;
+            group.rotation.y = runtime.landingYaw;
+            group.rotation.z = 0;
 
             if (now >= runtime.dwellUntil) {
                 const target = chooseNextTarget({
