@@ -182,6 +182,18 @@ export function DebugHud() {
     const currentTime = useLiveTime();
     const setFreezeTime = useGameState((s) => s.setFreezeTime);
     const animalDebugEntries = useGameState((s) => s.animalDebugEntries);
+    const editHitboxDebugVisible = useGameState(
+        (s) => s.editHitboxDebugVisible,
+    );
+    const setEditHitboxDebugVisible = useGameState(
+        (s) => s.setEditHitboxDebugVisible,
+    );
+    const entityRenderModeDebugVisible = useGameState(
+        (s) => s.entityRenderModeDebugVisible,
+    );
+    const setEntityRenderModeDebugVisible = useGameState(
+        (s) => s.setEntityRenderModeDebugVisible,
+    );
     const frameStats = useFrameStats();
     const profileSnapshot = useProfileHudSnapshot();
 
@@ -554,6 +566,16 @@ export function DebugHud() {
     const handleOverrideChange = (checked: boolean | 'indeterminate') => {
         setOverrideWeather(checked === true);
     };
+    const handleEditHitboxDebugChange = (
+        checked: boolean | 'indeterminate',
+    ) => {
+        setEditHitboxDebugVisible(checked === true);
+    };
+    const handleEntityRenderModeDebugChange = (
+        checked: boolean | 'indeterminate',
+    ) => {
+        setEntityRenderModeDebugVisible(checked === true);
+    };
 
     const weatherControlsDisabled = !overrideWeather;
 
@@ -671,6 +693,34 @@ export function DebugHud() {
                                             </div>
                                         </div>
                                     ))
+                                )}
+                            </Stack>
+                        </DebugPanelSection>
+                        <DebugPanelSection title="Scene">
+                            <Stack spacing={2} className="text-xs">
+                                <Checkbox
+                                    label="Show edit hitboxes"
+                                    checked={editHitboxDebugVisible}
+                                    onCheckedChange={
+                                        handleEditHitboxDebugChange
+                                    }
+                                />
+                                <Checkbox
+                                    label="Show render modes"
+                                    checked={entityRenderModeDebugVisible}
+                                    onCheckedChange={
+                                        handleEntityRenderModeDebugChange
+                                    }
+                                />
+                                {entityRenderModeDebugVisible && (
+                                    <div className="grid gap-1 font-mono leading-5">
+                                        <span className="text-emerald-400">
+                                            Green instanced
+                                        </span>
+                                        <span className="text-amber-400">
+                                            Amber component
+                                        </span>
+                                    </div>
                                 )}
                             </Stack>
                         </DebugPanelSection>

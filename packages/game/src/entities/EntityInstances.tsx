@@ -114,18 +114,14 @@ type EntityInstancesAssetBlockProps = Omit<
 
 function hasRenderableBlockInstance({
     name,
-    pickupBlock,
     stacks,
 }: {
     name: string;
-    pickupBlock: Stack['blocks'][number] | null | undefined;
     stacks: Stack[] | undefined;
 }) {
     return (
-        stacks?.some(
-            (stack) =>
-                (!pickupBlock || !stack.blocks.includes(pickupBlock)) &&
-                stack.blocks.some((block) => block.name === name),
+        stacks?.some((stack) =>
+            stack.blocks.some((block) => block.name === name),
         ) ?? false
     );
 }
@@ -148,10 +144,8 @@ function LoadedEntityInstancesAssetBlock({
 }
 
 function EntityInstancesAssetBlock(props: EntityInstancesAssetBlockProps) {
-    const pickupBlock = useGameState((state) => state.pickupBlock);
     const hasInstances = hasRenderableBlockInstance({
         name: props.name,
-        pickupBlock,
         stacks: props.stacks,
     });
 
@@ -178,7 +172,6 @@ export function EntityInstances({
     renderDetails?: boolean;
 }) {
     const qualityProfile = quality ?? resolveGameQualityProfile();
-    const isEditMode = useGameState((state) => state.mode) === 'edit';
     const snowCoverage = useGameState((state) => state.snowCoverage);
     const snowOverlaysVisible =
         snowCoverage >= qualityProfile.snowOverlayMinCoverage;
@@ -240,11 +233,6 @@ export function EntityInstances({
         renderSnow: snowOverlaysVisible,
         snowOverlayMinCoverage: qualityProfile.snowOverlayMinCoverage,
     };
-
-    // In edit mode, blocks are rendered by EntityFactory with proper controls
-    if (isEditMode) {
-        return null;
-    }
 
     return (
         <>

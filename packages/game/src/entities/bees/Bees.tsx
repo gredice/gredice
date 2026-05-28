@@ -11,7 +11,6 @@ import {
 } from 'three';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
-import { useIsEditMode } from '../../hooks/useIsEditMode';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
 import type { Stack } from '../../types/Stack';
 import {
@@ -964,7 +963,6 @@ export function Bees({
     weatherDisabled?: boolean;
 }) {
     const { data: blockData } = useBlockData();
-    const isEditMode = useIsEditMode();
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const gameWeather = useGameState((state) => state.weather);
     const { data: weatherNow } = useWeatherNow(!weatherDisabled && !weather);
@@ -979,11 +977,7 @@ export function Bees({
         [blockData, garden],
     );
 
-    if (
-        isEditMode ||
-        habitats.length <= 0 ||
-        !isBeeActive(timeOfDay, beeWeather)
-    ) {
+    if (habitats.length <= 0 || !isBeeActive(timeOfDay, beeWeather)) {
         return null;
     }
 

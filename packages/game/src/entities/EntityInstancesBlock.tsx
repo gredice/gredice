@@ -2,11 +2,16 @@ import { Instance, Instances } from '@react-three/drei';
 import type { ReactNode } from 'react';
 import type { Material } from 'three';
 import type { BufferGeometry } from 'three/src/Three.Core.js';
+import {
+    type ActiveDragPreviewTarget,
+    activeDragPreviewTargetMatches,
+    createActiveDragPreviewTarget,
+} from '../dragPreviewIdentity';
 import { useBlockData } from '../hooks/useBlockData';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { type SnowMaterialOptions, SnowOverlay } from '../snow/SnowOverlay';
 import type { Stack } from '../types/Stack';
-import { useGameState } from '../useGameState';
+import { type ActiveDragPreview, useGameState } from '../useGameState';
 import { getStackHeight } from '../utils/getStackHeight';
 
 const defaultLocalPosition: [number, number, number] = [0, 0, 0];
@@ -37,6 +42,28 @@ export type EntityInstancesBlockMaterialProps =
           materialNode: ReactNode;
       };
 
+function getDragPreviewOffset(
+    target: ActiveDragPreviewTarget,
+    activeDragPreview: ActiveDragPreview | null,
+) {
+    if (!activeDragPreview) {
+        return null;
+    }
+
+    if (
+        !activeDragPreviewTargetMatches(activeDragPreview.source, target) &&
+        !activeDragPreviewTargetMatches(activeDragPreview.attached, target)
+    ) {
+        return null;
+    }
+
+    return {
+        x: activeDragPreview.relative.x,
+        y: activeDragPreview.attachedHoverHeight + 0.1,
+        z: activeDragPreview.relative.z,
+    };
+}
+
 export function EntityInstancesBlock(
     props: EntityInstancesBlockBaseProps & EntityInstancesBlockMaterialProps,
 ) {
@@ -55,25 +82,31 @@ export function EntityInstancesBlock(
         renderRainWetOverlay = false,
     } = props;
     const { data: blockData } = useBlockData();
-    const pickupBlock = useGameState((state) => state.pickupBlock);
+    const activeDragPreview = useGameState((state) => state.activeDragPreview);
 
     const blockInstances = stacks
-        ?.filter(
-            (stack) =>
-                (!pickupBlock || !stack.blocks.includes(pickupBlock)) &&
-                stack.blocks.some((b) => b.name === name),
-        )
+        ?.filter((stack) => stack.blocks.some((b) => b.name === name))
         .flatMap((stack) =>
             stack.blocks
-                ?.filter((block) => block.name === name)
-                .map((block) => {
+                ?.map((block, blockIndex) => ({ block, blockIndex }))
+                .filter(({ block }) => block.name === name)
+                .map(({ block, blockIndex }) => {
                     const y = getStackHeight(blockData, stack, block);
+                    const target = createActiveDragPreviewTarget({
+                        blockId: block.id,
+                        blockIndex,
+                        stackPosition: stack.position,
+                    });
+                    const dragPreviewOffset = getDragPreviewOffset(
+                        target,
+                        activeDragPreview,
+                    );
                     return {
-                        id: block.id,
+                        id: `${stack.position.x}|${stack.position.z}|${block.id}|${blockIndex}`,
                         position: [
-                            stack.position.x,
-                            y + (yOffset ?? 0),
-                            stack.position.z,
+                            stack.position.x + (dragPreviewOffset?.x ?? 0),
+                            y + (yOffset ?? 0) + (dragPreviewOffset?.y ?? 0),
+                            stack.position.z + (dragPreviewOffset?.z ?? 0),
                         ] as const,
                         rotation: block.rotation || 0,
                     };

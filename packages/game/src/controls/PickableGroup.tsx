@@ -13,6 +13,10 @@ import {
     useState,
 } from 'react';
 import { Plane, Raycaster, Vector2, Vector3 } from 'three';
+import {
+    activeDragPreviewTargetMatches,
+    createActiveDragPreviewTarget,
+} from '../dragPreviewIdentity';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockMove } from '../hooks/useBlockMove';
 import { useBlockRecycle } from '../hooks/useBlockRecycle';
@@ -152,9 +156,28 @@ export function PickableGroup({
               attachedPlacement.candidateBlock,
           )
         : 0;
+    const blockIndex = stack.blocks.indexOf(block);
+    const activePreviewTarget = createActiveDragPreviewTarget({
+        blockId: block.id,
+        blockIndex,
+        stackPosition: stack.position,
+    });
+    const attachedPreviewTarget = attachedPlacement
+        ? createActiveDragPreviewTarget({
+              blockId: attachedPlacement.candidateBlock.id,
+              blockIndex: attachedPlacement.candidateBlockIndex,
+              stackPosition: attachedPlacement.candidateStack.position,
+          })
+        : null;
 
-    const isPreviewSource = activeDragPreview?.sourceBlockId === block.id;
-    const isPreviewAttached = activeDragPreview?.attachedBlockId === block.id;
+    const isPreviewSource = activeDragPreviewTargetMatches(
+        activeDragPreview?.source,
+        activePreviewTarget,
+    );
+    const isPreviewAttached = activeDragPreviewTargetMatches(
+        activeDragPreview?.attached,
+        activePreviewTarget,
+    );
     const wasPreviewAttached = useRef(false);
     const shouldResetAttachedOnPreviewEnd = useRef(false);
     const previousStackPosition = useRef({
@@ -543,7 +566,7 @@ export function PickableGroup({
                         x: stack.position.x,
                         z: stack.position.z,
                     },
-                    blockIndex: stack.blocks.indexOf(block),
+                    blockIndex,
                     sourceBlockId: block.id,
                     blockName: block.name,
                     blockEntityId: blockDataForInventory?.id.toString(),
@@ -559,7 +582,7 @@ export function PickableGroup({
                 triggerPlaceHaptic();
                 await recycleBlock.mutateAsync({
                     position: stack.position,
-                    blockIndex: stack.blocks.indexOf(block),
+                    blockIndex,
                     raisedBedId: raisedBed?.id,
                     attached: attachedPlacement
                         ? {
@@ -603,7 +626,7 @@ export function PickableGroup({
                 await moveBlock.mutateAsync({
                     sourcePosition,
                     destinationPosition,
-                    blockIndex: stack.blocks.indexOf(block),
+                    blockIndex,
                     sourceBlockId: block.id,
                     attached: attachedPlacement
                         ? {
@@ -648,8 +671,8 @@ export function PickableGroup({
             setPickupBlock(block);
             didDrag.current = true;
             setActiveDragPreview({
-                sourceBlockId: block.id,
-                attachedBlockId: attachedPlacement?.candidateBlock.id ?? null,
+                source: activePreviewTarget,
+                attached: attachedPreviewTarget,
                 hoveredGardenBoxBlockId,
                 relative: {
                     x: relative.x,
