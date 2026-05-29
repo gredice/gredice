@@ -5,6 +5,7 @@ import {
 } from '@gredice/storage';
 
 export const dynamic = 'force-dynamic';
+import { formatPrice } from '@gredice/js/currency';
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
 import {
     Card,
@@ -14,6 +15,7 @@ import {
     CardTitle,
 } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
+import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Table } from '@gredice/ui/Table';
@@ -21,16 +23,6 @@ import { Typography } from '@gredice/ui/Typography';
 import LoginDialog from '../../components/auth/LoginDialog';
 import { auth } from '../../lib/auth/auth';
 import { PayoutRequestForm } from './PayoutRequestForm';
-
-function formatAmount(amount: string | number, currency: string) {
-    const value =
-        typeof amount === 'string' ? parseFloat(amount) : amount;
-    return new Intl.NumberFormat('hr-HR', {
-        style: 'currency',
-        currency: currency.toUpperCase(),
-        minimumFractionDigits: 2,
-    }).format(value);
-}
 
 const payoutStatusLabel: Record<
     string,
@@ -42,19 +34,21 @@ const payoutStatusLabel: Record<
     rejected: { label: 'Odbijeno', color: 'error' },
 };
 
+const earningTypeLabel: Record<string, string> = {
+    sowing: 'Sijanje (direktno)',
+    sowingGreenhouse: 'Sijanje (staklenički rasad)',
+};
+
 async function PayoutsContent() {
     const { userId } = await auth(['farmer', 'admin']);
 
     const farms = await getFarms();
 
-    // Find farms where this user is a farm user
-    // We'll compute balance across all farms
     const [balanceResults, allPayouts] = await Promise.all([
         Promise.all(farms.map((f) => getFarmerBalance(userId, f.id))),
         getFarmerPayoutRequests(userId),
     ]);
 
-    // Aggregate balances
     const totalEarned = balanceResults.reduce(
         (s, b) => s + b.totalEarned,
         0,
@@ -71,11 +65,10 @@ async function PayoutsContent() {
     const currency =
         balanceResults.find((b) => b.currency)?.currency ?? 'eur';
 
-    // Flatten earnings by type
     const earningsByType = balanceResults.flatMap((b) => b.earningsByType);
 
-    // Find a farm with prices set (for payout request - use first farm with balance)
-    const farmWithBalance = farms.find((_, i) => balanceResults[i].totalEarned > 0) ?? farms[0];
+    const farmWithBalance =
+        farms.find((_, i) => balanceResults[i].totalEarned > 0) ?? farms[0];
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
@@ -95,7 +88,7 @@ async function PayoutsContent() {
                                 semiBold
                                 className="tabular-nums"
                             >
-                                {formatAmount(totalEarned, currency)}
+                                {formatPrice(totalEarned)}
                             </Typography>
                         </Stack>
                     </CardContent>
@@ -114,7 +107,7 @@ async function PayoutsContent() {
                                 semiBold
                                 className="tabular-nums text-green-700"
                             >
-                                {formatAmount(availableBalance, currency)}
+                                {formatPrice(availableBalance)}
                             </Typography>
                         </Stack>
                     </CardContent>
@@ -133,7 +126,7 @@ async function PayoutsContent() {
                                 semiBold
                                 className="tabular-nums"
                             >
-                                {formatAmount(totalPaid, currency)}
+                                {formatPrice(totalPaid)}
                             </Typography>
                         </Stack>
                     </CardContent>
@@ -166,22 +159,18 @@ async function PayoutsContent() {
                                 {earningsByType.map((e) => (
                                     <Table.Row key={e.entityTypeName}>
                                         <Table.Cell>
-                                            {e.entityTypeName}
+                                            {earningTypeLabel[e.entityTypeName] ??
+                                                e.entityTypeLabel ??
+                                                e.entityTypeName}
                                         </Table.Cell>
                                         <Table.Cell className="text-right tabular-nums">
                                             {e.operationCount}
                                         </Table.Cell>
                                         <Table.Cell className="text-right tabular-nums">
-                                            {formatAmount(
-                                                e.pricePerUnit,
-                                                e.currency,
-                                            )}
+                                            {formatPrice(e.pricePerUnit)}
                                         </Table.Cell>
                                         <Table.Cell className="text-right tabular-nums font-medium">
-                                            {formatAmount(
-                                                e.totalEarned,
-                                                e.currency,
-                                            )}
+                                            {formatPrice(e.totalEarned)}
                                         </Table.Cell>
                                     </Table.Row>
                                 ))}
@@ -226,7 +215,7 @@ async function PayoutsContent() {
                     <CardContent>
                         <Typography level="body2" className="text-muted-foreground">
                             {totalPending > 0
-                                ? `Imaš ${formatAmount(totalPending, currency)} u zahtjevima na čekanju. Pričekaj da administrator obradi zahtjev.`
+                                ? `Imaš ${formatPrice(totalPending)} u zahtjevima na čekanju. Pričekaj da administrator obradi zahtjev.`
                                 : 'Svi iznosi su isplaćeni.'}
                         </Typography>
                     </CardContent>
@@ -260,9 +249,10 @@ async function PayoutsContent() {
                                     return (
                                         <Table.Row key={p.id}>
                                             <Table.Cell className="tabular-nums font-medium">
-                                                {formatAmount(
-                                                    p.requestedAmount,
-                                                    p.currency,
+                                                {formatPrice(
+                                                    parseFloat(
+                                                        p.requestedAmount,
+                                                    ),
                                                 )}
                                             </Table.Cell>
                                             <Table.Cell>
@@ -285,13 +275,11 @@ async function PayoutsContent() {
                                                 </Typography>
                                             </Table.Cell>
                                             <Table.Cell>
-                                                {(
-                                                    p.paidAt ??
-                                                    p.rejectedAt ??
-                                                    p.createdAt
-                                                )?.toLocaleDateString(
-                                                    'hr-HR',
-                                                )}
+                                                <LocalDateTime time={false}>
+                                                    {p.paidAt ??
+                                                        p.rejectedAt ??
+                                                        p.createdAt}
+                                                </LocalDateTime>
                                             </Table.Cell>
                                         </Table.Row>
                                     );

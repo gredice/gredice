@@ -42,6 +42,7 @@ export async function setOperationPriceAction(
     farmId: number,
     entityTypeName: string,
     pricePerUnit: string,
+    entityId?: number | null,
 ) {
     await auth(['admin']);
     const price = parseFloat(pricePerUnit);
@@ -51,6 +52,7 @@ export async function setOperationPriceAction(
     await upsertOperationPrice({
         farmId,
         entityTypeName,
+        entityId: entityId ?? null,
         pricePerUnit: price.toFixed(2),
         currency: 'eur',
     });

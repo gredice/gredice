@@ -393,6 +393,30 @@ export type DeliveryRequestEventsAnyPayload = Partial<
 >;
 
 // ============================================================================
+// Payout events
+// ============================================================================
+export type PayoutRequestedPayload = {
+    userId: string;
+    farmId: number;
+    amount: number;
+    currency: string;
+};
+
+export type PayoutApprovedPayload = {
+    approvedByUserId: string;
+    adminNote?: string;
+};
+
+export type PayoutRejectedPayload = {
+    rejectionReason?: string;
+};
+
+export type PayoutPaidPayload = {
+    bankReference: string;
+    receiptId: number;
+};
+
+// ============================================================================
 // Generic event type
 // ============================================================================
 export type Event = {

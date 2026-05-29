@@ -1,4 +1,6 @@
-import { getAllOperationPrices, getEntityTypes, getFarms } from '@gredice/storage';
+import { getAllOperationPrices, getFarms } from '@gredice/storage';
+import { getEntitiesFormatted } from '@gredice/storage';
+import type { OperationData } from '@gredice/directory-types';
 import {
     Card,
     CardContent,
@@ -12,17 +14,37 @@ import { PriceRow } from './PriceForm';
 
 export const dynamic = 'force-dynamic';
 
+// Synthetic price rows for sowing (not CMS entities)
+const SOWING_ROWS = [
+    {
+        entityTypeName: 'sowing',
+        entityId: null as null,
+        label: 'Sijanje (direktno)',
+        sublabel: 'sowing',
+    },
+    {
+        entityTypeName: 'sowingGreenhouse',
+        entityId: null as null,
+        label: 'Sijanje (staklenički rasad)',
+        sublabel: 'sowingGreenhouse',
+    },
+];
+
 export default async function AdminFarmerPricesPage() {
     await auth(['admin']);
 
-    const [farms, entityTypes, allPrices] = await Promise.all([
+    const [farms, operations, allPrices] = await Promise.all([
         getFarms(),
-        getEntityTypes(),
+        getEntitiesFormatted<OperationData>('operation').catch(() => [] as OperationData[]),
         getAllOperationPrices(),
     ]);
 
+    // Key: `${farmId}:${entityTypeName}:${entityId ?? 'null'}`
     const priceMap = new Map(
-        allPrices.map((p) => [`${p.farmId}:${p.entityTypeName}`, p]),
+        allPrices.map((p) => [
+            `${p.farmId}:${p.entityTypeName}:${p.entityId ?? 'null'}`,
+            p,
+        ]),
     );
 
     return (
@@ -53,27 +75,46 @@ export default async function AdminFarmerPricesPage() {
                         <CardTitle>{farm.name}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {entityTypes.length === 0 ? (
-                            <Typography
-                                level="body2"
-                                className="text-muted-foreground"
-                            >
-                                Nema definiranih vrsta radnji.
-                            </Typography>
-                        ) : (
-                            <Stack spacing={0}>
-                                {entityTypes.map((et) => (
+                        <Stack spacing={0}>
+                            {/* Sowing flat prices */}
+                            {SOWING_ROWS.map((row) => (
+                                <PriceRow
+                                    key={row.entityTypeName}
+                                    farm={farm}
+                                    entityTypeName={row.entityTypeName}
+                                    entityId={row.entityId}
+                                    label={row.label}
+                                    sublabel={row.sublabel}
+                                    currentPrice={priceMap.get(
+                                        `${farm.id}:${row.entityTypeName}:null`,
+                                    )}
+                                />
+                            ))}
+
+                            {/* Per-operation prices */}
+                            {operations.length === 0 ? (
+                                <Typography
+                                    level="body3"
+                                    className="text-muted-foreground py-2"
+                                >
+                                    Nema definiranih vrsta radnji u CMS-u.
+                                </Typography>
+                            ) : (
+                                operations.map((op) => (
                                     <PriceRow
-                                        key={et.name}
+                                        key={op.id}
                                         farm={farm}
-                                        entityType={et}
+                                        entityTypeName="operation"
+                                        entityId={op.id}
+                                        label={op.information.label}
+                                        sublabel={op.information.name}
                                         currentPrice={priceMap.get(
-                                            `${farm.id}:${et.name}`,
+                                            `${farm.id}:operation:${op.id}`,
                                         )}
                                     />
-                                ))}
-                            </Stack>
-                        )}
+                                ))
+                            )}
+                        </Stack>
                     </CardContent>
                 </Card>
             ))}

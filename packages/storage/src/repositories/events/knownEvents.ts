@@ -41,6 +41,10 @@ import type {
     TransactionCreatePayload,
     TransactionUpdatePayload,
     UserBirthdayRewardPayload,
+    PayoutRequestedPayload,
+    PayoutApprovedPayload,
+    PayoutRejectedPayload,
+    PayoutPaidPayload,
 } from './types';
 
 export const knownEvents = {
@@ -479,6 +483,32 @@ export const knownEvents = {
         }),
         consumedV1: (aggregateId: string, data: InventoryChangePayload) => ({
             type: knownEventTypes.inventory.consume,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+    },
+    payouts: {
+        requestedV1: (aggregateId: string, data: PayoutRequestedPayload) => ({
+            type: knownEventTypes.payouts.requested,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        approvedV1: (aggregateId: string, data: PayoutApprovedPayload) => ({
+            type: knownEventTypes.payouts.approved,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        rejectedV1: (aggregateId: string, data: PayoutRejectedPayload) => ({
+            type: knownEventTypes.payouts.rejected,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        paidV1: (aggregateId: string, data: PayoutPaidPayload) => ({
+            type: knownEventTypes.payouts.paid,
             version: 1,
             aggregateId,
             data,

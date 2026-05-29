@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
     decimal,
     index,
@@ -13,6 +13,10 @@ import { receipts } from './invoiceSchema';
 import { farms } from './farmsSchema';
 import { users } from './usersSchema';
 
+// entityTypeName values:
+//   'operation'        → regular operation; entityId identifies the specific CMS operation entity
+//   'sowing'           → flat price per verified direct sowing; entityId is null
+//   'sowingGreenhouse' → flat price per verified greenhouse sowing; entityId is null
 export const operationPrices = pgTable(
     'operation_prices',
     {
@@ -21,6 +25,7 @@ export const operationPrices = pgTable(
             .notNull()
             .references(() => farms.id),
         entityTypeName: text('entity_type_name').notNull(),
+        entityId: integer('entity_id'),
         pricePerUnit: decimal('price_per_unit', {
             precision: 10,
             scale: 2,
@@ -32,10 +37,14 @@ export const operationPrices = pgTable(
             .$onUpdate(() => new Date()),
     },
     (table) => [
-        uniqueIndex('operation_prices_farm_entity_unique').on(
-            table.farmId,
-            table.entityTypeName,
-        ),
+        // For sowing rows (entityId IS NULL): one price per farm+entityTypeName
+        uniqueIndex('operation_prices_farm_type_null_unique')
+            .on(table.farmId, table.entityTypeName)
+            .where(sql`${table.entityId} IS NULL`),
+        // For operation rows (entityId IS NOT NULL): one price per farm+entityTypeName+entityId
+        uniqueIndex('operation_prices_farm_type_entity_unique')
+            .on(table.farmId, table.entityTypeName, table.entityId)
+            .where(sql`${table.entityId} IS NOT NULL`),
         index('operation_prices_farm_id_idx').on(table.farmId),
     ],
 );

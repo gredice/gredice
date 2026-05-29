@@ -1,5 +1,6 @@
 'use client';
 
+import { formatPrice } from '@gredice/js/currency';
 import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
 import { Row } from '@gredice/ui/Row';
@@ -7,6 +8,11 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useState, useTransition } from 'react';
 import { requestPayoutAction } from '../(actions)/payoutActions';
+
+function parseAmount(raw: string): number {
+    // Allow both comma and dot as decimal separator (Croatian input convention)
+    return parseFloat(raw.replace(',', '.'));
+}
 
 export function PayoutRequestForm({
     farmId,
@@ -23,8 +29,7 @@ export function PayoutRequestForm({
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
 
-    const currencyLabel = currency.toUpperCase();
-    const parsedAmount = parseFloat(amount);
+    const parsedAmount = parseAmount(amount);
     const isValid =
         !Number.isNaN(parsedAmount) &&
         parsedAmount > 0 &&
@@ -33,6 +38,7 @@ export function PayoutRequestForm({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        if (!isValid) return;
         startTransition(async () => {
             try {
                 await requestPayoutAction(
@@ -54,7 +60,10 @@ export function PayoutRequestForm({
 
     if (success) {
         return (
-            <Stack spacing={2} className="p-4 rounded-lg bg-green-50 border border-green-200">
+            <Stack
+                spacing={2}
+                className="p-4 rounded-lg bg-green-50 border border-green-200"
+            >
                 <Typography level="body2" semiBold className="text-green-800">
                     Zahtjev za isplatu uspješno poslan!
                 </Typography>
@@ -82,22 +91,22 @@ export function PayoutRequestForm({
             <Stack spacing={4}>
                 <Stack spacing={2}>
                     <Typography level="body2" semiBold>
-                        Iznos isplate ({currencyLabel})
+                        Iznos isplate
                     </Typography>
                     <Row spacing={2} className="items-center">
                         <Input
-                            type="number"
-                            min="0.01"
-                            max={availableBalance.toFixed(2)}
-                            step="0.01"
+                            type="text"
+                            inputMode="decimal"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
                             className="w-36 tabular-nums"
                             required
                         />
-                        <Typography level="body3" className="text-muted-foreground">
-                            {currencyLabel} (max{' '}
-                            {availableBalance.toFixed(2)} {currencyLabel})
+                        <Typography
+                            level="body3"
+                            className="text-muted-foreground"
+                        >
+                            maks. {formatPrice(availableBalance)}
                         </Typography>
                     </Row>
                 </Stack>
