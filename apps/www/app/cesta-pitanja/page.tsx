@@ -46,10 +46,10 @@ export default async function FaqPage() {
                     </Stack>
                     <div className="flex flex-col gap-4">
                         <div className="flex -space-x-2">
-                            <Avatar size="lg" alt="Član tima">
+                            <Avatar size="lg">
                                 <span className="text-sm font-medium">AT</span>
                             </Avatar>
-                            <Avatar size="lg" alt="Član tima" className="ring-2 ring-background">
+                            <Avatar size="lg" className="ring-2 ring-background">
                                 <span className="text-sm font-medium">GR</span>
                             </Avatar>
                         </div>
