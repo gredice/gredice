@@ -125,7 +125,7 @@ export type InvoicePaidPayload = {
 // Receipt event payload types
 // ============================================================================
 export type ReceiptCreatePayload = {
-    invoiceId: string;
+    invoiceId: string | null;
     receiptNumber: string;
     totalAmount: string;
     paymentMethod: string;

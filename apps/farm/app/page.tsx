@@ -12,6 +12,7 @@ import { Chip } from '@gredice/ui/Chip';
 import {
     BookA,
     Calendar,
+    Euro,
     Fence,
     Settings,
     Shield,
@@ -172,6 +173,15 @@ async function FarmerDashboard() {
                                 href="/plants"
                             >
                                 Priručnik biljaka
+                            </Button>
+                            <Button
+                                variant="soft"
+                                size="lg"
+                                className="justify-start"
+                                startDecorator={<Euro className="size-4" />}
+                                href="/payouts"
+                            >
+                                Moje isplate
                             </Button>
                             <Button
                                 variant="soft"

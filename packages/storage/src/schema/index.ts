@@ -13,6 +13,7 @@ export * from './newsletterSchema';
 export * from './notificationSettingsSchema';
 export * from './notificationsSchema';
 export * from './operationsSchema';
+export * from './payoutsSchema';
 export * from './refreshTokensSchema';
 export * from './settingsSchema';
 export * from './shoppingCartSchema';
