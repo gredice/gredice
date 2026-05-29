@@ -15,11 +15,11 @@
         "typecheck": "tsc --noEmit --pretty false"
     },
     "dependencies": {
-        "jose": "5.9.6",
+        "jose": "6.2.3",
         "server-only": "0.0.1"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.15",
+        "@biomejs/biome": "2.4.16",
         "@types/node": "24.12.2",
         "next": "16.2.6",
         "typescript": "6.0.3"
