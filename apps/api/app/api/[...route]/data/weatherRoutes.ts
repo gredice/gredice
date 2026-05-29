@@ -1,4 +1,9 @@
-import { getFarms, grediceCached, grediceCacheKeys } from '@gredice/storage';
+import {
+    getFarms,
+    getWeatherHistory,
+    grediceCached,
+    grediceCacheKeys,
+} from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute } from 'hono-openapi';
 import {
@@ -94,6 +99,30 @@ const app = new Hono()
             };
 
             return context.json(weather);
+        },
+    )
+    .get(
+        '/history',
+        describeRoute({
+            description: 'Get historical weather data',
+        }),
+        async (context) => {
+            const fromParam = context.req.query('from');
+            const toParam = context.req.query('to');
+
+            const from = fromParam ? new Date(fromParam) : undefined;
+            const to = toParam ? new Date(toParam) : undefined;
+
+            if (from && Number.isNaN(from.getTime())) {
+                return context.json({ error: 'Invalid "from" date' }, 400);
+            }
+            if (to && Number.isNaN(to.getTime())) {
+                return context.json({ error: 'Invalid "to" date' }, 400);
+            }
+
+            const history = await getWeatherHistory(from, to);
+            setCacheControl(context, cacheControlPresets.weatherShortTerm);
+            return context.json(history);
         },
     );
 

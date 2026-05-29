@@ -253,6 +253,13 @@
       "when": 1778938710501,
       "tag": "0035_workable_hercules",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1780071062280,
+      "tag": "0036_fresh_plazm",
+      "breakpoints": true
     }
   ]
 }

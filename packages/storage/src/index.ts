@@ -52,5 +52,6 @@ export * from './repositories/socialPostsRepo';
 export * from './repositories/timeSlotsRepo';
 export * from './repositories/transactionsRepo';
 export * from './repositories/usersRepo';
+export * from './repositories/weatherHistoryRepo';
 export * from './schema';
 export * from './storage';
