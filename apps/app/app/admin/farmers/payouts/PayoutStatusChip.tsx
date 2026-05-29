@@ -3,12 +3,12 @@ import type { PayoutStatus } from '@gredice/storage';
 
 const config: Record<
     PayoutStatus,
-    { label: string; color: 'neutral' | 'info' | 'success' | 'danger' | 'warning' }
+    { label: string; color: 'neutral' | 'info' | 'success' | 'error' | 'warning' }
 > = {
     pending: { label: 'Na čekanju', color: 'warning' },
     approved: { label: 'Odobreno', color: 'info' },
     paid: { label: 'Plaćeno', color: 'success' },
-    rejected: { label: 'Odbijeno', color: 'danger' },
+    rejected: { label: 'Odbijeno', color: 'error' },
 };
 
 export function PayoutStatusChip({ status }: { status: string }) {

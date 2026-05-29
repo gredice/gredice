@@ -34,12 +34,12 @@ function formatAmount(amount: string | number, currency: string) {
 
 const payoutStatusLabel: Record<
     string,
-    { label: string; color: 'neutral' | 'warning' | 'info' | 'success' | 'danger' }
+    { label: string; color: 'neutral' | 'warning' | 'info' | 'success' | 'error' }
 > = {
     pending: { label: 'Na čekanju', color: 'warning' },
     approved: { label: 'Odobreno', color: 'info' },
     paid: { label: 'Isplaćeno', color: 'success' },
-    rejected: { label: 'Odbijeno', color: 'danger' },
+    rejected: { label: 'Odbijeno', color: 'error' },
 };
 
 async function PayoutsContent() {
