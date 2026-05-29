@@ -15,11 +15,13 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { isWeatherHistoryUiEnabled } from '@gredice/js/featureFlags';
 import type { SelectEntityType } from '@gredice/storage';
 import {
     AI,
     Bank,
     Calendar,
+    Cloud,
     Euro,
     Fence,
     File,
@@ -208,6 +210,7 @@ export function Nav({
         pathname,
         adminPages.SowingStatistics.href,
     );
+    const weatherEnabled = isWeatherHistoryUiEnabled();
 
     return (
         <div className={navClassName}>
@@ -438,6 +441,7 @@ export function Nav({
                     icon={<MapIcon className="size-5" />}
                     forceOpen={includesSelectedPath(pathname, [
                         adminPages.Farms.href,
+                        adminPages.Weather.href,
                         adminPages.Gardens.href,
                         adminPages.RaisedBeds.href,
                         adminPages.Operations.href,
@@ -452,6 +456,16 @@ export function Nav({
                         compact={compact}
                         nested
                     />
+                    {weatherEnabled && (
+                        <NavItem
+                            href={adminPages.Weather.href}
+                            label={adminPages.Weather.label}
+                            icon={<Cloud className="size-5" />}
+                            onClick={onItemClick}
+                            compact={compact}
+                            nested
+                        />
+                    )}
                     <NavItem
                         href={adminPages.Gardens.href}
                         label={adminPages.Gardens.label}

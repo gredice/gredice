@@ -49,6 +49,7 @@ export const KnownPages = {
     Account: (accountId: string) => `/admin/accounts/${accountId}` as Route,
     Farms: '/admin/farms',
     Farm: (farmId: number) => `/admin/farms/${farmId}` as Route,
+    Weather: '/admin/weather',
     Achievements: '/admin/achievements',
     Gardens: '/admin/gardens',
     Garden: (gardenId: number) => `/admin/gardens/${gardenId}` as Route,

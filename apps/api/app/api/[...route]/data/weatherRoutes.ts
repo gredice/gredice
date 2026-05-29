@@ -1,6 +1,7 @@
 import {
     getFarms,
     getWeatherHistory,
+    getWeatherHistoryBounds,
     grediceCached,
     grediceCacheKeys,
 } from '@gredice/storage';
@@ -123,6 +124,20 @@ const app = new Hono()
             const history = await getWeatherHistory(from, to);
             setCacheControl(context, cacheControlPresets.weatherShortTerm);
             return context.json(history);
+        },
+    )
+    .get(
+        '/history/range',
+        describeRoute({
+            description: 'Get the available range of historical weather data',
+        }),
+        async (context) => {
+            const bounds = await getWeatherHistoryBounds();
+            setCacheControl(context, cacheControlPresets.weatherShortTerm);
+            return context.json({
+                from: bounds.from ? bounds.from.toISOString() : null,
+                to: bounds.to ? bounds.to.toISOString() : null,
+            });
         },
     );
 

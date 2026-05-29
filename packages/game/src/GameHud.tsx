@@ -58,7 +58,12 @@ export function GameHud({
             </div>
             <div className="absolute top-2 right-2 flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2">
                 <div className={closeupHiddenHudClassName}>
-                    <WeatherHud noWeather={noWeather} />
+                    <WeatherHud
+                        noWeather={noWeather}
+                        enableHistory={Boolean(
+                            flags?.enableWeatherHistoryFlag,
+                        )}
+                    />
                 </div>
                 <SunflowersHud />
             </div>
