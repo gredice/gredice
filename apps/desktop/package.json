@@ -22,8 +22,8 @@
         "test": "node --test tests/*.test.mjs"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.15",
-        "electron": "42.2.0",
+        "@biomejs/biome": "2.4.16",
+        "electron": "42.3.0",
         "electron-builder": "26.8.1",
         "rimraf": "6.1.3"
     }

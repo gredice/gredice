@@ -27,8 +27,8 @@
         "notifications:backfill-rollout": "tsx --env-file=.env ./scripts/backfillNotificationRolloutDefaults.ts"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.15",
-        "@electric-sql/pglite": "0.4.5",
+        "@biomejs/biome": "2.4.16",
+        "@electric-sql/pglite": "0.4.6",
         "@gredice/directory-types": "workspace:*",
         "@gredice/js": "workspace:*",
         "@neondatabase/serverless": "1.1.0",
