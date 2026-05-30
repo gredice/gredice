@@ -10,6 +10,7 @@ import {
     addGardenBoxInventoryItem,
     buildRaisedBedFieldPlantUpdatePayload,
     countAiRequestEventsSince,
+    countRaisedBedsByAccount,
     createDefaultGardenForAccount,
     createEvent,
     createGardenBlock,
@@ -54,7 +55,9 @@ import { isBlockPurchaseAvailableNow } from '../../../lib/garden/nightOnlyBlockP
 import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
 import {
     AI_REQUEST_QUOTAS,
+    AI_REQUEST_WEEKLY_LIMIT_PER_ACTIVE_RAISED_BED,
     type AiRequestKind,
+    getRaisedBedImageAnalysisWeeklyLimit,
     RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
     streamRaisedBedImageAnalysis,
     validateImageUrls,
@@ -136,13 +139,53 @@ async function getAiRequestQuotaUsage(
     requestKind: AiRequestKind,
 ) {
     const quota = AI_REQUEST_QUOTAS[requestKind];
-    const used = await countRecentAiRequests(accountId, requestKind);
+    const [used, limitDetails] = await Promise.all([
+        countRecentAiRequests(accountId, requestKind),
+        getAiRequestQuotaLimit(accountId, requestKind),
+    ]);
 
     return {
         ...quota,
+        ...limitDetails,
         used,
-        remaining: Math.max(0, quota.limit - used),
+        remaining: Math.max(0, limitDetails.limit - used),
     };
+}
+
+async function getAiRequestQuotaLimit(
+    accountId: string,
+    requestKind: AiRequestKind,
+) {
+    switch (requestKind) {
+        case RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND: {
+            const activeRaisedBedCount = await countRaisedBedsByAccount(
+                accountId,
+                { status: 'active' },
+            );
+
+            return {
+                activeRaisedBedCount,
+                limit: getRaisedBedImageAnalysisWeeklyLimit(
+                    activeRaisedBedCount,
+                ),
+                limitPerActiveRaisedBed:
+                    AI_REQUEST_WEEKLY_LIMIT_PER_ACTIVE_RAISED_BED,
+            };
+        }
+    }
+
+    const unreachable: never = requestKind;
+    throw new Error(`Unsupported AI request kind: ${unreachable}`);
+}
+
+type AiRequestQuotaUsage = Awaited<ReturnType<typeof getAiRequestQuotaUsage>>;
+
+function formatAiQuotaExceededError(aiQuota: AiRequestQuotaUsage) {
+    if (aiQuota.activeRaisedBedCount === 0) {
+        return 'AI savjeti dostupni su za aktivne gredice. Aktivirajte gredicu pa pokušajte ponovno.';
+    }
+
+    return `Iskoristili ste tjedni limit AI savjeta (${aiQuota.used.toString()}/${aiQuota.limit.toString()}). Za svaku aktivnu gredicu dostupno je ${aiQuota.limitPerActiveRaisedBed.toString()} savjeta tjedno. Pokušajte ponovno kasnije.`;
 }
 
 async function countRecentRaisedBedImageAnalyses(
@@ -2120,7 +2163,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (aiQuota.used >= aiQuota.limit) {
                 return context.json(
                     {
-                        error: `Dosegnut je tjedni limit AI zahtjeva (${aiQuota.limit.toString()}/tjedan). Pokušaj ponovno kasnije.`,
+                        code: 'ai_quota_exceeded',
+                        error: formatAiQuotaExceededError(aiQuota),
                     },
                     429,
                 );
@@ -2582,7 +2626,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (aiQuota.used >= aiQuota.limit) {
                 return context.json(
                     {
-                        error: `Dosegnut je tjedni limit AI zahtjeva (${aiQuota.limit.toString()}/tjedan). Pokušaj ponovno kasnije.`,
+                        code: 'ai_quota_exceeded',
+                        error: formatAiQuotaExceededError(aiQuota),
                     },
                     429,
                 );

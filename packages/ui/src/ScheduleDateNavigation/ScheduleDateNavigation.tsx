@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { Left, Navigate } from '../icons';
+import { Link } from '../Link';
 import { Row } from '../Row';
 import { Typography } from '../Typography';
 

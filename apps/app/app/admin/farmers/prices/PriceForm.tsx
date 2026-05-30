@@ -1,7 +1,6 @@
 'use client';
 
 import { formatPrice } from '@gredice/js/currency';
-import type { SelectFarm } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { Input } from '@gredice/ui/Input';
@@ -13,7 +12,7 @@ import {
     setOperationPriceAction,
 } from '../../../(actions)/payoutAdminActions';
 
-type CurrentPrice = {
+export type CurrentPrice = {
     id: number;
     pricePerUnit: string;
     currency: string;
@@ -43,7 +42,7 @@ function formatPriceRange(priceRange: PriceRange) {
 }
 
 export function PriceRow({
-    farm,
+    farmId,
     entityTypeName,
     entityId,
     label,
@@ -54,7 +53,7 @@ export function PriceRow({
     isInternalOperation = false,
     currentPrice,
 }: {
-    farm: SelectFarm;
+    farmId: number;
     entityTypeName: string;
     entityId?: number | null;
     label: string;
@@ -90,7 +89,7 @@ export function PriceRow({
         if (!trimmed) return;
         startTransition(async () => {
             await setOperationPriceAction(
-                farm.id,
+                farmId,
                 entityTypeName,
                 trimmed,
                 entityId ?? null,

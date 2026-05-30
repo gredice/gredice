@@ -2,8 +2,16 @@
 
 import Image from 'next/image';
 import type React from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useId,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import { Chip } from '../Chip';
+import { useImageFitZoom } from '../hooks/useImageFitZoom';
 import { IconButton } from '../IconButton';
 import { Add, ArrowLeft, ArrowRight, Close, Remove, Save } from '../icons';
 import { Modal } from '../Modal';
@@ -29,22 +37,34 @@ export function ImageGallery({
     previewAs = 'button',
     previewVariant = 'carousel',
 }: ImageGalleryProps) {
+    const imageInstructionsId = useId();
+    const lastFocusedElementRef = useRef<Element | null>(null);
     const [isStackHovered, setIsStackHovered] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(0);
-    const [zoomLevel, setZoomLevel] = useState(1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [lastPinchDistance, setLastPinchDistance] = useState(0);
     const [isPinching, setIsPinching] = useState(false);
-    const imageRef = useRef<HTMLDivElement>(null);
 
     const hasImages = images.length > 0;
     const safeIndex = hasImages
         ? Math.min(selectedIndex, images.length - 1)
         : 0;
     const activeImage = images[safeIndex];
+    const {
+        clampZoomLevel,
+        handleImageLoad,
+        minimumZoomLevel,
+        resetZoomLevel,
+        setZoomLevel,
+        viewerRef: imageRef,
+        zoomLevel,
+    } = useImageFitZoom<HTMLButtonElement>(isExpanded, activeImage?.src ?? '');
+    const activeImageLabel = activeImage
+        ? activeImage.alt?.trim() || `Slika ${safeIndex + 1}`
+        : 'Slika';
 
     const resolveAlt = (imageAlt: string | null | undefined, index: number) =>
         imageAlt?.trim() || `Slika ${index + 1}`;
@@ -52,11 +72,31 @@ export function ImageGallery({
     const stackedImages = useMemo(() => images.slice(0, 4), [images]);
 
     const resetTransform = useCallback(() => {
-        setZoomLevel(1);
+        resetZoomLevel();
         setPosition({ x: 0, y: 0 });
         setIsDragging(false);
         setIsPinching(false);
         setLastPinchDistance(0);
+    }, [resetZoomLevel]);
+
+    const rememberFocusedElement = (element?: Element | null) => {
+        if (element) {
+            lastFocusedElementRef.current = element;
+            return;
+        }
+
+        if (document.activeElement instanceof HTMLElement) {
+            lastFocusedElementRef.current = document.activeElement;
+        }
+    };
+
+    const restoreFocusedElement = useCallback(() => {
+        window.requestAnimationFrame(() => {
+            const element = lastFocusedElementRef.current;
+            if (element instanceof HTMLElement && element.isConnected) {
+                element.focus({ preventScroll: true });
+            }
+        });
     }, []);
 
     const getTouchDistance = (touch1: React.Touch, touch2: React.Touch) => {
@@ -67,12 +107,12 @@ export function ImageGallery({
 
     const handleZoomIn = (e?: React.MouseEvent) => {
         e?.stopPropagation();
-        setZoomLevel((prev) => Math.min(prev + 0.5, 5));
+        setZoomLevel((prev) => clampZoomLevel(prev + 0.5));
     };
 
     const handleZoomOut = (e?: React.MouseEvent) => {
         e?.stopPropagation();
-        setZoomLevel((prev) => Math.max(prev - 0.5, 0.5));
+        setZoomLevel((prev) => clampZoomLevel(prev - 0.5));
     };
 
     const handleDownload = async (e?: React.MouseEvent) => {
@@ -94,7 +134,8 @@ export function ImageGallery({
         }
     };
 
-    const openModal = (index: number) => {
+    const openModal = (index: number, trigger?: Element | null) => {
+        rememberFocusedElement(trigger);
         setSelectedIndex(index);
         setIsExpanded(true);
         resetTransform();
@@ -105,8 +146,9 @@ export function ImageGallery({
             e?.stopPropagation?.();
             setIsExpanded(false);
             resetTransform();
+            restoreFocusedElement();
         },
-        [resetTransform],
+        [resetTransform, restoreFocusedElement],
     );
 
     const selectImage = useCallback(
@@ -188,11 +230,7 @@ export function ImageGallery({
             const scale = distance / lastPinchDistance;
 
             if (scale > 0 && Number.isFinite(scale)) {
-                const newZoomLevel = Math.min(
-                    Math.max(zoomLevel * scale, 0.5),
-                    5,
-                );
-                setZoomLevel(newZoomLevel);
+                setZoomLevel(clampZoomLevel(zoomLevel * scale));
                 setLastPinchDistance(distance);
             }
         }
@@ -217,20 +255,73 @@ export function ImageGallery({
     const handleWheel = (e: React.WheelEvent) => {
         e.stopPropagation();
         const delta = e.deltaY > 0 ? -0.2 : 0.2;
-        setZoomLevel((prev) => Math.min(Math.max(prev + delta, 0.5), 5));
+        setZoomLevel((prev) => clampZoomLevel(prev + delta));
+    };
+
+    const handleImageKeyDown = (e: React.KeyboardEvent) => {
+        e.stopPropagation();
+
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            closeExpanded(e);
+            return;
+        }
+
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            goToPrevious(e);
+            return;
+        }
+
+        if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            goToNext(e);
+            return;
+        }
+
+        if (e.key === '+' || e.key === '=') {
+            e.preventDefault();
+            setZoomLevel((prev) => clampZoomLevel(prev + 0.5));
+            return;
+        }
+
+        if (e.key === '-' || e.key === '_') {
+            e.preventDefault();
+            setZoomLevel((prev) => clampZoomLevel(prev - 0.5));
+            return;
+        }
+
+        if (e.key === '0') {
+            e.preventDefault();
+            resetTransform();
+        }
     };
 
     const handleModalOpenChange = (open: boolean) => {
         setIsExpanded(open);
         if (!open) {
             resetTransform();
+            restoreFocusedElement();
         }
     };
 
     useEffect(() => {
         if (!isExpanded) return;
 
+        const frame = window.requestAnimationFrame(() => {
+            imageRef.current?.focus({ preventScroll: true });
+        });
+
+        return () => {
+            window.cancelAnimationFrame(frame);
+        };
+    }, [imageRef, isExpanded]);
+
+    useEffect(() => {
+        if (!isExpanded) return;
+
         const onKeyDown = (event: KeyboardEvent) => {
+            if (event.defaultPrevented) return;
             if (event.key === 'ArrowLeft') {
                 event.preventDefault();
                 goToPrevious();
@@ -243,13 +334,33 @@ export function ImageGallery({
                 event.preventDefault();
                 closeExpanded();
             }
+            if (event.key === '+' || event.key === '=') {
+                event.preventDefault();
+                setZoomLevel((prev) => clampZoomLevel(prev + 0.5));
+            }
+            if (event.key === '-' || event.key === '_') {
+                event.preventDefault();
+                setZoomLevel((prev) => clampZoomLevel(prev - 0.5));
+            }
+            if (event.key === '0') {
+                event.preventDefault();
+                resetTransform();
+            }
         };
 
         window.addEventListener('keydown', onKeyDown);
         return () => {
             window.removeEventListener('keydown', onKeyDown);
         };
-    }, [closeExpanded, goToNext, goToPrevious, isExpanded]);
+    }, [
+        clampZoomLevel,
+        closeExpanded,
+        goToNext,
+        goToPrevious,
+        isExpanded,
+        resetTransform,
+        setZoomLevel,
+    ]);
 
     const PreviewComponent = previewAs;
 
@@ -275,8 +386,8 @@ export function ImageGallery({
                                 : {
                                       role: 'button' as const,
                                       tabIndex: 0,
-                                      'aria-label': `Otvori sliku ${index + 1} u punoj veličini`,
                                   })}
+                            aria-label={`Otvori sliku ${index + 1} u punoj veličini: ${resolveAlt(image.alt, index)}`}
                             title="Otvori u punoj veličini"
                             className="group relative shrink-0 overflow-hidden rounded-lg bg-muted shadow-md transition-shadow duration-200 hover:cursor-zoom-in hover:shadow-lg"
                             style={{
@@ -285,7 +396,7 @@ export function ImageGallery({
                             }}
                             onClick={(event: React.MouseEvent) => {
                                 event.stopPropagation();
-                                openModal(index);
+                                openModal(index, event.currentTarget);
                             }}
                             onKeyDown={(event: React.KeyboardEvent) => {
                                 if (previewAs === 'button') return;
@@ -295,7 +406,7 @@ export function ImageGallery({
                                     event.key === ' '
                                 ) {
                                     event.preventDefault();
-                                    openModal(index);
+                                    openModal(index, event.currentTarget);
                                 }
                             }}
                         >
@@ -317,8 +428,8 @@ export function ImageGallery({
                         : {
                               role: 'button' as const,
                               tabIndex: 0,
-                              'aria-label': 'Otvori galeriju u punoj veličini',
                           })}
+                    aria-label={`Otvori galeriju u punoj veličini (${images.length} ${images.length === 1 ? 'slika' : 'slike'})`}
                     title="Otvori galeriju u punoj veličini"
                     className="group relative flex items-center justify-center"
                     style={{ width: previewWidth, height: previewHeight }}
@@ -328,14 +439,14 @@ export function ImageGallery({
                     onBlur={() => setIsStackHovered(false)}
                     onClick={(event: React.MouseEvent) => {
                         event.stopPropagation();
-                        openModal(0);
+                        openModal(0, event.currentTarget);
                     }}
                     onKeyDown={(event: React.KeyboardEvent) => {
                         if (previewAs === 'button') return;
                         event.stopPropagation();
                         if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
-                            openModal(0);
+                            openModal(0, event.currentTarget);
                         }
                     }}
                 >
@@ -383,6 +494,11 @@ export function ImageGallery({
                 )}
             >
                 <div className="relative flex h-full w-full overflow-clip">
+                    <p id={imageInstructionsId} className="sr-only">
+                        Pritisni Escape za zatvaranje, lijevu ili desnu strelicu
+                        za promjenu slike, plus ili minus za zumiranje i nulu za
+                        prilagodbu zaslonu.
+                    </p>
                     <div
                         className="absolute right-4 top-4 z-10 flex gap-1"
                         style={{
@@ -390,6 +506,7 @@ export function ImageGallery({
                         }}
                     >
                         <IconButton
+                            aria-label="Prethodna slika"
                             title="Prethodna"
                             variant="outlined"
                             className="rounded-xl bg-background/80 backdrop-blur"
@@ -398,6 +515,7 @@ export function ImageGallery({
                             <ArrowLeft className="size-4 shrink-0" />
                         </IconButton>
                         <IconButton
+                            aria-label="Sljedeća slika"
                             title="Sljedeća"
                             variant="outlined"
                             className="rounded-xl bg-background/80 backdrop-blur"
@@ -406,15 +524,17 @@ export function ImageGallery({
                             <ArrowRight className="size-4 shrink-0" />
                         </IconButton>
                         <IconButton
+                            aria-label="Smanji sliku"
                             title="Smanji"
                             variant="outlined"
                             className="rounded-xl bg-background/80 backdrop-blur"
                             onClick={handleZoomOut}
-                            disabled={zoomLevel <= 0.5}
+                            disabled={zoomLevel <= minimumZoomLevel}
                         >
                             <Remove className="size-4 shrink-0" />
                         </IconButton>
                         <IconButton
+                            aria-label="Uvećaj sliku"
                             title="Uvećaj"
                             variant="outlined"
                             className="rounded-xl bg-background/80 backdrop-blur"
@@ -424,6 +544,7 @@ export function ImageGallery({
                             <Add className="size-4 shrink-0" />
                         </IconButton>
                         <IconButton
+                            aria-label="Preuzmi sliku"
                             title="Preuzmi"
                             variant="outlined"
                             className="rounded-xl bg-background/80 backdrop-blur"
@@ -432,6 +553,7 @@ export function ImageGallery({
                             <Save className="size-4 shrink-0" />
                         </IconButton>
                         <IconButton
+                            aria-label="Zatvori pregled galerije"
                             title="Zatvori"
                             variant="solid"
                             className="rounded-xl"
@@ -441,23 +563,26 @@ export function ImageGallery({
                         </IconButton>
                     </div>
 
-                    <div className="flex h-full w-full items-center justify-center pb-32 sm:pb-36">
-                        <div
+                    <div className="flex h-full min-h-0 w-full min-w-0 items-center justify-center pb-32 sm:pb-36">
+                        <button
+                            type="button"
                             ref={imageRef}
-                            role="option"
-                            tabIndex={0}
-                            className="relative h-full w-full cursor-grab overflow-hidden active:cursor-grabbing touch-none"
+                            aria-describedby={imageInstructionsId}
+                            aria-keyshortcuts="Escape ArrowLeft ArrowRight + - = 0"
+                            aria-label={`Interaktivni pregled slike ${safeIndex + 1} od ${images.length}: ${activeImageLabel}`}
+                            className="relative block h-full min-h-0 w-full min-w-0 cursor-grab overflow-hidden border-0 bg-transparent p-0 text-inherit active:cursor-grabbing touch-none"
                             onMouseDown={handleMouseDown}
                             onMouseMove={handleMouseMove}
                             onMouseUp={handleMouseUp}
                             onMouseLeave={handleMouseUp}
+                            onKeyDown={handleImageKeyDown}
                             onTouchStart={handleTouchStart}
                             onTouchMove={handleTouchMove}
                             onTouchEnd={handleTouchEnd}
                             onWheel={handleWheel}
                             style={{ touchAction: 'none' }}
                         >
-                            <div
+                            <span
                                 className="relative flex h-full w-full select-none items-center justify-center transition-transform duration-200 ease-out will-change-transform"
                                 style={{
                                     transform: `scale(${zoomLevel}) translate(${position.x / zoomLevel}px, ${position.y / zoomLevel}px)`,
@@ -466,19 +591,23 @@ export function ImageGallery({
                             >
                                 {/** biome-ignore lint/performance/noImgElement: Using raw <img> intentionally for fallback display */}
                                 <img
+                                    key={`${safeIndex}-${activeImage.src}`}
                                     src={activeImage.src}
                                     alt={resolveAlt(
                                         activeImage?.alt,
                                         safeIndex,
                                     )}
-                                    className="max-h-full max-w-full select-none object-contain"
+                                    className="h-auto w-auto max-h-none max-w-none select-none object-contain"
                                     draggable={false}
+                                    onLoad={handleImageLoad}
                                 />
-                            </div>
-                        </div>
+                            </span>
+                        </button>
                     </div>
 
                     <Chip
+                        aria-label={`Slika ${safeIndex + 1} od ${images.length}, zumiranje ${Math.round(zoomLevel * 100)} posto`}
+                        aria-live="polite"
                         className="absolute left-4 [top:calc(env(safe-area-inset-top)+1rem)] z-10 select-none border-0 bg-black/60 text-white/80 backdrop-blur"
                         variant="solid"
                     >
@@ -498,6 +627,10 @@ export function ImageGallery({
                                 <button
                                     key={image.src}
                                     type="button"
+                                    aria-current={
+                                        safeIndex === index ? 'true' : undefined
+                                    }
+                                    aria-label={`Prikaži sliku ${index + 1}: ${resolveAlt(image.alt, index)}`}
                                     onClick={(event) => {
                                         event.stopPropagation();
                                         selectImage(index);

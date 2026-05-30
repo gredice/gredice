@@ -7,6 +7,26 @@ import { auth } from '../../../lib/auth/auth';
 
 export const dynamic = 'force-dynamic';
 
+async function getForecast() {
+    try {
+        const response = await clientPublic().api.data.weather.$get();
+        return response.ok ? await response.json() : [];
+    } catch (error) {
+        console.error('Failed to load weather forecast for admin page:', error);
+        return [];
+    }
+}
+
+async function getCurrentWeather() {
+    try {
+        const response = await clientPublic().api.data.weather.now.$get();
+        return response.ok ? await response.json() : null;
+    } catch (error) {
+        console.error('Failed to load current weather for admin page:', error);
+        return null;
+    }
+}
+
 export default async function WeatherPage({
     searchParams,
 }: {
@@ -21,16 +41,12 @@ export default async function WeatherPage({
     const safeFrom = Number.isNaN(from.getTime()) ? defaults.from : from;
     const safeTo = Number.isNaN(to.getTime()) ? defaults.to : to;
 
-    const [historyRows, bounds, forecastResponse, currentResponse] =
-        await Promise.all([
-            getWeatherHistory(safeFrom, safeTo),
-            getWeatherHistoryBounds(),
-            clientPublic().api.data.weather.$get(),
-            clientPublic().api.data.weather.now.$get(),
-        ]);
-
-    const forecast = forecastResponse.ok ? await forecastResponse.json() : [];
-    const current = currentResponse.ok ? await currentResponse.json() : null;
+    const [historyRows, bounds, forecast, current] = await Promise.all([
+        getWeatherHistory(safeFrom, safeTo),
+        getWeatherHistoryBounds(),
+        getForecast(),
+        getCurrentWeather(),
+    ]);
 
     const history = historyRows.map((row) => ({
         ...row,

@@ -1,6 +1,11 @@
 import { ImageViewer } from '@gredice/ui/ImageViewer';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
+const largeImageSvg = encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="4000" height="3000" viewBox="0 0 4000 3000"><rect width="4000" height="3000" fill="#2f7d46"/><circle cx="2000" cy="1500" r="900" fill="#f7d04a"/><text x="2000" y="1540" text-anchor="middle" font-size="240" font-family="Arial" fill="#1f2937">4000 x 3000</text></svg>',
+);
+const largeImageSrc = `data:image/svg+xml,${largeImageSvg}`;
+
 const meta = {
     title: 'packages/ui/Media/ImageViewer',
     component: ImageViewer,
@@ -9,7 +14,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'ImageViewer renders an image preview that can open a larger viewer while preserving alt text and preview dimensions.',
+                    'ImageViewer renders an image preview that opens a fit-to-screen viewer while preserving alt text and preview dimensions.',
             },
         },
     },
@@ -32,6 +37,13 @@ export const SmallPreview: Story = {
     args: {
         previewWidth: 120,
         previewHeight: 120,
+    },
+};
+
+export const LargeImage: Story = {
+    args: {
+        src: largeImageSrc,
+        alt: 'Large garden image',
     },
 };
 

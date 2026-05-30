@@ -17,15 +17,7 @@ import {
     useWeatherHistoryRange,
 } from '../../../hooks/useWeatherHistory';
 
-export function WeatherHistoryModal({
-    trigger,
-    open,
-    onOpenChange,
-}: {
-    trigger?: React.ReactNode;
-    open?: boolean;
-    onOpenChange?: (open: boolean) => void;
-}) {
+export function WeatherHistoryPanel({ className }: { className?: string }) {
     const [range, setRange] = useState<WeatherChartsRange>(() =>
         getDefaultWeatherRange(),
     );
@@ -41,6 +33,32 @@ export function WeatherHistoryModal({
     const bounds = getWeatherDataBounds(historyRange?.from, forecast);
 
     return (
+        <div className={className}>
+            <WeatherCharts
+                history={history}
+                forecast={forecast}
+                range={range}
+                bounds={bounds}
+                onRangeChange={setRange}
+                metric={metric}
+                onMetricChange={setMetric}
+                isLoading={historyLoading || forecastLoading}
+                compact
+            />
+        </div>
+    );
+}
+
+export function WeatherHistoryModal({
+    trigger,
+    open,
+    onOpenChange,
+}: {
+    trigger?: React.ReactNode;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+}) {
+    return (
         <Modal
             trigger={trigger}
             open={open}
@@ -48,19 +66,7 @@ export function WeatherHistoryModal({
             title="Vremenske prilike"
             className="w-full max-w-3xl"
         >
-            <div className="pt-2">
-                <WeatherCharts
-                    history={history}
-                    forecast={forecast}
-                    range={range}
-                    bounds={bounds}
-                    onRangeChange={setRange}
-                    metric={metric}
-                    onMetricChange={setMetric}
-                    isLoading={historyLoading || forecastLoading}
-                    compact
-                />
-            </div>
+            <WeatherHistoryPanel className="pt-2" />
         </Modal>
     );
 }
