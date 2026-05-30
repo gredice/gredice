@@ -26,10 +26,10 @@ export function RotatableGroup({
     const doubleClickDownTimeStamp = useRef(0);
     const firstClickTimeStamp = useRef(0);
 
-    async function doRotate() {
-        if (!rotateInitiated.current) return;
+    function doRotate() {
+        if (!rotateInitiated.current) return false;
 
-        if (isDragging || pickupBlock) return;
+        if (isDragging || pickupBlock) return false;
 
         const attachedRaisedBedBlockId =
             block.name === 'Raised_Bed' && garden
@@ -47,6 +47,7 @@ export function RotatableGroup({
         rotateInitiated.current = null;
 
         swipeSound.play();
+        return true;
     }
 
     function handlePointerDown(event: ThreeEvent<globalThis.PointerEvent>) {
@@ -87,7 +88,9 @@ export function RotatableGroup({
 
         if (!rotateInitiated.current) return;
 
-        doRotate();
+        if (doRotate()) {
+            event.stopPropagation();
+        }
     }
 
     return (

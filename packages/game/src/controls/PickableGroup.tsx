@@ -882,6 +882,8 @@ export function PickableGroup({
             return;
         }
 
+        event.stopPropagation();
+
         const nativeEvent = event.nativeEvent;
         const session: PointerSession = {
             pointerId: nativeEvent.pointerId,
