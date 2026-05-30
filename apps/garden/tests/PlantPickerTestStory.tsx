@@ -154,6 +154,10 @@ function createPlantPickerQueryClient() {
     });
 
     queryClient.setQueryData(['currentUser'], { id: 'test-user' });
+    queryClient.setQueryData(
+        ['gardens'],
+        [{ id: 1, name: 'Mock vrt', isSandbox: false, createdAt: now }],
+    );
     queryClient.setQueryData(['shopping-cart'], {
         id: 1,
         items: [],

@@ -7,6 +7,7 @@ import {
     getPlantLifecycleWindowDays,
     resolveInGamePlantPreset,
 } from '../../generators/plant/lib/inGamePlantPresets';
+import { useIsSandboxGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useSnapshotTime } from '../../hooks/useSnapshotTime';
 import { useGameState } from '../../useGameState';
@@ -35,6 +36,7 @@ export function RaisedBedPlantField({
     const { data: sortData } = usePlantSort(plantSortId);
     const flags = useGameFlags();
     const isMock = useGameState((state) => state.isMock);
+    const isSandbox = useIsSandboxGarden();
     const currentTime = useSnapshotTime();
     const offsetX =
         orientation === 'vertical' ? 0.31 - blockIndex * 0.05 : 0.27;
@@ -101,7 +103,7 @@ export function RaisedBedPlantField({
               })
             : 0;
     const shouldRenderGeneratedPlants =
-        Boolean(flags.enablePlantGeneratorFlag || isMock) &&
+        Boolean(flags.enablePlantGeneratorFlag || isMock || isSandbox) &&
         Boolean(resolvedPlantPreset) &&
         Boolean(plantSowDate) &&
         (field.plantStatus === 'sprouted' ||

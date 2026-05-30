@@ -806,6 +806,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         gardens: gardens.map((garden) => ({
                             id: garden.id,
                             name: garden.name,
+                            isSandbox: garden.isSandbox,
                             createdAt: garden.createdAt,
                         })),
                     };

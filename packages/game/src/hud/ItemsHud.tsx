@@ -14,6 +14,7 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockPlace } from '../hooks/useBlockPlace';
+import { useIsSandboxGarden } from '../hooks/useCurrentGarden';
 import { KnownPages } from '../knownPages';
 import { useGameState } from '../useGameState';
 import { HudCard } from './components/HudCard';
@@ -161,12 +162,18 @@ function PlaceEntityButton({
     const { data: blockData } = useBlockData();
     const placeBlock = useBlockPlace();
     const timeOfDay = useGameState((state) => state.timeOfDay);
+    // Sandbox ("play") gardens build for free — every block is placeable
+    // regardless of price or night-only availability.
+    const isSandbox = useIsSandboxGarden();
 
     const block = blockData?.find((block) => block.information.name === name);
     if (!block) return null;
     const hasSunflowerPrice = Boolean(block.prices.sunflowers);
     const isAvailableNow =
-        !isNightOnlyBlockPurchase(block) || isNightTimeOfDay(timeOfDay);
+        isSandbox ||
+        !isNightOnlyBlockPurchase(block) ||
+        isNightTimeOfDay(timeOfDay);
+    const isPlaceable = isSandbox || hasSunflowerPrice;
 
     async function placeEntity() {
         if (!blockData) {
@@ -179,7 +186,7 @@ function PlaceEntityButton({
         });
     }
 
-    if (!hasSunflowerPrice && simple) return null;
+    if (!isPlaceable && simple) return null;
 
     const errorMessage =
         placeBlock.error instanceof Error ? placeBlock.error.message : null;
@@ -197,23 +204,25 @@ function PlaceEntityButton({
                 size={simple ? 'sm' : 'md'}
                 variant="soft"
                 disabled={
-                    !hasSunflowerPrice ||
-                    !isAvailableNow ||
-                    placeBlock.isPending
+                    !isPlaceable || !isAvailableNow || placeBlock.isPending
                 }
                 endDecorator={
                     <Row
                         className={cx(
                             !simple &&
                                 'rounded-full p-1 gap border border-primary/15 bg-primary/15 text-primary w-fit pr-2',
-                            !block.prices.sunflowers && 'pl-2',
+                            (isSandbox || !block.prices.sunflowers) && 'pl-2',
                         )}
                     >
-                        {hasSunflowerPrice && isAvailableNow
-                            ? `${placeBlock.isPending ? '⏳' : '🌻'} ${block.prices.sunflowers}`
-                            : availabilityMessage
-                              ? 'Noću'
-                              : 'Nedostupno'}
+                        {isSandbox
+                            ? placeBlock.isPending
+                                ? '⏳'
+                                : 'Besplatno'
+                            : hasSunflowerPrice && isAvailableNow
+                              ? `${placeBlock.isPending ? '⏳' : '🌻'} ${block.prices.sunflowers}`
+                              : availabilityMessage
+                                ? 'Noću'
+                                : 'Nedostupno'}
                     </Row>
                 }
             >

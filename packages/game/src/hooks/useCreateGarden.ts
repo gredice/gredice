@@ -6,6 +6,7 @@ import { useGardensKeys } from './useGardens';
 
 type CreateGardenVariables = {
     name?: string;
+    isSandbox?: boolean;
 };
 
 export function useCreateGarden() {
@@ -14,11 +15,18 @@ export function useCreateGarden() {
     const gardenQueryKey = currentGardenKeys(winterMode);
 
     return useMutation({
-        mutationFn: async ({ name }: CreateGardenVariables) => {
+        mutationFn: async ({ name, isSandbox }: CreateGardenVariables) => {
             const trimmedName = name?.trim();
-            await clientAuthenticated().api.gardens.$post({
-                json: trimmedName ? { name: trimmedName } : {},
+            const response = await clientAuthenticated().api.gardens.$post({
+                json: {
+                    ...(trimmedName ? { name: trimmedName } : {}),
+                    ...(isSandbox ? { isSandbox: true } : {}),
+                },
             });
+            if (!response.ok) {
+                throw new Error('Failed to create garden');
+            }
+            return await response.json();
         },
         onSuccess: async () => {
             await queryClient.invalidateQueries({ queryKey: useGardensKeys });
