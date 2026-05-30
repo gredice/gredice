@@ -698,20 +698,25 @@ function makeMovingState({
 }: {
     from: Vector3;
     fromTarget?: CatTarget;
-    groundSurfaces: CatGroundSurface[];
+    groundSurfaces?: CatGroundSurface[];
     now: number;
     target: CatTarget;
 }) {
-    const walkFrom = fromTarget ? getTargetWalkPosition(fromTarget) : from;
+    const walkFrom = fromTarget
+        ? getTargetWalkPosition(fromTarget)
+        : from.clone();
     const walkTo = getTargetWalkPosition(target);
-    walkFrom.y = getCatWalkYAt(walkFrom, groundSurfaces);
-    walkTo.y = getCatWalkYAt(walkTo, groundSurfaces);
+    const resolvedGroundSurfaces = groundSurfaces ?? [];
+    if (groundSurfaces) {
+        walkFrom.y = getCatWalkYAt(walkFrom, groundSurfaces);
+        walkTo.y = getCatWalkYAt(walkTo, groundSurfaces);
+    }
 
     return {
         phase: 'moving',
         duration: movementDuration(walkFrom, walkTo),
         from: walkFrom,
-        groundSurfaces,
+        groundSurfaces: resolvedGroundSurfaces,
         startedAt: now,
         target,
         to: walkTo,
