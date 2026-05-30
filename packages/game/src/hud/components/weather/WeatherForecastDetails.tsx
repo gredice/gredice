@@ -128,7 +128,13 @@ export function WeatherForecastDetails() {
     const forecastLimit = showExtendedForecast ? (data?.length ?? 3) : 3;
 
     return (
-        <Stack>
+        <Stack
+            className={
+                view === 'graph'
+                    ? 'w-[min(calc(100vw-1rem),44rem)]'
+                    : 'w-[min(calc(100vw-1rem),28rem)]'
+            }
+        >
             <Row
                 className="bg-background px-4 py-2"
                 justifyContent="space-between"

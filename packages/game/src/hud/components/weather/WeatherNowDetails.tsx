@@ -66,7 +66,13 @@ export function WeatherNowDetails() {
     const rainChance = data.rain > 10 ? 1 : 10 / data.rain;
 
     return (
-        <Stack>
+        <Stack
+            className={
+                view === 'graph'
+                    ? 'w-[min(calc(100vw-1rem),44rem)]'
+                    : 'w-[min(calc(100vw-1rem),26rem)]'
+            }
+        >
             <Row
                 className="bg-background px-4 py-2"
                 justifyContent="space-between"

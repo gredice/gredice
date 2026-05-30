@@ -35,7 +35,6 @@ import { ArrowUp, Calendar, Droplets, ThermometerSun, Wind } from '../icons';
 import { Popper } from '../Popper/Popper';
 import { Row } from '../Row/Row';
 import { Stack } from '../Stack/Stack';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../Tabs/Tabs';
 import { Typography } from '../Typography/Typography';
 import { cx } from '../utils';
 
@@ -102,6 +101,139 @@ function toMetricChartData(
     });
 }
 
+function interpolateNullableNumber(
+    from: number | null,
+    to: number | null,
+    ratio: number,
+): number | null {
+    if (from == null && to == null) return null;
+    if (from == null) return to;
+    if (to == null) return from;
+    return from + (to - from) * ratio;
+}
+
+function interpolateNumber(from: number, to: number, ratio: number): number {
+    return from + (to - from) * ratio;
+}
+
+function createBridgeMetricChartPoint(
+    previous: MetricChartPoint,
+    next: MetricChartPoint,
+    timestamp: number,
+): MetricChartPoint | null {
+    if (previous.historyValue == null || next.forecastValue == null) {
+        return null;
+    }
+
+    const duration = next.timestamp - previous.timestamp;
+    if (duration <= 0) return null;
+
+    const ratio = Math.min(
+        1,
+        Math.max(0, (timestamp - previous.timestamp) / duration),
+    );
+    const bridgedValue =
+        previous.historyValue +
+        (next.forecastValue - previous.historyValue) * ratio;
+
+    return {
+        timestamp,
+        temperature: interpolateNullableNumber(
+            previous.temperature,
+            next.temperature,
+            ratio,
+        ),
+        rain: Math.max(0, interpolateNumber(previous.rain, next.rain, ratio)),
+        windSpeed: Math.max(
+            0,
+            interpolateNumber(previous.windSpeed, next.windSpeed, ratio),
+        ),
+        windDirection: next.windDirection ?? previous.windDirection,
+        symbol: next.symbol ?? previous.symbol,
+        source: 'forecast',
+        historyValue: bridgedValue,
+        forecastValue: bridgedValue,
+    };
+}
+
+function stitchMetricChartData(
+    points: MetricChartPoint[],
+    nowTs: number,
+): MetricChartPoint[] {
+    let lastHistoryIndex = -1;
+    let firstForecastIndex = -1;
+
+    for (let index = 0; index < points.length; index += 1) {
+        const point = points[index];
+        if (!point) continue;
+        if (point.source === 'history' && point.historyValue != null) {
+            lastHistoryIndex = index;
+        }
+        if (
+            firstForecastIndex === -1 &&
+            point.source === 'forecast' &&
+            point.forecastValue != null
+        ) {
+            firstForecastIndex = index;
+        }
+    }
+
+    if (lastHistoryIndex === -1 || firstForecastIndex === -1) return points;
+
+    const lastHistory = points[lastHistoryIndex];
+    const firstForecast = points[firstForecastIndex];
+    if (!lastHistory || !firstForecast) return points;
+    if (lastHistory.timestamp > firstForecast.timestamp) return points;
+
+    const bridgeTimestamp = Math.min(
+        Math.max(nowTs, lastHistory.timestamp),
+        firstForecast.timestamp,
+    );
+
+    if (bridgeTimestamp <= lastHistory.timestamp) {
+        return points.map((point, index) =>
+            index === lastHistoryIndex
+                ? { ...point, forecastValue: point.historyValue }
+                : point,
+        );
+    }
+
+    if (bridgeTimestamp >= firstForecast.timestamp) {
+        return points.map((point, index) =>
+            index === firstForecastIndex
+                ? { ...point, historyValue: point.forecastValue }
+                : point,
+        );
+    }
+
+    const bridgePoint = createBridgeMetricChartPoint(
+        lastHistory,
+        firstForecast,
+        bridgeTimestamp,
+    );
+    if (!bridgePoint) return points;
+
+    return [
+        ...points.slice(0, firstForecastIndex),
+        bridgePoint,
+        ...points.slice(firstForecastIndex),
+    ];
+}
+
+function toEmptyMetricChartData(range: WeatherChartsRange): MetricChartPoint[] {
+    return [range.from, range.to].map((date) => ({
+        timestamp: date.getTime(),
+        temperature: null,
+        rain: 0,
+        windSpeed: 0,
+        windDirection: null,
+        symbol: null,
+        source: 'history',
+        historyValue: null,
+        forecastValue: null,
+    }));
+}
+
 function formatShortDate(date: Date): string {
     return date.toLocaleDateString('hr-HR', {
         day: '2-digit',
@@ -123,6 +255,43 @@ function fromDateInputValue(value: string, endOfDay = false): Date | null {
     return endOfDay
         ? new Date(year, month - 1, day, 23, 59, 59, 999)
         : new Date(year, month - 1, day, 0, 0, 0, 0);
+}
+
+function getTimeTicks(range: WeatherChartsRange, count = 5): number[] {
+    const from = range.from.getTime();
+    const to = range.to.getTime();
+    if (!Number.isFinite(from) || !Number.isFinite(to)) return [];
+    if (to <= from) return [from];
+
+    return Array.from({ length: count }, (_, index) =>
+        Math.round(from + ((to - from) * index) / (count - 1)),
+    );
+}
+
+function getCalendarDayDiff(from: Date, to: Date): number {
+    const fromDay = new Date(
+        from.getFullYear(),
+        from.getMonth(),
+        from.getDate(),
+    );
+    const toDay = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+    return Math.round((toDay.getTime() - fromDay.getTime()) / DAY_MS);
+}
+
+function getPresetSelectableBounds(
+    bounds: { min: Date; max: Date },
+    now: Date,
+): { min: Date; max: Date } {
+    const maxHistoryDays = Math.max(...HISTORY_PRESETS);
+    const minPreset = new Date(now.getTime() - maxHistoryDays * DAY_MS);
+    const maxPreset = new Date(now.getTime() + DEFAULT_FORECAST_DAYS * DAY_MS);
+
+    return {
+        min:
+            bounds.min.getTime() < minPreset.getTime() ? bounds.min : minPreset,
+        max:
+            bounds.max.getTime() > maxPreset.getTime() ? bounds.max : maxPreset,
+    };
 }
 
 function WeatherTooltip({
@@ -201,6 +370,8 @@ export function WeatherCharts({
     onMetricChange,
 }: WeatherChartsProps) {
     const nowTs = Date.now();
+    const now = new Date(nowTs);
+    const selectableBounds = getPresetSelectableBounds(bounds, now);
 
     const data = useMemo(
         () => buildWeatherSeries(history, forecast, range),
@@ -213,6 +384,7 @@ export function WeatherCharts({
 
     const spansMultipleDays =
         range.to.getTime() - range.from.getTime() > 2 * DAY_MS;
+    const xTicks = getTimeTicks(range);
     const tickFormatter = (value: number) => {
         const date = new Date(value);
         return spansMultipleDays
@@ -227,16 +399,18 @@ export function WeatherCharts({
     };
 
     const forecastMode: ForecastMode =
-        range.to.getTime() - nowTs > (DEFAULT_FORECAST_DAYS + 0.5) * DAY_MS
+        getCalendarDayDiff(now, range.to) > DEFAULT_FORECAST_DAYS
             ? 'extended'
             : 'standard';
+    const forecastDaysAvailable = Math.max(
+        DEFAULT_FORECAST_DAYS,
+        getCalendarDayDiff(now, bounds.max),
+    );
     const hasExtendedForecast =
         bounds.max.getTime() - nowTs > (DEFAULT_FORECAST_DAYS + 0.5) * DAY_MS;
     const activeHistoryDays =
         HISTORY_PRESETS.find(
-            (days) =>
-                Math.abs(nowTs - range.from.getTime() - days * DAY_MS) <
-                DAY_MS / 2,
+            (days) => getCalendarDayDiff(range.from, now) === days,
         ) ?? null;
 
     const getForecastEnd = (now: Date, mode: ForecastMode) =>
@@ -244,15 +418,18 @@ export function WeatherCharts({
             ? bounds.max
             : new Date(now.getTime() + DEFAULT_FORECAST_DAYS * DAY_MS);
 
+    const [dateRangeSelected, setDateRangeSelected] = useState(false);
+
     const applyHistoryPreset = (historyDays: number) => {
         const now = new Date();
+        setDateRangeSelected(false);
         onRangeChange(
             clampRangeToBounds(
                 {
                     from: new Date(now.getTime() - historyDays * DAY_MS),
                     to: getForecastEnd(now, forecastMode),
                 },
-                bounds,
+                selectableBounds,
             ),
         );
     };
@@ -260,33 +437,44 @@ export function WeatherCharts({
     const applyForecastMode = (mode: ForecastMode) => {
         const now = new Date();
         const historyDays = activeHistoryDays ?? DEFAULT_FORECAST_DAYS;
+        setDateRangeSelected(false);
         onRangeChange(
             clampRangeToBounds(
                 {
                     from: new Date(now.getTime() - historyDays * DAY_MS),
                     to: getForecastEnd(now, mode),
                 },
-                bounds,
+                selectableBounds,
             ),
         );
     };
 
     const chartHeight = compact ? 220 : 320;
 
-    const renderChart = (metricKey: WeatherMetricKey) => {
+    const renderChart = (
+        metricKey: WeatherMetricKey,
+        overlayMessage?: string,
+    ) => {
         const definition = weatherMetrics.find((m) => m.key === metricKey);
         if (!definition) return null;
         const { color, unit, dataKey } = definition;
         const isRain = metricKey === 'rain';
         const isWind = metricKey === 'wind';
-        const chartData = toMetricChartData(data, metricKey);
+        const rawMetricChartData = toMetricChartData(data, metricKey);
+        const metricChartData = isRain
+            ? rawMetricChartData
+            : stitchMetricChartData(rawMetricChartData, nowTs);
+        const hasMetricData = metricChartData.length > 0;
+        const chartData = hasMetricData
+            ? metricChartData
+            : toEmptyMetricChartData(range);
 
         return (
-            <div style={{ height: chartHeight }} className="w-full">
+            <div style={{ height: chartHeight }} className="relative w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart
                         data={chartData}
-                        margin={{ top: 8, right: 12, bottom: 0, left: -12 }}
+                        margin={{ top: 8, right: 8, bottom: 0, left: 4 }}
                     >
                         <defs>
                             <linearGradient
@@ -337,22 +525,26 @@ export function WeatherCharts({
                             domain={[range.from.getTime(), range.to.getTime()]}
                             tickFormatter={tickFormatter}
                             tick={{ fontSize: 11 }}
+                            ticks={xTicks}
                             minTickGap={24}
                         />
                         <YAxis
                             tick={{ fontSize: 11 }}
-                            width={40}
+                            tickMargin={4}
+                            width={48}
                             unit={isWind ? '' : ` ${unit}`}
                             allowDecimals={!isRain}
                         />
-                        <Tooltip
-                            content={
-                                <WeatherTooltip
-                                    unit={unit}
-                                    showDirection={isWind}
-                                />
-                            }
-                        />
+                        {hasMetricData && (
+                            <Tooltip
+                                content={
+                                    <WeatherTooltip
+                                        unit={unit}
+                                        showDirection={isWind}
+                                    />
+                                }
+                            />
+                        )}
                         {hasForecastRegion && (
                             <ReferenceArea
                                 x1={forecastStart}
@@ -376,70 +568,78 @@ export function WeatherCharts({
                                     }}
                                 />
                             )}
-                        {isRain ? (
-                            <Bar
-                                dataKey={dataKey}
-                                fill={color}
-                                fillOpacity={0.85}
-                                radius={[3, 3, 0, 0]}
-                                isAnimationActive={false}
-                            >
-                                {chartData.map((point) => (
-                                    <Cell
-                                        key={point.timestamp}
-                                        fillOpacity={
-                                            point.source === 'forecast'
-                                                ? 0.32
-                                                : 0.85
-                                        }
+                        {hasMetricData &&
+                            (isRain ? (
+                                <Bar
+                                    dataKey={dataKey}
+                                    fill={color}
+                                    fillOpacity={0.85}
+                                    radius={[3, 3, 0, 0]}
+                                    isAnimationActive={false}
+                                >
+                                    {chartData.map((point) => (
+                                        <Cell
+                                            key={point.timestamp}
+                                            fillOpacity={
+                                                point.source === 'forecast'
+                                                    ? 0.32
+                                                    : 0.85
+                                            }
+                                        />
+                                    ))}
+                                </Bar>
+                            ) : isWind ? (
+                                <>
+                                    <Line
+                                        type="monotone"
+                                        dataKey="historyValue"
+                                        stroke={color}
+                                        strokeWidth={2}
+                                        dot={false}
+                                        isAnimationActive={false}
                                     />
-                                ))}
-                            </Bar>
-                        ) : isWind ? (
-                            <>
-                                <Line
-                                    type="monotone"
-                                    dataKey="historyValue"
-                                    stroke={color}
-                                    strokeWidth={2}
-                                    dot={false}
-                                    isAnimationActive={false}
-                                />
-                                <Line
-                                    type="monotone"
-                                    dataKey="forecastValue"
-                                    stroke={color}
-                                    strokeDasharray="5 5"
-                                    strokeOpacity={0.55}
-                                    strokeWidth={2}
-                                    dot={false}
-                                    isAnimationActive={false}
-                                />
-                            </>
-                        ) : (
-                            <>
-                                <Area
-                                    type="monotone"
-                                    dataKey="historyValue"
-                                    stroke={color}
-                                    strokeWidth={2}
-                                    fill={`url(#weather-${metricKey})`}
-                                    isAnimationActive={false}
-                                />
-                                <Area
-                                    type="monotone"
-                                    dataKey="forecastValue"
-                                    stroke={color}
-                                    strokeDasharray="5 5"
-                                    strokeOpacity={0.55}
-                                    strokeWidth={2}
-                                    fill={`url(#weather-${metricKey}-forecast)`}
-                                    isAnimationActive={false}
-                                />
-                            </>
-                        )}
+                                    <Line
+                                        type="monotone"
+                                        dataKey="forecastValue"
+                                        stroke={color}
+                                        strokeDasharray="5 5"
+                                        strokeOpacity={0.55}
+                                        strokeWidth={2}
+                                        dot={false}
+                                        isAnimationActive={false}
+                                    />
+                                </>
+                            ) : (
+                                <>
+                                    <Area
+                                        type="monotone"
+                                        dataKey="historyValue"
+                                        stroke={color}
+                                        strokeWidth={2}
+                                        fill={`url(#weather-${metricKey})`}
+                                        isAnimationActive={false}
+                                    />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="forecastValue"
+                                        stroke={color}
+                                        strokeDasharray="5 5"
+                                        strokeOpacity={0.55}
+                                        strokeWidth={2}
+                                        fill={`url(#weather-${metricKey}-forecast)`}
+                                        isAnimationActive={false}
+                                    />
+                                </>
+                            ))}
                     </ComposedChart>
                 </ResponsiveContainer>
+                {overlayMessage && (
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-4 text-center">
+                        <Typography level="body2" tertiary>
+                            {overlayMessage}
+                        </Typography>
+                    </div>
+                )}
             </div>
         );
     };
@@ -453,162 +653,157 @@ export function WeatherCharts({
         onMetricChange?.(value);
     };
 
-    const minInput = toDateInputValue(bounds.min);
-    const maxInput = toDateInputValue(bounds.max);
+    const minInput = toDateInputValue(selectableBounds.min);
+    const maxInput = toDateInputValue(selectableBounds.max);
 
     const handleFromChange = (value: string) => {
         const from = fromDateInputValue(value);
         if (!from) return;
-        onRangeChange(clampRangeToBounds({ from, to: range.to }, bounds));
+        setDateRangeSelected(true);
+        onRangeChange(
+            clampRangeToBounds({ from, to: range.to }, selectableBounds),
+        );
     };
     const handleToChange = (value: string) => {
         const to = fromDateInputValue(value, true);
         if (!to) return;
-        onRangeChange(clampRangeToBounds({ from: range.from, to }, bounds));
+        setDateRangeSelected(true);
+        onRangeChange(
+            clampRangeToBounds({ from: range.from, to }, selectableBounds),
+        );
     };
     const dateRangeLabel = `${formatShortDate(range.from)} - ${formatShortDate(range.to)}`;
+    const chartMessage =
+        isLoading && data.length === 0
+            ? 'Učitavanje podataka…'
+            : data.length === 0
+              ? 'Nema podataka za odabrani raspon.'
+              : undefined;
 
     return (
         <Stack spacing={compact ? 1 : 2} className={cx('w-full', className)}>
-            <Tabs value={activeMetric} onValueChange={handleMetricChange}>
-                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <TabsList className="min-h-9">
-                        {weatherMetrics.map((definition) => {
-                            const MetricIcon =
-                                weatherMetricIcons[definition.key];
+            <div className="flex flex-col items-start gap-2 md:flex-row md:items-center md:justify-between">
+                <ButtonGroup legend="Mjerenje" size="sm">
+                    {weatherMetrics.map((definition) => {
+                        const MetricIcon = weatherMetricIcons[definition.key];
+                        const isActive = activeMetric === definition.key;
+                        return (
+                            <Button
+                                key={definition.key}
+                                type="button"
+                                variant={isActive ? 'soft' : 'plain'}
+                                aria-label={definition.label}
+                                aria-pressed={isActive}
+                                title={definition.label}
+                                className={buttonGroupItemClassName({
+                                    iconOnly: true,
+                                })}
+                                onClick={() =>
+                                    handleMetricChange(definition.key)
+                                }
+                            >
+                                <MetricIcon className="size-4" />
+                            </Button>
+                        );
+                    })}
+                </ButtonGroup>
+                <div className="flex flex-wrap items-center gap-1 md:justify-end">
+                    <ButtonGroup legend="Povijest" size="sm">
+                        {HISTORY_PRESETS.map((days) => {
+                            const isActive = activeHistoryDays === days;
                             return (
-                                <TabsTrigger
-                                    key={definition.key}
-                                    value={definition.key}
-                                    aria-label={definition.label}
-                                    title={definition.label}
-                                    className="min-h-7 px-2.5"
+                                <Button
+                                    key={days}
+                                    type="button"
+                                    variant={isActive ? 'soft' : 'plain'}
+                                    aria-pressed={isActive}
+                                    className={buttonGroupItemClassName()}
+                                    onClick={() => applyHistoryPreset(days)}
                                 >
-                                    <MetricIcon className="size-4" />
-                                </TabsTrigger>
+                                    {days}d
+                                </Button>
                             );
                         })}
-                    </TabsList>
-                    <div className="flex flex-wrap items-center gap-1 md:justify-end">
-                        <ButtonGroup legend="Povijest" size="sm">
-                            {HISTORY_PRESETS.map((days) => {
-                                const isActive = activeHistoryDays === days;
-                                return (
-                                    <Button
-                                        key={days}
-                                        type="button"
-                                        variant={isActive ? 'soft' : 'plain'}
-                                        aria-pressed={isActive}
-                                        className={buttonGroupItemClassName()}
-                                        onClick={() => applyHistoryPreset(days)}
-                                    >
-                                        {days}d
-                                    </Button>
-                                );
-                            })}
-                        </ButtonGroup>
-                        <ButtonGroup legend="Prognoza" size="sm">
-                            <Button
-                                type="button"
-                                variant={
-                                    forecastMode === 'standard'
-                                        ? 'soft'
-                                        : 'plain'
-                                }
-                                aria-pressed={forecastMode === 'standard'}
-                                className={buttonGroupItemClassName()}
-                                onClick={() => applyForecastMode('standard')}
-                            >
-                                3d
-                            </Button>
-                            <Button
-                                type="button"
-                                variant={
-                                    forecastMode === 'extended'
-                                        ? 'soft'
-                                        : 'plain'
-                                }
-                                aria-pressed={forecastMode === 'extended'}
-                                className={buttonGroupItemClassName()}
-                                disabled={!hasExtendedForecast}
-                                title="Proširena prognoza"
-                                onClick={() => applyForecastMode('extended')}
-                            >
-                                Sve
-                            </Button>
-                        </ButtonGroup>
-                        <Popper
-                            side="bottom"
-                            align="end"
-                            sideOffset={8}
-                            className="w-auto p-3"
-                            trigger={
-                                <Button
-                                    type="button"
-                                    variant="outlined"
-                                    size="sm"
-                                    startDecorator={
-                                        <Calendar className="size-4" />
-                                    }
-                                    title="Odaberi raspon"
-                                >
-                                    {dateRangeLabel}
-                                </Button>
+                    </ButtonGroup>
+                    <ButtonGroup legend="Prognoza" size="sm">
+                        <Button
+                            type="button"
+                            variant={
+                                forecastMode === 'standard' ? 'soft' : 'plain'
                             }
+                            aria-pressed={forecastMode === 'standard'}
+                            className={buttonGroupItemClassName()}
+                            onClick={() => applyForecastMode('standard')}
                         >
-                            <Row spacing={1} className="items-end">
-                                <Input
-                                    type="date"
-                                    value={toDateInputValue(range.from)}
-                                    min={minInput}
-                                    max={maxInput}
-                                    onChange={(event) =>
-                                        handleFromChange(event.target.value)
-                                    }
-                                    label="Od"
-                                    className="w-36"
-                                />
-                                <Input
-                                    type="date"
-                                    value={toDateInputValue(range.to)}
-                                    min={minInput}
-                                    max={maxInput}
-                                    onChange={(event) =>
-                                        handleToChange(event.target.value)
-                                    }
-                                    label="Do"
-                                    className="w-36"
-                                />
-                            </Row>
-                        </Popper>
-                    </div>
+                            +3d
+                        </Button>
+                        <Button
+                            type="button"
+                            variant={
+                                forecastMode === 'extended' ? 'soft' : 'plain'
+                            }
+                            aria-pressed={forecastMode === 'extended'}
+                            className={buttonGroupItemClassName()}
+                            disabled={!hasExtendedForecast}
+                            title="Proširena prognoza"
+                            onClick={() => applyForecastMode('extended')}
+                        >
+                            +{forecastDaysAvailable}d
+                        </Button>
+                    </ButtonGroup>
+                    <Popper
+                        side="bottom"
+                        align="end"
+                        sideOffset={8}
+                        className="w-auto p-3"
+                        trigger={
+                            <Button
+                                type="button"
+                                variant={
+                                    dateRangeSelected ? 'outlined' : 'plain'
+                                }
+                                size="sm"
+                                aria-label="Odaberi raspon"
+                                className={cx(
+                                    !dateRangeSelected && 'size-8 px-0',
+                                )}
+                                startDecorator={<Calendar className="size-4" />}
+                                title="Odaberi raspon"
+                            >
+                                {dateRangeSelected ? dateRangeLabel : null}
+                            </Button>
+                        }
+                    >
+                        <Row spacing={1} className="items-end">
+                            <Input
+                                type="date"
+                                value={toDateInputValue(range.from)}
+                                min={minInput}
+                                max={maxInput}
+                                onChange={(event) =>
+                                    handleFromChange(event.target.value)
+                                }
+                                label="Od"
+                                className="w-36"
+                            />
+                            <Input
+                                type="date"
+                                value={toDateInputValue(range.to)}
+                                min={minInput}
+                                max={maxInput}
+                                onChange={(event) =>
+                                    handleToChange(event.target.value)
+                                }
+                                label="Do"
+                                className="w-36"
+                            />
+                        </Row>
+                    </Popper>
                 </div>
-                {weatherMetrics.map((definition) => (
-                    <TabsContent key={definition.key} value={definition.key}>
-                        {isLoading && data.length === 0 ? (
-                            <div
-                                className="flex w-full items-center justify-center"
-                                style={{ height: chartHeight }}
-                            >
-                                <Typography level="body2" tertiary>
-                                    Učitavanje podataka…
-                                </Typography>
-                            </div>
-                        ) : data.length === 0 ? (
-                            <div
-                                className="flex w-full items-center justify-center"
-                                style={{ height: chartHeight }}
-                            >
-                                <Typography level="body2" tertiary>
-                                    Nema podataka za odabrani raspon.
-                                </Typography>
-                            </div>
-                        ) : (
-                            renderChart(definition.key)
-                        )}
-                    </TabsContent>
-                ))}
-            </Tabs>
+            </div>
+            <div className="mt-2">
+                {renderChart(activeMetric, chartMessage)}
+            </div>
         </Stack>
     );
 }

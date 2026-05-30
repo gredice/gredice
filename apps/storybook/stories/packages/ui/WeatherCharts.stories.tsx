@@ -132,8 +132,8 @@ const meta = {
                 component:
                     'Recharts-based weather visualization combining historical observations ' +
                     'and forecast data into a unified time series. Supports temperature, ' +
-                    'rain/precipitation, and wind-speed/direction views with icon metric ' +
-                    'tabs, date-range picker, and preset toggle groups. A shaded region marks the forecast window ' +
+                    'rain/precipitation, and wind-speed/direction views with an icon metric ' +
+                    'selector, date-range picker, and preset toggle groups. A shaded region marks the forecast window ' +
                     'and a dashed "now" reference line is drawn when it falls inside the ' +
                     'visible range.',
             },
@@ -241,8 +241,8 @@ export const Loading: Story = {
         docs: {
             description: {
                 story:
-                    'While data is in flight the chart area is replaced by a "Učitavanje ' +
-                    'podataka…" placeholder at the chart\'s full height.',
+                    'While data is in flight the chart keeps its selected time axis and ' +
+                    'shows a "Učitavanje podataka…" overlay.',
             },
         },
     },
@@ -259,8 +259,8 @@ export const NoData: Story = {
         docs: {
             description: {
                 story:
-                    'When no data is available for the selected range the chart shows ' +
-                    '"Nema podataka za odabrani raspon." instead of an empty axis.',
+                    'When no data is available for the selected range the chart keeps the ' +
+                    'time axis visible and shows "Nema podataka za odabrani raspon.".',
             },
         },
     },
