@@ -33,6 +33,14 @@ const basilSort = {
     },
 } satisfies EntityStandardized;
 
+const pepperSort = {
+    id: 103,
+    information: {
+        name: 'Paprika',
+        description: 'Njega uključuje:\n- zalijevanje\n- berbu',
+    },
+} satisfies EntityStandardized;
+
 test('plant handbook search includes parent plant alternative names', async ({
     mount,
     page,
@@ -51,4 +59,22 @@ test('plant handbook search includes parent plant alternative names', async ({
     await expect(
         page.getByRole('button', { name: /Genovese bosiljak/ }),
     ).toHaveCount(0);
+});
+
+test('plant handbook renders selected plant description markdown', async ({
+    mount,
+    page,
+}) => {
+    await mount(<PlantsHandbook plantSortsData={[pepperSort]} />);
+
+    await page.getByRole('button', { name: /Paprika/ }).click();
+
+    await expect(page.getByText('Njega uključuje:')).toBeVisible();
+    await expect(
+        page.getByRole('listitem').filter({ hasText: 'zalijevanje' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('listitem').filter({ hasText: 'berbu' }),
+    ).toBeVisible();
+    await expect(page.getByText('- zalijevanje')).toHaveCount(0);
 });
