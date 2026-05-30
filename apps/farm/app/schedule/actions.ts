@@ -8,7 +8,6 @@ import {
     getOperationById,
     getRaisedBed,
     knownEvents,
-    queueSeasonalSowingOfferOperations,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
@@ -192,15 +191,6 @@ export async function completeFarmPlanting(
             ),
         ),
     );
-
-    if (nextStatus === 'sowed' && raisedBed.accountId) {
-        const gardenId = raisedBed.gardenId;
-        await queueSeasonalSowingOfferOperations({
-            accountId: raisedBed.accountId,
-            ...(gardenId ? { gardenId } : {}),
-            raisedBedId,
-        });
-    }
 
     revalidateSchedule();
 

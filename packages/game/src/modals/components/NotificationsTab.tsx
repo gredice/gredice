@@ -15,6 +15,7 @@ import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useMarkAllNotificationsRead } from '../../hooks/useMarkAllNotificationsRead';
 import { usePushPermissionOnboarding } from '../../hooks/usePushPermissionOnboarding';
 import { NotificationList } from '../../hud/NotificationList';
+import type { NotificationsFilter } from '../../notificationFilters';
 
 type ApiClient = ReturnType<typeof clientAuthenticated>;
 
@@ -32,7 +33,6 @@ type DigestFrequency = NonNullable<
 type DigestPeriod = Exclude<DigestFrequency, 'off'>;
 
 type NotificationsView = 'notifications' | 'settings';
-type NotificationsFilter = 'unread' | 'all';
 type NotificationPreferenceItem = {
     category: string;
     channel: NotificationPreferenceUpdate['channel'];
@@ -137,10 +137,6 @@ function isNotificationsView(value: string): value is NotificationsView {
     return value === 'notifications' || value === 'settings';
 }
 
-function isNotificationsFilter(value: string): value is NotificationsFilter {
-    return value === 'unread' || value === 'all';
-}
-
 function isDigestPeriod(value: string): value is DigestPeriod {
     return digestFrequencyItems.some((item) => item.value === value);
 }
@@ -207,11 +203,17 @@ function pushStatusLabel(status: string | undefined) {
     }
 }
 
-export function NotificationsTab() {
+type NotificationsTabProps = {
+    initialFilter?: NotificationsFilter;
+};
+
+export function NotificationsTab({
+    initialFilter = 'unread',
+}: NotificationsTabProps = {}) {
     const [activeView, setActiveView] =
         useState<NotificationsView>('notifications');
     const [notificationsFilter, setNotificationsFilter] =
-        useState<NotificationsFilter>('unread');
+        useState<NotificationsFilter>(initialFilter);
     const [quietHoursEnabled, setQuietHoursEnabled] = useState(false);
     const [quietHoursStartMinute, setQuietHoursStartMinute] = useState(
         defaultQuietHoursStartMinute,
@@ -226,6 +228,10 @@ export function NotificationsTab() {
     const { track } = useGameAnalytics();
     const pushOnboarding = usePushPermissionOnboarding();
     const queryClient = useQueryClient();
+
+    useEffect(() => {
+        setNotificationsFilter(initialFilter);
+    }, [initialFilter]);
 
     const preferencesQuery = useQuery({
         queryKey: notificationPreferencesKey,
@@ -497,9 +503,6 @@ export function NotificationsTab() {
                                 <SelectItems
                                     value={notificationsFilter}
                                     onValueChange={(value) => {
-                                        if (!isNotificationsFilter(value)) {
-                                            return;
-                                        }
                                         track(
                                             'game_notifications_filter_changed',
                                             {

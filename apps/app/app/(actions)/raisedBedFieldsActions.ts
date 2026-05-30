@@ -15,7 +15,6 @@ import {
     getRaisedBedFieldsWithEvents,
     knownEvents,
     moveRaisedBedFieldPlantHistory,
-    queueSeasonalSowingOfferOperations,
     type RaisedBedFieldSowingLocation,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
@@ -69,20 +68,6 @@ async function applyRaisedBedFieldPlantUpdate({
                 ),
             ),
         );
-
-        if (
-            status === 'sowed' &&
-            existingField &&
-            existingField.plantStatus !== 'sowed' &&
-            raisedBed.accountId
-        ) {
-            const gardenId = raisedBed.gardenId;
-            await queueSeasonalSowingOfferOperations({
-                accountId: raisedBed.accountId,
-                ...(gardenId ? { gardenId } : {}),
-                raisedBedId: raisedBed.id,
-            });
-        }
     }
 
     const sortIdToUse = plantSortId ?? existingField?.plantSortId;
@@ -436,23 +421,15 @@ export async function setRaisedBedFieldSowingLocationAction(
         return { success: true };
     }
 
-    const activeCycle = field.plantCycles?.find((cycle) => cycle.active);
-    const sowingMoment =
-        field.plantSowDate ??
-        activeCycle?.startedAt ??
-        field.plantScheduledDate ??
-        undefined;
-
-    await createEvent({
-        ...knownEvents.raisedBedFields.plantScheduleV1(
+    await createEvent(
+        knownEvents.raisedBedFields.plantScheduleV1(
             `${raisedBedId}|${positionIndex}`,
             {
                 scheduledDate: field.plantScheduledDate?.toISOString() ?? null,
                 sowingLocation,
             },
         ),
-        ...(sowingMoment ? { createdAt: new Date(sowingMoment) } : {}),
-    });
+    );
 
     await revalidateRaisedBedPaths(raisedBed);
 

@@ -7,6 +7,10 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { Fragment, useEffect } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import {
+    isNotificationsFilter,
+    notificationsFilterSearchParam,
+} from '../notificationFilters';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
 import { AccountUsersTab } from './components/AccountUsersTab';
 import { AchievementsTab } from './components/AchievementsTab';
@@ -108,7 +112,13 @@ const allNavItems = navGroups.flatMap((g) => g.items);
 
 export function OverviewModal() {
     const [settingsMode, setProfileModalOpen] = useSearchParam('pregled');
+    const [notificationsFilterParam] = useSearchParam(
+        notificationsFilterSearchParam,
+    );
     const { track } = useGameAnalytics();
+    const notificationsFilter = isNotificationsFilter(notificationsFilterParam)
+        ? notificationsFilterParam
+        : 'unread';
 
     useEffect(() => {
         if (!settingsMode) {
@@ -181,7 +191,9 @@ export function OverviewModal() {
                     {settingsMode === 'sigurnost' && <SecurityTab />}
                     {settingsMode === 'dostava' && <DeliveryTab />}
                     {settingsMode === 'zvuk' && <SoundTab />}
-                    {settingsMode === 'obavijesti' && <NotificationsTab />}
+                    {settingsMode === 'obavijesti' && (
+                        <NotificationsTab initialFilter={notificationsFilter} />
+                    )}
                     {settingsMode === 'suncokreti' && <SunflowersTab />}
                     {settingsMode === 'postignuca' && <AchievementsTab />}
                     {settingsMode === 'korisnici' && <AccountUsersTab />}

@@ -1,3 +1,7 @@
+'use client';
+
+import { Button } from '@gredice/ui/Button';
+import { ButtonGroup, buttonGroupItemClassName } from '@gredice/ui/ButtonGroup';
 import { Divider } from '@gredice/ui/Divider';
 import {
     ArrowDown,
@@ -16,12 +20,17 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
-import type React from 'react';
+import { type FC, useState } from 'react';
 import { useWeatherForecast } from '../../../hooks/useWeatherForecast';
 import { RainIcon } from './icons/RainIcon';
+import { WeatherHistoryPanel } from './WeatherHistoryModal';
 import { weatherIcons } from './WeatherIcons';
+import {
+    type WeatherPopoverView,
+    WeatherViewToggle,
+} from './WeatherViewToggle';
 
-export const windDirectionIcons: Record<string, React.FC> = {
+export const windDirectionIcons: Record<string, FC> = {
     N: ArrowUp,
     NE: ArrowUpRight,
     E: ArrowRight,
@@ -32,13 +41,14 @@ export const windDirectionIcons: Record<string, React.FC> = {
     NW: ArrowUpLeft,
 };
 
-export function WeatherForecastDays() {
+export function WeatherForecastDays({ limit = 3 }: { limit?: number } = {}) {
     const { data } = useWeatherForecast();
     if (!data) return null;
+    const visibleDays = data.slice(0, limit);
 
     return (
         <div className="grid grid-cols-3">
-            {data.map((day, index) => {
+            {visibleDays.map((day, index) => {
                 const WeatherIcon = weatherIcons[day.symbol];
                 const WindIcon = day.windDirection
                     ? windDirectionIcons[day.windDirection]
@@ -111,19 +121,67 @@ export function WeatherForecastDays() {
 export function WeatherForecastDetails() {
     // TODO: Add loading indicator
     // TODO: Add error message
+    const [view, setView] = useState<WeatherPopoverView>('weather');
+    const [showExtendedForecast, setShowExtendedForecast] = useState(false);
+    const { data } = useWeatherForecast();
+    const hasExtendedForecast = (data?.length ?? 0) > 3;
+    const forecastLimit = showExtendedForecast ? (data?.length ?? 3) : 3;
 
     return (
-        <Stack>
+        <Stack
+            className={
+                view === 'graph'
+                    ? 'w-[min(calc(100vw-1rem),44rem)]'
+                    : 'w-[min(calc(100vw-1rem),28rem)]'
+            }
+        >
             <Row
                 className="bg-background px-4 py-2"
                 justifyContent="space-between"
             >
                 <Typography level="body2" bold>
-                    Prognoza
+                    {view === 'graph' ? 'Vremenske prilike' : 'Prognoza'}
                 </Typography>
+                <Row spacing={1}>
+                    {view === 'weather' && hasExtendedForecast && (
+                        <ButtonGroup legend="Dani prognoze" size="xs">
+                            <Button
+                                type="button"
+                                variant={
+                                    showExtendedForecast ? 'plain' : 'soft'
+                                }
+                                aria-pressed={!showExtendedForecast}
+                                className={buttonGroupItemClassName({
+                                    size: 'xs',
+                                })}
+                                onClick={() => setShowExtendedForecast(false)}
+                            >
+                                3d
+                            </Button>
+                            <Button
+                                type="button"
+                                variant={
+                                    showExtendedForecast ? 'soft' : 'plain'
+                                }
+                                aria-pressed={showExtendedForecast}
+                                className={buttonGroupItemClassName({
+                                    size: 'xs',
+                                })}
+                                onClick={() => setShowExtendedForecast(true)}
+                            >
+                                Sve
+                            </Button>
+                        </ButtonGroup>
+                    )}
+                    <WeatherViewToggle value={view} onValueChange={setView} />
+                </Row>
             </Row>
             <Divider />
-            <WeatherForecastDays />
+            {view === 'graph' ? (
+                <WeatherHistoryPanel className="p-3" />
+            ) : (
+                <WeatherForecastDays limit={forecastLimit} />
+            )}
             <Divider />
             <Row className="px-4 py-2" justifyContent="space-between">
                 <Link

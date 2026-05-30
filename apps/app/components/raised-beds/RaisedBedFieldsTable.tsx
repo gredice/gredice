@@ -4,9 +4,7 @@ import {
     getRaisedBed,
     getRaisedBedFieldPlantCycles,
 } from '@gredice/storage';
-import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { RaisedBedFieldLocationSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldLocationSelector';
@@ -14,6 +12,10 @@ import { RaisedBedFieldPlantSortSelector } from '../../app/admin/raised-beds/[ra
 import { RaisedBedFieldPlantStatusSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantStatusSelector';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
 import { MoveRaisedBedFieldPlantModal } from './MoveRaisedBedFieldPlantModal';
+import {
+    type RaisedBedFieldDateItem,
+    RaisedBedFieldDatesPopover,
+} from './RaisedBedFieldDatesPopover';
 import {
     RaisedBedRemovedFieldsModal,
     type RemovedFieldDetails,
@@ -34,19 +36,28 @@ const STATUSES_BEFORE_TRANSPLANT = new Set([
     'sprouted',
 ]);
 
-function getCurrentLocation(
-    field: RaisedBedField,
-): 'greenhouse' | 'raisedBed' {
+function canFieldCurrentlyBeInGreenhouse(field: RaisedBedField) {
     if (
         field.active &&
-        field.sowingLocation === 'greenhouse' &&
         STATUSES_BEFORE_TRANSPLANT.has(field.plantStatus ?? '') &&
         !field.plantDeadDate &&
         !field.plantHarvestedDate &&
         !field.plantRemovedDate
     ) {
+        return true;
+    }
+
+    return false;
+}
+
+function getCurrentLocation(field: RaisedBedField): 'greenhouse' | 'raisedBed' {
+    if (
+        field.sowingLocation === 'greenhouse' &&
+        canFieldCurrentlyBeInGreenhouse(field)
+    ) {
         return 'greenhouse';
     }
+
     return 'raisedBed';
 }
 
@@ -78,6 +89,33 @@ function getSortLabel(sort?: PlantSortData, plantSortId?: number | null) {
         sort?.information?.name ||
         (plantSortId ? `Sorta biljke ${plantSortId}` : 'Nepoznata biljka')
     );
+}
+
+function getCurrentDateKey(status?: string | null) {
+    switch (status) {
+        case 'planned':
+            return 'plantScheduledDate';
+        case 'pendingVerification':
+        case 'sowed':
+            return 'plantSowDate';
+        case 'sprouted':
+        case 'firstFlowers':
+        case 'firstFruitSet':
+            return 'plantGrowthDate';
+        case 'ready':
+            return 'plantReadyDate';
+        case 'harvested':
+            return 'plantHarvestedDate';
+        case 'notSprouted':
+        case 'died':
+            return 'plantDeadDate';
+        case 'removed':
+            return 'plantRemovedDate';
+        case 'new':
+            return 'createdAt';
+        default:
+            return null;
+    }
 }
 
 function normalizeDate(value?: Date | string | null) {
@@ -289,18 +327,56 @@ function RaisedBedFieldTile({
     const plantLabel = field
         ? getSortLabel(sort, field.plantSortId)
         : 'Prazno polje';
-    const dateItems: {
-        label: string;
-        value: Date | string | null | undefined;
-    }[] = [
-        { label: 'Stvoreno', value: field?.createdAt },
-        { label: 'Planirano', value: field?.plantScheduledDate },
-        { label: 'Sijano', value: field?.plantSowDate },
-        { label: 'Proklijalo', value: field?.plantGrowthDate },
-        { label: 'Spremno', value: field?.plantReadyDate },
-        { label: 'Ubrano', value: field?.plantHarvestedDate },
-        { label: 'Uginulo', value: field?.plantDeadDate },
-        { label: 'Uklonjeno', value: field?.plantRemovedDate },
+    const currentDateKey = getCurrentDateKey(field?.plantStatus);
+    const dateItems: RaisedBedFieldDateItem[] = [
+        {
+            key: 'createdAt',
+            label: 'Stvoreno',
+            value: normalizeDate(field?.createdAt),
+            current: currentDateKey === 'createdAt',
+        },
+        {
+            key: 'plantScheduledDate',
+            label: 'Planirano',
+            value: normalizeDate(field?.plantScheduledDate),
+            current: currentDateKey === 'plantScheduledDate',
+        },
+        {
+            key: 'plantSowDate',
+            label: 'Sijano',
+            value: normalizeDate(field?.plantSowDate),
+            current: currentDateKey === 'plantSowDate',
+        },
+        {
+            key: 'plantGrowthDate',
+            label: 'Proklijalo',
+            value: normalizeDate(field?.plantGrowthDate),
+            current: currentDateKey === 'plantGrowthDate',
+        },
+        {
+            key: 'plantReadyDate',
+            label: 'Spremno',
+            value: normalizeDate(field?.plantReadyDate),
+            current: currentDateKey === 'plantReadyDate',
+        },
+        {
+            key: 'plantHarvestedDate',
+            label: 'Ubrano',
+            value: normalizeDate(field?.plantHarvestedDate),
+            current: currentDateKey === 'plantHarvestedDate',
+        },
+        {
+            key: 'plantDeadDate',
+            label: 'Uginulo',
+            value: normalizeDate(field?.plantDeadDate),
+            current: currentDateKey === 'plantDeadDate',
+        },
+        {
+            key: 'plantRemovedDate',
+            label: 'Uklonjeno',
+            value: normalizeDate(field?.plantRemovedDate),
+            current: currentDateKey === 'plantRemovedDate',
+        },
     ];
 
     return (
@@ -335,20 +411,39 @@ function RaisedBedFieldTile({
                             positionIndex={positionIndex}
                             sowingLocation={field.sowingLocation}
                             currentLocation={getCurrentLocation(field)}
+                            greenhouseCurrentLocationEligible={canFieldCurrentlyBeInGreenhouse(
+                                field,
+                            )}
                         />
                     </div>
                 )}
-                <div className="absolute bottom-2 right-2 rounded-full bg-background/90 px-2 py-1 text-xs font-semibold shadow">
-                    #{positionIndex + 1}
+                <div className="absolute bottom-2 right-2">
+                    {field?.active && activePlantCycle ? (
+                        <MoveRaisedBedFieldPlantModal
+                            raisedBedId={raisedBedId}
+                            sourcePositionIndex={positionIndex}
+                            sourcePlantPlaceEventId={
+                                activePlantCycle.plantPlaceEventId
+                            }
+                            sourcePlantLabel={plantLabel}
+                            targetOptions={moveTargetOptions}
+                            triggerVariant="fieldIndex"
+                        />
+                    ) : (
+                        <div className="rounded-full bg-background/90 px-2 py-1 text-xs font-semibold shadow">
+                            #{positionIndex + 1}
+                        </div>
+                    )}
                 </div>
             </div>
-            <div className="flex flex-col gap-2 p-2">
+            <div className="flex flex-col gap-2 px-2 pb-2 pt-0">
                 <RaisedBedFieldPlantSortSelector
                     raisedBedId={raisedBedId}
                     positionIndex={positionIndex}
                     status={field?.plantStatus ?? null}
                     plantSortId={field?.plantSortId}
                     plantSorts={plantSorts}
+                    variant="plain"
                 />
                 {field?.active && (
                     <Stack spacing={2}>
@@ -361,62 +456,14 @@ function RaisedBedFieldTile({
                                         status={field.plantStatus}
                                     />
                                 </div>
-                                {activePlantCycle && (
-                                    <MoveRaisedBedFieldPlantModal
-                                        raisedBedId={raisedBedId}
-                                        sourcePositionIndex={positionIndex}
-                                        sourcePlantPlaceEventId={
-                                            activePlantCycle.plantPlaceEventId
-                                        }
-                                        sourcePlantLabel={plantLabel}
-                                        targetOptions={moveTargetOptions}
-                                        triggerVariant="icon"
-                                    />
-                                )}
+                                <RaisedBedFieldDatesPopover items={dateItems} />
                             </div>
                         )}
-                        {activePlantCycle && !field.plantStatus && (
-                            <MoveRaisedBedFieldPlantModal
-                                raisedBedId={raisedBedId}
-                                sourcePositionIndex={positionIndex}
-                                sourcePlantPlaceEventId={
-                                    activePlantCycle.plantPlaceEventId
-                                }
-                                sourcePlantLabel={plantLabel}
-                                targetOptions={moveTargetOptions}
-                                triggerVariant="icon"
-                            />
+                        {!field.plantStatus && (
+                            <div className="flex justify-end">
+                                <RaisedBedFieldDatesPopover items={dateItems} />
+                            </div>
                         )}
-                        <Stack>
-                            {dateItems.map(({ label, value }) => (
-                                <Row
-                                    key={label}
-                                    spacing={2}
-                                    alignItems="center"
-                                >
-                                    <Typography
-                                        level="body3"
-                                        className="w-20 text-muted-foreground"
-                                    >
-                                        {label}
-                                    </Typography>
-                                    {value ? (
-                                        <Typography level="body3" noWrap>
-                                            <LocalDateTime time={false}>
-                                                {value}
-                                            </LocalDateTime>
-                                        </Typography>
-                                    ) : (
-                                        <Typography
-                                            level="body3"
-                                            className="text-muted-foreground"
-                                        >
-                                            -
-                                        </Typography>
-                                    )}
-                                </Row>
-                            ))}
-                        </Stack>
                     </Stack>
                 )}
             </div>

@@ -261,7 +261,7 @@ function getFlowerPlacements({
 export function getBlockSurfaceDecorations(options: {
     block: Block;
     density?: number;
-    gardenId: number | null | undefined;
+    gardenId: number | string | null | undefined;
     surface: GroundDecorationSurface;
 }) {
     const { block, density = 1, gardenId, surface } = options;

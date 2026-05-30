@@ -35,6 +35,7 @@ Use this guide for database, storage, background jobs, payments, notifications, 
 - Make cron work bounded and observable.
 - Handle empty work as a successful no-op.
 - Avoid making cron jobs depend on fragile client-side state.
+- Configurable domain-event automations are documented in `docs/automations.md`.
 
 ## External services
 

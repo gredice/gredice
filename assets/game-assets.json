@@ -309,7 +309,7 @@
             "name": "BirdHouse",
             "source": "BirdHouse.blend",
             "output": "BirdHouse.glb",
-            "version": "c2d30fb8026b",
+            "version": "20bc83690473",
             "preload": "lazy",
             "objects": [
                 "Birdhouse_Angled_Supports",
@@ -334,6 +334,16 @@
                 "FireflyJar_Firefly_Body",
                 "FireflyJar_Firefly_Glow_Abdomen",
                 "FireflyJar_Firefly_Wings"
+            ]
+        },
+        {
+            "name": "CatPillow",
+            "source": "CatPillow.blend",
+            "output": "CatPillow.glb",
+            "preload": "lazy",
+            "objects": [
+                "CatPillow_Cushion",
+                "CatPillow_Seam"
             ]
         },
         {
