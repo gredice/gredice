@@ -125,6 +125,19 @@ export type AnimalDebugEntry = {
     updatedAt: number;
 };
 
+export type AnimalDisturbance = {
+    sequence: number;
+    createdAt: number;
+    sourceBlockId: string;
+    sourceBlockName: string;
+    position: {
+        x: number;
+        y: number;
+        z: number;
+    };
+    radius: number;
+};
+
 export type GameState = {
     // General
     isMock: boolean;
@@ -163,6 +176,10 @@ export type GameState = {
     animalDebugEntries: AnimalDebugEntry[];
     setAnimalDebugEntry: (entry: AnimalDebugEntry) => void;
     removeAnimalDebugEntry: (id: string) => void;
+    animalDisturbance: AnimalDisturbance | null;
+    disturbAnimals: (
+        disturbance: Omit<AnimalDisturbance, 'createdAt' | 'sequence'>,
+    ) => void;
 
     // Camera
     view: 'normal' | 'closeup';
@@ -355,6 +372,15 @@ export function createGameState({
                 animalDebugEntries: state.animalDebugEntries.filter(
                     (entry) => entry.id !== id,
                 ),
+            })),
+        animalDisturbance: null,
+        disturbAnimals: (disturbance) =>
+            set((state) => ({
+                animalDisturbance: {
+                    ...disturbance,
+                    createdAt: Date.now(),
+                    sequence: (state.animalDisturbance?.sequence ?? 0) + 1,
+                },
             })),
 
         // Camera

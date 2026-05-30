@@ -50,6 +50,7 @@ const pickupHintLift = 0.04;
 const pickupLift = 0.1;
 const suppressClickAfterDragMs = 450;
 const placementSnapSearchRadius = 5;
+const animalPickupDisturbanceRadius = 1.8;
 
 type PickableGroupProps = PropsWithChildren<
     Pick<EntityInstanceProps, 'stack' | 'block'> & { noControl?: boolean }
@@ -174,6 +175,7 @@ export function PickableGroup({
     );
 
     const setPickupBlock = useGameState((state) => state.setPickupBlock);
+    const disturbAnimals = useGameState((state) => state.disturbAnimals);
     const activeDragPreview = useGameState(
         (state) => state.activeDragPreview ?? null,
     );
@@ -799,6 +801,16 @@ export function PickableGroup({
         session.latestPreview = preview;
         setIsDragging(false);
         setPickupBlock(block);
+        disturbAnimals({
+            sourceBlockId: block.id,
+            sourceBlockName: block.name,
+            position: {
+                x: stack.position.x,
+                y: currentStackHeight ?? 0,
+                z: stack.position.z,
+            },
+            radius: animalPickupDisturbanceRadius,
+        });
         pickupSound.play();
         triggerPickHaptic();
         spawn(

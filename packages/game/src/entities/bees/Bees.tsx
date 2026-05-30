@@ -15,6 +15,7 @@ import { useWeatherNow } from '../../hooks/useWeatherNow';
 import type { Stack } from '../../types/Stack';
 import {
     type AnimalDebugEntry,
+    type AnimalDisturbance,
     type GameState,
     useGameState,
 } from '../../useGameState';
@@ -59,6 +60,7 @@ type BeeGarden = {
 
 type BeeTarget = {
     id: string;
+    blockIds?: string[];
     kind: 'flower' | 'raised-bed-flower' | 'wander';
     position: Vector3;
 };
@@ -134,6 +136,7 @@ const beeFlowerRestHeight = 0.025;
 const defaultTurnDamping = 9;
 const raisedBedFlowerHoverHeight = 0.42;
 const tulipFlowerHoverHeight = 0.52;
+const animalDisturbanceReactionWindowMs = 2500;
 const fullTurn = Math.PI * 2;
 const yAxis = new Vector3(0, 1, 0);
 
@@ -159,6 +162,43 @@ function createRandom(seed: number) {
 
 function horizontalDistance(left: Vector3, right: Vector3) {
     return Math.hypot(left.x - right.x, left.z - right.z);
+}
+
+function distanceToDisturbance(
+    position: Vector3,
+    disturbance: AnimalDisturbance,
+) {
+    return Math.hypot(
+        position.x - disturbance.position.x,
+        position.y - disturbance.position.y,
+        position.z - disturbance.position.z,
+    );
+}
+
+function isBeeTargetDisturbed(
+    target: BeeTarget,
+    disturbance: AnimalDisturbance,
+) {
+    return (
+        (target.blockIds?.includes(disturbance.sourceBlockId) ?? false) ||
+        distanceToDisturbance(target.position, disturbance) <=
+            disturbance.radius
+    );
+}
+
+function isBeeDisturbanceRelevant({
+    disturbance,
+    group,
+    runtime,
+}: {
+    disturbance: AnimalDisturbance;
+    group: Group;
+    runtime: BeeRuntimeState;
+}) {
+    return (
+        isBeeTargetDisturbed(runtime.target, disturbance) ||
+        distanceToDisturbance(group.position, disturbance) <= disturbance.radius
+    );
 }
 
 function pickCandidate<T>(candidates: T[], random: () => number) {
@@ -208,6 +248,7 @@ function createTulipTargets(
                 );
                 targets.push({
                     id: `tulip-${block.id}-${stem.key}`,
+                    blockIds: [block.id],
                     kind: 'flower',
                     position: new Vector3(
                         stack.position.x + offset.x,
@@ -277,6 +318,7 @@ function createRaisedBedTargets(
                 );
                 targets.push({
                     id: `raised-bed-${raisedBed.id}-${field.positionIndex}`,
+                    blockIds: [blockId],
                     kind: 'raised-bed-flower',
                     position: new Vector3(
                         placement.stack.position.x +
@@ -533,6 +575,54 @@ function createWanderTarget(
             habitatCenter.x + offset.dx,
             habitatCenter.y + offset.dy,
             habitatCenter.z + offset.dz,
+        ),
+    };
+}
+
+function createBeeFleeTarget({
+    disturbance,
+    from,
+    habitatCenter,
+    random,
+}: {
+    disturbance: AnimalDisturbance;
+    from: Vector3;
+    habitatCenter: Vector3;
+    random: () => number;
+}): BeeTarget {
+    const away = new Vector3(
+        from.x - disturbance.position.x,
+        0,
+        from.z - disturbance.position.z,
+    );
+
+    if (away.lengthSq() <= 0.0001) {
+        const angle = random() * fullTurn;
+        away.set(Math.cos(angle), 0, Math.sin(angle));
+    } else {
+        away.normalize();
+    }
+
+    const distance = 1.15 + random() * 0.7;
+    const side = new Vector3(-away.z, 0, away.x).multiplyScalar(
+        (random() - 0.5) * 0.55,
+    );
+
+    const sequenceId = Math.floor(random() * 0xffffffff)
+        .toString(16)
+        .padStart(8, '0');
+
+    return {
+        id: `flee-${disturbance.sequence}-${sequenceId}`,
+        kind: 'wander',
+        position: new Vector3(
+            from.x + away.x * distance + side.x,
+            Math.max(
+                from.y + 0.35 + random() * 0.3,
+                habitatCenter.y + 0.45,
+                disturbance.position.y + 0.85,
+            ),
+            from.z + away.z * distance + side.z,
         ),
     };
 }
@@ -846,12 +936,14 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
     const randomRef = useRef(createRandom(habitat.seed));
     const runtimeRef = useRef<BeeRuntimeState | null>(null);
     const lastAnimalDebugUpdateRef = useRef(0);
+    const lastDisturbanceSequenceRef = useRef(0);
     const setAnimalDebugEntry = useGameState(
         (state) => state.setAnimalDebugEntry,
     );
     const removeAnimalDebugEntry = useGameState(
         (state) => state.removeAnimalDebugEntry,
     );
+    const animalDisturbance = useGameState((state) => state.animalDisturbance);
 
     const beeModel = useMemo(() => {
         const clone = gltf.scene.clone(true);
@@ -905,6 +997,36 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
             });
             runtimeRef.current = runtime;
             group.position.copy(foragePositionAt(runtime));
+        }
+
+        if (
+            animalDisturbance &&
+            animalDisturbance.sequence !== lastDisturbanceSequenceRef.current
+        ) {
+            lastDisturbanceSequenceRef.current = animalDisturbance.sequence;
+
+            if (
+                Date.now() - animalDisturbance.createdAt <=
+                    animalDisturbanceReactionWindowMs &&
+                isBeeDisturbanceRelevant({
+                    disturbance: animalDisturbance,
+                    group,
+                    runtime,
+                })
+            ) {
+                runtime = makeMovingState({
+                    from: group.position.clone(),
+                    now,
+                    random,
+                    target: createBeeFleeTarget({
+                        disturbance: animalDisturbance,
+                        from: group.position,
+                        habitatCenter: habitat.center,
+                        random,
+                    }),
+                });
+                runtimeRef.current = runtime;
+            }
         }
 
         if (runtime.phase === 'moving') {
