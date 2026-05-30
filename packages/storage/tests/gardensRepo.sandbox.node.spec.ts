@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    clearSandboxField,
     createAccount,
     createSandboxGarden,
     getGarden,
@@ -75,5 +76,81 @@ test('sowSandboxField backdates the plant so it renders already grown', async ()
     assert.ok(
         Math.abs(sownAt - sowDate.getTime()) < 24 * 60 * 60 * 1000,
         'plantSowDate should match the backdated sow date',
+    );
+});
+
+function daysAgo(days: number) {
+    const date = new Date();
+    date.setDate(date.getDate() - days);
+    return date;
+}
+
+test('replanting a sandbox field at an older age replaces the previous plant', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const accountId = await createAccount();
+    const gardenId = await createSandboxGarden({ accountId });
+    const blockId = await createTestBlock(gardenId, 'sandbox-block-2');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+
+    // First a young plant, then replant the same position with an OLDER plant
+    // whose backdated sow date predates the first plant's events.
+    await sowSandboxField({
+        raisedBedId,
+        positionIndex: 5,
+        plantSortId: 230,
+        sowDate: daysAgo(14),
+        status: 'sprouted',
+    });
+    const olderSowDate = daysAgo(80);
+    await sowSandboxField({
+        raisedBedId,
+        positionIndex: 5,
+        plantSortId: 337,
+        sowDate: olderSowDate,
+        status: 'ready',
+    });
+
+    const fields = await getRaisedBedFieldsWithEvents(raisedBedId);
+    const positionFields = fields.filter(
+        (candidate) => candidate.positionIndex === 5,
+    );
+    assert.equal(
+        positionFields.length,
+        1,
+        'only one active plant per position',
+    );
+    const field = positionFields[0];
+    // The newest plant wins, even though its sow date is further in the past.
+    assert.equal(field.plantSortId, 337);
+    assert.equal(field.plantStatus, 'ready');
+    const sownAt = new Date(field.plantSowDate ?? 0).getTime();
+    assert.ok(
+        Math.abs(sownAt - olderSowDate.getTime()) < 24 * 60 * 60 * 1000,
+        'plantSowDate should match the latest sow',
+    );
+});
+
+test('clearSandboxField empties the field position', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const accountId = await createAccount();
+    const gardenId = await createSandboxGarden({ accountId });
+    const blockId = await createTestBlock(gardenId, 'sandbox-block-3');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+
+    await sowSandboxField({
+        raisedBedId,
+        positionIndex: 2,
+        plantSortId: 230,
+        sowDate: daysAgo(40),
+        status: 'ready',
+    });
+    await clearSandboxField(raisedBedId, 2);
+
+    const fields = await getRaisedBedFieldsWithEvents(raisedBedId);
+    assert.ok(
+        !fields.some((candidate) => candidate.positionIndex === 2),
+        'cleared position should have no plant',
     );
 });

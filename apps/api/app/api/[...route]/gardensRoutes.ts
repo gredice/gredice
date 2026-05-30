@@ -13,11 +13,11 @@ import {
     countRaisedBedsByAccount,
     createDefaultGardenForAccount,
     createEvent,
+    clearSandboxField,
     createGardenBlock,
     createGardenStack,
     createSandboxGarden,
     deleteGardenStack,
-    deleteRaisedBedField,
     GardenBoxInventoryLimitError,
     getAccount,
     getAccountGardens,
@@ -2700,7 +2700,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
 
-            await deleteRaisedBedField(raisedBedIdNumber, positionIndexNumber);
+            await clearSandboxField(raisedBedIdNumber, positionIndexNumber);
             return context.json({ success: true }, 200);
         },
     )

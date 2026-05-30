@@ -1040,6 +1040,33 @@ export async function createSandboxGarden({
  * but backdates all events to `sowDate` so the existing time-based generation
  * rendering draws an already-grown plant. No checkout/economy is involved.
  */
+const RAISED_BED_FIELD_EVENT_TYPES = [
+    knownEventTypes.raisedBedFields.create,
+    knownEventTypes.raisedBedFields.delete,
+    knownEventTypes.raisedBedFields.plantPlace,
+    knownEventTypes.raisedBedFields.plantSchedule,
+    knownEventTypes.raisedBedFields.plantUpdate,
+    knownEventTypes.raisedBedFields.plantReplaceSort,
+] as const;
+
+/**
+ * Remove all plant-lifecycle events for a single field position.
+ *
+ * Sandbox fields are decoration only and keep no history, so each sow starts
+ * from a clean slate. This guarantees a single plant cycle and avoids the
+ * backdated sow date sorting a replant behind a previous (younger) plant.
+ */
+async function deleteRaisedBedFieldEvents(aggregateId: string) {
+    await storage()
+        .delete(events)
+        .where(
+            and(
+                eq(events.aggregateId, aggregateId),
+                inArray(events.type, [...RAISED_BED_FIELD_EVENT_TYPES]),
+            ),
+        );
+}
+
 export async function sowSandboxField({
     raisedBedId,
     positionIndex,
@@ -1056,6 +1083,9 @@ export async function sowSandboxField({
     const aggregateId = `${raisedBedId}|${positionIndex}`;
 
     await upsertRaisedBedField({ raisedBedId, positionIndex });
+    // Start from a clean slate so the new plant is always the current cycle,
+    // regardless of how far its (backdated) sow date is in the past.
+    await deleteRaisedBedFieldEvents(aggregateId);
     await createEvent({
         ...knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
             plantSortId: plantSortId.toString(),
@@ -1079,6 +1109,19 @@ export async function sowSandboxField({
             createdAt: sowDate,
         });
     }
+    await bustScheduleCache();
+}
+
+/**
+ * Clear a sandbox field: soft-delete the field row and drop its plant events so
+ * the position is truly empty (and a later replant starts fresh).
+ */
+export async function clearSandboxField(
+    raisedBedId: number,
+    positionIndex: number,
+) {
+    await deleteRaisedBedField(raisedBedId, positionIndex);
+    await deleteRaisedBedFieldEvents(`${raisedBedId}|${positionIndex}`);
     await bustScheduleCache();
 }
 
