@@ -1,9 +1,7 @@
 import { clientPublic } from '@gredice/client';
-import { isWeatherHistoryUiEnabled } from '@gredice/js/featureFlags';
 import { getDefaultWeatherRange } from '@gredice/js/weather';
 import { getWeatherHistory, getWeatherHistoryBounds } from '@gredice/storage';
 import { Stack } from '@gredice/ui/Stack';
-import { notFound } from 'next/navigation';
 import { WeatherAdminClient } from '../../../components/admin/weather/WeatherAdminClient';
 import { auth } from '../../../lib/auth/auth';
 
@@ -15,10 +13,6 @@ export default async function WeatherPage({
     searchParams: Promise<{ from?: string; to?: string }>;
 }) {
     await auth(['admin']);
-
-    if (!isWeatherHistoryUiEnabled()) {
-        notFound();
-    }
 
     const params = await searchParams;
     const defaults = getDefaultWeatherRange();

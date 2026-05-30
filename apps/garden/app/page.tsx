@@ -8,7 +8,6 @@ import {
     plantHistoryFlag,
     rainWetOverlayFlag,
     raisedBedImageAIFlag,
-    weatherHistoryUiFlag,
 } from './flags';
 
 export default async function Home() {
@@ -18,7 +17,6 @@ export default async function Home() {
         enableRainWetOverlayFlag: await rainWetOverlayFlag(),
         raisedBedImageAI: await raisedBedImageAIFlag(),
         enablePlantHistoryFlag: await plantHistoryFlag(),
-        enableWeatherHistoryFlag: await weatherHistoryUiFlag(),
     };
 
     return (

@@ -15,13 +15,7 @@ import { WeatherForecastDetails } from './components/weather/WeatherForecastDeta
 import { weatherIcons } from './components/weather/WeatherIcons';
 import { WeatherNowDetails } from './components/weather/WeatherNowDetails';
 
-export function WeatherHud({
-    noWeather,
-    enableHistory,
-}: {
-    noWeather?: boolean;
-    enableHistory?: boolean;
-}) {
+export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
     const currentTime = useLiveTime();
     const weatherEnabled = !noWeather;
     const { data: weatherData } = useWeatherNow(weatherEnabled);
@@ -130,7 +124,7 @@ export function WeatherHud({
                         <TimeDisplay />
                     </Popper>
                 )}
-                {enableHistory && weatherData && (
+                {weatherData && (
                     <>
                         <div className="w-[1px] h-4 border-r" />
                         <WeatherHistoryModal

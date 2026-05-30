@@ -1,4 +1,3 @@
-import { isWeatherHistoryUiEnabled } from '@gredice/js/featureFlags';
 import { flag } from 'flags/next';
 
 const booleanOptions = [
@@ -59,13 +58,5 @@ export const plantHistoryFlag = flag<boolean>({
     key: 'plantHistory',
     description: 'Show previous plant history on inactive raised-bed fields.',
     decide: () => true,
-    options: booleanOptions,
-});
-
-export const weatherHistoryUiFlag = flag<boolean>({
-    key: 'weatherHistoryUi',
-    description:
-        'Enable weather history and forecast charts in the weather HUD. Enabled by default from the rollout date.',
-    decide: () => isWeatherHistoryUiEnabled(),
     options: booleanOptions,
 });
