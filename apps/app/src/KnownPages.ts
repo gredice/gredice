@@ -44,6 +44,10 @@ export const KnownPages = {
     User: (userId: string) => `/admin/users/${userId}` as Route,
     Schedule: '/admin/schedule',
     Approvals: '/admin/approvals',
+    Automations: '/admin/automations',
+    AutomationCreate: '/admin/automations/create',
+    Automation: (automationId: number) =>
+        `/admin/automations/${automationId}` as Route,
     SowingStatistics: '/admin/statistics/sowing',
     Accounts: '/admin/accounts',
     Account: (accountId: string) => `/admin/accounts/${accountId}` as Route,

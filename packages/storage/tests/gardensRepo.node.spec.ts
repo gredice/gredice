@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { and, eq } from 'drizzle-orm';
 import {
+    countRaisedBedsByAccount,
     createAccount,
     createDefaultGardenForAccount,
     createGardenBlock,
@@ -23,6 +23,7 @@ import {
     updateGardenStack,
     updateRaisedBed,
 } from '@gredice/storage';
+import { and, eq } from 'drizzle-orm';
 import { gardenStacks } from '../src/schema';
 import {
     createTestBlock,
@@ -83,6 +84,41 @@ test('getAccountGardens returns gardens for account', async () => {
     const gardens = await getAccountGardens(accountId);
     assert.ok(Array.isArray(gardens));
     assert.ok(gardens.some((g) => g.id === gardenId));
+});
+
+test('countRaisedBedsByAccount counts active raised beds for account quota', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const otherAccountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const otherGardenId = await createTestGarden({
+        accountId: otherAccountId,
+        farmId,
+    });
+    const firstBlockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const secondBlockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const otherBlockId = await createTestBlock(otherGardenId, 'Raised_Bed');
+    const firstRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        firstBlockId,
+    );
+    await createTestRaisedBed(gardenId, accountId, secondBlockId);
+    const otherRaisedBedId = await createTestRaisedBed(
+        otherGardenId,
+        otherAccountId,
+        otherBlockId,
+    );
+
+    await updateRaisedBed({ id: firstRaisedBedId, status: 'active' });
+    await updateRaisedBed({ id: otherRaisedBedId, status: 'active' });
+
+    assert.strictEqual(
+        await countRaisedBedsByAccount(accountId, { status: 'active' }),
+        1,
+    );
+    assert.strictEqual(await countRaisedBedsByAccount(accountId), 2);
 });
 
 test('getGarden returns correct garden', async () => {

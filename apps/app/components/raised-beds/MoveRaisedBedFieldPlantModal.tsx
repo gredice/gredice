@@ -22,7 +22,7 @@ type MoveRaisedBedFieldPlantModalProps = {
     sourcePlantPlaceEventId: number;
     sourcePlantLabel: string;
     targetOptions: MoveRaisedBedFieldPlantOption[];
-    triggerVariant?: 'button' | 'icon';
+    triggerVariant?: 'button' | 'icon' | 'fieldIndex';
 };
 
 export function MoveRaisedBedFieldPlantModal({
@@ -74,7 +74,17 @@ export function MoveRaisedBedFieldPlantModal({
         <Modal
             title={`Premjesti biljku: ${sourcePlantLabel}`}
             trigger={
-                triggerVariant === 'icon' ? (
+                triggerVariant === 'fieldIndex' ? (
+                    <button
+                        type="button"
+                        title="Premjesti biljku"
+                        disabled={targetOptions.length === 0}
+                        className="inline-flex min-w-0 shrink-0 items-center gap-1 rounded-full bg-background/90 px-2 py-1 text-xs font-semibold text-foreground shadow transition-opacity hover:opacity-80 disabled:pointer-events-none disabled:opacity-50"
+                    >
+                        <Replace aria-hidden className="size-3.5 shrink-0" />#
+                        {sourcePositionIndex + 1}
+                    </button>
+                ) : triggerVariant === 'icon' ? (
                     <IconButton
                         variant="outlined"
                         size="sm"

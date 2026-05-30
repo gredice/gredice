@@ -26,6 +26,7 @@ export const adminPages = {
     Inventory: { href: KnownPages.Inventory, label: 'Zalihe' },
     Occasions: { href: KnownPages.Occasions, label: 'Prigode' },
     Approvals: { href: KnownPages.Approvals, label: 'Odobrenja' },
+    Automations: { href: KnownPages.Automations, label: 'Automatizacije' },
     Schedule: { href: KnownPages.Schedule, label: 'Raspored' },
     SowingStatistics: {
         href: KnownPages.SowingStatistics,
@@ -83,6 +84,7 @@ export const adminBreadcrumbPages = [
     adminPages.Inventory,
     adminPages.Occasions,
     adminPages.Approvals,
+    adminPages.Automations,
     adminPages.Schedule,
     adminPages.SowingStatistics,
     adminPages.DeliverySlots,

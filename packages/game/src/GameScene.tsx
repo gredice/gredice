@@ -262,6 +262,9 @@ export function GameScene({
                                 <Suspense fallback={null}>
                                     <Bees
                                         garden={garden}
+                                        groundDecorationDensity={
+                                            qualityProfile.groundDecorationDensity
+                                        }
                                         weather={weather}
                                         weatherDisabled={weatherDisabled}
                                     />

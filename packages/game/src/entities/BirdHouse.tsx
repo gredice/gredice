@@ -9,7 +9,7 @@ import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 const birdHouseWoodMaterial = {
     color: '#956247',
-    metalness: 0.5,
+    metalness: 0,
     roughness: 0.9,
     side: DoubleSide,
 };

@@ -23,7 +23,12 @@ import { type FC, useState } from 'react';
 import { useWeatherNow } from '../../../hooks/useWeatherNow';
 import { RainIcon } from './icons/RainIcon';
 import { WeatherForecastDays } from './WeatherForecastDetails';
+import { WeatherHistoryPanel } from './WeatherHistoryModal';
 import { weatherIcons } from './WeatherIcons';
+import {
+    type WeatherPopoverView,
+    WeatherViewToggle,
+} from './WeatherViewToggle';
 
 export const windDirectionIcons: Record<string, FC> = {
     N: ArrowUp,
@@ -42,30 +47,47 @@ export function WeatherNowDetails() {
     // TODO: Add error message
 
     const [showForecast, setShowForecast] = useState(false);
+    const [view, setView] = useState<WeatherPopoverView>('weather');
     if (!data) return null;
 
     const WeatherIcon = data.symbol != null ? weatherIcons[data.symbol] : null;
     const WindIcon = data.windDirection
         ? windDirectionIcons[data.windDirection]
         : Empty;
+    const title =
+        view === 'graph'
+            ? 'Vremenske prilike'
+            : showForecast
+              ? 'Prognoza'
+              : 'Aktualno vrijeme';
 
     // Chance of rain is a number between 0 and 1,
     // chance is 100 when there is 10 or more mm of rain
     const rainChance = data.rain > 10 ? 1 : 10 / data.rain;
 
     return (
-        <Stack>
+        <Stack
+            className={
+                view === 'graph'
+                    ? 'w-[min(calc(100vw-1rem),44rem)]'
+                    : 'w-[min(calc(100vw-1rem),26rem)]'
+            }
+        >
             <Row
                 className="bg-background px-4 py-2"
                 justifyContent="space-between"
             >
                 <Typography level="body2" bold>
-                    Aktualno vrijeme
+                    {title}
                 </Typography>
+                <WeatherViewToggle value={view} onValueChange={setView} />
             </Row>
             <Divider />
-            {showForecast && <WeatherForecastDays />}
-            {!showForecast && (
+            {view === 'graph' && <WeatherHistoryPanel className="p-3" />}
+            {view === 'weather' && showForecast && (
+                <WeatherForecastDays limit={3} />
+            )}
+            {view === 'weather' && !showForecast && (
                 <div className="grid grid-cols-[1fr_auto] gap-2">
                     <Row spacing={2} className="p-4">
                         <div className="my-1 mr-2">

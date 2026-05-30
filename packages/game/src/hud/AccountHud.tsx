@@ -25,13 +25,18 @@ import { Row } from '@gredice/ui/Row';
 import { Skeleton } from '@gredice/ui/Skeleton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useMarkAllNotificationsRead } from '../hooks/useMarkAllNotificationsRead';
 import { useNotifications } from '../hooks/useNotifications';
 import { KnownPages } from '../knownPages';
+import {
+    type NotificationsFilter,
+    notificationsFilterSearchParam,
+} from '../notificationFilters';
 import { ProfileAvatar } from '../shared-ui/ProfileAvatar';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
 import { HudCard } from './components/HudCard';
@@ -39,12 +44,38 @@ import { GardenAccountMenuItems } from './GardenAccountMenuItems';
 import { GardenOperationsHud } from './GardenOperationsHud';
 import { NotificationList } from './NotificationList';
 
+function useOpenNotificationsOverview() {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
+    return useCallback(
+        (filter: NotificationsFilter = 'unread') => {
+            const next = new URLSearchParams(
+                Array.from(searchParams.entries()),
+            );
+            next.set('pregled', 'obavijesti');
+
+            if (filter === 'all') {
+                next.set(notificationsFilterSearchParam, filter);
+            } else {
+                next.delete(notificationsFilterSearchParam);
+            }
+
+            const query = next.toString();
+            const nextUrl = `${pathname}${query ? `?${query}` : ''}`;
+            router.replace(nextUrl as Parameters<typeof router.replace>[0]);
+        },
+        [pathname, router, searchParams],
+    );
+}
+
 function NotificationsCard({
     onNotificationSelected,
 }: {
     onNotificationSelected: () => void;
 }) {
-    const [, setProfileModalOpen] = useSearchParam('pregled');
+    const openNotificationsOverview = useOpenNotificationsOverview();
     const markAllNotificationsRead = useMarkAllNotificationsRead();
     const { track } = useGameAnalytics();
     const { data: currentUser } = useCurrentUser();
@@ -98,7 +129,7 @@ function NotificationsCard({
                                 track('game_notifications_view_all_opened', {
                                     source: 'quick_panel_no_unread',
                                 });
-                                setProfileModalOpen('obavijesti');
+                                openNotificationsOverview('all');
                             }}
                         >
                             Prikaži sve pročitane
@@ -117,7 +148,7 @@ function NotificationsCard({
                         track('game_notifications_view_all_opened', {
                             source: 'quick_panel',
                         });
-                        setProfileModalOpen('obavijesti');
+                        openNotificationsOverview('all');
                     }}
                 >
                     Prikaži sve obavijesti
@@ -129,6 +160,7 @@ function NotificationsCard({
 
 function ProfileCard() {
     const [, setProfileModalOpen] = useSearchParam('pregled');
+    const openNotificationsOverview = useOpenNotificationsOverview();
     const { track } = useGameAnalytics();
     const { data: currentUser } = useCurrentUser();
     const { data: notifications } = useNotifications(currentUser?.id, false);
@@ -153,7 +185,7 @@ function ProfileCard() {
             </DropdownMenuItem>
             <DropdownMenuItem
                 className="gap-3"
-                onClick={() => setProfileModalOpen('obavijesti')}
+                onClick={() => openNotificationsOverview()}
                 endDecorator={
                     hasUnreadNotifications && <DotIndicator color={'success'} />
                 }

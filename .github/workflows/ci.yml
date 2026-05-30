@@ -74,6 +74,7 @@ jobs:
               - apps/app/**
               - packages/auth/**
               - packages/client/**
+              - packages/directory-types/**
               - packages/email/**
               - packages/fiscalization/**
               - packages/js/**

@@ -196,6 +196,8 @@ export type GLTFResult = GLTF & {
         FireflyJar_Firefly_Body: THREE.Mesh;
         FireflyJar_Firefly_Glow_Abdomen: THREE.Mesh;
         FireflyJar_Firefly_Wings: THREE.Mesh;
+        CatPillow_Cushion: THREE.Mesh;
+        CatPillow_Seam: THREE.Mesh;
         Fence_Corner: THREE.Mesh;
         Fence_Cross: THREE.Mesh;
         Fence_Middle: THREE.Mesh;
@@ -267,6 +269,8 @@ export type GLTFResult = GLTF & {
         BH_flat_dark_wood: THREE.MeshStandardMaterial;
         BH_flat_light_wood: THREE.MeshStandardMaterial;
         BH_flat_warm_gray_roof: THREE.MeshStandardMaterial;
+        CatPillow_Fabric_Red: THREE.MeshStandardMaterial;
+        CatPillow_Seam_DarkRed: THREE.MeshStandardMaterial;
         FJ_flat_brass_lid: THREE.MeshStandardMaterial;
         FJ_flat_firefly_body: THREE.MeshStandardMaterial;
         FJ_soft_firefly_wings: THREE.MeshStandardMaterial;
