@@ -5,6 +5,7 @@ import { SelectableGroup } from '../controls/SelectableGroup';
 import { useBlockData } from '../hooks/useBlockData';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
+import { getBlockHitboxSize } from '../utils/blockHitbox';
 import { useStackHeight } from '../utils/getStackHeight';
 import { entityNameMap } from './entityNameMap';
 
@@ -71,20 +72,21 @@ function InstancedEntityControlTarget({
     const editHitboxDebugVisible = useGameState(
         (state) => state.editHitboxDebugVisible,
     );
-    const blockHeight =
-        blockData?.find((entity) => entity.information.name === block.name)
-            ?.attributes.height ?? 1;
-    const hitboxHeight = Math.max(blockHeight, 0.35);
+    const blockEntity = blockData?.find(
+        (entity) => entity.information.name === block.name,
+    );
+    const hitbox = getBlockHitboxSize(blockEntity);
 
     return (
         <mesh
             position={[
                 stack.position.x,
-                currentStackHeight + hitboxHeight / 2,
+                currentStackHeight + hitbox.height / 2,
                 stack.position.z,
             ]}
+            rotation={[0, block.rotation * (Math.PI / 2), 0]}
         >
-            <boxGeometry args={[1, hitboxHeight, 1]} />
+            <boxGeometry args={[hitbox.width, hitbox.height, hitbox.depth]} />
             <meshBasicMaterial visible={false} />
             {editHitboxDebugVisible && (
                 <Edges color="#22d3ee" renderOrder={10_000} threshold={1} />

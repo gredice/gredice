@@ -2026,6 +2026,12 @@ export interface components {
                 type: string;
                 /** @description Blok je moguće kupiti samo tijekom noći. */
                 nightOnlyPurchase: boolean;
+                /** @description Širina nevidljive zone za odabir i povlačenje bloka u vrtu. */
+                hitboxWidth?: number;
+                /** @description Visina nevidljive zone za odabir i povlačenje bloka u vrtu. */
+                hitboxHeight?: number;
+                /** @description Dubina nevidljive zone za odabir i povlačenje bloka u vrtu. */
+                hitboxDepth?: number;
             };
             prices: {
                 sunflowers: number;
