@@ -3,6 +3,7 @@
 import type { EntityStandardized } from '@gredice/storage';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Search, Sprout } from '@gredice/ui/icons';
+import { Markdown } from '@gredice/ui/Markdown';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -281,9 +282,9 @@ export function PlantsHandbook({ plantSortsData }: PlantsHandbookProps) {
                                 </Typography>
                             )}
                             {selectedPlantSort.information?.description && (
-                                <Typography level="body2">
+                                <Markdown className="text-sm prose-p:first:mt-0 prose-p:last:mb-0">
                                     {selectedPlantSort.information.description}
-                                </Typography>
+                                </Markdown>
                             )}
                             {(() => {
                                 const plantValue: unknown =
