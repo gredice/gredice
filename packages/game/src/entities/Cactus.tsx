@@ -9,9 +9,12 @@ import { useGameGLTF } from '../utils/useGameGLTF';
 import { GardenFlowerModel } from './helpers/GardenFlowerModel';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
-type CactusNodeName = Extract<keyof GLTFResult['nodes'], `Cactus_${string}`>;
+export type CactusNodeName = Extract<
+    keyof GLTFResult['nodes'],
+    `Cactus_${string}`
+>;
 
-type CactusFlowerPlacement = {
+export type CactusFlowerPlacement = {
     color: string;
     id: string;
     position: [number, number, number];
@@ -19,7 +22,7 @@ type CactusFlowerPlacement = {
     scale: number;
 };
 
-type CactusVariantConfig = {
+export type CactusVariantConfig = {
     assetName: GameAssetName;
     bodyNode: CactusNodeName;
     flowers: CactusFlowerPlacement[];
@@ -97,6 +100,10 @@ const cactusVariantByName = new Map<string, CactusVariantConfig>(
     Object.entries(cactusVariants),
 );
 
+export function getCactusVariantConfig(blockName: string) {
+    return cactusVariantByName.get(blockName) ?? null;
+}
+
 const cactusBodyMaterial = {
     color: '#4a6411',
     roughness: 0.82,
@@ -163,7 +170,7 @@ function CactusEntity({
 }
 
 export function Cactus(props: EntityInstanceProps) {
-    const config = cactusVariantByName.get(props.block.name);
+    const config = getCactusVariantConfig(props.block.name);
     if (!config) {
         console.error(`Unknown cactus variant: ${props.block.name}`);
         return null;

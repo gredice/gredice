@@ -26,12 +26,15 @@ import {
     type RaisedBedOrientation,
 } from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
+import { getCactusVariantConfig } from '../Cactus';
+import { getBlockSurfaceDecorations } from '../groundDecorations/getBlockSurfaceDecorations';
+import { resolveGroundDecorationSurface } from '../groundDecorations/groundDecorationConfig';
 import { tulipBouquetStems } from '../tulipBouquet';
 import {
     type BeeWeather,
     createBeeWanderOffset,
     getBeeDwellSeconds,
-    getBeeHabitatGroups,
+    getBeeSpawnHabitatGroups,
     getBeeWanderHoverSeconds,
     isBeeActive,
     shouldBeeWanderNext,
@@ -59,7 +62,12 @@ type BeeGarden = {
 
 type BeeTarget = {
     id: string;
-    kind: 'flower' | 'raised-bed-flower' | 'wander';
+    kind:
+        | 'flower'
+        | 'raised-bed-flower'
+        | 'cactus-flower'
+        | 'ground-flower'
+        | 'wander';
     position: Vector3;
 };
 
@@ -131,7 +139,10 @@ const beeFlightTurnDamping = 7.5;
 const beeFlightLookAheadProgress = 0.06;
 const beeFlightArcMaxHeight = 0.42;
 const beeFlowerRestHeight = 0.025;
+const cactusFlowerHoverHeight = 0.08;
 const defaultTurnDamping = 9;
+const groundDecorationBlockYOffset = 0.2;
+const groundFlowerHoverHeight = 0.08;
 const raisedBedFlowerHoverHeight = 0.42;
 const tulipFlowerHoverHeight = 0.52;
 const fullTurn = Math.PI * 2;
@@ -225,7 +236,9 @@ function createTulipTargets(
 function isBeeFloweringField(field: BeeRaisedBedField) {
     return (
         isRaisedBedFieldOccupied(field) &&
-        (field.plantStatus === 'sprouted' || field.plantStatus === 'ready')
+        (field.plantStatus === 'firstFlowers' ||
+            field.plantStatus === 'firstFruitSet' ||
+            field.plantStatus === 'ready')
     );
 }
 
@@ -298,13 +311,140 @@ function createRaisedBedTargets(
     return targets;
 }
 
-function createFlowerTargets(
+function createCactusTargets(
+    stacks: Stack[],
+    blockData: BlockData[] | null | undefined,
+) {
+    const targets: BeeTarget[] = [];
+
+    for (const stack of stacks) {
+        for (const block of stack.blocks) {
+            const config = getCactusVariantConfig(block.name);
+            if (!config) {
+                continue;
+            }
+
+            const baseHeight = getStackHeight(blockData, stack, block);
+            for (const flower of config.flowers) {
+                const offset = rotateLocalPosition(
+                    new Vector3(
+                        flower.position[0] * config.scale,
+                        0,
+                        flower.position[2] * config.scale,
+                    ),
+                    block.rotation,
+                );
+
+                targets.push({
+                    id: `cactus-${block.id}-${flower.id}`,
+                    kind: 'cactus-flower',
+                    position: new Vector3(
+                        stack.position.x + offset.x,
+                        baseHeight -
+                            config.groundSink +
+                            flower.position[1] * config.scale +
+                            cactusFlowerHoverHeight,
+                        stack.position.z + offset.z,
+                    ),
+                });
+            }
+        }
+    }
+
+    return targets;
+}
+
+function createGroundFlowerTargets({
+    blockData,
+    density,
+    garden,
+}: {
+    blockData: BlockData[] | null | undefined;
+    density: number;
+    garden: BeeGarden;
+}) {
+    if (density <= 0) {
+        return [];
+    }
+
+    const targets: BeeTarget[] = [];
+    const gardenId = garden.id ?? null;
+
+    for (const stack of garden.stacks) {
+        for (const block of stack.blocks) {
+            const surface = resolveGroundDecorationSurface(block.name);
+            if (!surface) {
+                continue;
+            }
+
+            const placements = getBlockSurfaceDecorations({
+                block,
+                density,
+                gardenId,
+                surface,
+            });
+            const blockBaseY =
+                getStackHeight(blockData, stack, block) +
+                groundDecorationBlockYOffset;
+
+            placements.forEach((placement, index) => {
+                if (placement.kind !== 'flower') {
+                    return;
+                }
+
+                const offset = rotateLocalPosition(
+                    new Vector3(
+                        placement.position[0],
+                        0,
+                        placement.position[2],
+                    ),
+                    block.rotation,
+                );
+                targets.push({
+                    id: `ground-flower-${block.id}-${index}`,
+                    kind: 'ground-flower',
+                    position: new Vector3(
+                        stack.position.x + offset.x,
+                        blockBaseY +
+                            placement.position[1] +
+                            Math.max(
+                                groundFlowerHoverHeight,
+                                placement.scale * 0.24,
+                            ),
+                        stack.position.z + offset.z,
+                    ),
+                });
+            });
+        }
+    }
+
+    return targets;
+}
+
+function createFlowerEntityTargets(
     garden: BeeGarden,
     blockData: BlockData[] | null | undefined,
 ) {
+    return createTulipTargets(garden.stacks, blockData);
+}
+
+function createFlowerInteractionTargets({
+    blockData,
+    garden,
+    groundDecorationDensity,
+}: {
+    blockData: BlockData[] | null | undefined;
+    garden: BeeGarden;
+    groundDecorationDensity: number;
+}) {
     return [
-        ...createTulipTargets(garden.stacks, blockData),
         ...createRaisedBedTargets(garden, blockData),
+        ...createCactusTargets(garden.stacks, blockData),
+        ...createGroundFlowerTargets({
+            blockData,
+            density: groundDecorationDensity,
+            garden,
+        }),
     ];
 }
 
@@ -323,14 +463,25 @@ function computeHabitatCenter(targets: BeeTarget[]) {
 function createBeeHabitats(
     garden: BeeGarden | null | undefined,
     blockData: BlockData[] | null | undefined,
+    groundDecorationDensity: number,
 ) {
     if (!garden) {
         return [];
     }
 
-    const targetGroups = getBeeHabitatGroups(
-        createFlowerTargets(garden, blockData),
-    );
+    const spawnTargets = createFlowerEntityTargets(garden, blockData);
+    if (spawnTargets.length <= 0) {
+        return [];
+    }
+
+    const targetGroups = getBeeSpawnHabitatGroups({
+        spawnTargets,
+        additionalTargets: createFlowerInteractionTargets({
+            blockData,
+            garden,
+            groundDecorationDensity,
+        }),
+    });
     if (targetGroups.length <= 0) {
         return [];
     }
@@ -952,13 +1103,11 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
                 group.position.set(
                     runtime.landingPosition.x +
                         Math.cos(now * 1.7 + seed) * 0.05,
-                    runtime.landingPosition.y +
-                        Math.sin(now * 3 + seed) * 0.06,
+                    runtime.landingPosition.y + Math.sin(now * 3 + seed) * 0.06,
                     runtime.landingPosition.z +
                         Math.sin(now * 2.1 + seed) * 0.05,
                 );
-                group.rotation.x =
-                    -0.05 + Math.sin(now * 6 + seed) * 0.04;
+                group.rotation.x = -0.05 + Math.sin(now * 6 + seed) * 0.04;
                 group.rotation.y =
                     runtime.landingYaw + Math.sin(now * 1.3 + seed) * 0.2;
                 group.rotation.z = Math.sin(now * 4.2 + seed) * 0.08;
@@ -1041,10 +1190,12 @@ function resolveBeeWeather({
 
 export function Bees({
     garden,
+    groundDecorationDensity = 1,
     weather,
     weatherDisabled = false,
 }: {
     garden: BeeGarden | null | undefined;
+    groundDecorationDensity?: number;
     weather?: BeeWeatherOverride;
     weatherDisabled?: boolean;
 }) {
@@ -1059,8 +1210,8 @@ export function Bees({
         weatherOverride: weather,
     });
     const habitats = useMemo(
-        () => createBeeHabitats(garden, blockData),
-        [blockData, garden],
+        () => createBeeHabitats(garden, blockData, groundDecorationDensity),
+        [blockData, garden, groundDecorationDensity],
     );
 
     if (habitats.length <= 0 || !isBeeActive(timeOfDay, beeWeather)) {

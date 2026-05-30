@@ -84,11 +84,11 @@ export function createBeeWanderOffset(random: () => number) {
     };
 }
 
-function isWithinBeeHabitatRadius(
+export function isWithinBeeHabitatRadius(
     left: BeeTargetPosition,
     right: BeeTargetPosition,
-    radiusSquared: number,
 ) {
+    const radiusSquared = BEE_HABITAT_RADIUS_BLOCKS * BEE_HABITAT_RADIUS_BLOCKS;
     const x = left.position.x - right.position.x;
     const z = left.position.z - right.position.z;
     return x * x + z * z <= radiusSquared;
@@ -98,14 +98,12 @@ export function getBeeHabitatGroups<T extends BeeTargetPosition>(
     flowerTargets: readonly T[],
 ) {
     const groups: T[][] = [];
-    const radiusSquared = BEE_HABITAT_RADIUS_BLOCKS * BEE_HABITAT_RADIUS_BLOCKS;
 
     for (const target of flowerTargets) {
         const habitat = groups.find((group) => {
             const anchor = group[0];
             return (
-                anchor !== undefined &&
-                isWithinBeeHabitatRadius(anchor, target, radiusSquared)
+                anchor !== undefined && isWithinBeeHabitatRadius(anchor, target)
             );
         });
 
@@ -117,6 +115,23 @@ export function getBeeHabitatGroups<T extends BeeTargetPosition>(
     }
 
     return groups;
+}
+
+export function getBeeSpawnHabitatGroups<T extends BeeTargetPosition>({
+    additionalTargets,
+    spawnTargets,
+}: {
+    additionalTargets: readonly T[];
+    spawnTargets: readonly T[];
+}) {
+    return getBeeHabitatGroups(spawnTargets).map((spawnGroup) => [
+        ...spawnGroup,
+        ...additionalTargets.filter((target) =>
+            spawnGroup.some((spawnTarget) =>
+                isWithinBeeHabitatRadius(spawnTarget, target),
+            ),
+        ),
+    ]);
 }
 
 export function getBeeCount(flowerTargets: readonly BeeTargetPosition[]) {
