@@ -15,7 +15,7 @@ type CatPillowNodeName = Extract<
 >;
 type CatPillowNode = GLTFResult['nodes'][CatPillowNodeName];
 
-const catPillowScale = 0.95;
+const catPillowScale = 0.62;
 
 const fabricMaterial = {
     color: '#b80718',

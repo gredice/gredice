@@ -14,6 +14,7 @@ import {
 } from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
+import { waterBlockName } from '../waterBlockFoam';
 import {
     type BirdBehavior,
     getBirdActivityRange,
@@ -117,6 +118,7 @@ type GroundForageState = {
 };
 
 type BirdRigNode = {
+    basePositionY: number;
     baseRotationX: number;
     baseRotationZ: number;
     object: Object3D | null;
@@ -131,6 +133,8 @@ type BirdRigParts = {
     footRight: BirdRigNode;
     legPivotLeft: BirdRigNode;
     legPivotRight: BirdRigNode;
+    walkPhase: number;
+    walkPoseAmount: number;
 };
 
 const birdScale = 0.28;
@@ -145,6 +149,9 @@ const birdFlightLookAheadProgress = 0.045;
 const birdWalkSpeedBlocksPerSecond = 0.24;
 const birdCircleSpeedBlocksPerSecond = 1.35;
 const birdFlightLegTuckDamping = 10;
+const birdWalkPoseDamping = 14;
+const birdWalkCycleSpeed = Math.PI * 4;
+const birdWalkFootLift = 0.075;
 const airMinHeight = 1.45;
 const airHeightVariance = 1.05;
 const airArcMaxHeight = 1;
@@ -237,6 +244,10 @@ function isTreeBlockName(name: string) {
     return treeBlockNames.has(name);
 }
 
+function isWaterBlockName(name: string) {
+    return name === waterBlockName;
+}
+
 function getBlockHeight(
     blockData: BlockData[] | null | undefined,
     blockName: string,
@@ -263,8 +274,10 @@ function isCircleAnchorBlock(
     blockName: string,
 ) {
     return (
-        isTreeBlockName(blockName) ||
-        getVisualPerchYOffset(blockData, blockName) >= circleTallBlockMinPerchY
+        !isWaterBlockName(blockName) &&
+        (isTreeBlockName(blockName) ||
+            getVisualPerchYOffset(blockData, blockName) >=
+                circleTallBlockMinPerchY)
     );
 }
 
@@ -479,6 +492,10 @@ function createBirdHabitats(
 
         const topBlock = stack.blocks.at(-1);
         if (!topBlock) {
+            continue;
+        }
+
+        if (isWaterBlockName(topBlock.name)) {
             continue;
         }
 
@@ -1168,57 +1185,95 @@ function isMesh(object: Object3D): object is Mesh {
 function getBirdRigNode(scene: Object3D, name: string): BirdRigNode {
     const object = scene.getObjectByName(name) ?? null;
     return {
+        basePositionY: object?.position.y ?? 0,
         baseRotationX: object?.rotation.x ?? 0,
         baseRotationZ: object?.rotation.z ?? 0,
         object,
     };
 }
 
-function updateFlightLegPose({
+function updateBirdLegPose({
     delta,
     flying,
     now,
     rig,
     seed,
+    walking,
+    walkElapsed,
 }: {
     delta: number;
     flying: boolean;
     now: number;
     rig: BirdRigParts;
     seed: number;
+    walking: boolean;
+    walkElapsed: number;
 }) {
-    const targetAmount = flying ? 1 : 0;
+    const flightTargetAmount = flying ? 1 : 0;
     rig.flightLegPoseAmount = MathUtils.damp(
         rig.flightLegPoseAmount,
-        targetAmount,
+        flightTargetAmount,
         birdFlightLegTuckDamping,
         delta,
     );
+    rig.walkPoseAmount = MathUtils.damp(
+        rig.walkPoseAmount,
+        walking && !flying ? 1 : 0,
+        birdWalkPoseDamping,
+        delta,
+    );
 
-    const amount = rig.flightLegPoseAmount;
-    const pulse = Math.sin(now * 13.5 + seed) * 0.045 * amount;
-    const legRotationX = (1.08 + pulse) * amount;
-    const footRotationX = -0.42 * amount;
+    const flightAmount = rig.flightLegPoseAmount;
+    const walkAmount = rig.walkPoseAmount;
+    const pulse = Math.sin(now * 13.5 + seed) * 0.045 * flightAmount;
+    const flightLegRotationX = (1.08 + pulse) * flightAmount;
+    const flightFootRotationX = -0.42 * flightAmount;
+    if (walking) {
+        rig.walkPhase = walkElapsed * birdWalkCycleSpeed;
+    }
+
+    const stepPhase = rig.walkPhase;
+    const walkSwing = Math.sin(stepPhase) * 0.32 * walkAmount;
+    const leftStep = Math.max(0, Math.sin(stepPhase)) * walkAmount;
+    const rightStep = Math.max(0, -Math.sin(stepPhase)) * walkAmount;
+    const liftedFootRotationX = 0.28;
+    const plantedFootRotationX = -0.08;
 
     if (rig.legPivotLeft.object) {
         rig.legPivotLeft.object.rotation.x =
-            rig.legPivotLeft.baseRotationX + legRotationX;
+            rig.legPivotLeft.baseRotationX +
+            flightLegRotationX +
+            walkSwing -
+            leftStep * 0.12;
         rig.legPivotLeft.object.rotation.z =
-            rig.legPivotLeft.baseRotationZ + 0.08 * amount;
+            rig.legPivotLeft.baseRotationZ + 0.08 * flightAmount;
     }
     if (rig.legPivotRight.object) {
         rig.legPivotRight.object.rotation.x =
-            rig.legPivotRight.baseRotationX + legRotationX;
+            rig.legPivotRight.baseRotationX +
+            flightLegRotationX -
+            walkSwing -
+            rightStep * 0.12;
         rig.legPivotRight.object.rotation.z =
-            rig.legPivotRight.baseRotationZ - 0.08 * amount;
+            rig.legPivotRight.baseRotationZ - 0.08 * flightAmount;
     }
     if (rig.footLeft.object) {
+        rig.footLeft.object.position.y =
+            rig.footLeft.basePositionY + leftStep * birdWalkFootLift;
         rig.footLeft.object.rotation.x =
-            rig.footLeft.baseRotationX + footRotationX;
+            rig.footLeft.baseRotationX +
+            flightFootRotationX +
+            leftStep * liftedFootRotationX -
+            rightStep * plantedFootRotationX;
     }
     if (rig.footRight.object) {
+        rig.footRight.object.position.y =
+            rig.footRight.basePositionY + rightStep * birdWalkFootLift;
         rig.footRight.object.rotation.x =
-            rig.footRight.baseRotationX + footRotationX;
+            rig.footRight.baseRotationX +
+            flightFootRotationX +
+            rightStep * liftedFootRotationX -
+            leftStep * plantedFootRotationX;
     }
 }
 
@@ -1337,6 +1392,8 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
                 headPivot: getBirdRigNode(clone, 'BirdSmall_HeadPivot'),
                 legPivotLeft: getBirdRigNode(clone, 'BirdSmall_LegPivot_L'),
                 legPivotRight: getBirdRigNode(clone, 'BirdSmall_LegPivot_R'),
+                walkPhase: 0,
+                walkPoseAmount: 0,
             } satisfies BirdRigParts,
             scene: clone,
         };
@@ -1361,12 +1418,13 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     }, [actions, isFlapping]);
 
     useEffect(() => {
-        runtimeRef.current = null;
-        if (groupRef.current) {
-            groupRef.current.position.copy(habitat.home.position);
-            if (habitat.home.facingYaw !== undefined) {
-                groupRef.current.rotation.y = habitat.home.facingYaw;
-            }
+        if (runtimeRef.current || !groupRef.current) {
+            return;
+        }
+
+        groupRef.current.position.copy(habitat.home.position);
+        if (habitat.home.facingYaw !== undefined) {
+            groupRef.current.rotation.y = habitat.home.facingYaw;
         }
     }, [habitat.home.facingYaw, habitat.home.position]);
 
@@ -1509,10 +1567,11 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
 
             if (runtime.motion === 'walk') {
                 nextPosition.y +=
-                    Math.max(
-                        0,
-                        Math.sin((now - runtime.startedAt) * Math.PI * 4),
-                    ) * 0.025;
+                    Math.abs(
+                        Math.sin(
+                            (now - runtime.startedAt) * birdWalkCycleSpeed,
+                        ),
+                    ) * 0.022;
             }
 
             group.position.copy(nextPosition);
@@ -1690,7 +1749,9 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
         const runtime = runtimeRef.current;
         const group = groupRef.current;
         const now = clock.elapsedTime;
-        updateFlightLegPose({
+        const walking =
+            runtime?.phase === 'moving' && runtime.motion === 'walk';
+        updateBirdLegPose({
             delta,
             flying:
                 runtime?.phase === 'circling' ||
@@ -1698,6 +1759,8 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
             now,
             rig: birdModel.rig,
             seed: habitat.seed,
+            walking,
+            walkElapsed: walking ? Math.max(0, now - runtime.startedAt) : 0,
         });
         updateGroundPeckPose({ delta, rig: birdModel.rig });
 

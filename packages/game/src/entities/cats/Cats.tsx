@@ -2,8 +2,8 @@ import type { BlockData } from '@gredice/client';
 import { useAnimations } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Group, Object3D } from 'three';
-import { MathUtils, Mesh, Vector3 } from 'three';
+import type { AnimationAction, Group, Material, Object3D } from 'three';
+import { MathUtils, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
@@ -34,11 +34,19 @@ type CatTarget = {
     facingYaw?: number;
     lookAtPosition?: Vector3;
     position: Vector3;
+    walkPosition?: Vector3;
+};
+
+type CatGroundSurface = {
+    x: number;
+    y: number;
+    z: number;
 };
 
 type CatHabitat = {
     id: string;
     covers: CatTarget[];
+    groundSurfaces: CatGroundSurface[];
     lowEntities: CatTarget[];
     pillow: CatTarget;
     roamAnchors: CatTarget[];
@@ -49,7 +57,7 @@ type MovingCatState = {
     phase: 'moving';
     duration: number;
     from: Vector3;
-    jumpHeight: number;
+    groundSurfaces: CatGroundSurface[];
     startedAt: number;
     target: CatTarget;
     to: Vector3;
@@ -78,14 +86,25 @@ const clearCatWeather = {
     windSpeed: 0,
 } satisfies CatWeather;
 
-const catScale = 0.58;
+const catScale = 0.42;
 const catGroundLift = 0.02;
-const catPillowSurfaceYOffset = 0.35;
-const catWalkSpeedBlocksPerSecond = 0.58;
+const catPillowSurfaceYOffset = 0.24;
+const catGroundSurfaceHalfSize = 0.5;
+const catGroundSurfaceEpsilon = 0.001;
+const catWalkSpeedBlocksPerSecond = 0.75;
+const catWalkCycleDistance = 0.9;
+const catWalkAnimationFallbackDuration = 4 / 3;
+const catWalkAnimationMinTimeScale = 0.25;
+const catWalkAnimationMaxTimeScale = 1.45;
+const catWalkBodyBobHeight = 0.012;
 const catWalkTurnDamping = 7.5;
 const catIdleTurnDamping = 8.5;
 const catWalkLookAheadProgress = 0.05;
 const fullTurn = Math.PI * 2;
+const catBlackFurColor = '#07080a';
+const catSoftBlackFurColor = '#101214';
+const catDarkPatchColor = '#17191b';
+const catDarkPatchShadowColor = '#090a0b';
 
 const catPillowBlockNames = new Set(['CatPillow', 'Cat_Pillow']);
 const groundBlockNames = new Set([
@@ -145,6 +164,35 @@ function createRandom(seed: number) {
 
 function horizontalDistance(left: Vector3, right: Vector3) {
     return Math.hypot(left.x - right.x, left.z - right.z);
+}
+
+function getCatGroundYFromHeight(height: number) {
+    return height > 0 ? height + catGroundLift : 0;
+}
+
+function getCatWalkYAt(
+    position: Pick<Vector3, 'x' | 'z'>,
+    groundSurfaces: CatGroundSurface[],
+) {
+    let surfaceY: number | null = null;
+
+    for (const surface of groundSurfaces) {
+        const insideSurface =
+            Math.abs(position.x - surface.x) <=
+                catGroundSurfaceHalfSize + catGroundSurfaceEpsilon &&
+            Math.abs(position.z - surface.z) <=
+                catGroundSurfaceHalfSize + catGroundSurfaceEpsilon;
+
+        if (insideSurface && (surfaceY === null || surface.y > surfaceY)) {
+            surfaceY = surface.y;
+        }
+    }
+
+    return surfaceY ?? 0;
+}
+
+function getTargetWalkPosition(target: CatTarget) {
+    return (target.walkPosition ?? target.position).clone();
 }
 
 function candidatesInRange<T extends { position: Vector3 }>(
@@ -209,6 +257,47 @@ function getLowEntityYOffset(
     return null;
 }
 
+function getGroundSurfaceY(
+    blockData: BlockData[] | null | undefined,
+    stack: Stack,
+) {
+    let height = 0;
+    let hasGroundBlock = false;
+
+    for (const block of stack.blocks) {
+        if (!isGroundBlockName(block.name)) {
+            break;
+        }
+
+        hasGroundBlock = true;
+        height += getBlockHeight(blockData, block.name) ?? 0;
+    }
+
+    return hasGroundBlock ? getCatGroundYFromHeight(height) : null;
+}
+
+function createCatGroundSurfaces(
+    stacks: Stack[] | undefined,
+    blockData: BlockData[] | null | undefined,
+) {
+    const surfaces: CatGroundSurface[] = [];
+
+    for (const stack of stacks ?? []) {
+        const y = getGroundSurfaceY(blockData, stack);
+        if (y === null) {
+            continue;
+        }
+
+        surfaces.push({
+            x: stack.position.x,
+            y,
+            z: stack.position.z,
+        });
+    }
+
+    return surfaces;
+}
+
 function targetForPillowBlock({
     block,
     blockData,
@@ -218,8 +307,11 @@ function targetForPillowBlock({
     blockData: BlockData[] | null | undefined;
     stack: Stack;
 }) {
-    const pillowSurfaceHeight =
-        getBlockHeight(blockData, block.name) ?? catPillowSurfaceYOffset;
+    const stackHeight = getStackHeight(blockData, stack, block);
+    const pillowSurfaceHeight = Math.min(
+        getBlockHeight(blockData, block.name) ?? catPillowSurfaceYOffset,
+        catPillowSurfaceYOffset,
+    );
 
     return {
         behavior: 'pillow',
@@ -227,9 +319,12 @@ function targetForPillowBlock({
         id: `pillow-${block.id}`,
         position: new Vector3(
             stack.position.x,
-            getStackHeight(blockData, stack, block) +
-                pillowSurfaceHeight +
-                catGroundLift,
+            stackHeight + pillowSurfaceHeight + catGroundLift,
+            stack.position.z,
+        ),
+        walkPosition: new Vector3(
+            stack.position.x,
+            getCatGroundYFromHeight(stackHeight),
             stack.position.z,
         ),
     } satisfies CatTarget;
@@ -239,14 +334,17 @@ function targetForGroundStack(
     stack: Stack,
     blockData: BlockData[] | null | undefined,
 ) {
+    const position = new Vector3(
+        stack.position.x,
+        getCatGroundYFromHeight(getStackHeight(blockData, stack)),
+        stack.position.z,
+    );
+
     return {
         behavior: 'roam',
         id: `roam-${stack.position.x}-${stack.position.z}`,
-        position: new Vector3(
-            stack.position.x,
-            getStackHeight(blockData, stack) + catGroundLift,
-            stack.position.z,
-        ),
+        position,
+        walkPosition: position.clone(),
     } satisfies CatTarget;
 }
 
@@ -264,16 +362,15 @@ function targetForCoverBlock({
     const radius = 0.26 + ((seed >>> 5) % 9) * 0.012;
     const x = stack.position.x + Math.cos(angle) * radius;
     const z = stack.position.z + Math.sin(angle) * radius;
+    const y = getCatGroundYFromHeight(getStackHeight(blockData, stack, block));
+    const position = new Vector3(x, y, z);
 
     return {
         behavior: 'cover',
         facingYaw: Math.atan2(stack.position.x - x, stack.position.z - z),
         id: `cover-${block.id}`,
-        position: new Vector3(
-            x,
-            getStackHeight(blockData, stack, block) + catGroundLift,
-            z,
-        ),
+        position,
+        walkPosition: position.clone(),
     } satisfies CatTarget;
 }
 
@@ -288,13 +385,20 @@ function targetForLowEntityBlock({
     stack: Stack;
     yOffset: number;
 }) {
+    const stackHeight = getStackHeight(blockData, stack, block);
+
     return {
         behavior: 'low-entity',
         facingYaw: blockRotationToYaw(block.rotation),
         id: `low-entity-${block.id}`,
         position: new Vector3(
             stack.position.x,
-            getStackHeight(blockData, stack, block) + yOffset + catGroundLift,
+            stackHeight + yOffset + catGroundLift,
+            stack.position.z,
+        ),
+        walkPosition: new Vector3(
+            stack.position.x,
+            getCatGroundYFromHeight(stackHeight),
             stack.position.z,
         ),
     } satisfies CatTarget;
@@ -304,6 +408,7 @@ function createCatHabitats(
     stacks: Stack[] | undefined,
     blockData: BlockData[] | null | undefined,
 ) {
+    const groundSurfaces = createCatGroundSurfaces(stacks, blockData);
     const pillows: CatTarget[] = [];
     const covers: CatTarget[] = [];
     const lowEntities: CatTarget[] = [];
@@ -354,6 +459,7 @@ function createCatHabitats(
     return pillows.map((pillow) => ({
         id: `cat-${pillow.id}`,
         covers,
+        groundSurfaces,
         lowEntities,
         pillow,
         roamAnchors,
@@ -361,18 +467,36 @@ function createCatHabitats(
     }));
 }
 
-function smoothProgress(progress: number) {
-    return progress * progress * (3 - 2 * progress);
-}
-
 function movementDuration(from: Vector3, to: Vector3) {
     const horizontal = horizontalDistance(from, to);
-    const vertical = Math.abs(from.y - to.y);
+
+    return MathUtils.clamp(horizontal / catWalkSpeedBlocksPerSecond, 0.9, 8.5);
+}
+
+function movingCatHorizontalSpeed(runtime: MovingCatState) {
+    if (runtime.duration <= 0) {
+        return 0;
+    }
+
+    return horizontalDistance(runtime.from, runtime.to) / runtime.duration;
+}
+
+function catWalkAnimationTimeScale(
+    runtime: CatRuntimeState | null,
+    action: AnimationAction | null | undefined,
+) {
+    if (runtime?.phase !== 'moving') {
+        return 1;
+    }
+
+    const clipDuration =
+        action?.getClip().duration ?? catWalkAnimationFallbackDuration;
+    const speed = movingCatHorizontalSpeed(runtime);
 
     return MathUtils.clamp(
-        (horizontal + vertical * 0.7) / catWalkSpeedBlocksPerSecond,
-        0.9,
-        8.5,
+        (speed * clipDuration) / catWalkCycleDistance,
+        catWalkAnimationMinTimeScale,
+        catWalkAnimationMaxTimeScale,
     );
 }
 
@@ -421,18 +545,21 @@ function createRoamTarget({
         range,
     );
     const anchor = pickCandidate(anchors, random) ?? habitat.pillow;
+    const anchorWalkPosition = getTargetWalkPosition(anchor);
     const radius = anchor === habitat.pillow ? 0.28 : 0.16 + random() * 0.18;
     const angle = random() * fullTurn;
+    const position = new Vector3(
+        anchorWalkPosition.x + Math.cos(angle) * radius,
+        anchorWalkPosition.y,
+        anchorWalkPosition.z + Math.sin(angle) * radius,
+    );
 
     return {
         behavior: 'roam',
         facingYaw: angle,
         id: `roam-${anchor.id}-${Math.round(angle * 1000)}`,
-        position: new Vector3(
-            anchor.position.x + Math.cos(angle) * radius,
-            anchor.position.y,
-            anchor.position.z + Math.sin(angle) * radius,
-        ),
+        position,
+        walkPosition: position.clone(),
     } satisfies CatTarget;
 }
 
@@ -483,7 +610,7 @@ function createStalkBirdTarget({
     approach.setLength(0.5 + random() * 0.18);
 
     const position = birdPosition.clone().add(approach);
-    position.y = birdPosition.y + catGroundLift;
+    position.y = getCatWalkYAt(position, habitat.groundSurfaces);
 
     return {
         behavior: 'stalk-bird',
@@ -494,6 +621,7 @@ function createStalkBirdTarget({
         id: `stalk-bird-${targetBird.id}`,
         lookAtPosition: birdPosition,
         position,
+        walkPosition: position.clone(),
     } satisfies CatTarget;
 }
 
@@ -563,41 +691,42 @@ function chooseNextTarget({
 
 function makeMovingState({
     from,
+    fromTarget,
+    groundSurfaces,
     now,
     target,
 }: {
     from: Vector3;
+    fromTarget?: CatTarget;
+    groundSurfaces: CatGroundSurface[];
     now: number;
     target: CatTarget;
 }) {
-    const verticalDistance = Math.abs(from.y - target.position.y);
-    const jumpHeight =
-        target.behavior === 'low-entity' || verticalDistance > 0.12
-            ? MathUtils.clamp(0.24 + verticalDistance * 0.6, 0.24, 0.54)
-            : 0;
+    const walkFrom = fromTarget ? getTargetWalkPosition(fromTarget) : from;
+    const walkTo = getTargetWalkPosition(target);
+    walkFrom.y = getCatWalkYAt(walkFrom, groundSurfaces);
+    walkTo.y = getCatWalkYAt(walkTo, groundSurfaces);
 
     return {
         phase: 'moving',
-        duration: movementDuration(from, target.position),
-        from,
-        jumpHeight,
+        duration: movementDuration(walkFrom, walkTo),
+        from: walkFrom,
+        groundSurfaces,
         startedAt: now,
         target,
-        to: target.position.clone(),
+        to: walkTo,
     } satisfies MovingCatState;
 }
 
 function movingPositionAt(runtime: MovingCatState, progress: number) {
-    const movementProgress = smoothProgress(progress);
+    const movementProgress = progress;
     const position = runtime.from.clone().lerp(runtime.to, movementProgress);
+    const walkDistance =
+        horizontalDistance(runtime.from, runtime.to) * movementProgress;
+    const walkPhase = (walkDistance / catWalkCycleDistance) * fullTurn;
 
-    if (runtime.jumpHeight > 0) {
-        position.y += Math.sin(progress * Math.PI) * runtime.jumpHeight;
-    } else {
-        position.y +=
-            Math.max(0, Math.sin(progress * runtime.duration * Math.PI * 3.6)) *
-            0.015;
-    }
+    position.y = getCatWalkYAt(position, runtime.groundSurfaces);
+    position.y += Math.max(0, Math.sin(walkPhase * 2)) * catWalkBodyBobHeight;
 
     return position;
 }
@@ -708,6 +837,47 @@ function createCatDebugEntry({
     };
 }
 
+function getCatMaterialTint(materialName: string) {
+    if (materialName.includes('Material.Cat.BlackFurSoft')) {
+        return catSoftBlackFurColor;
+    }
+
+    if (materialName.includes('Material.Cat.BlackFur')) {
+        return catBlackFurColor;
+    }
+
+    if (materialName.includes('Material.Cat.WhiteFurShadow')) {
+        return catDarkPatchShadowColor;
+    }
+
+    if (materialName.includes('Material.Cat.WhiteFur')) {
+        return catDarkPatchColor;
+    }
+
+    return null;
+}
+
+function cloneCatMaterial(material: Material) {
+    const clone = material.clone();
+    const tint = getCatMaterialTint(material.name);
+
+    if (tint && clone instanceof MeshStandardMaterial) {
+        clone.color.set(tint);
+        clone.metalness = 0;
+        clone.roughness = Math.max(clone.roughness, 0.82);
+    }
+
+    return clone;
+}
+
+function prepareCatMesh(object: Mesh) {
+    object.castShadow = true;
+    object.receiveShadow = true;
+    object.material = Array.isArray(object.material)
+        ? object.material.map(cloneCatMaterial)
+        : cloneCatMaterial(object.material);
+}
+
 function Cat({
     birdGroundEntries,
     habitat,
@@ -738,8 +908,7 @@ function Cat({
         const clone = gltf.scene.clone(true);
         clone.traverse((object) => {
             if (isMesh(object)) {
-                object.castShadow = true;
-                object.receiveShadow = true;
+                prepareCatMesh(object);
             }
         });
         return clone;
@@ -752,6 +921,10 @@ function Cat({
             return;
         }
 
+        action.timeScale =
+            activeAnimation === 'Cat_Walk'
+                ? catWalkAnimationTimeScale(runtimeRef.current, action)
+                : 1;
         action.reset().fadeIn(0.18).play();
         return () => {
             action.fadeOut(0.18);
@@ -793,6 +966,15 @@ function Cat({
             activeAnimationRef.current = nextAnimation;
             setActiveAnimation(nextAnimation);
         };
+        const syncWalkAnimationSpeed = (nextRuntime: CatRuntimeState) => {
+            const walkAction = actions.Cat_Walk;
+            if (walkAction) {
+                walkAction.timeScale = catWalkAnimationTimeScale(
+                    nextRuntime,
+                    walkAction,
+                );
+            }
+        };
 
         if (!runtime) {
             runtime = makeSettledState({
@@ -811,6 +993,7 @@ function Cat({
 
         if (runtime.phase === 'moving') {
             setAnimation(getCatAnimationName(runtime));
+            syncWalkAnimationSpeed(runtime);
             const progress = MathUtils.clamp(
                 (now - runtime.startedAt) / runtime.duration,
                 0,
@@ -847,6 +1030,7 @@ function Cat({
         }
 
         setAnimation(getCatAnimationName(runtime));
+        syncWalkAnimationSpeed(runtime);
         group.position.copy(runtime.target.position);
         if (
             runtime.target.behavior === 'pillow' ||
@@ -901,6 +1085,8 @@ function Cat({
 
         runtimeRef.current = makeMovingState({
             from: group.position.clone(),
+            fromTarget: runtime.target,
+            groundSurfaces: habitat.groundSurfaces,
             now,
             target,
         });
