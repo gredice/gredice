@@ -175,13 +175,13 @@ function PlaceEntityButton({
         isNightTimeOfDay(timeOfDay);
     const isPlaceable = isSandbox || hasSunflowerPrice;
 
-    async function placeEntity() {
+    function placeEntity() {
         if (!blockData) {
             console.warn('Cannot place entity, missing data');
             return;
         }
 
-        await placeBlock.mutateAsync({
+        placeBlock.mutate({
             blockName: name,
         });
     }
@@ -203,9 +203,7 @@ function PlaceEntityButton({
                 onClick={placeEntity}
                 size={simple ? 'sm' : 'md'}
                 variant="soft"
-                disabled={
-                    !isPlaceable || !isAvailableNow || placeBlock.isPending
-                }
+                disabled={!isPlaceable || !isAvailableNow}
                 endDecorator={
                     <Row
                         className={cx(
@@ -215,11 +213,9 @@ function PlaceEntityButton({
                         )}
                     >
                         {isSandbox
-                            ? placeBlock.isPending
-                                ? '⏳'
-                                : 'Besplatno'
+                            ? 'Besplatno'
                             : hasSunflowerPrice && isAvailableNow
-                              ? `${placeBlock.isPending ? '⏳' : '🌻'} ${block.prices.sunflowers}`
+                              ? `🌻 ${block.prices.sunflowers}`
                               : availabilityMessage
                                 ? 'Noću'
                                 : 'Nedostupno'}

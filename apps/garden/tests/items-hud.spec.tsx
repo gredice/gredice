@@ -76,6 +76,57 @@ test('item details place button keeps the soft color treatment', async ({
     await expect(pricePill).toHaveClass(/bg-primary\/15/u);
 });
 
+test('item placement buttons stay usable while placement is pending', async ({
+    mount,
+    page,
+}) => {
+    let placeRequestCount = 0;
+    const releaseResponses: Array<() => void> = [];
+
+    await page.route(
+        /\/api(?:\/gredice)?\/gardens\/1\/blocks$/u,
+        async (route) => {
+            placeRequestCount += 1;
+            const blockId = `placed-block-${placeRequestCount.toString()}`;
+
+            await new Promise<void>((resolve) => {
+                releaseResponses.push(resolve);
+            });
+
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    id: blockId,
+                    position: { x: 0, y: 0 },
+                }),
+            });
+        },
+    );
+
+    await mount(<ItemsHudAlignmentStory />);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+
+    const placeButton = page
+        .locator('button')
+        .filter({ hasText: '🌻 10' })
+        .first();
+    await expect(placeButton).toBeEnabled();
+
+    await placeButton.click();
+    await expect.poll(() => placeRequestCount).toBe(1);
+    await expect(placeButton).toBeEnabled();
+    await expect(placeButton).toHaveText('🌻 10');
+
+    await placeButton.click();
+    await expect.poll(() => placeRequestCount).toBe(2);
+
+    for (const releaseResponse of releaseResponses) {
+        releaseResponse();
+    }
+});
+
 test('decoration picker scrolls when the viewport is too short for all items', async ({
     mount,
     page,

@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGameState } from '../useGameState';
 import {
     createOptimisticBlockPlacement,
+    removeOptimisticBlockId,
     replaceOptimisticBlockId,
 } from './optimisticBlockPlacement';
 import { useBlockData } from './useBlockData';
@@ -30,6 +31,12 @@ async function getBlockPlacementError(response: Response) {
     } catch {
         return responseText;
     }
+}
+
+function createOptimisticBlockId(blockName: string) {
+    const timestamp = Date.now().toString(36);
+    const randomSuffix = Math.random().toString(36).slice(2);
+    return `${optimisticBlockIdPrefix}:${blockName}:${timestamp}:${randomSuffix}`;
 }
 
 export function useBlockPlace() {
@@ -69,10 +76,11 @@ export function useBlockPlace() {
                 return;
             }
 
+            await queryClient.cancelQueries({ queryKey: gardenQueryKey });
             const currentGarden =
                 queryClient.getQueryData<CurrentGardenData>(gardenQueryKey) ??
                 garden;
-            const optimisticBlockId = `${optimisticBlockIdPrefix}:${blockName}:${Date.now().toString(36)}`;
+            const optimisticBlockId = createOptimisticBlockId(blockName);
             const optimisticPlacement = createOptimisticBlockPlacement(
                 currentGarden,
                 blockData,
@@ -83,10 +91,6 @@ export function useBlockPlace() {
                 return;
             }
 
-            await queryClient.cancelQueries({ queryKey: gardenQueryKey });
-            const previousGarden =
-                queryClient.getQueryData<CurrentGardenData>(gardenQueryKey) ??
-                currentGarden;
             queryClient.setQueryData<CurrentGardenData>(gardenQueryKey, {
                 ...currentGarden,
                 stacks: optimisticPlacement.stacks,
@@ -108,7 +112,6 @@ export function useBlockPlace() {
 
             return {
                 optimisticBlockId,
-                previousGarden,
             };
         },
         onSuccess: (data, _variables, context) => {
@@ -130,10 +133,16 @@ export function useBlockPlace() {
         },
         onError: (error, _variables, context) => {
             console.error('Error creating block', error);
-            if (context?.previousGarden) {
-                queryClient.setQueryData(
+            if (context?.optimisticBlockId) {
+                queryClient.setQueryData<CurrentGardenData | null>(
                     gardenQueryKey,
-                    context.previousGarden,
+                    (currentGarden) =>
+                        currentGarden
+                            ? removeOptimisticBlockId(
+                                  currentGarden,
+                                  context.optimisticBlockId,
+                              )
+                            : currentGarden,
                 );
             }
         },
