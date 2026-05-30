@@ -1,5 +1,6 @@
 import type { EntityStandardized } from '@gredice/storage';
 import { Card, CardContent } from '@gredice/ui/Card';
+import { Markdown } from '@gredice/ui/Markdown';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import {
@@ -48,21 +49,18 @@ export function OperationDetails({ operation }: OperationDetailsProps) {
                         </Typography>
                     )}
                     {operation.information?.description && (
-                        <Typography level="body2">
+                        <Markdown className="text-sm prose-p:first:mt-0 prose-p:last:mb-0">
                             {operation.information.description}
-                        </Typography>
+                        </Markdown>
                     )}
                     {operation.information?.instructions && (
-                        <div className="rounded-md border bg-muted/40 p-3">
+                        <div className="rounded-md border bg-muted/40 p-3 space-y-1">
                             <Typography level="body2" semiBold>
                                 Upute
                             </Typography>
-                            <Typography
-                                level="body2"
-                                className="whitespace-pre-wrap"
-                            >
+                            <Markdown className="text-sm prose-p:first:mt-0 prose-p:last:mb-0">
                                 {operation.information.instructions}
-                            </Typography>
+                            </Markdown>
                         </div>
                     )}
                     <div className="grid gap-2 text-sm sm:grid-cols-2">
