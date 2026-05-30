@@ -1,5 +1,5 @@
 import type { BlockData } from '@gredice/client';
-import { useFrame } from '@react-three/fiber';
+import { type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import type { Group, Material, Object3D } from 'three';
 import {
@@ -818,6 +818,38 @@ function chooseNextTarget({
     );
 }
 
+function chooseManualNextTarget({
+    currentTarget,
+    habitatCenter,
+    random,
+    targets,
+}: {
+    currentTarget: BeeTarget;
+    habitatCenter: Vector3;
+    random: () => number;
+    targets: BeeTarget[];
+}) {
+    const target = chooseNextTarget({
+        currentTarget,
+        habitatCenter,
+        random,
+        targets,
+    });
+
+    if (target.id !== currentTarget.id || target.kind !== currentTarget.kind) {
+        return target;
+    }
+
+    const alternatives = targets.filter(
+        (candidate) => candidate.id !== currentTarget.id,
+    );
+    if (currentTarget.kind !== 'wander') {
+        alternatives.push(createWanderTarget(habitatCenter, random));
+    }
+
+    return pickCandidate(alternatives, random) ?? target;
+}
+
 function makeMovingState({
     from,
     now,
@@ -1085,6 +1117,7 @@ function createBeeDebugEntry({
 function Bee({ habitat }: { habitat: BeeHabitat }) {
     const gltf = useGameGLTF('Bee');
     const { enableDebugHudFlag = false } = useGameFlags();
+    const clock = useThree((state) => state.clock);
     const groupRef = useRef<Group>(null);
     const randomRef = useRef(createRandom(habitat.seed));
     const runtimeRef = useRef<BeeRuntimeState | null>(null);
@@ -1131,6 +1164,36 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
 
         return () => removeAnimalDebugEntry(habitat.id);
     }, [enableDebugHudFlag, habitat.id, removeAnimalDebugEntry]);
+
+    function handlePointerDown(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+    }
+
+    function handleClick(event: ThreeEvent<MouseEvent>) {
+        event.stopPropagation();
+
+        const group = groupRef.current;
+        const runtime = runtimeRef.current;
+        if (!group || !runtime) {
+            return;
+        }
+
+        const random = randomRef.current;
+        const now = clock.getElapsedTime();
+        const target = chooseManualNextTarget({
+            currentTarget: runtime.target,
+            habitatCenter: habitat.center,
+            random,
+            targets: habitat.targets,
+        });
+
+        runtimeRef.current = makeMovingState({
+            from: group.position.clone(),
+            now,
+            random,
+            target,
+        });
+    }
 
     useFrame(({ clock }, delta) => {
         const group = groupRef.current;
@@ -1280,7 +1343,13 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
     });
 
     return (
-        <group ref={groupRef} scale={beeScale}>
+        // biome-ignore lint/a11y/noStaticElementInteractions: Three.js element is interactive
+        <group
+            ref={groupRef}
+            scale={beeScale}
+            onPointerDown={handlePointerDown}
+            onClick={handleClick}
+        >
             <primitive object={beeModel.scene} />
         </group>
     );

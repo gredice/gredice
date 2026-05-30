@@ -1,6 +1,6 @@
 import type { BlockData } from '@gredice/client';
 import { useAnimations } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
+import { type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group, Material, Object3D } from 'three';
 import { MathUtils, Mesh, MeshStandardMaterial, Vector3 } from 'three';
@@ -798,6 +798,86 @@ function chooseNextTarget({
     return habitat.home;
 }
 
+function chooseManualNextTarget({
+    currentTarget,
+    habitat,
+    random,
+    timeOfDay,
+}: {
+    currentTarget: BirdTarget;
+    habitat: BirdHabitat;
+    random: () => number;
+    timeOfDay: number;
+}) {
+    const target = chooseNextTarget({
+        currentTarget,
+        habitat,
+        random,
+        timeOfDay,
+    });
+
+    if (
+        target.id !== currentTarget.id ||
+        target.behavior !== currentTarget.behavior
+    ) {
+        return target;
+    }
+
+    const range = getBirdActivityRange(timeOfDay);
+    const airAnchors = getAirAnchorsInRange(habitat, range);
+    const circleAnchors = candidatesInRange(
+        habitat.circleAnchors,
+        habitat.home,
+        range,
+    );
+    const trees = candidatesInRange(habitat.trees, habitat.home, range);
+    const entities = candidatesInRange(habitat.entities, habitat.home, range);
+    const grounds = candidatesInRange(habitat.grounds, habitat.home, range);
+    const alternatives: BirdTarget[] = [];
+
+    if (currentTarget.behavior !== 'air') {
+        alternatives.push(
+            createAirTarget({
+                anchors: airAnchors,
+                home: habitat.home,
+                index: 0,
+                random,
+            }),
+        );
+    }
+
+    if (currentTarget.behavior !== 'circle') {
+        const circleAnchor = pickCandidate(circleAnchors, random);
+        if (circleAnchor) {
+            alternatives.push(
+                createCircleTarget({
+                    anchor: circleAnchor,
+                    home: habitat.home,
+                    random,
+                }),
+            );
+        }
+    }
+
+    if (currentTarget.behavior !== 'tree') {
+        alternatives.push(...trees);
+    }
+
+    if (currentTarget.behavior !== 'entity') {
+        alternatives.push(...entities);
+    }
+
+    if (currentTarget.behavior !== 'ground') {
+        alternatives.push(...grounds);
+    }
+
+    if (currentTarget.behavior !== 'home') {
+        alternatives.push(habitat.home);
+    }
+
+    return pickCandidate(alternatives, random) ?? target;
+}
+
 function makeMovingState({
     airUntil,
     airWaypointIndex = 0,
@@ -1302,6 +1382,7 @@ function createBirdDebugEntry({
 
 function Bird({ habitat }: { habitat: BirdHabitat }) {
     const gltf = useGameGLTF('BirdSmall');
+    const clock = useThree((state) => state.clock);
     const groupRef = useRef<Group>(null);
     const randomRef = useRef(createRandom(habitat.seed));
     const runtimeRef = useRef<BirdRuntimeState | null>(null);
@@ -1373,6 +1454,38 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     useEffect(() => {
         return () => removeAnimalDebugEntry(habitat.id);
     }, [habitat.id, removeAnimalDebugEntry]);
+
+    function handlePointerDown(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+    }
+
+    function handleClick(event: ThreeEvent<MouseEvent>) {
+        event.stopPropagation();
+
+        const group = groupRef.current;
+        const runtime = runtimeRef.current;
+        if (!group || !runtime) {
+            return;
+        }
+
+        const random = randomRef.current;
+        const now = clock.getElapsedTime();
+        const target = chooseManualNextTarget({
+            currentTarget: runtime.target,
+            habitat,
+            random,
+            timeOfDay,
+        });
+
+        runtimeRef.current = makeMovingState({
+            from: group.position.clone(),
+            now,
+            random,
+            takeoffLead: false,
+            target,
+            timeOfDay,
+        });
+    }
 
     useFrame(({ clock }, delta) => {
         const group = groupRef.current;
@@ -1710,7 +1823,13 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     });
 
     return (
-        <group ref={groupRef} scale={birdScale}>
+        // biome-ignore lint/a11y/noStaticElementInteractions: Three.js element is interactive
+        <group
+            ref={groupRef}
+            scale={birdScale}
+            onPointerDown={handlePointerDown}
+            onClick={handleClick}
+        >
             <primitive object={birdModel.scene} />
         </group>
     );
