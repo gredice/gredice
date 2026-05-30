@@ -26,6 +26,7 @@ import { BlockWater } from './BlockWater';
 import { Bucket } from './Bucket';
 import { Bush } from './Bush';
 import { Cactus } from './Cactus';
+import { CatPillow } from './CatPillow';
 import { Composter } from './Composter';
 import { DeadTree } from './DeadTree';
 import { DesertStone } from './DesertStone';
@@ -92,6 +93,7 @@ export const entityNameMap: Record<
     WaterWell: WaterWell,
     BirdHouse: BirdHouse,
     FireflyJar: FireflyJar,
+    CatPillow: CatPillow,
     GiftBox_RedWhite: GiftBoxRedWhite,
     GiftBox_GreenGold: GiftBoxGreenGold,
     GiftBox_BlueWhite: GiftBoxBlueWhite,

@@ -113,6 +113,7 @@ const items: HudItem[] = [
             { type: 'entity', name: 'WaterWell' },
             { type: 'entity', name: 'BirdHouse' },
             { type: 'entity', name: 'FireflyJar' },
+            { type: 'entity', name: 'CatPillow' },
             { type: 'entity', name: 'Bush' },
             { type: 'entity', name: 'Tree' },
             { type: 'entity', name: 'Pine' },
@@ -388,10 +389,7 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                 {currentItems.map((item) => {
                     if (item.type === 'entity') {
                         return (
-                            <EntityItem
-                                key={`entity:${item.name}`}
-                                {...item}
-                            />
+                            <EntityItem key={`entity:${item.name}`} {...item} />
                         );
                     } else if (item.type === 'picker') {
                         return (
