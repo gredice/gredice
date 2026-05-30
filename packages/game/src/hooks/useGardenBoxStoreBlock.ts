@@ -1,5 +1,6 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { canAddBlockToGardenBox } from '../gardenBoxInventoryLimits';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
@@ -41,6 +42,10 @@ function incrementInventoryItem(
     args: StoreBlockArgs,
 ) {
     const entityId = args.blockEntityId ?? args.blockName;
+    if (!canAddBlockToGardenBox(items, entityId)) {
+        return items;
+    }
+
     const existingItemIndex = items.findIndex(
         (item) => item.entityTypeName === 'block' && item.entityId === entityId,
     );

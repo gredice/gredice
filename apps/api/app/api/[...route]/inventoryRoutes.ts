@@ -3,6 +3,7 @@ import {
     createGardenBlock,
     createGardenStack,
     type EntityStandardized,
+    GardenBoxInventoryLimitError,
     getEntitiesFormatted,
     getGarden,
     getGardenBlock,
@@ -213,12 +214,21 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Garden box not found' }, 404);
             }
 
-            const inventory = await setGardenBoxInventory(
-                accountId,
-                gardenId,
-                blockId,
-                items satisfies InventoryItemInput[],
-            );
+            let inventory: InventoryItem[];
+            try {
+                inventory = await setGardenBoxInventory(
+                    accountId,
+                    gardenId,
+                    blockId,
+                    items satisfies InventoryItemInput[],
+                );
+            } catch (error) {
+                if (error instanceof GardenBoxInventoryLimitError) {
+                    return context.json({ error: error.message }, 400);
+                }
+
+                throw error;
+            }
             const [enrichedItems] = await enrichInventoryItems([inventory]);
 
             return context.json({
