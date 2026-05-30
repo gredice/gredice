@@ -257,8 +257,22 @@
     {
       "idx": 36,
       "version": "7",
+      "when": 1748476800000,
+      "tag": "0036_farmer_payouts",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1748563200000,
+      "tag": "0037_operation_prices_entity_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
       "when": 1780071062280,
-      "tag": "0036_fresh_plazm",
+      "tag": "0038_weather_history",
       "breakpoints": true
     }
   ]

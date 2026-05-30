@@ -106,6 +106,11 @@ export const KnownPages = {
     ) =>
         `/admin/settings/integrations/social/${provider}/${accountId}` as Route,
 
+    // Farmer payouts
+    FarmerPayouts: '/admin/farmers/payouts',
+    FarmerPayout: (id: number) => `/admin/farmers/payouts/${id}` as Route,
+    FarmerPrices: '/admin/farmers/prices',
+
     // Delivery management
     DeliverySlots: '/admin/delivery/slots',
     DeliveryRequests: '/admin/delivery/requests',
