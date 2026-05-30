@@ -28,6 +28,10 @@ export type SidePanelLayoutProps = Omit<
     leftPanelClassName?: string;
     leftWidth?: string;
     panelClassName?: string;
+    /**
+     * @deprecated No-op. Panels now always stay mounted so their width can
+     * animate when collapsing/expanding; closed content is preserved by default.
+     */
     preserveClosedPanels?: boolean;
     rightPanel?: ReactNode;
     rightOpen?: boolean;
@@ -35,26 +39,34 @@ export type SidePanelLayoutProps = Omit<
     rightWidth?: string;
 };
 
+// Gap kept between a panel and the main content while the panel is open. It is
+// baked into the open track width (and the panel's inner margin) so the gap can
+// collapse together with the panel during the width animation.
+const SIDE_PANEL_GAP = '1.5rem';
+
 function sidePanelColumns({
     leftOpen,
     leftPanel,
-    leftWidth,
     rightOpen,
     rightPanel,
-    rightWidth,
 }: Pick<
     SidePanelLayoutProps,
-    | 'leftOpen'
-    | 'leftPanel'
-    | 'leftWidth'
-    | 'rightOpen'
-    | 'rightPanel'
-    | 'rightWidth'
+    'leftOpen' | 'leftPanel' | 'rightOpen' | 'rightPanel'
 >) {
+    // Closed panels keep a 0px track (instead of being removed) so that
+    // grid-template-columns can animate between the panel width and 0.
     return [
-        leftPanel && leftOpen ? leftWidth : null,
+        leftPanel
+            ? leftOpen
+                ? `calc(var(--side-panel-left-width) + ${SIDE_PANEL_GAP})`
+                : '0px'
+            : null,
         'minmax(0,1fr)',
-        rightPanel && rightOpen ? rightWidth : null,
+        rightPanel
+            ? rightOpen
+                ? `calc(var(--side-panel-right-width) + ${SIDE_PANEL_GAP})`
+                : '0px'
+            : null,
     ]
         .filter(Boolean)
         .join(' ');
@@ -79,51 +91,66 @@ export function SidePanelLayout({
     const columns = sidePanelColumns({
         leftOpen,
         leftPanel,
-        leftWidth,
         rightOpen,
         rightPanel,
-        rightWidth,
     });
     const layoutStyle = {
         ...style,
         '--side-panel-layout-columns': columns,
+        '--side-panel-left-width': leftWidth,
+        '--side-panel-right-width': rightWidth,
     } as CSSProperties;
+    // Panels stay mounted while closed so their width can animate; below the xl
+    // breakpoint (stacked layout) closed panels are hidden instead.
     const basePanelClassName = cx(
-        'h-fit min-w-0 xl:sticky xl:top-4',
+        'h-fit min-w-0 xl:sticky xl:top-4 xl:overflow-hidden',
         panelClassName,
     );
 
     return (
         <div
             className={cx(
-                'grid gap-6 xl:[grid-template-columns:var(--side-panel-layout-columns)]',
+                'grid gap-6 xl:gap-0 xl:[grid-template-columns:var(--side-panel-layout-columns)]',
+                'xl:transition-[grid-template-columns] xl:duration-300 xl:ease-in-out motion-reduce:xl:transition-none',
                 className,
             )}
             style={layoutStyle}
             {...props}
         >
-            {leftPanel && leftOpen ? (
+            {leftPanel ? (
                 <aside
-                    className={cx(basePanelClassName, leftPanelClassName)}
+                    aria-hidden={!leftOpen || undefined}
+                    className={cx(
+                        basePanelClassName,
+                        !leftOpen && 'hidden xl:block',
+                        leftPanelClassName,
+                    )}
                     data-side="left"
+                    data-state={leftOpen ? 'open' : 'closed'}
+                    inert={!leftOpen || undefined}
                 >
-                    {leftPanel}
+                    <div className="xl:mr-6 xl:w-[var(--side-panel-left-width)]">
+                        {leftPanel}
+                    </div>
                 </aside>
-            ) : null}
-            {leftPanel && !leftOpen && preserveClosedPanels ? (
-                <div hidden>{leftPanel}</div>
             ) : null}
             <div className="min-w-0">{children}</div>
-            {rightPanel && rightOpen ? (
+            {rightPanel ? (
                 <aside
-                    className={cx(basePanelClassName, rightPanelClassName)}
+                    aria-hidden={!rightOpen || undefined}
+                    className={cx(
+                        basePanelClassName,
+                        !rightOpen && 'hidden xl:block',
+                        rightPanelClassName,
+                    )}
                     data-side="right"
+                    data-state={rightOpen ? 'open' : 'closed'}
+                    inert={!rightOpen || undefined}
                 >
-                    {rightPanel}
+                    <div className="xl:ml-6 xl:w-[var(--side-panel-right-width)]">
+                        {rightPanel}
+                    </div>
                 </aside>
-            ) : null}
-            {rightPanel && !rightOpen && preserveClosedPanels ? (
-                <div hidden>{rightPanel}</div>
             ) : null}
         </div>
     );
