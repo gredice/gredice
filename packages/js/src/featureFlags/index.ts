@@ -6,6 +6,9 @@
  * administration app (directly on the server).
  */
 
+type ProcessEnv = { env: Record<string, string | undefined> };
+const _process = (globalThis as Record<string, unknown>).process as ProcessEnv | undefined;
+
 /**
  * The date on which the weather history UI becomes enabled by default.
  *
@@ -16,7 +19,7 @@
 export const WEATHER_HISTORY_UI_ROLLOUT_DATE = new Date('2026-06-01T00:00:00Z');
 
 function resolveRolloutDate(): Date {
-    const override = process.env.WEATHER_HISTORY_UI_ROLLOUT_DATE;
+    const override = _process?.env['WEATHER_HISTORY_UI_ROLLOUT_DATE'];
     if (override) {
         const parsed = new Date(override);
         if (!Number.isNaN(parsed.getTime())) {
@@ -35,7 +38,7 @@ function resolveRolloutDate(): Date {
  * and local development.
  */
 export function isWeatherHistoryUiEnabled(now: Date = new Date()): boolean {
-    const override = process.env.NEXT_PUBLIC_FEATURE_WEATHER_HISTORY_UI;
+    const override = _process?.env['NEXT_PUBLIC_FEATURE_WEATHER_HISTORY_UI'];
     if (override === 'on') return true;
     if (override === 'off') return false;
 

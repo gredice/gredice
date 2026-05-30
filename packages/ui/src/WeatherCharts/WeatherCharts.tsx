@@ -9,7 +9,7 @@ import {
     weatherMetrics,
     windDirectionToDegrees,
 } from '@gredice/js/weather';
-import { Navigation } from 'lucide-react';
+import { ArrowUp } from '../icons';
 import { useMemo, useState } from 'react';
 import {
     Area,
@@ -110,9 +110,9 @@ function WeatherTooltip({
                     {value == null ? '—' : `${Number(value).toFixed(1)} ${unit}`}
                 </Typography>
                 {showDirection && degrees != null && (
-                    <Navigation
+                    <ArrowUp
                         className="size-3.5 text-muted-foreground"
-                        style={{ transform: `rotate(${degrees + 180}deg)` }}
+                        style={{ transform: `rotate(${degrees}deg)` }}
                     />
                 )}
                 {showDirection && direction && (

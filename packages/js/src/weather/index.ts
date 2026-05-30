@@ -129,7 +129,7 @@ export function windDirectionToDegrees(
         NNW: 337.5,
     };
     const normalized = direction.trim().toUpperCase();
-    return normalized in map ? map[normalized] : null;
+    return normalized in map ? (map[normalized] ?? null) : null;
 }
 
 function toTimestamp(value: string | Date): number {

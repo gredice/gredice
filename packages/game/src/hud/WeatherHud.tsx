@@ -7,7 +7,7 @@ import { Typography } from '@gredice/ui/Typography';
 import { useLiveTime } from '../hooks/useLiveTime';
 import { useWeatherForecast } from '../hooks/useWeatherForecast';
 import { useWeatherNow } from '../hooks/useWeatherNow';
-import { ChartSpline } from 'lucide-react';
+import { History } from '@gredice/ui/icons';
 import { HudCard } from './components/HudCard';
 import { TimeDisplay } from './components/TimeDisplay';
 import { WeatherHistoryModal } from './components/weather/WeatherHistoryModal';
@@ -140,7 +140,7 @@ export function WeatherHud({
                                     variant="plain"
                                     className="rounded-full px-2"
                                 >
-                                    <ChartSpline className="size-5" />
+                                    <History className="size-5" />
                                 </Button>
                             }
                         />

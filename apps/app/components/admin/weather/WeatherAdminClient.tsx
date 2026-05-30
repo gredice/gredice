@@ -14,7 +14,7 @@ import {
     WeatherCharts,
     type WeatherChartsRange,
 } from '@gredice/ui/WeatherCharts';
-import { Navigation } from 'lucide-react';
+import { ArrowUp } from '@gredice/ui/icons';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -126,10 +126,10 @@ export function WeatherAdminClient({
                         }
                     >
                         {windDegrees != null && (
-                            <Navigation
+                            <ArrowUp
                                 className="size-4 text-muted-foreground"
                                 style={{
-                                    transform: `rotate(${windDegrees + 180}deg)`,
+                                    transform: `rotate(${windDegrees}deg)`,
                                 }}
                             />
                         )}
