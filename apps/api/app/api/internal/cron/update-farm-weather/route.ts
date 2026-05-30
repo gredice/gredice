@@ -1,4 +1,4 @@
-import { getFarms, updateFarm } from '@gredice/storage';
+import { getFarms, insertWeatherHistory, updateFarm } from '@gredice/storage';
 import type { NextRequest } from 'next/server';
 import { getBjelovarForecast } from '../../../../../lib/weather/forecast';
 import { populateWeatherFromSymbol } from '../../../../../lib/weather/populateWeatherFromSymbol';
@@ -107,6 +107,19 @@ export async function GET(request: NextRequest) {
 
         const weather = populateWeatherFromSymbol(closestEntry.symbol);
         const temperature = closestEntry.temperature;
+
+        await insertWeatherHistory({
+            symbol: closestEntry.symbol,
+            temperature,
+            rain: closestEntry.rain,
+            windDirection: closestEntry.windDirection,
+            windSpeed: closestEntry.windStrength,
+            rainy: weather.rainy,
+            snowy: weather.snowy,
+            cloudy: weather.cloudy,
+            foggy: weather.foggy,
+            thundery: weather.thundery,
+        });
 
         const updates: Array<{ farmId: number; newSnow: number }> = [];
 

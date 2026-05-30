@@ -20,3 +20,4 @@ export * from './shoppingCartSchema';
 export * from './socialPostsSchema';
 export * from './transactionSchema';
 export * from './usersSchema';
+export * from './weatherHistorySchema';

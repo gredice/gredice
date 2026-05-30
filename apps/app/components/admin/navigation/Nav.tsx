@@ -20,6 +20,7 @@ import {
     AI,
     Bank,
     Calendar,
+    Cloud,
     Euro,
     Fence,
     File,
@@ -438,6 +439,7 @@ export function Nav({
                     icon={<MapIcon className="size-5" />}
                     forceOpen={includesSelectedPath(pathname, [
                         adminPages.Farms.href,
+                        adminPages.Weather.href,
                         adminPages.Gardens.href,
                         adminPages.RaisedBeds.href,
                         adminPages.Operations.href,
@@ -450,6 +452,14 @@ export function Nav({
                         href={adminPages.Farms.href}
                         label={adminPages.Farms.label}
                         icon={<MapIcon className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.Weather.href}
+                        label={adminPages.Weather.label}
+                        icon={<Cloud className="size-5" />}
                         onClick={onItemClick}
                         compact={compact}
                         nested

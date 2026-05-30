@@ -7,8 +7,10 @@ import { Typography } from '@gredice/ui/Typography';
 import { useLiveTime } from '../hooks/useLiveTime';
 import { useWeatherForecast } from '../hooks/useWeatherForecast';
 import { useWeatherNow } from '../hooks/useWeatherNow';
+import { History } from '@gredice/ui/icons';
 import { HudCard } from './components/HudCard';
 import { TimeDisplay } from './components/TimeDisplay';
+import { WeatherHistoryModal } from './components/weather/WeatherHistoryModal';
 import { WeatherForecastDetails } from './components/weather/WeatherForecastDetails';
 import { weatherIcons } from './components/weather/WeatherIcons';
 import { WeatherNowDetails } from './components/weather/WeatherNowDetails';
@@ -121,6 +123,22 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
                     >
                         <TimeDisplay />
                     </Popper>
+                )}
+                {weatherData && (
+                    <>
+                        <div className="w-[1px] h-4 border-r" />
+                        <WeatherHistoryModal
+                            trigger={
+                                <Button
+                                    title="Povijest i prognoza vremena"
+                                    variant="plain"
+                                    className="rounded-full px-2"
+                                >
+                                    <History className="size-5" />
+                                </Button>
+                            }
+                        />
+                    </>
                 )}
             </Row>
         </HudCard>
