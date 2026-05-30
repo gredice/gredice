@@ -9,6 +9,10 @@ export type ActiveDragPreviewTarget = {
     stackPosition: ActiveDragPreviewStackPosition;
 };
 
+export type ActiveDragPreviewTargetOffset = ActiveDragPreviewTarget & {
+    hoverHeight: number;
+};
+
 export function createActiveDragPreviewTarget({
     blockId,
     blockIndex,
@@ -41,5 +45,14 @@ export function activeDragPreviewTargetMatches(
         target.blockIndex === candidate.blockIndex &&
         target.stackPosition.x === candidate.stackPosition.x &&
         target.stackPosition.z === candidate.stackPosition.z
+    );
+}
+
+export function findActiveDragPreviewTargetOffset(
+    targets: ActiveDragPreviewTargetOffset[] | null | undefined,
+    candidate: ActiveDragPreviewTarget,
+) {
+    return targets?.find((target) =>
+        activeDragPreviewTargetMatches(target, candidate),
     );
 }

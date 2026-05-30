@@ -193,6 +193,9 @@ export default async function AdminFarmerPricesPage() {
                                             entityId={op.id}
                                             label={op.information.label}
                                             sublabel={op.information.name}
+                                            durationMinutes={
+                                                op.attributes.duration
+                                            }
                                             userFacingPrice={
                                                 op.prices?.perOperation ?? null
                                             }

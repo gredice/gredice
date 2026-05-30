@@ -1,6 +1,6 @@
 import type { BlockData } from '@gredice/client';
 import { useAnimations } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
+import { type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group, Object3D } from 'three';
 import { MathUtils, Mesh, Vector3 } from 'three';
@@ -561,6 +561,85 @@ function chooseNextTarget({
     return habitat.pillow;
 }
 
+function chooseManualNextTarget({
+    birdGroundEntries,
+    currentTarget,
+    habitat,
+    random,
+    timeOfDay,
+    weather,
+}: {
+    birdGroundEntries: AnimalDebugEntry[];
+    currentTarget: CatTarget;
+    habitat: CatHabitat;
+    random: () => number;
+    timeOfDay: number;
+    weather: CatWeather | null | undefined;
+}) {
+    const target = chooseNextTarget({
+        birdGroundEntries,
+        habitat,
+        random,
+        timeOfDay,
+        weather,
+    });
+
+    if (
+        target.id !== currentTarget.id ||
+        target.behavior !== currentTarget.behavior
+    ) {
+        return target;
+    }
+
+    const range = getCatActivityRange(timeOfDay, weather);
+    const covers = candidatesInRange(habitat.covers, habitat.pillow, range);
+    const lowEntities = candidatesInRange(
+        habitat.lowEntities,
+        habitat.pillow,
+        range,
+    );
+    const roamAnchors = candidatesInRange(
+        habitat.roamAnchors,
+        habitat.pillow,
+        range,
+    );
+    const birdGroundTargets = getGroundBirdTargets({
+        birdGroundEntries,
+        habitat,
+        range,
+    });
+    const alternatives: CatTarget[] = [];
+
+    if (currentTarget.behavior !== 'roam' && roamAnchors.length > 0) {
+        alternatives.push(createRoamTarget({ habitat, random, range }));
+    }
+
+    if (currentTarget.behavior !== 'cover') {
+        alternatives.push(...covers);
+    }
+
+    if (currentTarget.behavior !== 'stalk-bird') {
+        const stalkTarget = createStalkBirdTarget({
+            birdGroundTargets,
+            habitat,
+            random,
+        });
+        if (stalkTarget) {
+            alternatives.push(stalkTarget);
+        }
+    }
+
+    if (currentTarget.behavior !== 'low-entity') {
+        alternatives.push(...lowEntities);
+    }
+
+    if (currentTarget.behavior !== 'pillow') {
+        alternatives.push(habitat.pillow);
+    }
+
+    return pickCandidate(alternatives, random) ?? target;
+}
+
 function makeMovingState({
     from,
     now,
@@ -719,6 +798,7 @@ function Cat({
 }) {
     const gltf = useGameGLTF('Cat');
     const { enableDebugHudFlag = false } = useGameFlags();
+    const clock = useThree((state) => state.clock);
     const groupRef = useRef<Group>(null);
     const randomRef = useRef(createRandom(habitat.seed));
     const runtimeRef = useRef<CatRuntimeState | null>(null);
@@ -775,6 +855,48 @@ function Cat({
 
         return () => removeAnimalDebugEntry(habitat.id);
     }, [enableDebugHudFlag, habitat.id, removeAnimalDebugEntry]);
+
+    function handlePointerDown(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+    }
+
+    function handleClick(event: ThreeEvent<MouseEvent>) {
+        event.stopPropagation();
+
+        const group = groupRef.current;
+        const runtime = runtimeRef.current;
+        if (!group || !runtime) {
+            return;
+        }
+
+        const random = randomRef.current;
+        const now = clock.getElapsedTime();
+        const target = chooseManualNextTarget({
+            birdGroundEntries,
+            currentTarget: runtime.target,
+            habitat,
+            random,
+            timeOfDay,
+            weather,
+        });
+
+        if (group.position.distanceTo(target.position) < 0.08) {
+            runtimeRef.current = makeSettledState({
+                now,
+                random,
+                target,
+                timeOfDay,
+                weather,
+            });
+            return;
+        }
+
+        runtimeRef.current = makeMovingState({
+            from: group.position.clone(),
+            now,
+            target,
+        });
+    }
 
     useFrame(({ clock }, delta) => {
         const group = groupRef.current;
@@ -925,7 +1047,13 @@ function Cat({
     });
 
     return (
-        <group ref={groupRef} scale={catScale}>
+        // biome-ignore lint/a11y/noStaticElementInteractions: Three.js element is interactive
+        <group
+            ref={groupRef}
+            scale={catScale}
+            onPointerDown={handlePointerDown}
+            onClick={handleClick}
+        >
             <primitive object={catModel} />
         </group>
     );

@@ -14,6 +14,10 @@ import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import {
+    GARDEN_BOX_BLOCK_STACK_LIMIT,
+    getGardenBoxInventoryCapacity,
+} from '../gardenBoxInventoryLimits';
 import { useBlockData } from '../hooks/useBlockData';
 import { useGardenBoxPlaceBlock } from '../hooks/useGardenBoxPlaceBlock';
 import { useInventory } from '../hooks/useInventory';
@@ -27,7 +31,7 @@ import {
 } from '../useUrlState';
 import { HudCard } from './components/HudCard';
 
-const GRID_SIZE = 24; // 3x4 grid
+const BACKPACK_GRID_SIZE = 24;
 
 type InventoryItemData = {
     entityTypeName: string;
@@ -111,7 +115,7 @@ function inventoryItemDisplayName({
 }
 
 function resolveBlockImageName(item?: InventoryItemData) {
-    if (!item || item.entityTypeName !== 'block') {
+    if (item?.entityTypeName !== 'block') {
         return null;
     }
 
@@ -205,6 +209,7 @@ function InventoryItemCell({
 function InventoryItemsGrid({
     items,
     keyPrefix,
+    minSlots = BACKPACK_GRID_SIZE,
     operationLookup,
     sortData,
     blockData,
@@ -212,6 +217,7 @@ function InventoryItemsGrid({
 }: {
     items: InventoryItemData[];
     keyPrefix: string;
+    minSlots?: number;
     operationLookup: Map<string, OperationData>;
     sortData?: PlantSortData[];
     blockData?: BlockData[] | null;
@@ -219,11 +225,11 @@ function InventoryItemsGrid({
 }) {
     const gridItems = useMemo(() => {
         const result: (InventoryItemData | null)[] = [...items];
-        while (result.length < GRID_SIZE) {
+        while (result.length < minSlots) {
             result.push(null);
         }
         return result;
-    }, [items]);
+    }, [items, minSlots]);
 
     return (
         <div className="grid grid-cols-6 gap-1">
@@ -450,7 +456,7 @@ function GardenBoxInventoryGroup({
     blockData?: BlockData[] | null;
     onItemClick: (item: InventoryItemData) => void;
 }) {
-    const itemTotal = inventoryItemTotal(gardenBox.items);
+    const capacity = getGardenBoxInventoryCapacity(gardenBox.items);
 
     return (
         <Stack spacing={3} className="rounded-lg border bg-card/50 p-3">
@@ -467,7 +473,11 @@ function GardenBoxInventoryGroup({
                         Vrtna kutija {index + 1}
                     </Typography>
                     <Typography level="body3" secondary>
-                        {[gardenBox.gardenName, `${itemTotal} predmeta`]
+                        {[
+                            gardenBox.gardenName,
+                            `${capacity.stackCount.toString()}/${capacity.maxStacks.toString()} vrsta`,
+                            `${capacity.blockCount.toString()}/${capacity.maxBlocks.toString()} blokova`,
+                        ]
                             .filter(Boolean)
                             .join(' · ')}
                     </Typography>
@@ -476,6 +486,7 @@ function GardenBoxInventoryGroup({
             <InventoryItemsGrid
                 items={gardenBox.items}
                 keyPrefix={`garden-box-${gardenBox.gardenId}-${gardenBox.blockId}`}
+                minSlots={GARDEN_BOX_BLOCK_STACK_LIMIT}
                 operationLookup={operationLookup}
                 sortData={sortData}
                 blockData={blockData}

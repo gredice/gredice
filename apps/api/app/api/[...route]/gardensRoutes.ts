@@ -18,6 +18,7 @@ import {
     createSandboxGarden,
     deleteGardenStack,
     deleteRaisedBedField,
+    GardenBoxInventoryLimitError,
     getAccount,
     getAccountGardens,
     getEvents,
@@ -1447,7 +1448,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const gardenBox = gardenBlocks.find(
                 (candidate) => candidate.id === gardenBoxBlockId,
             );
-            if (!gardenBox || gardenBox.name !== 'GardenBox') {
+            if (gardenBox?.name !== 'GardenBox') {
                 return context.json({ error: 'Garden box not found' }, 404);
             }
 
@@ -1486,53 +1487,68 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
             const inventoryEntityId = inventoryBlock.id.toString();
-            const result = await storage().transaction(async (tx) => {
-                const currentSourceStack = await getGardenStackForUpdate(
-                    gardenIdNumber,
-                    {
-                        x: sourcePosition.x,
-                        y: sourcePosition.z,
-                    },
-                    tx,
-                );
-                if (
-                    !currentSourceStack ||
-                    currentSourceStack.blocks[blockIndex] !== blockId
-                ) {
-                    return {
-                        ok: false,
-                        error: 'Source block no longer matches the garden',
-                        status: 409,
-                    } as const;
+            let result:
+                | { ok: true }
+                | { ok: false; error: string; status: ContentfulStatusCode };
+            try {
+                result = await storage().transaction(async (tx) => {
+                    const currentSourceStack = await getGardenStackForUpdate(
+                        gardenIdNumber,
+                        {
+                            x: sourcePosition.x,
+                            y: sourcePosition.z,
+                        },
+                        tx,
+                    );
+                    if (
+                        !currentSourceStack ||
+                        currentSourceStack.blocks[blockIndex] !== blockId
+                    ) {
+                        return {
+                            ok: false,
+                            error: 'Source block no longer matches the garden',
+                            status: 409,
+                        } as const;
+                    }
+
+                    const nextSourceBlocks = currentSourceStack.blocks.filter(
+                        (_sourceBlockId, index) => index !== blockIndex,
+                    );
+                    await updateGardenStack(
+                        gardenIdNumber,
+                        {
+                            x: sourcePosition.x,
+                            y: sourcePosition.z,
+                            blocks: nextSourceBlocks,
+                        },
+                        tx,
+                    );
+                    await storageDeleteGardenBlock(
+                        gardenIdNumber,
+                        block.id,
+                        tx,
+                    );
+                    await addGardenBoxInventoryItem(
+                        accountId,
+                        gardenIdNumber,
+                        gardenBoxBlockId,
+                        {
+                            entityTypeName: 'block',
+                            entityId: inventoryEntityId,
+                            amount: 1,
+                            source: 'gardenBox:drop',
+                        },
+                        tx,
+                    );
+                    return { ok: true } as const;
+                });
+            } catch (error) {
+                if (error instanceof GardenBoxInventoryLimitError) {
+                    return context.json({ error: error.message }, 400);
                 }
 
-                const nextSourceBlocks = currentSourceStack.blocks.filter(
-                    (_sourceBlockId, index) => index !== blockIndex,
-                );
-                await updateGardenStack(
-                    gardenIdNumber,
-                    {
-                        x: sourcePosition.x,
-                        y: sourcePosition.z,
-                        blocks: nextSourceBlocks,
-                    },
-                    tx,
-                );
-                await storageDeleteGardenBlock(gardenIdNumber, block.id, tx);
-                await addGardenBoxInventoryItem(
-                    accountId,
-                    gardenIdNumber,
-                    gardenBoxBlockId,
-                    {
-                        entityTypeName: 'block',
-                        entityId: inventoryEntityId,
-                        amount: 1,
-                        source: 'gardenBox:drop',
-                    },
-                    tx,
-                );
-                return { ok: true } as const;
-            });
+                throw error;
+            }
             if (!result.ok) {
                 return context.json({ error: result.error }, result.status);
             }

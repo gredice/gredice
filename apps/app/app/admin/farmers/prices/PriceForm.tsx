@@ -41,12 +41,18 @@ function formatPriceRange(priceRange: PriceRange) {
     return `${formatPrice(priceRange.min)} - ${formatPrice(priceRange.max)}`;
 }
 
+function formatDurationMinutes(durationMinutes: number) {
+    const rounded = Math.ceil(Math.max(0, durationMinutes));
+    return `${rounded} min`;
+}
+
 export function PriceRow({
     farmId,
     entityTypeName,
     entityId,
     label,
     sublabel,
+    durationMinutes,
     userFacingPrice,
     userFacingPriceRange,
     userFacingPriceNote,
@@ -58,6 +64,7 @@ export function PriceRow({
     entityId?: number | null;
     label: string;
     sublabel?: string;
+    durationMinutes?: number;
     userFacingPrice?: number | null;
     userFacingPriceRange?: PriceRange | null;
     userFacingPriceNote?: string;
@@ -73,6 +80,13 @@ export function PriceRow({
     const comparisonUserFacingPrice = hasUserFacingPrice
         ? userFacingPrice
         : userFacingPriceRange?.min;
+    const hasDuration = typeof durationMinutes === 'number';
+    const hasBillableDuration =
+        typeof durationMinutes === 'number' && durationMinutes > 0;
+    const pricePerMinute =
+        farmerPrice !== null && hasBillableDuration
+            ? farmerPrice / durationMinutes
+            : null;
     const userFacingPriceIsMissing =
         userFacingPrice === null || userFacingPriceRange === null;
     const showFarmerPriceWarning =
@@ -176,6 +190,49 @@ export function PriceRow({
                         </Typography>
                     )}
             </div>
+            {hasDuration && (
+                <div className="min-w-32 shrink-0">
+                    <Typography level="body3" className="text-muted-foreground">
+                        Vrijeme
+                    </Typography>
+                    {hasBillableDuration ? (
+                        <Typography
+                            level="body2"
+                            semiBold
+                            className="tabular-nums"
+                        >
+                            {formatDurationMinutes(durationMinutes)}
+                        </Typography>
+                    ) : (
+                        <Chip color="warning" size="sm" variant="soft">
+                            Nije definirano
+                        </Chip>
+                    )}
+                </div>
+            )}
+            {hasDuration && (
+                <div className="min-w-36 shrink-0">
+                    <Typography level="body3" className="text-muted-foreground">
+                        Farmer EUR/min
+                    </Typography>
+                    {pricePerMinute === null ? (
+                        <Typography
+                            level="body3"
+                            className="text-muted-foreground"
+                        >
+                            -
+                        </Typography>
+                    ) : (
+                        <Typography
+                            level="body2"
+                            semiBold
+                            className="tabular-nums"
+                        >
+                            {formatPrice(pricePerMinute)} / min
+                        </Typography>
+                    )}
+                </div>
+            )}
             <Row
                 spacing={2}
                 className="w-full shrink-0 items-center justify-end lg:w-auto"
