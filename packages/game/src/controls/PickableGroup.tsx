@@ -7,6 +7,8 @@ import {
     type PropsWithChildren,
     Suspense,
     useEffect,
+    useLayoutEffect,
+    useMemo,
     useRef,
     useState,
 } from 'react';
@@ -197,6 +199,9 @@ export function PickableGroup({
     const setActiveDragPreview = useGameState(
         (state) => state.setActiveDragPreview,
     );
+    const setStationaryPickupOutlineTarget = useGameState(
+        (state) => state.setStationaryPickupOutlineTarget,
+    );
 
     const [isBlocked, setIsBlocked] = useState(false);
     const [isOverRecycler, setIsOverRecycler] = useState(false);
@@ -237,11 +242,18 @@ export function PickableGroup({
           )
         : 0;
     const blockIndex = stack.blocks.indexOf(block);
-    const activePreviewTarget = createActiveDragPreviewTarget({
-        blockId: block.id,
-        blockIndex,
-        stackPosition: stack.position,
-    });
+    const activePreviewTarget = useMemo(
+        () =>
+            createActiveDragPreviewTarget({
+                blockId: block.id,
+                blockIndex,
+                stackPosition: {
+                    x: stack.position.x,
+                    z: stack.position.z,
+                },
+            }),
+        [block.id, blockIndex, stack.position.x, stack.position.z],
+    );
     const isPreviewSource = activeDragPreviewTargetMatches(
         activeDragPreview?.source,
         activePreviewTarget,
@@ -310,6 +322,20 @@ export function PickableGroup({
         activePreviewTargetOffset,
         isPreviewSource,
         dragSpringsApi,
+    ]);
+
+    useLayoutEffect(() => {
+        if (renderPickupOutline || !pickupOutlineVisible) {
+            return;
+        }
+
+        setStationaryPickupOutlineTarget(activePreviewTarget);
+        return () => setStationaryPickupOutlineTarget(null);
+    }, [
+        activePreviewTarget,
+        pickupOutlineVisible,
+        renderPickupOutline,
+        setStationaryPickupOutlineTarget,
     ]);
 
     useEffect(() => {
