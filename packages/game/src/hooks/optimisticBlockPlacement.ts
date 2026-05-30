@@ -67,7 +67,7 @@ export function createOptimisticBlockPlacement<
         return null;
     }
 
-    const { x, y } = placement.placement;
+    const { existingBlocks, x, y } = placement.placement;
     let hasTargetStack = false;
     const optimisticBlock = {
         id: blockId,
@@ -95,6 +95,7 @@ export function createOptimisticBlockPlacement<
 
     return {
         blockId,
+        existingBlocks,
         position: new Vector3(x, 0, y),
         stacks,
     };
@@ -118,5 +119,34 @@ export function replaceOptimisticBlockId<TGarden extends GardenWithStacks>(
                     : block,
             ),
         })),
+    };
+}
+
+export function removeOptimisticBlockId<TGarden extends GardenWithStacks>(
+    garden: TGarden,
+    optimisticBlockId: string,
+): TGarden {
+    return {
+        ...garden,
+        stacks: garden.stacks.flatMap((stack) => {
+            const blocks = stack.blocks.filter(
+                (block) => block.id !== optimisticBlockId,
+            );
+
+            if (blocks.length === stack.blocks.length) {
+                return [stack];
+            }
+
+            if (blocks.length === 0) {
+                return [];
+            }
+
+            return [
+                {
+                    ...stack,
+                    blocks,
+                },
+            ];
+        }),
     };
 }

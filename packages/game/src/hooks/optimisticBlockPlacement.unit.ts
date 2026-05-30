@@ -4,6 +4,7 @@ import { Vector3 } from 'three';
 import {
     createOptimisticBlockPlacement,
     type PlacementBlockData,
+    removeOptimisticBlockId,
     replaceOptimisticBlockId,
 } from './optimisticBlockPlacement';
 
@@ -111,6 +112,82 @@ describe('replaceOptimisticBlockId', () => {
                         ],
                     },
                 ],
+            },
+        );
+    });
+});
+
+describe('removeOptimisticBlockId', () => {
+    it('removes only the failed optimistic block from a shared stack', () => {
+        const garden = {
+            stacks: [
+                {
+                    position: new Vector3(0, 0, 0),
+                    blocks: [
+                        {
+                            id: 'block-a',
+                            name: 'Block_Grass',
+                            rotation: 0,
+                        },
+                        {
+                            id: 'optimistic-shade',
+                            name: 'Shade',
+                            rotation: 0,
+                        },
+                        {
+                            id: 'optimistic-stool',
+                            name: 'Stool',
+                            rotation: 0,
+                        },
+                    ],
+                },
+            ],
+        };
+
+        assert.deepStrictEqual(
+            removeOptimisticBlockId(garden, 'optimistic-shade'),
+            {
+                stacks: [
+                    {
+                        position: new Vector3(0, 0, 0),
+                        blocks: [
+                            {
+                                id: 'block-a',
+                                name: 'Block_Grass',
+                                rotation: 0,
+                            },
+                            {
+                                id: 'optimistic-stool',
+                                name: 'Stool',
+                                rotation: 0,
+                            },
+                        ],
+                    },
+                ],
+            },
+        );
+    });
+
+    it('removes the optimistic-only stack on rollback', () => {
+        const garden = {
+            stacks: [
+                {
+                    position: new Vector3(1, 0, 0),
+                    blocks: [
+                        {
+                            id: 'optimistic-shade',
+                            name: 'Shade',
+                            rotation: 0,
+                        },
+                    ],
+                },
+            ],
+        };
+
+        assert.deepStrictEqual(
+            removeOptimisticBlockId(garden, 'optimistic-shade'),
+            {
+                stacks: [],
             },
         );
     });
