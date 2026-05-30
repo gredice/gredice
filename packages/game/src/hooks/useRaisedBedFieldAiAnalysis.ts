@@ -1,5 +1,9 @@
 import { client } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+    AiAnalysisRequestError,
+    getAiAnalysisErrorMessage,
+} from './aiAnalysisError';
 import { queryKeys as raisedBedAiHistoryQueryKeys } from './useRaisedBedAiHistory';
 import { queryKeys as raisedBedFieldDiaryQueryKeys } from './useRaisedBedFieldDiaryEntries';
 
@@ -39,9 +43,9 @@ export function useRaisedBedFieldAiAnalysis() {
             });
 
             if (!response.ok) {
-                const message = await response.text();
-                throw new Error(
-                    message || 'Greška prilikom AI analize fotografije.',
+                throw new AiAnalysisRequestError(
+                    await getAiAnalysisErrorMessage(response),
+                    response.status,
                 );
             }
 
