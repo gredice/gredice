@@ -1,5 +1,10 @@
 export { sql } from 'drizzle-orm';
 export * from './@types/EntityStandardized';
+export * from './automations/defaults';
+export * from './automations/executor';
+export * from './automations/modules';
+export * from './automations/runner';
+export * from './automations/types';
 export * from './cache/directoriesCached';
 export * from './cache/grediceCached';
 export * from './cache/redisCache';
@@ -18,6 +23,7 @@ export * from './repositories/analyticsRepo';
 export * from './repositories/approvalRequestsRepo';
 export * from './repositories/attributeDefinitionsRepo';
 export * from './repositories/attributeValuesRepo';
+export * from './repositories/automationsRepo';
 export * from './repositories/cmsPagesRepo';
 export * from './repositories/deliveryAddressesRepo';
 export * from './repositories/deliveryRequestsRepo';

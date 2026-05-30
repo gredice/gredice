@@ -27,6 +27,7 @@ import {
     Hammer,
     Home,
     Inbox,
+    Lightning,
     Mail,
     Map as MapIcon,
     Megaphone,
@@ -543,6 +544,7 @@ export function Nav({
                     icon={<Truck className="size-5" />}
                     forceOpen={includesSelectedPath(pathname, [
                         adminPages.Approvals.href,
+                        adminPages.Automations.href,
                         adminPages.Schedule.href,
                         adminPages.DeliverySlots.href,
                         adminPages.DeliveryRequests.href,
@@ -555,6 +557,14 @@ export function Nav({
                         icon={<Inbox className="size-5" />}
                         onClick={onItemClick}
                         badge={pendingApprovalTasksCount}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.Automations.href}
+                        label={adminPages.Automations.label}
+                        icon={<Lightning className="size-5" />}
+                        onClick={onItemClick}
                         compact={compact}
                         nested
                     />
