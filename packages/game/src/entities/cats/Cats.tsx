@@ -968,10 +968,16 @@ export function Cats({
 }) {
     const { data: blockData } = useBlockData();
     const gameWeather = useGameState((state) => state.weather);
-    const birdGroundEntries = useGameState((state) =>
-        state.animalDebugEntries.filter(
-            (entry) => entry.species === 'Bird' && entry.behavior === 'ground',
-        ),
+    const animalDebugEntries = useGameState(
+        (state) => state.animalDebugEntries,
+    );
+    const birdGroundEntries = useMemo(
+        () =>
+            animalDebugEntries.filter(
+                (entry) =>
+                    entry.species === 'Bird' && entry.behavior === 'ground',
+            ),
+        [animalDebugEntries],
     );
     const { data: weatherNow } = useWeatherNow(!weatherDisabled && !weather);
     const catWeather = resolveCatWeather({
