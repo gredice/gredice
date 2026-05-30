@@ -1,4 +1,4 @@
-import type { OperationData } from '@gredice/directory-types';
+import type { OperationData, PlantData } from '@gredice/directory-types';
 import {
     getAllOperationPrices,
     getEntitiesFormatted,
@@ -14,20 +14,43 @@ import { type CurrentPrice, PriceRow } from './PriceForm';
 export const dynamic = 'force-dynamic';
 
 // Synthetic price rows for sowing (not CMS entities)
-const SOWING_ROWS = [
+const SOWING_ROWS: {
+    entityTypeName: string;
+    entityId: null;
+    label: string;
+    sublabel: string;
+    userFacingPriceNote: string;
+}[] = [
     {
         entityTypeName: 'sowing',
-        entityId: null as null,
+        entityId: null,
         label: 'Sijanje (direktno)',
         sublabel: 'sowing',
+        userFacingPriceNote: 'prema cijeni biljke',
     },
     {
         entityTypeName: 'sowingGreenhouse',
-        entityId: null as null,
+        entityId: null,
         label: 'Sijanje (staklenički rasad)',
         sublabel: 'sowingGreenhouse',
+        userFacingPriceNote: 'prema cijeni biljke',
     },
 ];
+
+function getPlantPriceRange(plants: PlantData[]) {
+    const prices = plants
+        .map((plant) => plant.prices?.perPlant)
+        .filter((price): price is number => typeof price === 'number');
+
+    if (prices.length === 0) {
+        return null;
+    }
+
+    return {
+        min: Math.min(...prices),
+        max: Math.max(...prices),
+    };
+}
 
 function toCurrentPrice(
     price:
@@ -66,14 +89,16 @@ async function getOperationPricesForPage() {
 export default async function AdminFarmerPricesPage() {
     await auth(['admin']);
 
-    const [farms, operations, pricesResult] = await Promise.all([
+    const [farms, operations, plants, pricesResult] = await Promise.all([
         getFarms(),
         getEntitiesFormatted<OperationData>('operation').catch(
-            () => [] as OperationData[],
+            (): OperationData[] => [],
         ),
+        getEntitiesFormatted<PlantData>('plant').catch((): PlantData[] => []),
         getOperationPricesForPage(),
     ]);
     const allPrices = pricesResult.prices;
+    const plantPriceRange = getPlantPriceRange(plants);
 
     // Key: `${farmId}:${entityTypeName}:${entityId ?? 'null'}`
     const priceMap = new Map(
@@ -139,6 +164,10 @@ export default async function AdminFarmerPricesPage() {
                                         entityId={row.entityId}
                                         label={row.label}
                                         sublabel={row.sublabel}
+                                        userFacingPriceRange={plantPriceRange}
+                                        userFacingPriceNote={
+                                            row.userFacingPriceNote
+                                        }
                                         currentPrice={toCurrentPrice(
                                             priceMap.get(
                                                 `${farm.id}:${row.entityTypeName}:null`,
@@ -164,6 +193,12 @@ export default async function AdminFarmerPricesPage() {
                                             entityId={op.id}
                                             label={op.information.label}
                                             sublabel={op.information.name}
+                                            userFacingPrice={
+                                                op.prices?.perOperation ?? null
+                                            }
+                                            isInternalOperation={
+                                                op.attributes.internal === true
+                                            }
                                             currentPrice={toCurrentPrice(
                                                 priceMap.get(
                                                     `${farm.id}:operation:${op.id}`,

@@ -1366,6 +1366,29 @@ export async function getRaisedBedIdsByAccount(accountId: string) {
     return beds.map((b) => b.id);
 }
 
+export async function countRaisedBedsByAccount(
+    accountId: string,
+    filters?: {
+        status?: string;
+    },
+) {
+    const whereConditions = [
+        eq(raisedBeds.accountId, accountId),
+        eq(raisedBeds.isDeleted, false),
+    ];
+
+    if (filters?.status) {
+        whereConditions.push(eq(raisedBeds.status, filters.status));
+    }
+
+    const result = await storage()
+        .select({ count: count() })
+        .from(raisedBeds)
+        .where(and(...whereConditions));
+
+    return result[0]?.count ?? 0;
+}
+
 /**
  * Returns lightweight raised-bed label metadata for the provided IDs.
  * Duplicate IDs are ignored, deleted raised beds are excluded, and results are ordered by ID.
