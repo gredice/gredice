@@ -5,6 +5,7 @@ import {
     gardenBoxesInventoryTab,
     useBackpackInventoryParams,
 } from '../useUrlState';
+import { useDeferredSingleClick } from './useDeferredSingleClick';
 import { useHoveredBlockStore } from './useHoveredBlockStore';
 
 export function GardenBoxSelectableGroup({
@@ -14,6 +15,7 @@ export function GardenBoxSelectableGroup({
     const { track } = useGameAnalytics();
     const hovered = useHoveredBlockStore();
     const [, setBackpackInventoryParams] = useBackpackInventoryParams();
+    const handleClick = useDeferredSingleClick(handleSelected);
 
     function handleSelected() {
         track('game_garden_box_inventory_opened', {
@@ -39,10 +41,7 @@ export function GardenBoxSelectableGroup({
                     hovered.setHoveredBlock(null);
                 }
             }}
-            onClick={(event) => {
-                event.stopPropagation();
-                handleSelected();
-            }}
+            onClick={handleClick}
         >
             {children}
         </group>

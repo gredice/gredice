@@ -4,7 +4,7 @@ import { ItemsHudAlignmentStory } from './ItemsHudStory';
 const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 
-test('edit mode item picker stays centered on tablet layouts', async ({
+test('item picker stays centered on tablet layouts', async ({
     mount,
     page,
 }) => {

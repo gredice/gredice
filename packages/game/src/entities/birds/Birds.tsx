@@ -7,7 +7,11 @@ import { MathUtils, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { useBlockData } from '../../hooks/useBlockData';
 import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
-import { type AnimalDebugEntry, useGameState } from '../../useGameState';
+import {
+    type AnimalDebugEntry,
+    type AnimalDisturbance,
+    useGameState,
+} from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import {
@@ -21,6 +25,7 @@ import {
 type BirdTarget = {
     id: string;
     behavior: BirdBehavior;
+    blockId?: string;
     circle?: BirdCircleMotion;
     facingYaw?: number;
     position: Vector3;
@@ -153,6 +158,7 @@ const groundPeckDamping = 18;
 const fullTurn = Math.PI * 2;
 const birdBeakColor = '#d76516';
 const birdLegColor = '#c65f17';
+const animalDisturbanceReactionWindowMs = 2500;
 
 const groundBlockNames = new Set([
     'Block_Ground',
@@ -278,6 +284,7 @@ function targetForBlock({
         getVisualPerchYOffset(blockData, block.name);
     return {
         behavior,
+        blockId: block.id,
         id: `${behavior}-${block.id}`,
         position: new Vector3(stack.position.x, y, stack.position.z),
     } satisfies BirdTarget;
@@ -315,6 +322,46 @@ function targetForGroundStack(
 
 function horizontalDistance(left: Vector3, right: Vector3) {
     return Math.hypot(left.x - right.x, left.z - right.z);
+}
+
+function distanceToDisturbance(
+    position: Vector3,
+    disturbance: AnimalDisturbance,
+) {
+    return Math.hypot(
+        position.x - disturbance.position.x,
+        position.y - disturbance.position.y,
+        position.z - disturbance.position.z,
+    );
+}
+
+function isBirdTargetDisturbed(
+    target: BirdTarget,
+    disturbance: AnimalDisturbance,
+) {
+    return (
+        target.blockId === disturbance.sourceBlockId ||
+        distanceToDisturbance(target.position, disturbance) <=
+            disturbance.radius
+    );
+}
+
+function isBirdDisturbanceRelevant({
+    disturbance,
+    group,
+    habitat,
+    runtime,
+}: {
+    disturbance: AnimalDisturbance;
+    group: Group;
+    habitat: BirdHabitat;
+    runtime: BirdRuntimeState;
+}) {
+    return (
+        habitat.home.blockId === disturbance.sourceBlockId ||
+        isBirdTargetDisturbed(runtime.target, disturbance) ||
+        distanceToDisturbance(group.position, disturbance) <= disturbance.radius
+    );
 }
 
 function candidatesInRange<T extends { position: Vector3 }>(
@@ -1260,8 +1307,10 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     const runtimeRef = useRef<BirdRuntimeState | null>(null);
     const flappingRef = useRef(false);
     const lastAnimalDebugUpdateRef = useRef(0);
+    const lastDisturbanceSequenceRef = useRef(0);
     const [isFlapping, setIsFlapping] = useState(false);
     const timeOfDay = useGameState((state) => state.timeOfDay);
+    const animalDisturbance = useGameState((state) => state.animalDisturbance);
     const setAnimalDebugEntry = useGameState(
         (state) => state.setAnimalDebugEntry,
     );
@@ -1354,6 +1403,50 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
             group.position.copy(habitat.home.position);
             if (habitat.home.facingYaw !== undefined) {
                 group.rotation.y = habitat.home.facingYaw;
+            }
+        }
+
+        if (
+            animalDisturbance &&
+            animalDisturbance.sequence !== lastDisturbanceSequenceRef.current
+        ) {
+            lastDisturbanceSequenceRef.current = animalDisturbance.sequence;
+
+            if (
+                Date.now() - animalDisturbance.createdAt <=
+                    animalDisturbanceReactionWindowMs &&
+                isBirdDisturbanceRelevant({
+                    disturbance: animalDisturbance,
+                    group,
+                    habitat,
+                    runtime,
+                })
+            ) {
+                const target = createAirTarget({
+                    anchors: getAirAnchorsInRange(
+                        habitat,
+                        Math.max(
+                            getBirdActivityRange(timeOfDay),
+                            animalDisturbance.radius + 2,
+                        ),
+                    ),
+                    home: habitat.home,
+                    index: animalDisturbance.sequence,
+                    random,
+                });
+                target.position.y = Math.max(
+                    target.position.y,
+                    animalDisturbance.position.y + 1.3,
+                );
+                runtime = makeMovingState({
+                    from: group.position.clone(),
+                    now,
+                    random,
+                    takeoffLead: false,
+                    target,
+                    timeOfDay,
+                });
+                runtimeRef.current = runtime;
             }
         }
 

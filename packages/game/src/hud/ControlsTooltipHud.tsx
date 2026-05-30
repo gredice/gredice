@@ -3,13 +3,12 @@
 import { IconButton } from '@gredice/ui/IconButton';
 import { Check, Info } from '@gredice/ui/icons';
 import { useEffect, useState } from 'react';
-import { useIsEditMode } from '../hooks/useIsEditMode';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import type { DeviceType } from './controls-tooltip';
 import { ControlsVisualization } from './controls-tooltip';
 
 const STORAGE_KEY = 'game-controls-tooltip-v1';
-const TOOLTIP_VERSION = 2;
+const TOOLTIP_VERSION = 3;
 const REMINDER_AFTER_MS = 1000 * 60 * 60 * 24 * 30;
 
 type TooltipState = { dismissedAt: number; seenVersion: number };
@@ -55,7 +54,6 @@ function prefersReducedMotion() {
 }
 
 export function ControlsTooltipHud() {
-    const isEditMode = useIsEditMode();
     const [deviceType, setDeviceType] = useState<DeviceType>('desktop');
     const [open, setOpen] = useState(false);
     const [phase, setPhase] = useState(0.75);
@@ -112,11 +110,7 @@ export function ControlsTooltipHud() {
 
     return (
         <div className="pointer-events-auto relative p-2 sm:p-3">
-            <ControlsVisualization
-                deviceType={deviceType}
-                phase={phase}
-                isEditMode={isEditMode}
-            />
+            <ControlsVisualization deviceType={deviceType} phase={phase} />
             <ButtonGreen
                 title="Zatvori"
                 variant="soft"

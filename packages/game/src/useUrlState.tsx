@@ -7,12 +7,6 @@ import {
     useQueryStates,
 } from 'nuqs';
 
-// Game mode parameter (Croatian: "uredivanje" = editing)
-// true = edit mode, false/undefined = normal mode
-export function useGameModeParam() {
-    return useQueryState('uredivanje', parseAsBoolean.withDefault(false));
-}
-
 // Shopping cart modal parameter (Croatian: "kosarica" = cart)
 export function useShoppingCartOpenParam() {
     return useQueryState('kosarica', parseAsBoolean.withDefault(false));
@@ -65,7 +59,6 @@ export function useCurrentGardenIdParam() {
 
 // Serializer for building URLs with query params
 export const urlStateSerializer = createSerializer({
-    uredivanje: parseAsBoolean,
     kosarica: parseAsBoolean,
     ruksak: parseAsBoolean,
     'ruksak-kartica': parseAsString,

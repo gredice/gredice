@@ -1,10 +1,8 @@
 import { Edges } from '@react-three/drei';
-import type { PropsWithChildren } from 'react';
 import { PickableGroup } from '../controls/PickableGroup';
 import { RotatableGroup } from '../controls/RotatableGroup';
 import { SelectableGroup } from '../controls/SelectableGroup';
 import { useBlockData } from '../hooks/useBlockData';
-import { useIsEditMode } from '../hooks/useIsEditMode';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';
@@ -103,7 +101,6 @@ export function EntityFactory({
     noRenderInView,
     ...rest
 }: EntityFactoryProps & EntityInstanceProps) {
-    const isEditMode = useIsEditMode();
     const EntityComponent = entityNameMap[name];
     const view = useGameState((state) => state.view);
     const isInstancedInView = noRenderInView?.includes(name) ?? false;
@@ -116,99 +113,70 @@ export function EntityFactory({
         return null;
     }
 
+    const isTopBlock = stack.blocks.indexOf(block) === stack.blocks.length - 1;
+
     if (isInstancedInView) {
-        if (!isEditMode) {
+        if (noControl || !isTopBlock || view === 'closeup') {
             return (
                 <EntityRenderModeDebugOverlay
                     stack={stack}
                     block={block}
                     instanced
                 />
-            );
-        }
-
-        const controlTarget = (
-            <>
-                <InstancedEntityControlTarget stack={stack} block={block} />
-                <EntityRenderModeDebugOverlay
-                    stack={stack}
-                    block={block}
-                    instanced
-                />
-            </>
-        );
-        const isTopBlock =
-            stack.blocks.indexOf(block) === stack.blocks.length - 1;
-
-        if (!isTopBlock) {
-            return (
-                <RotatableGroup block={block}>{controlTarget}</RotatableGroup>
             );
         }
 
         return (
             <PickableGroup stack={stack} block={block} noControl={noControl}>
-                <RotatableGroup block={block}>{controlTarget}</RotatableGroup>
+                <RotatableGroup block={block}>
+                    <InstancedEntityControlTarget stack={stack} block={block} />
+                    <EntityRenderModeDebugOverlay
+                        stack={stack}
+                        block={block}
+                        instanced
+                    />
+                </RotatableGroup>
             </PickableGroup>
         );
     }
 
-    if (!isEditMode) {
-        if (noControl) {
-            return (
-                <>
-                    <EntityRenderModeDebugOverlay
-                        stack={stack}
-                        block={block}
-                        instanced={false}
-                    />
-                    <EntityComponent stack={stack} block={block} {...rest} />
-                </>
-            );
-        }
-
-        const SelectableGroupWrapper =
-            view !== 'closeup'
-                ? SelectableGroup
-                : (props: PropsWithChildren) => <>{props.children}</>;
-
+    if (noControl || view === 'closeup') {
         return (
-            <SelectableGroupWrapper block={block}>
+            <>
                 <EntityRenderModeDebugOverlay
                     stack={stack}
                     block={block}
                     instanced={false}
                 />
                 <EntityComponent stack={stack} block={block} {...rest} />
-            </SelectableGroupWrapper>
+            </>
         );
     }
 
-    // Non-top blocks are not pickable
-    const isTopBlock = stack.blocks.indexOf(block) === stack.blocks.length - 1;
-    if (!isTopBlock) {
-        return (
-            <RotatableGroup block={block}>
-                <EntityRenderModeDebugOverlay
-                    stack={stack}
-                    block={block}
-                    instanced={false}
-                />
-                <EntityComponent stack={stack} block={block} {...rest} />
-            </RotatableGroup>
-        );
-    }
+    const entityContent = (
+        <RotatableGroup block={block}>
+            <EntityRenderModeDebugOverlay
+                stack={stack}
+                block={block}
+                instanced={false}
+            />
+            <EntityComponent stack={stack} block={block} {...rest} />
+        </RotatableGroup>
+    );
 
     return (
-        <PickableGroup stack={stack} block={block} noControl={noControl}>
-            <RotatableGroup block={block}>
-                <EntityRenderModeDebugOverlay
+        <SelectableGroup block={block}>
+            {isTopBlock ? (
+                <PickableGroup
                     stack={stack}
                     block={block}
-                    instanced={false}
-                />
-                <EntityComponent stack={stack} block={block} {...rest} />
-            </RotatableGroup>
-        </PickableGroup>
+                    noControl={noControl}
+                >
+                    {entityContent}
+                </PickableGroup>
+            ) : (
+                entityContent
+            )}
+        </SelectableGroup>
     );
 }

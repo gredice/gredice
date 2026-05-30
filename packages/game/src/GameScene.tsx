@@ -33,8 +33,8 @@ import { useDeferredSceneDetails } from './hooks/useDeferredSceneDetails';
 import { useFocusPlacedBlock } from './hooks/useFocusPlacedBlock';
 import { useWeatherNow } from './hooks/useWeatherNow';
 import { DebugHud } from './hud/DebugHud';
-import { EditModeGrid } from './indicators/EditModeGrid';
 import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
+import { PlacementGrid } from './indicators/PlacementGrid';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
 import { Environment } from './scene/Environment';
 import {
@@ -200,7 +200,7 @@ export function GameScene({
                     className="!absolute"
                 >
                     <ParticleSystemProvider>
-                        <EditModeGrid />
+                        <PlacementGrid />
                         <Environment
                             noBackground={noBackground}
                             noWeather={weatherDisabled}
