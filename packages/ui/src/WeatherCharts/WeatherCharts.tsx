@@ -6,15 +6,16 @@ import {
     type WeatherForecastDay,
     type WeatherHistoryPoint,
     type WeatherMetricKey,
+    type WeatherSeriesPoint,
     weatherMetrics,
     windDirectionToDegrees,
 } from '@gredice/js/weather';
-import { ArrowUp } from '../icons';
-import { useMemo, useState } from 'react';
+import { type ComponentType, useMemo, useState } from 'react';
 import {
     Area,
     Bar,
     CartesianGrid,
+    Cell,
     ComposedChart,
     Line,
     ReferenceArea,
@@ -25,7 +26,13 @@ import {
     YAxis,
 } from 'recharts';
 import { Button } from '../Button/Button';
+import {
+    ButtonGroup,
+    buttonGroupItemClassName,
+} from '../ButtonGroup/ButtonGroup';
 import { Input } from '../Input/Input';
+import { ArrowUp, Calendar, Droplets, ThermometerSun, Wind } from '../icons';
+import { Popper } from '../Popper/Popper';
 import { Row } from '../Row/Row';
 import { Stack } from '../Stack/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../Tabs/Tabs';
@@ -53,6 +60,54 @@ export interface WeatherChartsProps {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_FORECAST_DAYS = 3;
+const HISTORY_PRESETS = [3, 7, 30];
+
+type ForecastMode = 'standard' | 'extended';
+
+type MetricChartPoint = WeatherSeriesPoint & {
+    historyValue: number | null;
+    forecastValue: number | null;
+};
+
+const weatherMetricIcons: Record<
+    WeatherMetricKey,
+    ComponentType<{ className?: string }>
+> = {
+    temperature: ThermometerSun,
+    rain: Droplets,
+    wind: Wind,
+};
+
+function isWeatherMetricKey(value: string): value is WeatherMetricKey {
+    return weatherMetrics.some((metric) => metric.key === value);
+}
+
+function toMetricChartData(
+    points: WeatherSeriesPoint[],
+    metricKey: WeatherMetricKey,
+): MetricChartPoint[] {
+    const definition = weatherMetrics.find(
+        (metric) => metric.key === metricKey,
+    );
+    if (!definition) return [];
+
+    return points.map((point) => {
+        const value = point[definition.dataKey];
+        return {
+            ...point,
+            historyValue: point.source === 'history' ? value : null,
+            forecastValue: point.source === 'forecast' ? value : null,
+        };
+    });
+}
+
+function formatShortDate(date: Date): string {
+    return date.toLocaleDateString('hr-HR', {
+        day: '2-digit',
+        month: '2-digit',
+    });
+}
 
 function toDateInputValue(date: Date): string {
     const year = date.getFullYear();
@@ -78,16 +133,22 @@ function WeatherTooltip({
     showDirection,
 }: {
     active?: boolean;
-    payload?: Array<{ value?: number; payload?: Record<string, unknown> }>;
+    payload?: Array<{
+        value?: number | string | null;
+        payload?: Record<string, unknown>;
+    }>;
     label?: number;
     unit: string;
     showDirection?: boolean;
 }) {
     if (!active || !payload?.length || label == null) return null;
-    const point = payload[0]?.payload as
+    const activePayload = payload.find((item) => item.value != null);
+    if (!activePayload) return null;
+
+    const point = activePayload.payload as
         | { windDirection?: string | null; source?: string }
         | undefined;
-    const value = payload[0]?.value;
+    const value = Number(activePayload.value);
     const date = new Date(label);
     const formatted = date.toLocaleString('hr-HR', {
         weekday: 'short',
@@ -107,7 +168,9 @@ function WeatherTooltip({
             </Typography>
             <Row spacing={1} className="pt-0.5">
                 <Typography level="body2" semiBold>
-                    {value == null ? '—' : `${Number(value).toFixed(1)} ${unit}`}
+                    {Number.isFinite(value)
+                        ? `${value.toFixed(1)} ${unit}`
+                        : '—'}
                 </Typography>
                 {showDirection && degrees != null && (
                     <ArrowUp
@@ -163,13 +226,45 @@ export function WeatherCharts({
               });
     };
 
-    const applyPreset = (fromOffsetDays: number, toOffsetDays: number) => {
+    const forecastMode: ForecastMode =
+        range.to.getTime() - nowTs > (DEFAULT_FORECAST_DAYS + 0.5) * DAY_MS
+            ? 'extended'
+            : 'standard';
+    const hasExtendedForecast =
+        bounds.max.getTime() - nowTs > (DEFAULT_FORECAST_DAYS + 0.5) * DAY_MS;
+    const activeHistoryDays =
+        HISTORY_PRESETS.find(
+            (days) =>
+                Math.abs(nowTs - range.from.getTime() - days * DAY_MS) <
+                DAY_MS / 2,
+        ) ?? null;
+
+    const getForecastEnd = (now: Date, mode: ForecastMode) =>
+        mode === 'extended'
+            ? bounds.max
+            : new Date(now.getTime() + DEFAULT_FORECAST_DAYS * DAY_MS);
+
+    const applyHistoryPreset = (historyDays: number) => {
         const now = new Date();
         onRangeChange(
             clampRangeToBounds(
                 {
-                    from: new Date(now.getTime() - fromOffsetDays * DAY_MS),
-                    to: new Date(now.getTime() + toOffsetDays * DAY_MS),
+                    from: new Date(now.getTime() - historyDays * DAY_MS),
+                    to: getForecastEnd(now, forecastMode),
+                },
+                bounds,
+            ),
+        );
+    };
+
+    const applyForecastMode = (mode: ForecastMode) => {
+        const now = new Date();
+        const historyDays = activeHistoryDays ?? DEFAULT_FORECAST_DAYS;
+        onRangeChange(
+            clampRangeToBounds(
+                {
+                    from: new Date(now.getTime() - historyDays * DAY_MS),
+                    to: getForecastEnd(now, mode),
                 },
                 bounds,
             ),
@@ -184,12 +279,13 @@ export function WeatherCharts({
         const { color, unit, dataKey } = definition;
         const isRain = metricKey === 'rain';
         const isWind = metricKey === 'wind';
+        const chartData = toMetricChartData(data, metricKey);
 
         return (
             <div style={{ height: chartHeight }} className="w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart
-                        data={data}
+                        data={chartData}
                         margin={{ top: 8, right: 12, bottom: 0, left: -12 }}
                     >
                         <defs>
@@ -209,6 +305,24 @@ export function WeatherCharts({
                                     offset="100%"
                                     stopColor={color}
                                     stopOpacity={0.04}
+                                />
+                            </linearGradient>
+                            <linearGradient
+                                id={`weather-${metricKey}-forecast`}
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                            >
+                                <stop
+                                    offset="0%"
+                                    stopColor={color}
+                                    stopOpacity={0.12}
+                                />
+                                <stop
+                                    offset="100%"
+                                    stopColor={color}
+                                    stopOpacity={0.01}
                                 />
                             </linearGradient>
                         </defs>
@@ -244,7 +358,7 @@ export function WeatherCharts({
                                 x1={forecastStart}
                                 x2={forecastEnd}
                                 fill={color}
-                                fillOpacity={0.06}
+                                fillOpacity={0.025}
                                 ifOverflow="visible"
                             />
                         )}
@@ -266,29 +380,63 @@ export function WeatherCharts({
                             <Bar
                                 dataKey={dataKey}
                                 fill={color}
+                                fillOpacity={0.85}
                                 radius={[3, 3, 0, 0]}
                                 isAnimationActive={false}
-                            />
+                            >
+                                {chartData.map((point) => (
+                                    <Cell
+                                        key={point.timestamp}
+                                        fillOpacity={
+                                            point.source === 'forecast'
+                                                ? 0.32
+                                                : 0.85
+                                        }
+                                    />
+                                ))}
+                            </Bar>
                         ) : isWind ? (
-                            <Line
-                                type="monotone"
-                                dataKey={dataKey}
-                                stroke={color}
-                                strokeWidth={2}
-                                dot={false}
-                                connectNulls
-                                isAnimationActive={false}
-                            />
+                            <>
+                                <Line
+                                    type="monotone"
+                                    dataKey="historyValue"
+                                    stroke={color}
+                                    strokeWidth={2}
+                                    dot={false}
+                                    isAnimationActive={false}
+                                />
+                                <Line
+                                    type="monotone"
+                                    dataKey="forecastValue"
+                                    stroke={color}
+                                    strokeDasharray="5 5"
+                                    strokeOpacity={0.55}
+                                    strokeWidth={2}
+                                    dot={false}
+                                    isAnimationActive={false}
+                                />
+                            </>
                         ) : (
-                            <Area
-                                type="monotone"
-                                dataKey={dataKey}
-                                stroke={color}
-                                strokeWidth={2}
-                                fill={`url(#weather-${metricKey})`}
-                                connectNulls
-                                isAnimationActive={false}
-                            />
+                            <>
+                                <Area
+                                    type="monotone"
+                                    dataKey="historyValue"
+                                    stroke={color}
+                                    strokeWidth={2}
+                                    fill={`url(#weather-${metricKey})`}
+                                    isAnimationActive={false}
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="forecastValue"
+                                    stroke={color}
+                                    strokeDasharray="5 5"
+                                    strokeOpacity={0.55}
+                                    strokeWidth={2}
+                                    fill={`url(#weather-${metricKey}-forecast)`}
+                                    isAnimationActive={false}
+                                />
+                            </>
                         )}
                     </ComposedChart>
                 </ResponsiveContainer>
@@ -299,7 +447,8 @@ export function WeatherCharts({
     const [internalMetric, setInternalMetric] =
         useState<WeatherMetricKey>('temperature');
     const activeMetric = metric ?? internalMetric;
-    const handleMetricChange = (value: WeatherMetricKey) => {
+    const handleMetricChange = (value: string) => {
+        if (!isWeatherMetricKey(value)) return;
         setInternalMetric(value);
         onMetricChange?.(value);
     };
@@ -317,70 +466,123 @@ export function WeatherCharts({
         if (!to) return;
         onRangeChange(clampRangeToBounds({ from: range.from, to }, bounds));
     };
+    const dateRangeLabel = `${formatShortDate(range.from)} - ${formatShortDate(range.to)}`;
 
     return (
         <Stack spacing={compact ? 1 : 2} className={cx('w-full', className)}>
-            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                <Row spacing={1} className="flex-wrap">
-                    <Input
-                        type="date"
-                        value={toDateInputValue(range.from)}
-                        min={minInput}
-                        max={maxInput}
-                        onChange={(event) =>
-                            handleFromChange(event.target.value)
-                        }
-                        label="Od"
-                        className="max-w-40"
-                    />
-                    <Input
-                        type="date"
-                        value={toDateInputValue(range.to)}
-                        min={minInput}
-                        max={maxInput}
-                        onChange={(event) => handleToChange(event.target.value)}
-                        label="Do"
-                        className="max-w-40"
-                    />
-                </Row>
-                <Row spacing={1} className="flex-wrap">
-                    <Button
-                        variant="outlined"
-                        size="sm"
-                        onClick={() => applyPreset(1, 0)}
-                    >
-                        24 h
-                    </Button>
-                    <Button
-                        variant="outlined"
-                        size="sm"
-                        onClick={() => applyPreset(7, 3)}
-                    >
-                        7 + 3 dana
-                    </Button>
-                    <Button
-                        variant="outlined"
-                        size="sm"
-                        onClick={() => applyPreset(30, 3)}
-                    >
-                        30 dana
-                    </Button>
-                </Row>
-            </div>
-
-            <Tabs
-                value={activeMetric}
-                onValueChange={(value) =>
-                    handleMetricChange(value as WeatherMetricKey)
-                }
-            >
-                <TabsList>
-                    {weatherMetrics.map((definition) => (
-                        <TabsTrigger key={definition.key} value={definition.key}>
-                            {definition.label}
-                        </TabsTrigger>
-                    ))}
-                </TabsList>
+            <Tabs value={activeMetric} onValueChange={handleMetricChange}>
+                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <TabsList className="min-h-9">
+                        {weatherMetrics.map((definition) => {
+                            const MetricIcon =
+                                weatherMetricIcons[definition.key];
+                            return (
+                                <TabsTrigger
+                                    key={definition.key}
+                                    value={definition.key}
+                                    aria-label={definition.label}
+                                    title={definition.label}
+                                    className="min-h-7 px-2.5"
+                                >
+                                    <MetricIcon className="size-4" />
+                                </TabsTrigger>
+                            );
+                        })}
+                    </TabsList>
+                    <div className="flex flex-wrap items-center gap-1 md:justify-end">
+                        <ButtonGroup legend="Povijest" size="sm">
+                            {HISTORY_PRESETS.map((days) => {
+                                const isActive = activeHistoryDays === days;
+                                return (
+                                    <Button
+                                        key={days}
+                                        type="button"
+                                        variant={isActive ? 'soft' : 'plain'}
+                                        aria-pressed={isActive}
+                                        className={buttonGroupItemClassName()}
+                                        onClick={() => applyHistoryPreset(days)}
+                                    >
+                                        {days}d
+                                    </Button>
+                                );
+                            })}
+                        </ButtonGroup>
+                        <ButtonGroup legend="Prognoza" size="sm">
+                            <Button
+                                type="button"
+                                variant={
+                                    forecastMode === 'standard'
+                                        ? 'soft'
+                                        : 'plain'
+                                }
+                                aria-pressed={forecastMode === 'standard'}
+                                className={buttonGroupItemClassName()}
+                                onClick={() => applyForecastMode('standard')}
+                            >
+                                3d
+                            </Button>
+                            <Button
+                                type="button"
+                                variant={
+                                    forecastMode === 'extended'
+                                        ? 'soft'
+                                        : 'plain'
+                                }
+                                aria-pressed={forecastMode === 'extended'}
+                                className={buttonGroupItemClassName()}
+                                disabled={!hasExtendedForecast}
+                                title="Proširena prognoza"
+                                onClick={() => applyForecastMode('extended')}
+                            >
+                                Sve
+                            </Button>
+                        </ButtonGroup>
+                        <Popper
+                            side="bottom"
+                            align="end"
+                            sideOffset={8}
+                            className="w-auto p-3"
+                            trigger={
+                                <Button
+                                    type="button"
+                                    variant="outlined"
+                                    size="sm"
+                                    startDecorator={
+                                        <Calendar className="size-4" />
+                                    }
+                                    title="Odaberi raspon"
+                                >
+                                    {dateRangeLabel}
+                                </Button>
+                            }
+                        >
+                            <Row spacing={1} className="items-end">
+                                <Input
+                                    type="date"
+                                    value={toDateInputValue(range.from)}
+                                    min={minInput}
+                                    max={maxInput}
+                                    onChange={(event) =>
+                                        handleFromChange(event.target.value)
+                                    }
+                                    label="Od"
+                                    className="w-36"
+                                />
+                                <Input
+                                    type="date"
+                                    value={toDateInputValue(range.to)}
+                                    min={minInput}
+                                    max={maxInput}
+                                    onChange={(event) =>
+                                        handleToChange(event.target.value)
+                                    }
+                                    label="Do"
+                                    className="w-36"
+                                />
+                            </Row>
+                        </Popper>
+                    </div>
+                </div>
                 {weatherMetrics.map((definition) => (
                     <TabsContent key={definition.key} value={definition.key}>
                         {isLoading && data.length === 0 ? (

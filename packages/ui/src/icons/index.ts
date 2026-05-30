@@ -22,6 +22,7 @@ export {
     Bookmark,
     Bug,
     Calendar,
+    ChartLine as Graph,
     Check,
     CheckCheck as Approved,
     CheckCircle as Success,
