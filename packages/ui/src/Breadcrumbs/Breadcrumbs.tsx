@@ -21,7 +21,7 @@ export function BreadcrumbsSeparator() {
     return (
         <Typography
             aria-hidden
-            className="text-muted-foreground/50"
+            className="shrink-0 text-muted-foreground/50"
             component="span"
         >
             /
@@ -47,7 +47,12 @@ export function BreadcrumbsItem({ href, label }: BreadcrumbItem) {
 
     if (typeof label === 'string') {
         return (
-            <Typography component="span" level="body2" noWrap>
+            <Typography
+                className="min-w-0"
+                component="span"
+                level="body2"
+                noWrap
+            >
                 {label}
             </Typography>
         );
@@ -67,7 +72,7 @@ export function Breadcrumbs({
 
     return (
         <nav aria-label="Breadcrumb" className={cx('max-w-full', className)}>
-            <ol className="flex min-w-0 flex-wrap items-center gap-1">
+            <ol className="flex min-w-0 flex-nowrap items-center gap-1">
                 {items.length > 3 ? (
                     <>
                         <li className="flex min-w-0 items-center gap-1">
