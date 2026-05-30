@@ -12,6 +12,7 @@ import { type SnowMaterialOptions, SnowOverlay } from '../snow/SnowOverlay';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { getStackHeight } from '../utils/getStackHeight';
+import { resolveBlockInstanceCapacity } from './blockInstanceCapacity';
 import { blockPickupOutlineStyle } from './helpers/blockPickupOutlineStyle';
 import { HoverOutline } from './helpers/HoverOutline';
 
@@ -94,7 +95,9 @@ export function EntityInstancesBlock(
                 }),
         );
 
-    const limit = Math.max((blockInstances?.length ?? 0) + 10, 100);
+    const instanceCapacity = resolveBlockInstanceCapacity(
+        blockInstances?.length ?? 0,
+    );
 
     const localTransform = {
         position: localPosition ?? defaultLocalPosition,
@@ -165,7 +168,8 @@ export function EntityInstancesBlock(
     return (
         <>
             <Instances
-                limit={limit}
+                key={`${name}-${instanceCapacity}`}
+                limit={instanceCapacity}
                 geometry={geometry}
                 frustumCulled={false}
                 receiveShadow
