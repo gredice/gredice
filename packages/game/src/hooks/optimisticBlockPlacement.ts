@@ -67,7 +67,7 @@ export function createOptimisticBlockPlacement<
         return null;
     }
 
-    const { x, y } = placement.placement;
+    const { existingBlocks, x, y } = placement.placement;
     let hasTargetStack = false;
     const optimisticBlock = {
         id: blockId,
@@ -95,6 +95,7 @@ export function createOptimisticBlockPlacement<
 
     return {
         blockId,
+        existingBlocks,
         position: new Vector3(x, 0, y),
         stacks,
     };

@@ -17,6 +17,19 @@ type CurrentGardenData = NonNullable<
     ReturnType<typeof useCurrentGarden>['data']
 >;
 
+type BlockPlaceVariables = {
+    blockName: string;
+    expectedExistingBlocks?: string[];
+    position?: BlockPlacePosition;
+};
+
+type BlockPlacePosition = {
+    x: number;
+    y: number;
+};
+
+const placementQueues = new Map<string, Promise<void>>();
+
 async function getBlockPlacementError(response: Response) {
     const responseText = await response.text();
     if (!responseText) {
@@ -39,6 +52,27 @@ function createOptimisticBlockId(blockName: string) {
     return `${optimisticBlockIdPrefix}:${blockName}:${timestamp}:${randomSuffix}`;
 }
 
+async function runQueuedPlacement<T>(
+    queueKey: string,
+    task: () => Promise<T>,
+): Promise<T> {
+    const previous = placementQueues.get(queueKey) ?? Promise.resolve();
+    const current = previous.catch(() => undefined).then(task);
+    const currentQueue = current.then(
+        () => undefined,
+        () => undefined,
+    );
+    placementQueues.set(queueKey, currentQueue);
+
+    try {
+        return await current;
+    } finally {
+        if (placementQueues.get(queueKey) === currentQueue) {
+            placementQueues.delete(queueKey);
+        }
+    }
+}
+
 export function useBlockPlace() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
@@ -51,7 +85,11 @@ export function useBlockPlace() {
 
     return useMutation({
         mutationKey,
-        mutationFn: async ({ blockName }: { blockName: string }) => {
+        mutationFn: async ({
+            blockName,
+            expectedExistingBlocks,
+            position,
+        }: BlockPlaceVariables) => {
             if (!garden) {
                 throw new Error('No garden selected');
             }
@@ -63,6 +101,10 @@ export function useBlockPlace() {
                 },
                 json: {
                     blockName,
+                    ...(expectedExistingBlocks
+                        ? { expectedExistingBlocks }
+                        : {}),
+                    ...(position ? { position } : {}),
                 },
             });
             if (!response.ok) {
@@ -71,48 +113,68 @@ export function useBlockPlace() {
 
             return await response.json();
         },
-        onMutate: async ({ blockName }) => {
+        onMutate: async (variables) => {
             if (!garden) {
                 return;
             }
 
-            await queryClient.cancelQueries({ queryKey: gardenQueryKey });
-            const currentGarden =
-                queryClient.getQueryData<CurrentGardenData>(gardenQueryKey) ??
-                garden;
-            const optimisticBlockId = createOptimisticBlockId(blockName);
-            const optimisticPlacement = createOptimisticBlockPlacement(
-                currentGarden,
-                blockData,
-                blockName,
-                optimisticBlockId,
+            return await runQueuedPlacement(
+                JSON.stringify(gardenQueryKey),
+                async () => {
+                    await queryClient.cancelQueries({
+                        queryKey: gardenQueryKey,
+                    });
+                    const currentGarden =
+                        queryClient.getQueryData<CurrentGardenData>(
+                            gardenQueryKey,
+                        ) ?? garden;
+                    const optimisticBlockId = createOptimisticBlockId(
+                        variables.blockName,
+                    );
+                    const optimisticPlacement = createOptimisticBlockPlacement(
+                        currentGarden,
+                        blockData,
+                        variables.blockName,
+                        optimisticBlockId,
+                    );
+                    if (!optimisticPlacement) {
+                        return;
+                    }
+
+                    variables.position = {
+                        x: optimisticPlacement.position.x,
+                        y: optimisticPlacement.position.z,
+                    };
+                    variables.expectedExistingBlocks =
+                        optimisticPlacement.existingBlocks;
+                    queryClient.setQueryData<CurrentGardenData>(
+                        gardenQueryKey,
+                        {
+                            ...currentGarden,
+                            stacks: optimisticPlacement.stacks,
+                        },
+                    );
+
+                    const placedBlockData = blockData?.find(
+                        (block) =>
+                            block.information.name === variables.blockName,
+                    );
+                    // Sandbox gardens build for free — no sunflowers are spent.
+                    const amount = garden.isSandbox
+                        ? 0
+                        : (placedBlockData?.prices.sunflowers ?? 0);
+                    if (amount > 0) {
+                        queuePlacedBlockEffect(optimisticBlockId, {
+                            kind: 'sunflowers',
+                            amount,
+                        });
+                    }
+
+                    return {
+                        optimisticBlockId,
+                    };
+                },
             );
-            if (!optimisticPlacement) {
-                return;
-            }
-
-            queryClient.setQueryData<CurrentGardenData>(gardenQueryKey, {
-                ...currentGarden,
-                stacks: optimisticPlacement.stacks,
-            });
-
-            const placedBlockData = blockData?.find(
-                (block) => block.information.name === blockName,
-            );
-            // Sandbox gardens build for free — no sunflowers are spent.
-            const amount = garden.isSandbox
-                ? 0
-                : (placedBlockData?.prices.sunflowers ?? 0);
-            if (amount > 0) {
-                queuePlacedBlockEffect(optimisticBlockId, {
-                    kind: 'sunflowers',
-                    amount,
-                });
-            }
-
-            return {
-                optimisticBlockId,
-            };
         },
         onSuccess: (data, _variables, context) => {
             if (!context?.optimisticBlockId) {

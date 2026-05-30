@@ -4,6 +4,29 @@ import { ItemsHudAlignmentStory } from './ItemsHudStory';
 const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 
+function getPlacementRequestPosition(body: unknown) {
+    if (typeof body !== 'object' || body === null || !('position' in body)) {
+        return null;
+    }
+
+    const { position } = body;
+    if (
+        typeof position !== 'object' ||
+        position === null ||
+        !('x' in position) ||
+        !('y' in position) ||
+        typeof position.x !== 'number' ||
+        typeof position.y !== 'number'
+    ) {
+        return null;
+    }
+
+    return {
+        x: position.x,
+        y: position.y,
+    };
+}
+
 test('item picker stays centered on tablet layouts', async ({
     mount,
     page,
@@ -76,18 +99,23 @@ test('item details place button keeps the soft color treatment', async ({
     await expect(pricePill).toHaveClass(/bg-primary\/15/u);
 });
 
-test('item placement buttons stay usable while placement is pending', async ({
+test('item placement reserves local positions while requests are pending', async ({
     mount,
     page,
 }) => {
-    let placeRequestCount = 0;
+    const placeRequestPositions: Array<{ x: number; y: number }> = [];
     const releaseResponses: Array<() => void> = [];
 
     await page.route(
         /\/api(?:\/gredice)?\/gardens\/1\/blocks$/u,
         async (route) => {
-            placeRequestCount += 1;
-            const blockId = `placed-block-${placeRequestCount.toString()}`;
+            const position = getPlacementRequestPosition(
+                route.request().postDataJSON(),
+            );
+            if (position) {
+                placeRequestPositions.push(position);
+            }
+            const blockId = `placed-block-${placeRequestPositions.length.toString()}`;
 
             await new Promise<void>((resolve) => {
                 releaseResponses.push(resolve);
@@ -106,21 +134,18 @@ test('item placement buttons stay usable while placement is pending', async ({
 
     await mount(<ItemsHudAlignmentStory />);
 
-    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Blokovi' }).click();
+    await page
+        .getByRole('button', { name: 'Block Grass', exact: true })
+        .click();
 
-    const placeButton = page
-        .locator('button')
-        .filter({ hasText: '🌻 10' })
-        .first();
+    const placeButton = page.getByRole('button', { name: /Postavi.*10/u });
     await expect(placeButton).toBeEnabled();
 
-    await placeButton.click();
-    await expect.poll(() => placeRequestCount).toBe(1);
+    await placeButton.dblclick();
+    await expect.poll(() => placeRequestPositions.length).toBe(2);
     await expect(placeButton).toBeEnabled();
-    await expect(placeButton).toHaveText('🌻 10');
-
-    await placeButton.click();
-    await expect.poll(() => placeRequestCount).toBe(2);
+    expect(placeRequestPositions[0]).not.toEqual(placeRequestPositions[1]);
 
     for (const releaseResponse of releaseResponses) {
         releaseResponse();

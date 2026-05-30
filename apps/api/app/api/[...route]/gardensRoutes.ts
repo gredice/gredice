@@ -9,11 +9,11 @@ import {
     abandonRaisedBed,
     addGardenBoxInventoryItem,
     buildRaisedBedFieldPlantUpdatePayload,
+    clearSandboxField,
     countAiRequestEventsSince,
     countRaisedBedsByAccount,
     createDefaultGardenForAccount,
     createEvent,
-    clearSandboxField,
     createGardenBlock,
     createGardenStack,
     createSandboxGarden,
@@ -1621,6 +1621,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             'json',
             z.object({
                 blockName: z.string(),
+                expectedExistingBlocks: z.array(z.string()).optional(),
                 position: z
                     .object({
                         x: z.number().int(),
@@ -1655,7 +1656,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const { blockName, position } = context.req.valid('json');
+            const { blockName, expectedExistingBlocks, position } =
+                context.req.valid('json');
 
             // Retrieve block information (cost)
             const block = blockData.find(
@@ -1721,6 +1723,21 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const { x, y, existingBlocks } = placement.placement;
+            if (
+                expectedExistingBlocks &&
+                (expectedExistingBlocks.length !== existingBlocks.length ||
+                    expectedExistingBlocks.some(
+                        (blockId, index) => blockId !== existingBlocks[index],
+                    ))
+            ) {
+                return context.json(
+                    {
+                        error: 'Invalid block placement: stack changed while placing block',
+                    },
+                    409,
+                );
+            }
+
             const hasTargetStack = garden.stacks.some(
                 (stack) => stack.positionX === x && stack.positionY === y,
             );
