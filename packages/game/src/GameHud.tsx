@@ -2,6 +2,7 @@
 
 import { cx } from '@gredice/ui/utils';
 import type { GameSceneProps } from './GameScene';
+import { useIsSandboxGarden } from './hooks/useCurrentGarden';
 import { AccountHud } from './hud/AccountHud';
 import { AdventHud } from './hud/AdventHud';
 import { AudioHud } from './hud/AudioHud';
@@ -35,6 +36,9 @@ export function GameHud({
     noWeather?: boolean;
 }) {
     const isCloseup = useGameState((state) => state.view) === 'closeup';
+    // Sandbox ("play") gardens are decoration only: no economy, inventory or
+    // weather HUD.
+    const isSandbox = useIsSandboxGarden();
     const closeupHiddenHudClassName = cx(
         'empty:hidden',
         isCloseup && 'hidden md:block',
@@ -44,19 +48,23 @@ export function GameHud({
         <>
             <div className="absolute top-2 left-2 flex flex-col items-start gap-2">
                 <AccountHud />
-                <ShoppingCartHud />
-                <div className={closeupHiddenHudClassName}>
-                    <AdventHud />
-                </div>
-                <div className={closeupHiddenHudClassName}>
-                    <InventoryHud />
-                </div>
+                {!isSandbox && <ShoppingCartHud />}
+                {!isSandbox && (
+                    <div className={closeupHiddenHudClassName}>
+                        <AdventHud />
+                    </div>
+                )}
+                {!isSandbox && (
+                    <div className={closeupHiddenHudClassName}>
+                        <InventoryHud />
+                    </div>
+                )}
             </div>
             <div className="absolute top-2 right-2 flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2">
                 <div className={closeupHiddenHudClassName}>
-                    <WeatherHud noWeather={noWeather} />
+                    <WeatherHud noWeather={noWeather || isSandbox} />
                 </div>
-                <SunflowersHud />
+                {!isSandbox && <SunflowersHud />}
             </div>
             <div className={gameHudBottomBarClassName}>
                 <div className={gameHudBottomControlsClassName}>

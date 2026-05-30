@@ -5,6 +5,7 @@ import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
 import { Close, Left, Search, ShoppingCart } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
+import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -19,7 +20,9 @@ import {
 } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { SegmentedProgress } from '../../controls/components/SegmentedProgress';
+import { useIsSandboxGarden } from '../../hooks/useCurrentGarden';
 import { useInventory } from '../../hooks/useInventory';
+import { useSandboxPlant } from '../../hooks/useSandboxPlant';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import {
     type ShoppingCartItemData,
@@ -31,6 +34,15 @@ import {
 } from '../../hooks/useShoppingCartTransientHub';
 import { PlantsList } from './PlantsList';
 import { PlantsSortList } from './PlantsSortList';
+
+// Sandbox ("play") gardens let you pick how grown the plant should look. Each
+// preset backdates the sow date so the existing generation rendering draws a
+// plant at the chosen maturity.
+const SANDBOX_AGE_PRESETS = [
+    { label: 'Mlada', ageDays: 14, status: 'sprouted' },
+    { label: 'Srednja', ageDays: 40, status: 'sprouted' },
+    { label: 'Zrela', ageDays: 80, status: 'ready' },
+] as const;
 
 // Helper to format date as YYYY-MM-DD in local time
 // TODO: Move to shared utilities
@@ -77,6 +89,11 @@ export function PlantPicker({
     const { data: cart } = useShoppingCart();
     const setCartItem = useSetShoppingCartItem();
     const { data: inventory } = useInventory();
+    const isSandbox = useIsSandboxGarden();
+    const sandboxPlant = useSandboxPlant();
+    const [sandboxAgeIndex, setSandboxAgeIndex] = useState(
+        SANDBOX_AGE_PRESETS.length - 1,
+    );
     const [selectedPlantId, setSelectedPlantId] = useState<number | null>(
         preselectedPlantId ?? null,
     );
@@ -180,6 +197,36 @@ export function PlantPicker({
 
     async function handleConfirm() {
         if (!selectedSortId) {
+            return;
+        }
+
+        // Sandbox gardens plant directly at the chosen age — no cart/economy.
+        if (isSandbox) {
+            const preset = SANDBOX_AGE_PRESETS[sandboxAgeIndex];
+            track('game_planting_confirmed', {
+                garden_id: gardenId,
+                in_shopping_cart: false,
+                is_sandbox: true,
+                plant_id: selectedPlantId,
+                position_index: positionIndex,
+                raised_bed_id: raisedBedId,
+                sort_id: selectedSortId,
+                sandbox_age_days: preset.ageDays,
+            });
+            try {
+                await sandboxPlant.mutateAsync({
+                    raisedBedId,
+                    positionIndex,
+                    plantSortId: selectedSortId,
+                    ageDays: preset.ageDays,
+                    status: preset.status,
+                });
+            } finally {
+                setOpen(false);
+                setSelectedPlantId(null);
+                setSelectedSortId(null);
+                resetSearch();
+            }
             return;
         }
 
@@ -369,47 +416,88 @@ export function PlantPicker({
                                 search={search}
                                 flyToShoppingCart={flyToShoppingCart}
                             />
-                            <Row spacing={2} className="flex-wrap">
-                                <Button
-                                    variant={
-                                        availableFromInventory &&
-                                        useInventoryItem
-                                            ? 'solid'
-                                            : 'outlined'
-                                    }
-                                    size="sm"
-                                    disabled={!availableFromInventory}
-                                    startDecorator={
-                                        <BackpackIcon className="size-5 shrink-0" />
-                                    }
-                                    onClick={() => {
-                                        track('game_plant_inventory_toggled', {
-                                            garden_id: gardenId,
-                                            position_index: positionIndex,
-                                            raised_bed_id: raisedBedId,
-                                            sort_id: selectedSortId,
-                                            use_inventory: !useInventoryItem,
-                                        });
-                                        setUseInventoryItem(
-                                            (previous) => !previous,
-                                        );
-                                    }}
-                                >
-                                    {`U ruksaku (${availableFromInventory ?? 0})`}
-                                </Button>
-                            </Row>
-                            <Input
-                                type="date"
-                                label="Datum sijanja"
-                                name="plantDate"
-                                className="w-full bg-card"
-                                value={plantDate}
-                                onChange={(e) =>
-                                    handlePlantDateChange(e.target.value)
-                                }
-                                min={min}
-                                max={max}
-                            />
+                            {isSandbox ? (
+                                <Stack spacing={1}>
+                                    <Typography level="body2" semiBold>
+                                        Starost biljke
+                                    </Typography>
+                                    <Row spacing={1} className="flex-wrap">
+                                        {SANDBOX_AGE_PRESETS.map(
+                                            (preset, presetIndex) => (
+                                                <Button
+                                                    key={preset.label}
+                                                    variant={
+                                                        presetIndex ===
+                                                        sandboxAgeIndex
+                                                            ? 'solid'
+                                                            : 'outlined'
+                                                    }
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        setSandboxAgeIndex(
+                                                            presetIndex,
+                                                        )
+                                                    }
+                                                >
+                                                    {preset.label}
+                                                </Button>
+                                            ),
+                                        )}
+                                    </Row>
+                                </Stack>
+                            ) : (
+                                <>
+                                    <Row spacing={2} className="flex-wrap">
+                                        <Button
+                                            variant={
+                                                availableFromInventory &&
+                                                useInventoryItem
+                                                    ? 'solid'
+                                                    : 'outlined'
+                                            }
+                                            size="sm"
+                                            disabled={!availableFromInventory}
+                                            startDecorator={
+                                                <BackpackIcon className="size-5 shrink-0" />
+                                            }
+                                            onClick={() => {
+                                                track(
+                                                    'game_plant_inventory_toggled',
+                                                    {
+                                                        garden_id: gardenId,
+                                                        position_index:
+                                                            positionIndex,
+                                                        raised_bed_id:
+                                                            raisedBedId,
+                                                        sort_id: selectedSortId,
+                                                        use_inventory:
+                                                            !useInventoryItem,
+                                                    },
+                                                );
+                                                setUseInventoryItem(
+                                                    (previous) => !previous,
+                                                );
+                                            }}
+                                        >
+                                            {`U ruksaku (${availableFromInventory ?? 0})`}
+                                        </Button>
+                                    </Row>
+                                    <Input
+                                        type="date"
+                                        label="Datum sijanja"
+                                        name="plantDate"
+                                        className="w-full bg-card"
+                                        value={plantDate}
+                                        onChange={(e) =>
+                                            handlePlantDateChange(
+                                                e.target.value,
+                                            )
+                                        }
+                                        min={min}
+                                        max={max}
+                                    />
+                                </>
+                            )}
                         </Stack>
                         <Row
                             data-plant-picker-actions
@@ -449,13 +537,21 @@ export function PlantPicker({
                                             ? 'Odaberi sortu prije potvrde'
                                             : undefined
                                     }
-                                    loading={setCartItem.isPending}
+                                    loading={
+                                        isSandbox
+                                            ? sandboxPlant.isPending
+                                            : setCartItem.isPending
+                                    }
                                     onClick={handleConfirm}
                                     startDecorator={
-                                        <ShoppingCart className="shrink-0 size-5" />
+                                        isSandbox ? (
+                                            <PlantingSeedIcon className="shrink-0 size-5" />
+                                        ) : (
+                                            <ShoppingCart className="shrink-0 size-5" />
+                                        )
                                     }
                                 >
-                                    Dodaj u košaru
+                                    {isSandbox ? 'Posadi' : 'Dodaj u košaru'}
                                 </Button>
                             </Row>
                         </Row>

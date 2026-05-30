@@ -1,6 +1,6 @@
 import 'server-only';
 import { plantFieldStatusLabel } from '@gredice/js/plants';
-import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNull, or } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { getEntitiesFormatted, getOperations, storage } from '..';
 import type { EntityStandardized } from '../@types/EntityStandardized';
@@ -1005,6 +1005,81 @@ export async function createDefaultGardenForAccount({
     }
 
     return gardenId;
+}
+
+/**
+ * Create an empty sandbox ("play") garden for an account.
+ *
+ * Unlike {@link createDefaultGardenForAccount} this seeds no blocks or raised
+ * beds — the user builds it from scratch. Sandbox gardens are decoration only:
+ * building is free and there is no plant-status lifecycle, weather or economy.
+ */
+export async function createSandboxGarden({
+    accountId,
+    name,
+}: CreateDefaultGardenOptions) {
+    const farms = await getFarms();
+    const farm = farms.find((f) => !f.isDeleted);
+    if (!farm) {
+        throw new Error('No farm found');
+    }
+
+    const trimmedName = name?.trim();
+    return createGarden({
+        farmId: farm.id,
+        accountId,
+        name: trimmedName || 'Vrt za igru',
+        isSandbox: true,
+    });
+}
+
+/**
+ * Plant a sort into a sandbox raised bed field at a chosen age.
+ *
+ * Reuses the real event-sourced planting model (plant-place + status updates)
+ * but backdates all events to `sowDate` so the existing time-based generation
+ * rendering draws an already-grown plant. No checkout/economy is involved.
+ */
+export async function sowSandboxField({
+    raisedBedId,
+    positionIndex,
+    plantSortId,
+    sowDate,
+    status = 'ready',
+}: {
+    raisedBedId: number;
+    positionIndex: number;
+    plantSortId: number;
+    sowDate: Date;
+    status?: string;
+}) {
+    const aggregateId = `${raisedBedId}|${positionIndex}`;
+
+    await upsertRaisedBedField({ raisedBedId, positionIndex });
+    await createEvent({
+        ...knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+            plantSortId: plantSortId.toString(),
+            scheduledDate: null,
+        }),
+        createdAt: sowDate,
+    });
+    // A `sowed` status update is what makes the derivation set `plantSowDate`,
+    // which drives the rendered plant age/generation.
+    await createEvent({
+        ...knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'sowed',
+        }),
+        createdAt: sowDate,
+    });
+    if (status && status !== 'sowed') {
+        await createEvent({
+            ...knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+                status,
+            }),
+            createdAt: sowDate,
+        });
+    }
+    await bustScheduleCache();
 }
 
 export async function getGardens() {
@@ -2171,6 +2246,8 @@ async function getFarmUserRaisedBedsUncached(userId: string) {
                 eq(farmUsers.userId, userId),
                 eq(raisedBeds.isDeleted, false),
                 eq(gardens.isDeleted, false),
+                // Sandbox ("play") gardens never appear in farm scheduling.
+                eq(gardens.isSandbox, false),
             ),
         )
         .orderBy(asc(raisedBeds.id));
@@ -2197,10 +2274,20 @@ export async function getAllRaisedBeds() {
     );
 }
 
+// Exclude raised beds belonging to sandbox ("play") gardens. Beds with no
+// garden (merged/abandoned) are kept.
+const excludeSandboxRaisedBeds = or(
+    isNull(raisedBeds.gardenId),
+    eq(gardens.isSandbox, false),
+);
+
 async function getAllRaisedBedsUncached() {
-    const allRaisedBeds = await storage().query.raisedBeds.findMany({
-        where: and(eq(raisedBeds.isDeleted, false)),
-    });
+    const rows = await storage()
+        .select({ raisedBed: raisedBeds })
+        .from(raisedBeds)
+        .leftJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
+        .where(and(eq(raisedBeds.isDeleted, false), excludeSandboxRaisedBeds));
+    const allRaisedBeds = rows.map((row) => row.raisedBed);
     const fields = (
         await Promise.all(
             allRaisedBeds.map((r) => r.id).map(getRaisedBedFieldsWithEvents),
@@ -2214,15 +2301,21 @@ async function getAllRaisedBedsUncached() {
 
 export async function getAllRaisedBedsFiltered(filters?: { status?: string }) {
     // Build where conditions
-    const whereConditions = [eq(raisedBeds.isDeleted, false)];
+    const whereConditions = [
+        eq(raisedBeds.isDeleted, false),
+        excludeSandboxRaisedBeds,
+    ];
 
     if (filters?.status) {
         whereConditions.push(eq(raisedBeds.status, filters.status));
     }
 
-    const allRaisedBeds = await storage().query.raisedBeds.findMany({
-        where: and(...whereConditions),
-    });
+    const rows = await storage()
+        .select({ raisedBed: raisedBeds })
+        .from(raisedBeds)
+        .leftJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
+        .where(and(...whereConditions));
+    const allRaisedBeds = rows.map((row) => row.raisedBed);
 
     const fields = (
         await Promise.all(

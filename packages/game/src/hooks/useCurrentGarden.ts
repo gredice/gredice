@@ -326,6 +326,7 @@ function mockGarden(winterMode: WinterMode): useCurrentGardenResponse {
     return {
         id: 99999,
         name: 'Moj vrt',
+        isSandbox: false,
         stacks: [
             {
                 position: new Vector3(
@@ -615,6 +616,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
             return {
                 id: garden.id,
                 name: garden.name,
+                isSandbox: garden.isSandbox,
                 stacks,
                 location: {
                     lat: garden.latitude,
@@ -627,4 +629,15 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
         staleTime: 1000 * 60, // 1m
         enabled: isMock || Boolean(gardens),
     });
+}
+
+/**
+ * Whether the currently selected garden is a sandbox ("play") garden.
+ *
+ * Sandbox gardens are decoration only: free building, no inventory/economy,
+ * no plant-status lifecycle and no weather.
+ */
+export function useIsSandboxGarden(): boolean {
+    const { data: currentGarden } = useCurrentGarden();
+    return Boolean(currentGarden?.isSandbox);
 }

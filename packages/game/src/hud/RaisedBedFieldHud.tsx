@@ -7,7 +7,10 @@ import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { type CSSProperties, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
-import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import {
+    useCurrentGarden,
+    useIsSandboxGarden,
+} from '../hooks/useCurrentGarden';
 import { isRaisedBedAbandoned } from '../raisedBedConstants';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import { useGameState } from '../useGameState';
@@ -46,6 +49,7 @@ export function RaisedBedFieldHud(_props: {
     };
 }) {
     const { data: currentGarden } = useCurrentGarden();
+    const isSandbox = useIsSandboxGarden();
     const { track } = useGameAnalytics();
     const [isInfoOpen, setIsInfoOpen] = useState(false);
     const view = useGameState((state) => state.view);
@@ -162,26 +166,29 @@ export function RaisedBedFieldHud(_props: {
                 >
                     <span className="hidden md:block">Završi uređivanje</span>
                 </ButtonGreen>
-                {currentGarden && raisedBed && canUseRaisedBedActions && (
-                    <>
-                        <RaisedBedFieldSuggestions
-                            gardenId={currentGarden.id}
-                            raisedBedId={raisedBed.id}
-                        />
-                        <RaisedBedGreenhouseSuggestion
-                            gardenId={currentGarden.id}
-                            raisedBedId={raisedBed.id}
-                        />
-                        <RaisedBedWatering
-                            gardenId={currentGarden.id}
-                            raisedBedId={raisedBed.id}
-                        />
-                        <RaisedBedSensorInfo
-                            gardenId={currentGarden.id}
-                            raisedBedId={raisedBed.id}
-                        />
-                    </>
-                )}
+                {currentGarden &&
+                    raisedBed &&
+                    canUseRaisedBedActions &&
+                    !isSandbox && (
+                        <>
+                            <RaisedBedFieldSuggestions
+                                gardenId={currentGarden.id}
+                                raisedBedId={raisedBed.id}
+                            />
+                            <RaisedBedGreenhouseSuggestion
+                                gardenId={currentGarden.id}
+                                raisedBedId={raisedBed.id}
+                            />
+                            <RaisedBedWatering
+                                gardenId={currentGarden.id}
+                                raisedBedId={raisedBed.id}
+                            />
+                            <RaisedBedSensorInfo
+                                gardenId={currentGarden.id}
+                                raisedBedId={raisedBed.id}
+                            />
+                        </>
+                    )}
             </Stack>
         </div>
     );

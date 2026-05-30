@@ -95,7 +95,10 @@ export function useBlockPlace() {
             const placedBlockData = blockData?.find(
                 (block) => block.information.name === blockName,
             );
-            const amount = placedBlockData?.prices.sunflowers ?? 0;
+            // Sandbox gardens build for free — no sunflowers are spent.
+            const amount = garden.isSandbox
+                ? 0
+                : (placedBlockData?.prices.sunflowers ?? 0);
             if (amount > 0) {
                 queuePlacedBlockEffect(optimisticBlockId, {
                     kind: 'sunflowers',

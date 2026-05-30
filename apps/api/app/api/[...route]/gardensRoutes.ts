@@ -15,7 +15,9 @@ import {
     createEvent,
     createGardenBlock,
     createGardenStack,
+    createSandboxGarden,
     deleteGardenStack,
+    deleteRaisedBedField,
     getAccount,
     getAccountGardens,
     getEvents,
@@ -33,6 +35,7 @@ import {
     getRaisedBedSensors,
     knownEvents,
     knownEventTypes,
+    sowSandboxField,
     spendSunflowers,
     storage,
     deleteGardenBlock as storageDeleteGardenBlock,
@@ -234,6 +237,7 @@ async function trackGardenCreated(input: {
     gardenId: number;
     name?: string;
     userId: string;
+    isSandbox?: boolean;
 }) {
     await (await getPostHogClient()).capture({
         distinctId: input.userId,
@@ -242,6 +246,7 @@ async function trackGardenCreated(input: {
             account_id: input.accountId,
             garden_id: input.gardenId,
             has_custom_name: Boolean(input.name?.trim()),
+            is_sandbox: Boolean(input.isSandbox),
         },
     });
 }
@@ -381,6 +386,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 gardens.map((garden) => ({
                     id: garden.id,
                     name: garden.name,
+                    isSandbox: garden.isSandbox,
                     createdAt: garden.createdAt,
                 })),
             );
@@ -395,17 +401,23 @@ const app = new Hono<{ Variables: AuthVariables }>()
             'json',
             z.object({
                 name: z.string().trim().min(1).optional(),
+                isSandbox: z.boolean().optional(),
             }),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
             const { accountId, userId } = context.get('authContext');
-            const { name } = context.req.valid('json');
-            const gardenId = await createDefaultGardenForAccount({
+            const { name, isSandbox } = context.req.valid('json');
+            const gardenId = isSandbox
+                ? await createSandboxGarden({ accountId, name })
+                : await createDefaultGardenForAccount({ accountId, name });
+            await trackGardenCreated({
                 accountId,
+                gardenId,
                 name,
+                userId,
+                isSandbox,
             });
-            await trackGardenCreated({ accountId, gardenId, name, userId });
             return context.json({ id: gardenId }, 201);
         },
     )
@@ -674,6 +686,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json({
                 id: garden.id,
                 name: garden.name,
+                isSandbox: garden.isSandbox,
                 latitude: garden.farm.latitude,
                 longitude: garden.farm.longitude,
                 stacks,
@@ -1639,28 +1652,32 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
             const cost = block.prices?.sunflowers ?? 0;
-            if (cost <= 0) {
-                return context.json(
-                    { error: 'Requested block not for sale' },
-                    400,
-                );
-            }
+            // Sandbox ("play") gardens build for free: no cost, no inventory,
+            // no night-only restriction and nothing is debited.
+            if (!garden.isSandbox) {
+                if (cost <= 0) {
+                    return context.json(
+                        { error: 'Requested block not for sale' },
+                        400,
+                    );
+                }
 
-            if (
-                !isBlockPurchaseAvailableNow({
-                    block,
-                    location: {
-                        lat: garden.farm?.latitude,
-                        lon: garden.farm?.longitude,
-                    },
-                })
-            ) {
-                return context.json(
-                    {
-                        error: 'Ovaj blok moguće je kupiti samo noću.',
-                    },
-                    400,
-                );
+                if (
+                    !isBlockPurchaseAvailableNow({
+                        block,
+                        location: {
+                            lat: garden.farm?.latitude,
+                            lon: garden.farm?.longitude,
+                        },
+                    })
+                ) {
+                    return context.json(
+                        {
+                            error: 'Ovaj blok moguće je kupiti samo noću.',
+                        },
+                        400,
+                    );
+                }
             }
 
             const blockNameById = new Map(
@@ -1694,12 +1711,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const purchaseResult = await purchaseGardenBlock({
                 accountId,
                 blockName,
-                cost,
+                cost: garden.isSandbox ? 0 : cost,
                 dependencies: {
                     createGardenBlock,
                     createGardenStack,
                     deleteGardenBlock: storageDeleteGardenBlock,
-                    spendSunflowers,
+                    spendSunflowers: garden.isSandbox
+                        ? async () => undefined
+                        : spendSunflowers,
                     synchronizeGardenStacksAndRaisedBeds,
                     updateGardenStack,
                 },
@@ -2544,6 +2563,129 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     500,
                 );
             }
+        },
+    )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex/sandbox-plant',
+        describeRoute({
+            description:
+                'Plant a sort into a sandbox raised bed field at a chosen age',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+                positionIndex: z.string(),
+            }),
+        ),
+        zValidator(
+            'json',
+            z.object({
+                plantSortId: z.number().int().positive(),
+                // How old the plant should render, in days (0 = freshly sown).
+                ageDays: z.number().int().min(0).max(3650).default(0),
+                status: z.string().optional(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId, positionIndex } =
+                context.req.valid('param');
+            const { plantSortId, ageDays, status } = context.req.valid('json');
+
+            const gardenIdNumber = parseInt(gardenId, 10);
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            const positionIndexNumber = parseInt(positionIndex, 10);
+            if (
+                Number.isNaN(gardenIdNumber) ||
+                Number.isNaN(raisedBedIdNumber) ||
+                Number.isNaN(positionIndexNumber) ||
+                positionIndexNumber < 0
+            ) {
+                return context.json({ error: 'Invalid parameters' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+            if (!garden.isSandbox) {
+                return context.json(
+                    { error: 'Garden is not a sandbox garden' },
+                    400,
+                );
+            }
+
+            const raisedBed = await getRaisedBed(raisedBedIdNumber);
+            if (!raisedBed || raisedBed.gardenId !== gardenIdNumber) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            const sowDate = new Date();
+            sowDate.setDate(sowDate.getDate() - ageDays);
+
+            await sowSandboxField({
+                raisedBedId: raisedBedIdNumber,
+                positionIndex: positionIndexNumber,
+                plantSortId,
+                sowDate,
+                status,
+            });
+
+            return context.json({ success: true }, 200);
+        },
+    )
+    .delete(
+        '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex',
+        describeRoute({
+            description: 'Clear a sandbox raised bed field',
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                raisedBedId: z.string(),
+                positionIndex: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, raisedBedId, positionIndex } =
+                context.req.valid('param');
+
+            const gardenIdNumber = parseInt(gardenId, 10);
+            const raisedBedIdNumber = parseInt(raisedBedId, 10);
+            const positionIndexNumber = parseInt(positionIndex, 10);
+            if (
+                Number.isNaN(gardenIdNumber) ||
+                Number.isNaN(raisedBedIdNumber) ||
+                Number.isNaN(positionIndexNumber) ||
+                positionIndexNumber < 0
+            ) {
+                return context.json({ error: 'Invalid parameters' }, 400);
+            }
+
+            const { accountId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+            if (!garden.isSandbox) {
+                return context.json(
+                    { error: 'Garden is not a sandbox garden' },
+                    400,
+                );
+            }
+
+            const raisedBed = await getRaisedBed(raisedBedIdNumber);
+            if (!raisedBed || raisedBed.gardenId !== gardenIdNumber) {
+                return context.json({ error: 'Raised bed not found' }, 404);
+            }
+
+            await deleteRaisedBedField(raisedBedIdNumber, positionIndexNumber);
+            return context.json({ success: true }, 200);
         },
     )
     .post(

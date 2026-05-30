@@ -1,4 +1,4 @@
-import { Check, MapPinHouse } from '@gredice/ui/icons';
+import { Add, Check, MapPinHouse } from '@gredice/ui/icons';
 import {
     DropdownMenuItem,
     DropdownMenuLabel,
@@ -9,6 +9,7 @@ import { cx } from '@gredice/ui/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { Fragment } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import { useCreateGarden } from '../hooks/useCreateGarden';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useGardenAccountGroups } from '../hooks/useGardenAccountGroups';
 import { useGardens } from '../hooks/useGardens';
@@ -31,6 +32,7 @@ export function GardenAccountMenuItems({
     const { data: accountGroups, isLoading: accountGroupsLoading } =
         useGardenAccountGroups();
     const switchGardenAccount = useSwitchGardenAccount();
+    const createGarden = useCreateGarden();
     const fallbackGroups =
         currentAccountGardens && currentAccountGardens.length > 0
             ? [
@@ -87,6 +89,35 @@ export function GardenAccountMenuItems({
         }
     }
 
+    async function handleCreateSandboxGarden() {
+        if (createGarden.isPending) {
+            return;
+        }
+
+        const sandboxCount =
+            currentAccountGardens?.filter((garden) => garden.isSandbox)
+                .length ?? 0;
+        const name = `Vrt za igru ${sandboxCount + 1}`;
+
+        track('game_garden_create_submitted', {
+            name_length: name.length,
+            is_sandbox: true,
+            source: 'garden_switcher',
+        });
+
+        try {
+            const created = await createGarden.mutateAsync({
+                name,
+                isSandbox: true,
+            });
+            if (created?.id != null) {
+                await setSelectedGardenId(created.id);
+            }
+        } catch (error) {
+            console.error('Failed to create sandbox garden:', error);
+        }
+    }
+
     if (isLoading) {
         return (
             <DropdownMenuLabel className="text-muted-foreground">
@@ -126,25 +157,87 @@ export function GardenAccountMenuItems({
                             <Typography noWrap>{accountGroup.name}</Typography>
                         </DropdownMenuLabel>
                     )}
-                    {accountGroup.gardens.map((garden) => (
-                        <DropdownMenuItem
-                            key={`${accountGroup.accountId}:${garden.id}`}
-                            className="gap-3"
-                            onClick={() =>
-                                handleGardenSelect(accountGroup, garden)
-                            }
-                        >
-                            <Check
-                                aria-hidden={garden.id !== currentGarden?.id}
-                                className={cx(
-                                    'size-4 shrink-0 opacity-0',
-                                    garden.id === currentGarden?.id &&
-                                        'opacity-100',
+                    {accountGroup.gardens
+                        .filter((garden) => !garden.isSandbox)
+                        .map((garden) => (
+                            <DropdownMenuItem
+                                key={`${accountGroup.accountId}:${garden.id}`}
+                                className="gap-3"
+                                onClick={() =>
+                                    handleGardenSelect(accountGroup, garden)
+                                }
+                            >
+                                <Check
+                                    aria-hidden={
+                                        garden.id !== currentGarden?.id
+                                    }
+                                    className={cx(
+                                        'size-4 shrink-0 opacity-0',
+                                        garden.id === currentGarden?.id &&
+                                            'opacity-100',
+                                    )}
+                                />
+                                <Typography noWrap>{garden.name}</Typography>
+                            </DropdownMenuItem>
+                        ))}
+                    {(() => {
+                        const sandboxGardens = accountGroup.gardens.filter(
+                            (garden) => garden.isSandbox,
+                        );
+                        if (
+                            sandboxGardens.length <= 0 &&
+                            !accountGroup.isCurrent
+                        ) {
+                            return null;
+                        }
+                        return (
+                            <>
+                                <DropdownMenuLabel className="text-muted-foreground text-xs px-2 py-1">
+                                    Vrtovi za igru
+                                </DropdownMenuLabel>
+                                {sandboxGardens.map((garden) => (
+                                    <DropdownMenuItem
+                                        key={`${accountGroup.accountId}:${garden.id}`}
+                                        className="gap-3"
+                                        onClick={() =>
+                                            handleGardenSelect(
+                                                accountGroup,
+                                                garden,
+                                            )
+                                        }
+                                    >
+                                        <Check
+                                            aria-hidden={
+                                                garden.id !== currentGarden?.id
+                                            }
+                                            className={cx(
+                                                'size-4 shrink-0 opacity-0',
+                                                garden.id ===
+                                                    currentGarden?.id &&
+                                                    'opacity-100',
+                                            )}
+                                        />
+                                        <Typography noWrap>
+                                            {garden.name}
+                                        </Typography>
+                                    </DropdownMenuItem>
+                                ))}
+                                {accountGroup.isCurrent && (
+                                    <DropdownMenuItem
+                                        className="gap-3"
+                                        disabled={createGarden.isPending}
+                                        onSelect={(event) => {
+                                            event.preventDefault();
+                                            void handleCreateSandboxGarden();
+                                        }}
+                                    >
+                                        <Add className="size-4" />
+                                        <span>Kreiraj vrt za igru</span>
+                                    </DropdownMenuItem>
                                 )}
-                            />
-                            <Typography noWrap>{garden.name}</Typography>
-                        </DropdownMenuItem>
-                    ))}
+                            </>
+                        );
+                    })()}
                 </Fragment>
             ))}
         </>
