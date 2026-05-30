@@ -1,6 +1,6 @@
 import { DailySchedule } from '@gredice/ui/DailySchedule';
+import { ScheduleDateNavigation } from '@gredice/ui/ScheduleDateNavigation';
 import { Stack } from '@gredice/ui/Stack';
-import { Typography } from '@gredice/ui/Typography';
 import { Suspense } from 'react';
 import { auth } from '../../../lib/auth/auth';
 import { ScheduleDay } from './ScheduleDay';
@@ -50,11 +50,15 @@ export default async function AdminSchedulePage({
     const resolvedSearchParams = await searchParams;
     const startDate = parseDateParam(resolvedSearchParams?.date);
 
+    const navigationDate = startDate ?? new Date();
+    navigationDate.setHours(0, 0, 0, 0);
+
     return (
         <Stack spacing={4}>
-            <Typography level="h4" component="h1">
-                Rasprored
-            </Typography>
+            <ScheduleDateNavigation
+                date={navigationDate}
+                basePath="/admin/schedule"
+            />
             <DailySchedule
                 startDate={startDate}
                 renderDay={({ date, isToday }) => (

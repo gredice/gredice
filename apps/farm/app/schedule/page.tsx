@@ -1,11 +1,10 @@
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
-import { Typography } from '@gredice/ui/Typography';
+import { ScheduleDateNavigation } from '@gredice/ui/ScheduleDateNavigation';
 import { Suspense } from 'react';
 import LoginDialog from '../../components/auth/LoginDialog';
 import { HomeButton } from '../../components/HomeButton';
 import { auth } from '../../lib/auth/auth';
 import { FarmScheduleDay } from './FarmScheduleDay';
-import { ScheduleDateNavigation } from './ScheduleDateNavigation';
 import { ScheduleDaySummarySection } from './ScheduleDaySummarySection';
 import { ScheduleDaySummarySkeleton } from './ScheduleDaySummarySkeleton';
 import {
@@ -28,11 +27,8 @@ async function FarmScheduleContent({ date }: { date: Date }) {
                 <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                     <div className="flex min-w-0 items-center gap-2">
                         <HomeButton />
-                        <Typography level="h4" component="h1">
-                            Raspored
-                        </Typography>
                     </div>
-                    <ScheduleDateNavigation date={date} />
+                    <ScheduleDateNavigation date={date} basePath="/schedule" />
                 </div>
                 <div className="min-w-0">
                     <Suspense fallback={<ScheduleDaySummarySkeleton />}>

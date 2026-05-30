@@ -1,7 +1,7 @@
-import { Left, Navigate } from '@gredice/ui/icons';
-import { Row } from '@gredice/ui/Row';
-import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
+import { Left, Navigate } from '../icons';
+import { Row } from '../Row';
+import { Typography } from '../Typography';
 
 function formatDateParam(date: Date) {
     const year = date.getFullYear();
@@ -16,11 +16,29 @@ function getOffsetDate(date: Date, offset: number) {
     return newDate;
 }
 
-interface ScheduleDateNavigationProps {
-    date: Date;
+function buildHref(basePath: string, paramName: string, date: Date) {
+    const separator = basePath.includes('?') ? '&' : '?';
+    return `${basePath}${separator}${paramName}=${formatDateParam(date)}`;
 }
 
-export function ScheduleDateNavigation({ date }: ScheduleDateNavigationProps) {
+export interface ScheduleDateNavigationProps {
+    /** The currently selected date. */
+    date: Date;
+    /** Base path the navigation links should point to (e.g. `/schedule`). */
+    basePath: string;
+    /** Name of the query parameter used to carry the selected date. */
+    paramName?: string;
+}
+
+/**
+ * Date navigation for schedule views. Renders previous/next day links around
+ * the currently selected date and shows the human-readable date.
+ */
+export function ScheduleDateNavigation({
+    date,
+    basePath,
+    paramName = 'date',
+}: ScheduleDateNavigationProps) {
     const dayOfWeek = new Intl.DateTimeFormat('hr-HR', {
         weekday: 'long',
     }).format(date);
@@ -33,13 +51,13 @@ export function ScheduleDateNavigation({ date }: ScheduleDateNavigationProps) {
 
     const isToday = new Date().toDateString() === date.toDateString();
 
-    const prevDateParam = formatDateParam(getOffsetDate(date, -1));
-    const nextDateParam = formatDateParam(getOffsetDate(date, 1));
+    const prevHref = buildHref(basePath, paramName, getOffsetDate(date, -1));
+    const nextHref = buildHref(basePath, paramName, getOffsetDate(date, 1));
 
     return (
         <Row spacing={2} className="shrink-0">
             <Link
-                href={`/schedule?date=${prevDateParam}`}
+                href={prevHref}
                 title="Prethodni dan"
                 className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             >
@@ -54,7 +72,7 @@ export function ScheduleDateNavigation({ date }: ScheduleDateNavigationProps) {
                 </Typography>
             </div>
             <Link
-                href={`/schedule?date=${nextDateParam}`}
+                href={nextHref}
                 title="Sljedeći dan"
                 className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             >
