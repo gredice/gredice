@@ -15,6 +15,7 @@
     },
     "dependencies": {
         "@gredice/game": "workspace:*",
+        "@gredice/js": "workspace:*",
         "@gredice/ui": "workspace:*",
         "@tailwindcss/typography": "0.5.19",
         "@vercel/analytics": "2.0.1",

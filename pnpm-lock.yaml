@@ -639,6 +639,9 @@ importers:
       '@gredice/game':
         specifier: workspace:*
         version: link:../../packages/game
+      '@gredice/js':
+        specifier: workspace:*
+        version: link:../../packages/js
       '@gredice/ui':
         specifier: workspace:*
         version: link:../../packages/ui
