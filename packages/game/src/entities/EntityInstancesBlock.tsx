@@ -12,6 +12,8 @@ import { type SnowMaterialOptions, SnowOverlay } from '../snow/SnowOverlay';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { getStackHeight } from '../utils/getStackHeight';
+import { blockPickupOutlineStyle } from './helpers/blockPickupOutlineStyle';
+import { HoverOutline } from './helpers/HoverOutline';
 
 const defaultLocalPosition: [number, number, number] = [0, 0, 0];
 const defaultLocalRotation: [number, number, number] = [0, 0, 0];
@@ -81,6 +83,7 @@ export function EntityInstancesBlock(
                         );
                     return {
                         id: `${stack.position.x}|${stack.position.z}|${block.id}|${blockIndex}`,
+                        pickupOutlineVisible: Boolean(dragPreviewOffset),
                         position: [
                             stack.position.x + (dragPreviewOffset?.x ?? 0),
                             y + (yOffset ?? 0) + (dragPreviewOffset?.y ?? 0),
@@ -172,6 +175,30 @@ export function EntityInstancesBlock(
                 {'materialNode' in props ? props.materialNode : null}
                 {renderInstances('base')}
             </Instances>
+            {(blockInstances ?? []).map((data) =>
+                data.pickupOutlineVisible ? (
+                    <HoverOutline
+                        key={`block-${name}-pickup-outline-${data.id}`}
+                        {...blockPickupOutlineStyle}
+                        hovered
+                    >
+                        <group
+                            position={data.position}
+                            rotation={[0, data.rotation * (Math.PI / 2), 0]}
+                        >
+                            <mesh
+                                geometry={geometry}
+                                position={localTransform.position}
+                                rotation={localTransform.rotation}
+                                scale={scale}
+                                raycast={() => null}
+                            >
+                                <meshBasicMaterial visible={false} />
+                            </mesh>
+                        </group>
+                    </HoverOutline>
+                ) : null,
+            )}
             {renderRainOverlays()}
             {renderSnowOverlays()}
         </>

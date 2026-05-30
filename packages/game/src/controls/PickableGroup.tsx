@@ -17,6 +17,7 @@ import {
     createActiveDragPreviewTarget,
     findActiveDragPreviewTargetOffset,
 } from '../dragPreviewIdentity';
+import { blockPickupOutlineStyle } from '../entities/helpers/blockPickupOutlineStyle';
 import { HoverOutline } from '../entities/helpers/HoverOutline';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockMove } from '../hooks/useBlockMove';
@@ -57,7 +58,10 @@ const placementSnapSearchRadius = 5;
 const animalPickupDisturbanceRadius = 1.8;
 
 type PickableGroupProps = PropsWithChildren<
-    Pick<EntityInstanceProps, 'stack' | 'block'> & { noControl?: boolean }
+    Pick<EntityInstanceProps, 'stack' | 'block'> & {
+        noControl?: boolean;
+        renderPickupOutline?: boolean;
+    }
 >;
 
 type PlacementPreview = {
@@ -150,6 +154,7 @@ export function PickableGroup({
     stack,
     block,
     noControl,
+    renderPickupOutline = true,
 }: PickableGroupProps) {
     const [dragSprings, dragSpringsApi] = useSpring(() => ({
         from: { internalPosition: [0, 0, 0], scale: 1 },
@@ -1201,6 +1206,14 @@ export function PickableGroup({
         return <>{children}</>;
     }
 
+    const pickupOutlineContent = renderPickupOutline ? (
+        <HoverOutline {...blockPickupOutlineStyle} hovered={showPickupOutline}>
+            {children}
+        </HoverOutline>
+    ) : (
+        children
+    );
+
     return (
         <animated.group
             position={
@@ -1225,15 +1238,7 @@ export function PickableGroup({
                     scale={2}
                 />
             </animated.group>
-            <HoverOutline
-                color="#86efac"
-                hovered={showPickupOutline}
-                opacity={0.55}
-                priority={1}
-                thickness={2}
-            >
-                {children}
-            </HoverOutline>
+            {pickupOutlineContent}
             {isOverRecycler && (
                 <Suspense>
                     <animated.group position={recyclePosition}>

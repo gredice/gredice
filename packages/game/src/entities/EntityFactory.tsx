@@ -127,7 +127,12 @@ export function EntityFactory({
         }
 
         return (
-            <PickableGroup stack={stack} block={block} noControl={noControl}>
+            <PickableGroup
+                stack={stack}
+                block={block}
+                noControl={noControl}
+                renderPickupOutline={false}
+            >
                 <RotatableGroup block={block}>
                     <InstancedEntityControlTarget stack={stack} block={block} />
                     <EntityRenderModeDebugOverlay
