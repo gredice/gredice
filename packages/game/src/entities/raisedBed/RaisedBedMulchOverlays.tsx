@@ -1,5 +1,9 @@
 import { useEffect } from 'react';
 import type { BufferGeometry, Material } from 'three';
+import {
+    createActiveDragPreviewTarget,
+    getActiveDragPreviewTargetPositionOffset,
+} from '../../dragPreviewIdentity';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useOperations } from '../../hooks/useOperations';
@@ -58,6 +62,7 @@ type RaisedBedPlacement = {
     origin: [number, number, number];
     rotationQuarterTurns: number;
     stack: Stack;
+    stackBlockIndex: number;
 };
 
 type MulchVisual = {
@@ -589,6 +594,7 @@ export function RaisedBedMulchOverlays({
         MulchWood: useGameGLTF('MulchWood'),
     };
     const qualityProfile = quality ?? resolveGameQualityProfile();
+    const activeDragPreview = useGameState((state) => state.activeDragPreview);
     const snowCoverage = useGameState((state) => state.snowCoverage);
     const renderSnow = snowCoverage >= qualityProfile.snowOverlayMinCoverage;
 
@@ -622,20 +628,34 @@ export function RaisedBedMulchOverlays({
                 placement.block,
             );
             const surfaceGeometry = getRaisedBedSurfaceGeometry(neighbors);
+            const origin = getRaisedBedOrigin(
+                blockData,
+                placement.stack,
+                placement.block,
+                neighbors,
+            );
+            const dragPreviewOffset = getActiveDragPreviewTargetPositionOffset(
+                createActiveDragPreviewTarget({
+                    blockId: placement.block.id,
+                    blockIndex: placement.stackBlockIndex,
+                    stackPosition: placement.stack.position,
+                }),
+                activeDragPreview,
+            );
 
             placements.push({
                 block: placement.block,
                 blockIndex,
                 blockOffset: Math.max(blockIds.length - 1 - blockIndex, 0) * 9,
                 dirtGeometryName: surfaceGeometry.dirtGeometryName,
-                origin: getRaisedBedOrigin(
-                    blockData,
-                    placement.stack,
-                    placement.block,
-                    neighbors,
-                ),
+                origin: [
+                    origin[0] + (dragPreviewOffset?.x ?? 0),
+                    origin[1] + (dragPreviewOffset?.y ?? 0),
+                    origin[2] + (dragPreviewOffset?.z ?? 0),
+                ],
                 rotationQuarterTurns: surfaceGeometry.rotationQuarterTurns,
                 stack: placement.stack,
+                stackBlockIndex: placement.stackBlockIndex,
             });
         }
 
