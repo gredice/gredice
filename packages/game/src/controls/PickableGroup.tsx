@@ -80,6 +80,12 @@ type ResolvedPlacementPreview = {
     nextIsBlocked: boolean;
 };
 
+type PickupAnchorOffset = {
+    x: number;
+    y: number;
+    z: number;
+};
+
 type PointerSession = {
     pointerId: number;
     pointerType: string;
@@ -89,6 +95,7 @@ type PointerSession = {
     lastClientY: number;
     pickupClientX: number | null;
     pickupClientY: number | null;
+    pickupAnchorOffset: PickupAnchorOffset;
     hasDraggedAfterPickup: boolean;
     activated: boolean;
     cancelled: boolean;
@@ -631,6 +638,7 @@ export function PickableGroup({
     function resolvePlacementPreview(
         clientX: number,
         clientY: number,
+        pickupAnchorOffset: PickupAnchorOffset,
     ): ResolvedPlacementPreview | null {
         if (!garden || !blocksData || blockIndex < 0) {
             return null;
@@ -658,7 +666,11 @@ export function PickableGroup({
             return null;
         }
 
-        dest.set(pt.x, 0, pt.z).round();
+        dest.set(
+            pt.x - pickupAnchorOffset.x,
+            0,
+            pt.z - pickupAnchorOffset.z,
+        ).round();
 
         let closestPreview: ResolvedPlacementPreview | null = null;
         let closestDistanceSquared = Number.POSITIVE_INFINITY;
@@ -674,12 +686,13 @@ export function PickableGroup({
             }
 
             const distanceSquared = getProjectedPointerDistanceSquared({
-                x: candidateDestination.x,
+                x: candidateDestination.x + pickupAnchorOffset.x,
                 y:
                     (currentStackHeight ?? 0) +
                     preview.previewHoverHeight +
-                    pickupLift,
-                z: candidateDestination.z,
+                    pickupLift +
+                    pickupAnchorOffset.y,
+                z: candidateDestination.z + pickupAnchorOffset.z,
                 clientX,
                 clientY,
                 rect,
@@ -964,7 +977,11 @@ export function PickableGroup({
             session.hasDraggedAfterPickup = true;
         }
 
-        const preview = resolvePlacementPreview(event.clientX, event.clientY);
+        const preview = resolvePlacementPreview(
+            event.clientX,
+            event.clientY,
+            session.pickupAnchorOffset,
+        );
         if (!preview) {
             return;
         }
@@ -997,7 +1014,11 @@ export function PickableGroup({
         suppressBlockInteractions(suppressClickAfterDragMs);
         const preview =
             session.latestPreview ??
-            resolvePlacementPreview(session.lastClientX, session.lastClientY);
+            resolvePlacementPreview(
+                session.lastClientX,
+                session.lastClientY,
+                session.pickupAnchorOffset,
+            );
         void finishPickup(preview);
     }
 
@@ -1027,6 +1048,11 @@ export function PickableGroup({
         event.stopPropagation();
 
         const nativeEvent = event.nativeEvent;
+        const pickupAnchorOffset = {
+            x: event.point.x - stack.position.x,
+            y: event.point.y - (currentStackHeight ?? 0),
+            z: event.point.z - stack.position.z,
+        };
         const session: PointerSession = {
             pointerId: nativeEvent.pointerId,
             pointerType: nativeEvent.pointerType,
@@ -1036,6 +1062,7 @@ export function PickableGroup({
             lastClientY: nativeEvent.clientY,
             pickupClientX: null,
             pickupClientY: null,
+            pickupAnchorOffset,
             hasDraggedAfterPickup: false,
             activated: false,
             cancelled: false,
