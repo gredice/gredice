@@ -553,7 +553,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         const stack = page.locator('[data-field-icon-stack]');
         await expect(stack).toBeVisible();
         await expect(
-            stack.locator('span.bg-blue-600 svg.lucide-sprout'),
+            stack.locator('button.bg-blue-600 svg.lucide-sprout'),
         ).toBeVisible();
     });
 
@@ -615,7 +615,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         const stack = page.locator('[data-field-icon-stack]');
         await expect(stack).toBeVisible();
         await expect(
-            stack.locator('span.bg-green-600 svg.lucide-check'),
+            stack.locator('button.bg-green-600 svg.lucide-check'),
         ).toBeVisible();
     });
 
@@ -682,7 +682,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         const stack = page.locator('[data-field-icon-stack]');
         await expect(stack).toBeVisible();
         await expect(
-            stack.locator('span.bg-blue-600 svg.lucide-sprout'),
+            stack.locator('button.bg-blue-600 svg.lucide-sprout'),
         ).toBeVisible();
         await expect(
             page.getByRole('button', { name: /Povijest biljke / }),
