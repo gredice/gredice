@@ -14,7 +14,6 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockPlace } from '../hooks/useBlockPlace';
-import { useIsEditMode } from '../hooks/useIsEditMode';
 import { KnownPages } from '../knownPages';
 import { useGameState } from '../useGameState';
 import { HudCard } from './components/HudCard';
@@ -388,10 +387,7 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                 {currentItems.map((item) => {
                     if (item.type === 'entity') {
                         return (
-                            <EntityItem
-                                key={`entity:${item.name}`}
-                                {...item}
-                            />
+                            <EntityItem key={`entity:${item.name}`} {...item} />
                         );
                     } else if (item.type === 'picker') {
                         return (
@@ -411,11 +407,10 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
 }
 
 export function ItemsHud() {
-    const isEditMode = useIsEditMode();
     return (
         <HudCard
             data-items-hud
-            open={isEditMode}
+            open
             position="bottom"
             className="static mx-auto w-fit max-w-[calc(100vw-1rem)] overflow-x-auto md:px-1 pointer-events-auto"
             animateHeight

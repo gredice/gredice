@@ -88,7 +88,6 @@ function resolveTimeOfDay(currentTime: Date, dayNightCycleDisabled: boolean) {
         : getTimeOfDay(defaultLocation, currentTime);
 }
 
-type GameMode = 'normal' | 'edit';
 export type WinterMode = 'summer' | 'winter' | 'holiday';
 
 export type ActiveDragPreview = {
@@ -147,10 +146,6 @@ export type GameState = {
     timeOfDay: number;
     sunsetTime: Date | null;
     sunriseTime: Date | null;
-
-    // Game
-    mode: GameMode;
-    setMode: (mode: GameMode) => void;
 
     // Pickup system
     pickupBlock: Block | null;
@@ -305,15 +300,6 @@ export function createGameState({
         sunriseTime: sunrise,
         sunsetTime: sunset,
 
-        // Game
-        mode: 'normal',
-        setMode: (mode) => {
-            if (get().view === 'closeup') {
-                set({ view: 'normal' });
-            }
-            set({ mode });
-        },
-
         // Pickaup system
         pickupBlock: null,
         setPickupBlock: (block: Block | null) => set({ pickupBlock: block }),
@@ -376,9 +362,6 @@ export function createGameState({
         closeupBlock: null,
         setView: ({ view, block }) => {
             const currentView = get().view;
-            if (get().mode === 'edit') {
-                get().setMode('normal');
-            }
 
             if (currentView !== view) {
                 triggerSelectionHaptic();

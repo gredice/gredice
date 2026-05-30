@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { MOUSE, TOUCH, Vector3 } from 'three';
 import { CameraController } from '../controllers/CameraController';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
-import { useIsEditMode } from '../hooks/useIsEditMode';
 import { useGameState } from '../useGameState';
 import {
     findRaisedBedByBlockId,
@@ -106,9 +105,11 @@ const useKeyboardControls = () => {
 };
 
 export function Controls() {
-    const isEditMode = useIsEditMode();
     const setOrbitControls = useGameState((state) => state.setOrbitControls);
     const setIsDragging = useGameState((state) => state.setIsDragging);
+    const isBlockPlacementActive = useGameState((state) =>
+        Boolean(state.pickupBlock),
+    );
     const garden = useCurrentGarden();
     useCameraRotate();
     useKeyboardControls();
@@ -200,7 +201,7 @@ export function Controls() {
             />
             <OrbitControls
                 ref={setOrbitControls}
-                enabled={!isCloseUp && !isAnimating}
+                enabled={!isCloseUp && !isAnimating && !isBlockPlacementActive}
                 enableRotate={false}
                 screenSpacePanning={false}
                 onStart={() => setIsDragging(true)}
@@ -208,13 +209,13 @@ export function Controls() {
                 minZoom={50}
                 maxZoom={500}
                 mouseButtons={{
-                    LEFT: isEditMode ? undefined : MOUSE.PAN,
+                    LEFT: MOUSE.PAN,
                     MIDDLE: MOUSE.DOLLY,
-                    RIGHT: isEditMode ? MOUSE.PAN : undefined,
+                    RIGHT: undefined,
                 }}
                 touches={{
-                    ONE: isEditMode ? undefined : TOUCH.PAN,
-                    TWO: isEditMode ? TOUCH.DOLLY_PAN : TOUCH.DOLLY_PAN,
+                    ONE: TOUCH.PAN,
+                    TWO: TOUCH.DOLLY_PAN,
                 }}
             />
         </>

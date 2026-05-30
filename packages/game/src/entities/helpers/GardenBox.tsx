@@ -1,5 +1,5 @@
 import { animated, useSpring } from '@react-spring/three';
-import type { ThreeEvent } from '@react-three/fiber';
+import { useDeferredSingleClick } from '../../controls/useDeferredSingleClick';
 import { useHoveredBlockStore } from '../../controls/useHoveredBlockStore';
 import { RainWetOverlay } from '../../rain/RainWetOverlay';
 import { SnowOverlay } from '../../snow/SnowOverlay';
@@ -20,7 +20,6 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
     const currentStackHeight = useStackHeight(stack, block);
     const hovered =
         useHoveredBlockStore((state) => state.hoveredBlock) === block;
-    const mode = useGameState((state) => state.mode);
     const activeDragPreview = useGameState((state) => state.activeDragPreview);
     const openGardenBoxBlockId = useGameState(
         (state) => state.openGardenBoxBlockId,
@@ -40,12 +39,11 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
         rotation: [isLidOpen ? lidOpenRotation : lidClosedRotation, 0, 0],
     });
 
-    function handleClick(event: ThreeEvent<MouseEvent>) {
-        event.stopPropagation();
-        if (mode !== 'normal' || activeDragPreview) return;
+    const handleClick = useDeferredSingleClick(() => {
+        if (activeDragPreview) return;
 
         setOpenGardenBoxBlockId(block.id);
-    }
+    });
 
     return (
         <HoverOutline

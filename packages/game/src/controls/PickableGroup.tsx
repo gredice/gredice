@@ -2,10 +2,8 @@
 
 import { animated, useSpring } from '@react-spring/three';
 import { Billboard, Shadow, useTexture } from '@react-three/drei';
-import { useThree } from '@react-three/fiber';
-import { type Handler, useDrag } from '@use-gesture/react';
+import { type ThreeEvent, useThree } from '@react-three/fiber';
 import {
-    type PointerEvent,
     type PropsWithChildren,
     Suspense,
     useEffect,
@@ -38,12 +36,63 @@ import {
     findAttachedRaisedBedBlockId,
     findRaisedBedByBlockId,
 } from '../utils/raisedBedBlocks';
+import {
+    areBlockInteractionsSuppressed,
+    suppressBlockInteractions,
+} from './blockInteractionSuppression';
 
 const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
+const pickupHintDelayMs = 120;
+const pickupHoldDelayMs = 320;
+const mouseMoveCancelDistance = 6;
+const touchMoveCancelDistance = 12;
+const pickupHintLift = 0.04;
+const pickupLift = 0.1;
+const suppressClickAfterDragMs = 450;
 
 type PickableGroupProps = PropsWithChildren<
     Pick<EntityInstanceProps, 'stack' | 'block'> & { noControl?: boolean }
 >;
+
+type PlacementPreview = {
+    blockId: string;
+    blockName: string;
+    blockUnderId: string | null;
+    blockUnderName: string | null;
+    destination: {
+        x: number;
+        z: number;
+    };
+    destinationIndex: number;
+    hoverHeight: number;
+    isRecycler: boolean;
+    isBlocked: boolean;
+};
+
+type ResolvedPlacementPreview = {
+    relative: Vector3;
+    previewHoverHeight: number;
+    sourceHoverHeight: number;
+    hoveredGardenBoxBlockId: string | null;
+    canStoreInGardenBox: boolean;
+    nextIsOverRecycler: boolean;
+    nextIsBlocked: boolean;
+};
+
+type PointerSession = {
+    pointerId: number;
+    pointerType: string;
+    startClientX: number;
+    startClientY: number;
+    lastClientX: number;
+    lastClientY: number;
+    activated: boolean;
+    cancelled: boolean;
+    hintVisible: boolean;
+    hintTimer: number | null;
+    holdTimer: number | null;
+    latestPreview: ResolvedPlacementPreview | null;
+};
 
 export function RecycleIndicator() {
     const appBaseUrl = useGameState((state) => state.appBaseUrl);
@@ -64,6 +113,16 @@ export function RecycleIndicator() {
     );
 }
 
+function pointerMoveCancelDistance(pointerType: string) {
+    return pointerType === 'touch'
+        ? touchMoveCancelDistance
+        : mouseMoveCancelDistance;
+}
+
+function pointerDistance(session: PointerSession, x: number, y: number) {
+    return Math.hypot(x - session.startClientX, y - session.startClientY);
+}
+
 export function PickableGroup({
     children,
     stack,
@@ -81,11 +140,6 @@ export function PickableGroup({
     const { spawn } = useParticles();
     const { data: garden } = useCurrentGarden();
     const { data: blocksData } = useBlockData();
-    const getStack = ({ x, z }: { x: number; z: number }) => {
-        return garden?.stacks.find(
-            (stack) => stack.position.x === x && stack.position.z === z,
-        );
-    };
     const camera = useThree((state) => state.camera);
     const gl = useThree((state) => state.gl);
     const { domElement } = gl;
@@ -94,37 +148,33 @@ export function PickableGroup({
         dest: new Vector3(),
         relative: new Vector3(),
     });
+    const raycaster = useRef(new Raycaster());
+    const pointerVector = useRef(new Vector2());
     const currentStackHeight = useStackHeight(stack, block);
-    const didDrag = useRef(false);
 
     const effectsAudioMixer = useGameState((state) => state.audio.effects);
+    const setIsDragging = useGameState((state) => state.setIsDragging);
     const pickupSound = effectsAudioMixer.useSoundEffect(
         'https://cdn.gredice.com/sounds/effects/Pick Grass 01.mp3',
     );
     const dropSound = effectsAudioMixer.useSoundEffect(
-        block.name === 'Block_Grass'
-            ? 'https://cdn.gredice.com/sounds/effects/Drop Grass 01.mp3'
-            : 'https://cdn.gredice.com/sounds/effects/Drop Grass 01.mp3',
+        'https://cdn.gredice.com/sounds/effects/Drop Grass 01.mp3',
     );
 
-    // Pickup system
-    const pickupBlock = useGameState((state) => state.pickupBlock);
     const setPickupBlock = useGameState((state) => state.setPickupBlock);
     const activeDragPreview = useGameState(
         (state) => state.activeDragPreview ?? null,
     );
     const setActiveDragPreview = useGameState(
-        (state) => state.setActiveDragPreview ?? (() => {}),
+        (state) => state.setActiveDragPreview,
     );
 
-    // Block mechanic
     const [isBlocked, setIsBlocked] = useState(false);
+    const [isOverRecycler, setIsOverRecycler] = useState(false);
     const moveBlock = useBlockMove();
+    const recycleBlock = useBlockRecycle();
     const storeBlockInGardenBox = useGardenBoxStoreBlock();
 
-    // Recycle block functionality
-    const [isOverRecycler, setIsOverRecycler] = useState(false);
-    const recycleBlock = useBlockRecycle();
     const raisedBed = findRaisedBedByBlockId(garden, block.id);
     const canRecycleRaisedBed = (raisedBed?.status ?? 'new') === 'new';
     const canRecycle = canRecycleRaisedBed;
@@ -184,8 +234,9 @@ export function PickableGroup({
         x: stack.position.x,
         z: stack.position.z,
     });
+    const pointerSession = useRef<PointerSession | null>(null);
+    const pointerSessionCleanup = useRef<(() => void) | null>(null);
 
-    // Reset visual state after authoritative stack position changes
     useEffect(() => {
         const hasStackPositionChanged =
             previousStackPosition.current.x !== stack.position.x ||
@@ -203,26 +254,6 @@ export function PickableGroup({
         };
     }, [dragSpringsApi, stack.position.x, stack.position.z]);
 
-    const isDraggingWorld = useGameState((state) => state.isDragging);
-    useEffect(() => {
-        if (isDraggingWorld) {
-            dragSpringsApi.start({ internalPosition: [0, 0, 0] });
-            setIsBlocked(false);
-            setIsOverRecycler(false);
-            setActiveDragPreview(null);
-            if (pickupBlock?.id === block.id) {
-                setPickupBlock(null);
-            }
-        }
-    }, [
-        isDraggingWorld,
-        block.id,
-        pickupBlock?.id,
-        setPickupBlock,
-        setActiveDragPreview,
-        dragSpringsApi,
-    ]);
-
     useEffect(() => {
         if (isPreviewSource) {
             return;
@@ -235,7 +266,7 @@ export function PickableGroup({
             dragSpringsApi.start({
                 internalPosition: [
                     activeDragPreview.relative.x,
-                    activeDragPreview.attachedHoverHeight + 0.1,
+                    activeDragPreview.attachedHoverHeight + pickupLift,
                     activeDragPreview.relative.z,
                 ],
             });
@@ -251,38 +282,60 @@ export function PickableGroup({
         }
     }, [activeDragPreview, isPreviewAttached, isPreviewSource, dragSpringsApi]);
 
-    const rect = domElement.getClientRects()[0];
+    useEffect(() => {
+        return () => {
+            const session = pointerSession.current;
+            if (!session) {
+                return;
+            }
 
-    const dragHandler: Handler<'drag', unknown> = async ({
-        pressed,
-        event,
-        xy: [x, y],
-    }) => {
-        if (isDraggingWorld) {
-            return;
+            if (session.hintTimer) {
+                window.clearTimeout(session.hintTimer);
+            }
+            if (session.holdTimer) {
+                window.clearTimeout(session.holdTimer);
+            }
+            pointerSessionCleanup.current?.();
+            pointerSessionCleanup.current = null;
+        };
+    }, []);
+
+    function getStack(destination: { x: number; z: number }) {
+        return garden?.stacks.find(
+            (candidate) =>
+                candidate.position.x === destination.x &&
+                candidate.position.z === destination.z,
+        );
+    }
+
+    function resolvePlacementPreview(
+        clientX: number,
+        clientY: number,
+    ): ResolvedPlacementPreview | null {
+        if (!garden || !blocksData || blockIndex < 0) {
+            return null;
         }
 
-        if (
-            typeof event === 'object' &&
-            event !== null &&
-            'stopPropagation' in event &&
-            typeof event.stopPropagation === 'function'
-        ) {
-            event.stopPropagation();
+        const rect = domElement.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) {
+            return null;
         }
 
         const { pt, dest, relative } = dragState.current;
         pt.set(
-            ((x - rect.left) / rect.width) * 2 - 1,
-            ((rect.top - y) / rect.height) * 2 + 1,
+            ((clientX - rect.left) / rect.width) * 2 - 1,
+            ((rect.top - clientY) / rect.height) * 2 + 1,
             0,
         );
 
-        const raycaster = new Raycaster();
-        raycaster.setFromCamera(new Vector2(pt.x, pt.y), camera);
-        const isIntersecting = raycaster.ray.intersectPlane(groundPlane, pt);
+        pointerVector.current.set(pt.x, pt.y);
+        raycaster.current.setFromCamera(pointerVector.current, camera);
+        const isIntersecting = raycaster.current.ray.intersectPlane(
+            groundPlane,
+            pt,
+        );
         if (!isIntersecting) {
-            return;
+            return null;
         }
 
         dest.set(pt.x, 0, pt.z).round();
@@ -312,46 +365,49 @@ export function PickableGroup({
             movingPlacements.map((placement) => placement.blockId),
         );
 
-        const placementPreviews = movingPlacements.map((placement) => {
-            const destination = {
-                x: placement.sourceStack.position.x + relative.x,
-                z: placement.sourceStack.position.z + relative.z,
-            };
-            const destinationStack = getStack(destination);
-            const destinationBlocks =
-                destinationStack?.blocks.filter(
-                    (candidate) => !movingBlockIds.has(candidate.id),
-                ) ?? [];
-            const destinationWithoutMoving = destinationStack
-                ? {
-                      ...destinationStack,
-                      blocks: destinationBlocks,
-                  }
-                : undefined;
-            const blockUnder = destinationBlocks.at(-1);
-            const blockUnderData = blockUnder
-                ? getBlockDataByName(blocksData, blockUnder.name)
-                : null;
-            const isRecycler =
-                placement.canRecycle &&
-                (blockUnderData?.functions?.recycler ?? false);
-            const isStackable = blockUnderData?.attributes?.stackable ?? true;
-            const hoverHeight =
-                getStackHeight(blocksData, destinationWithoutMoving) -
-                placement.currentHeight;
+        const placementPreviews: PlacementPreview[] = movingPlacements.map(
+            (placement) => {
+                const destination = {
+                    x: placement.sourceStack.position.x + relative.x,
+                    z: placement.sourceStack.position.z + relative.z,
+                };
+                const destinationStack = getStack(destination);
+                const destinationBlocks =
+                    destinationStack?.blocks.filter(
+                        (candidate) => !movingBlockIds.has(candidate.id),
+                    ) ?? [];
+                const destinationWithoutMoving = destinationStack
+                    ? {
+                          ...destinationStack,
+                          blocks: destinationBlocks,
+                      }
+                    : undefined;
+                const blockUnder = destinationBlocks.at(-1);
+                const blockUnderData = blockUnder
+                    ? getBlockDataByName(blocksData, blockUnder.name)
+                    : null;
+                const isRecycler =
+                    placement.canRecycle &&
+                    (blockUnderData?.functions?.recycler ?? false);
+                const isStackable =
+                    blockUnderData?.attributes?.stackable ?? true;
+                const hoverHeight =
+                    getStackHeight(blocksData, destinationWithoutMoving) -
+                    placement.currentHeight;
 
-            return {
-                blockId: placement.blockId,
-                blockName: placement.blockName,
-                blockUnderId: blockUnder?.id ?? null,
-                blockUnderName: blockUnder?.name ?? null,
-                destination,
-                destinationIndex: destinationBlocks.length,
-                hoverHeight,
-                isRecycler,
-                isBlocked: !isStackable && !isRecycler,
-            };
-        });
+                return {
+                    blockId: placement.blockId,
+                    blockName: placement.blockName,
+                    blockUnderId: blockUnder?.id ?? null,
+                    blockUnderName: blockUnder?.name ?? null,
+                    destination,
+                    destinationIndex: destinationBlocks.length,
+                    hoverHeight,
+                    isRecycler,
+                    isBlocked: !isStackable && !isRecycler,
+                };
+            },
+        );
 
         const movedRaisedBedPreviewByPosition = new Map(
             placementPreviews
@@ -419,7 +475,6 @@ export function PickableGroup({
                 let raisedBedNeighborCount = 0;
                 let externalNeighbor:
                     | {
-                          blockId: string;
                           x: number;
                           z: number;
                       }
@@ -445,7 +500,6 @@ export function PickableGroup({
                     if (externalNeighborBlock) {
                         raisedBedNeighborCount += 1;
                         externalNeighbor = {
-                            blockId: externalNeighborBlock.id,
                             x: neighbor.x,
                             z: neighbor.z,
                         };
@@ -481,13 +535,17 @@ export function PickableGroup({
             });
 
         const sourcePreview = placementPreviews[0];
+        if (!sourcePreview) {
+            return null;
+        }
+
         const attachedPreview = attachedPlacement
             ? placementPreviews.find(
                   (preview) =>
                       preview.blockId === attachedPlacement.candidateBlock.id,
               )
             : null;
-        const sourceHoverHeight = sourcePreview?.hoverHeight ?? 0;
+        const sourceHoverHeight = sourcePreview.hoverHeight;
         const attachedHoverHeight = attachedPreview?.hoverHeight ?? 0;
         const previewHoverHeight = Math.max(
             sourceHoverHeight,
@@ -505,7 +563,7 @@ export function PickableGroup({
         const heightsMismatch =
             attachedPlacement !== null &&
             Math.abs(sourceHoverHeight - attachedHoverHeight) > 0.0001;
-        const nextIsOverRecycler = sourcePreview?.isRecycler ?? false;
+        const nextIsOverRecycler = sourcePreview.isRecycler;
         const nextIsBlocked = nextIsOverRecycler
             ? false
             : canStoreInGardenBox
@@ -514,203 +572,384 @@ export function PickableGroup({
                 heightsMismatch ||
                 raisedBedPlacementBlocked;
 
-        if (isOverRecycler !== nextIsOverRecycler) {
-            setIsOverRecycler(nextIsOverRecycler);
+        return {
+            relative: relative.clone(),
+            previewHoverHeight,
+            sourceHoverHeight,
+            hoveredGardenBoxBlockId,
+            canStoreInGardenBox,
+            nextIsOverRecycler,
+            nextIsBlocked,
+        };
+    }
+
+    function clearSessionTimers(session: PointerSession) {
+        if (session.hintTimer) {
+            window.clearTimeout(session.hintTimer);
+            session.hintTimer = null;
         }
-        if (nextIsBlocked !== isBlocked) {
-            setIsBlocked(nextIsBlocked);
+        if (session.holdTimer) {
+            window.clearTimeout(session.holdTimer);
+            session.holdTimer = null;
+        }
+    }
+
+    function cleanupPointerSessionListeners() {
+        pointerSessionCleanup.current?.();
+        pointerSessionCleanup.current = null;
+    }
+
+    function resetPickupVisualState() {
+        setActiveDragPreview(null);
+        setIsBlocked(false);
+        setIsOverRecycler(false);
+        setPickupBlock(null);
+    }
+
+    function cancelPointerSession(resetSpring: boolean) {
+        const session = pointerSession.current;
+        if (!session) {
+            return;
         }
 
-        if (!pressed) {
-            if (!didDrag.current) {
-                return;
-            }
-            didDrag.current = false;
-            setActiveDragPreview(null);
-            setIsBlocked(false);
-            setIsOverRecycler(false);
+        session.cancelled = true;
+        clearSessionTimers(session);
+        pointerSession.current = null;
+        cleanupPointerSessionListeners();
+        if (resetSpring) {
+            dragSpringsApi.start({ internalPosition: [0, 0, 0], scale: 1 });
+        }
+    }
 
-            if (pickupBlock?.id === block.id) {
-                setPickupBlock(null);
-            }
+    function applyActivePreview(preview: ResolvedPlacementPreview) {
+        setIsOverRecycler((current) =>
+            current === preview.nextIsOverRecycler
+                ? current
+                : preview.nextIsOverRecycler,
+        );
+        setIsBlocked((current) =>
+            current === preview.nextIsBlocked ? current : preview.nextIsBlocked,
+        );
+        setActiveDragPreview({
+            source: activePreviewTarget,
+            attached: attachedPreviewTarget,
+            hoveredGardenBoxBlockId: preview.hoveredGardenBoxBlockId,
+            relative: {
+                x: preview.relative.x,
+                z: preview.relative.z,
+            },
+            sourceHoverHeight: preview.sourceHoverHeight,
+            attachedHoverHeight: preview.previewHoverHeight,
+            isBlocked: preview.nextIsBlocked,
+            isOverRecycler: preview.nextIsOverRecycler,
+        });
+        dragSpringsApi.start({
+            internalPosition: [
+                preview.relative.x,
+                preview.previewHoverHeight + pickupLift,
+                preview.relative.z,
+            ],
+            scale: 1.02,
+        });
+    }
 
-            if (nextIsBlocked) {
-                // Revert to start position if released above blocked stack
-                dragSpringsApi.start({ internalPosition: [0, 0, 0] });
-            } else if (canStoreInGardenBox && hoveredGardenBoxBlockId) {
-                dragSpringsApi.start({
-                    internalPosition: [
-                        relative.x,
-                        previewHoverHeight + 0.2,
-                        relative.z,
-                    ],
-                    scale: 0.1,
-                });
-                dropSound.play();
-                triggerPlaceHaptic();
-                spawn(
-                    resolveBlockParticleType(block.name),
-                    stack.position
-                        .clone()
-                        .add(relative)
-                        .setY(previewHoverHeight + currentStackHeight),
-                    12,
-                );
-                const blockDataForInventory = getBlockDataByName(
-                    blocksData,
-                    block.name,
-                );
+    function activatePickup() {
+        const session = pointerSession.current;
+        if (!session || session.cancelled || session.activated) {
+            return;
+        }
 
-                await storeBlockInGardenBox.mutateAsync({
-                    sourcePosition: {
-                        x: stack.position.x,
-                        z: stack.position.z,
-                    },
-                    blockIndex,
-                    sourceBlockId: block.id,
-                    blockName: block.name,
-                    blockEntityId: blockDataForInventory?.id.toString(),
-                    blockLabel:
-                        blockDataForInventory?.information?.label ?? block.name,
-                    gardenBoxBlockId: hoveredGardenBoxBlockId,
-                });
-            } else if (nextIsOverRecycler) {
-                dragSpringsApi.start({
-                    internalPosition: [relative.x, -1.5, relative.z],
-                    scale: 0.1,
-                });
-                triggerPlaceHaptic();
-                await recycleBlock.mutateAsync({
-                    position: stack.position,
-                    blockIndex,
-                    raisedBedId: raisedBed?.id,
-                    attached: attachedPlacement
-                        ? {
-                              position: {
-                                  x: attachedPlacement.candidateStack.position
-                                      .x,
-                                  z: attachedPlacement.candidateStack.position
-                                      .z,
-                              },
-                              blockIndex: attachedPlacement.candidateBlockIndex,
-                          }
-                        : undefined,
-                });
-            } else {
-                dragSpringsApi.start({
-                    internalPosition: [
-                        relative.x,
-                        previewHoverHeight,
-                        relative.z,
-                    ],
-                });
-                dropSound.play();
-                triggerPlaceHaptic();
-                spawn(
-                    resolveBlockParticleType(block.name),
-                    stack.position
-                        .clone()
-                        .add(relative)
-                        .setY(previewHoverHeight + currentStackHeight),
-                    12,
-                );
-                const sourcePosition = {
-                    x: stack.position.x,
-                    z: stack.position.z,
-                };
-                const destinationPosition = {
-                    x: stack.position.x + relative.x,
-                    z: stack.position.z + relative.z,
-                };
+        const preview = resolvePlacementPreview(
+            session.lastClientX,
+            session.lastClientY,
+        );
+        if (!preview) {
+            cancelPointerSession(true);
+            return;
+        }
 
-                await moveBlock.mutateAsync({
-                    sourcePosition,
-                    destinationPosition,
-                    blockIndex,
-                    sourceBlockId: block.id,
-                    attached: attachedPlacement
-                        ? {
-                              sourcePosition: {
-                                  x: attachedPlacement.candidateStack.position
-                                      .x,
-                                  z: attachedPlacement.candidateStack.position
-                                      .z,
-                              },
-                              destinationPosition: {
-                                  x:
-                                      attachedPlacement.candidateStack.position
-                                          .x + relative.x,
-                                  z:
-                                      attachedPlacement.candidateStack.position
-                                          .z + relative.z,
-                              },
-                              blockIndex: attachedPlacement.candidateBlockIndex,
-                              sourceBlockId:
-                                  attachedPlacement.candidateBlock.id,
-                          }
-                        : undefined,
-                });
-            }
-        } else {
-            if (!didDrag.current) {
-                pickupSound.play();
-                triggerPickHaptic();
-                if (nextIsBlocked !== isBlocked) {
-                    setIsBlocked(nextIsBlocked);
-                }
-                if (nextIsOverRecycler !== isOverRecycler) {
-                    setIsOverRecycler(nextIsOverRecycler);
-                }
+        session.activated = true;
+        session.latestPreview = preview;
+        setIsDragging(false);
+        setPickupBlock(block);
+        pickupSound.play();
+        triggerPickHaptic();
+        spawn(
+            resolveBlockParticleType(block.name),
+            stack.position.clone().setY(currentStackHeight),
+            6,
+        );
+        applyActivePreview(preview);
+    }
 
-                spawn(
-                    resolveBlockParticleType(block.name),
-                    stack.position.clone().setY(currentStackHeight),
-                    6,
-                );
-            }
-            setPickupBlock(block);
-            didDrag.current = true;
-            setActiveDragPreview({
-                source: activePreviewTarget,
-                attached: attachedPreviewTarget,
-                hoveredGardenBoxBlockId,
-                relative: {
-                    x: relative.x,
-                    z: relative.z,
-                },
-                sourceHoverHeight,
-                attachedHoverHeight: previewHoverHeight,
-                isBlocked: nextIsBlocked,
-                isOverRecycler: nextIsOverRecycler,
-            });
+    async function finishPickup(preview: ResolvedPlacementPreview | null) {
+        resetPickupVisualState();
+
+        if (!preview || preview.nextIsBlocked) {
+            dragSpringsApi.start({ internalPosition: [0, 0, 0], scale: 1 });
+            return;
+        }
+
+        const relative = preview.relative;
+        const previewDropPosition = stack.position
+            .clone()
+            .add(relative)
+            .setY(preview.previewHoverHeight + currentStackHeight);
+
+        if (preview.canStoreInGardenBox && preview.hoveredGardenBoxBlockId) {
             dragSpringsApi.start({
                 internalPosition: [
                     relative.x,
-                    previewHoverHeight + 0.1,
+                    preview.previewHoverHeight + 0.2,
                     relative.z,
                 ],
+                scale: 0.1,
             });
+            dropSound.play();
+            triggerPlaceHaptic();
+            spawn(
+                resolveBlockParticleType(block.name),
+                previewDropPosition,
+                12,
+            );
+            const blockDataForInventory = getBlockDataByName(
+                blocksData,
+                block.name,
+            );
+
+            await storeBlockInGardenBox.mutateAsync({
+                sourcePosition: {
+                    x: stack.position.x,
+                    z: stack.position.z,
+                },
+                blockIndex,
+                sourceBlockId: block.id,
+                blockName: block.name,
+                blockEntityId: blockDataForInventory?.id.toString(),
+                blockLabel:
+                    blockDataForInventory?.information?.label ?? block.name,
+                gardenBoxBlockId: preview.hoveredGardenBoxBlockId,
+            });
+            return;
         }
-    };
 
-    const bindProps = useDrag(dragHandler, {
-        filterTaps: true,
-        enabled: !isDraggingWorld && !isPreviewAttached,
-    })();
+        if (preview.nextIsOverRecycler) {
+            dragSpringsApi.start({
+                internalPosition: [relative.x, -1.5, relative.z],
+                scale: 0.1,
+            });
+            triggerPlaceHaptic();
+            await recycleBlock.mutateAsync({
+                position: stack.position,
+                blockIndex,
+                raisedBedId: raisedBed?.id,
+                attached: attachedPlacement
+                    ? {
+                          position: {
+                              x: attachedPlacement.candidateStack.position.x,
+                              z: attachedPlacement.candidateStack.position.z,
+                          },
+                          blockIndex: attachedPlacement.candidateBlockIndex,
+                      }
+                    : undefined,
+            });
+            return;
+        }
 
-    const customBindProps = {
-        ...bindProps,
-        onPointerDown: (event: PointerEvent) => {
+        dragSpringsApi.start({
+            internalPosition: [
+                relative.x,
+                preview.previewHoverHeight,
+                relative.z,
+            ],
+            scale: 1,
+        });
+        dropSound.play();
+        triggerPlaceHaptic();
+        spawn(resolveBlockParticleType(block.name), previewDropPosition, 12);
+        const sourcePosition = {
+            x: stack.position.x,
+            z: stack.position.z,
+        };
+        const destinationPosition = {
+            x: stack.position.x + relative.x,
+            z: stack.position.z + relative.z,
+        };
+
+        await moveBlock.mutateAsync({
+            sourcePosition,
+            destinationPosition,
+            blockIndex,
+            sourceBlockId: block.id,
+            attached: attachedPlacement
+                ? {
+                      sourcePosition: {
+                          x: attachedPlacement.candidateStack.position.x,
+                          z: attachedPlacement.candidateStack.position.z,
+                      },
+                      destinationPosition: {
+                          x:
+                              attachedPlacement.candidateStack.position.x +
+                              relative.x,
+                          z:
+                              attachedPlacement.candidateStack.position.z +
+                              relative.z,
+                      },
+                      blockIndex: attachedPlacement.candidateBlockIndex,
+                      sourceBlockId: attachedPlacement.candidateBlock.id,
+                  }
+                : undefined,
+        });
+    }
+
+    function handleWindowPointerMove(event: PointerEvent) {
+        const session = pointerSession.current;
+        if (!session || event.pointerId !== session.pointerId) {
+            return;
+        }
+
+        session.lastClientX = event.clientX;
+        session.lastClientY = event.clientY;
+
+        if (!session.activated) {
+            if (
+                pointerDistance(session, event.clientX, event.clientY) >
+                pointerMoveCancelDistance(session.pointerType)
+            ) {
+                cancelPointerSession(session.hintVisible);
+            }
+            return;
+        }
+
+        event.preventDefault();
+        const preview = resolvePlacementPreview(event.clientX, event.clientY);
+        if (!preview) {
+            return;
+        }
+
+        session.latestPreview = preview;
+        applyActivePreview(preview);
+    }
+
+    function handleWindowPointerUp(event: PointerEvent) {
+        const session = pointerSession.current;
+        if (!session || event.pointerId !== session.pointerId) {
+            return;
+        }
+
+        clearSessionTimers(session);
+        cleanupPointerSessionListeners();
+        pointerSession.current = null;
+
+        if (!session.activated) {
+            if (session.hintVisible) {
+                dragSpringsApi.start({
+                    internalPosition: [0, 0, 0],
+                    scale: 1,
+                });
+            }
+            return;
+        }
+
+        event.preventDefault();
+        suppressBlockInteractions(suppressClickAfterDragMs);
+        const preview =
+            session.latestPreview ??
+            resolvePlacementPreview(session.lastClientX, session.lastClientY);
+        void finishPickup(preview);
+    }
+
+    function handleWindowPointerCancel(event: PointerEvent) {
+        const session = pointerSession.current;
+        if (!session || event.pointerId !== session.pointerId) {
+            return;
+        }
+
+        suppressBlockInteractions(suppressClickAfterDragMs);
+        resetPickupVisualState();
+        cancelPointerSession(true);
+    }
+
+    function handlePointerDown(event: ThreeEvent<PointerEvent>) {
+        if (
+            event.button !== 0 ||
+            pointerSession.current ||
+            areBlockInteractionsSuppressed() ||
+            !garden ||
+            !blocksData ||
+            blockIndex < 0
+        ) {
+            return;
+        }
+
+        const nativeEvent = event.nativeEvent;
+        const session: PointerSession = {
+            pointerId: nativeEvent.pointerId,
+            pointerType: nativeEvent.pointerType,
+            startClientX: nativeEvent.clientX,
+            startClientY: nativeEvent.clientY,
+            lastClientX: nativeEvent.clientX,
+            lastClientY: nativeEvent.clientY,
+            activated: false,
+            cancelled: false,
+            hintVisible: false,
+            hintTimer: null,
+            holdTimer: null,
+            latestPreview: null,
+        };
+        pointerSession.current = session;
+
+        session.hintTimer = window.setTimeout(() => {
+            const activeSession = pointerSession.current;
+            if (
+                activeSession !== session ||
+                activeSession.cancelled ||
+                activeSession.activated
+            ) {
+                return;
+            }
+
+            activeSession.hintVisible = true;
+            dragSpringsApi.start({
+                internalPosition: [0, pickupHintLift, 0],
+                scale: 1.01,
+            });
+        }, pickupHintDelayMs);
+
+        session.holdTimer = window.setTimeout(
+            activatePickup,
+            pickupHoldDelayMs,
+        );
+
+        window.addEventListener('pointermove', handleWindowPointerMove, {
+            passive: false,
+        });
+        window.addEventListener('pointerup', handleWindowPointerUp);
+        window.addEventListener('pointercancel', handleWindowPointerCancel);
+        pointerSessionCleanup.current = () => {
+            window.removeEventListener('pointermove', handleWindowPointerMove);
+            window.removeEventListener('pointerup', handleWindowPointerUp);
+            window.removeEventListener(
+                'pointercancel',
+                handleWindowPointerCancel,
+            );
+        };
+    }
+
+    function handleClick(event: ThreeEvent<MouseEvent>) {
+        if (areBlockInteractionsSuppressed()) {
             event.stopPropagation();
-            bindProps.onPointerDown?.(event);
-        },
-    };
+        }
+    }
 
-    // Handle blocking drop when stack is not stackable
     const isGroupedPreviewBlocked =
         (isPreviewSource || isPreviewAttached) &&
         (activeDragPreview?.isBlocked ?? false);
     const showBlockedIndicator = isBlocked || isGroupedPreviewBlocked;
+    const showValidIndicator =
+        (isPreviewSource || isPreviewAttached) &&
+        Boolean(activeDragPreview) &&
+        !showBlockedIndicator;
     const blockedScaleSprings = useSpring({
         scale: showBlockedIndicator ? 1 : 0,
         opacity: showBlockedIndicator ? 1 : 0,
@@ -718,13 +957,18 @@ export function PickableGroup({
             tension: 350,
         },
     });
-    const blockedPosition: [number, number, number] = [
+    const validScaleSprings = useSpring({
+        scale: showValidIndicator ? 1 : 0,
+        opacity: showValidIndicator ? 0.65 : 0,
+        config: {
+            tension: 350,
+        },
+    });
+    const indicatorPosition: [number, number, number] = [
         stack.position.x,
         currentStackHeight,
         stack.position.z,
     ];
-
-    // Handle recycle indicator
     const recyclePosition: [number, number, number] = [
         stack.position.x,
         currentStackHeight + 0.2,
@@ -745,11 +989,23 @@ export function PickableGroup({
                 ]
             }
             scale={dragSprings.scale}
-            {...customBindProps}
+            onPointerDown={handlePointerDown}
+            onClick={handleClick}
         >
             <animated.group
+                scale={validScaleSprings.scale}
+                position={indicatorPosition}
+            >
+                <Shadow
+                    color="#22c55e"
+                    opacity={0.65}
+                    colorStop={0.45}
+                    scale={1.8}
+                />
+            </animated.group>
+            <animated.group
                 scale={blockedScaleSprings.scale}
-                position={blockedPosition}
+                position={indicatorPosition}
             >
                 <Shadow
                     color={0xff0000}
@@ -766,17 +1022,6 @@ export function PickableGroup({
                     </animated.group>
                 </Suspense>
             )}
-            {/* <group
-                position={[
-                    stack.position.x,
-                    currentBlockData?.attributes.height ?? 0,
-                    stack.position.z,
-                ]}
-            >
-                <Html center>
-                    <MoveIndicator />
-                </Html>
-            </group> */}
         </animated.group>
     );
 }

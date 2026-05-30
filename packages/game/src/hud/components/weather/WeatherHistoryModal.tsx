@@ -26,25 +26,34 @@ export function WeatherHistoryModal({
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
 }) {
+    const [internalOpen, setInternalOpen] = useState(false);
     const [range, setRange] = useState<WeatherChartsRange>(() =>
         getDefaultWeatherRange(),
     );
     const [metric, setMetric] = useState<WeatherMetricKey>('temperature');
+    const isOpen = open ?? internalOpen;
+
+    function handleOpenChange(nextOpen: boolean) {
+        setInternalOpen(nextOpen);
+        onOpenChange?.(nextOpen);
+    }
 
     const { data: history, isLoading: historyLoading } = useWeatherHistory(
         range.from,
         range.to,
+        isOpen,
     );
-    const { data: forecast, isLoading: forecastLoading } = useWeatherForecast();
-    const { data: historyRange } = useWeatherHistoryRange();
+    const { data: forecast, isLoading: forecastLoading } =
+        useWeatherForecast(isOpen);
+    const { data: historyRange } = useWeatherHistoryRange(isOpen);
 
     const bounds = getWeatherDataBounds(historyRange?.from, forecast);
 
     return (
         <Modal
             trigger={trigger}
-            open={open}
-            onOpenChange={onOpenChange}
+            open={isOpen}
+            onOpenChange={handleOpenChange}
             title="Vremenske prilike"
             className="w-full max-w-3xl"
         >

@@ -8,7 +8,6 @@ import { AudioHud } from './hud/AudioHud';
 import { CameraHud } from './hud/CameraHud';
 import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
 import { DebugHud } from './hud/DebugHud';
-import { GameModeHud } from './hud/GameModeHud';
 import { InventoryHud } from './hud/InventoryHud';
 import { ItemsHud } from './hud/ItemsHud';
 import { PaymentSuccessfulMessage } from './hud/PaymentSuccessfulMessage';
@@ -46,9 +45,6 @@ export function GameHud({
             <div className="absolute top-2 left-2 flex flex-col items-start gap-2">
                 <AccountHud />
                 <ShoppingCartHud />
-                <div className={closeupHiddenHudClassName}>
-                    <GameModeHud />
-                </div>
                 <div className={closeupHiddenHudClassName}>
                     <AdventHud />
                 </div>

@@ -132,7 +132,6 @@ function ItemsHudTestProviders({ children }: PropsWithChildren) {
             isMock: false,
             winterMode: 'summer',
         });
-        store.getState().setMode('edit');
         return store;
     }, []);
 

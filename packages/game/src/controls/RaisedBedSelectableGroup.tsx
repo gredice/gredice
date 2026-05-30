@@ -5,6 +5,7 @@ import {
     useRemoveRaisedBedCloseupParam,
     useSetRaisedBedCloseupParam,
 } from '../useRaisedBedCloseup';
+import { useDeferredSingleClick } from './useDeferredSingleClick';
 import { useHoveredBlockStore } from './useHoveredBlockStore';
 
 export function RaisedBedSelectableGroup({
@@ -18,6 +19,7 @@ export function RaisedBedSelectableGroup({
     const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
     const { mutate: removeRaisedBedCloseupParam } =
         useRemoveRaisedBedCloseupParam();
+    const handleClick = useDeferredSingleClick(handleSelected);
 
     function handleSelected() {
         handleOpenChange(true);
@@ -50,7 +52,7 @@ export function RaisedBedSelectableGroup({
                     hovered.setHoveredBlock(null);
                 }
             }}
-            onClick={handleSelected}
+            onClick={handleClick}
         >
             {children}
         </group>

@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react';
 import type { Block } from '../types/Block';
 import { useGiftBoxParam } from '../useUrlState';
+import { useDeferredSingleClick } from './useDeferredSingleClick';
 import { useHoveredBlockStore } from './useHoveredBlockStore';
 
 export function GiftBoxSelectableGroup({
@@ -9,6 +10,7 @@ export function GiftBoxSelectableGroup({
 }: PropsWithChildren<{ block: Block }>) {
     const hovered = useHoveredBlockStore();
     const [, setGiftBoxParam] = useGiftBoxParam();
+    const handleClick = useDeferredSingleClick(handleSelected);
 
     function handleSelected() {
         setGiftBoxParam(block.id);
@@ -27,10 +29,7 @@ export function GiftBoxSelectableGroup({
                     hovered.setHoveredBlock(null);
                 }
             }}
-            onClick={(event) => {
-                event.stopPropagation();
-                handleSelected();
-            }}
+            onClick={handleClick}
         >
             {children}
         </group>

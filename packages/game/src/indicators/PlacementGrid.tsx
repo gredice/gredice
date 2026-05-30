@@ -1,14 +1,16 @@
 'use client';
 
-import { useIsEditMode } from '../hooks/useIsEditMode';
 import { useGameState } from '../useGameState';
 
-export function EditModeGrid() {
-    const isEditMode = useIsEditMode();
+export function PlacementGrid() {
+    const isPlacementActive = useGameState(
+        (state) =>
+            Boolean(state.pickupBlock) || Boolean(state.activeDragPreview),
+    );
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const isDay = timeOfDay > 0.2 && timeOfDay < 0.8;
 
-    if (!isEditMode) {
+    if (!isPlacementActive) {
         return null;
     }
 

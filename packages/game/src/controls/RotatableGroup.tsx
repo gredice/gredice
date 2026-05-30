@@ -17,6 +17,7 @@ export function RotatableGroup({
     const { data: garden } = useCurrentGarden();
     const effectsAudioMixer = useGameState((state) => state.audio.effects);
     const isDragging = useGameState((state) => state.isDragging);
+    const pickupBlock = useGameState((state) => state.pickupBlock);
     const swipeSound = effectsAudioMixer.useSoundEffect(
         'https://cdn.gredice.com/sounds/effects/Swipe Generic 01.mp3',
     );
@@ -25,14 +26,10 @@ export function RotatableGroup({
     const doubleClickDownTimeStamp = useRef(0);
     const firstClickTimeStamp = useRef(0);
 
-    async function doRotate(
-        event: ThreeEvent<globalThis.PointerEvent> | ThreeEvent<MouseEvent>,
-    ) {
+    async function doRotate() {
         if (!rotateInitiated.current) return;
 
-        if (isDragging) return;
-
-        event.stopPropagation();
+        if (isDragging || pickupBlock) return;
 
         const attachedRaisedBedBlockId =
             block.name === 'Raised_Bed' && garden
@@ -90,7 +87,7 @@ export function RotatableGroup({
 
         if (!rotateInitiated.current) return;
 
-        doRotate(event);
+        doRotate();
     }
 
     return (
