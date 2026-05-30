@@ -3,6 +3,7 @@ import type { NavContextType } from './NavContext';
 
 const idRouteTitlePrefixes = new Map([
     ['/admin/accounts', 'Račun'],
+    ['/admin/automations', 'Automatizacija'],
     ['/admin/cms/pages', 'Stranica'],
     ['/admin/communication/emails', 'Email'],
     ['/admin/farms', 'Farma'],
@@ -185,6 +186,10 @@ export function resolveAdminRouteTitle(
 
     if (pathname === '/admin/logout') {
         return 'Odjava';
+    }
+
+    if (pathname === '/admin/automations/create') {
+        return 'Nova automatizacija';
     }
 
     const directoryTitle = resolveDirectoryTitle(pathname, navContext);
