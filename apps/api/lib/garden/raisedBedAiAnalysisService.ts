@@ -1,8 +1,8 @@
 import {
     getEntitiesFormatted,
     getOperations,
-    grediceCacheKeys,
     grediceCached,
+    grediceCacheKeys,
 } from '@gredice/storage';
 import { streamText } from 'ai';
 import { validateHostedImageUrl } from '../http/safeUrls';
@@ -23,7 +23,7 @@ const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5.5';
 export const AI_REQUEST_QUOTA_WINDOW_DAYS = 7;
 export const AI_REQUEST_QUOTA_WINDOW_MS =
     AI_REQUEST_QUOTA_WINDOW_DAYS * 24 * 60 * 60 * 1000;
-export const AI_REQUEST_WEEKLY_LIMIT = 5;
+export const AI_REQUEST_WEEKLY_LIMIT_PER_ACTIVE_RAISED_BED = 5;
 export const RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND =
     'raisedBedImageAnalysis' as const;
 
@@ -31,14 +31,23 @@ export type AiRequestKind = typeof RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND;
 
 export const AI_REQUEST_QUOTAS = {
     [RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND]: {
-        limit: AI_REQUEST_WEEKLY_LIMIT,
+        baseLimit: AI_REQUEST_WEEKLY_LIMIT_PER_ACTIVE_RAISED_BED,
         windowDays: AI_REQUEST_QUOTA_WINDOW_DAYS,
         windowMs: AI_REQUEST_QUOTA_WINDOW_MS,
     },
 } as const satisfies Record<
     AiRequestKind,
-    { limit: number; windowDays: number; windowMs: number }
+    { baseLimit: number; windowDays: number; windowMs: number }
 >;
+
+export function getRaisedBedImageAnalysisWeeklyLimit(
+    activeRaisedBedCount: number,
+) {
+    return (
+        Math.max(0, activeRaisedBedCount) *
+        AI_REQUEST_WEEKLY_LIMIT_PER_ACTIVE_RAISED_BED
+    );
+}
 
 export function validateImageUrl(imageUrl: string): string | null {
     return validateHostedImageUrl(imageUrl);
@@ -171,10 +180,7 @@ async function buildWeatherContext(): Promise<WeatherContext | null> {
             })),
         };
     } catch (error) {
-        console.warn(
-            'Failed to load weather context for AI analysis:',
-            error,
-        );
+        console.warn('Failed to load weather context for AI analysis:', error);
         return null;
     }
 }
@@ -194,18 +200,20 @@ async function buildAnalysisMessages({
     imageUrls,
     positionIndex,
 }: AnalysisParams) {
-    const [plantSorts, operations, operationsData, weather] = await Promise.all([
-        getEntitiesFormatted<{
-            id: string;
-            information?: { name?: string };
-        }>('plantSort'),
-        getOperations(accountId, gardenId, raisedBed.id),
-        getEntitiesFormatted<{
-            id: string;
-            information?: { label?: string; name?: string };
-        }>('operation'),
-        buildWeatherContext(),
-    ]);
+    const [plantSorts, operations, operationsData, weather] = await Promise.all(
+        [
+            getEntitiesFormatted<{
+                id: string;
+                information?: { name?: string };
+            }>('plantSort'),
+            getOperations(accountId, gardenId, raisedBed.id),
+            getEntitiesFormatted<{
+                id: string;
+                information?: { label?: string; name?: string };
+            }>('operation'),
+            buildWeatherContext(),
+        ],
+    );
 
     const plantSortNameById = new Map(
         plantSorts.map((sort) => [
@@ -265,7 +273,8 @@ async function buildAnalysisMessages({
         fieldId: op.raisedBedFieldId,
     }));
 
-    const totalFields = raisedBed.fields.length || RAISED_BED_FIELDS_PER_BLOCK * 2;
+    const totalFields =
+        raisedBed.fields.length || RAISED_BED_FIELDS_PER_BLOCK * 2;
     const rows = Math.max(1, Math.ceil(totalFields / RAISED_BED_COLUMNS));
     const orientation = raisedBed.orientation ?? 'vertical';
     const nowIso = new Date().toISOString();
