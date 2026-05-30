@@ -6,7 +6,16 @@ Command: npx gltfjsx@6.5.3 ./apps/garden/.tmp/GameAssetsTypes.glb --types --type
 import type * as THREE from 'three';
 import type { GLTF } from 'three-stdlib';
 
-type ActionName = 'BirdSmall_Idle' | 'BirdSmall_Flap';
+type ActionName =
+    | 'BirdSmall_Idle'
+    | 'BirdSmall_Flap'
+    | 'Cat_Idle'
+    | 'Cat_Walk'
+    | 'Cat_LayDown'
+    | 'Cat_LyingIdle'
+    | 'Cat_StandUp'
+    | 'Cat_Crouch'
+    | 'Cat_PreyWatch';
 
 interface GLTFAction extends THREE.AnimationClip {
     name: ActionName;
@@ -54,6 +63,44 @@ export type GLTFResult = GLTF & {
         Bee_StripeFront: THREE.Mesh;
         Bee_StripeMiddle: THREE.Mesh;
         Bee_Thorax: THREE.Mesh;
+        Cat_Ear_L: THREE.Mesh;
+        Cat_Ear_R: THREE.Mesh;
+        Cat_Eye_L: THREE.Mesh;
+        Cat_Eye_R: THREE.Mesh;
+        Cat_Eyelid_L: THREE.Mesh;
+        Cat_Eyelid_R: THREE.Mesh;
+        Cat_FacePatch: THREE.Mesh;
+        Cat_Head: THREE.Mesh;
+        Cat_InnerEar_L: THREE.Mesh;
+        Cat_InnerEar_R: THREE.Mesh;
+        Cat_Muzzle: THREE.Mesh;
+        Cat_Nose: THREE.Mesh;
+        Cat_Pupil_L: THREE.Mesh;
+        Cat_Pupil_R: THREE.Mesh;
+        Cat_Whisker_L_1: THREE.Mesh;
+        Cat_Whisker_L_2: THREE.Mesh;
+        Cat_Whisker_L_3: THREE.Mesh;
+        Cat_Whisker_R_1: THREE.Mesh;
+        Cat_Whisker_R_2: THREE.Mesh;
+        Cat_Whisker_R_3: THREE.Mesh;
+        Cat_Leg_FL: THREE.Mesh;
+        Cat_Paw_FL: THREE.Mesh;
+        Cat_Leg_FR: THREE.Mesh;
+        Cat_Paw_FR: THREE.Mesh;
+        Cat_Leg_RL: THREE.Mesh;
+        Cat_Paw_RL: THREE.Mesh;
+        Cat_Leg_RR: THREE.Mesh;
+        Cat_Paw_RR: THREE.Mesh;
+        Cat_Tail_Tip: THREE.Mesh;
+        Cat_Tail_Mid: THREE.Mesh;
+        Cat_Tail_Base: THREE.Mesh;
+        Cat_BellyPatch: THREE.Mesh;
+        Cat_Body: THREE.Mesh;
+        Cat_BodySpot_Side_L: THREE.Mesh;
+        Cat_BodySpot_Side_R: THREE.Mesh;
+        Cat_BodySpot_Top_Back: THREE.Mesh;
+        Cat_BodySpot_Top_Front: THREE.Mesh;
+        Cat_ChestPatch: THREE.Mesh;
         Block_Ground_1_1: THREE.Mesh;
         Block_Ground_1_2: THREE.Mesh;
         Block_Ground_2_1: THREE.Mesh;
@@ -243,6 +290,14 @@ export type GLTFResult = GLTF & {
         'Material.BirdSmall.Wing': THREE.MeshStandardMaterial;
         'Material.Cactus.Body': THREE.MeshStandardMaterial;
         'Material.Cactus.Spines': THREE.MeshStandardMaterial;
+        'Material.Cat.BlackFur': THREE.MeshStandardMaterial;
+        'Material.Cat.BlackFurSoft': THREE.MeshStandardMaterial;
+        'Material.Cat.EyeGreen': THREE.MeshStandardMaterial;
+        'Material.Cat.Pink': THREE.MeshStandardMaterial;
+        'Material.Cat.Pupil': THREE.MeshStandardMaterial;
+        'Material.Cat.Whisker': THREE.MeshStandardMaterial;
+        'Material.Cat.WhiteFur': THREE.MeshStandardMaterial;
+        'Material.Cat.WhiteFurShadow': THREE.MeshStandardMaterial;
         'Material.ColorPaletteMain': THREE.MeshStandardMaterial;
         'Material.DeadTree.Bark': THREE.MeshStandardMaterial;
         'Material.DeadTree.Bark.001': THREE.MeshStandardMaterial;

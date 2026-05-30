@@ -11,6 +11,7 @@ import {
 import { Controls } from './controls/Controls';
 import { Bees } from './entities/bees/Bees';
 import { Birds } from './entities/birds/Birds';
+import { Cats } from './entities/cats/Cats';
 import { EntityFactory } from './entities/EntityFactory';
 import {
     EntityInstances,
@@ -246,6 +247,15 @@ export function GameScene({
                             {renderDetails && zoom !== 'far' && (
                                 <Suspense fallback={null}>
                                     <Birds stacks={garden?.stacks} />
+                                </Suspense>
+                            )}
+                            {renderDetails && zoom !== 'far' && (
+                                <Suspense fallback={null}>
+                                    <Cats
+                                        stacks={garden?.stacks}
+                                        weather={weather}
+                                        weatherDisabled={weatherDisabled}
+                                    />
                                 </Suspense>
                             )}
                             {renderDetails && zoom !== 'far' && (
