@@ -2,14 +2,15 @@
 
 import type { RaisedBedFieldSowingLocation } from '@gredice/storage';
 import { Chip } from '@gredice/ui/Chip';
+import { Check } from '@gredice/ui/icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@gredice/ui/Menu';
-import { Check } from '@gredice/ui/icons';
-import { useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState, useTransition } from 'react';
 import { setRaisedBedFieldSowingLocationAction } from '../../../(actions)/raisedBedFieldsActions';
 
 type RaisedBedFieldLocationSelectorProps = {
@@ -17,6 +18,7 @@ type RaisedBedFieldLocationSelectorProps = {
     positionIndex: number;
     sowingLocation: RaisedBedFieldSowingLocation;
     currentLocation: 'greenhouse' | 'raisedBed';
+    greenhouseCurrentLocationEligible: boolean;
 };
 
 const locationLabels = {
@@ -24,25 +26,57 @@ const locationLabels = {
     raisedBed: { label: 'Gredica', icon: '🪴' },
 } as const;
 
+function getOptimisticCurrentLocation(
+    sowingLocation: RaisedBedFieldSowingLocation,
+    greenhouseCurrentLocationEligible: boolean,
+): 'greenhouse' | 'raisedBed' {
+    return sowingLocation === 'greenhouse' && greenhouseCurrentLocationEligible
+        ? 'greenhouse'
+        : 'raisedBed';
+}
+
 export function RaisedBedFieldLocationSelector({
     raisedBedId,
     positionIndex,
     sowingLocation,
     currentLocation,
+    greenhouseCurrentLocationEligible,
 }: RaisedBedFieldLocationSelectorProps) {
+    const router = useRouter();
     const [isPending, startTransition] = useTransition();
-    const current = locationLabels[currentLocation];
+    const [optimisticSowingLocation, setOptimisticSowingLocation] =
+        useState(sowingLocation);
+    const optimisticCurrentLocation =
+        optimisticSowingLocation === sowingLocation
+            ? currentLocation
+            : getOptimisticCurrentLocation(
+                  optimisticSowingLocation,
+                  greenhouseCurrentLocationEligible,
+              );
+    const current = locationLabels[optimisticCurrentLocation];
+
+    useEffect(() => {
+        setOptimisticSowingLocation(sowingLocation);
+    }, [sowingLocation]);
 
     const handleSelect = (nextLocation: RaisedBedFieldSowingLocation) => {
-        if (nextLocation === sowingLocation) {
+        if (nextLocation === optimisticSowingLocation) {
             return;
         }
+        setOptimisticSowingLocation(nextLocation);
         startTransition(async () => {
-            await setRaisedBedFieldSowingLocationAction(
-                raisedBedId,
-                positionIndex,
-                nextLocation,
-            );
+            try {
+                await setRaisedBedFieldSowingLocationAction(
+                    raisedBedId,
+                    positionIndex,
+                    nextLocation,
+                );
+                router.refresh();
+            } catch (error) {
+                console.error('Error updating sowing location:', error);
+                setOptimisticSowingLocation(sowingLocation);
+                alert('Promjena lokacije sijanja nije uspjela.');
+            }
         });
     };
 
@@ -53,7 +87,9 @@ export function RaisedBedFieldLocationSelector({
                     size="sm"
                     variant="solid"
                     color={
-                        currentLocation === 'greenhouse' ? 'success' : 'neutral'
+                        optimisticCurrentLocation === 'greenhouse'
+                            ? 'success'
+                            : 'neutral'
                     }
                     startDecorator={<span aria-hidden>{current.icon}</span>}
                     title="Promijeni trenutnu lokaciju biljke"
@@ -66,7 +102,7 @@ export function RaisedBedFieldLocationSelector({
                 <DropdownMenuItem
                     startDecorator={
                         <span aria-hidden className="w-4 text-center">
-                            {sowingLocation === 'greenhouse' ? (
+                            {optimisticSowingLocation === 'greenhouse' ? (
                                 <Check className="size-4" />
                             ) : null}
                         </span>
@@ -81,7 +117,7 @@ export function RaisedBedFieldLocationSelector({
                 <DropdownMenuItem
                     startDecorator={
                         <span aria-hidden className="w-4 text-center">
-                            {sowingLocation === 'direct' ? (
+                            {optimisticSowingLocation === 'direct' ? (
                                 <Check className="size-4" />
                             ) : null}
                         </span>
