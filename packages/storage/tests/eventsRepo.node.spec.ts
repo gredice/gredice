@@ -6,8 +6,10 @@ import {
     createEvent,
     getAiAnalysisEvents,
     getAiAnalysisTotals,
+    getEventAggregateIdsByAggregateIdPrefix,
     getEvents,
     getLatestEvents,
+    getLatestEventsByAggregateIdPrefix,
     knownEvents,
     knownEventTypes,
 } from '@gredice/storage';
@@ -93,6 +95,81 @@ test('getLatestEvents returns newest events first and paginates', async () => {
         secondPage.map((event) => event.createdAt.toISOString()),
         ['2026-01-01T12:00:00.000Z'],
     );
+});
+
+test('getLatestEventsByAggregateIdPrefix returns newest matching events and aggregate IDs', async () => {
+    createTestDb();
+    const raisedBedAggregateId = `raised-bed-${randomUUID()}`;
+    const aggregateIdPrefix = `${raisedBedAggregateId}|`;
+    const firstFieldAggregateId = `${aggregateIdPrefix}0`;
+    const secondFieldAggregateId = `${aggregateIdPrefix}2`;
+
+    await createEvent({
+        ...knownEvents.raisedBedFields.plantPlaceV1(firstFieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-01-01T00:00:00.000Z',
+        }),
+        createdAt: new Date('2026-01-01T12:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.raisedBedFields.plantScheduleV1(secondFieldAggregateId, {
+            scheduledDate: '2026-01-02T00:00:00.000Z',
+        }),
+        createdAt: new Date('2026-01-03T12:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.raisedBedFields.plantPlaceV1(
+            `${raisedBedAggregateId}-other|0`,
+            {
+                plantSortId: '202',
+                scheduledDate: '2026-01-04T00:00:00.000Z',
+            },
+        ),
+        createdAt: new Date('2026-01-04T12:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.accounts.sunflowersEarnedV1(firstFieldAggregateId, {
+            amount: 1,
+            reason: 'unrelated type',
+        }),
+        createdAt: new Date('2026-01-05T12:00:00.000Z'),
+    });
+
+    const eventTypes = [
+        knownEventTypes.raisedBedFields.plantPlace,
+        knownEventTypes.raisedBedFields.plantSchedule,
+    ];
+
+    const firstPage = await getLatestEventsByAggregateIdPrefix(
+        eventTypes,
+        aggregateIdPrefix,
+        0,
+        1,
+    );
+    assert.deepStrictEqual(
+        firstPage.map((event) => event.aggregateId),
+        [secondFieldAggregateId],
+    );
+
+    const secondPage = await getLatestEventsByAggregateIdPrefix(
+        eventTypes,
+        aggregateIdPrefix,
+        1,
+        1,
+    );
+    assert.deepStrictEqual(
+        secondPage.map((event) => event.aggregateId),
+        [firstFieldAggregateId],
+    );
+
+    const aggregateIds = await getEventAggregateIdsByAggregateIdPrefix(
+        eventTypes,
+        aggregateIdPrefix,
+    );
+    assert.deepStrictEqual(aggregateIds, [
+        firstFieldAggregateId,
+        secondFieldAggregateId,
+    ]);
 });
 
 test('countAiRequestEventsSince counts account-kind events with legacy aggregate fallback', async () => {

@@ -6,6 +6,7 @@ import {
     eq,
     gte,
     inArray,
+    like,
     lte,
     or,
     sql,
@@ -61,6 +62,12 @@ const deliveryInvalidatingEventTypes = new Set<string>([
     knownEventTypes.delivery.userCancelled,
 ]);
 
+function eventTypeFilter(type: string | string[]) {
+    return Array.isArray(type)
+        ? inArray(events.type, type)
+        : eq(events.type, type);
+}
+
 async function bustReadModelCachesForEvent(event: Event) {
     await Promise.all([
         scheduleInvalidatingEventTypes.has(event.type)
@@ -82,9 +89,7 @@ export function getEvents(
     return db.query.events.findMany({
         where: and(
             inArray(events.aggregateId, aggregateIds),
-            Array.isArray(type)
-                ? inArray(events.type, type)
-                : eq(events.type, type),
+            eventTypeFilter(type),
         ),
         orderBy: [asc(events.createdAt), asc(events.id)],
         offset,
@@ -102,14 +107,49 @@ export function getLatestEvents(
     return db.query.events.findMany({
         where: and(
             inArray(events.aggregateId, aggregateIds),
-            Array.isArray(type)
-                ? inArray(events.type, type)
-                : eq(events.type, type),
+            eventTypeFilter(type),
         ),
         orderBy: [desc(events.createdAt), desc(events.id)],
         offset,
         limit,
     });
+}
+
+export function getLatestEventsByAggregateIdPrefix(
+    type: string | string[],
+    aggregateIdPrefix: string,
+    offset: number = 0,
+    limit: number = 1000,
+    db: DatabaseClient = storage(),
+) {
+    return db.query.events.findMany({
+        where: and(
+            like(events.aggregateId, `${aggregateIdPrefix}%`),
+            eventTypeFilter(type),
+        ),
+        orderBy: [desc(events.createdAt), desc(events.id)],
+        offset,
+        limit,
+    });
+}
+
+export async function getEventAggregateIdsByAggregateIdPrefix(
+    type: string | string[],
+    aggregateIdPrefix: string,
+    db: DatabaseClient = storage(),
+) {
+    const rows = await db
+        .selectDistinct({ aggregateId: events.aggregateId })
+        .from(events)
+        .where(
+            and(
+                like(events.aggregateId, `${aggregateIdPrefix}%`),
+                eventTypeFilter(type),
+            ),
+        )
+        .orderBy(asc(events.aggregateId));
+
+    return rows.map((row) => row.aggregateId);
 }
 
 export async function getPlantUpdateEvents(filter?: {
