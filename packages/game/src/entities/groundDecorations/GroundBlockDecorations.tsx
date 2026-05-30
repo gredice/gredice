@@ -1,6 +1,10 @@
 'use client';
 
 import { Fragment, useEffect, useMemo } from 'react';
+import {
+    createActiveDragPreviewTarget,
+    getActiveDragPreviewTargetPositionOffset,
+} from '../../dragPreviewIdentity';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
@@ -35,6 +39,7 @@ export function GroundBlockDecorations({
 }: GroundBlockDecorationsProps) {
     const { data: blockData } = useBlockData();
     const { data: garden } = useCurrentGarden();
+    const activeDragPreview = useGameState((state) => state.activeDragPreview);
     const gameWeather = useGameState((state) => state.weather);
     const { data: weatherNow } = useWeatherNow();
     const windSpeed =
@@ -53,7 +58,7 @@ export function GroundBlockDecorations({
         }
 
         return stacks.flatMap((stack) =>
-            stack.blocks.flatMap((block) => {
+            stack.blocks.flatMap((block, blockIndex) => {
                 const surface = resolveGroundDecorationSurface(block.name);
                 if (!surface) {
                     return [];
@@ -73,6 +78,7 @@ export function GroundBlockDecorations({
                 return [
                     {
                         block,
+                        blockIndex,
                         placements,
                         stack,
                         surface,
@@ -105,18 +111,32 @@ export function GroundBlockDecorations({
                 >
                     {decorationBlocks
                         .filter((block) => block.stack === stack)
-                        .map(({ block, placements, surface }) => {
+                        .map(({ block, blockIndex, placements, surface }) => {
+                            const dragPreviewOffset =
+                                getActiveDragPreviewTargetPositionOffset(
+                                    createActiveDragPreviewTarget({
+                                        blockId: block.id,
+                                        blockIndex,
+                                        stackPosition: stack.position,
+                                    }),
+                                    activeDragPreview,
+                                );
+
                             return (
                                 <group
                                     key={`ground-decoration:${block.id}`}
                                     position={[
-                                        stack.position.x,
+                                        stack.position.x +
+                                            (dragPreviewOffset?.x ?? 0),
                                         getStackHeight(
                                             blockData,
                                             stack,
                                             block,
-                                        ) + blockSurfaceYOffset,
-                                        stack.position.z,
+                                        ) +
+                                            blockSurfaceYOffset +
+                                            (dragPreviewOffset?.y ?? 0),
+                                        stack.position.z +
+                                            (dragPreviewOffset?.z ?? 0),
                                     ]}
                                     rotation={[
                                         0,

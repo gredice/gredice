@@ -3,15 +3,14 @@ import type { ReactNode } from 'react';
 import type { Material } from 'three';
 import type { BufferGeometry } from 'three/src/Three.Core.js';
 import {
-    type ActiveDragPreviewTarget,
     createActiveDragPreviewTarget,
-    findActiveDragPreviewTargetOffset,
+    getActiveDragPreviewTargetPositionOffset,
 } from '../dragPreviewIdentity';
 import { useBlockData } from '../hooks/useBlockData';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { type SnowMaterialOptions, SnowOverlay } from '../snow/SnowOverlay';
 import type { Stack } from '../types/Stack';
-import { type ActiveDragPreview, useGameState } from '../useGameState';
+import { useGameState } from '../useGameState';
 import { getStackHeight } from '../utils/getStackHeight';
 
 const defaultLocalPosition: [number, number, number] = [0, 0, 0];
@@ -41,29 +40,6 @@ export type EntityInstancesBlockMaterialProps =
           material?: never;
           materialNode: ReactNode;
       };
-
-function getDragPreviewOffset(
-    target: ActiveDragPreviewTarget,
-    activeDragPreview: ActiveDragPreview | null,
-) {
-    if (!activeDragPreview) {
-        return null;
-    }
-
-    const targetOffset = findActiveDragPreviewTargetOffset(
-        activeDragPreview.targets,
-        target,
-    );
-    if (!targetOffset) {
-        return null;
-    }
-
-    return {
-        x: activeDragPreview.relative.x,
-        y: targetOffset.hoverHeight + 0.1,
-        z: activeDragPreview.relative.z,
-    };
-}
 
 export function EntityInstancesBlock(
     props: EntityInstancesBlockBaseProps & EntityInstancesBlockMaterialProps,
@@ -98,10 +74,11 @@ export function EntityInstancesBlock(
                         blockIndex,
                         stackPosition: stack.position,
                     });
-                    const dragPreviewOffset = getDragPreviewOffset(
-                        target,
-                        activeDragPreview,
-                    );
+                    const dragPreviewOffset =
+                        getActiveDragPreviewTargetPositionOffset(
+                            target,
+                            activeDragPreview,
+                        );
                     return {
                         id: `${stack.position.x}|${stack.position.z}|${block.id}|${blockIndex}`,
                         position: [

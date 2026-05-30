@@ -15,6 +15,7 @@ import {
     DoubleSide,
     type Group,
     LinearFilter,
+    type Material,
     Mesh,
     MeshBasicMaterial,
     NoBlending,
@@ -149,6 +150,26 @@ type ScreenBoundsScratch = {
     point: Vector3;
 };
 
+type ObjectWithMaterial = Object3D & {
+    material: Material | Material[] | null | undefined;
+};
+
+function hasMaterial(object: Object3D): object is ObjectWithMaterial {
+    return 'material' in object;
+}
+
+function getObjectMaterials(object: Object3D) {
+    if (!hasMaterial(object)) {
+        return [];
+    }
+
+    if (!object.material) {
+        return [];
+    }
+
+    return Array.isArray(object.material) ? object.material : [object.material];
+}
+
 function getOutlineScreenBounds({
     camera,
     drawingBufferSize,
@@ -253,15 +274,29 @@ function useTargetId() {
 
 function setLayerMask(objects: Object3D[], layer: number) {
     const previousLayers: [object: Object3D, mask: number][] = [];
+    const previousMaterialVisibility: [material: Material, visible: boolean][] =
+        [];
 
     for (const object of objects) {
         object.traverse((child) => {
             previousLayers.push([child, child.layers.mask]);
             child.layers.set(layer);
+            for (const material of getObjectMaterials(child)) {
+                if (!material.visible) {
+                    previousMaterialVisibility.push([
+                        material,
+                        material.visible,
+                    ]);
+                    material.visible = true;
+                }
+            }
         });
     }
 
     return () => {
+        for (const [material, visible] of previousMaterialVisibility) {
+            material.visible = visible;
+        }
         for (const [object, mask] of previousLayers) {
             object.layers.mask = mask;
         }

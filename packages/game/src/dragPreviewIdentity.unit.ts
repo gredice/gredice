@@ -4,6 +4,7 @@ import {
     activeDragPreviewTargetMatches,
     createActiveDragPreviewTarget,
     findActiveDragPreviewTargetOffset,
+    getActiveDragPreviewTargetPositionOffset,
 } from './dragPreviewIdentity';
 
 describe('activeDragPreviewTargetMatches', () => {
@@ -118,6 +119,40 @@ describe('findActiveDragPreviewTargetOffset', () => {
                 target,
             ),
             undefined,
+        );
+    });
+});
+
+describe('getActiveDragPreviewTargetPositionOffset', () => {
+    it('returns the active drag transform for a matching target', () => {
+        const target = createActiveDragPreviewTarget({
+            blockId: 'block-a',
+            blockIndex: 1,
+            stackPosition: { x: 2, z: 3 },
+        });
+
+        assert.deepEqual(
+            getActiveDragPreviewTargetPositionOffset(target, {
+                relative: { x: -2, z: 4 },
+                targets: [{ ...target, hoverHeight: 0.75 }],
+            }),
+            { x: -2, y: 0.85, z: 4 },
+        );
+    });
+
+    it('returns null when there is no active drag transform match', () => {
+        const target = createActiveDragPreviewTarget({
+            blockId: 'block-a',
+            blockIndex: 1,
+            stackPosition: { x: 2, z: 3 },
+        });
+
+        assert.equal(
+            getActiveDragPreviewTargetPositionOffset(target, {
+                relative: { x: -2, z: 4 },
+                targets: [],
+            }),
+            null,
         );
     });
 });
