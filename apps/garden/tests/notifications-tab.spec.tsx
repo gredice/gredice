@@ -16,6 +16,7 @@ type MockEndpoint<T> = {
 type RecordedNotificationRequests = {
     deviceDeletes: string[];
     devicePatches: unknown[];
+    notificationReads: Array<string | null>;
     preferencesUpdates: unknown[];
     testSends: number;
 };
@@ -118,6 +119,7 @@ async function mockNotificationSettingsApi(
     const recorded: RecordedNotificationRequests = {
         deviceDeletes: [],
         devicePatches: [],
+        notificationReads: [],
         preferencesUpdates: [],
         testSends: 0,
     };
@@ -219,6 +221,9 @@ async function mockNotificationSettingsApi(
         }
 
         if (pathname.endsWith('/api/notifications') && method === 'GET') {
+            recorded.notificationReads.push(
+                new URL(request.url()).searchParams.get('read'),
+            );
             await fulfillJson(route, []);
             return;
         }
@@ -247,6 +252,17 @@ test('notification tabs size to their labels', async ({ mount, page }) => {
     });
 
     expect(widths.list).toBeLessThan(widths.parent * 0.75);
+});
+
+test('notification list starts with the requested all filter', async ({
+    mount,
+    page,
+}) => {
+    const recorded = await mockNotificationSettingsApi(page);
+
+    await mount(<NotificationsTabStory initialFilter="all" />);
+
+    await expect.poll(() => recorded.notificationReads).toContain('true');
 });
 
 test('notification settings shows loading, status, and empty device states', async ({
