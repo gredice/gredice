@@ -441,6 +441,8 @@ export function Nav({
                         adminPages.Gardens.href,
                         adminPages.RaisedBeds.href,
                         adminPages.Operations.href,
+                        adminPages.FarmerPayouts.href,
+                        adminPages.FarmerPrices.href,
                     ])}
                     compact={compact}
                 >
@@ -477,6 +479,22 @@ export function Nav({
                         href={adminPages.Operations.href}
                         label={adminPages.Operations.label}
                         icon={<Hammer className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.FarmerPayouts.href}
+                        label={adminPages.FarmerPayouts.label}
+                        icon={<Euro className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.FarmerPrices.href}
+                        label={adminPages.FarmerPrices.label}
+                        icon={<Euro className="size-5" />}
                         onClick={onItemClick}
                         compact={compact}
                         nested

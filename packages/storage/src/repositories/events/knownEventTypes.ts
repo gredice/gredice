@@ -82,4 +82,10 @@ export const knownEventTypes = {
         add: 'inventory.add',
         consume: 'inventory.consume',
     },
+    payouts: {
+        requested: 'payout.requested',
+        approved: 'payout.approved',
+        rejected: 'payout.rejected',
+        paid: 'payout.paid',
+    },
 } as const;

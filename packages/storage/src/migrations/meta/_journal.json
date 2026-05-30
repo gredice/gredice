@@ -253,6 +253,20 @@
       "when": 1778938710501,
       "tag": "0035_workable_hercules",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1748476800000,
+      "tag": "0036_farmer_payouts",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1748563200000,
+      "tag": "0037_operation_prices_entity_id",
+      "breakpoints": true
     }
   ]
 }

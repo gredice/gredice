@@ -125,7 +125,7 @@ export type InvoicePaidPayload = {
 // Receipt event payload types
 // ============================================================================
 export type ReceiptCreatePayload = {
-    invoiceId: string;
+    invoiceId: string | null;
     receiptNumber: string;
     totalAmount: string;
     paymentMethod: string;
@@ -391,6 +391,30 @@ export type DeliveryRequestEventsAnyPayload = Partial<
         DeliveryRequestSurveySentPayload &
         DeliveryRequestReadyEmailProcessedPayload
 >;
+
+// ============================================================================
+// Payout events
+// ============================================================================
+export type PayoutRequestedPayload = {
+    userId: string;
+    farmId: number;
+    amount: number;
+    currency: string;
+};
+
+export type PayoutApprovedPayload = {
+    approvedByUserId: string;
+    adminNote?: string;
+};
+
+export type PayoutRejectedPayload = {
+    rejectionReason?: string;
+};
+
+export type PayoutPaidPayload = {
+    bankReference: string;
+    receiptId: number;
+};
 
 // ============================================================================
 // Generic event type

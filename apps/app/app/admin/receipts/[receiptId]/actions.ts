@@ -55,14 +55,6 @@ export async function fiscalizeReceiptAction(receiptId: number) {
         throw new Error('Receipt not found');
     }
 
-    if (!receipt.invoice) {
-        throw new Error('Invoice not found for receipt');
-    }
-
-    if (!receipt.invoice.accountId) {
-        throw new Error('Account not found for invoice');
-    }
-
     // Get fiscalization settings for the account
     const fiscalizationSettings = await getAllFiscalizationSettings();
     if (!fiscalizationSettings.userSettings) {

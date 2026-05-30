@@ -562,7 +562,7 @@ export async function createReceipt(
 
             await createEvent(
                 knownEvents.receipts.createdV1(receiptId.toString(), {
-                    invoiceId: receipt.invoiceId.toString(),
+                    invoiceId: receipt.invoiceId?.toString() ?? null,
                     receiptNumber,
                     totalAmount: receipt.totalAmount,
                     paymentMethod: receipt.paymentMethod,
