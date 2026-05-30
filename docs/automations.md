@@ -45,6 +45,11 @@ bounded phases:
 3. Recover stale running jobs, claim due queued/retryable runs, and execute them
    through the graph executor.
 
+When defaults are first installed, the runner initializes the event cursor to
+the current latest domain event id if no cursor exists. This prevents the MVP
+from backfilling historical sowing events and creating past-dated seasonal
+watering operations on first cron execution.
+
 The API cron route is protected with `CRON_SECRET` and is registered in
 `apps/api/vercel.json` on a five-minute schedule:
 

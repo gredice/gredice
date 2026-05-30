@@ -297,6 +297,9 @@ importers:
       '@gredice/client':
         specifier: workspace:*
         version: link:../../packages/client
+      '@gredice/directory-types':
+        specifier: workspace:*
+        version: link:../../packages/directory-types
       '@gredice/email':
         specifier: workspace:*
         version: link:../../packages/email

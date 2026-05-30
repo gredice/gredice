@@ -47,6 +47,7 @@
         "@biomejs/biome": "2.4.16",
         "@gredice/auth": "workspace:*",
         "@gredice/client": "workspace:*",
+        "@gredice/directory-types": "workspace:*",
         "@gredice/email": "workspace:*",
         "@gredice/fiscalization": "workspace:*",
         "@gredice/js": "workspace:*",

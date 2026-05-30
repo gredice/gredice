@@ -35,6 +35,8 @@ export interface WeatherForecastEntry {
 export interface WeatherForecastDay {
     date: string;
     symbol?: number | null;
+    minTemp?: number | null;
+    maxTemp?: number | null;
     windDirection?: string | null;
     windStrength?: number | null;
     rain?: number | null;
@@ -92,7 +94,7 @@ export const weatherMetrics: WeatherMetricDefinition[] = [
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Default visible range for the weather charts: the last 7 days of history and
+ * Default visible range for the weather charts: the last 3 days of history and
  * the next 3 days of forecast.
  */
 export function getDefaultWeatherRange(now: Date = new Date()): {
@@ -100,7 +102,7 @@ export function getDefaultWeatherRange(now: Date = new Date()): {
     to: Date;
 } {
     return {
-        from: new Date(now.getTime() - 7 * DAY_MS),
+        from: new Date(now.getTime() - 3 * DAY_MS),
         to: new Date(now.getTime() + 3 * DAY_MS),
     };
 }
@@ -208,7 +210,8 @@ export function buildWeatherSeries(
     let points = Array.from(byHour.values());
 
     if (range) {
-        const from = range.from instanceof Date ? range.from.getTime() : range.from;
+        const from =
+            range.from instanceof Date ? range.from.getTime() : range.from;
         const to = range.to instanceof Date ? range.to.getTime() : range.to;
         points = points.filter(
             (point) => point.timestamp >= from && point.timestamp <= to,
@@ -229,7 +232,9 @@ export function getWeatherDataBounds(
 ): { min: Date; max: Date } {
     const defaults = getDefaultWeatherRange(now);
 
-    const min = historyFrom ? new Date(toTimestamp(historyFrom)) : defaults.from;
+    const min = historyFrom
+        ? new Date(toTimestamp(historyFrom))
+        : defaults.from;
 
     const forecastPoints = forecastToSeriesPoints(forecast);
     const maxForecastTs = forecastPoints.reduce(
@@ -250,10 +255,16 @@ export function clampRangeToBounds(
     bounds: { min: Date; max: Date },
 ): { from: Date; to: Date } {
     const from = new Date(
-        Math.min(Math.max(range.from.getTime(), bounds.min.getTime()), bounds.max.getTime()),
+        Math.min(
+            Math.max(range.from.getTime(), bounds.min.getTime()),
+            bounds.max.getTime(),
+        ),
     );
     const to = new Date(
-        Math.max(Math.min(range.to.getTime(), bounds.max.getTime()), bounds.min.getTime()),
+        Math.max(
+            Math.min(range.to.getTime(), bounds.max.getTime()),
+            bounds.min.getTime(),
+        ),
     );
     return { from, to };
 }

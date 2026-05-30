@@ -62,25 +62,29 @@ function orderReachableNodes(
     triggerNode: AutomationGraphNode,
 ) {
     const nodesById = new Map(graph.nodes.map((node) => [node.id, node]));
-    const visited = new Set<string>();
-    const visiting = new Set<string>();
-    const ordered: AutomationGraphNode[] = [];
+    const nodeOrderById = new Map(
+        graph.nodes.map((node, index) => [node.id, index]),
+    );
+    const reachableIds = new Set<string>();
     const errors: string[] = [];
+    const stack = [triggerNode.id];
 
-    function visit(node: AutomationGraphNode) {
-        if (visiting.has(node.id)) {
-            errors.push(`Cycle detected at node ${node.id}.`);
-            return;
-        }
-        if (visited.has(node.id)) {
-            return;
+    while (stack.length > 0) {
+        const nodeId = stack.pop();
+        if (!nodeId || reachableIds.has(nodeId)) {
+            continue;
         }
 
-        visiting.add(node.id);
-        visited.add(node.id);
-        ordered.push(node);
+        const node = nodesById.get(nodeId);
+        if (!node) {
+            errors.push(`Reachable node ${nodeId} is missing.`);
+            continue;
+        }
+        reachableIds.add(node.id);
 
-        for (const edge of getNodeOutgoingEdges(graph, node.id)) {
+        const outgoingEdges = getNodeOutgoingEdges(graph, node.id);
+        for (let index = outgoingEdges.length - 1; index >= 0; index -= 1) {
+            const edge = outgoingEdges[index];
             const target = nodesById.get(edge.target);
             if (!target) {
                 errors.push(
@@ -88,17 +92,82 @@ function orderReachableNodes(
                 );
                 continue;
             }
-            visit(target);
+            stack.push(target.id);
         }
-
-        visiting.delete(node.id);
     }
 
-    visit(triggerNode);
+    const incomingCountsByNodeId = new Map<string, number>();
+    const outgoingTargetsByNodeId = new Map<string, string[]>();
+    for (const nodeId of reachableIds) {
+        incomingCountsByNodeId.set(nodeId, 0);
+        outgoingTargetsByNodeId.set(nodeId, []);
+    }
+
+    for (const edge of graph.edges) {
+        const sourceReachable = reachableIds.has(edge.source);
+        const targetReachable = reachableIds.has(edge.target);
+
+        if (targetReachable && !sourceReachable) {
+            errors.push(
+                `Node ${edge.target} has incoming edge ${edge.id} from unreachable node ${edge.source}.`,
+            );
+        }
+
+        if (!sourceReachable || !targetReachable) {
+            continue;
+        }
+
+        incomingCountsByNodeId.set(
+            edge.target,
+            (incomingCountsByNodeId.get(edge.target) ?? 0) + 1,
+        );
+        outgoingTargetsByNodeId.get(edge.source)?.push(edge.target);
+    }
+
+    const compareNodeOrder = (left: string, right: string) =>
+        (nodeOrderById.get(left) ?? Number.MAX_SAFE_INTEGER) -
+        (nodeOrderById.get(right) ?? Number.MAX_SAFE_INTEGER);
+    const readyNodeIds = Array.from(reachableIds)
+        .filter((nodeId) => incomingCountsByNodeId.get(nodeId) === 0)
+        .sort(compareNodeOrder);
+    const ordered: AutomationGraphNode[] = [];
+
+    while (readyNodeIds.length > 0) {
+        const nodeId = readyNodeIds.shift();
+        if (!nodeId) {
+            continue;
+        }
+
+        const node = nodesById.get(nodeId);
+        if (!node) {
+            continue;
+        }
+        ordered.push(node);
+
+        for (const targetNodeId of outgoingTargetsByNodeId.get(nodeId) ?? []) {
+            const incomingCount =
+                (incomingCountsByNodeId.get(targetNodeId) ?? 0) - 1;
+            incomingCountsByNodeId.set(targetNodeId, incomingCount);
+            if (incomingCount === 0) {
+                readyNodeIds.push(targetNodeId);
+                readyNodeIds.sort(compareNodeOrder);
+            }
+        }
+    }
+
+    if (ordered.length !== reachableIds.size) {
+        const orderedIds = new Set(ordered.map((node) => node.id));
+        const unresolvedNodeIds = Array.from(reachableIds)
+            .filter((nodeId) => !orderedIds.has(nodeId))
+            .sort(compareNodeOrder);
+        errors.push(
+            `Cycle or unresolved dependency detected among reachable nodes: ${unresolvedNodeIds.join(', ')}.`,
+        );
+    }
 
     return {
         ordered,
-        reachableIds: visited,
+        reachableIds,
         errors,
     };
 }

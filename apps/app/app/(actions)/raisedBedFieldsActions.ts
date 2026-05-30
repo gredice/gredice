@@ -421,23 +421,15 @@ export async function setRaisedBedFieldSowingLocationAction(
         return { success: true };
     }
 
-    const activeCycle = field.plantCycles?.find((cycle) => cycle.active);
-    const sowingMoment =
-        field.plantSowDate ??
-        activeCycle?.startedAt ??
-        field.plantScheduledDate ??
-        undefined;
-
-    await createEvent({
-        ...knownEvents.raisedBedFields.plantScheduleV1(
+    await createEvent(
+        knownEvents.raisedBedFields.plantScheduleV1(
             `${raisedBedId}|${positionIndex}`,
             {
                 scheduledDate: field.plantScheduledDate?.toISOString() ?? null,
                 sowingLocation,
             },
         ),
-        ...(sowingMoment ? { createdAt: new Date(sowingMoment) } : {}),
-    });
+    );
 
     await revalidateRaisedBedPaths(raisedBed);
 

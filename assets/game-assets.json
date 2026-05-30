@@ -337,6 +337,16 @@
             ]
         },
         {
+            "name": "CatPillow",
+            "source": "CatPillow.blend",
+            "output": "CatPillow.glb",
+            "preload": "lazy",
+            "objects": [
+                "CatPillow_Cushion",
+                "CatPillow_Seam"
+            ]
+        },
+        {
             "name": "Fence",
             "source": "Fence.blend",
             "output": "Fence.glb",

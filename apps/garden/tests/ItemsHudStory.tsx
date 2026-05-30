@@ -69,6 +69,7 @@ const blockNames = [
     'DesertStoneLarge',
     'BirdHouse',
     'FireflyJar',
+    'CatPillow',
     'Bush',
     'Tree',
     'Pine',

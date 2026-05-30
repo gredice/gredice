@@ -278,8 +278,15 @@
     {
       "idx": 39,
       "version": "7",
-      "when": 1780140566288,
-      "tag": "0039_peaceful_vin_gonzales",
+      "when": 1780142354177,
+      "tag": "0039_repair_weather_payout_prices",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1780144657470,
+      "tag": "0040_graceful_malice",
       "breakpoints": true
     }
   ]

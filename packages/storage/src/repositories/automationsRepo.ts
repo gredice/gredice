@@ -607,6 +607,33 @@ export async function getAutomationEventCursor(
     return cursor?.lastEventId ?? 0;
 }
 
+export async function initializeAutomationEventCursorToLatest({
+    key = defaultCursorKey,
+    db = storage(),
+}: {
+    key?: string;
+    db?: DatabaseClient;
+} = {}): Promise<number> {
+    const [latestEvent] = await db
+        .select({
+            lastEventId: sql<number>`coalesce(max(${events.id}), 0)`,
+        })
+        .from(events);
+    const lastEventId = Number(latestEvent?.lastEventId ?? 0);
+
+    await db
+        .insert(automationEventCursors)
+        .values({
+            key,
+            lastEventId,
+        })
+        .onConflictDoNothing({
+            target: automationEventCursors.key,
+        });
+
+    return lastEventId;
+}
+
 export async function advanceAutomationEventCursor({
     lastEventId,
     key = defaultCursorKey,

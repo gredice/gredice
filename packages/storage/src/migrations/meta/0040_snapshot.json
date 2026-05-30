@@ -1,5 +1,5 @@
 {
-  "id": "0794b16e-39b5-488d-b887-cabac489005d",
+  "id": "ba6d3454-a95e-471c-9aec-8414fce21bb1",
   "prevId": "3940b0a5-7405-4c8c-a376-0a496020cc42",
   "version": "7",
   "dialect": "postgresql",
@@ -158,7 +158,6 @@
             }
           ],
           "isUnique": true,
-          "where": "\"automation_runs\".\"source\" = 'event'",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -790,6 +789,7 @@
             }
           ],
           "isUnique": true,
+          "where": "\"automation_runs\".\"source\" = 'event'",
           "concurrently": false,
           "method": "btree",
           "with": {}

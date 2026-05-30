@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    automationEventCursors,
+    automationModuleKeys,
     claimDueAutomationRuns,
     completeAutomationRun,
     createAccount,
@@ -8,9 +10,11 @@ import {
     createAutomationRun,
     createEvent,
     createOperation,
+    enqueueAutomationRunsFromDomainEvents,
     ensureDefaultAutomationDefinitions,
     executeAutomationRun,
     FREE_WATERING_OPERATION_ID,
+    getAutomationEventCursor,
     getAutomationRunWithSteps,
     getEvents,
     getOperations,
@@ -24,7 +28,9 @@ import {
     recordAutomationRunStep,
     seasonalSowedWateringAutomationGraph,
     startAutomationRun,
+    storage,
     upsertRaisedBedField,
+    validateAutomationGraph,
 } from '@gredice/storage';
 import {
     createTestBlock,
@@ -56,7 +62,8 @@ async function createAutomationRaisedBedContext() {
 }
 
 async function getLatestEvent(type: string, aggregateId: string) {
-    const [event] = await getEvents(type, [aggregateId], 0, 100);
+    const events = await getEvents(type, [aggregateId], 0, 100);
+    const event = events.at(-1);
     assert.ok(event, `Expected event ${type} for ${aggregateId}`);
     return event;
 }
@@ -169,6 +176,89 @@ test('automation definitions persist graph trigger metadata and event-run idempo
         automationDefinitionId: definition.id,
     });
     assert.ok(listedRuns.some((run) => run.id === claimedRun.id));
+});
+
+test('automation graph validation waits for all incoming dependencies', () => {
+    const graph = {
+        nodes: [
+            {
+                id: 'trigger',
+                moduleKey: automationModuleKeys.triggerDomainEvent,
+                kind: 'trigger' as const,
+                position: { x: 0, y: 0 },
+                config: {
+                    eventType: knownEventTypes.raisedBedFields.plantUpdate,
+                },
+            },
+            {
+                id: 'status-is-sowed',
+                moduleKey: automationModuleKeys.conditionEventDataEquals,
+                kind: 'condition' as const,
+                position: { x: 260, y: -80 },
+                config: {
+                    path: 'status',
+                    operator: 'equals',
+                    value: 'sowed',
+                },
+            },
+            {
+                id: 'status-is-not-removed',
+                moduleKey: automationModuleKeys.conditionEventDataEquals,
+                kind: 'condition' as const,
+                position: { x: 260, y: 80 },
+                config: {
+                    path: 'status',
+                    operator: 'notEquals',
+                    value: 'removed',
+                },
+            },
+            {
+                id: 'queue-seasonal-waterings',
+                moduleKey:
+                    automationModuleKeys.actionQueueSeasonalSowingOfferOperations,
+                kind: 'action' as const,
+                position: { x: 620, y: 0 },
+                config: {},
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-sowed',
+                source: 'trigger',
+                target: 'status-is-sowed',
+            },
+            {
+                id: 'trigger-to-not-removed',
+                source: 'trigger',
+                target: 'status-is-not-removed',
+            },
+            {
+                id: 'sowed-to-action',
+                source: 'status-is-sowed',
+                target: 'queue-seasonal-waterings',
+            },
+            {
+                id: 'not-removed-to-action',
+                source: 'status-is-not-removed',
+                target: 'queue-seasonal-waterings',
+            },
+        ],
+    };
+
+    const validation = validateAutomationGraph(graph);
+    if (!validation.ok) {
+        assert.fail(validation.errors.join('\n'));
+    }
+
+    assert.deepStrictEqual(
+        validation.orderedNodes.map((node) => node.id),
+        [
+            'trigger',
+            'status-is-sowed',
+            'status-is-not-removed',
+            'queue-seasonal-waterings',
+        ],
+    );
 });
 
 test('default sowed automation queues seasonal watering operations through executor', async () => {
@@ -391,6 +481,66 @@ test('plant-status automation skips replay when target status already exists', a
         ).length,
         1,
     );
+});
+
+test('automation runner seeds the initial event cursor without backfilling historical events', async () => {
+    createTestDb();
+    await storage().delete(automationEventCursors);
+    const { raisedBedId } = await createAutomationRaisedBedContext();
+    const aggregateId = `${raisedBedId}|0`;
+    await createEvent({
+        ...knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'sowed',
+        }),
+        createdAt: new Date('2026-02-01T08:00:00.000Z'),
+    });
+    const historicalEvent = await getLatestEvent(
+        knownEventTypes.raisedBedFields.plantUpdate,
+        aggregateId,
+    );
+
+    const initialResult = await enqueueAutomationRunsFromDomainEvents({
+        limit: 10,
+    });
+
+    assert.strictEqual(initialResult.scannedEvents, 0);
+    assert.strictEqual(initialResult.enqueuedRuns, 0);
+    assert.strictEqual(initialResult.lastEventId, historicalEvent.id);
+    assert.strictEqual(await getAutomationEventCursor(), historicalEvent.id);
+    assert.deepStrictEqual(
+        await listAutomationRuns({ sourceEventId: historicalEvent.id }),
+        [],
+    );
+
+    await createEvent({
+        ...knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'sowed',
+        }),
+        createdAt: new Date('2026-02-02T08:00:00.000Z'),
+    });
+    const liveEvent = await getLatestEvent(
+        knownEventTypes.raisedBedFields.plantUpdate,
+        aggregateId,
+    );
+
+    const liveResult = await enqueueAutomationRunsFromDomainEvents({
+        limit: 10,
+    });
+
+    assert.strictEqual(liveResult.scannedEvents, 1);
+    assert.ok(liveResult.enqueuedRuns >= 1);
+    assert.strictEqual(liveResult.lastEventId, liveEvent.id);
+    assert.strictEqual(await getAutomationEventCursor(), liveEvent.id);
+    const liveRuns = await listAutomationRuns({ sourceEventId: liveEvent.id });
+    assert.strictEqual(liveRuns.length, liveResult.enqueuedRuns);
+    assert.ok(liveRuns.every((run) => run.sourceEventId === liveEvent.id));
+    for (const run of liveRuns) {
+        await completeAutomationRun({
+            id: run.id,
+            status: 'skipped',
+            output: { testCleanup: true },
+        });
+    }
 });
 
 test('automation runner enqueues and processes due default automation runs', async () => {

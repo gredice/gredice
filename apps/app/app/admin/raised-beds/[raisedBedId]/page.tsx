@@ -39,10 +39,13 @@ export const dynamic = 'force-dynamic';
 
 export default async function RaisedBedPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ raisedBedId: number }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
     const { raisedBedId } = await params;
+    const resolvedSearchParams = await searchParams;
     await auth(['admin']);
     const raisedBed = await getRaisedBed(raisedBedId);
     if (!raisedBed) {
@@ -186,15 +189,16 @@ export default async function RaisedBedPage({
                         )}
                         <Card>
                             <CardHeader>
-                                <CardTitle>Događaji</CardTitle>
+                                <CardTitle id="raised-bed-events">
+                                    Događaji
+                                </CardTitle>
                             </CardHeader>
-                            <CardOverflow>
-                                <Suspense>
-                                    <RaisedBedEventsTable
-                                        raisedBedId={raisedBed.id}
-                                    />
-                                </Suspense>
-                            </CardOverflow>
+                            <Suspense>
+                                <RaisedBedEventsTable
+                                    raisedBedId={raisedBed.id}
+                                    searchParams={resolvedSearchParams}
+                                />
+                            </Suspense>
                         </Card>
                     </div>
                 </EntityDetailsPropertiesLayout>

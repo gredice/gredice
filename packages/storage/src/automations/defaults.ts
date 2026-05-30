@@ -1,4 +1,7 @@
-import { upsertAutomationDefinitionByKey } from '../repositories/automationsRepo';
+import {
+    initializeAutomationEventCursorToLatest,
+    upsertAutomationDefinitionByKey,
+} from '../repositories/automationsRepo';
 import { knownEventTypes } from '../repositories/events/knownEventTypes';
 import type { AutomationGraph } from '../schema';
 import { automationModuleKeys } from './modules';
@@ -54,6 +57,8 @@ export function seasonalSowedWateringAutomationGraph(): AutomationGraph {
 }
 
 export async function ensureDefaultAutomationDefinitions() {
+    await initializeAutomationEventCursorToLatest();
+
     const seasonalSowedWatering = await upsertAutomationDefinitionByKey({
         key: seasonalSowedWateringAutomationKey,
         name: 'Queue seasonal waterings when planting is sowed',
