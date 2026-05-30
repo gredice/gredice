@@ -113,10 +113,8 @@ export function EntityFactory({
         return null;
     }
 
-    const isTopBlock = stack.blocks.indexOf(block) === stack.blocks.length - 1;
-
     if (isInstancedInView) {
-        if (noControl || !isTopBlock || view === 'closeup') {
+        if (noControl || view === 'closeup') {
             return (
                 <EntityRenderModeDebugOverlay
                     stack={stack}
@@ -166,17 +164,9 @@ export function EntityFactory({
 
     return (
         <SelectableGroup block={block}>
-            {isTopBlock ? (
-                <PickableGroup
-                    stack={stack}
-                    block={block}
-                    noControl={noControl}
-                >
-                    {entityContent}
-                </PickableGroup>
-            ) : (
-                entityContent
-            )}
+            <PickableGroup stack={stack} block={block} noControl={noControl}>
+                {entityContent}
+            </PickableGroup>
         </SelectableGroup>
     );
 }

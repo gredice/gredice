@@ -39,6 +39,8 @@ type HoverOutlineTarget = {
     active: boolean;
     color: string;
     object: Object3D;
+    opacity: number;
+    priority: number;
     thickness: number;
 };
 
@@ -68,6 +70,7 @@ function createOutlineMaterial() {
         uniforms: {
             maskTexture: { value: null as Texture | null },
             outlineColor: { value: new Color('white') },
+            opacity: { value: 1 },
             screenMax: { value: new Vector2(1, 1) },
             screenMin: { value: new Vector2(0, 0) },
             texelSize: { value: new Vector2(1, 1) },
@@ -90,6 +93,7 @@ function createOutlineMaterial() {
         fragmentShader: `
             uniform sampler2D maskTexture;
             uniform vec3 outlineColor;
+            uniform float opacity;
             uniform vec2 texelSize;
             uniform float thickness;
 
@@ -119,7 +123,7 @@ function createOutlineMaterial() {
                     }
                 }
 
-                float alpha = expanded * (1.0 - center);
+                float alpha = expanded * (1.0 - center) * opacity;
                 if (alpha < 0.01) {
                     discard;
                 }
@@ -386,6 +390,8 @@ export function HoverOutlineProvider({ children }: PropsWithChildren) {
 type HoverOutlineProps = PropsWithChildren<{
     color?: string;
     hovered?: boolean;
+    opacity?: number;
+    priority?: number;
     thickness?: number;
 }>;
 
@@ -393,6 +399,8 @@ export function HoverOutline({
     children,
     color = 'white',
     hovered = false,
+    opacity = 1,
+    priority = 0,
     thickness = 5,
 }: HoverOutlineProps) {
     const ref = useRef<Group>(null);
@@ -412,11 +420,13 @@ export function HoverOutline({
             active: hovered,
             color,
             object: ref.current,
+            opacity,
+            priority,
             thickness: clampedThickness,
         });
 
         return () => registry.deleteTarget(id);
-    }, [clampedThickness, color, hovered, id, registry]);
+    }, [clampedThickness, color, hovered, id, opacity, priority, registry]);
 
     return <group ref={ref}>{children}</group>;
 }
@@ -442,57 +452,85 @@ export function HoverOutlineEffect() {
             return;
         }
 
-        const [firstTarget] = targets;
-        if (!firstTarget) {
-            return;
+        const targetsByStyle = new Map<string, HoverOutlineTarget[]>();
+        for (const target of targets) {
+            const key = [
+                target.priority,
+                target.color,
+                target.opacity,
+                target.thickness,
+            ].join('|');
+            targetsByStyle.set(key, [
+                ...(targetsByStyle.get(key) ?? []),
+                target,
+            ]);
         }
 
-        renderMask({
-            camera,
-            drawingBufferSize,
-            gl,
-            maskMaterial,
-            renderTarget: maskRenderTarget,
-            scene,
-            targets,
-        });
-
-        outlineOverlay.material.uniforms.maskTexture.value =
-            maskRenderTarget.texture;
-        outlineOverlay.material.uniforms.outlineColor.value.set(
-            firstTarget.color,
+        const targetGroups = Array.from(targetsByStyle.values()).sort(
+            (left, right) => {
+                const leftTarget = left[0];
+                const rightTarget = right[0];
+                return (
+                    (leftTarget?.priority ?? 0) - (rightTarget?.priority ?? 0)
+                );
+            },
         );
-        const screenBounds = getOutlineScreenBounds({
-            camera,
-            drawingBufferSize,
-            scratch: screenBoundsScratch,
-            targets,
-            thickness: firstTarget.thickness,
-        });
 
-        if (!screenBounds) {
-            return;
+        for (const targetGroup of targetGroups) {
+            const [firstTarget] = targetGroup;
+            if (!firstTarget) {
+                continue;
+            }
+
+            renderMask({
+                camera,
+                drawingBufferSize,
+                gl,
+                maskMaterial,
+                renderTarget: maskRenderTarget,
+                scene,
+                targets: targetGroup,
+            });
+
+            outlineOverlay.material.uniforms.maskTexture.value =
+                maskRenderTarget.texture;
+            outlineOverlay.material.uniforms.outlineColor.value.set(
+                firstTarget.color,
+            );
+            outlineOverlay.material.uniforms.opacity.value =
+                firstTarget.opacity;
+            const screenBounds = getOutlineScreenBounds({
+                camera,
+                drawingBufferSize,
+                scratch: screenBoundsScratch,
+                targets: targetGroup,
+                thickness: firstTarget.thickness,
+            });
+
+            if (!screenBounds) {
+                continue;
+            }
+
+            outlineOverlay.material.uniforms.screenMin.value.set(
+                screenBounds.minX,
+                screenBounds.minY,
+            );
+            outlineOverlay.material.uniforms.screenMax.value.set(
+                screenBounds.maxX,
+                screenBounds.maxY,
+            );
+            outlineOverlay.material.uniforms.texelSize.value.set(
+                1 / maskRenderTarget.width,
+                1 / maskRenderTarget.height,
+            );
+            outlineOverlay.material.uniforms.thickness.value =
+                firstTarget.thickness;
+
+            const previousAutoClear = gl.autoClear;
+            gl.autoClear = false;
+            gl.render(outlineOverlay.scene, outlineOverlay.camera);
+            gl.autoClear = previousAutoClear;
         }
-
-        outlineOverlay.material.uniforms.screenMin.value.set(
-            screenBounds.minX,
-            screenBounds.minY,
-        );
-        outlineOverlay.material.uniforms.screenMax.value.set(
-            screenBounds.maxX,
-            screenBounds.maxY,
-        );
-        outlineOverlay.material.uniforms.texelSize.value.set(
-            1 / maskRenderTarget.width,
-            1 / maskRenderTarget.height,
-        );
-        outlineOverlay.material.uniforms.thickness.value =
-            firstTarget.thickness;
-
-        const previousAutoClear = gl.autoClear;
-        gl.autoClear = false;
-        gl.render(outlineOverlay.scene, outlineOverlay.camera);
-        gl.autoClear = previousAutoClear;
     }, outlineRenderPriority);
 
     return null;

@@ -4,8 +4,8 @@ import type { Material } from 'three';
 import type { BufferGeometry } from 'three/src/Three.Core.js';
 import {
     type ActiveDragPreviewTarget,
-    activeDragPreviewTargetMatches,
     createActiveDragPreviewTarget,
+    findActiveDragPreviewTargetOffset,
 } from '../dragPreviewIdentity';
 import { useBlockData } from '../hooks/useBlockData';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
@@ -50,16 +50,17 @@ function getDragPreviewOffset(
         return null;
     }
 
-    if (
-        !activeDragPreviewTargetMatches(activeDragPreview.source, target) &&
-        !activeDragPreviewTargetMatches(activeDragPreview.attached, target)
-    ) {
+    const targetOffset = findActiveDragPreviewTargetOffset(
+        activeDragPreview.targets,
+        target,
+    );
+    if (!targetOffset) {
         return null;
     }
 
     return {
         x: activeDragPreview.relative.x,
-        y: activeDragPreview.attachedHoverHeight + 0.1,
+        y: targetOffset.hoverHeight + 0.1,
         z: activeDragPreview.relative.z,
     };
 }

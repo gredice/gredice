@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
     activeDragPreviewTargetMatches,
     createActiveDragPreviewTarget,
+    findActiveDragPreviewTargetOffset,
 } from './dragPreviewIdentity';
 
 describe('activeDragPreviewTargetMatches', () => {
@@ -67,6 +68,56 @@ describe('activeDragPreviewTargetMatches', () => {
         assert.equal(
             activeDragPreviewTargetMatches(target, samePositionOtherIndex),
             false,
+        );
+    });
+});
+
+describe('findActiveDragPreviewTargetOffset', () => {
+    it('returns the matching target offset', () => {
+        const target = createActiveDragPreviewTarget({
+            blockId: 'block-a',
+            blockIndex: 1,
+            stackPosition: { x: 2, z: 3 },
+        });
+        const match = { ...target, hoverHeight: 1.25 };
+
+        assert.equal(
+            findActiveDragPreviewTargetOffset(
+                [
+                    {
+                        blockId: 'block-b',
+                        blockIndex: 0,
+                        stackPosition: { x: 2, z: 3 },
+                        hoverHeight: 0,
+                    },
+                    match,
+                ],
+                target,
+            ),
+            match,
+        );
+    });
+
+    it('returns undefined when no target offset matches', () => {
+        const target = createActiveDragPreviewTarget({
+            blockId: 'block-a',
+            blockIndex: 1,
+            stackPosition: { x: 2, z: 3 },
+        });
+
+        assert.equal(
+            findActiveDragPreviewTargetOffset(
+                [
+                    {
+                        blockId: 'block-a',
+                        blockIndex: 0,
+                        stackPosition: { x: 2, z: 3 },
+                        hoverHeight: 0,
+                    },
+                ],
+                target,
+            ),
+            undefined,
         );
     });
 });

@@ -12,9 +12,12 @@ import {
 } from 'react';
 import { Plane, Raycaster, Vector2, Vector3 } from 'three';
 import {
+    type ActiveDragPreviewTargetOffset,
     activeDragPreviewTargetMatches,
     createActiveDragPreviewTarget,
+    findActiveDragPreviewTargetOffset,
 } from '../dragPreviewIdentity';
+import { HoverOutline } from '../entities/helpers/HoverOutline';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockMove } from '../hooks/useBlockMove';
 import { useBlockRecycle } from '../hooks/useBlockRecycle';
@@ -25,6 +28,7 @@ import {
     useParticles,
 } from '../particles/ParticleSystem';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
+import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import {
     getBlockDataByName,
@@ -57,28 +61,34 @@ type PickableGroupProps = PropsWithChildren<
 >;
 
 type PlacementPreview = {
-    blockId: string;
-    blockName: string;
     blockUnderId: string | null;
     blockUnderName: string | null;
     destination: {
         x: number;
         z: number;
     };
-    destinationIndex: number;
     hoverHeight: number;
     isRecycler: boolean;
     isBlocked: boolean;
+    segment: MovingSegment;
 };
 
 type ResolvedPlacementPreview = {
     relative: Vector3;
     previewHoverHeight: number;
-    sourceHoverHeight: number;
     hoveredGardenBoxBlockId: string | null;
     canStoreInGardenBox: boolean;
     nextIsOverRecycler: boolean;
     nextIsBlocked: boolean;
+    targetOffsets: ActiveDragPreviewTargetOffset[];
+};
+
+type MovingSegment = {
+    sourceStack: Stack;
+    sourceStartIndex: number;
+    blocks: Stack['blocks'];
+    baseHeight: number;
+    canRecycle: boolean;
 };
 
 type PickupAnchorOffset = {
@@ -185,6 +195,7 @@ export function PickableGroup({
 
     const [isBlocked, setIsBlocked] = useState(false);
     const [isOverRecycler, setIsOverRecycler] = useState(false);
+    const [pickupOutlineVisible, setPickupOutlineVisible] = useState(false);
     const moveBlock = useBlockMove();
     const recycleBlock = useBlockRecycle();
     const storeBlockInGardenBox = useGardenBoxStoreBlock();
@@ -226,24 +237,17 @@ export function PickableGroup({
         blockIndex,
         stackPosition: stack.position,
     });
-    const attachedPreviewTarget = attachedPlacement
-        ? createActiveDragPreviewTarget({
-              blockId: attachedPlacement.candidateBlock.id,
-              blockIndex: attachedPlacement.candidateBlockIndex,
-              stackPosition: attachedPlacement.candidateStack.position,
-          })
-        : null;
-
     const isPreviewSource = activeDragPreviewTargetMatches(
         activeDragPreview?.source,
         activePreviewTarget,
     );
-    const isPreviewAttached = activeDragPreviewTargetMatches(
-        activeDragPreview?.attached,
+    const activePreviewTargetOffset = findActiveDragPreviewTargetOffset(
+        activeDragPreview?.targets,
         activePreviewTarget,
     );
-    const wasPreviewAttached = useRef(false);
-    const shouldResetAttachedOnPreviewEnd = useRef(false);
+    const isPreviewTarget = Boolean(activePreviewTargetOffset);
+    const wasPreviewTarget = useRef(false);
+    const shouldResetTargetOnPreviewEnd = useRef(false);
     const previousStackPosition = useRef({
         x: stack.position.x,
         z: stack.position.z,
@@ -273,28 +277,35 @@ export function PickableGroup({
             return;
         }
 
-        if (isPreviewAttached && activeDragPreview) {
-            wasPreviewAttached.current = true;
-            shouldResetAttachedOnPreviewEnd.current =
-                activeDragPreview.isBlocked;
+        if (activePreviewTargetOffset && activeDragPreview) {
+            wasPreviewTarget.current = true;
+            shouldResetTargetOnPreviewEnd.current =
+                activeDragPreview.isBlocked ||
+                (Math.abs(activeDragPreview.relative.x) <= 0.0001 &&
+                    Math.abs(activeDragPreview.relative.z) <= 0.0001);
             dragSpringsApi.start({
                 internalPosition: [
                     activeDragPreview.relative.x,
-                    activeDragPreview.attachedHoverHeight + pickupLift,
+                    activePreviewTargetOffset.hoverHeight + pickupLift,
                     activeDragPreview.relative.z,
                 ],
             });
             return;
         }
 
-        if (!activeDragPreview && wasPreviewAttached.current) {
-            wasPreviewAttached.current = false;
-            if (shouldResetAttachedOnPreviewEnd.current) {
+        if (!activeDragPreview && wasPreviewTarget.current) {
+            wasPreviewTarget.current = false;
+            if (shouldResetTargetOnPreviewEnd.current) {
                 dragSpringsApi.start({ internalPosition: [0, 0, 0], scale: 1 });
             }
-            shouldResetAttachedOnPreviewEnd.current = false;
+            shouldResetTargetOnPreviewEnd.current = false;
         }
-    }, [activeDragPreview, isPreviewAttached, isPreviewSource, dragSpringsApi]);
+    }, [
+        activeDragPreview,
+        activePreviewTargetOffset,
+        isPreviewSource,
+        dragSpringsApi,
+    ]);
 
     useEffect(() => {
         return () => {
@@ -322,40 +333,90 @@ export function PickableGroup({
         );
     }
 
-    function resolvePlacementPreviewForRelative(relative: Vector3) {
-        if (!garden || !blocksData || blockIndex < 0) {
-            return null;
+    function getMovingSegments(): MovingSegment[] {
+        if (blockIndex < 0) {
+            return [];
         }
 
-        const movingPlacements = [
+        const sourceBlocks = stack.blocks.slice(blockIndex);
+        if (sourceBlocks.length === 0) {
+            return [];
+        }
+
+        const attachedBlocks = attachedPlacement
+            ? attachedPlacement.candidateStack.blocks.slice(
+                  attachedPlacement.candidateBlockIndex,
+              )
+            : [];
+        const canRecycleSelection =
+            canRecycle &&
+            sourceBlocks.length === 1 &&
+            (!attachedPlacement || attachedBlocks.length === 1);
+
+        return [
             {
-                blockId: block.id,
-                blockName: block.name,
                 sourceStack: stack,
-                currentHeight: currentStackHeight ?? 0,
-                canRecycle,
+                sourceStartIndex: blockIndex,
+                blocks: sourceBlocks,
+                baseHeight: currentStackHeight ?? 0,
+                canRecycle: canRecycleSelection,
             },
-            ...(attachedPlacement
+            ...(attachedPlacement && attachedBlocks.length > 0
                 ? [
                       {
-                          blockId: attachedPlacement.candidateBlock.id,
-                          blockName: attachedPlacement.candidateBlock.name,
                           sourceStack: attachedPlacement.candidateStack,
-                          currentHeight: attachedCurrentStackHeight,
+                          sourceStartIndex:
+                              attachedPlacement.candidateBlockIndex,
+                          blocks: attachedBlocks,
+                          baseHeight: attachedCurrentStackHeight,
                           canRecycle: false,
                       },
                   ]
                 : []),
         ];
+    }
+
+    function createTargetOffsets(
+        placementPreviews: PlacementPreview[],
+        hoverHeight: number,
+    ): ActiveDragPreviewTargetOffset[] {
+        return placementPreviews.flatMap((preview) =>
+            preview.segment.blocks.map((segmentBlock, segmentBlockOffset) => ({
+                ...createActiveDragPreviewTarget({
+                    blockId: segmentBlock.id,
+                    blockIndex:
+                        preview.segment.sourceStartIndex + segmentBlockOffset,
+                    stackPosition: preview.segment.sourceStack.position,
+                }),
+                hoverHeight,
+            })),
+        );
+    }
+
+    function resolvePlacementPreviewForRelative(relative: Vector3) {
+        if (!garden || !blocksData || blockIndex < 0) {
+            return null;
+        }
+
+        const movingSegments = getMovingSegments();
+        if (movingSegments.length === 0) {
+            return null;
+        }
         const movingBlockIds = new Set(
-            movingPlacements.map((placement) => placement.blockId),
+            movingSegments.flatMap((segment) =>
+                segment.blocks.map((segmentBlock) => segmentBlock.id),
+            ),
         );
 
-        const placementPreviews: PlacementPreview[] = movingPlacements.map(
-            (placement) => {
+        const placementPreviews: PlacementPreview[] = movingSegments.flatMap(
+            (segment) => {
+                if (!segment.blocks[0]) {
+                    return [];
+                }
+
                 const destination = {
-                    x: placement.sourceStack.position.x + relative.x,
-                    z: placement.sourceStack.position.z + relative.z,
+                    x: segment.sourceStack.position.x + relative.x,
+                    z: segment.sourceStack.position.z + relative.z,
                 };
                 const destinationStack = getStack(destination);
                 const destinationBlocks =
@@ -373,35 +434,38 @@ export function PickableGroup({
                     ? getBlockDataByName(blocksData, blockUnder.name)
                     : null;
                 const isRecycler =
-                    placement.canRecycle &&
+                    segment.canRecycle &&
                     (blockUnderData?.functions?.recycler ?? false);
                 const isStackable =
                     blockUnderData?.attributes?.stackable ?? true;
                 const hoverHeight =
                     getStackHeight(blocksData, destinationWithoutMoving) -
-                    placement.currentHeight;
+                    segment.baseHeight;
 
-                return {
-                    blockId: placement.blockId,
-                    blockName: placement.blockName,
-                    blockUnderId: blockUnder?.id ?? null,
-                    blockUnderName: blockUnder?.name ?? null,
-                    destination,
-                    destinationIndex: destinationBlocks.length,
-                    hoverHeight,
-                    isRecycler,
-                    isBlocked: !isStackable && !isRecycler,
-                };
+                return [
+                    {
+                        blockUnderId: blockUnder?.id ?? null,
+                        blockUnderName: blockUnder?.name ?? null,
+                        destination,
+                        hoverHeight,
+                        isRecycler,
+                        isBlocked: !isStackable && !isRecycler,
+                        segment,
+                    },
+                ];
             },
         );
 
+        const movedRaisedBedPreviews = placementPreviews.filter((preview) =>
+            preview.segment.blocks.some(
+                (segmentBlock) => segmentBlock.name === 'Raised_Bed',
+            ),
+        );
         const movedRaisedBedPreviewByPosition = new Map(
-            placementPreviews
-                .filter((preview) => preview.blockName === 'Raised_Bed')
-                .map((preview) => [
-                    `${preview.destination.x}|${preview.destination.z}`,
-                    preview,
-                ]),
+            movedRaisedBedPreviews.map((preview) => [
+                `${preview.destination.x}|${preview.destination.z}`,
+                preview,
+            ]),
         );
 
         function getExternalRaisedBedBlockAtPosition(x: number, z: number) {
@@ -448,9 +512,8 @@ export function PickableGroup({
             });
         }
 
-        const raisedBedPlacementBlocked = placementPreviews
-            .filter((preview) => preview.blockName === 'Raised_Bed')
-            .some((preview) => {
+        const raisedBedPlacementBlocked = movedRaisedBedPreviews.some(
+            (preview) => {
                 const neighbors = [
                     { x: preview.destination.x - 1, z: preview.destination.z },
                     { x: preview.destination.x + 1, z: preview.destination.z },
@@ -470,10 +533,7 @@ export function PickableGroup({
                     const movedNeighbor = movedRaisedBedPreviewByPosition.get(
                         `${neighbor.x}|${neighbor.z}`,
                     );
-                    if (
-                        movedNeighbor &&
-                        movedNeighbor.blockName === 'Raised_Bed'
-                    ) {
+                    if (movedNeighbor) {
                         raisedBedNeighborCount += 1;
                         continue;
                     }
@@ -502,15 +562,10 @@ export function PickableGroup({
 
                 const excludedPositions = new Set<string>([
                     `${preview.destination.x}|${preview.destination.z}`,
-                    ...placementPreviews
-                        .filter(
-                            (candidatePreview) =>
-                                candidatePreview.blockName === 'Raised_Bed',
-                        )
-                        .map(
-                            (candidatePreview) =>
-                                `${candidatePreview.destination.x}|${candidatePreview.destination.z}`,
-                        ),
+                    ...movedRaisedBedPreviews.map(
+                        (candidatePreview) =>
+                            `${candidatePreview.destination.x}|${candidatePreview.destination.z}`,
+                    ),
                 ]);
 
                 return hasExternalRaisedBedNeighbor(
@@ -518,24 +573,17 @@ export function PickableGroup({
                     externalNeighbor.z,
                     excludedPositions,
                 );
-            });
+            },
+        );
 
         const sourcePreview = placementPreviews[0];
         if (!sourcePreview) {
             return null;
         }
 
-        const attachedPreview = attachedPlacement
-            ? placementPreviews.find(
-                  (preview) =>
-                      preview.blockId === attachedPlacement.candidateBlock.id,
-              )
-            : null;
         const sourceHoverHeight = sourcePreview.hoverHeight;
-        const attachedHoverHeight = attachedPreview?.hoverHeight ?? 0;
         const previewHoverHeight = Math.max(
-            sourceHoverHeight,
-            attachedHoverHeight,
+            ...placementPreviews.map((preview) => preview.hoverHeight),
         );
         const hoveredGardenBoxBlockId =
             placementPreviews.find(
@@ -543,12 +591,14 @@ export function PickableGroup({
             )?.blockUnderId ?? null;
         const canStoreInGardenBox =
             hoveredGardenBoxBlockId !== null &&
-            block.name !== 'GardenBox' &&
-            block.name !== 'Raised_Bed' &&
-            attachedPlacement === null;
-        const heightsMismatch =
-            attachedPlacement !== null &&
-            Math.abs(sourceHoverHeight - attachedHoverHeight) > 0.0001;
+            sourcePreview.segment.blocks.length === 1 &&
+            sourcePreview.segment.blocks[0]?.name !== 'GardenBox' &&
+            sourcePreview.segment.blocks[0]?.name !== 'Raised_Bed' &&
+            placementPreviews.length === 1;
+        const heightsMismatch = placementPreviews.some(
+            (preview) =>
+                Math.abs(sourceHoverHeight - preview.hoverHeight) > 0.0001,
+        );
         const nextIsOverRecycler = sourcePreview.isRecycler;
         const nextIsBlocked = nextIsOverRecycler
             ? false
@@ -561,11 +611,14 @@ export function PickableGroup({
         return {
             relative: relative.clone(),
             previewHoverHeight,
-            sourceHoverHeight,
             hoveredGardenBoxBlockId,
             canStoreInGardenBox,
             nextIsOverRecycler,
             nextIsBlocked,
+            targetOffsets: createTargetOffsets(
+                placementPreviews,
+                previewHoverHeight,
+            ),
         };
     }
 
@@ -729,6 +782,7 @@ export function PickableGroup({
         setActiveDragPreview(null);
         setIsBlocked(false);
         setIsOverRecycler(false);
+        setPickupOutlineVisible(false);
         setPickupBlock(null);
     }
 
@@ -742,6 +796,7 @@ export function PickableGroup({
         clearSessionTimers(session);
         pointerSession.current = null;
         cleanupPointerSessionListeners();
+        setPickupOutlineVisible(false);
         if (resetSpring) {
             dragSpringsApi.start({ internalPosition: [0, 0, 0], scale: 1 });
         }
@@ -758,14 +813,12 @@ export function PickableGroup({
         );
         setActiveDragPreview({
             source: activePreviewTarget,
-            attached: attachedPreviewTarget,
+            targets: preview.targetOffsets,
             hoveredGardenBoxBlockId: preview.hoveredGardenBoxBlockId,
             relative: {
                 x: preview.relative.x,
                 z: preview.relative.z,
             },
-            sourceHoverHeight: preview.sourceHoverHeight,
-            attachedHoverHeight: preview.previewHoverHeight,
             isBlocked: preview.nextIsBlocked,
             isOverRecycler: preview.nextIsOverRecycler,
         });
@@ -800,6 +853,7 @@ export function PickableGroup({
         session.hasDraggedAfterPickup = false;
         session.latestPreview = preview;
         setIsDragging(false);
+        setPickupOutlineVisible(true);
         setPickupBlock(block);
         disturbAnimals({
             sourceBlockId: block.id,
@@ -918,38 +972,29 @@ export function PickableGroup({
         dropSound.play();
         triggerPlaceHaptic();
         spawn(resolveBlockParticleType(block.name), previewDropPosition, 12);
-        const sourcePosition = {
-            x: stack.position.x,
-            z: stack.position.z,
-        };
-        const destinationPosition = {
-            x: stack.position.x + relative.x,
-            z: stack.position.z + relative.z,
-        };
+        const moveRequests = getMovingSegments().flatMap((segment) =>
+            segment.blocks.map((segmentBlock) => ({
+                sourcePosition: {
+                    x: segment.sourceStack.position.x,
+                    z: segment.sourceStack.position.z,
+                },
+                destinationPosition: {
+                    x: segment.sourceStack.position.x + relative.x,
+                    z: segment.sourceStack.position.z + relative.z,
+                },
+                blockIndex: segment.sourceStartIndex,
+                sourceBlockId: segmentBlock.id,
+            })),
+        );
+        const [primaryMoveRequest, ...additionalBlockMoves] = moveRequests;
+        if (!primaryMoveRequest) {
+            dragSpringsApi.start({ internalPosition: [0, 0, 0], scale: 1 });
+            return;
+        }
 
         await moveBlock.mutateAsync({
-            sourcePosition,
-            destinationPosition,
-            blockIndex,
-            sourceBlockId: block.id,
-            attached: attachedPlacement
-                ? {
-                      sourcePosition: {
-                          x: attachedPlacement.candidateStack.position.x,
-                          z: attachedPlacement.candidateStack.position.z,
-                      },
-                      destinationPosition: {
-                          x:
-                              attachedPlacement.candidateStack.position.x +
-                              relative.x,
-                          z:
-                              attachedPlacement.candidateStack.position.z +
-                              relative.z,
-                      },
-                      blockIndex: attachedPlacement.candidateBlockIndex,
-                      sourceBlockId: attachedPlacement.candidateBlock.id,
-                  }
-                : undefined,
+            ...primaryMoveRequest,
+            additionalBlocks: additionalBlockMoves,
         });
     }
 
@@ -1019,6 +1064,7 @@ export function PickableGroup({
                     scale: 1,
                 });
             }
+            setPickupOutlineVisible(false);
             return;
         }
 
@@ -1096,6 +1142,7 @@ export function PickableGroup({
             }
 
             activeSession.hintVisible = true;
+            setPickupOutlineVisible(true);
             dragSpringsApi.start({
                 internalPosition: [0, pickupHintLift, 0],
                 scale: 1.01,
@@ -1129,13 +1176,8 @@ export function PickableGroup({
     }
 
     const isGroupedPreviewBlocked =
-        (isPreviewSource || isPreviewAttached) &&
-        (activeDragPreview?.isBlocked ?? false);
+        isPreviewTarget && (activeDragPreview?.isBlocked ?? false);
     const showBlockedIndicator = isBlocked || isGroupedPreviewBlocked;
-    const showValidIndicator =
-        (isPreviewSource || isPreviewAttached) &&
-        Boolean(activeDragPreview) &&
-        !showBlockedIndicator;
     const blockedScaleSprings = useSpring({
         scale: showBlockedIndicator ? 1 : 0,
         opacity: showBlockedIndicator ? 1 : 0,
@@ -1143,13 +1185,7 @@ export function PickableGroup({
             tension: 350,
         },
     });
-    const validScaleSprings = useSpring({
-        scale: showValidIndicator ? 1 : 0,
-        opacity: showValidIndicator ? 0.65 : 0,
-        config: {
-            tension: 350,
-        },
-    });
+    const showPickupOutline = pickupOutlineVisible || isPreviewTarget;
     const indicatorPosition: [number, number, number] = [
         stack.position.x,
         currentStackHeight,
@@ -1179,17 +1215,6 @@ export function PickableGroup({
             onClick={handleClick}
         >
             <animated.group
-                scale={validScaleSprings.scale}
-                position={indicatorPosition}
-            >
-                <Shadow
-                    color="#22c55e"
-                    opacity={0.65}
-                    colorStop={0.45}
-                    scale={1.8}
-                />
-            </animated.group>
-            <animated.group
                 scale={blockedScaleSprings.scale}
                 position={indicatorPosition}
             >
@@ -1200,7 +1225,15 @@ export function PickableGroup({
                     scale={2}
                 />
             </animated.group>
-            {children}
+            <HoverOutline
+                color="#86efac"
+                hovered={showPickupOutline}
+                opacity={0.55}
+                priority={1}
+                thickness={2}
+            >
+                {children}
+            </HoverOutline>
             {isOverRecycler && (
                 <Suspense>
                     <animated.group position={recyclePosition}>
