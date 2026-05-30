@@ -274,6 +274,13 @@
       "when": 1780071062280,
       "tag": "0038_weather_history",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1780142354177,
+      "tag": "0039_repair_weather_payout_prices",
+      "breakpoints": true
     }
   ]
 }

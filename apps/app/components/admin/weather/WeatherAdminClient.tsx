@@ -7,16 +7,31 @@ import {
     windDirectionToDegrees,
 } from '@gredice/js/weather';
 import { Card, CardOverflow } from '@gredice/ui/Card';
+import { ArrowUp } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import {
-    WeatherCharts,
-    type WeatherChartsRange,
-} from '@gredice/ui/WeatherCharts';
-import { ArrowUp } from '@gredice/ui/icons';
+import type { WeatherChartsRange } from '@gredice/ui/WeatherCharts';
+import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
+
+const WeatherCharts = dynamic(
+    () =>
+        import('@gredice/ui/WeatherCharts').then(
+            (module) => module.WeatherCharts,
+        ),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex h-80 w-full items-center justify-center">
+                <Typography level="body2" tertiary>
+                    Učitavanje podataka…
+                </Typography>
+            </div>
+        ),
+    },
+);
 
 interface CurrentWeather {
     symbol?: number | null;
@@ -58,7 +73,11 @@ function StatCard({
                         <Typography level="h4" semiBold>
                             {value}
                             {unit ? (
-                                <Typography level="body2" component="span" tertiary>
+                                <Typography
+                                    level="body2"
+                                    component="span"
+                                    tertiary
+                                >
                                     {` ${unit}`}
                                 </Typography>
                             ) : null}
@@ -109,12 +128,18 @@ export function WeatherAdminClient({
                 <div className="flex flex-col gap-3 md:flex-row">
                     <StatCard
                         label="Temperatura"
-                        value={temperature != null ? temperature.toFixed(1) : '—'}
+                        value={
+                            temperature != null ? temperature.toFixed(1) : '—'
+                        }
                         unit="°C"
                     />
                     <StatCard
                         label="Padaline"
-                        value={current?.rain != null ? current.rain.toFixed(1) : '—'}
+                        value={
+                            current?.rain != null
+                                ? current.rain.toFixed(1)
+                                : '—'
+                        }
                         unit="mm"
                     />
                     <StatCard
