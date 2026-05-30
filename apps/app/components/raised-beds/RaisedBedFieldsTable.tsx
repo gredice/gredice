@@ -34,19 +34,28 @@ const STATUSES_BEFORE_TRANSPLANT = new Set([
     'sprouted',
 ]);
 
-function getCurrentLocation(
-    field: RaisedBedField,
-): 'greenhouse' | 'raisedBed' {
+function canFieldCurrentlyBeInGreenhouse(field: RaisedBedField) {
     if (
         field.active &&
-        field.sowingLocation === 'greenhouse' &&
         STATUSES_BEFORE_TRANSPLANT.has(field.plantStatus ?? '') &&
         !field.plantDeadDate &&
         !field.plantHarvestedDate &&
         !field.plantRemovedDate
     ) {
+        return true;
+    }
+
+    return false;
+}
+
+function getCurrentLocation(field: RaisedBedField): 'greenhouse' | 'raisedBed' {
+    if (
+        field.sowingLocation === 'greenhouse' &&
+        canFieldCurrentlyBeInGreenhouse(field)
+    ) {
         return 'greenhouse';
     }
+
     return 'raisedBed';
 }
 
@@ -335,6 +344,9 @@ function RaisedBedFieldTile({
                             positionIndex={positionIndex}
                             sowingLocation={field.sowingLocation}
                             currentLocation={getCurrentLocation(field)}
+                            greenhouseCurrentLocationEligible={canFieldCurrentlyBeInGreenhouse(
+                                field,
+                            )}
                         />
                     </div>
                 )}
