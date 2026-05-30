@@ -4,7 +4,6 @@ import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group, Material, Object3D } from 'three';
 import { MathUtils, Mesh, MeshStandardMaterial, Vector3 } from 'three';
-import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
 import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
@@ -1256,7 +1255,6 @@ function createBirdDebugEntry({
 
 function Bird({ habitat }: { habitat: BirdHabitat }) {
     const gltf = useGameGLTF('BirdSmall');
-    const { enableDebugHudFlag = false } = useGameFlags();
     const groupRef = useRef<Group>(null);
     const randomRef = useRef(createRandom(habitat.seed));
     const runtimeRef = useRef<BirdRuntimeState | null>(null);
@@ -1324,12 +1322,8 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     }, [habitat.home.facingYaw, habitat.home.position]);
 
     useEffect(() => {
-        if (!enableDebugHudFlag) {
-            removeAnimalDebugEntry(habitat.id);
-        }
-
         return () => removeAnimalDebugEntry(habitat.id);
-    }, [enableDebugHudFlag, habitat.id, removeAnimalDebugEntry]);
+    }, [habitat.id, removeAnimalDebugEntry]);
 
     useFrame(({ clock }, delta) => {
         const group = groupRef.current;
@@ -1614,12 +1608,7 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
         });
         updateGroundPeckPose({ delta, rig: birdModel.rig });
 
-        if (
-            enableDebugHudFlag &&
-            runtime &&
-            group &&
-            now - lastAnimalDebugUpdateRef.current >= 0.5
-        ) {
+        if (runtime && group && now - lastAnimalDebugUpdateRef.current >= 0.5) {
             lastAnimalDebugUpdateRef.current = now;
             setAnimalDebugEntry(
                 createBirdDebugEntry({ group, habitat, now, runtime }),
