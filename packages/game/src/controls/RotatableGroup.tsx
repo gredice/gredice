@@ -8,6 +8,7 @@ import { useGameState } from '../useGameState';
 import { findAttachedRaisedBedBlockId } from '../utils/raisedBedBlocks';
 
 const ROTATE_DRAG_THRESHOLD = 0.1;
+const DOUBLE_TAP_THRESHOLD_MS = 320;
 
 export function RotatableGroup({
     children,
@@ -22,13 +23,10 @@ export function RotatableGroup({
         'https://cdn.gredice.com/sounds/effects/Swipe Generic 01.mp3',
     );
 
-    const rotateInitiated = useRef<Vector3>(null);
-    const doubleClickDownTimeStamp = useRef(0);
-    const firstClickTimeStamp = useRef(0);
+    const rotatePointerDownPoint = useRef<Vector3 | null>(null);
+    const firstTapTimeStamp = useRef(0);
 
     function doRotate() {
-        if (!rotateInitiated.current) return false;
-
         if (isDragging || pickupBlock) return false;
 
         const attachedRaisedBedBlockId =
@@ -44,49 +42,47 @@ export function RotatableGroup({
             rotation: block.rotation + 1,
             blockIds,
         });
-        rotateInitiated.current = null;
 
         swipeSound.play();
         return true;
     }
 
     function handlePointerDown(event: ThreeEvent<globalThis.PointerEvent>) {
-        if (event.button === 2) {
-            rotateInitiated.current = event.point;
+        if (event.button !== 0) {
+            return;
         }
 
-        doubleClickDownTimeStamp.current = Date.now();
-        if (
-            doubleClickDownTimeStamp.current - firstClickTimeStamp.current >
-            1000
-        ) {
-            firstClickTimeStamp.current = 0;
-        }
+        rotatePointerDownPoint.current = event.point.clone();
     }
 
     function handleRotateCancel() {
-        rotateInitiated.current = null;
+        rotatePointerDownPoint.current = null;
     }
 
     function handlePointerUp(event: ThreeEvent<globalThis.PointerEvent>) {
-        if (
-            rotateInitiated.current &&
-            event.point.distanceTo(rotateInitiated.current) >
-                ROTATE_DRAG_THRESHOLD
-        ) {
-            rotateInitiated.current = null;
+        if (event.button !== 0) {
+            return;
+        }
+
+        const pointerDownPoint = rotatePointerDownPoint.current;
+        rotatePointerDownPoint.current = null;
+
+        if (!pointerDownPoint) {
+            return;
+        }
+
+        if (event.point.distanceTo(pointerDownPoint) > ROTATE_DRAG_THRESHOLD) {
+            firstTapTimeStamp.current = 0;
             return;
         }
 
         const now = Date.now();
-        if (now - firstClickTimeStamp.current < 600) {
-            rotateInitiated.current = event.point;
-            firstClickTimeStamp.current = 0;
-        } else if (now - doubleClickDownTimeStamp.current < 300) {
-            firstClickTimeStamp.current = now;
+        if (now - firstTapTimeStamp.current >= DOUBLE_TAP_THRESHOLD_MS) {
+            firstTapTimeStamp.current = now;
+            return;
         }
 
-        if (!rotateInitiated.current) return;
+        firstTapTimeStamp.current = 0;
 
         if (doRotate()) {
             event.stopPropagation();

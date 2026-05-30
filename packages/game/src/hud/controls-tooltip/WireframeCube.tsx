@@ -44,6 +44,7 @@ const STROKE = 'rgba(0,0,0,0.2)';
 
 export function WireframeCube({
     translateX = 0,
+    translateY = 0,
     scale = 1,
     rotateY = 0,
     size = 42,
@@ -86,7 +87,7 @@ export function WireframeCube({
             style={{
                 width: size,
                 height: size,
-                transform: `translateX(${translateX}px) scale(${scale})`,
+                transform: `translate(${translateX}px, ${translateY}px) scale(${scale})`,
                 transition: 'transform 120ms linear',
             }}
         >

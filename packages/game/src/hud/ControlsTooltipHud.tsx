@@ -8,7 +8,7 @@ import type { DeviceType } from './controls-tooltip';
 import { ControlsVisualization } from './controls-tooltip';
 
 const STORAGE_KEY = 'game-controls-tooltip-v1';
-const TOOLTIP_VERSION = 2;
+const TOOLTIP_VERSION = 3;
 const REMINDER_AFTER_MS = 1000 * 60 * 60 * 24 * 30;
 
 type TooltipState = { dismissedAt: number; seenVersion: number };

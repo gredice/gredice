@@ -2,7 +2,7 @@ import type { ThreeEvent } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import { areBlockInteractionsSuppressed } from './blockInteractionSuppression';
 
-const defaultDelayMs = 260;
+const defaultDelayMs = 340;
 
 export function useDeferredSingleClick(
     callback: () => void,

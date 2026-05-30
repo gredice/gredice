@@ -49,6 +49,7 @@ const touchMoveCancelDistance = 12;
 const pickupHintLift = 0.04;
 const pickupLift = 0.1;
 const suppressClickAfterDragMs = 450;
+const placementSnapSearchRadius = 5;
 
 type PickableGroupProps = PropsWithChildren<
     Pick<EntityInstanceProps, 'stack' | 'block'> & { noControl?: boolean }
@@ -86,6 +87,9 @@ type PointerSession = {
     startClientY: number;
     lastClientX: number;
     lastClientY: number;
+    pickupClientX: number | null;
+    pickupClientY: number | null;
+    hasDraggedAfterPickup: boolean;
     activated: boolean;
     cancelled: boolean;
     hintVisible: boolean;
@@ -147,6 +151,7 @@ export function PickableGroup({
         pt: new Vector3(),
         dest: new Vector3(),
         relative: new Vector3(),
+        projected: new Vector3(),
     });
     const raycaster = useRef(new Raycaster());
     const pointerVector = useRef(new Vector2());
@@ -308,38 +313,10 @@ export function PickableGroup({
         );
     }
 
-    function resolvePlacementPreview(
-        clientX: number,
-        clientY: number,
-    ): ResolvedPlacementPreview | null {
+    function resolvePlacementPreviewForRelative(relative: Vector3) {
         if (!garden || !blocksData || blockIndex < 0) {
             return null;
         }
-
-        const rect = domElement.getBoundingClientRect();
-        if (rect.width <= 0 || rect.height <= 0) {
-            return null;
-        }
-
-        const { pt, dest, relative } = dragState.current;
-        pt.set(
-            ((clientX - rect.left) / rect.width) * 2 - 1,
-            ((rect.top - clientY) / rect.height) * 2 + 1,
-            0,
-        );
-
-        pointerVector.current.set(pt.x, pt.y);
-        raycaster.current.setFromCamera(pointerVector.current, camera);
-        const isIntersecting = raycaster.current.ray.intersectPlane(
-            groundPlane,
-            pt,
-        );
-        if (!isIntersecting) {
-            return null;
-        }
-
-        dest.set(pt.x, 0, pt.z).round();
-        relative.set(dest.x - stack.position.x, 0, dest.z - stack.position.z);
 
         const movingPlacements = [
             {
@@ -583,6 +560,140 @@ export function PickableGroup({
         };
     }
 
+    function getPlacementCandidateDestinations(seedDestination: {
+        x: number;
+        z: number;
+    }) {
+        const candidates = new Map<string, { x: number; z: number }>();
+        const addCandidate = (x: number, z: number) => {
+            candidates.set(`${x}|${z}`, { x, z });
+        };
+
+        for (
+            let x = seedDestination.x - placementSnapSearchRadius;
+            x <= seedDestination.x + placementSnapSearchRadius;
+            x++
+        ) {
+            for (
+                let z = seedDestination.z - placementSnapSearchRadius;
+                z <= seedDestination.z + placementSnapSearchRadius;
+                z++
+            ) {
+                addCandidate(x, z);
+            }
+        }
+
+        addCandidate(stack.position.x, stack.position.z);
+
+        return candidates.values();
+    }
+
+    function getProjectedPointerDistanceSquared({
+        x,
+        y,
+        z,
+        clientX,
+        clientY,
+        rect,
+    }: {
+        x: number;
+        y: number;
+        z: number;
+        clientX: number;
+        clientY: number;
+        rect: DOMRect;
+    }) {
+        const projected = dragState.current.projected
+            .set(x, y, z)
+            .project(camera);
+        if (projected.z < -1 || projected.z > 1) {
+            return Number.POSITIVE_INFINITY;
+        }
+
+        const screenX = rect.left + ((projected.x + 1) / 2) * rect.width;
+        const screenY = rect.top + ((1 - projected.y) / 2) * rect.height;
+        return (screenX - clientX) ** 2 + (screenY - clientY) ** 2;
+    }
+
+    function resolvePlacementPreviewAtDestination(destination: {
+        x: number;
+        z: number;
+    }) {
+        const { relative } = dragState.current;
+        relative.set(
+            destination.x - stack.position.x,
+            0,
+            destination.z - stack.position.z,
+        );
+        return resolvePlacementPreviewForRelative(relative);
+    }
+
+    function resolvePlacementPreview(
+        clientX: number,
+        clientY: number,
+    ): ResolvedPlacementPreview | null {
+        if (!garden || !blocksData || blockIndex < 0) {
+            return null;
+        }
+
+        const rect = domElement.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) {
+            return null;
+        }
+
+        const { pt, dest } = dragState.current;
+        pt.set(
+            ((clientX - rect.left) / rect.width) * 2 - 1,
+            ((rect.top - clientY) / rect.height) * 2 + 1,
+            0,
+        );
+
+        pointerVector.current.set(pt.x, pt.y);
+        raycaster.current.setFromCamera(pointerVector.current, camera);
+        const isIntersecting = raycaster.current.ray.intersectPlane(
+            groundPlane,
+            pt,
+        );
+        if (!isIntersecting) {
+            return null;
+        }
+
+        dest.set(pt.x, 0, pt.z).round();
+
+        let closestPreview: ResolvedPlacementPreview | null = null;
+        let closestDistanceSquared = Number.POSITIVE_INFINITY;
+
+        for (const candidateDestination of getPlacementCandidateDestinations({
+            x: dest.x,
+            z: dest.z,
+        })) {
+            const preview =
+                resolvePlacementPreviewAtDestination(candidateDestination);
+            if (!preview) {
+                continue;
+            }
+
+            const distanceSquared = getProjectedPointerDistanceSquared({
+                x: candidateDestination.x,
+                y:
+                    (currentStackHeight ?? 0) +
+                    preview.previewHoverHeight +
+                    pickupLift,
+                z: candidateDestination.z,
+                clientX,
+                clientY,
+                rect,
+            });
+
+            if (distanceSquared < closestDistanceSquared) {
+                closestDistanceSquared = distanceSquared;
+                closestPreview = preview;
+            }
+        }
+
+        return closestPreview;
+    }
+
     function clearSessionTimers(session: PointerSession) {
         if (session.hintTimer) {
             window.clearTimeout(session.hintTimer);
@@ -659,16 +770,19 @@ export function PickableGroup({
             return;
         }
 
-        const preview = resolvePlacementPreview(
-            session.lastClientX,
-            session.lastClientY,
-        );
+        const preview = resolvePlacementPreviewAtDestination({
+            x: stack.position.x,
+            z: stack.position.z,
+        });
         if (!preview) {
             cancelPointerSession(true);
             return;
         }
 
         session.activated = true;
+        session.pickupClientX = session.lastClientX;
+        session.pickupClientY = session.lastClientY;
+        session.hasDraggedAfterPickup = false;
         session.latestPreview = preview;
         setIsDragging(false);
         setPickupBlock(block);
@@ -691,6 +805,18 @@ export function PickableGroup({
         }
 
         const relative = preview.relative;
+        const hasMoved =
+            Math.abs(relative.x) > 0.0001 || Math.abs(relative.z) > 0.0001;
+
+        if (
+            !hasMoved &&
+            !preview.canStoreInGardenBox &&
+            !preview.nextIsOverRecycler
+        ) {
+            dragSpringsApi.start({ internalPosition: [0, 0, 0], scale: 1 });
+            return;
+        }
+
         const previewDropPosition = stack.position
             .clone()
             .add(relative)
@@ -822,6 +948,22 @@ export function PickableGroup({
         }
 
         event.preventDefault();
+        if (!session.hasDraggedAfterPickup) {
+            const pickupClientX = session.pickupClientX ?? session.startClientX;
+            const pickupClientY = session.pickupClientY ?? session.startClientY;
+
+            if (
+                Math.hypot(
+                    event.clientX - pickupClientX,
+                    event.clientY - pickupClientY,
+                ) <= pointerMoveCancelDistance(session.pointerType)
+            ) {
+                return;
+            }
+
+            session.hasDraggedAfterPickup = true;
+        }
+
         const preview = resolvePlacementPreview(event.clientX, event.clientY);
         if (!preview) {
             return;
@@ -892,6 +1034,9 @@ export function PickableGroup({
             startClientY: nativeEvent.clientY,
             lastClientX: nativeEvent.clientX,
             lastClientY: nativeEvent.clientY,
+            pickupClientX: null,
+            pickupClientY: null,
+            hasDraggedAfterPickup: false,
             activated: false,
             cancelled: false,
             hintVisible: false,
