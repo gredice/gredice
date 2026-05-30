@@ -13,6 +13,9 @@ import { WeatherForecastDetails } from './components/weather/WeatherForecastDeta
 import { weatherIcons } from './components/weather/WeatherIcons';
 import { WeatherNowDetails } from './components/weather/WeatherNowDetails';
 
+const weatherPopperClassName =
+    'w-fit max-w-[calc(100vw-1rem)] overflow-hidden border-tertiary border-b-4';
+
 export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
     const currentTime = useLiveTime();
     const weatherEnabled = !noWeather;
@@ -37,7 +40,7 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
                     <Popper
                         side="bottom"
                         sideOffset={12}
-                        className="w-[min(calc(100vw-1rem),44rem)] overflow-hidden border-tertiary border-b-4"
+                        className={weatherPopperClassName}
                         trigger={
                             <Button
                                 title="Trenutno vrijeme"
@@ -73,7 +76,7 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
                     <Popper
                         side="bottom"
                         sideOffset={12}
-                        className="w-[min(calc(100vw-1rem),44rem)] overflow-hidden border-tertiary border-b-4"
+                        className={weatherPopperClassName}
                         trigger={
                             <Button
                                 title="Prognoza vremena"
