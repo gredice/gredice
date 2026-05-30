@@ -93,6 +93,10 @@ async function mockGardenApi(page: Page, signedIn: boolean) {
                 windDirection: null,
                 windSpeed: 0,
             };
+        } else if (pathname.endsWith('/api/data/weather/history/range')) {
+            body = { from: null, to: null };
+        } else if (pathname.endsWith('/api/data/weather/history')) {
+            body = [];
         } else if (pathname.endsWith('/api/data/weather')) {
             body = [];
         } else if (
