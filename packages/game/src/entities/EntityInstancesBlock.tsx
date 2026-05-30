@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { Material } from 'three';
 import type { BufferGeometry } from 'three/src/Three.Core.js';
 import {
+    activeDragPreviewTargetMatches,
     createActiveDragPreviewTarget,
     getActiveDragPreviewTargetPositionOffset,
 } from '../dragPreviewIdentity';
@@ -13,6 +14,8 @@ import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { getStackHeight } from '../utils/getStackHeight';
 import { resolveBlockInstanceCapacity } from './blockInstanceCapacity';
+import { blockPickupOutlineStyle } from './helpers/blockPickupOutlineStyle';
+import { HoverOutline } from './helpers/HoverOutline';
 
 const defaultLocalPosition: [number, number, number] = [0, 0, 0];
 const defaultLocalRotation: [number, number, number] = [0, 0, 0];
@@ -61,6 +64,9 @@ export function EntityInstancesBlock(
     } = props;
     const { data: blockData } = useBlockData();
     const activeDragPreview = useGameState((state) => state.activeDragPreview);
+    const stationaryPickupOutlineTarget = useGameState(
+        (state) => state.stationaryPickupOutlineTarget,
+    );
 
     const blockInstances = stacks
         ?.filter((stack) => stack.blocks.some((b) => b.name === name))
@@ -80,8 +86,16 @@ export function EntityInstancesBlock(
                             target,
                             activeDragPreview,
                         );
+                    const stationaryPickupOutlineVisible =
+                        activeDragPreviewTargetMatches(
+                            stationaryPickupOutlineTarget,
+                            target,
+                        );
                     return {
                         id: `${stack.position.x}|${stack.position.z}|${block.id}|${blockIndex}`,
+                        pickupOutlineVisible:
+                            Boolean(dragPreviewOffset) ||
+                            stationaryPickupOutlineVisible,
                         position: [
                             stack.position.x + (dragPreviewOffset?.x ?? 0),
                             y + (yOffset ?? 0) + (dragPreviewOffset?.y ?? 0),
@@ -176,6 +190,30 @@ export function EntityInstancesBlock(
                 {'materialNode' in props ? props.materialNode : null}
                 {renderInstances('base')}
             </Instances>
+            {(blockInstances ?? []).map((data) =>
+                data.pickupOutlineVisible ? (
+                    <HoverOutline
+                        key={`block-${name}-pickup-outline-${data.id}`}
+                        {...blockPickupOutlineStyle}
+                        hovered
+                    >
+                        <group
+                            position={data.position}
+                            rotation={[0, data.rotation * (Math.PI / 2), 0]}
+                        >
+                            <mesh
+                                geometry={geometry}
+                                position={localTransform.position}
+                                rotation={localTransform.rotation}
+                                scale={scale}
+                                raycast={() => null}
+                            >
+                                <meshBasicMaterial visible={false} />
+                            </mesh>
+                        </group>
+                    </HoverOutline>
+                ) : null,
+            )}
             {renderRainOverlays()}
             {renderSnowOverlays()}
         </>

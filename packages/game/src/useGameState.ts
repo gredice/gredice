@@ -164,6 +164,10 @@ export type GameState = {
     // Pickup system
     pickupBlock: Block | null;
     setPickupBlock: (block: Block | null) => void;
+    stationaryPickupOutlineTarget: ActiveDragPreviewTarget | null;
+    setStationaryPickupOutlineTarget: (
+        target: ActiveDragPreviewTarget | null,
+    ) => void;
     activeDragPreview: ActiveDragPreview | null;
     setActiveDragPreview: (dragPreview: ActiveDragPreview | null) => void;
     openGardenBoxBlockId: string | null;
@@ -321,6 +325,9 @@ export function createGameState({
         // Pickaup system
         pickupBlock: null,
         setPickupBlock: (block: Block | null) => set({ pickupBlock: block }),
+        stationaryPickupOutlineTarget: null,
+        setStationaryPickupOutlineTarget: (stationaryPickupOutlineTarget) =>
+            set({ stationaryPickupOutlineTarget }),
         activeDragPreview: null,
         setActiveDragPreview: (activeDragPreview) => set({ activeDragPreview }),
         openGardenBoxBlockId: null,

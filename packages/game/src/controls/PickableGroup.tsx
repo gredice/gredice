@@ -7,6 +7,8 @@ import {
     type PropsWithChildren,
     Suspense,
     useEffect,
+    useLayoutEffect,
+    useMemo,
     useRef,
     useState,
 } from 'react';
@@ -17,6 +19,7 @@ import {
     createActiveDragPreviewTarget,
     findActiveDragPreviewTargetOffset,
 } from '../dragPreviewIdentity';
+import { blockPickupOutlineStyle } from '../entities/helpers/blockPickupOutlineStyle';
 import { HoverOutline } from '../entities/helpers/HoverOutline';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockMove } from '../hooks/useBlockMove';
@@ -57,7 +60,10 @@ const placementSnapSearchRadius = 5;
 const animalPickupDisturbanceRadius = 1.8;
 
 type PickableGroupProps = PropsWithChildren<
-    Pick<EntityInstanceProps, 'stack' | 'block'> & { noControl?: boolean }
+    Pick<EntityInstanceProps, 'stack' | 'block'> & {
+        noControl?: boolean;
+        renderPickupOutline?: boolean;
+    }
 >;
 
 type PlacementPreview = {
@@ -150,6 +156,7 @@ export function PickableGroup({
     stack,
     block,
     noControl,
+    renderPickupOutline = true,
 }: PickableGroupProps) {
     const [dragSprings, dragSpringsApi] = useSpring(() => ({
         from: { internalPosition: [0, 0, 0], scale: 1 },
@@ -192,6 +199,9 @@ export function PickableGroup({
     const setActiveDragPreview = useGameState(
         (state) => state.setActiveDragPreview,
     );
+    const setStationaryPickupOutlineTarget = useGameState(
+        (state) => state.setStationaryPickupOutlineTarget,
+    );
 
     const [isBlocked, setIsBlocked] = useState(false);
     const [isOverRecycler, setIsOverRecycler] = useState(false);
@@ -232,11 +242,18 @@ export function PickableGroup({
           )
         : 0;
     const blockIndex = stack.blocks.indexOf(block);
-    const activePreviewTarget = createActiveDragPreviewTarget({
-        blockId: block.id,
-        blockIndex,
-        stackPosition: stack.position,
-    });
+    const activePreviewTarget = useMemo(
+        () =>
+            createActiveDragPreviewTarget({
+                blockId: block.id,
+                blockIndex,
+                stackPosition: {
+                    x: stack.position.x,
+                    z: stack.position.z,
+                },
+            }),
+        [block.id, blockIndex, stack.position.x, stack.position.z],
+    );
     const isPreviewSource = activeDragPreviewTargetMatches(
         activeDragPreview?.source,
         activePreviewTarget,
@@ -305,6 +322,20 @@ export function PickableGroup({
         activePreviewTargetOffset,
         isPreviewSource,
         dragSpringsApi,
+    ]);
+
+    useLayoutEffect(() => {
+        if (renderPickupOutline || !pickupOutlineVisible) {
+            return;
+        }
+
+        setStationaryPickupOutlineTarget(activePreviewTarget);
+        return () => setStationaryPickupOutlineTarget(null);
+    }, [
+        activePreviewTarget,
+        pickupOutlineVisible,
+        renderPickupOutline,
+        setStationaryPickupOutlineTarget,
     ]);
 
     useEffect(() => {
@@ -1201,6 +1232,14 @@ export function PickableGroup({
         return <>{children}</>;
     }
 
+    const pickupOutlineContent = renderPickupOutline ? (
+        <HoverOutline {...blockPickupOutlineStyle} hovered={showPickupOutline}>
+            {children}
+        </HoverOutline>
+    ) : (
+        children
+    );
+
     return (
         <animated.group
             position={
@@ -1225,15 +1264,7 @@ export function PickableGroup({
                     scale={2}
                 />
             </animated.group>
-            <HoverOutline
-                color="#86efac"
-                hovered={showPickupOutline}
-                opacity={0.55}
-                priority={1}
-                thickness={2}
-            >
-                {children}
-            </HoverOutline>
+            {pickupOutlineContent}
             {isOverRecycler && (
                 <Suspense>
                     <animated.group position={recyclePosition}>
