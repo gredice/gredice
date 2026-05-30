@@ -20,7 +20,7 @@ import {
 } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { SegmentedProgress } from '../../controls/components/SegmentedProgress';
-import { useIsSandboxGarden } from '../../hooks/useCurrentGarden';
+import { useGardens } from '../../hooks/useGardens';
 import { useInventory } from '../../hooks/useInventory';
 import { useSandboxPlant } from '../../hooks/useSandboxPlant';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
@@ -89,7 +89,12 @@ export function PlantPicker({
     const { data: cart } = useShoppingCart();
     const setCartItem = useSetShoppingCartItem();
     const { data: inventory } = useInventory();
-    const isSandbox = useIsSandboxGarden();
+    // Derive sandbox from the gardens list by id (the picker already receives
+    // gardenId) so it stays decoupled from the game-state context.
+    const { data: gardens } = useGardens();
+    const isSandbox = Boolean(
+        gardens?.find((garden) => garden.id === gardenId)?.isSandbox,
+    );
     const sandboxPlant = useSandboxPlant();
     const [sandboxAgeIndex, setSandboxAgeIndex] = useState(
         SANDBOX_AGE_PRESETS.length - 1,
@@ -215,6 +220,7 @@ export function PlantPicker({
             });
             try {
                 await sandboxPlant.mutateAsync({
+                    gardenId,
                     raisedBedId,
                     positionIndex,
                     plantSortId: selectedSortId,

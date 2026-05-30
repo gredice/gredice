@@ -1,37 +1,32 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useGameState } from '../useGameState';
-import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
+import { useGardensKeys } from './useGardens';
 
 const mutationKey = ['gardens', 'current', 'sandboxClearField'];
 
 /**
  * Clear a plant from a sandbox raised bed field. Only valid for sandbox gardens.
+ * Context-free (takes the gardenId per call).
  */
 export function useSandboxClearField() {
     const queryClient = useQueryClient();
-    const { data: garden } = useCurrentGarden();
-    const winterMode = useGameState((state) => state.winterMode);
-    const gardenQueryKey = currentGardenKeys(winterMode, garden?.id);
 
     return useMutation({
         mutationKey,
         mutationFn: async ({
+            gardenId,
             raisedBedId,
             positionIndex,
         }: {
+            gardenId: number;
             raisedBedId: number;
             positionIndex: number;
         }) => {
-            if (!garden) {
-                throw new Error('No garden selected');
-            }
-
             const response = await clientAuthenticated().api.gardens[
                 ':gardenId'
             ]['raised-beds'][':raisedBedId'].fields[':positionIndex'].$delete({
                 param: {
-                    gardenId: garden.id.toString(),
+                    gardenId: gardenId.toString(),
                     raisedBedId: raisedBedId.toString(),
                     positionIndex: positionIndex.toString(),
                 },
@@ -45,7 +40,7 @@ export function useSandboxClearField() {
         onSettled: async () => {
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({
-                    queryKey: gardenQueryKey,
+                    queryKey: [...useGardensKeys, 'current'],
                 });
             }
         },

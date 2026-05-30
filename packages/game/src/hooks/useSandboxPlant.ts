@@ -1,7 +1,6 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useGameState } from '../useGameState';
-import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
+import { useGardensKeys } from './useGardens';
 
 const mutationKey = ['gardens', 'current', 'sandboxPlant'];
 
@@ -9,40 +8,36 @@ const mutationKey = ['gardens', 'current', 'sandboxPlant'];
  * Plant a sort into a sandbox raised bed field at a chosen age.
  *
  * Only valid for sandbox ("play") gardens — the server backdates the sow date
- * by `ageDays` so the plant renders already-grown.
+ * by `ageDays` so the plant renders already-grown. Context-free (takes the
+ * gardenId per call) so it can be used outside the game-state provider.
  */
 export function useSandboxPlant() {
     const queryClient = useQueryClient();
-    const { data: garden } = useCurrentGarden();
-    const winterMode = useGameState((state) => state.winterMode);
-    const gardenQueryKey = currentGardenKeys(winterMode, garden?.id);
 
     return useMutation({
         mutationKey,
         mutationFn: async ({
+            gardenId,
             raisedBedId,
             positionIndex,
             plantSortId,
             ageDays,
             status,
         }: {
+            gardenId: number;
             raisedBedId: number;
             positionIndex: number;
             plantSortId: number;
             ageDays: number;
             status?: string;
         }) => {
-            if (!garden) {
-                throw new Error('No garden selected');
-            }
-
             const response = await clientAuthenticated().api.gardens[
                 ':gardenId'
             ]['raised-beds'][':raisedBedId'].fields[':positionIndex'][
                 'sandbox-plant'
             ].$post({
                 param: {
-                    gardenId: garden.id.toString(),
+                    gardenId: gardenId.toString(),
                     raisedBedId: raisedBedId.toString(),
                     positionIndex: positionIndex.toString(),
                 },
@@ -60,8 +55,9 @@ export function useSandboxPlant() {
         },
         onSettled: async () => {
             if (queryClient.isMutating({ mutationKey }) === 1) {
+                // Prefix-match every current-garden query regardless of winter mode.
                 await queryClient.invalidateQueries({
-                    queryKey: gardenQueryKey,
+                    queryKey: [...useGardensKeys, 'current'],
                 });
             }
         },
