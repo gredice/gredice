@@ -164,6 +164,7 @@ export function EntityInstancesBlock(
             <Instances
                 limit={limit}
                 geometry={geometry}
+                frustumCulled={false}
                 receiveShadow
                 castShadow
                 material={'material' in props ? props.material : undefined}

@@ -946,6 +946,7 @@ function cloneCatMaterial(material: Material) {
 
 function prepareCatMesh(object: Mesh) {
     object.castShadow = true;
+    object.frustumCulled = false;
     object.receiveShadow = true;
     object.material = Array.isArray(object.material)
         ? object.material.map(cloneCatMaterial)
