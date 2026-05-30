@@ -101,10 +101,8 @@ const catWalkTurnDamping = 7.5;
 const catIdleTurnDamping = 8.5;
 const catWalkLookAheadProgress = 0.05;
 const fullTurn = Math.PI * 2;
-const catBlackFurColor = '#07080a';
-const catSoftBlackFurColor = '#101214';
-const catDarkPatchColor = '#17191b';
-const catDarkPatchShadowColor = '#090a0b';
+const catDarkFurColor = '#2f3437';
+const catSoftDarkFurColor = '#3b4144';
 
 const catPillowBlockNames = new Set(['CatPillow', 'Cat_Pillow']);
 const groundBlockNames = new Set([
@@ -923,19 +921,11 @@ function createCatDebugEntry({
 
 function getCatMaterialTint(materialName: string) {
     if (materialName.includes('Material.Cat.BlackFurSoft')) {
-        return catSoftBlackFurColor;
+        return catSoftDarkFurColor;
     }
 
     if (materialName.includes('Material.Cat.BlackFur')) {
-        return catBlackFurColor;
-    }
-
-    if (materialName.includes('Material.Cat.WhiteFurShadow')) {
-        return catDarkPatchShadowColor;
-    }
-
-    if (materialName.includes('Material.Cat.WhiteFur')) {
-        return catDarkPatchColor;
+        return catDarkFurColor;
     }
 
     return null;
