@@ -10,7 +10,13 @@ import {
     weatherMetrics,
     windDirectionToDegrees,
 } from '@gredice/js/weather';
-import { type ComponentType, useMemo, useState } from 'react';
+import {
+    type ComponentType,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import {
     Area,
     Bar,
@@ -59,15 +65,39 @@ export interface WeatherChartsProps {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
 const DEFAULT_FORECAST_DAYS = 3;
 const HISTORY_PRESETS = [3, 7, 30];
+const SMALL_CHART_WIDTH = 560;
+const SMALL_CHART_AGGREGATION_MS = 8 * HOUR_MS;
 
 type ForecastMode = 'standard' | 'extended';
 
-type MetricChartPoint = WeatherSeriesPoint & {
+type DisplayWeatherSeriesPoint = WeatherSeriesPoint & {
+    aggregateStart?: number;
+    aggregateEnd?: number;
+    aggregatePointCount?: number;
+};
+
+type MetricChartPoint = DisplayWeatherSeriesPoint & {
     historyValue: number | null;
     forecastValue: number | null;
 };
+
+interface WeatherSeriesBucket {
+    source: WeatherSeriesPoint['source'];
+    bucketStart: number;
+    bucketEnd: number;
+    timestampTotal: number;
+    pointCount: number;
+    temperatureTotal: number;
+    temperatureCount: number;
+    rainTotal: number;
+    windSpeedTotal: number;
+    windSpeedCount: number;
+    windDirection: string | null;
+    symbol: number | null;
+}
 
 const weatherMetricIcons: Record<
     WeatherMetricKey,
@@ -82,8 +112,77 @@ function isWeatherMetricKey(value: string): value is WeatherMetricKey {
     return weatherMetrics.some((metric) => metric.key === value);
 }
 
+function roundMetric(value: number): number {
+    return Math.round(value * 10) / 10;
+}
+
+function aggregateWeatherSeries(
+    points: DisplayWeatherSeriesPoint[],
+    bucketMs: number,
+): DisplayWeatherSeriesPoint[] {
+    const buckets = new Map<string, WeatherSeriesBucket>();
+
+    for (const point of points) {
+        const bucketStart = Math.floor(point.timestamp / bucketMs) * bucketMs;
+        const bucketKey = `${point.source}:${bucketStart}`;
+        const existing = buckets.get(bucketKey);
+        const bucket =
+            existing ??
+            ({
+                source: point.source,
+                bucketStart,
+                bucketEnd: bucketStart + bucketMs,
+                timestampTotal: 0,
+                pointCount: 0,
+                temperatureTotal: 0,
+                temperatureCount: 0,
+                rainTotal: 0,
+                windSpeedTotal: 0,
+                windSpeedCount: 0,
+                windDirection: null,
+                symbol: null,
+            } satisfies WeatherSeriesBucket);
+
+        bucket.timestampTotal += point.timestamp;
+        bucket.pointCount += 1;
+        if (point.temperature != null) {
+            bucket.temperatureTotal += point.temperature;
+            bucket.temperatureCount += 1;
+        }
+        bucket.rainTotal += point.rain;
+        bucket.windSpeedTotal += point.windSpeed;
+        bucket.windSpeedCount += 1;
+        bucket.windDirection = point.windDirection ?? bucket.windDirection;
+        bucket.symbol = point.symbol ?? bucket.symbol;
+        buckets.set(bucketKey, bucket);
+    }
+
+    return Array.from(buckets.values())
+        .map((bucket) => ({
+            timestamp: Math.round(bucket.timestampTotal / bucket.pointCount),
+            temperature:
+                bucket.temperatureCount > 0
+                    ? roundMetric(
+                          bucket.temperatureTotal / bucket.temperatureCount,
+                      )
+                    : null,
+            rain: roundMetric(bucket.rainTotal),
+            windSpeed:
+                bucket.windSpeedCount > 0
+                    ? roundMetric(bucket.windSpeedTotal / bucket.windSpeedCount)
+                    : 0,
+            windDirection: bucket.windDirection,
+            symbol: bucket.symbol,
+            source: bucket.source,
+            aggregateStart: bucket.bucketStart,
+            aggregateEnd: bucket.bucketEnd,
+            aggregatePointCount: bucket.pointCount,
+        }))
+        .sort((a, b) => a.timestamp - b.timestamp);
+}
+
 function toMetricChartData(
-    points: WeatherSeriesPoint[],
+    points: DisplayWeatherSeriesPoint[],
     metricKey: WeatherMetricKey,
 ): MetricChartPoint[] {
     const definition = weatherMetrics.find(
@@ -234,6 +333,42 @@ function toEmptyMetricChartData(range: WeatherChartsRange): MetricChartPoint[] {
     }));
 }
 
+function useElementWidth<T extends HTMLElement>() {
+    const ref = useRef<T>(null);
+    const [width, setWidth] = useState<number | null>(null);
+
+    useLayoutEffect(() => {
+        const element = ref.current;
+        if (!element) return;
+
+        const updateWidth = () => {
+            setWidth(Math.round(element.getBoundingClientRect().width));
+        };
+
+        updateWidth();
+
+        if (typeof ResizeObserver === 'undefined') {
+            window.addEventListener('resize', updateWidth);
+            return () => window.removeEventListener('resize', updateWidth);
+        }
+
+        const observer = new ResizeObserver((entries) => {
+            const entry = entries[0];
+            setWidth(
+                Math.round(
+                    entry?.contentRect.width ??
+                        element.getBoundingClientRect().width,
+                ),
+            );
+        });
+
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, []);
+
+    return { ref, width };
+}
+
 function formatShortDate(date: Date): string {
     return date.toLocaleDateString('hr-HR', {
         day: '2-digit',
@@ -372,10 +507,21 @@ export function WeatherCharts({
     const nowTs = Date.now();
     const now = new Date(nowTs);
     const selectableBounds = getPresetSelectableBounds(bounds, now);
+    const { ref: containerRef, width: containerWidth } =
+        useElementWidth<HTMLDivElement>();
+    const isSmallChart =
+        containerWidth != null && containerWidth < SMALL_CHART_WIDTH;
 
-    const data = useMemo(
+    const rawData = useMemo<DisplayWeatherSeriesPoint[]>(
         () => buildWeatherSeries(history, forecast, range),
         [history, forecast, range],
+    );
+    const data = useMemo(
+        () =>
+            isSmallChart
+                ? aggregateWeatherSeries(rawData, SMALL_CHART_AGGREGATION_MS)
+                : rawData,
+        [isSmallChart, rawData],
     );
 
     const forecastStart = Math.max(nowTs, range.from.getTime());
@@ -384,7 +530,7 @@ export function WeatherCharts({
 
     const spansMultipleDays =
         range.to.getTime() - range.from.getTime() > 2 * DAY_MS;
-    const xTicks = getTimeTicks(range);
+    const xTicks = getTimeTicks(range, isSmallChart ? 4 : 5);
     const tickFormatter = (value: number) => {
         const date = new Date(value);
         return spansMultipleDays
@@ -524,9 +670,9 @@ export function WeatherCharts({
                             scale="time"
                             domain={[range.from.getTime(), range.to.getTime()]}
                             tickFormatter={tickFormatter}
-                            tick={{ fontSize: 11 }}
                             ticks={xTicks}
-                            minTickGap={24}
+                            tick={{ fontSize: isSmallChart ? 10 : 11 }}
+                            minTickGap={isSmallChart ? 40 : 24}
                         />
                         <YAxis
                             tick={{ fontSize: 11 }}
@@ -681,7 +827,11 @@ export function WeatherCharts({
               : undefined;
 
     return (
-        <Stack spacing={compact ? 1 : 2} className={cx('w-full', className)}>
+        <Stack
+            ref={containerRef}
+            spacing={compact ? 1 : 2}
+            className={cx('w-full', className)}
+        >
             <div className="flex flex-col items-start gap-2 md:flex-row md:items-center md:justify-between">
                 <ButtonGroup legend="Mjerenje" size="sm">
                     {weatherMetrics.map((definition) => {

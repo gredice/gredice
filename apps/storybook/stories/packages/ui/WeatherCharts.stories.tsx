@@ -135,7 +135,7 @@ const meta = {
                     'rain/precipitation, and wind-speed/direction views with an icon metric ' +
                     'selector, date-range picker, and preset toggle groups. A shaded region marks the forecast window ' +
                     'and a dashed "now" reference line is drawn when it falls inside the ' +
-                    'visible range.',
+                    'visible range. Narrow mobile layouts aggregate chart points into 8-hour buckets.',
             },
         },
     },
@@ -225,6 +225,28 @@ export const Compact: Story = {
                 story:
                     'Reduced chart height (220 px) and tighter vertical spacing used inside ' +
                     'the in-game weather history modal.',
+            },
+        },
+    },
+};
+
+export const MobileCompact: Story = {
+    name: 'Mobile compact (8-hour buckets)',
+    args: {
+        compact: true,
+        metric: 'rain',
+    },
+    render: (args) => (
+        <div className="max-w-[360px]">
+            <ControlledWeatherCharts {...args} />
+        </div>
+    ),
+    parameters: {
+        docs: {
+            description: {
+                story:
+                    'Constrained mobile HUD width. The chart groups visible points into ' +
+                    '8-hour buckets so precipitation bars and line points stay readable.',
             },
         },
     },
