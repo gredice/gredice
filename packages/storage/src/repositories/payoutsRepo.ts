@@ -88,6 +88,25 @@ const VERIFIED_SOWING_STATUSES = new Set([
     'removed',
 ]);
 
+const SOWING_DURATION_MINUTES = 5;
+
+function getOperationDurationMinutes(operationData: OperationData | undefined) {
+    const durationValue = operationData?.attributes.duration;
+
+    if (typeof durationValue === 'number' && Number.isFinite(durationValue)) {
+        return Math.max(durationValue, 0);
+    }
+
+    if (typeof durationValue === 'string') {
+        const parsed = Number.parseFloat(durationValue);
+        if (Number.isFinite(parsed)) {
+            return Math.max(parsed, 0);
+        }
+    }
+
+    return 0;
+}
+
 // Returns one entry per verified sowing cycle for a farm.
 async function getVerifiedSowingsForFarm(
     farmId: number,
@@ -204,6 +223,8 @@ export type FarmerEarning = {
     entityId: number | null;
     entityLabel?: string;
     operationCount: number;
+    durationMinutes: number;
+    totalDurationMinutes: number;
     pricePerUnit: number;
     totalEarned: number;
     currency: string;
@@ -214,6 +235,7 @@ export type FarmerBalance = {
     totalPaid: number;
     totalPending: number;
     availableBalance: number;
+    totalDurationMinutes: number;
     currency: string;
     earningsByType: FarmerEarning[];
 };
@@ -260,6 +282,12 @@ export async function getFarmerBalance(
             operation.information.label || operation.information.name,
         ]),
     );
+    const operationDurationById = new Map(
+        operationsData.map((operation) => [
+            operation.id,
+            getOperationDurationMinutes(operation),
+        ]),
+    );
 
     const earningsByKey = new Map<string, FarmerEarning>();
     let currency = 'eur';
@@ -277,11 +305,13 @@ export async function getFarmerBalance(
 
         currency = price.currency;
         const priceValue = parseFloat(price.pricePerUnit);
+        const durationMinutes = operationDurationById.get(op.entityId) ?? 0;
         const key = `operation:${op.entityId}`;
         const existing = earningsByKey.get(key);
 
         if (existing) {
             existing.operationCount += 1;
+            existing.totalDurationMinutes += durationMinutes;
             existing.totalEarned += priceValue;
         } else {
             earningsByKey.set(key, {
@@ -289,6 +319,8 @@ export async function getFarmerBalance(
                 entityId: op.entityId,
                 entityLabel: operationLabelById.get(op.entityId),
                 operationCount: 1,
+                durationMinutes,
+                totalDurationMinutes: durationMinutes,
                 pricePerUnit: priceValue,
                 totalEarned: priceValue,
                 currency: price.currency,
@@ -313,12 +345,15 @@ export async function getFarmerBalance(
 
         if (existing) {
             existing.operationCount += 1;
+            existing.totalDurationMinutes += SOWING_DURATION_MINUTES;
             existing.totalEarned += priceValue;
         } else {
             earningsByKey.set(typeName, {
                 entityTypeName: typeName,
                 entityId: null,
                 operationCount: 1,
+                durationMinutes: SOWING_DURATION_MINUTES,
+                totalDurationMinutes: SOWING_DURATION_MINUTES,
                 pricePerUnit: priceValue,
                 totalEarned: priceValue,
                 currency: price.currency,
@@ -328,6 +363,10 @@ export async function getFarmerBalance(
 
     const totalEarned = Array.from(earningsByKey.values()).reduce(
         (acc, e) => acc + e.totalEarned,
+        0,
+    );
+    const totalDurationMinutes = Array.from(earningsByKey.values()).reduce(
+        (acc, e) => acc + e.totalDurationMinutes,
         0,
     );
 
@@ -346,6 +385,7 @@ export async function getFarmerBalance(
         totalPaid,
         totalPending,
         availableBalance,
+        totalDurationMinutes,
         currency,
         earningsByType: Array.from(earningsByKey.values()),
     };

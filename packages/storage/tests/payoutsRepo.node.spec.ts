@@ -28,7 +28,10 @@ import {
 } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
-async function createPublishedOperationEntity(label: string) {
+async function createPublishedOperationEntity(
+    label: string,
+    durationMinutes = 0,
+) {
     await upsertEntityType({ name: 'operation', label: 'Radnje' });
 
     const suffix = randomUUID();
@@ -46,6 +49,13 @@ async function createPublishedOperationEntity(label: string) {
         entityTypeName: 'operation',
         dataType: 'text',
     });
+    const durationDefinitionId = await createAttributeDefinition({
+        category: 'attributes',
+        name: 'duration',
+        label: 'Duration',
+        entityTypeName: 'operation',
+        dataType: 'number',
+    });
 
     const entityId = await createEntity('operation');
     await upsertAttributeValue({
@@ -59,6 +69,12 @@ async function createPublishedOperationEntity(label: string) {
         entityTypeName: 'operation',
         entityId,
         value: label,
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: durationDefinitionId,
+        entityTypeName: 'operation',
+        entityId,
+        value: durationMinutes.toString(),
     });
     await updateEntity({ id: entityId, state: 'published' });
 
@@ -169,9 +185,14 @@ test('getFarmerBalance groups completed operations by CMS operation name', async
     });
     await assignUserToFarm(farmId, userId);
 
-    const wateringEntityId =
-        await createPublishedOperationEntity('Zalijevanje');
-    const hoeingEntityId = await createPublishedOperationEntity('Okopavanje');
+    const wateringEntityId = await createPublishedOperationEntity(
+        'Zalijevanje',
+        10,
+    );
+    const hoeingEntityId = await createPublishedOperationEntity(
+        'Okopavanje',
+        20,
+    );
 
     await upsertOperationPrice({
         farmId,
@@ -214,11 +235,16 @@ test('getFarmerBalance groups completed operations by CMS operation name', async
 
     assert.equal(watering?.entityLabel, 'Zalijevanje');
     assert.equal(watering?.operationCount, 2);
+    assert.equal(watering?.durationMinutes, 10);
+    assert.equal(watering?.totalDurationMinutes, 20);
     assert.equal(watering?.pricePerUnit, 0.5);
     assert.equal(watering?.totalEarned, 1);
     assert.equal(hoeing?.entityLabel, 'Okopavanje');
     assert.equal(hoeing?.operationCount, 1);
+    assert.equal(hoeing?.durationMinutes, 20);
+    assert.equal(hoeing?.totalDurationMinutes, 20);
     assert.equal(balance.totalEarned, 1.75);
+    assert.equal(balance.totalDurationMinutes, 40);
 });
 
 test('getFarmerBalance includes farm raised-bed operations by effective farm', async () => {
@@ -271,8 +297,10 @@ test('getFarmerBalance includes farm raised-bed operations by effective farm', a
     });
     assert.ok(field);
 
-    const operationEntityId =
-        await createPublishedOperationEntity('Zalijevanje');
+    const operationEntityId = await createPublishedOperationEntity(
+        'Zalijevanje',
+        12,
+    );
     await upsertOperationPrice({
         farmId,
         entityTypeName: 'operation',
@@ -297,8 +325,10 @@ test('getFarmerBalance includes farm raised-bed operations by effective farm', a
         (earning) => earning.entityId === operationEntityId,
     );
     assert.equal(watering?.operationCount, 1);
+    assert.equal(watering?.totalDurationMinutes, 12);
     assert.equal(watering?.totalEarned, 0.5);
     assert.equal(otherBalance.totalEarned, 0.5);
+    assert.equal(otherBalance.totalDurationMinutes, 12);
 });
 
 test('getFarmerBalance includes farm sowing cycles regardless assignment', async () => {
@@ -361,8 +391,11 @@ test('getFarmerBalance includes farm sowing cycles regardless assignment', async
     );
 
     assert.equal(sowing?.operationCount, 1);
+    assert.equal(sowing?.durationMinutes, 5);
+    assert.equal(sowing?.totalDurationMinutes, 5);
     assert.equal(sowing?.totalEarned, 1);
     assert.equal(balance.totalEarned, 1);
+    assert.equal(balance.totalDurationMinutes, 5);
 });
 
 test('getFarmerBalance counts payable work after the last paid farm payout', async () => {
@@ -401,8 +434,10 @@ test('getFarmerBalance counts payable work after the last paid farm payout', asy
         assignUserToFarm(farmId, payoutRequesterId),
     ]);
 
-    const wateringEntityId =
-        await createPublishedOperationEntity('Zalijevanje');
+    const wateringEntityId = await createPublishedOperationEntity(
+        'Zalijevanje',
+        15,
+    );
     await upsertOperationPrice({
         farmId,
         entityTypeName: 'operation',
@@ -458,8 +493,10 @@ test('getFarmerBalance counts payable work after the last paid farm payout', asy
     );
 
     assert.equal(watering?.operationCount, 1);
+    assert.equal(watering?.totalDurationMinutes, 15);
     assert.equal(watering?.totalEarned, 0.5);
     assert.equal(balance.totalEarned, 0.5);
+    assert.equal(balance.totalDurationMinutes, 15);
     assert.equal(balance.totalPaid, 0.5);
     assert.equal(balance.totalPending, 0.2);
     assert.equal(balance.availableBalance, 0.3);
