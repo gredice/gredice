@@ -109,7 +109,10 @@ export function ControlsTooltipHud() {
     }
 
     return (
-        <div className="pointer-events-auto relative p-2 sm:p-3">
+        <div
+            data-controls-tooltip-hud="open"
+            className="pointer-events-auto relative p-2 sm:p-3 md:mb-24"
+        >
             <ControlsVisualization deviceType={deviceType} phase={phase} />
             <ButtonGreen
                 title="Zatvori"

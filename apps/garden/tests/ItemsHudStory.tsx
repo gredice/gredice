@@ -6,6 +6,7 @@ import {
     gameHudBottomBarClassName,
     gameHudBottomControlsClassName,
 } from '../../../packages/game/src/GameHud';
+import { ControlsTooltipHud } from '../../../packages/game/src/hud/ControlsTooltipHud';
 import { ItemsHud } from '../../../packages/game/src/hud/ItemsHud';
 import {
     createGameState,
@@ -160,6 +161,28 @@ export function ItemsHudAlignmentStory() {
                         className={gameHudBottomControlsClassName}
                     >
                         <div className="h-10 w-40 rounded-lg border bg-muted" />
+                    </div>
+                    <ItemsHud />
+                </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+export function ItemsHudControlsTooltipStory() {
+    return (
+        <ItemsHudTestProviders>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <div
+                    data-testid="bottom-hud"
+                    className={gameHudBottomBarClassName}
+                >
+                    <div
+                        data-testid="bottom-controls"
+                        className={gameHudBottomControlsClassName}
+                    >
+                        <div className="h-10 w-40 rounded-lg border bg-muted" />
+                        <ControlsTooltipHud />
                     </div>
                     <ItemsHud />
                 </div>

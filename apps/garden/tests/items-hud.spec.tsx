@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/experimental-ct-react';
-import { ItemsHudAlignmentStory } from './ItemsHudStory';
+import {
+    ItemsHudAlignmentStory,
+    ItemsHudControlsTooltipStory,
+} from './ItemsHudStory';
 
 const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
@@ -46,6 +49,29 @@ test('item picker stays centered on tablet layouts', async ({
     ).toBeLessThanOrEqual(1);
     expect((pickerBox?.x ?? 0) + (pickerBox?.width ?? 0)).toBeLessThanOrEqual(
         TABLET_VIEWPORT.width,
+    );
+});
+
+test('controls instructions clear the item picker on tablet layouts', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudControlsTooltipStory />);
+
+    const picker = page.locator('[data-items-hud]');
+    const guide = page.locator('[data-controls-tooltip-hud="open"]');
+    await expect(picker).toBeVisible();
+    await expect(guide).toBeVisible();
+    await expect(page.getByText('Pokupi / spusti')).toBeVisible();
+
+    const pickerBox = await picker.boundingBox();
+    const guideBox = await guide.boundingBox();
+    expect(pickerBox).not.toBeNull();
+    expect(guideBox).not.toBeNull();
+
+    expect((guideBox?.y ?? 0) + (guideBox?.height ?? 0)).toBeLessThanOrEqual(
+        (pickerBox?.y ?? 0) - 8,
     );
 });
 
