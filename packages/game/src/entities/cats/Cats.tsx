@@ -709,10 +709,13 @@ function chooseManualNextTarget({
         timeOfDay,
         weather,
     });
+    const canManuallyReturnToPillow =
+        isCatNight(timeOfDay) || shouldCatSeekCover(timeOfDay, weather);
 
     if (
-        target.id !== currentTarget.id ||
-        target.behavior !== currentTarget.behavior
+        (target.id !== currentTarget.id ||
+            target.behavior !== currentTarget.behavior) &&
+        (target.behavior !== 'pillow' || canManuallyReturnToPillow)
     ) {
         return target;
     }
@@ -759,7 +762,7 @@ function chooseManualNextTarget({
         alternatives.push(...lowEntities);
     }
 
-    if (currentTarget.behavior !== 'pillow') {
+    if (currentTarget.behavior !== 'pillow' && canManuallyReturnToPillow) {
         alternatives.push(habitat.pillow);
     }
 
@@ -1062,6 +1065,8 @@ function Cat({
 
         runtimeRef.current = makeMovingState({
             from: group.position.clone(),
+            fromTarget: runtime.target,
+            groundSurfaces: habitat.groundSurfaces,
             now,
             target,
         });
