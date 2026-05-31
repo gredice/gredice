@@ -29,6 +29,17 @@ export async function getFarms() {
     });
 }
 
+export async function getFarmsForUser(userId: string) {
+    const rows = await storage()
+        .select({ farm: farms })
+        .from(farmUsers)
+        .innerJoin(farms, eq(farmUsers.farmId, farms.id))
+        .where(and(eq(farmUsers.userId, userId), eq(farms.isDeleted, false)))
+        .orderBy(desc(farms.createdAt));
+
+    return rows.map((row) => row.farm);
+}
+
 export async function getFarm(farmId: number) {
     return (
         (await storage().query.farms.findFirst({

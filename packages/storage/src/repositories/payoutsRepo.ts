@@ -19,7 +19,7 @@ import { createEvent, knownEvents } from './eventsRepo';
 import { getRaisedBedFieldPlantCycles } from './gardensRepo';
 import { createReceipt } from './invoicesRepo';
 import { createNotification } from './notificationsRepo';
-import { getFarmUserAcceptedOperations } from './operationsRepo';
+import { getFarmAcceptedOperations } from './operationsRepo';
 import { getUser } from './usersRepo';
 
 // ── Operation Prices ─────────────────────────────────────────────────────────
@@ -88,9 +88,9 @@ const VERIFIED_SOWING_STATUSES = new Set([
     'removed',
 ]);
 
-// Returns one entry per verified sowing cycle, with the farmId it belongs to
-async function getVerifiedSowingsForFarmer(
-    userId: string,
+// Returns one entry per verified sowing cycle for a farm.
+async function getVerifiedSowingsForFarm(
+    farmId: number,
     verifiedFrom?: Date,
 ): Promise<{ farmId: number; sowingLocation: string }[]> {
     const raisedBedRows = await storage()
@@ -100,10 +100,9 @@ async function getVerifiedSowingsForFarmer(
         })
         .from(raisedBeds)
         .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
-        .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
         .where(
             and(
-                eq(farmUsers.userId, userId),
+                eq(gardens.farmId, farmId),
                 eq(raisedBeds.isDeleted, false),
                 eq(gardens.isDeleted, false),
             ),
@@ -126,7 +125,6 @@ async function getVerifiedSowingsForFarmer(
                     cycle.plantHarvestedDate ??
                     cycle.plantRemovedDate ??
                     cycle.endedAt,
-                assignedUserIds: cycle.assignedUserIds ?? [],
             }));
         }),
     );
@@ -137,8 +135,8 @@ async function getVerifiedSowingsForFarmer(
             (c) =>
                 c.plantStatus !== undefined &&
                 VERIFIED_SOWING_STATUSES.has(c.plantStatus) &&
-                (!verifiedFrom || c.verifiedAt > verifiedFrom) &&
-                c.assignedUserIds.includes(userId),
+                (!verifiedFrom ||
+                    (c.verifiedAt && c.verifiedAt > verifiedFrom)),
         );
 }
 
@@ -191,6 +189,14 @@ function getOperationPayoutEligibleAt(operation: {
     return operation.verifiedAt ?? operation.completedAt ?? operation.timestamp;
 }
 
+async function isUserAssignedToFarm(userId: string, farmId: number) {
+    const farmUser = await storage().query.farmUsers.findFirst({
+        where: and(eq(farmUsers.userId, userId), eq(farmUsers.farmId, farmId)),
+    });
+
+    return Boolean(farmUser);
+}
+
 // ── Farmer Balance ────────────────────────────────────────────────────────────
 
 export type FarmerEarning = {
@@ -213,18 +219,18 @@ export type FarmerBalance = {
 };
 
 export async function getFarmerBalance(
-    userId: string,
+    _userId: string,
     farmId: number,
 ): Promise<FarmerBalance> {
     const [prices, payouts, operationsData] = await Promise.all([
         getOperationPrices(farmId),
-        getFarmerPayoutRequests(userId, farmId),
+        getFarmPayoutRequests(farmId),
         getEntitiesFormatted<OperationData>('operation'),
     ]);
     const lastPaidPayoutAt = getLastPaidPayoutAt(payouts);
     const [completedOperations, verifiedSowings] = await Promise.all([
-        getFarmUserAcceptedOperations(userId, { status: 'completed' }),
-        getVerifiedSowingsForFarmer(userId, lastPaidPayoutAt),
+        getFarmAcceptedOperations(farmId, { status: 'completed' }),
+        getVerifiedSowingsForFarm(farmId, lastPaidPayoutAt),
     ]);
     const payableOperations = completedOperations.filter((operation) => {
         if (!lastPaidPayoutAt) {
@@ -260,10 +266,6 @@ export async function getFarmerBalance(
 
     // Operations
     for (const op of payableOperations) {
-        if (!(op.assignedUserIds ?? []).includes(userId)) {
-            continue;
-        }
-
         const opFarmId = completedOperationFarmIds.get(op.id);
         if (opFarmId !== farmId) continue;
 
@@ -361,6 +363,9 @@ export async function createPayoutRequest(
     if (requestedAmount <= 0) {
         throw new Error('Iznos isplate mora biti veći od nule.');
     }
+    if (!(await isUserAssignedToFarm(userId, farmId))) {
+        throw new Error('Nemaš pristup odabranoj farmi.');
+    }
 
     return storage().transaction(async (tx) => {
         // Lock and re-verify balance inside the transaction
@@ -417,6 +422,15 @@ export async function getFarmerPayoutRequests(
                 ? eq(farmerPayoutRequests.farmId, farmId)
                 : undefined,
         ),
+        orderBy: desc(farmerPayoutRequests.createdAt),
+    });
+}
+
+export async function getFarmPayoutRequests(
+    farmId: number,
+): Promise<SelectFarmerPayoutRequest[]> {
+    return storage().query.farmerPayoutRequests.findMany({
+        where: eq(farmerPayoutRequests.farmId, farmId),
         orderBy: desc(farmerPayoutRequests.createdAt),
     });
 }
