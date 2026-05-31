@@ -8,9 +8,11 @@ import {
 } from "@mmote/niimbluelib";
 import {
 	DEFAULT_HARVEST_LABEL_PRESET,
+	renderFieldOperationLabel,
 	renderHarvestLabel,
 } from "./harvestLabelCanvas";
 import type {
+	FieldOperationLabelData,
 	HarvestLabelData,
 	HarvestLabelPreset,
 	LabelConsumableUsage,
@@ -344,8 +346,11 @@ export class GrediceLabelPrinter {
 		return this.getSnapshot();
 	}
 
-	async printHarvestLabel(
-		data: HarvestLabelData,
+	private async printCanvasLabel(
+		renderLabel: (
+			canvas: HTMLCanvasElement,
+			preset: HarvestLabelPreset,
+		) => void,
 		options?: {
 			quantity?: number;
 			preset?: HarvestLabelPreset;
@@ -362,7 +367,7 @@ export class GrediceLabelPrinter {
 		const quantity = Math.max(1, Math.round(options?.quantity ?? 1));
 		const preset = options?.preset ?? DEFAULT_HARVEST_LABEL_PRESET;
 		const canvas = document.createElement("canvas");
-		renderHarvestLabel(canvas, data, preset);
+		renderLabel(canvas, preset);
 
 		const encoded = ImageEncoder.encodeCanvas(canvas, preset.printDirection);
 		const printTask = this.client.abstraction.newPrintTask(
@@ -402,5 +407,31 @@ export class GrediceLabelPrinter {
 			await printTask.printEnd().catch(() => undefined);
 			this.updateSnapshot({ isPrinting: false });
 		}
+	}
+
+	async printHarvestLabel(
+		data: HarvestLabelData,
+		options?: {
+			quantity?: number;
+			preset?: HarvestLabelPreset;
+		},
+	) {
+		await this.printCanvasLabel(
+			(canvas, preset) => renderHarvestLabel(canvas, data, preset),
+			options,
+		);
+	}
+
+	async printFieldOperationLabel(
+		data: FieldOperationLabelData,
+		options?: {
+			quantity?: number;
+			preset?: HarvestLabelPreset;
+		},
+	) {
+		await this.printCanvasLabel(
+			(canvas, preset) => renderFieldOperationLabel(canvas, data, preset),
+			options,
+		);
 	}
 }

@@ -1,9 +1,17 @@
 import type { PrintDirection } from "@mmote/niimbluelib";
 
+export type FieldOperationLabelData = {
+	raisedBedPhysicalId: string;
+	fieldLabel: string;
+	detailLabel: string;
+	plantSortName: string;
+};
+
 export type HarvestLabelData = {
 	raisedBedPhysicalId: string;
 	fieldIndex: number;
 	plantSortName: string;
+	operationLabel?: string;
 };
 
 export type HarvestLabelPreset = {

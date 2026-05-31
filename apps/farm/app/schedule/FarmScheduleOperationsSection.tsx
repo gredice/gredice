@@ -1,3 +1,4 @@
+import type { FieldOperationLabelData } from '@gredice/label-printer';
 import type { EntityStandardized } from '@gredice/storage';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
@@ -7,7 +8,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { CompleteOperationModal } from './CompleteOperationModal';
-import { HarvestOperationPrintModal } from './HarvestOperationPrintModal';
+import { FieldOperationPrintModal } from './FieldOperationPrintModal';
 import { OperationCompletionAttachments } from './OperationCompletionAttachments';
 import type { FarmScheduleDayData } from './scheduleData';
 import {
@@ -23,6 +24,7 @@ type FarmOperationCardData = FarmOperation & {
     durationMinutes: number;
     label: string;
 };
+const RAISED_BED_FIELDS_PER_BLOCK = 9;
 
 interface FarmScheduleOperationsSectionProps {
     raisedBeds: FarmScheduleDayData['raisedBeds'];
@@ -51,7 +53,7 @@ function buildOperationLabel(
         ? plantSortById.get(field.plantSortId)
         : undefined;
     const physicalPositionIndex = field
-        ? (field.positionIndex + 1).toString()
+        ? getFieldPhysicalPositionIndex(field, raisedBeds).toString()
         : '';
     const isFullRaisedBed =
         operationData?.attributes?.application === 'raisedBedFull';
@@ -59,12 +61,55 @@ function buildOperationLabel(
     return `${isFullRaisedBed || !physicalPositionIndex ? '' : `${physicalPositionIndex} - `}${operationData?.information?.label ?? operation.entityId}${sort ? `: ${sort.information?.name ?? 'Nepoznato'}` : ''}`;
 }
 
-function shouldPrintHarvestLabel(
+function isHarvestOperation(operationData: EntityStandardized | undefined) {
+    const stageName =
+        operationData?.attributes?.stage?.information?.name?.toLowerCase();
+    if (stageName === 'harvest') {
+        return true;
+    }
+
+    const operationName = operationData?.information?.name?.toLowerCase();
+    return (
+        operationName === 'harvestplant' ||
+        operationName === 'harvestall' ||
+        operationName === 'harvestmature' ||
+        operationName === 'harvest50mature' ||
+        operationName === 'harvest25mature'
+    );
+}
+
+function shouldPrintOperationLabel(
     operationData: EntityStandardized | undefined,
 ) {
     return (
-        (operationData as { attributes?: { printLabel?: unknown } } | undefined)
-            ?.attributes?.printLabel === true
+        operationData?.attributes?.printLabel === true ||
+        isHarvestOperation(operationData)
+    );
+}
+
+function getOperationDetailLabel(
+    operation: FarmOperationCardData,
+    operationData: EntityStandardized | undefined,
+) {
+    return (
+        operationData?.information?.label ??
+        operationData?.information?.name ??
+        operation.label
+    );
+}
+
+function getFieldPhysicalPositionIndex(
+    field: FarmRaisedBed['fields'][number],
+    raisedBeds: FarmRaisedBed[],
+) {
+    const raisedBedIndex = [...raisedBeds]
+        .sort((left, right) => left.id - right.id)
+        .findIndex((raisedBed) => raisedBed.id === field.raisedBedId);
+
+    return (
+        field.positionIndex +
+        1 +
+        Math.max(raisedBedIndex, 0) * RAISED_BED_FIELDS_PER_BLOCK
     );
 }
 
@@ -72,7 +117,8 @@ function buildHarvestLabelData(
     operation: FarmOperation,
     raisedBeds: FarmRaisedBed[],
     plantSortById: Map<number, EntityStandardized>,
-) {
+    detailLabel: string,
+): FieldOperationLabelData | null {
     if (!operation.raisedBedFieldId || operation.raisedBedId === null) {
         return null;
     }
@@ -97,9 +143,24 @@ function buildHarvestLabelData(
 
     return {
         raisedBedPhysicalId: raisedBed.physicalId,
-        fieldIndex: field.positionIndex + 1,
+        fieldLabel: getFieldPhysicalPositionIndex(field, raisedBeds).toString(),
+        detailLabel,
         plantSortName,
     };
+}
+
+function renderHarvestLabelDescription(
+    operationLabel: string,
+    labelData: FieldOperationLabelData,
+) {
+    return (
+        <Typography>
+            Etiketa za <strong>{operationLabel}</strong> sadržavat će gredicu{' '}
+            <strong>{labelData.raisedBedPhysicalId}</strong>, polje{' '}
+            <strong>{labelData.fieldLabel}</strong> i sortu{' '}
+            <strong>{labelData.plantSortName}</strong>.
+        </Typography>
+    );
 }
 
 export function FarmScheduleOperationsSection({
@@ -176,14 +237,14 @@ export function FarmScheduleOperationsSection({
         const canComplete =
             !completed &&
             (!operation.assignedUserId || operation.assignedUserId === userId);
-        const harvestLabelData =
-            !completed && shouldPrintHarvestLabel(operationData)
-                ? buildHarvestLabelData(
-                      operation,
-                      groupedRaisedBeds,
-                      plantSortById,
-                  )
-                : null;
+        const harvestLabelData = shouldPrintOperationLabel(operationData)
+            ? buildHarvestLabelData(
+                  operation,
+                  groupedRaisedBeds,
+                  plantSortById,
+                  getOperationDetailLabel(operation, operationData),
+              )
+            : null;
         const attachImages = Boolean(
             operationData?.conditions?.completionAttachImages ||
                 operationData?.conditions?.completionAttachImagesRequired,
@@ -295,9 +356,13 @@ export function FarmScheduleOperationsSection({
                                         </Typography>
                                     )}
                                 {harvestLabelData && (
-                                    <HarvestOperationPrintModal
-                                        operationLabel={operation.label}
+                                    <FieldOperationPrintModal
+                                        title="Ispis etikete za berbu"
                                         labelData={harvestLabelData}
+                                        description={renderHarvestLabelDescription(
+                                            operation.label,
+                                            harvestLabelData,
+                                        )}
                                     />
                                 )}
                             </Row>
@@ -438,12 +503,15 @@ export function FarmScheduleOperationsSection({
                                             operation.assignedUserId ===
                                                 userId);
                                     const harvestLabelData =
-                                        !completed &&
-                                        shouldPrintHarvestLabel(operationData)
+                                        shouldPrintOperationLabel(operationData)
                                             ? buildHarvestLabelData(
                                                   operation,
                                                   groupedRaisedBeds,
                                                   plantSortById,
+                                                  getOperationDetailLabel(
+                                                      operation,
+                                                      operationData,
+                                                  ),
                                               )
                                             : null;
                                     const attachImages = Boolean(
@@ -596,13 +664,15 @@ export function FarmScheduleOperationsSection({
                                                                     </Typography>
                                                                 )}
                                                             {harvestLabelData && (
-                                                                <HarvestOperationPrintModal
-                                                                    operationLabel={
-                                                                        operation.label
-                                                                    }
+                                                                <FieldOperationPrintModal
+                                                                    title="Ispis etikete za berbu"
                                                                     labelData={
                                                                         harvestLabelData
                                                                     }
+                                                                    description={renderHarvestLabelDescription(
+                                                                        operation.label,
+                                                                        harvestLabelData,
+                                                                    )}
                                                                 />
                                                             )}
                                                         </Row>

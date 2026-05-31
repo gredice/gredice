@@ -20,6 +20,7 @@ import { DebugTextInput } from './DebugTextInput';
 const DEFAULT_LABEL_DATA: HarvestLabelData = {
     raisedBedPhysicalId: '12B',
     fieldIndex: 4,
+    operationLabel: 'Berba',
     plantSortName: 'Salata Batavia',
 };
 
@@ -36,6 +37,7 @@ const LABEL_SAMPLES: Array<{
         data: {
             raisedBedPhysicalId: '3A',
             fieldIndex: 2,
+            operationLabel: 'Berba',
             plantSortName: 'Mladi špinat',
         },
     },
@@ -44,6 +46,7 @@ const LABEL_SAMPLES: Array<{
         data: {
             raisedBedPhysicalId: '18',
             fieldIndex: 7,
+            operationLabel: 'Berba zrelih plodova',
             plantSortName: 'Cherry rajčica',
         },
     },
@@ -129,6 +132,16 @@ export function HarvestLabelDebugPage() {
                                         }
                                     />
                                 </div>
+                                <DebugTextInput
+                                    label="Naziv radnje"
+                                    value={labelData.operationLabel ?? ''}
+                                    onChange={(value) =>
+                                        setLabelData((current) => ({
+                                            ...current,
+                                            operationLabel: value,
+                                        }))
+                                    }
+                                />
                                 <DebugTextInput
                                     label="Sorta biljke"
                                     value={labelData.plantSortName}
