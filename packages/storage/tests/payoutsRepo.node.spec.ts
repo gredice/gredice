@@ -109,6 +109,44 @@ async function createVerifiedAcceptedOperation(input: {
     return operationId;
 }
 
+async function createSowedPlantCycle(input: {
+    raisedBedId: number;
+    positionIndex: number;
+    sowingLocation?: 'direct' | 'greenhouse';
+    assignedUserIds?: string[];
+    placedAt?: Date;
+    sowedAt?: Date;
+}) {
+    const aggregateId = `${input.raisedBedId}|${input.positionIndex}`;
+    await createEvent({
+        ...knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+            plantSortId: '1',
+            scheduledDate: null,
+            sowingLocation: input.sowingLocation ?? 'direct',
+        }),
+        ...(input.placedAt ? { createdAt: input.placedAt } : {}),
+    });
+
+    if (input.assignedUserIds) {
+        await createEvent({
+            ...knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+                status: 'sowed',
+                assignedUserIds: input.assignedUserIds,
+                assignedBy: input.assignedUserIds[0] ?? null,
+            }),
+            ...(input.sowedAt ? { createdAt: input.sowedAt } : {}),
+        });
+        return;
+    }
+
+    await createEvent({
+        ...knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'sowed',
+        }),
+        ...(input.sowedAt ? { createdAt: input.sowedAt } : {}),
+    });
+}
+
 test('getFarmerBalance groups completed operations by CMS operation name', async () => {
     createTestDb();
 
@@ -183,7 +221,7 @@ test('getFarmerBalance groups completed operations by CMS operation name', async
     assert.equal(balance.totalEarned, 1.75);
 });
 
-test('getFarmerBalance includes assigned raised-bed operations by effective farm', async () => {
+test('getFarmerBalance includes farm raised-bed operations by effective farm', async () => {
     createTestDb();
 
     const userId = randomUUID();
@@ -260,30 +298,108 @@ test('getFarmerBalance includes assigned raised-bed operations by effective farm
     );
     assert.equal(watering?.operationCount, 1);
     assert.equal(watering?.totalEarned, 0.5);
-    assert.equal(otherBalance.totalEarned, 0);
+    assert.equal(otherBalance.totalEarned, 0.5);
 });
 
-test('getFarmerBalance counts payable work after the last paid payout', async () => {
+test('getFarmerBalance includes farm sowing cycles regardless assignment', async () => {
     createTestDb();
 
     const userId = randomUUID();
+    const otherFarmerId = randomUUID();
     await storage()
         .insert(users)
-        .values({
-            id: userId,
-            userName: `payout-window-${userId}@example.com`,
-            displayName: 'Payout Window Farmer',
-            role: 'farmer',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        });
+        .values([
+            {
+                id: userId,
+                userName: `payout-sowing-${userId}@example.com`,
+                displayName: 'Payout Sowing Farmer',
+                role: 'farmer',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            },
+            {
+                id: otherFarmerId,
+                userName: `payout-sowing-other-${otherFarmerId}@example.com`,
+                displayName: 'Payout Sowing Other Farmer',
+                role: 'farmer',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            },
+        ]);
+
+    const farmId = await createFarm({
+        name: `Sowing Payout Farm ${randomUUID()}`,
+        longitude: 0,
+        latitude: 0,
+    });
+    await Promise.all([
+        assignUserToFarm(farmId, userId),
+        assignUserToFarm(farmId, otherFarmerId),
+    ]);
+
+    const accountId = await createAccount();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'payout-sowing-block');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+
+    await upsertOperationPrice({
+        farmId,
+        entityTypeName: 'sowing',
+        pricePerUnit: '1.00',
+        currency: 'eur',
+    });
+    await createSowedPlantCycle({
+        raisedBedId,
+        positionIndex: 0,
+        assignedUserIds: [otherFarmerId],
+    });
+
+    const balance = await getFarmerBalance(userId, farmId);
+    const sowing = balance.earningsByType.find(
+        (earning) => earning.entityTypeName === 'sowing',
+    );
+
+    assert.equal(sowing?.operationCount, 1);
+    assert.equal(sowing?.totalEarned, 1);
+    assert.equal(balance.totalEarned, 1);
+});
+
+test('getFarmerBalance counts payable work after the last paid farm payout', async () => {
+    createTestDb();
+
+    const userId = randomUUID();
+    const payoutRequesterId = randomUUID();
+    await storage()
+        .insert(users)
+        .values([
+            {
+                id: userId,
+                userName: `payout-window-${userId}@example.com`,
+                displayName: 'Payout Window Farmer',
+                role: 'farmer',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            },
+            {
+                id: payoutRequesterId,
+                userName: `payout-requester-${payoutRequesterId}@example.com`,
+                displayName: 'Payout Requester',
+                role: 'farmer',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            },
+        ]);
 
     const farmId = await createFarm({
         name: `Payout Window Farm ${randomUUID()}`,
         longitude: 0,
         latitude: 0,
     });
-    await assignUserToFarm(farmId, userId);
+    await Promise.all([
+        assignUserToFarm(farmId, userId),
+        assignUserToFarm(farmId, payoutRequesterId),
+    ]);
 
     const wateringEntityId =
         await createPublishedOperationEntity('Zalijevanje');
@@ -307,7 +423,7 @@ test('getFarmerBalance counts payable work after the last paid payout', async ()
         .insert(farmerPayoutRequests)
         .values({
             farmId,
-            userId,
+            userId: payoutRequesterId,
             requestedAmount: '0.50',
             currency: 'eur',
             status: 'paid',
@@ -328,7 +444,7 @@ test('getFarmerBalance counts payable work after the last paid payout', async ()
         .insert(farmerPayoutRequests)
         .values({
             farmId,
-            userId,
+            userId: payoutRequesterId,
             requestedAmount: '0.20',
             currency: 'eur',
             status: 'pending',

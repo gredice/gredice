@@ -696,6 +696,73 @@ async function getFarmUserAcceptedOperationsUncached(
     return operationsWithAggregates;
 }
 
+export async function getFarmAcceptedOperations(
+    farmId: number,
+    filter?: OperationsFilter,
+) {
+    const rows = await storage()
+        .select({ operation: operations })
+        .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .where(
+            and(
+                eq(operationFarmIdExpression(), farmId),
+                eq(operations.isAccepted, true),
+                eq(operations.isDeleted, false),
+                operationLocationIntegrityWhere(),
+                filter?.from
+                    ? gte(operations.timestamp, filter.from)
+                    : undefined,
+                filter?.to ? lte(operations.timestamp, filter.to) : undefined,
+            ),
+        )
+        .orderBy(desc(operations.timestamp));
+
+    let operationsWithAggregates = await fillOperationAggregates(
+        rows.map((row) => row.operation),
+    );
+
+    if (filter?.completedFrom || filter?.completedTo) {
+        operationsWithAggregates = operationsWithAggregates.filter(
+            (operation) => {
+                if (!operation.completedAt) {
+                    return false;
+                }
+
+                if (
+                    filter.completedFrom &&
+                    operation.completedAt < filter.completedFrom
+                ) {
+                    return false;
+                }
+
+                if (
+                    filter.completedTo &&
+                    operation.completedAt > filter.completedTo
+                ) {
+                    return false;
+                }
+
+                return true;
+            },
+        );
+    }
+
+    if (filter?.status) {
+        const statusArray = Array.isArray(filter.status)
+            ? filter.status
+            : [filter.status];
+        operationsWithAggregates = operationsWithAggregates.filter(
+            (operation) =>
+                operation &&
+                statusArray.includes(operation.status as OperationStatus),
+        );
+    }
+
+    return operationsWithAggregates;
+}
+
 export async function getFarmUserAcceptedOperationById(
     userId: string,
     id: number,

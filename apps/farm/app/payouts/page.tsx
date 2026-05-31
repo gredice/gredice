@@ -2,8 +2,8 @@ import { formatPrice } from '@gredice/js/currency';
 import {
     type FarmerEarning,
     getFarmerBalance,
-    getFarmerPayoutRequests,
-    getFarms,
+    getFarmPayoutRequests,
+    getFarmsForUser,
 } from '@gredice/storage';
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
 import {
@@ -20,9 +20,23 @@ import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import LoginDialog from '../../components/auth/LoginDialog';
 import { auth } from '../../lib/auth/auth';
+import { FarmPayoutFarmSelect } from './FarmPayoutFarmSelect';
 import { PayoutRequestForm } from './PayoutRequestForm';
 
 export const dynamic = 'force-dynamic';
+
+type PayoutsPageProps = {
+    searchParams: Promise<{ farmId?: string }>;
+};
+
+function parseFarmId(value: string | undefined) {
+    if (!value) {
+        return undefined;
+    }
+
+    const farmId = Number.parseInt(value, 10);
+    return Number.isFinite(farmId) ? farmId : undefined;
+}
 
 const payoutStatusLabel: Record<
     string,
@@ -82,34 +96,61 @@ function mergeEarnings(earnings: FarmerEarning[]) {
     );
 }
 
-async function PayoutsContent() {
+async function PayoutsContent({ selectedFarmId }: { selectedFarmId?: number }) {
     const { userId } = await auth(['farmer', 'admin']);
 
-    const farms = await getFarms();
+    const farms = await getFarmsForUser(userId);
+    const selectedFarm =
+        farms.find((farm) => farm.id === selectedFarmId) ?? farms[0];
 
-    const [balanceResults, allPayouts] = await Promise.all([
-        Promise.all(farms.map((f) => getFarmerBalance(userId, f.id))),
-        getFarmerPayoutRequests(userId),
+    if (!selectedFarm) {
+        return (
+            <div className="max-w-5xl mx-auto w-full p-4">
+                <Card>
+                    <CardContent>
+                        <Typography
+                            level="body2"
+                            className="text-muted-foreground"
+                        >
+                            Nema dodijeljenih farmi.
+                        </Typography>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    const [balance, allPayouts] = await Promise.all([
+        getFarmerBalance(userId, selectedFarm.id),
+        getFarmPayoutRequests(selectedFarm.id),
     ]);
 
-    const totalEarned = balanceResults.reduce((s, b) => s + b.totalEarned, 0);
-    const totalPaid = balanceResults.reduce((s, b) => s + b.totalPaid, 0);
-    const totalPending = balanceResults.reduce((s, b) => s + b.totalPending, 0);
-    const availableBalance = balanceResults.reduce(
-        (s, b) => s + b.availableBalance,
-        0,
-    );
-    const currency = balanceResults.find((b) => b.currency)?.currency ?? 'eur';
+    const totalEarned = balance.totalEarned;
+    const totalPaid = balance.totalPaid;
+    const totalPending = balance.totalPending;
+    const availableBalance = balance.availableBalance;
+    const currency = balance.currency;
 
-    const earningsByType = mergeEarnings(
-        balanceResults.flatMap((b) => b.earningsByType),
-    );
+    const earningsByType = mergeEarnings(balance.earningsByType);
 
-    const farmWithBalance =
-        farms.find((_, i) => balanceResults[i].totalEarned > 0) ?? farms[0];
+    const farmWithBalance = selectedFarm;
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
+            {farms.length > 1 && (
+                <Card>
+                    <CardContent noHeader>
+                        <FarmPayoutFarmSelect
+                            farms={farms.map((farm) => ({
+                                id: farm.id,
+                                name: farm.name,
+                            }))}
+                            selectedFarmId={selectedFarm.id}
+                        />
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Balance Summary */}
             <div className="grid gap-4 sm:grid-cols-3">
                 <Card>
@@ -254,7 +295,7 @@ async function PayoutsContent() {
                             className="text-muted-foreground"
                         >
                             {totalPending > 0
-                                ? `Imaš ${formatPrice(totalPending)} u zahtjevima na čekanju. Pričekaj da administrator obradi zahtjev.`
+                                ? `Farma ima ${formatPrice(totalPending)} u zahtjevima na čekanju. Pričekaj da administrator obradi zahtjev.`
                                 : 'Svi iznosi su isplaćeni.'}
                         </Typography>
                     </CardContent>
@@ -332,13 +373,15 @@ async function PayoutsContent() {
     );
 }
 
-export default function PayoutsPage() {
+export default async function PayoutsPage({ searchParams }: PayoutsPageProps) {
+    const { farmId } = await searchParams;
+    const selectedFarmId = parseFarmId(farmId);
     const authFarmer = auth.bind(null, ['farmer', 'admin']);
 
     return (
         <div className="min-h-[100dvh] w-full bg-muted">
             <AuthProtectedSection auth={authFarmer}>
-                <PayoutsContent />
+                <PayoutsContent selectedFarmId={selectedFarmId} />
             </AuthProtectedSection>
             <SignedOut auth={authFarmer}>
                 <LoginDialog />
