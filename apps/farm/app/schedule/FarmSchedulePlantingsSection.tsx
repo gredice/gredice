@@ -56,12 +56,18 @@ function buildFieldLabel(
         return `${physicalPositionIndex} - ${taskName}: ? Nepoznato`;
     }
 
+    const totalPlants = getPlantsPerFieldCount(sort);
+    return `${physicalPositionIndex} - ${taskName}: ${totalPlants ?? '?'} ${sort.information?.name ?? 'Nepoznato'}`;
+}
+
+function getPlantsPerFieldCount(
+    plantSort: EntityStandardized | null | undefined,
+) {
     const seedingDistance =
-        sort.information?.plant?.attributes?.seedingDistance;
-    const totalPlants = seedingDistance
+        plantSort?.information?.plant?.attributes?.seedingDistance;
+    return typeof seedingDistance === 'number'
         ? calculatePlantsPerField(seedingDistance).totalPlants
         : null;
-    return `${physicalPositionIndex} - ${taskName}: ${totalPlants ?? '?'} ${sort.information?.name ?? 'Nepoznato'}`;
 }
 
 function getFieldPhysicalPositionIndex(
@@ -145,13 +151,15 @@ function buildGreenhouseSowingLabelDataByFieldId(
             nextIndex += 1;
         }
 
-        const plantSortName = plantSortById.get(firstField.plantSortId)
-            ?.information?.name;
+        const plantSort = plantSortById.get(firstField.plantSortId);
+        const plantSortName = plantSort?.information?.name;
         if (plantSortName) {
+            const plantsPerField = getPlantsPerFieldCount(plantSort);
+            const pieceCount = group.length * Math.max(1, plantsPerField ?? 1);
             const labelData = {
                 raisedBedPhysicalId: physicalId,
                 fieldLabel: formatFieldRange(group),
-                detailLabel: formatPieceCountLabel(group.length),
+                detailLabel: formatPieceCountLabel(pieceCount),
                 plantSortName,
             };
             for (const field of group) {
