@@ -1,12 +1,13 @@
 import 'server-only';
 import type { OperationData } from '@gredice/directory-types';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
     farmerPayoutRequests,
     farmUsers,
     gardens,
     type InsertOperationPrice,
     operationPrices,
+    operations,
     type PayoutStatus,
     raisedBeds,
     type SelectFarmerPayoutRequest,
@@ -116,6 +117,7 @@ async function getVerifiedSowingsForFarmer(
                 farmId: row.farmId,
                 sowingLocation: cycle.sowingLocation,
                 plantStatus: cycle.plantStatus,
+                assignedUserIds: cycle.assignedUserIds ?? [],
             }));
         }),
     );
@@ -125,8 +127,42 @@ async function getVerifiedSowingsForFarmer(
         .filter(
             (c) =>
                 c.plantStatus !== undefined &&
-                VERIFIED_SOWING_STATUSES.has(c.plantStatus),
+                VERIFIED_SOWING_STATUSES.has(c.plantStatus) &&
+                c.assignedUserIds.includes(userId),
         );
+}
+
+async function getOperationEffectiveFarmIds(operationIds: number[]) {
+    const uniqueOperationIds = Array.from(new Set(operationIds));
+    if (uniqueOperationIds.length === 0) {
+        return new Map<number, number>();
+    }
+
+    const rows = await storage()
+        .select({
+            operationId: operations.id,
+            farmId: sql<
+                number | null
+            >`coalesce(${operations.farmId}, ${gardens.farmId})`,
+        })
+        .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(
+            gardens,
+            eq(
+                gardens.id,
+                sql<
+                    number | null
+                >`coalesce(${operations.gardenId}, ${raisedBeds.gardenId})`,
+            ),
+        )
+        .where(inArray(operations.id, uniqueOperationIds));
+
+    return new Map(
+        rows
+            .filter((row) => row.farmId !== null)
+            .map((row) => [row.operationId, row.farmId]),
+    );
 }
 
 // ── Farmer Balance ────────────────────────────────────────────────────────────
@@ -167,6 +203,9 @@ export async function getFarmerBalance(
         getVerifiedSowingsForFarmer(userId),
         getEntitiesFormatted<OperationData>('operation'),
     ]);
+    const completedOperationFarmIds = await getOperationEffectiveFarmIds(
+        completedOperations.map((operation) => operation.id),
+    );
 
     // Two maps: entityId-keyed (for specific operations) and typeName-keyed (for sowing)
     const priceByEntityId = new Map<number, SelectOperationPrice>(
@@ -191,9 +230,11 @@ export async function getFarmerBalance(
 
     // Operations
     for (const op of completedOperations) {
-        const opFarmId =
-            op.farmId ??
-            (op as unknown as { garden?: { farmId?: number } }).garden?.farmId;
+        if (!(op.assignedUserIds ?? []).includes(userId)) {
+            continue;
+        }
+
+        const opFarmId = completedOperationFarmIds.get(op.id);
         if (opFarmId !== farmId) continue;
 
         // Look up price by entityId first, then fall back to entityTypeName
