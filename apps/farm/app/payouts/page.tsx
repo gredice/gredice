@@ -69,9 +69,34 @@ function getEarningKey(earning: FarmerEarning) {
         earning.entityTypeName,
         earning.entityId ?? 'none',
         earning.entityLabel ?? '',
+        earning.durationMinutes,
         earning.pricePerUnit,
         earning.currency,
     ].join(':');
+}
+
+function formatDuration(minutes: number) {
+    const roundedMinutes = Math.ceil(Math.max(0, minutes));
+    const hours = Math.floor(roundedMinutes / 60);
+    const remainingMinutes = roundedMinutes % 60;
+
+    if (hours > 0 && remainingMinutes > 0) {
+        return `${hours} h ${remainingMinutes} min`;
+    }
+
+    if (hours > 0) {
+        return `${hours} h`;
+    }
+
+    return `${remainingMinutes} min`;
+}
+
+function formatWage(amount: number | null, unit: string) {
+    if (amount === null) {
+        return '—';
+    }
+
+    return `${formatPrice(amount)} / ${unit}`;
 }
 
 function mergeEarnings(earnings: FarmerEarning[]) {
@@ -82,6 +107,7 @@ function mergeEarnings(earnings: FarmerEarning[]) {
         const existing = merged.get(key);
         if (existing) {
             existing.operationCount += earning.operationCount;
+            existing.totalDurationMinutes += earning.totalDurationMinutes;
             existing.totalEarned += earning.totalEarned;
             continue;
         }
@@ -132,6 +158,17 @@ async function PayoutsContent({ selectedFarmId }: { selectedFarmId?: number }) {
     const currency = balance.currency;
 
     const earningsByType = mergeEarnings(balance.earningsByType);
+    const totalOperationCount = earningsByType.reduce(
+        (total, earning) => total + earning.operationCount,
+        0,
+    );
+    const totalDurationMinutes = earningsByType.reduce(
+        (total, earning) => total + earning.totalDurationMinutes,
+        0,
+    );
+    const minuteWage =
+        totalDurationMinutes > 0 ? totalEarned / totalDurationMinutes : null;
+    const hourlyWage = minuteWage === null ? null : minuteWage * 60;
 
     const farmWithBalance = selectedFarm;
 
@@ -152,7 +189,7 @@ async function PayoutsContent({ selectedFarmId }: { selectedFarmId?: number }) {
             )}
 
             {/* Balance Summary */}
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Card>
                     <CardContent noHeader>
                         <Stack spacing={1}>
@@ -210,6 +247,63 @@ async function PayoutsContent({ selectedFarmId }: { selectedFarmId?: number }) {
                         </Stack>
                     </CardContent>
                 </Card>
+                <Card>
+                    <CardContent noHeader>
+                        <Stack spacing={1}>
+                            <Typography
+                                level="body3"
+                                className="text-muted-foreground"
+                            >
+                                Ukupno vrijeme
+                            </Typography>
+                            <Typography
+                                level="h4"
+                                semiBold
+                                className="tabular-nums"
+                            >
+                                {formatDuration(totalDurationMinutes)}
+                            </Typography>
+                        </Stack>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent noHeader>
+                        <Stack spacing={1}>
+                            <Typography
+                                level="body3"
+                                className="text-muted-foreground"
+                            >
+                                Zarada / minuta
+                            </Typography>
+                            <Typography
+                                level="h4"
+                                semiBold
+                                className="tabular-nums"
+                            >
+                                {formatWage(minuteWage, 'min')}
+                            </Typography>
+                        </Stack>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent noHeader>
+                        <Stack spacing={1}>
+                            <Typography
+                                level="body3"
+                                className="text-muted-foreground"
+                            >
+                                Zarada / sat
+                            </Typography>
+                            <Typography
+                                level="h4"
+                                semiBold
+                                className="tabular-nums"
+                            >
+                                {formatWage(hourlyWage, 'h')}
+                            </Typography>
+                        </Stack>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Earnings breakdown */}
@@ -225,6 +319,9 @@ async function PayoutsContent({ selectedFarmId }: { selectedFarmId?: number }) {
                                     <Table.Head>Vrsta radnje</Table.Head>
                                     <Table.Head className="text-right">
                                         Broj radnji
+                                    </Table.Head>
+                                    <Table.Head className="text-right">
+                                        Vrijeme
                                     </Table.Head>
                                     <Table.Head className="text-right">
                                         Cijena / radnja
@@ -244,6 +341,11 @@ async function PayoutsContent({ selectedFarmId }: { selectedFarmId?: number }) {
                                             {e.operationCount}
                                         </Table.Cell>
                                         <Table.Cell className="text-right tabular-nums">
+                                            {formatDuration(
+                                                e.totalDurationMinutes,
+                                            )}
+                                        </Table.Cell>
+                                        <Table.Cell className="text-right tabular-nums">
                                             {formatPrice(e.pricePerUnit)}
                                         </Table.Cell>
                                         <Table.Cell className="text-right tabular-nums font-medium">
@@ -251,6 +353,21 @@ async function PayoutsContent({ selectedFarmId }: { selectedFarmId?: number }) {
                                         </Table.Cell>
                                     </Table.Row>
                                 ))}
+                                <Table.Row className="bg-muted/40 font-medium hover:bg-muted/40">
+                                    <Table.Cell>Ukupno</Table.Cell>
+                                    <Table.Cell className="text-right tabular-nums">
+                                        {totalOperationCount}
+                                    </Table.Cell>
+                                    <Table.Cell className="text-right tabular-nums">
+                                        {formatDuration(totalDurationMinutes)}
+                                    </Table.Cell>
+                                    <Table.Cell className="text-right">
+                                        —
+                                    </Table.Cell>
+                                    <Table.Cell className="text-right tabular-nums font-semibold">
+                                        {formatPrice(totalEarned)}
+                                    </Table.Cell>
+                                </Table.Row>
                             </Table.Body>
                         </Table>
                     </CardOverflow>
