@@ -86,6 +86,31 @@ test('does not include unavailable optional behaviors', () => {
     );
 });
 
+test('keeps daytime pillow returns rare compared with active behavior', () => {
+    const weights = getCatBehaviorWeights({
+        cover: true,
+        roam: true,
+        'low-entity': true,
+        'stalk-bird': true,
+    });
+    const weightByBehavior = new Map(
+        weights.map((item) => [item.behavior, item.dayWeight]),
+    );
+
+    assert.ok(
+        (weightByBehavior.get('pillow') ?? 0) <
+            (weightByBehavior.get('roam') ?? 0),
+    );
+    assert.ok(
+        (weightByBehavior.get('pillow') ?? 0) <
+            (weightByBehavior.get('cover') ?? 0),
+    );
+    assert.ok(
+        (weightByBehavior.get('pillow') ?? 0) <
+            (weightByBehavior.get('stalk-bird') ?? 0),
+    );
+});
+
 test('keeps night pillow naps longer than daytime roam windows', () => {
     const nightPillowDwell = getCatDwellSeconds({
         behavior: 'pillow',

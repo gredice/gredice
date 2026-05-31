@@ -27,11 +27,11 @@ const CAT_SHELTER_RANGE_BLOCKS = 5.5;
 const catBirdStalkChance = 0.42;
 
 const behaviorWeights = [
-    { behavior: 'pillow', dayWeight: 0.27 },
-    { behavior: 'roam', dayWeight: 0.34 },
-    { behavior: 'cover', dayWeight: 0.05 },
-    { behavior: 'low-entity', dayWeight: 0.16 },
-    { behavior: 'stalk-bird', dayWeight: 0.18 },
+    { behavior: 'pillow', dayWeight: 0.08 },
+    { behavior: 'roam', dayWeight: 0.45 },
+    { behavior: 'cover', dayWeight: 0.12 },
+    { behavior: 'low-entity', dayWeight: 0.14 },
+    { behavior: 'stalk-bird', dayWeight: 0.21 },
 ] satisfies WeightedBehavior[];
 
 export function isCatNight(timeOfDay: number) {
