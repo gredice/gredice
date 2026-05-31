@@ -12,6 +12,7 @@ import {
 } from '@gredice/js/weather';
 import {
     type ComponentType,
+    type MouseEvent,
     useLayoutEffect,
     useMemo,
     useRef,
@@ -413,6 +414,15 @@ function getCalendarDayDiff(from: Date, to: Date): number {
     return Math.round((toDay.getTime() - fromDay.getTime()) / DAY_MS);
 }
 
+function preventRechartsPointerFocus(event: MouseEvent<HTMLDivElement>) {
+    if (
+        event.target instanceof Element &&
+        event.target.closest('.recharts-surface')
+    ) {
+        event.preventDefault();
+    }
+}
+
 function getPresetSelectableBounds(
     bounds: { min: Date; max: Date },
     now: Date,
@@ -616,7 +626,11 @@ export function WeatherCharts({
             : toEmptyMetricChartData(range);
 
         return (
-            <div style={{ height: chartHeight }} className="relative w-full">
+            <div
+                style={{ height: chartHeight }}
+                className="relative w-full"
+                onMouseDownCapture={preventRechartsPointerFocus}
+            >
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart
                         data={chartData}
@@ -698,6 +712,9 @@ export function WeatherCharts({
                                 fill={color}
                                 fillOpacity={0.025}
                                 ifOverflow="visible"
+                                pointerEvents="none"
+                                focusable={false}
+                                aria-hidden="true"
                             />
                         )}
                         {nowTs >= range.from.getTime() &&
