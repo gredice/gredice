@@ -1,22 +1,25 @@
 import 'server-only';
+import type { OperationData } from '@gredice/directory-types';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import {
-    type InsertFarmerPayoutRequest,
-    type InsertOperationPrice,
     farmerPayoutRequests,
-    type PayoutStatus,
+    farmUsers,
+    gardens,
+    type InsertOperationPrice,
     operationPrices,
+    type PayoutStatus,
+    raisedBeds,
     type SelectFarmerPayoutRequest,
     type SelectOperationPrice,
 } from '../schema';
 import { storage } from '../storage';
-import { createReceipt } from './invoicesRepo';
-import { getFarmUserAcceptedOperations } from './operationsRepo';
-import { getRaisedBedFieldPlantCycles } from './gardensRepo';
+import { getEntitiesFormatted } from './entitiesRepo';
 import { createEvent, knownEvents } from './eventsRepo';
+import { getRaisedBedFieldPlantCycles } from './gardensRepo';
+import { createReceipt } from './invoicesRepo';
 import { createNotification } from './notificationsRepo';
+import { getFarmUserAcceptedOperations } from './operationsRepo';
 import { getUser } from './usersRepo';
-import { farmUsers, gardens, raisedBeds } from '../schema';
 
 // ── Operation Prices ─────────────────────────────────────────────────────────
 
@@ -38,14 +41,19 @@ export async function getAllOperationPrices(): Promise<SelectOperationPrice[]> {
 export async function upsertOperationPrice(
     input: InsertOperationPrice,
 ): Promise<SelectOperationPrice> {
-    const isEntitySpecific = input.entityId !== null && input.entityId !== undefined;
+    const isEntitySpecific =
+        input.entityId !== null && input.entityId !== undefined;
 
     const [row] = await storage()
         .insert(operationPrices)
         .values(input)
         .onConflictDoUpdate({
             target: isEntitySpecific
-                ? [operationPrices.farmId, operationPrices.entityTypeName, operationPrices.entityId]
+                ? [
+                      operationPrices.farmId,
+                      operationPrices.entityTypeName,
+                      operationPrices.entityId,
+                  ]
                 : [operationPrices.farmId, operationPrices.entityTypeName],
             targetWhere: isEntitySpecific
                 ? sql`${operationPrices.entityId} IS NOT NULL`
@@ -61,9 +69,7 @@ export async function upsertOperationPrice(
 }
 
 export async function deleteOperationPrice(id: number): Promise<void> {
-    await storage()
-        .delete(operationPrices)
-        .where(eq(operationPrices.id, id));
+    await storage().delete(operationPrices).where(eq(operationPrices.id, id));
 }
 
 // ── Sowing helpers ────────────────────────────────────────────────────────────
@@ -127,7 +133,8 @@ async function getVerifiedSowingsForFarmer(
 
 export type FarmerEarning = {
     entityTypeName: string;
-    entityTypeLabel?: string;
+    entityId: number | null;
+    entityLabel?: string;
     operationCount: number;
     pricePerUnit: number;
     totalEarned: number;
@@ -147,13 +154,19 @@ export async function getFarmerBalance(
     userId: string,
     farmId: number,
 ): Promise<FarmerBalance> {
-    const [prices, completedOperations, payouts, verifiedSowings] =
-        await Promise.all([
-            getOperationPrices(farmId),
-            getFarmUserAcceptedOperations(userId, { status: 'completed' }),
-            getFarmerPayoutRequests(userId, farmId),
-            getVerifiedSowingsForFarmer(userId),
-        ]);
+    const [
+        prices,
+        completedOperations,
+        payouts,
+        verifiedSowings,
+        operationsData,
+    ] = await Promise.all([
+        getOperationPrices(farmId),
+        getFarmUserAcceptedOperations(userId, { status: 'completed' }),
+        getFarmerPayoutRequests(userId, farmId),
+        getVerifiedSowingsForFarmer(userId),
+        getEntitiesFormatted<OperationData>('operation'),
+    ]);
 
     // Two maps: entityId-keyed (for specific operations) and typeName-keyed (for sowing)
     const priceByEntityId = new Map<number, SelectOperationPrice>(
@@ -162,7 +175,15 @@ export async function getFarmerBalance(
             .map((p) => [p.entityId as number, p]),
     );
     const priceByTypeName = new Map<string, SelectOperationPrice>(
-        prices.filter((p) => p.entityId === null).map((p) => [p.entityTypeName, p]),
+        prices
+            .filter((p) => p.entityId === null)
+            .map((p) => [p.entityTypeName, p]),
+    );
+    const operationLabelById = new Map(
+        operationsData.map((operation) => [
+            operation.id,
+            operation.information.label || operation.information.name,
+        ]),
     );
 
     const earningsByKey = new Map<string, FarmerEarning>();
@@ -192,6 +213,8 @@ export async function getFarmerBalance(
         } else {
             earningsByKey.set(key, {
                 entityTypeName: op.entityTypeName,
+                entityId: op.entityId,
+                entityLabel: operationLabelById.get(op.entityId),
                 operationCount: 1,
                 pricePerUnit: priceValue,
                 totalEarned: priceValue,
@@ -221,6 +244,7 @@ export async function getFarmerBalance(
         } else {
             earningsByKey.set(typeName, {
                 entityTypeName: typeName,
+                entityId: null,
                 operationCount: 1,
                 pricePerUnit: priceValue,
                 totalEarned: priceValue,
@@ -418,7 +442,12 @@ export async function approvePayoutRequest(
     );
 
     // Notify the farmer
-    await notifyFarmerPayoutStatus(existing.userId, 'approved', parseFloat(existing.requestedAmount), existing.currency);
+    await notifyFarmerPayoutStatus(
+        existing.userId,
+        'approved',
+        parseFloat(existing.requestedAmount),
+        existing.currency,
+    );
 
     return row;
 }
@@ -451,7 +480,12 @@ export async function rejectPayoutRequest(
     );
 
     // Notify the farmer
-    await notifyFarmerPayoutStatus(existing.userId, 'rejected', parseFloat(existing.requestedAmount), existing.currency);
+    await notifyFarmerPayoutStatus(
+        existing.userId,
+        'rejected',
+        parseFloat(existing.requestedAmount),
+        existing.currency,
+    );
 
     return row;
 }
@@ -515,7 +549,12 @@ export async function markPayoutAsPaid(
     );
 
     // Notify the farmer
-    await notifyFarmerPayoutStatus(existing.userId, 'paid', parseFloat(existing.requestedAmount), existing.currency);
+    await notifyFarmerPayoutStatus(
+        existing.userId,
+        'paid',
+        parseFloat(existing.requestedAmount),
+        existing.currency,
+    );
 
     return { payoutRequest: row, receiptId };
 }
@@ -534,7 +573,10 @@ async function notifyFarmerPayoutStatus(
         const accountId = user.accounts[0].account.id;
         const amountStr = `${amount.toFixed(2)} ${currency.toUpperCase()}`;
 
-        const messages: Record<typeof status, { header: string; content: string }> = {
+        const messages: Record<
+            typeof status,
+            { header: string; content: string }
+        > = {
             approved: {
                 header: 'Zahtjev za isplatu odobren',
                 content: `Tvoj zahtjev za isplatu ${amountStr} je odobren. Uskoro će biti obrađen.`,

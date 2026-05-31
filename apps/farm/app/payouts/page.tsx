@@ -1,11 +1,10 @@
+import { formatPrice } from '@gredice/js/currency';
 import {
+    type FarmerEarning,
     getFarmerBalance,
     getFarmerPayoutRequests,
     getFarms,
 } from '@gredice/storage';
-
-export const dynamic = 'force-dynamic';
-import { formatPrice } from '@gredice/js/currency';
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
 import {
     Card,
@@ -16,7 +15,6 @@ import {
 } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
@@ -24,9 +22,14 @@ import LoginDialog from '../../components/auth/LoginDialog';
 import { auth } from '../../lib/auth/auth';
 import { PayoutRequestForm } from './PayoutRequestForm';
 
+export const dynamic = 'force-dynamic';
+
 const payoutStatusLabel: Record<
     string,
-    { label: string; color: 'neutral' | 'warning' | 'info' | 'success' | 'error' }
+    {
+        label: string;
+        color: 'neutral' | 'warning' | 'info' | 'success' | 'error';
+    }
 > = {
     pending: { label: 'Na čekanju', color: 'warning' },
     approved: { label: 'Odobreno', color: 'info' },
@@ -39,6 +42,46 @@ const earningTypeLabel: Record<string, string> = {
     sowingGreenhouse: 'Sijanje (staklenički rasad)',
 };
 
+function getEarningLabel(earning: FarmerEarning) {
+    return (
+        earningTypeLabel[earning.entityTypeName] ??
+        earning.entityLabel ??
+        earning.entityTypeName
+    );
+}
+
+function getEarningKey(earning: FarmerEarning) {
+    return [
+        earning.entityTypeName,
+        earning.entityId ?? 'none',
+        earning.entityLabel ?? '',
+        earning.pricePerUnit,
+        earning.currency,
+    ].join(':');
+}
+
+function mergeEarnings(earnings: FarmerEarning[]) {
+    const merged = new Map<string, FarmerEarning>();
+
+    for (const earning of earnings) {
+        const key = getEarningKey(earning);
+        const existing = merged.get(key);
+        if (existing) {
+            existing.operationCount += earning.operationCount;
+            existing.totalEarned += earning.totalEarned;
+            continue;
+        }
+
+        merged.set(key, { ...earning });
+    }
+
+    return Array.from(merged.values()).sort((left, right) =>
+        getEarningLabel(left).localeCompare(getEarningLabel(right), 'hr', {
+            numeric: true,
+        }),
+    );
+}
+
 async function PayoutsContent() {
     const { userId } = await auth(['farmer', 'admin']);
 
@@ -49,23 +92,18 @@ async function PayoutsContent() {
         getFarmerPayoutRequests(userId),
     ]);
 
-    const totalEarned = balanceResults.reduce(
-        (s, b) => s + b.totalEarned,
-        0,
-    );
+    const totalEarned = balanceResults.reduce((s, b) => s + b.totalEarned, 0);
     const totalPaid = balanceResults.reduce((s, b) => s + b.totalPaid, 0);
-    const totalPending = balanceResults.reduce(
-        (s, b) => s + b.totalPending,
-        0,
-    );
+    const totalPending = balanceResults.reduce((s, b) => s + b.totalPending, 0);
     const availableBalance = Math.max(
         0,
         totalEarned - totalPaid - totalPending,
     );
-    const currency =
-        balanceResults.find((b) => b.currency)?.currency ?? 'eur';
+    const currency = balanceResults.find((b) => b.currency)?.currency ?? 'eur';
 
-    const earningsByType = balanceResults.flatMap((b) => b.earningsByType);
+    const earningsByType = mergeEarnings(
+        balanceResults.flatMap((b) => b.earningsByType),
+    );
 
     const farmWithBalance =
         farms.find((_, i) => balanceResults[i].totalEarned > 0) ?? farms[0];
@@ -157,11 +195,9 @@ async function PayoutsContent() {
                             </Table.Header>
                             <Table.Body>
                                 {earningsByType.map((e) => (
-                                    <Table.Row key={e.entityTypeName}>
+                                    <Table.Row key={getEarningKey(e)}>
                                         <Table.Cell>
-                                            {earningTypeLabel[e.entityTypeName] ??
-                                                e.entityTypeLabel ??
-                                                e.entityTypeName}
+                                            {getEarningLabel(e)}
                                         </Table.Cell>
                                         <Table.Cell className="text-right tabular-nums">
                                             {e.operationCount}
@@ -213,7 +249,10 @@ async function PayoutsContent() {
             {availableBalance <= 0 && totalEarned > 0 && (
                 <Card>
                     <CardContent>
-                        <Typography level="body2" className="text-muted-foreground">
+                        <Typography
+                            level="body2"
+                            className="text-muted-foreground"
+                        >
                             {totalPending > 0
                                 ? `Imaš ${formatPrice(totalPending)} u zahtjevima na čekanju. Pričekaj da administrator obradi zahtjev.`
                                 : 'Svi iznosi su isplaćeni.'}
