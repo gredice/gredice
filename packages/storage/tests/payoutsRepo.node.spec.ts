@@ -10,6 +10,7 @@ import {
     createEvent,
     createFarm,
     createOperation,
+    farmerPayoutRequests,
     getFarmerBalance,
     knownEvents,
     storage,
@@ -72,6 +73,8 @@ async function createVerifiedAcceptedOperation(input: {
     entityId: number;
     completedBy: string;
     assignedUserId?: string;
+    completedAt?: Date;
+    verifiedAt?: Date;
 }) {
     const operationId = await createOperation({
         entityId: input.entityId,
@@ -88,16 +91,20 @@ async function createVerifiedAcceptedOperation(input: {
             assignedBy: input.assignedUserId ?? input.completedBy,
         }),
     );
-    await createEvent(
-        knownEvents.operations.completedV1(operationId.toString(), {
+    await createEvent({
+        ...knownEvents.operations.completedV1(operationId.toString(), {
             completedBy: input.completedBy,
         }),
-    );
-    await createEvent(
-        knownEvents.operations.verifiedV1(operationId.toString(), {
+        ...(input.completedAt ? { createdAt: input.completedAt } : {}),
+    });
+    await createEvent({
+        ...knownEvents.operations.verifiedV1(operationId.toString(), {
             verifiedBy: randomUUID(),
         }),
-    );
+        ...(input.verifiedAt || input.completedAt
+            ? { createdAt: input.verifiedAt ?? input.completedAt }
+            : {}),
+    });
 
     return operationId;
 }
@@ -254,4 +261,90 @@ test('getFarmerBalance includes assigned raised-bed operations by effective farm
     assert.equal(watering?.operationCount, 1);
     assert.equal(watering?.totalEarned, 0.5);
     assert.equal(otherBalance.totalEarned, 0);
+});
+
+test('getFarmerBalance counts payable work after the last paid payout', async () => {
+    createTestDb();
+
+    const userId = randomUUID();
+    await storage()
+        .insert(users)
+        .values({
+            id: userId,
+            userName: `payout-window-${userId}@example.com`,
+            displayName: 'Payout Window Farmer',
+            role: 'farmer',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+    const farmId = await createFarm({
+        name: `Payout Window Farm ${randomUUID()}`,
+        longitude: 0,
+        latitude: 0,
+    });
+    await assignUserToFarm(farmId, userId);
+
+    const wateringEntityId =
+        await createPublishedOperationEntity('Zalijevanje');
+    await upsertOperationPrice({
+        farmId,
+        entityTypeName: 'operation',
+        entityId: wateringEntityId,
+        pricePerUnit: '0.50',
+        currency: 'eur',
+    });
+
+    await createVerifiedAcceptedOperation({
+        farmId,
+        entityId: wateringEntityId,
+        completedBy: userId,
+        completedAt: new Date('2026-01-01T10:00:00.000Z'),
+        verifiedAt: new Date('2026-01-01T10:05:00.000Z'),
+    });
+
+    await storage()
+        .insert(farmerPayoutRequests)
+        .values({
+            farmId,
+            userId,
+            requestedAmount: '0.50',
+            currency: 'eur',
+            status: 'paid',
+            paidAt: new Date('2026-01-02T10:00:00.000Z'),
+            createdAt: new Date('2026-01-02T09:00:00.000Z'),
+            updatedAt: new Date('2026-01-02T10:00:00.000Z'),
+        });
+
+    await createVerifiedAcceptedOperation({
+        farmId,
+        entityId: wateringEntityId,
+        completedBy: userId,
+        completedAt: new Date('2026-01-03T10:00:00.000Z'),
+        verifiedAt: new Date('2026-01-03T10:05:00.000Z'),
+    });
+
+    await storage()
+        .insert(farmerPayoutRequests)
+        .values({
+            farmId,
+            userId,
+            requestedAmount: '0.20',
+            currency: 'eur',
+            status: 'pending',
+            createdAt: new Date('2026-01-03T11:00:00.000Z'),
+            updatedAt: new Date('2026-01-03T11:00:00.000Z'),
+        });
+
+    const balance = await getFarmerBalance(userId, farmId);
+    const watering = balance.earningsByType.find(
+        (earning) => earning.entityId === wateringEntityId,
+    );
+
+    assert.equal(watering?.operationCount, 1);
+    assert.equal(watering?.totalEarned, 0.5);
+    assert.equal(balance.totalEarned, 0.5);
+    assert.equal(balance.totalPaid, 0.5);
+    assert.equal(balance.totalPending, 0.2);
+    assert.equal(balance.availableBalance, 0.3);
 });
