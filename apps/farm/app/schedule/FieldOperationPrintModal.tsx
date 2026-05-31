@@ -2,9 +2,9 @@
 
 import {
     DEFAULT_HARVEST_LABEL_PRESET,
+    type FieldOperationLabelData,
     GrediceLabelPrinter,
     getLabelPrinterAvailabilityMessage,
-    type HarvestLabelData,
     type LabelPrinterSnapshot,
 } from '@gredice/label-printer';
 import { Button } from '@gredice/ui/Button';
@@ -12,8 +12,8 @@ import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { useEffect, useState } from 'react';
-import { HarvestLabelPreviewCanvas } from '../../components/labels/HarvestLabelPreviewCanvas';
+import { type ReactNode, useEffect, useState } from 'react';
+import { FieldOperationLabelPreviewCanvas } from '../../components/labels/FieldOperationLabelPreviewCanvas';
 
 const sharedLabelPrinter = new GrediceLabelPrinter();
 
@@ -44,15 +44,19 @@ function getConsumableUsageLabel(snapshot: LabelPrinterSnapshot) {
     return `${snapshot.consumableUsage.remaining}/${snapshot.consumableUsage.total} etiketa`;
 }
 
-interface HarvestOperationPrintModalProps {
-    operationLabel: string;
-    labelData: HarvestLabelData;
+interface FieldOperationPrintModalProps {
+    title: string;
+    description: ReactNode;
+    labelData: FieldOperationLabelData;
+    triggerLabel?: string;
 }
 
-export function HarvestOperationPrintModal({
-    operationLabel,
+export function FieldOperationPrintModal({
+    title,
+    description,
     labelData,
-}: HarvestOperationPrintModalProps) {
+    triggerLabel = 'Etiketa',
+}: FieldOperationPrintModalProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [snapshot, setSnapshot] = useState(() =>
         sharedLabelPrinter.getSnapshot(),
@@ -120,7 +124,7 @@ export function HarvestOperationPrintModal({
         setSuccessMessage(null);
 
         try {
-            await sharedLabelPrinter.printHarvestLabel(labelData, {
+            await sharedLabelPrinter.printFieldOperationLabel(labelData, {
                 preset: DEFAULT_HARVEST_LABEL_PRESET,
             });
             setSuccessMessage('Etiketa je poslana na pisač.');
@@ -142,7 +146,7 @@ export function HarvestOperationPrintModal({
 
     return (
         <Modal
-            title="Ispis etikete za berbu"
+            title={title}
             open={isOpen}
             onOpenChange={handleOpenChange}
             trigger={
@@ -151,20 +155,15 @@ export function HarvestOperationPrintModal({
                     type="button"
                     className="h-8 px-3 text-xs"
                 >
-                    Etiketa
+                    {triggerLabel}
                 </Button>
             }
         >
             <Stack spacing={4}>
-                <Typography>
-                    Etiketa za <strong>{operationLabel}</strong> sadržavat će
-                    gredicu <strong>{labelData.raisedBedPhysicalId}</strong>,
-                    polje <strong>{labelData.fieldIndex}</strong> i sortu{' '}
-                    <strong>{labelData.plantSortName}</strong>.
-                </Typography>
+                {description}
 
                 <div className="rounded-lg border bg-muted/20 p-3">
-                    <HarvestLabelPreviewCanvas
+                    <FieldOperationLabelPreviewCanvas
                         labelData={labelData}
                         className="mx-auto block w-full max-w-sm rounded border bg-white shadow-xs"
                     />
@@ -361,4 +360,4 @@ export function HarvestOperationPrintModal({
     );
 }
 
-export default HarvestOperationPrintModal;
+export default FieldOperationPrintModal;
