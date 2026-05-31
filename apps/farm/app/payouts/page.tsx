@@ -95,9 +95,9 @@ async function PayoutsContent() {
     const totalEarned = balanceResults.reduce((s, b) => s + b.totalEarned, 0);
     const totalPaid = balanceResults.reduce((s, b) => s + b.totalPaid, 0);
     const totalPending = balanceResults.reduce((s, b) => s + b.totalPending, 0);
-    const availableBalance = Math.max(
+    const availableBalance = balanceResults.reduce(
+        (s, b) => s + b.availableBalance,
         0,
-        totalEarned - totalPaid - totalPending,
     );
     const currency = balanceResults.find((b) => b.currency)?.currency ?? 'eur';
 
@@ -119,7 +119,7 @@ async function PayoutsContent() {
                                 level="body3"
                                 className="text-muted-foreground"
                             >
-                                Ukupno zarađeno
+                                Zarađeno za isplatu
                             </Typography>
                             <Typography
                                 level="h4"
@@ -175,7 +175,7 @@ async function PayoutsContent() {
             {earningsByType.length > 0 && (
                 <Card>
                     <CardHeader>
-                        <CardTitle>Zarađeno po vrsti radnje</CardTitle>
+                        <CardTitle>Radnje za isplatu</CardTitle>
                     </CardHeader>
                     <CardOverflow>
                         <Table>

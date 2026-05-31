@@ -91,6 +91,7 @@ const VERIFIED_SOWING_STATUSES = new Set([
 // Returns one entry per verified sowing cycle, with the farmId it belongs to
 async function getVerifiedSowingsForFarmer(
     userId: string,
+    verifiedFrom?: Date,
 ): Promise<{ farmId: number; sowingLocation: string }[]> {
     const raisedBedRows = await storage()
         .select({
@@ -117,6 +118,14 @@ async function getVerifiedSowingsForFarmer(
                 farmId: row.farmId,
                 sowingLocation: cycle.sowingLocation,
                 plantStatus: cycle.plantStatus,
+                verifiedAt:
+                    cycle.plantSowDate ??
+                    cycle.plantGrowthDate ??
+                    cycle.plantDeadDate ??
+                    cycle.plantReadyDate ??
+                    cycle.plantHarvestedDate ??
+                    cycle.plantRemovedDate ??
+                    cycle.endedAt,
                 assignedUserIds: cycle.assignedUserIds ?? [],
             }));
         }),
@@ -128,6 +137,7 @@ async function getVerifiedSowingsForFarmer(
             (c) =>
                 c.plantStatus !== undefined &&
                 VERIFIED_SOWING_STATUSES.has(c.plantStatus) &&
+                (!verifiedFrom || c.verifiedAt > verifiedFrom) &&
                 c.assignedUserIds.includes(userId),
         );
 }
@@ -165,6 +175,22 @@ async function getOperationEffectiveFarmIds(operationIds: number[]) {
     );
 }
 
+function getLastPaidPayoutAt(payouts: SelectFarmerPayoutRequest[]) {
+    return payouts
+        .filter((payout) => payout.status === 'paid')
+        .map((payout) => payout.paidAt ?? payout.updatedAt ?? payout.createdAt)
+        .filter((paidAt): paidAt is Date => paidAt instanceof Date)
+        .sort((left, right) => right.getTime() - left.getTime())[0];
+}
+
+function getOperationPayoutEligibleAt(operation: {
+    verifiedAt?: Date;
+    completedAt?: Date;
+    timestamp: Date;
+}) {
+    return operation.verifiedAt ?? operation.completedAt ?? operation.timestamp;
+}
+
 // ── Farmer Balance ────────────────────────────────────────────────────────────
 
 export type FarmerEarning = {
@@ -190,21 +216,25 @@ export async function getFarmerBalance(
     userId: string,
     farmId: number,
 ): Promise<FarmerBalance> {
-    const [
-        prices,
-        completedOperations,
-        payouts,
-        verifiedSowings,
-        operationsData,
-    ] = await Promise.all([
+    const [prices, payouts, operationsData] = await Promise.all([
         getOperationPrices(farmId),
-        getFarmUserAcceptedOperations(userId, { status: 'completed' }),
         getFarmerPayoutRequests(userId, farmId),
-        getVerifiedSowingsForFarmer(userId),
         getEntitiesFormatted<OperationData>('operation'),
     ]);
+    const lastPaidPayoutAt = getLastPaidPayoutAt(payouts);
+    const [completedOperations, verifiedSowings] = await Promise.all([
+        getFarmUserAcceptedOperations(userId, { status: 'completed' }),
+        getVerifiedSowingsForFarmer(userId, lastPaidPayoutAt),
+    ]);
+    const payableOperations = completedOperations.filter((operation) => {
+        if (!lastPaidPayoutAt) {
+            return true;
+        }
+
+        return getOperationPayoutEligibleAt(operation) > lastPaidPayoutAt;
+    });
     const completedOperationFarmIds = await getOperationEffectiveFarmIds(
-        completedOperations.map((operation) => operation.id),
+        payableOperations.map((operation) => operation.id),
     );
 
     // Two maps: entityId-keyed (for specific operations) and typeName-keyed (for sowing)
@@ -229,7 +259,7 @@ export async function getFarmerBalance(
     let currency = 'eur';
 
     // Operations
-    for (const op of completedOperations) {
+    for (const op of payableOperations) {
         if (!(op.assignedUserIds ?? []).includes(userId)) {
             continue;
         }
@@ -307,10 +337,7 @@ export async function getFarmerBalance(
         .filter((p) => p.status === 'pending' || p.status === 'approved')
         .reduce((acc, p) => acc + parseFloat(p.requestedAmount), 0);
 
-    const availableBalance = Math.max(
-        0,
-        totalEarned - totalPaid - totalPending,
-    );
+    const availableBalance = Math.max(0, totalEarned - totalPending);
 
     return {
         totalEarned,

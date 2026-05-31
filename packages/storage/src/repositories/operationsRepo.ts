@@ -146,19 +146,28 @@ async function fillOperationAggregates(operations: SelectOperation[]) {
     }
 
     const aggregateIds = operations.map((op) => op.id.toString());
-    const aggregatesEvents = await getEvents(
-        [
-            knownEventTypes.operations.assign,
-            knownEventTypes.operations.schedule,
-            knownEventTypes.operations.complete,
-            knownEventTypes.operations.verify,
-            knownEventTypes.operations.fail,
-            knownEventTypes.operations.cancel,
-        ],
-        aggregateIds,
-        0,
-        10000,
-    );
+    const aggregateEventTypes = [
+        knownEventTypes.operations.assign,
+        knownEventTypes.operations.schedule,
+        knownEventTypes.operations.complete,
+        knownEventTypes.operations.verify,
+        knownEventTypes.operations.fail,
+        knownEventTypes.operations.cancel,
+    ];
+    const aggregatesEvents: Awaited<ReturnType<typeof getEvents>> = [];
+    const eventPageSize = 10000;
+    for (let offset = 0; ; offset += eventPageSize) {
+        const eventPage = await getEvents(
+            aggregateEventTypes,
+            aggregateIds,
+            offset,
+            eventPageSize,
+        );
+        aggregatesEvents.push(...eventPage);
+        if (eventPage.length < eventPageSize) {
+            break;
+        }
+    }
 
     const eventsByAggregateId = new Map<string, typeof aggregatesEvents>();
     for (const event of aggregatesEvents) {
