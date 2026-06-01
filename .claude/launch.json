@@ -1,0 +1,12 @@
+{
+    "version": "0.0.1",
+    "configurations": [
+        {
+            "name": "garden",
+            "runtimeExecutable": "pnpm",
+            "runtimeArgs": ["--filter", "garden", "dev"],
+            "port": 4171,
+            "autoPort": false
+        }
+    ]
+}

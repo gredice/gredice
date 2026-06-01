@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { GameSceneLauncher } from './GameSceneLauncher';
 
 const debugGroups = [
     {
@@ -18,44 +19,8 @@ const debugGroups = [
         ],
     },
     {
-        title: 'Game Scene Profiles',
+        title: 'Game Scene',
         pages: [
-            {
-                href: '/debug/profile/game',
-                title: 'Baseline',
-                description: 'Full mock garden scene for baseline rendering.',
-            },
-            {
-                href: '/debug/profile/game?mode=details',
-                title: 'Details',
-                description:
-                    'Mock garden scene with deferred detail rendering enabled.',
-            },
-            {
-                href: '/debug/profile/game?mode=rain&quality=low',
-                title: 'Rain',
-                description: 'Mock garden scene with rainy weather.',
-            },
-            {
-                href: '/debug/profile/game?mode=snow&quality=low',
-                title: 'Snow',
-                description: 'Mock garden scene with winter weather.',
-            },
-            {
-                href: '/debug/profile/game?mode=night&quality=low',
-                title: 'Night',
-                description: 'Mock garden scene at night.',
-            },
-            {
-                href: '/debug/profile/game?mode=storm&quality=low',
-                title: 'Storm',
-                description: 'Mock garden scene with heavy rain and thunder.',
-            },
-            {
-                href: '/debug/profile/game?mode=autumn&quality=low',
-                title: 'Autumn',
-                description: 'Mock garden scene with autumn time and wind.',
-            },
             {
                 href: '/debug/sandbox',
                 title: 'Local sandbox',
@@ -92,6 +57,9 @@ export default function DebugIndexPage() {
                         <h2 className="text-sm font-semibold uppercase text-neutral-500">
                             {group.title}
                         </h2>
+                        {group.title === 'Game Scene' ? (
+                            <GameSceneLauncher />
+                        ) : null}
                         <div className="grid gap-3 md:grid-cols-2">
                             {group.pages.map((page) => (
                                 <Link

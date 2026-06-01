@@ -1,6 +1,6 @@
 ---
 name: gredice-storybook-component-docs
-description: Use for Gredice Storybook docs: stories, MDX, autodocs, @gredice/ui/shared components, states, accessibility, and reusable UI docs.
+description: "Use for Gredice Storybook docs: stories, MDX, autodocs, @gredice/ui/shared components, states, accessibility, and reusable UI docs."
 ---
 
 # Gredice Storybook Component Docs

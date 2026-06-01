@@ -1,6 +1,6 @@
 ---
 name: gredice-api-reference
-description: Use for Gredice API docs/contracts: Hono routes, OpenAPI/Scalar, auth/security, validation schemas, generated directory types, and client helpers.
+description: "Use for Gredice API docs/contracts: Hono routes, OpenAPI/Scalar, auth/security, validation schemas, generated directory types, and client helpers."
 ---
 
 # Gredice API Reference

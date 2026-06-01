@@ -1,6 +1,6 @@
 ---
 name: gredice-docs-auditor
-description: Use for Gredice repo docs: README, CONTRIBUTING, AGENTS, root guides, docs, setup/commands, app/package maps, validation, generated artifacts.
+description: "Use for Gredice repo docs: README, CONTRIBUTING, AGENTS, root guides, docs, setup/commands, app/package maps, validation, generated artifacts."
 ---
 
 # Gredice Docs Auditor

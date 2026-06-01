@@ -1,6 +1,6 @@
 ---
 name: gredice-cms-page-authoring
-description: Use for Gredice CMS page content/tooling: section JSON, admin/public rendering, slug/publish metadata, preview, and CMS routes/schema.
+description: "Use for Gredice CMS page content/tooling: section JSON, admin/public rendering, slug/publish metadata, preview, and CMS routes/schema."
 ---
 
 # Gredice CMS Page Authoring
