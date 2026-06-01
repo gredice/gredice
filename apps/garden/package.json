@@ -7,6 +7,7 @@
         "clean": "rimraf .next .turbo dist build out coverage .vercel storybook-static",
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
+        "typecheck": "next typegen && tsc --noEmit --pretty false",
         "dev": "node ../../scripts/run-app-command.mjs dev",
         "build": "next build",
         "start": "node ../../scripts/run-app-command.mjs start",

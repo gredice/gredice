@@ -17,10 +17,11 @@ Aim for `3` on small low-risk changes and `4` or higher on shared, public, payme
 
 ## Validation commands
 
-Use targeted commands first. Before handing off code changes, identify the affected workspace(s) and run lint, test, and build for each relevant workspace unless the user explicitly asks to skip validation.
+Use targeted commands first. Before handing off code changes, identify the affected workspace(s) and run the narrowest relevant lint, typecheck, test, or build checks unless the user explicitly asks to skip validation. Run typecheck where the workspace provides it.
 
 ```bash
 pnpm lint --filter <workspace>
+pnpm typecheck --filter <workspace>
 pnpm test --filter <workspace>
 pnpm build --filter <workspace>
 ```
@@ -30,11 +31,12 @@ Examples:
 ```bash
 pnpm lint --filter @gredice/storage
 pnpm test --filter @gredice/storage
+pnpm typecheck --filter garden
 pnpm build --filter www
 pnpm test --filter www
 ```
 
-For shared package changes, validate both the changed package and the consuming app(s) that exercise the behavior. If a package is used by multiple apps, run checks for each relevant consumer, not only the package itself. For `@gredice/game` updates, always validate `garden` and `www` as consumers. Examples:
+For shared package changes, validate both the changed package and the consuming app(s) that exercise the behavior. If a package is used by multiple apps, run checks for each relevant consumer, not only the package itself. For ordinary `@gredice/game` updates, use app typechecks as the default consumer build-compatibility check for `garden` and `www`; reserve full app builds and Playwright suites for routing, static asset, bundling, production behavior, visual, or user-flow changes. Examples:
 
 ```bash
 pnpm lint --filter @gredice/storage
@@ -44,10 +46,10 @@ pnpm build --filter api
 pnpm build --filter farm
 
 pnpm lint --filter @gredice/game
-pnpm lint --filter garden
-pnpm lint --filter www
-pnpm build --filter garden
-pnpm build --filter www
+pnpm typecheck --filter @gredice/game
+pnpm test --filter @gredice/game
+pnpm typecheck --filter garden
+pnpm typecheck --filter www
 ```
 
 For docs-only changes, at minimum check formatting-sensitive diffs with:

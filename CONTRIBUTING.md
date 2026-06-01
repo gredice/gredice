@@ -70,10 +70,11 @@ Coordinate with maintainers before changing shared game asset sources.
 
 ## Validation
 
-Run targeted commands from the repo root. Choose the smallest check that covers the change, then broaden when the change touches shared behavior or critical flows.
+Run targeted commands from the repo root. Choose the smallest check that covers the change, then broaden when the change touches shared behavior or critical flows. Run typecheck where the workspace provides it.
 
 ```bash
 pnpm lint --filter <workspace>
+pnpm typecheck --filter <workspace>
 pnpm test --filter <workspace>
 pnpm build --filter <workspace>
 ```
@@ -82,10 +83,13 @@ Examples:
 
 ```bash
 pnpm lint --filter garden
+pnpm typecheck --filter garden
 pnpm test --filter garden
 pnpm build --filter www
 pnpm test --filter @gredice/storage
 ```
+
+For ordinary `@gredice/game` package changes, validate the package and run `garden`/`www` typechecks instead of building and testing both apps every time. Run the app builds or Playwright suites when app routing, static assets, bundling, production behavior, visual behavior, or user flows changed.
 
 For docs-only changes, run:
 

@@ -110,12 +110,18 @@ When docs claim visual behavior, verify with a browser or screenshots:
 Use targeted checks:
 
 ```bash
-pnpm build --filter garden
-pnpm test --filter garden
 pnpm lint --filter @gredice/game
+pnpm typecheck --filter @gredice/game
+pnpm test --filter @gredice/game
+pnpm typecheck --filter garden
+pnpm typecheck --filter www
 pnpm generate:game-assets
 pnpm --filter @gredice/cdn run regenerate-cdn:decoration-atlas
 git diff --check
 ```
+
+Run `garden` or `www` builds and Playwright suites only when routing, static
+assets, bundling, production-only code paths, visual behavior, or user flows
+changed.
 
 Do not hand-edit generated model output unless the generator is broken and the temporary nature of the change is explicitly documented.

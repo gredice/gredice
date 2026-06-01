@@ -57,6 +57,7 @@ pnpm doctor
 pnpm dev
 pnpm dev:all
 pnpm lint --filter <workspace>
+pnpm typecheck --filter <workspace>
 pnpm test --filter <workspace>
 pnpm build --filter <workspace>
 pnpm db-generate
@@ -68,7 +69,7 @@ Use `pnpm install` only when the task is dependency setup. The README currently 
 
 Document these non-negotiables when relevant:
 
-- Runtime is Node.js `>=24`; package manager is pnpm `10.33.2`.
+- Runtime is Node.js `>=24`; package manager is pinned by the root `packageManager` field.
 - Use `workspace:*` for internal dependencies.
 - Schema changes live in `packages/storage`; run `pnpm db-generate`.
 - Do not run `pnpm db-push`.
