@@ -127,6 +127,8 @@ async function writeEntitlements(stageDir) {
     <true/>
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
     <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
     <key>com.apple.security.device.camera</key>
     <true/>
     <key>com.apple.security.device.microphone</key>
@@ -156,6 +158,8 @@ async function writeBuilderConfig(stageDir, desktopApp, electronVersion) {
             output: outputDir,
         },
         electronVersion,
+        forceCodeSigning:
+            process.env.GREDICE_DESKTOP_REQUIRE_MAC_SIGNING === '1',
         files: [
             'desktop-app.json',
             'favicon.ico',
@@ -179,6 +183,10 @@ async function writeBuilderConfig(stageDir, desktopApp, electronVersion) {
             gatekeeperAssess: false,
             hardenedRuntime: true,
             icon: 'icon.png',
+            notarize:
+                process.env.GREDICE_DESKTOP_SKIP_MAC_NOTARIZATION === '1'
+                    ? false
+                    : undefined,
             target: ['dmg', 'zip'],
         },
         dmg: {
