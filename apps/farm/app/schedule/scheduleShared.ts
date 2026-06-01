@@ -2,12 +2,26 @@ import type { EntityStandardized } from '@gredice/storage';
 import type { FarmScheduleDayData } from './scheduleData';
 
 type FarmRaisedBed = FarmScheduleDayData['raisedBeds'][number];
+type FarmRaisedBedField = FarmRaisedBed['fields'][number];
+type ScheduleTaskAgeIndicatorLevel = 'warning' | 'critical';
+
+const RAISED_BED_FIELDS_PER_BLOCK = 9;
 
 export type RaisedBedScheduleGroup = {
     key: string;
     physicalId: string | null;
     raisedBeds: FarmRaisedBed[];
 };
+
+export type ScheduleTaskAgeIndicator = {
+    level: ScheduleTaskAgeIndicatorLevel;
+    label: string;
+    title: string;
+};
+
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+const WARNING_TASK_AGE_DAYS = 2;
+const CRITICAL_TASK_AGE_DAYS = 3;
 
 function comparePhysicalIds(left: string | null, right: string | null) {
     if (!left && !right) {
@@ -114,6 +128,76 @@ export function getOperationDurationMinutes(
 }
 
 export const PLANTING_TASK_DURATION_MINUTES = 5;
+
+export function getFieldPhysicalPositionIndex(
+    field: Pick<FarmRaisedBedField, 'positionIndex' | 'raisedBedId'>,
+    raisedBeds: FarmRaisedBed[],
+) {
+    const raisedBedIndex = [...raisedBeds]
+        .sort((left, right) => left.id - right.id)
+        .findIndex((raisedBed) => raisedBed.id === field.raisedBedId);
+
+    return (
+        field.positionIndex +
+        1 +
+        Math.max(raisedBedIndex, 0) * RAISED_BED_FIELDS_PER_BLOCK
+    );
+}
+
+function getLocalDayNumber(date: Date) {
+    return (
+        Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) /
+        MILLISECONDS_PER_DAY
+    );
+}
+
+function parseScheduleDate(date: Date | string | null | undefined) {
+    if (!date) {
+        return null;
+    }
+
+    const parsedDate = typeof date === 'string' ? new Date(date) : date;
+
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+}
+
+function formatTaskAgeDays(days: number) {
+    const dayLabel = days % 10 === 1 && days % 100 !== 11 ? 'dan' : 'dana';
+    return `${days} ${dayLabel}`;
+}
+
+export function getScheduleTaskAgeIndicator(
+    scheduledDate: Date | string | null | undefined,
+    referenceDate = new Date(),
+): ScheduleTaskAgeIndicator | null {
+    const parsedScheduledDate = parseScheduleDate(scheduledDate);
+    if (!parsedScheduledDate) {
+        return null;
+    }
+
+    const ageDays =
+        getLocalDayNumber(referenceDate) -
+        getLocalDayNumber(parsedScheduledDate);
+    const formattedAgeDays = formatTaskAgeDays(ageDays);
+
+    if (ageDays >= CRITICAL_TASK_AGE_DAYS) {
+        return {
+            level: 'critical',
+            label: `Kritično ${formattedAgeDays}`,
+            title: `Zadatak kasni ${formattedAgeDays} prema planiranom datumu.`,
+        };
+    }
+
+    if (ageDays >= WARNING_TASK_AGE_DAYS) {
+        return {
+            level: 'warning',
+            label: `Kasni ${formattedAgeDays}`,
+            title: `Zadatak kasni ${formattedAgeDays} prema planiranom datumu.`,
+        };
+    }
+
+    return null;
+}
 
 export function isOperationCompleted(status?: string) {
     return status === 'completed' || status === 'pendingVerification';

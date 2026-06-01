@@ -5,6 +5,10 @@ import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { BlockSurfaceDecorationSprites } from './groundDecorations/BlockSurfaceDecorationSprites';
+import {
+    useGroundPatchMaterial,
+    useGroundPatchStandardMaterial,
+} from './helpers/groundPatchMaterial';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function BlockGroundCorner({
@@ -15,6 +19,10 @@ export function BlockGroundCorner({
     const { nodes } = useGameGLTF('BlockTerrainCorner');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const groundMaterial1 = useGroundPatchMaterial(
+        nodes.Block_Ground_Corner_1.material,
+        'dirt',
+    );
 
     return (
         <animated.group
@@ -24,20 +32,14 @@ export function BlockGroundCorner({
             <mesh
                 castShadow
                 receiveShadow
-                geometry={nodes.Block_Ground_Corner_1_1.geometry}
-                material={nodes.Block_Ground_Corner_1_1.material}
+                geometry={nodes.Block_Ground_Corner_1.geometry}
+                material={groundMaterial1}
             />
             <SnowOverlay
-                geometry={nodes.Block_Ground_Corner_1_1.geometry}
+                geometry={nodes.Block_Ground_Corner_1.geometry}
                 maxThickness={0.18}
                 slopeExponent={1.7}
                 noiseScale={1.8}
-            />
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes.Block_Ground_Corner_1_2.geometry}
-                material={nodes.Block_Ground_Corner_1_2.material}
             />
         </animated.group>
     );
@@ -51,6 +53,14 @@ export function BlockGrassCorner({
     const { nodes } = useGameGLTF('BlockTerrainCorner');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const grassMaterial1 = useGroundPatchMaterial(
+        nodes.Block_Grass_Corner_1_1.material,
+        'grass',
+    );
+    const grassMaterial2 = useGroundPatchMaterial(
+        nodes.Block_Grass_Corner_1_2.material,
+        'grass',
+    );
 
     return (
         <animated.group
@@ -61,13 +71,13 @@ export function BlockGrassCorner({
                 castShadow
                 receiveShadow
                 geometry={nodes.Block_Grass_Corner_1_1.geometry}
-                material={nodes.Block_Grass_Corner_1_1.material}
+                material={grassMaterial1}
             />
             <mesh
                 castShadow
                 receiveShadow
                 geometry={nodes.Block_Grass_Corner_1_2.geometry}
-                material={nodes.Block_Grass_Corner_1_2.material}
+                material={grassMaterial2}
             />
             <SnowOverlay
                 geometry={nodes.Block_Grass_Corner_1_2.geometry}
@@ -86,6 +96,10 @@ export function BlockSandCorner({
     const { nodes } = useGameGLTF('BlockTerrainCorner');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const sandMaterial = useGroundPatchMaterial(
+        nodes.Block_Sand_Corner_1.material,
+        'sand',
+    );
 
     return (
         <animated.group
@@ -96,7 +110,7 @@ export function BlockSandCorner({
                 castShadow
                 receiveShadow
                 geometry={nodes.Block_Sand_Corner_1.geometry}
-                material={nodes.Block_Sand_Corner_1.material}
+                material={sandMaterial}
             />
             <SnowOverlay
                 geometry={nodes.Block_Sand_Corner_1.geometry}
@@ -115,6 +129,12 @@ export function BlockSnowCorner({
     const { nodes } = useGameGLTF('BlockTerrainCorner');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const snowMaterial = useGroundPatchStandardMaterial({
+        color: '#f0f7ff',
+        metalness: 0,
+        roughness: 1,
+        surface: 'snow',
+    });
 
     return (
         <animated.group
@@ -125,13 +145,8 @@ export function BlockSnowCorner({
                 castShadow
                 receiveShadow
                 geometry={nodes.Block_Sand_Corner_1.geometry}
-            >
-                <meshStandardMaterial
-                    color={'#FFFFFF'}
-                    roughness={1}
-                    metalness={0}
-                />
-            </mesh>
+                material={snowMaterial}
+            />
             <SnowOverlay
                 geometry={nodes.Block_Sand_Corner_1.geometry}
                 {...snowPresets.snowCorner}

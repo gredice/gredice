@@ -1,5 +1,4 @@
 import { calculatePlantsPerField } from '@gredice/js/plants';
-import type { FieldOperationLabelData } from '@gredice/label-printer';
 import type {
     EntityStandardized,
     RaisedBedFieldAssignableFarmUser,
@@ -13,10 +12,11 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { CompletePlantingModal } from './CompletePlantingModal';
-import { FieldOperationPrintModal } from './FieldOperationPrintModal';
+import { ScheduleTaskAgeIndicatorChip } from './ScheduleTaskAgeIndicatorChip';
 import type { FarmScheduleDayData } from './scheduleData';
 import {
     formatMinutes,
+    getFieldPhysicalPositionIndex,
     groupRaisedBedsForSchedule,
     isFieldApproved,
     isFieldCompleted,
@@ -24,13 +24,6 @@ import {
 } from './scheduleShared';
 
 type FarmRaisedBedField = FarmScheduleDayData['scheduledFields'][number];
-type FarmRaisedBed = FarmScheduleDayData['raisedBeds'][number];
-type FarmRaisedBedFieldCardData = FarmRaisedBedField & {
-    label: string;
-    physicalPositionIndex: number;
-};
-
-const RAISED_BED_FIELDS_PER_BLOCK = 9;
 
 interface FarmSchedulePlantingsSectionProps {
     raisedBeds: FarmScheduleDayData['raisedBeds'];
@@ -68,123 +61,6 @@ function getPlantsPerFieldCount(
     return typeof seedingDistance === 'number'
         ? calculatePlantsPerField(seedingDistance).totalPlants
         : null;
-}
-
-function getFieldPhysicalPositionIndex(
-    field: FarmRaisedBedField,
-    raisedBeds: FarmRaisedBed[],
-) {
-    const raisedBedIndex = [...raisedBeds]
-        .sort((left, right) => left.id - right.id)
-        .findIndex((raisedBed) => raisedBed.id === field.raisedBedId);
-
-    return (
-        field.positionIndex +
-        1 +
-        Math.max(raisedBedIndex, 0) * RAISED_BED_FIELDS_PER_BLOCK
-    );
-}
-
-function formatPieceCountLabel(count: number) {
-    return `${count} ${count === 1 ? 'KOMAD' : 'KOMADA'}`;
-}
-
-function formatFieldRange(fields: FarmRaisedBedFieldCardData[]) {
-    const positions = fields.map((field) => field.physicalPositionIndex);
-    const firstPosition = positions.at(0);
-    const lastPosition = positions.at(-1);
-
-    if (firstPosition === undefined || lastPosition === undefined) {
-        return '';
-    }
-
-    return firstPosition === lastPosition
-        ? firstPosition.toString()
-        : `${firstPosition}-${lastPosition}`;
-}
-
-function buildGreenhouseSowingLabelDataByFieldId(
-    fields: FarmRaisedBedFieldCardData[],
-    physicalId: string | null,
-    plantSortById: Map<number, EntityStandardized>,
-) {
-    const labelDataByFieldId = new Map<number, FieldOperationLabelData>();
-    if (!physicalId) {
-        return labelDataByFieldId;
-    }
-
-    const greenhouseFields = fields
-        .filter(
-            (field) =>
-                field.sowingLocation === 'greenhouse' &&
-                typeof field.plantSortId === 'number',
-        )
-        .sort(
-            (left, right) =>
-                left.physicalPositionIndex - right.physicalPositionIndex,
-        );
-
-    let groupStartIndex = 0;
-    while (groupStartIndex < greenhouseFields.length) {
-        const firstField = greenhouseFields[groupStartIndex];
-        if (!firstField?.plantSortId) {
-            groupStartIndex += 1;
-            continue;
-        }
-
-        const group = [firstField];
-        let nextIndex = groupStartIndex + 1;
-        while (nextIndex < greenhouseFields.length) {
-            const previousField = group[group.length - 1];
-            const nextField = greenhouseFields[nextIndex];
-            if (
-                !previousField ||
-                !nextField ||
-                nextField.plantSortId !== firstField.plantSortId ||
-                nextField.physicalPositionIndex !==
-                    previousField.physicalPositionIndex + 1
-            ) {
-                break;
-            }
-
-            group.push(nextField);
-            nextIndex += 1;
-        }
-
-        const plantSort = plantSortById.get(firstField.plantSortId);
-        const plantSortName = plantSort?.information?.name;
-        if (plantSortName) {
-            const plantsPerField = getPlantsPerFieldCount(plantSort);
-            const pieceCount = group.length * Math.max(1, plantsPerField ?? 1);
-            const labelData = {
-                raisedBedPhysicalId: physicalId,
-                fieldLabel: formatFieldRange(group),
-                detailLabel: formatPieceCountLabel(pieceCount),
-                plantSortName,
-            };
-            for (const field of group) {
-                labelDataByFieldId.set(field.id, labelData);
-            }
-        }
-
-        groupStartIndex = nextIndex;
-    }
-
-    return labelDataByFieldId;
-}
-
-function renderGreenhouseSowingLabelDescription(
-    labelData: FieldOperationLabelData,
-) {
-    return (
-        <Typography>
-            Etiketa za stakleničko sijanje sadržavat će gredicu{' '}
-            <strong>{labelData.raisedBedPhysicalId}</strong>, polje{' '}
-            <strong>{labelData.fieldLabel}</strong>, količinu{' '}
-            <strong>{labelData.detailLabel}</strong> i sortu{' '}
-            <strong>{labelData.plantSortName}</strong>.
-        </Typography>
-    );
 }
 
 export function FarmSchedulePlantingsSection({
@@ -245,13 +121,6 @@ export function FarmSchedulePlantingsSection({
                                 ),
                             };
                         });
-                    const greenhouseSowingLabelDataByFieldId =
-                        buildGreenhouseSowingLabelDataByFieldId(
-                            dayFields,
-                            physicalId,
-                            plantSortById,
-                        );
-
                     const totalDuration =
                         dayFields.length * PLANTING_TASK_DURATION_MINUTES;
 
@@ -301,10 +170,6 @@ export function FarmSchedulePlantingsSection({
                                         assignedUserByFieldId.get(field.id);
                                     const greenhouseSowing =
                                         field.sowingLocation === 'greenhouse';
-                                    const greenhouseSowingLabelData =
-                                        greenhouseSowingLabelDataByFieldId.get(
-                                            field.id,
-                                        );
 
                                     return (
                                         <div
@@ -392,17 +257,6 @@ export function FarmSchedulePlantingsSection({
                                                                     Staklenik
                                                                 </Chip>
                                                             )}
-                                                            {greenhouseSowingLabelData && (
-                                                                <FieldOperationPrintModal
-                                                                    title="Ispis etikete za sijanje u stakleniku"
-                                                                    labelData={
-                                                                        greenhouseSowingLabelData
-                                                                    }
-                                                                    description={renderGreenhouseSowingLabelDescription(
-                                                                        greenhouseSowingLabelData,
-                                                                    )}
-                                                                />
-                                                            )}
                                                             <Typography
                                                                 level="body2"
                                                                 className="text-muted-foreground"
@@ -424,6 +278,13 @@ export function FarmSchedulePlantingsSection({
                                                                     'Danas'
                                                                 )}
                                                             </Typography>
+                                                            {!completed && (
+                                                                <ScheduleTaskAgeIndicatorChip
+                                                                    scheduledDate={
+                                                                        field.plantScheduledDate
+                                                                    }
+                                                                />
+                                                            )}
                                                         </Row>
                                                     </Stack>
                                                 </Row>

@@ -22,17 +22,12 @@ import { Slider } from '@gredice/ui/Slider';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import {
-    type KeyboardEvent,
-    type PointerEvent as ReactPointerEvent,
-    useCallback,
-    useEffect,
-    useState,
-} from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLiveTime } from '../hooks/useLiveTime';
 import { type GameState, useGameState } from '../useGameState';
 import { clampTimeOfDay, createDateForGameTimeOfDay } from '../utils/timeOfDay';
 import { HudCard } from './components/HudCard';
+import { TimeOfDayVisualization } from './components/TimeOfDayVisualization';
 
 type SandboxWeather = NonNullable<GameState['weather']>;
 
@@ -168,264 +163,6 @@ function formatShortDate(date: Date) {
         day: '2-digit',
         month: '2-digit',
     });
-}
-
-function formatTimeOfDayLabel(timeOfDay: number) {
-    const totalMinutes = Math.round(clampTimeOfDay(timeOfDay) * 24 * 60);
-    if (totalMinutes >= 24 * 60) {
-        return '24:00';
-    }
-
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes
-        .toString()
-        .padStart(2, '0')}`;
-}
-
-type TimeTickLabelPosition = {
-    textAnchor: 'end' | 'middle' | 'start';
-    x: number;
-};
-
-function getTimeTickLabelPosition(tick: number): TimeTickLabelPosition {
-    if (tick <= 0) {
-        return { textAnchor: 'start', x: 1 };
-    }
-
-    if (tick >= 1) {
-        return { textAnchor: 'end', x: 99 };
-    }
-
-    return { textAnchor: 'middle', x: tick * 100 };
-}
-
-function getDayPoint(timeOfDay: number) {
-    const clamped = clampTimeOfDay(timeOfDay);
-    const x = clamped * 100;
-
-    if (clamped >= 0.2 && clamped <= 0.8) {
-        const t = (clamped - 0.2) / 0.6;
-        const y = (1 - t) * (1 - t) * 24 + 2 * (1 - t) * t * 5 + t * t * 24;
-        return { x, y };
-    }
-
-    if (clamped > 0.8) {
-        const t = (clamped - 0.8) / 0.2;
-        return { x, y: 24 - Math.sin(t * Math.PI * 0.5) * 8 };
-    }
-
-    const t = clamped / 0.2;
-    return { x, y: 16 + Math.sin(t * Math.PI * 0.5) * 8 };
-}
-
-function SandboxTimeVisualization({
-    onChange,
-    timeOfDay,
-}: {
-    onChange: (timeOfDay: number) => void;
-    timeOfDay: number;
-}) {
-    const point = getDayPoint(timeOfDay);
-    const isDaytime = timeOfDay >= 0.2 && timeOfDay <= 0.8;
-
-    const updateFromPointer = useCallback(
-        (event: ReactPointerEvent<HTMLDivElement>) => {
-            const rect = event.currentTarget.getBoundingClientRect();
-            const nextTimeOfDay = clampTimeOfDay(
-                (event.clientX - rect.left) / rect.width,
-            );
-            onChange(nextTimeOfDay);
-        },
-        [onChange],
-    );
-
-    const handlePointerDown = useCallback(
-        (event: ReactPointerEvent<HTMLDivElement>) => {
-            event.preventDefault();
-            event.currentTarget.setPointerCapture(event.pointerId);
-            updateFromPointer(event);
-        },
-        [updateFromPointer],
-    );
-
-    const handlePointerMove = useCallback(
-        (event: ReactPointerEvent<HTMLDivElement>) => {
-            if (event.buttons !== 1) {
-                return;
-            }
-            updateFromPointer(event);
-        },
-        [updateFromPointer],
-    );
-
-    const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-        const step = event.shiftKey ? 1 / 24 : 1 / 96;
-        if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
-            event.preventDefault();
-            onChange(clampTimeOfDay(timeOfDay - step));
-        } else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
-            event.preventDefault();
-            onChange(clampTimeOfDay(timeOfDay + step));
-        } else if (event.key === 'Home') {
-            event.preventDefault();
-            onChange(0);
-        } else if (event.key === 'End') {
-            event.preventDefault();
-            onChange(1);
-        }
-    };
-
-    return (
-        <div
-            aria-label="Doba dana"
-            aria-valuemax={24}
-            aria-valuemin={0}
-            aria-valuenow={Math.round(timeOfDay * 24 * 100) / 100}
-            aria-valuetext={formatTimeOfDayLabel(timeOfDay)}
-            className="h-28 w-full touch-none select-none overflow-visible rounded-md bg-gradient-to-b from-sky-100 via-sky-50 to-slate-200 outline-hidden ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:from-slate-800 dark:via-slate-900 dark:to-slate-950"
-            data-sandbox-time-visualization="true"
-            onKeyDown={handleKeyDown}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            role="slider"
-            tabIndex={0}
-        >
-            <svg
-                aria-hidden="true"
-                className="h-full w-full overflow-visible"
-                viewBox="0 0 100 32"
-            >
-                <defs>
-                    <linearGradient id="sandboxDayArc" x1="20%" x2="80%">
-                        <stop
-                            offset="0%"
-                            stopColor="#f59e0b"
-                            stopOpacity="0.2"
-                        />
-                        <stop
-                            offset="50%"
-                            stopColor="#facc15"
-                            stopOpacity="1"
-                        />
-                        <stop
-                            offset="100%"
-                            stopColor="#f59e0b"
-                            stopOpacity="0.2"
-                        />
-                    </linearGradient>
-                    <linearGradient id="sandboxNightArc" x1="0%" x2="100%">
-                        <stop
-                            offset="0%"
-                            stopColor="#bfdbfe"
-                            stopOpacity="0.65"
-                        />
-                        <stop
-                            offset="50%"
-                            stopColor="#93c5fd"
-                            stopOpacity="0.25"
-                        />
-                        <stop
-                            offset="100%"
-                            stopColor="#bfdbfe"
-                            stopOpacity="0.65"
-                        />
-                    </linearGradient>
-                    <filter
-                        id="sandboxSunGlow"
-                        x="-300%"
-                        y="-300%"
-                        width="700%"
-                        height="700%"
-                    >
-                        <feGaussianBlur
-                            stdDeviation="1.6"
-                            result="coloredBlur"
-                        />
-                        <feComposite
-                            in="SourceGraphic"
-                            in2="coloredBlur"
-                            operator="over"
-                        />
-                    </filter>
-                </defs>
-                <path
-                    d="M20 24 Q50 5 80 24"
-                    fill="none"
-                    stroke="url(#sandboxDayArc)"
-                    strokeLinecap="round"
-                    strokeWidth="1.8"
-                />
-                <path
-                    d="M80 24 Q90 16 100 16 M0 16 Q10 16 20 24"
-                    fill="none"
-                    stroke="url(#sandboxNightArc)"
-                    strokeLinecap="round"
-                    strokeWidth="1.4"
-                />
-                {[0, 0.25, 0.5, 0.75, 1].map((tick) => {
-                    const labelPosition = getTimeTickLabelPosition(tick);
-
-                    return (
-                        <g key={tick} opacity="0.55">
-                            <line
-                                x1={tick * 100}
-                                x2={tick * 100}
-                                y1="25"
-                                y2="27"
-                                stroke="currentColor"
-                                strokeWidth="0.4"
-                            />
-                            <text
-                                x={labelPosition.x}
-                                y="30.5"
-                                textAnchor={labelPosition.textAnchor}
-                                className="fill-current text-[3px]"
-                            >
-                                {formatTimeOfDayLabel(tick)}
-                            </text>
-                        </g>
-                    );
-                })}
-                <line
-                    x1="0"
-                    x2="100"
-                    y1="24"
-                    y2="24"
-                    stroke="currentColor"
-                    strokeDasharray="1 2"
-                    strokeOpacity="0.3"
-                    strokeWidth="0.35"
-                />
-                <g
-                    className="transition-transform duration-100 ease-out"
-                    transform={`translate(${point.x}, ${point.y})`}
-                >
-                    {isDaytime ? (
-                        <>
-                            <circle
-                                fill="#f59e0b"
-                                filter="url(#sandboxSunGlow)"
-                                r="3.8"
-                            />
-                            <circle fill="#fde68a" r="2.2" />
-                        </>
-                    ) : (
-                        <>
-                            <circle fill="#dbeafe" r="3.6" />
-                            <circle
-                                cx="1.2"
-                                cy="-0.7"
-                                fill="currentColor"
-                                opacity="0.22"
-                                r="3.2"
-                            />
-                        </>
-                    )}
-                </g>
-            </svg>
-        </div>
-    );
 }
 
 function isPresetActive(
@@ -891,9 +628,11 @@ export function SandboxEnvironmentHud() {
                         </Row>
                         <Divider />
                         <Stack spacing={4} className="px-4 py-3">
-                            <SandboxTimeVisualization
-                                timeOfDay={timeOfDay}
+                            <TimeOfDayVisualization
+                                data-sandbox-time-visualization="true"
+                                interactive
                                 onChange={updateTimeOfDay}
+                                timeOfDay={timeOfDay}
                             />
                             <Row justifyContent="space-between">
                                 <Typography

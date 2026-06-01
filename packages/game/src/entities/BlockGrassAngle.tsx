@@ -5,6 +5,7 @@ import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { BlockSurfaceDecorationSprites } from './groundDecorations/BlockSurfaceDecorationSprites';
+import { useGroundPatchMaterial } from './helpers/groundPatchMaterial';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function BlockGrassAngle({
@@ -16,6 +17,10 @@ export function BlockGrassAngle({
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     const variantResolved = 1;
+    const grassMaterial = useGroundPatchMaterial(
+        nodes[`Block_Grass_Angle_${variantResolved}_2`].material,
+        'grass',
+    );
 
     return (
         <animated.group
@@ -28,9 +33,7 @@ export function BlockGrassAngle({
                 geometry={
                     nodes[`Block_Grass_Angle_${variantResolved}_2`].geometry
                 }
-                material={
-                    nodes[`Block_Grass_Angle_${variantResolved}_2`].material
-                }
+                material={grassMaterial}
             />
             <SnowOverlay
                 geometry={

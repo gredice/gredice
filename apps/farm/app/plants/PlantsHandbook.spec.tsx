@@ -1,5 +1,6 @@
 import type { EntityStandardized } from '@gredice/storage';
 import { expect, test } from '@playwright/experimental-ct-react';
+import { PlantSortDetails } from './PlantSortDetails';
 import { PlantsHandbook } from './PlantsHandbook';
 
 const tomatoPlant = {
@@ -54,20 +55,18 @@ test('plant handbook search includes parent plant alternative names', async ({
     await expect(searchInput).toBeFocused();
     await expect(searchInput).toHaveValue('paradajz');
     await expect(
-        page.getByRole('button', { name: /Cherry rajčica/ }),
+        page.getByRole('link', { name: /Cherry rajčica/ }),
     ).toBeVisible();
     await expect(
-        page.getByRole('button', { name: /Genovese bosiljak/ }),
+        page.getByRole('link', { name: /Genovese bosiljak/ }),
     ).toHaveCount(0);
 });
 
-test('plant handbook renders selected plant description markdown', async ({
+test('plant sort details render description markdown', async ({
     mount,
     page,
 }) => {
-    await mount(<PlantsHandbook plantSortsData={[pepperSort]} />);
-
-    await page.getByRole('button', { name: /Paprika/ }).click();
+    await mount(<PlantSortDetails plantSort={pepperSort} />);
 
     await expect(page.getByText('Njega uključuje:')).toBeVisible();
     await expect(

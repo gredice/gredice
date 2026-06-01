@@ -26,6 +26,10 @@ import {
     useEntityBlockInstances,
 } from './EntityInstancesBlock';
 import { GardenFlowerModel } from './helpers/GardenFlowerModel';
+import {
+    type GroundPatchSurface,
+    useGroundPatchMaterial,
+} from './helpers/groundPatchMaterial';
 import { HoverOutline } from './helpers/HoverOutline';
 import { resolveEntityNeighbors } from './helpers/useEntityNeighbors';
 import { RaisedBedFields } from './raisedBed/RaisedBedFields';
@@ -48,10 +52,12 @@ type ScaleInput = number | ScaleTuple | { x: number; y: number; z: number };
 type RotationTuple = [number, number, number];
 type AssetBlockMaterialProps =
     | {
+          groundPatch?: GroundPatchSurface;
           material: (gltf: GLTFResult) => Material | Material[];
           materialNode?: never;
       }
     | {
+          groundPatch?: never;
           material?: never;
           materialNode: ReactNode;
       };
@@ -60,6 +66,16 @@ type AssetBlockProps = Omit<EntityInstancesBlockBaseProps, 'geometry'> &
         assetName: GameAssetName;
         geometry: (gltf: GLTFResult) => BufferGeometry;
     };
+
+type LoadedAssetBlockMaterialProps = Omit<
+    EntityInstancesBlockBaseProps,
+    'geometry'
+> & {
+    geometry: BufferGeometry;
+    gltf: GLTFResult;
+    groundPatch?: GroundPatchSurface;
+    material: (gltf: GLTFResult) => Material | Material[];
+};
 
 const potBlockNames = [
     'PotLowBowl',
@@ -173,11 +189,15 @@ function LoadedAssetBlock({ assetName, geometry, ...props }: AssetBlockProps) {
     const resolvedGeometry = geometry(gltf);
 
     if (props.material) {
+        const { groundPatch, material, ...blockProps } = props;
+
         return (
-            <EntityInstancesBlock
-                {...props}
+            <LoadedAssetBlockMaterial
+                {...blockProps}
                 geometry={resolvedGeometry}
-                material={props.material(gltf)}
+                gltf={gltf}
+                groundPatch={groundPatch}
+                material={material}
             />
         );
     }
@@ -187,6 +207,24 @@ function LoadedAssetBlock({ assetName, geometry, ...props }: AssetBlockProps) {
             {...props}
             geometry={resolvedGeometry}
             materialNode={props.materialNode}
+        />
+    );
+}
+
+function LoadedAssetBlockMaterial({
+    geometry,
+    gltf,
+    groundPatch,
+    material,
+    ...props
+}: LoadedAssetBlockMaterialProps) {
+    const patchedMaterial = useGroundPatchMaterial(material(gltf), groundPatch);
+
+    return (
+        <EntityInstancesBlock
+            {...props}
+            geometry={geometry}
+            material={patchedMaterial}
         />
     );
 }
@@ -292,6 +330,14 @@ function BlockGroundInstances({
     ...commonSnowProps
 }: { stacks: Stack[] | undefined } & CommonWeatherProps) {
     const { nodes } = useGameGLTF('BlockGround');
+    const groundMaterial11 = useGroundPatchMaterial(
+        nodes.Block_Ground_1.material,
+        'dirt',
+    );
+    const groundMaterial21 = useGroundPatchMaterial(
+        nodes.Block_Ground_2.material,
+        'dirt',
+    );
     const groundInstances = useEntityBlockInstances({
         name: 'Block_Ground',
         stacks,
@@ -307,10 +353,10 @@ function BlockGroundInstances({
     return (
         <>
             <EntityInstancesGeometry
-                instanceKey="Block_Ground_1_1"
+                instanceKey="Block_Ground_1"
                 instances={oddVariantInstances}
-                geometry={nodes.Block_Ground_1_1.geometry}
-                material={nodes.Block_Ground_1_1.material}
+                geometry={nodes.Block_Ground_1.geometry}
+                material={groundMaterial11}
                 snow={{
                     maxThickness: 0.22,
                     slopeExponent: 3.2,
@@ -319,29 +365,15 @@ function BlockGroundInstances({
                 {...commonSnowProps}
             />
             <EntityInstancesGeometry
-                instanceKey="Block_Ground_1_2"
-                instances={oddVariantInstances}
-                geometry={nodes.Block_Ground_1_2.geometry}
-                material={nodes.Block_Ground_1_2.material}
-                {...commonSnowProps}
-            />
-            <EntityInstancesGeometry
-                instanceKey="Block_Ground_2_1"
+                instanceKey="Block_Ground_2"
                 instances={evenVariantInstances}
-                geometry={nodes.Block_Ground_2_1.geometry}
-                material={nodes.Block_Ground_2_1.material}
+                geometry={nodes.Block_Ground_2.geometry}
+                material={groundMaterial21}
                 snow={{
                     maxThickness: 0.22,
                     slopeExponent: 3.2,
                     noiseScale: 1.7,
                 }}
-                {...commonSnowProps}
-            />
-            <EntityInstancesGeometry
-                instanceKey="Block_Ground_2_2"
-                instances={evenVariantInstances}
-                geometry={nodes.Block_Ground_2_2.geometry}
-                material={nodes.Block_Ground_2_2.material}
                 {...commonSnowProps}
             />
         </>
@@ -1988,9 +2020,10 @@ function SimpleAdditionalInstances({
                 assetName="BlockGroundAngle"
                 stacks={stacks}
                 name="Block_Ground_Angle"
+                groundPatch="dirt"
                 yOffset={1}
-                geometry={(gltf) => gltf.nodes.Block_Ground_Angle_1_1.geometry}
-                material={(gltf) => gltf.nodes.Block_Ground_Angle_1_1.material}
+                geometry={(gltf) => gltf.nodes.Block_Ground_Angle_1.geometry}
+                material={(gltf) => gltf.nodes.Block_Ground_Angle_1.material}
                 snow={{
                     maxThickness: 0.18,
                     slopeExponent: 2.2,
@@ -1999,30 +2032,13 @@ function SimpleAdditionalInstances({
                 {...commonSnowProps}
             />
             <AssetBlock
-                assetName="BlockGroundAngle"
-                stacks={stacks}
-                name="Block_Ground_Angle"
-                yOffset={1}
-                geometry={(gltf) => gltf.nodes.Block_Ground_Angle_1_2.geometry}
-                material={(gltf) => gltf.nodes.Block_Ground_Angle_1_2.material}
-                {...commonSnowProps}
-            />
-            <AssetBlock
                 assetName="BlockTerrainCorner"
                 stacks={stacks}
                 name="Block_Ground_Corner"
+                groundPatch="dirt"
                 yOffset={1}
-                geometry={(gltf) => gltf.nodes.Block_Ground_Corner_1_1.geometry}
-                material={(gltf) => gltf.nodes.Block_Ground_Corner_1_1.material}
-                {...commonSnowProps}
-            />
-            <AssetBlock
-                assetName="BlockTerrainCorner"
-                stacks={stacks}
-                name="Block_Ground_Corner"
-                yOffset={1}
-                geometry={(gltf) => gltf.nodes.Block_Ground_Corner_1_2.geometry}
-                material={(gltf) => gltf.nodes.Block_Ground_Corner_1_2.material}
+                geometry={(gltf) => gltf.nodes.Block_Ground_Corner_1.geometry}
+                material={(gltf) => gltf.nodes.Block_Ground_Corner_1.material}
                 snow={{
                     maxThickness: 0.18,
                     slopeExponent: 2.2,
@@ -2034,25 +2050,13 @@ function SimpleAdditionalInstances({
                 assetName="BlockTerrainReverseCorner"
                 stacks={stacks}
                 name="Block_Ground_Reverse_Corner"
+                groundPatch="dirt"
                 yOffset={1}
                 geometry={(gltf) =>
-                    gltf.nodes.Block_Ground_Reverse_Corner_1_1.geometry
+                    gltf.nodes.Block_Ground_Reverse_Corner_1.geometry
                 }
                 material={(gltf) =>
-                    gltf.nodes.Block_Ground_Reverse_Corner_1_1.material
-                }
-                {...commonSnowProps}
-            />
-            <AssetBlock
-                assetName="BlockTerrainReverseCorner"
-                stacks={stacks}
-                name="Block_Ground_Reverse_Corner"
-                yOffset={1}
-                geometry={(gltf) =>
-                    gltf.nodes.Block_Ground_Reverse_Corner_1_2.geometry
-                }
-                material={(gltf) =>
-                    gltf.nodes.Block_Ground_Reverse_Corner_1_2.material
+                    gltf.nodes.Block_Ground_Reverse_Corner_1.material
                 }
                 snow={{
                     maxThickness: 0.18,

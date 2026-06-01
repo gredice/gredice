@@ -409,6 +409,74 @@ export class GrediceLabelPrinter {
 		}
 	}
 
+	private async printCanvasLabels(
+		renderLabels: Array<
+			(canvas: HTMLCanvasElement, preset: HarvestLabelPreset) => void
+		>,
+		options?: {
+			preset?: HarvestLabelPreset;
+		},
+	) {
+		if (!this.client.isConnected()) {
+			throw new Error("Najprije povežite pisač.");
+		}
+
+		if (typeof document === "undefined") {
+			throw new Error("Ispis je dostupan samo u pregledniku.");
+		}
+
+		if (renderLabels.length === 0) {
+			throw new Error("Nema etiketa za ispis.");
+		}
+
+		const preset = options?.preset ?? DEFAULT_HARVEST_LABEL_PRESET;
+		const canvas = document.createElement("canvas");
+		const printTask = this.client.abstraction.newPrintTask(
+			HARVEST_LABEL_PRINT_TASK_TYPE,
+			{
+				totalPages: renderLabels.length,
+				statusPollIntervalMs: 100,
+				statusTimeoutMs: 8_000,
+			},
+		);
+
+		this.updateSnapshot({
+			isPrinting: true,
+			lastError: undefined,
+			progress: {
+				page: 0,
+				pagesTotal: renderLabels.length,
+				pagePrintProgress: 0,
+				pageFeedProgress: 0,
+			},
+		});
+
+		try {
+			await printTask.printInit();
+			for (const renderLabel of renderLabels) {
+				renderLabel(canvas, preset);
+				const encoded = ImageEncoder.encodeCanvas(
+					canvas,
+					preset.printDirection,
+				);
+				await printTask.printPage(encoded, 1);
+				await printTask.waitForPageFinished();
+			}
+			await printTask.waitForFinished();
+			await this.refresh();
+		} catch (error) {
+			const message = getErrorMessage(error);
+			this.updateSnapshot({
+				isPrinting: false,
+				lastError: message,
+			});
+			throw new Error(message);
+		} finally {
+			await printTask.printEnd().catch(() => undefined);
+			this.updateSnapshot({ isPrinting: false });
+		}
+	}
+
 	async printHarvestLabel(
 		data: HarvestLabelData,
 		options?: {
@@ -431,6 +499,21 @@ export class GrediceLabelPrinter {
 	) {
 		await this.printCanvasLabel(
 			(canvas, preset) => renderFieldOperationLabel(canvas, data, preset),
+			options,
+		);
+	}
+
+	async printFieldOperationLabels(
+		data: FieldOperationLabelData[],
+		options?: {
+			preset?: HarvestLabelPreset;
+		},
+	) {
+		await this.printCanvasLabels(
+			data.map(
+				(labelData) => (canvas, preset) =>
+					renderFieldOperationLabel(canvas, labelData, preset),
+			),
 			options,
 		);
 	}

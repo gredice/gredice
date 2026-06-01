@@ -5,6 +5,7 @@ import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { BlockSurfaceDecorationSprites } from './groundDecorations/BlockSurfaceDecorationSprites';
+import { useGroundPatchMaterial } from './helpers/groundPatchMaterial';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function BlockSandAngle({
@@ -15,6 +16,10 @@ export function BlockSandAngle({
     const { nodes } = useGameGLTF('BlockSandAngle');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const sandMaterial = useGroundPatchMaterial(
+        nodes.Block_Sand_Angle_1.material,
+        'sand',
+    );
 
     return (
         <animated.group
@@ -25,7 +30,7 @@ export function BlockSandAngle({
                 castShadow
                 receiveShadow
                 geometry={nodes.Block_Sand_Angle_1.geometry}
-                material={nodes.Block_Sand_Angle_1.material}
+                material={sandMaterial}
             />
             <SnowOverlay
                 geometry={nodes.Block_Sand_Angle_1.geometry}
