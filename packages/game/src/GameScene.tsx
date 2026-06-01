@@ -122,6 +122,28 @@ function useAutoQualityProfileMetrics(enabled: boolean) {
     return metrics;
 }
 
+function shouldRenderEntityFactoryForBlock({
+    blockName,
+    blockIndex,
+    noControls,
+    stackLength,
+}: {
+    blockName: string;
+    blockIndex: number;
+    noControls: boolean | undefined;
+    stackLength: number;
+}) {
+    if (!instancedBlockNames.includes(blockName)) {
+        return true;
+    }
+
+    if (noControls) {
+        return false;
+    }
+
+    return blockIndex === stackLength - 1;
+}
+
 export function GameScene({
     cameraPosition = defaultGameCameraPosition,
     zoom = 'normal',
@@ -215,12 +237,19 @@ export function GameScene({
                         />
                         <group>
                             {garden?.stacks.map((stack) =>
-                                stack.blocks?.map((block, i) => (
-                                    <Suspense
-                                        // biome-ignore lint/suspicious/noArrayIndexKey: Using array index as key is acceptable here because block IDs are unique within a stack, and the order of blocks within a stack is unlikely to change. Using block.id alone is not sufficient as it may not be unique across different stacks.
-                                        key={`${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`}
-                                        fallback={null}
-                                    >
+                                stack.blocks?.map((block, i) => {
+                                    if (
+                                        !shouldRenderEntityFactoryForBlock({
+                                            blockName: block.name,
+                                            blockIndex: i,
+                                            noControls,
+                                            stackLength: stack.blocks.length,
+                                        })
+                                    ) {
+                                        return null;
+                                    }
+
+                                    const entityFactory = (
                                         <EntityFactory
                                             name={block.name}
                                             stack={stack}
@@ -231,8 +260,25 @@ export function GameScene({
                                             noRenderInView={instancedBlockNames}
                                             noControl={noControls}
                                         />
-                                    </Suspense>
-                                )),
+                                    );
+                                    const key = `${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.id}-${block.name}-${i}`;
+
+                                    if (
+                                        instancedBlockNames.includes(block.name)
+                                    ) {
+                                        return (
+                                            <group key={key}>
+                                                {entityFactory}
+                                            </group>
+                                        );
+                                    }
+
+                                    return (
+                                        <Suspense key={key} fallback={null}>
+                                            {entityFactory}
+                                        </Suspense>
+                                    );
+                                }),
                             )}
                             {!isLocalSandbox &&
                                 renderDetails &&

@@ -56,6 +56,25 @@ function resolveSnowOverlayActive(options: {
     );
 }
 
+export function useSnowOverlayVisible({
+    coverageMultiplier,
+    minCoverage = 0.02,
+    overrideSnow,
+}: {
+    coverageMultiplier?: number;
+    minCoverage?: number;
+    overrideSnow?: number;
+}) {
+    const gameSnowCoverage = useGameState((state) => state.snowCoverage);
+
+    return resolveSnowOverlayActive({
+        coverageMultiplier,
+        gameSnowCoverage,
+        minCoverage,
+        overrideSnow,
+    });
+}
+
 function resolveColorKey(
     color: SnowMaterialOptions['color'],
 ): ColorRepresentation {
@@ -166,10 +185,8 @@ export function SnowOverlay({
     overrideSnow,
     ...options
 }: SnowOverlayProps) {
-    const gameSnowCoverage = useGameState((state) => state.snowCoverage);
-    const isActive = resolveSnowOverlayActive({
+    const isActive = useSnowOverlayVisible({
         coverageMultiplier: options.coverageMultiplier,
-        gameSnowCoverage,
         minCoverage,
         overrideSnow,
     });
