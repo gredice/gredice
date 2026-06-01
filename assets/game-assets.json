@@ -6,6 +6,7 @@
             "name": "BlockGround",
             "source": "BlockGround.blend",
             "output": "BlockGround.glb",
+            "version": "3dd48c3aaded",
             "preload": "ground",
             "objects": ["Block Ground 1", "Block Ground 2"]
         },
@@ -13,6 +14,7 @@
             "name": "BlockGroundAngle",
             "source": "BlockGroundAngle.blend",
             "output": "BlockGroundAngle.glb",
+            "version": "e19d38467a87",
             "preload": "ground",
             "objects": ["Block Ground Angle 1"]
         },
@@ -48,6 +50,7 @@
             "name": "BlockTerrainCorner",
             "source": "BlockTerrainCorner.blend",
             "output": "BlockTerrainCorner.glb",
+            "version": "b0d3454df2fa",
             "preload": "ground",
             "objects": [
                 "Block Ground Corner 1",
@@ -59,6 +62,7 @@
             "name": "BlockTerrainReverseCorner",
             "source": "BlockTerrainReverseCorner.blend",
             "output": "BlockTerrainReverseCorner.glb",
+            "version": "d89106d29f33",
             "preload": "ground",
             "objects": [
                 "Block Ground Reverse Corner 1",
