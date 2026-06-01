@@ -76,16 +76,6 @@ export function HarvestLabelDebugPage() {
                 <Row spacing={4} justifyContent="space-between">
                     <Row spacing={2} className="items-start">
                         <HomeButton />
-                        <Stack spacing={1}>
-                            <Typography level="h4" component="h1">
-                                Debug etiketa
-                            </Typography>
-                            <Typography className="text-muted-foreground">
-                                Pregled koristi isti canvas renderer i isti
-                                fiksni profil ispisa kao etiketa u rasporedu
-                                berbe.
-                            </Typography>
-                        </Stack>
                     </Row>
                     <Button variant="outlined" href="/schedule">
                         Otvori raspored

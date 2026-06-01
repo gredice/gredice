@@ -1,12 +1,38 @@
 import type { EntityStandardized } from '@gredice/storage';
 
+const attributeLabels: Record<string, string> = {
+    application: 'Primjena',
+    deliverable: 'Isporuka',
+    frequency: 'Učestalost',
+    internal: 'Interno',
+    printLabel: 'Ispis etikete',
+    stage: 'Faza',
+};
+
+const attributeValueLabels: Record<string, Record<string, string>> = {
+    application: {
+        raisedBed: 'Gredica',
+        raisedBedField: 'Polje gredice',
+        raisedBedFull: 'Cijela gredica',
+    },
+    frequency: {
+        once: 'Jednom',
+        optional: 'Po potrebi',
+        recurring: 'Ponavljajuće',
+        required: 'Obavezno',
+    },
+};
+
 export function formatAttributeLabel(attributeName: string) {
-    return attributeName
-        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-        .replace(/^./, (value) => value.toUpperCase());
+    return (
+        attributeLabels[attributeName] ??
+        attributeName
+            .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+            .replace(/^./, (value) => value.toUpperCase())
+    );
 }
 
-export function formatAttributeValue(value: unknown) {
+export function formatAttributeValue(value: unknown, attributeName?: string) {
     if (typeof value === 'boolean') {
         return value ? 'Da' : 'Ne';
     }
@@ -16,7 +42,9 @@ export function formatAttributeValue(value: unknown) {
     }
 
     if (typeof value === 'string') {
-        return value;
+        return attributeName
+            ? (attributeValueLabels[attributeName]?.[value] ?? value)
+            : value;
     }
 
     if (
