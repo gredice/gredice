@@ -75,6 +75,7 @@ const blockNames = [
     'Bush',
     'Tree',
     'Pine',
+    'PineAdvent',
     'DeadTreeTall',
     'DeadTreeStump',
     'ShovelSmall',
@@ -86,10 +87,18 @@ const blockNames = [
     'MulchHey',
     'MulchCoconut',
     'MulchWood',
+    'GiftBox_RedWhite',
+    'GiftBox_GreenGold',
+    'GiftBox_BlueWhite',
+    'GiftBox_PurpleSilver',
+    'GiftBox_GoldRed',
+    'GiftBox_WhiteGreen',
+    'Snowman',
     'Block_Grass',
     'Block_Ground',
     'Block_Sand',
     'Block_Snow',
+    'Block_Snow_Falling',
     'Block_Water',
     'Block_Grass_Angle',
     'Block_Ground_Angle',
@@ -211,6 +220,27 @@ export function ItemsHudControlsTooltipStory() {
                     >
                         <div className="h-10 w-40 rounded-lg border bg-muted" />
                         <ControlsTooltipHud />
+                    </div>
+                    <ItemsHud />
+                </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+export function SandboxItemsHudStory() {
+    return (
+        <ItemsHudTestProviders isSandbox>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <div
+                    data-testid="bottom-hud"
+                    className={gameHudBottomBarClassName}
+                >
+                    <div
+                        data-testid="bottom-controls"
+                        className={gameHudBottomControlsClassName}
+                    >
+                        <div className="h-10 w-40 rounded-lg border bg-muted" />
                     </div>
                     <ItemsHud />
                 </div>

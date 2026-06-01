@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import {
     ItemsHudAlignmentStory,
     ItemsHudControlsTooltipStory,
+    SandboxItemsHudStory,
     SandboxBlockTrashDropTargetStory,
 } from './ItemsHudStory';
 
@@ -112,6 +113,23 @@ test('pots are listed under the decoration picker', async ({ mount, page }) => {
     await expect(page.getByRole('button', { name: 'Posude' })).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Dekoracija' }).click();
+
+    await expect(
+        page
+            .locator('[data-items-picker-group-label]')
+            .filter({ hasText: 'Posude' }),
+    ).toBeVisible();
+    await expect(
+        page
+            .locator('[data-items-picker-group-label]')
+            .filter({ hasText: 'Kamenje' }),
+    ).toBeVisible();
+    await expect(
+        page
+            .locator('[data-items-picker-group-label]')
+            .filter({ hasText: 'Malč' }),
+    ).toBeVisible();
+
     await page.getByRole('button', { name: 'Posude' }).click();
 
     await expect(
@@ -119,6 +137,35 @@ test('pots are listed under the decoration picker', async ({ mount, page }) => {
     ).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'PotWideLippedCup' }),
+    ).toBeVisible();
+});
+
+test('sandbox decoration picker includes special blocks', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<SandboxItemsHudStory />);
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+
+    await expect(page.getByRole('button', { name: 'Besplatno' })).toHaveCount(
+        0,
+    );
+    await expect(page.getByRole('button', { name: '🌻 0' })).not.toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Snowman' })).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'GiftBox RedWhite' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'PineAdvent' }),
+    ).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Blokovi' }).click();
+
+    await expect(
+        page.getByRole('button', { name: 'Block Snow Falling' }),
     ).toBeVisible();
 });
 

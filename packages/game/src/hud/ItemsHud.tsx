@@ -1,3 +1,4 @@
+import type { BlockData } from '@gredice/client';
 import { isNightOnlyBlockPurchase, isNightTimeOfDay } from '@gredice/js/blocks';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
@@ -11,7 +12,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockPlace } from '../hooks/useBlockPlace';
 import { useIsSandboxGarden } from '../hooks/useCurrentGarden';
@@ -152,6 +153,93 @@ const items: HudItem[] = [
     },
 ];
 
+function collectEntityNames(hudItems: HudItem[], names = new Set<string>()) {
+    for (const item of hudItems) {
+        if (item.type === 'entity') {
+            names.add(item.name);
+        } else if (item.type === 'picker') {
+            collectEntityNames(item.items, names);
+        }
+    }
+
+    return names;
+}
+
+const defaultHudEntityNames = collectEntityNames(items);
+
+function getSandboxExtraItemsByPicker(
+    blockData: BlockData[] | null | undefined,
+) {
+    const extraItemsByPicker: Record<
+        'Blokovi' | 'Dekoracija',
+        HudItemEntity[]
+    > = {
+        Blokovi: [],
+        Dekoracija: [],
+    };
+
+    if (!blockData) {
+        return extraItemsByPicker;
+    }
+
+    const names = new Set<string>();
+
+    for (const block of blockData) {
+        const name = block.information.name;
+
+        if (defaultHudEntityNames.has(name) || names.has(name)) {
+            continue;
+        }
+
+        names.add(name);
+        const pickerLabel = name.startsWith('Block_')
+            ? 'Blokovi'
+            : 'Dekoracija';
+        extraItemsByPicker[pickerLabel].push({ type: 'entity', name });
+    }
+
+    return extraItemsByPicker;
+}
+
+function getHudItems({
+    blockData,
+    isSandbox,
+}: {
+    blockData: BlockData[] | null | undefined;
+    isSandbox: boolean;
+}) {
+    if (!isSandbox) {
+        return items;
+    }
+
+    const sandboxExtraItemsByPicker = getSandboxExtraItemsByPicker(blockData);
+    if (
+        sandboxExtraItemsByPicker.Blokovi.length === 0 &&
+        sandboxExtraItemsByPicker.Dekoracija.length === 0
+    ) {
+        return items;
+    }
+
+    return items.map((item) => {
+        if (
+            item.type === 'picker' &&
+            (item.label === 'Blokovi' || item.label === 'Dekoracija')
+        ) {
+            const sandboxExtraItems = sandboxExtraItemsByPicker[item.label];
+            if (sandboxExtraItems.length === 0) {
+                return item;
+            }
+
+            return {
+                ...item,
+                items: [...item.items, ...sandboxExtraItems],
+            };
+        }
+
+        return item;
+    });
+}
+
 function PlaceEntityButton({
     name,
     simple,
@@ -209,11 +297,11 @@ function PlaceEntityButton({
                         className={cx(
                             !simple &&
                                 'rounded-full p-1 gap border border-primary/15 bg-primary/15 text-primary w-fit pr-2',
-                            (isSandbox || !block.prices.sunflowers) && 'pl-2',
+                            !isSandbox && !block.prices.sunflowers && 'pl-2',
                         )}
                     >
                         {isSandbox
-                            ? 'Besplatno'
+                            ? '🌻 0'
                             : hasSunflowerPrice && isAvailableNow
                               ? `🌻 ${block.prices.sunflowers}`
                               : availabilityMessage
@@ -317,22 +405,31 @@ function SubPickerButton({
     onOpen: () => void;
 }) {
     return (
-        <IconButton
-            aria-label={picker.label}
-            size="lg"
-            className="size-16"
-            variant="plain"
-            onClick={onOpen}
-        >
-            <Image
-                src={picker.imageSrc}
-                alt={picker.label}
-                className="absolute size-10 -mb-4"
-                width={40}
-                height={40}
-            />
-            <Navigate className="absolute top-0.5 right-0.5 text-muted-foreground size-4" />
-        </IconButton>
+        <Stack spacing={2} alignItems="center">
+            <IconButton
+                aria-label={picker.label}
+                size="lg"
+                className="size-16"
+                variant="plain"
+                onClick={onOpen}
+            >
+                <Image
+                    src={picker.imageSrc}
+                    alt={picker.label}
+                    className="absolute size-10 -mb-4"
+                    width={40}
+                    height={40}
+                />
+                <Navigate className="absolute top-0.5 right-0.5 text-muted-foreground size-4" />
+            </IconButton>
+            <span
+                aria-hidden="true"
+                data-items-picker-group-label
+                className="flex h-8 max-w-20 items-center justify-center px-1 text-center text-xs font-medium leading-tight text-muted-foreground"
+            >
+                {picker.label}
+            </span>
+        </Stack>
     );
 }
 
@@ -413,6 +510,13 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
 }
 
 export function ItemsHud() {
+    const { data: blockData } = useBlockData();
+    const isSandbox = useIsSandboxGarden();
+    const hudItems = useMemo(
+        () => getHudItems({ blockData, isSandbox }),
+        [blockData, isSandbox],
+    );
+
     return (
         <HudCard
             data-items-hud
@@ -426,7 +530,7 @@ export function ItemsHud() {
                 className="min-w-max md:px-1"
                 justifyContent="center"
             >
-                {items.map((item, index) => {
+                {hudItems.map((item, index) => {
                     if (item.type === 'separator') {
                         return (
                             <Divider

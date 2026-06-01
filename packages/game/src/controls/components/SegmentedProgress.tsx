@@ -79,7 +79,7 @@ export function SegmentedProgress({
                                 )}
                             </div>
                             {(segment.label || segment.icon) && (
-                                <div className="select-none text-xs text-center absolute left-1/2 top-full transform -translate-x-1/2 pt-1">
+                                <div className="absolute top-full left-1/2 min-w-max -translate-x-1/2 transform select-none pt-1 text-center text-xs whitespace-nowrap">
                                     {segment.icon ?? segment.label}
                                 </div>
                             )}
