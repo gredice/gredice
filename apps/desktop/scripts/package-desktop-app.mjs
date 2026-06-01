@@ -33,6 +33,13 @@ const appsToBuild =
     targetName === 'all'
         ? desktopAppNames
         : [getDesktopApp(targetName).appName];
+const signingEnvNames = [
+    'CSC_INSTALLER_KEY_PASSWORD',
+    'CSC_INSTALLER_LINK',
+    'CSC_KEY_PASSWORD',
+    'CSC_LINK',
+    'CSC_NAME',
+];
 
 function selectedPlatformArgs() {
     if (shouldBuildAllPlatforms) {
@@ -61,6 +68,18 @@ function selectedPlatformArgs() {
     }
 
     throw new Error('Specify --mac or --win when building from this platform.');
+}
+
+function withoutEmptySigningEnv(env) {
+    const nextEnv = { ...env };
+
+    for (const name of signingEnvNames) {
+        if ((nextEnv[name] ?? '').trim().length === 0) {
+            delete nextEnv[name];
+        }
+    }
+
+    return nextEnv;
 }
 
 async function readPackageJson(packagePath) {
@@ -272,6 +291,7 @@ function runElectronBuilder(stageDir, desktopApp) {
     return new Promise((resolveBuild, rejectBuild) => {
         const child = spawn(electronBuilderCommand, builderArgs, {
             cwd: repoRoot,
+            env: withoutEmptySigningEnv(process.env),
             shell: process.platform === 'win32',
             stdio: 'inherit',
         });
