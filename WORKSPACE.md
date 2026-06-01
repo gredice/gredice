@@ -62,6 +62,10 @@ pnpm lint
 pnpm lint --filter @gredice/storage
 pnpm lint --filter garden
 
+# Typecheck one workspace
+pnpm typecheck --filter garden
+pnpm typecheck --filter www
+
 # Run tests
 pnpm test
 pnpm test --filter garden
@@ -92,7 +96,17 @@ Use `pnpm --filter @gredice/directory-types regenerate:cms-types` only when `src
 
 ## Type checking
 
-Type checking is integrated into Next.js builds and package scripts. To validate app or package types, build the consuming app or run the targeted package test/build command that exercises the change.
+Use `pnpm typecheck --filter <workspace>` for a fast TypeScript compatibility check. Next.js apps run `next typegen` before `tsc`, so route, page, and layout types are generated without running a full production build.
+
+For ordinary `@gredice/game` package changes, this is the default consumer compatibility check:
+
+```bash
+pnpm typecheck --filter @gredice/game
+pnpm typecheck --filter garden
+pnpm typecheck --filter www
+```
+
+Run `pnpm build --filter garden` or `pnpm build --filter www` only when the change affects Next.js configuration, routing, static assets, bundling behavior, production-only code paths, or when a release/sign-off requires the full build output.
 
 ## Development servers
 
