@@ -18,6 +18,9 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials } = useGameGLTF('GardenBox');
     const [animatedRotation] = useAnimatedEntityRotation(rotation + 2);
     const currentStackHeight = useStackHeight(stack, block);
+    const isLocalSandbox = useGameState(
+        (state) => state.localSandboxStorageKey !== null,
+    );
     const hovered =
         useHoveredBlockStore((state) => state.hoveredBlock) === block;
     const hoveredGardenBoxBlockId = useGameState(
@@ -33,8 +36,9 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
         (state) => state.setOpenGardenBoxBlockId,
     );
     const isLidOpen =
-        hoveredGardenBoxBlockId === block.id ||
-        openGardenBoxBlockId === block.id;
+        !isLocalSandbox &&
+        (hoveredGardenBoxBlockId === block.id ||
+            openGardenBoxBlockId === block.id);
     const { rotation: lidRotation } = useSpring({
         config: {
             mass: 0.18,
@@ -45,14 +49,14 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
     });
 
     const handleClick = useDeferredSingleClick(() => {
-        if (hasActiveDragPreview) return;
+        if (isLocalSandbox || hasActiveDragPreview) return;
 
         setOpenGardenBoxBlockId(block.id);
     });
 
     return (
         <HoverOutline
-            hovered={hovered || isLidOpen}
+            hovered={!isLocalSandbox && (hovered || isLidOpen)}
             thickness={7}
             color="#f8fafc"
         >

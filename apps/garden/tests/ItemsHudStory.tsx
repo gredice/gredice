@@ -8,6 +8,7 @@ import {
 } from '../../../packages/game/src/GameHud';
 import { ControlsTooltipHud } from '../../../packages/game/src/hud/ControlsTooltipHud';
 import { ItemsHud } from '../../../packages/game/src/hud/ItemsHud';
+import { SandboxBlockTrashDropTarget } from '../../../packages/game/src/hud/SandboxBlockTrashDropTarget';
 import {
     createGameState,
     GameStateContext,
@@ -104,7 +105,15 @@ const blockNames = [
     'Block_Snow_Reverse_Corner',
 ];
 
-function createItemsHudQueryClient() {
+type ItemsHudStoryOptions = {
+    isSandbox?: boolean;
+    pickupBlock?: boolean;
+    trashTargetActive?: boolean;
+};
+
+function createItemsHudQueryClient({
+    isSandbox = false,
+}: ItemsHudStoryOptions) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
             queries: { retry: false, staleTime: Infinity },
@@ -113,10 +122,11 @@ function createItemsHudQueryClient() {
 
     queryClient.setQueryData(['blocks'], blockNames.map(createBlockData));
     queryClient.setQueryData(['currentUser'], { id: 'test-user' });
-    queryClient.setQueryData(['gardens'], [{ id: 1 }]);
+    queryClient.setQueryData(['gardens'], [{ id: 1, isSandbox }]);
     queryClient.setQueryData(['gardens', 'current', 'summer', 1], {
         id: 1,
         name: 'Test garden',
+        isSandbox,
         stacks: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds: [],
@@ -125,8 +135,16 @@ function createItemsHudQueryClient() {
     return queryClient;
 }
 
-function ItemsHudTestProviders({ children }: PropsWithChildren) {
-    const queryClient = useMemo(() => createItemsHudQueryClient(), []);
+function ItemsHudTestProviders({
+    children,
+    isSandbox = false,
+    pickupBlock = false,
+    trashTargetActive = false,
+}: PropsWithChildren<ItemsHudStoryOptions>) {
+    const queryClient = useMemo(
+        () => createItemsHudQueryClient({ isSandbox }),
+        [isSandbox],
+    );
     const gameStore = useMemo(() => {
         const store = createGameState({
             appBaseUrl: 'http://localhost',
@@ -134,8 +152,18 @@ function ItemsHudTestProviders({ children }: PropsWithChildren) {
             isMock: false,
             winterMode: 'summer',
         });
+        if (pickupBlock) {
+            store.setState({
+                pickupBlock: {
+                    id: 'pickup-block-1',
+                    name: 'Block_Grass',
+                    rotation: 0,
+                },
+                sandboxBlockTrashDropTargetActive: trashTargetActive,
+            });
+        }
         return store;
-    }, []);
+    }, [pickupBlock, trashTargetActive]);
 
     return (
         <NuqsTestingAdapter>
@@ -184,6 +212,28 @@ export function ItemsHudControlsTooltipStory() {
                         <div className="h-10 w-40 rounded-lg border bg-muted" />
                         <ControlsTooltipHud />
                     </div>
+                    <ItemsHud />
+                </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+export function SandboxBlockTrashDropTargetStory() {
+    return (
+        <ItemsHudTestProviders isSandbox pickupBlock trashTargetActive>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <div
+                    data-testid="bottom-hud"
+                    className={gameHudBottomBarClassName}
+                >
+                    <div
+                        data-testid="bottom-controls"
+                        className={gameHudBottomControlsClassName}
+                    >
+                        <div className="h-10 w-40 rounded-lg border bg-muted" />
+                    </div>
+                    <SandboxBlockTrashDropTarget />
                     <ItemsHud />
                 </div>
             </div>

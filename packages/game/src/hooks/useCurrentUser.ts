@@ -37,10 +37,11 @@ async function getCurrentUser() {
     };
 }
 
-export function useCurrentUser() {
+export function useCurrentUser(enabled = true) {
     return useQuery({
         queryKey: queryKey.currentUser,
         queryFn: getCurrentUser,
+        enabled,
         retry: false,
         staleTime: 1000 * 60 * 60, // 1 hour
     });

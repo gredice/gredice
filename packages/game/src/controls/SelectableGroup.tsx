@@ -2,7 +2,6 @@ import type { PropsWithChildren } from 'react';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { Block } from '../types/Block';
 import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
-import { GardenBoxSelectableGroup } from './GardenBoxSelectableGroup';
 import { GiftBoxSelectableGroup } from './GiftBoxSelectableGroup';
 import { RaisedBedSelectableGroup } from './RaisedBedSelectableGroup';
 
@@ -17,14 +16,6 @@ export function SelectableGroup({
             <GiftBoxSelectableGroup block={block}>
                 {children}
             </GiftBoxSelectableGroup>
-        );
-    }
-
-    if (block.name === 'GardenBox') {
-        return (
-            <GardenBoxSelectableGroup block={block}>
-                {children}
-            </GardenBoxSelectableGroup>
         );
     }
 

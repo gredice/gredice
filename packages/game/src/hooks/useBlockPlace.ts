@@ -1,5 +1,9 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+    createLocalSandboxBlockId,
+    persistLocalSandboxGarden,
+} from '../localSandboxGarden';
 import { useGameState } from '../useGameState';
 import {
     createOptimisticBlockPlacement,
@@ -20,6 +24,7 @@ type CurrentGardenData = NonNullable<
 type BlockPlaceVariables = {
     blockName: string;
     expectedExistingBlocks?: string[];
+    localBlockId?: string;
     position?: BlockPlacePosition;
 };
 
@@ -77,6 +82,9 @@ export function useBlockPlace() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
     const { data: blockData } = useBlockData();
+    const localSandboxStorageKey = useGameState(
+        (state) => state.localSandboxStorageKey,
+    );
     const winterMode = useGameState((state) => state.winterMode);
     const queuePlacedBlockEffect = useGameState(
         (state) => state.queuePlacedBlockEffect,
@@ -88,14 +96,19 @@ export function useBlockPlace() {
 
     return useMutation({
         mutationKey,
-        mutationFn: async ({
-            blockName,
-            expectedExistingBlocks,
-            position,
-        }: BlockPlaceVariables) => {
+        mutationFn: async (variables: BlockPlaceVariables) => {
             if (!garden) {
                 throw new Error('No garden selected');
             }
+
+            if (localSandboxStorageKey) {
+                return {
+                    id:
+                        variables.localBlockId ??
+                        createLocalSandboxBlockId(variables.blockName),
+                };
+            }
+
             const response = await clientAuthenticated().api.gardens[
                 ':gardenId'
             ].blocks.$post({
@@ -103,11 +116,16 @@ export function useBlockPlace() {
                     gardenId: garden.id.toString(),
                 },
                 json: {
-                    blockName,
-                    ...(expectedExistingBlocks
-                        ? { expectedExistingBlocks }
+                    blockName: variables.blockName,
+                    ...(variables.expectedExistingBlocks
+                        ? {
+                              expectedExistingBlocks:
+                                  variables.expectedExistingBlocks,
+                          }
                         : {}),
-                    ...(position ? { position } : {}),
+                    ...(variables.position
+                        ? { position: variables.position }
+                        : {}),
                 },
             });
             if (!response.ok) {
@@ -131,9 +149,12 @@ export function useBlockPlace() {
                         queryClient.getQueryData<CurrentGardenData>(
                             gardenQueryKey,
                         ) ?? garden;
-                    const optimisticBlockId = createOptimisticBlockId(
-                        variables.blockName,
-                    );
+                    const optimisticBlockId = localSandboxStorageKey
+                        ? createLocalSandboxBlockId(variables.blockName)
+                        : createOptimisticBlockId(variables.blockName);
+                    variables.localBlockId = localSandboxStorageKey
+                        ? optimisticBlockId
+                        : undefined;
                     const optimisticPlacement = createOptimisticBlockPlacement(
                         currentGarden,
                         blockData,
@@ -150,14 +171,21 @@ export function useBlockPlace() {
                     };
                     variables.expectedExistingBlocks =
                         optimisticPlacement.existingBlocks;
+                    const nextGarden = {
+                        ...currentGarden,
+                        stacks: optimisticPlacement.stacks,
+                    };
                     queueBlockPlacementDropAnimation(optimisticBlockId);
                     queryClient.setQueryData<CurrentGardenData>(
                         gardenQueryKey,
-                        {
-                            ...currentGarden,
-                            stacks: optimisticPlacement.stacks,
-                        },
+                        nextGarden,
                     );
+                    if (localSandboxStorageKey) {
+                        persistLocalSandboxGarden(
+                            localSandboxStorageKey,
+                            nextGarden,
+                        );
+                    }
 
                     const placedBlockData = blockData?.find(
                         (block) =>
@@ -213,6 +241,10 @@ export function useBlockPlace() {
             }
         },
         onSettled: async () => {
+            if (localSandboxStorageKey) {
+                return;
+            }
+
             await queryClient.invalidateQueries({
                 queryKey: currentAccountKeys,
             });

@@ -56,6 +56,12 @@ const debugGroups = [
                 title: 'Autumn',
                 description: 'Mock garden scene with autumn time and wind.',
             },
+            {
+                href: '/debug/sandbox',
+                title: 'Local sandbox',
+                description:
+                    'Playable sandbox scene backed by browser local storage.',
+            },
         ],
     },
     {
