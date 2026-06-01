@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import type { BufferGeometry, Material } from 'three';
 import {
+    type ActiveDragPreviewTarget,
     createActiveDragPreviewTarget,
     getActiveDragPreviewTargetPositionOffset,
 } from '../../dragPreviewIdentity';
@@ -18,7 +19,7 @@ import { SnowOverlay } from '../../snow/SnowOverlay';
 import { snowPresets } from '../../snow/snowPresets';
 import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
-import { useGameState } from '../../useGameState';
+import { type ActiveDragPreview, useGameState } from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
@@ -168,6 +169,36 @@ function getBlockPlacement(garden: CurrentGardenData, blockId: string) {
     }
 
     return null;
+}
+
+function activeDragTargetMatchesRaisedBedPlacement(
+    target: ActiveDragPreviewTarget,
+    garden: CurrentGardenData,
+) {
+    const placement = getBlockPlacement(garden, target.blockId);
+
+    return (
+        placement?.block.name === 'Raised_Bed' &&
+        placement.stackBlockIndex === target.blockIndex &&
+        placement.stack.position.x === target.stackPosition.x &&
+        placement.stack.position.z === target.stackPosition.z
+    );
+}
+
+function activeDragPreviewTouchesRaisedBed(
+    preview: ActiveDragPreview | null,
+    garden: CurrentGardenData | null | undefined,
+) {
+    if (!preview || !garden) {
+        return false;
+    }
+
+    return (
+        activeDragTargetMatchesRaisedBedPlacement(preview.source, garden) ||
+        preview.targets.some((target) =>
+            activeDragTargetMatchesRaisedBedPlacement(target, garden),
+        )
+    );
 }
 
 function getRaisedBedNeighbors(
@@ -594,7 +625,14 @@ export function RaisedBedMulchOverlays({
         MulchWood: useGameGLTF('MulchWood'),
     };
     const qualityProfile = quality ?? resolveGameQualityProfile();
-    const activeDragPreview = useGameState((state) => state.activeDragPreview);
+    const activeDragPreview = useGameState((state) =>
+        activeDragPreviewTouchesRaisedBed(
+            state.activeDragPreview,
+            currentGarden,
+        )
+            ? state.activeDragPreview
+            : null,
+    );
     const snowCoverage = useGameState((state) => state.snowCoverage);
     const renderSnow = snowCoverage >= qualityProfile.snowOverlayMinCoverage;
 

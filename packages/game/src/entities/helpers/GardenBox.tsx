@@ -20,7 +20,12 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
     const currentStackHeight = useStackHeight(stack, block);
     const hovered =
         useHoveredBlockStore((state) => state.hoveredBlock) === block;
-    const activeDragPreview = useGameState((state) => state.activeDragPreview);
+    const hoveredGardenBoxBlockId = useGameState(
+        (state) => state.activeDragPreview?.hoveredGardenBoxBlockId ?? null,
+    );
+    const hasActiveDragPreview = useGameState((state) =>
+        Boolean(state.activeDragPreview),
+    );
     const openGardenBoxBlockId = useGameState(
         (state) => state.openGardenBoxBlockId,
     );
@@ -28,7 +33,7 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
         (state) => state.setOpenGardenBoxBlockId,
     );
     const isLidOpen =
-        activeDragPreview?.hoveredGardenBoxBlockId === block.id ||
+        hoveredGardenBoxBlockId === block.id ||
         openGardenBoxBlockId === block.id;
     const { rotation: lidRotation } = useSpring({
         config: {
@@ -40,7 +45,7 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
     });
 
     const handleClick = useDeferredSingleClick(() => {
-        if (activeDragPreview) return;
+        if (hasActiveDragPreview) return;
 
         setOpenGardenBoxBlockId(block.id);
     });

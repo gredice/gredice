@@ -2,11 +2,13 @@ import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
 
-export function useEntityNeighbors(stack: Stack, block: Block) {
-    const { data: garden } = useCurrentGarden();
-
+export function resolveEntityNeighbors(
+    stacks: Stack[] | undefined,
+    stack: Stack,
+    block: Block,
+) {
     function getStack({ x, z }: { x: number; z: number }) {
-        return garden?.stacks.find(
+        return stacks?.find(
             (stack) => stack.position.x === x && stack.position.z === z,
         );
     }
@@ -62,4 +64,10 @@ export function useEntityNeighbors(stack: Stack, block: Block) {
             (neighbors.s ? 1 : 0),
         ...neighbors,
     };
+}
+
+export function useEntityNeighbors(stack: Stack, block: Block) {
+    const { data: garden } = useCurrentGarden();
+
+    return resolveEntityNeighbors(garden?.stacks, stack, block);
 }

@@ -1,13 +1,16 @@
 import { Edges } from '@react-three/drei';
+import type { PropsWithChildren } from 'react';
 import { PickableGroup } from '../controls/PickableGroup';
 import { RotatableGroup } from '../controls/RotatableGroup';
 import { SelectableGroup } from '../controls/SelectableGroup';
+import { useDeferredSingleClick } from '../controls/useDeferredSingleClick';
 import { useBlockData } from '../hooks/useBlockData';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
 import { getBlockHitboxSize } from '../utils/blockHitbox';
 import { useStackHeight } from '../utils/getStackHeight';
 import { entityNameMap } from './entityNameMap';
+import { QueuedPlacementDropAnimation } from './helpers/PlacementDropAnimation';
 
 export type EntityFactoryProps = {
     name: string;
@@ -76,9 +79,26 @@ function InstancedEntityControlTarget({
         (entity) => entity.information.name === block.name,
     );
     const hitbox = getBlockHitboxSize(blockEntity);
+    const hasActiveDragPreview = useGameState((state) =>
+        Boolean(state.activeDragPreview),
+    );
+    const setOpenGardenBoxBlockId = useGameState(
+        (state) => state.setOpenGardenBoxBlockId,
+    );
+    const handleGardenBoxClick = useDeferredSingleClick(() => {
+        if (block.name !== 'GardenBox' || hasActiveDragPreview) {
+            return;
+        }
+
+        setOpenGardenBoxBlockId(block.id);
+    });
 
     return (
+        // biome-ignore lint/a11y/noStaticElementInteractions: Three.js mesh is an invisible block interaction target.
         <mesh
+            onClick={
+                block.name === 'GardenBox' ? handleGardenBoxClick : undefined
+            }
             position={[
                 stack.position.x,
                 currentStackHeight + hitbox.height / 2,
@@ -92,6 +112,27 @@ function InstancedEntityControlTarget({
                 <Edges color="#22d3ee" renderOrder={10_000} threshold={1} />
             )}
         </mesh>
+    );
+}
+
+function EntityPlacementDropAnimation({
+    children,
+    stack,
+    block,
+}: PropsWithChildren<Pick<EntityInstanceProps, 'stack' | 'block'>>) {
+    const currentStackHeight = useStackHeight(stack, block);
+
+    return (
+        <QueuedPlacementDropAnimation
+            block={block}
+            particlePosition={[
+                stack.position.x,
+                currentStackHeight,
+                stack.position.z,
+            ]}
+        >
+            {children}
+        </QueuedPlacementDropAnimation>
     );
 }
 
@@ -127,21 +168,26 @@ export function EntityFactory({
         }
 
         return (
-            <PickableGroup
-                stack={stack}
-                block={block}
-                noControl={noControl}
-                renderPickupOutline={false}
-            >
-                <RotatableGroup block={block}>
-                    <InstancedEntityControlTarget stack={stack} block={block} />
-                    <EntityRenderModeDebugOverlay
-                        stack={stack}
-                        block={block}
-                        instanced
-                    />
-                </RotatableGroup>
-            </PickableGroup>
+            <SelectableGroup block={block}>
+                <PickableGroup
+                    stack={stack}
+                    block={block}
+                    noControl={noControl}
+                    renderPickupOutline={false}
+                >
+                    <RotatableGroup block={block}>
+                        <InstancedEntityControlTarget
+                            stack={stack}
+                            block={block}
+                        />
+                        <EntityRenderModeDebugOverlay
+                            stack={stack}
+                            block={block}
+                            instanced
+                        />
+                    </RotatableGroup>
+                </PickableGroup>
+            </SelectableGroup>
         );
     }
 
@@ -159,14 +205,16 @@ export function EntityFactory({
     }
 
     const entityContent = (
-        <RotatableGroup block={block}>
-            <EntityRenderModeDebugOverlay
-                stack={stack}
-                block={block}
-                instanced={false}
-            />
-            <EntityComponent stack={stack} block={block} {...rest} />
-        </RotatableGroup>
+        <EntityPlacementDropAnimation stack={stack} block={block}>
+            <RotatableGroup block={block}>
+                <EntityRenderModeDebugOverlay
+                    stack={stack}
+                    block={block}
+                    instanced={false}
+                />
+                <EntityComponent stack={stack} block={block} {...rest} />
+            </RotatableGroup>
+        </EntityPlacementDropAnimation>
     );
 
     return (

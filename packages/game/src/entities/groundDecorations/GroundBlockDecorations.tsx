@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo } from 'react';
 import {
+    type ActiveDragPreviewTarget,
     createActiveDragPreviewTarget,
     getActiveDragPreviewTargetPositionOffset,
 } from '../../dragPreviewIdentity';
@@ -33,13 +34,16 @@ type GroundBlockDecorationsProps = {
     stacks: Stack[] | undefined;
 };
 
+function activeDragTargetKey(target: ActiveDragPreviewTarget) {
+    return `${target.stackPosition.x}|${target.stackPosition.z}|${target.blockId}|${target.blockIndex}`;
+}
+
 export function GroundBlockDecorations({
     density,
     stacks,
 }: GroundBlockDecorationsProps) {
     const { data: blockData } = useBlockData();
     const { data: garden } = useCurrentGarden();
-    const activeDragPreview = useGameState((state) => state.activeDragPreview);
     const gameWeather = useGameState((state) => state.weather);
     const { data: weatherNow } = useWeatherNow();
     const windSpeed =
@@ -87,6 +91,39 @@ export function GroundBlockDecorations({
             }),
         );
     }, [density, garden?.id, stacks]);
+    const decoratedBlockPreviewKeys = useMemo(
+        () =>
+            new Set(
+                decorationBlocks.map(({ block, blockIndex, stack }) =>
+                    activeDragTargetKey(
+                        createActiveDragPreviewTarget({
+                            blockId: block.id,
+                            blockIndex,
+                            stackPosition: stack.position,
+                        }),
+                    ),
+                ),
+            ),
+        [decorationBlocks],
+    );
+    const activeDragPreview = useGameState((state) => {
+        const preview = state.activeDragPreview;
+        if (!preview) {
+            return null;
+        }
+
+        if (
+            decoratedBlockPreviewKeys.has(activeDragTargetKey(preview.source))
+        ) {
+            return preview;
+        }
+
+        return preview.targets.some((target) =>
+            decoratedBlockPreviewKeys.has(activeDragTargetKey(target)),
+        )
+            ? preview
+            : null;
+    });
     const decorationCount = decorationBlocks.reduce(
         (sum, block) => sum + block.placements.length,
         0,
