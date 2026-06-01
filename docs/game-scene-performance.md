@@ -52,13 +52,20 @@ not accidentally based on `next dev`.
   garden boxes, pots, cactus variants, dead trees, buckets, watering cans, water
   wells, composters, cat pillows, fences, stools, bird houses, gift boxes, and
   remaining ground block variants.
-- Snow and rain overlays are intentionally still a follow-up optimization. Many
-  newly instanced base meshes still mount per-block `SnowOverlay` or
+- The 2026-06-01 dense-scene pass replaced Drei per-instance children with
+  chunked raw `InstancedMesh` updates, batched ground decoration sprites by
+  atlas sprite/material, retained decoration wind motion through a batched
+  shader path, and rendered repeated rain/snow overlays with shared instanced
+  overlay meshes. Instanced block control wrappers are skipped for no-control
+  profile scenes and for covered instanced blocks, so stacked scenes no longer
+  mount buried grass controls under every top block.
+- Snow and rain overlays are optimized for repeated instanced blocks, but many
+  non-instanced entities can still mount per-block `SnowOverlay` or
   `RainWetOverlay` meshes when weather makes them visible, so snow/rain profiles
-  can remain overlay-bound even after base draw calls improve.
-- The remaining expensive areas are continuous `useFrame` systems, snow overlays,
-  CPU weather loops, animated sprite billboard callbacks, plant/detail LOD, and
-  profiling noise from app-level providers.
+  can remain overlay-bound outside the repeated instanced block path.
+- The remaining expensive areas are continuous `useFrame` systems, snow overlays
+  outside the repeated instanced block path, CPU weather loops, plant/detail LOD,
+  and profiling noise from app-level providers.
 
 ## Current static snapshot
 
@@ -224,6 +231,26 @@ detail counts, and repeated longer samples for optimization deltas. The useful
 confirmation is that low mobile now eliminates optional ground decorations, and
 clear scenes no longer mount snow overlays.
 
+### 2026-06-01 dense 25x25 production smoke
+
+Measured with a production `apps/garden` build started on `http://localhost:3205`
+and a synthetic `/debug/sandbox` garden injected through local storage. Each
+sample used a 3 second warmup and 3 second collection window in headless
+Playwright. Treat absolute FPS/p95 as noisy; use heap and render-work deltas for
+direction.
+
+| Scenario | Blocks | Quality | Details | Draw/frame | Heap | Notes |
+| --- | ---: | --- | ---: | ---: | ---: | --- |
+| `25x25-ground-desktop-medium` | 625 | medium | 1,370 decor | 426 | 132.6 MB | before pass: about 830 draw/frame and 179 MB |
+| `25x25-raised-desktop-medium` | 1,250 | medium | 1,352 decor | 453 | 149.7 MB | before pass: about 1,186 draw/frame and 347 MB |
+| `25x25-ground-mobile-low` | 625 | low | 0 decor | 133 | 132.6 MB | before pass: about 120 draw/frame and 179 MB |
+| `25x25-raised-mobile-low` | 1,250 | low | 0 decor | 140 | 202.2 MB | before pass: about 227 draw/frame and 391 MB |
+
+The main improvement is memory and submitted draw work for dense scenes without
+forcing a low-quality fallback. Desktop medium still creates many shadow and
+decoration draw calls, but the repeated block geometry, decoration billboards,
+and weather overlays no longer mount one React/fiber child per instance.
+
 ### Steady browser sample
 
 The VS Code browser sample stayed at DPR 2 even when different profiles were
@@ -381,14 +408,14 @@ for static sprites to reset rotation. The plant debug route also submitted far
 more draw calls and triangles than the home scene.
 
 Current status: sprite billboards now split static and animated mesh components,
-so calm/static sprites do not register a per-frame callback. Ground decorations
-are also quality-gated: low disables them, medium renders reduced density, high
-keeps full density, and far zoom skips them.
+so calm/static sprites do not register a per-frame callback. Dense ground
+decorations are batched into atlas/material instanced planes with shader-driven
+wind motion. They remain quality-gated: low disables them, medium renders
+reduced density, high keeps full density, and far zoom skips them.
 
 Recommended work:
 
-- Batch ground decoration sprites by atlas page using instanced planes and
-  per-instance UV rectangles.
+- Add distance/viewport culling for decoration batches in larger gardens.
 - Keep hiding small decoration sprites by quality tier, distance, and zoom.
 - Use plant billboards for normal/far garden views and detailed generated plants
   only for close-up or high-quality mode.
