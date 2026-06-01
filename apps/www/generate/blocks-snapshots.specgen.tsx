@@ -85,7 +85,11 @@ test.describe('block screenshots', async () => {
         for (let rotation = 0; rotation < 4; rotation += 1) {
             test(`${entity.information.name} rotation ${rotation + 1}`, async ({
                 mount,
+                page,
             }) => {
+                page.on('pageerror', (error) => {
+                    console.error('Browser page error:', error.message);
+                });
                 const view = getSnapshotView(entity);
                 const { itemPosition, label, zoom } = getViewOptions(view);
                 console.info(
@@ -104,6 +108,7 @@ test.describe('block screenshots', async () => {
                             appBaseUrl={gameAssetBaseUrl}
                             noControl
                             rotation={rotation}
+                            renderDetails={false}
                             staticEnvironment
                         />
                     </div>,
@@ -142,7 +147,7 @@ test.describe('icons', () => {
             <div style={{ position: 'relative' }}>
                 {/** biome-ignore lint/performance/noImgElement: Not part of NextJS app */}
                 <img
-                    src="https://www.gredice.com/assets/blocks/Block_Grass.png"
+                    src="/assets/blocks/Block_Grass.png"
                     alt="Block_Grass"
                     width={320 / 2}
                     height={320 / 2}
@@ -150,7 +155,7 @@ test.describe('icons', () => {
                 />
                 {/** biome-ignore lint/performance/noImgElement: Not part of NextJS app */}
                 <img
-                    src="https://www.gredice.com/assets/blocks/Block_Ground.png"
+                    src="/assets/blocks/Block_Ground.png"
                     alt="Block_Ground"
                     width={320 / 2}
                     height={320 / 2}

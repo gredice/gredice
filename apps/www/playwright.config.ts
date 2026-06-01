@@ -29,6 +29,11 @@ export const config: PlaywrightTestConfig = {
         baseURL: getPlaywrightBaseUrl(app),
         trace: 'on-first-retry',
         ctPort: getComponentTestPort(app),
+        ctViteConfig: {
+            resolve: {
+                dedupe: ['nuqs', 'react', 'react-dom'],
+            },
+        },
     },
     projects: [
         {

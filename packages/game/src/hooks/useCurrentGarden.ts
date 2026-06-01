@@ -544,7 +544,12 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
     const winterMode = useGameState((state) => state.winterMode);
     const isLocalSandbox = localSandboxStorageKey !== null;
     const { data: gardens } = useGardens(isMock || isLocalSandbox);
-    const [selectedGardenId] = useCurrentGardenIdParam();
+    let selectedGardenId: number | null = null;
+    if (!isMock && !isLocalSandbox) {
+        // biome-ignore lint/correctness/useHookAtTopLevel: store mode is fixed when the game state is created.
+        const [gardenId] = useCurrentGardenIdParam();
+        selectedGardenId = gardenId;
+    }
 
     // Use the selected garden ID from URL, or default to the first garden
     const currentGardenId =

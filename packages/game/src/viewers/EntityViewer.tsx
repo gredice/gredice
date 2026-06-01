@@ -7,6 +7,7 @@ import { MOUSE, Vector3 } from 'three';
 import { v4 as uuidv4 } from 'uuid';
 import { EntityFactory } from '../entities/EntityFactory';
 import { GameFlagsContext } from '../GameFlagsContext';
+import { GameSceneDetailContext } from '../GameSceneDetailContext';
 import { DebugHud } from '../hud/DebugHud';
 import { Environment, StaticEnvironment } from '../scene/Environment';
 import { Scene } from '../scene/Scene';
@@ -27,6 +28,7 @@ export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
     noControl?: boolean;
     staticEnvironment?: boolean;
     debugHud?: boolean;
+    renderDetails?: boolean;
     showBackground?: boolean;
     /**
      * Zoom level of the camera
@@ -50,6 +52,7 @@ export function EntityViewer({
     noControl,
     staticEnvironment,
     debugHud,
+    renderDetails = true,
     showBackground,
     rotation = 0,
     ...rest
@@ -85,6 +88,37 @@ export function EntityViewer({
         blocks: [block],
     };
     const orbitTarget: [number, number, number] = itemPosition ?? [0.5, 0, 0.5];
+    const sceneChildren = (
+        <>
+            {staticEnvironment ? (
+                <StaticEnvironment noBackground={!showBackground} />
+            ) : (
+                <Environment noBackground={!showBackground} noSound noWeather />
+            )}
+            <EntityFactory
+                name={entityName}
+                stack={stack}
+                block={block}
+                noControl={noControl}
+                rotation={normalizedRotation}
+                variant={variant}
+            />
+            {!noControl && (
+                <OrbitControls
+                    enableDamping
+                    screenSpacePanning={false}
+                    minZoom={20}
+                    maxZoom={220}
+                    target={orbitTarget}
+                    mouseButtons={{
+                        LEFT: MOUSE.PAN,
+                        MIDDLE: MOUSE.DOLLY,
+                        RIGHT: MOUSE.ROTATE,
+                    }}
+                />
+            )}
+        </>
+    );
 
     return (
         <QueryClientProvider client={client}>
@@ -95,44 +129,16 @@ export function EntityViewer({
                         enableRainWetOverlayFlag: debugHud,
                     }}
                 >
-                    <Scene
-                        position={100}
-                        zoom={zoom ?? 90}
-                        className={className}
-                        {...rest}
-                    >
-                        {staticEnvironment ? (
-                            <StaticEnvironment noBackground={!showBackground} />
-                        ) : (
-                            <Environment
-                                noBackground={!showBackground}
-                                noSound
-                                noWeather
-                            />
-                        )}
-                        <EntityFactory
-                            name={entityName}
-                            stack={stack}
-                            block={block}
-                            noControl={noControl}
-                            rotation={normalizedRotation}
-                            variant={variant}
-                        />
-                        {!noControl && (
-                            <OrbitControls
-                                enableDamping
-                                screenSpacePanning={false}
-                                minZoom={20}
-                                maxZoom={220}
-                                target={orbitTarget}
-                                mouseButtons={{
-                                    LEFT: MOUSE.PAN,
-                                    MIDDLE: MOUSE.DOLLY,
-                                    RIGHT: MOUSE.ROTATE,
-                                }}
-                            />
-                        )}
-                    </Scene>
+                    <GameSceneDetailContext.Provider value={{ renderDetails }}>
+                        <Scene
+                            position={100}
+                            zoom={zoom ?? 90}
+                            className={className}
+                            {...rest}
+                        >
+                            {sceneChildren}
+                        </Scene>
+                    </GameSceneDetailContext.Provider>
                     {debugHud && <DebugHud />}
                 </GameFlagsContext.Provider>
             </GameStateContext.Provider>
