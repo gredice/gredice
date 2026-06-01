@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect } from 'react';
-import { getTimes } from 'suncalc';
 import type { OrbitControls } from 'three-stdlib';
 import { createStore, useStore } from 'zustand';
 import { createGameAudio, type GameAudio } from './audio/audioMixer';
@@ -19,77 +18,19 @@ import { defaultWaterColors, type WaterColors } from './scene/waterColors';
 import type { Block } from './types/Block';
 import { getAudioConfig } from './utils/audioConfig';
 import {
-    ALWAYS_DAY_TIME,
     isDayNightCycleDisabled,
     setDayNightCycleDisabled as persistDayNightCycleDisabled,
 } from './utils/dayNightCycle';
 import { triggerSelectionHaptic } from './utils/haptics';
 import {
+    defaultGameLocation,
+    getGameSunriseSunset,
+    resolveGameTimeOfDay,
+} from './utils/timeOfDay';
+import {
     isWeatherVisualizationDisabled,
     setWeatherVisualizationDisabled as persistWeatherVisualizationDisabled,
 } from './utils/weather';
-
-const sunriseValue = 0.2;
-const sunsetValue = 0.8;
-function getSunriseSunset(
-    { lat, lon }: { lat: number; lon: number },
-    currentTime: Date,
-) {
-    const { sunrise: sunriseStart, sunset: sunsetStart } = getTimes(
-        currentTime,
-        lat,
-        lon,
-    );
-    return { sunrise: sunriseStart, sunset: sunsetStart };
-}
-
-/**
- * Get the current time of day based on the current date and location
- *
- * Uses suncalc to get `sunrise` and sunset times and map them to 0-1 range
- *
- * 0.2 - 0.8 is daytime (sunrise start to sunset start)
- *
- * @returns A number between 0 and 1 representing the current time of day
- */
-function getTimeOfDay(
-    { lat, lon }: { lat: number; lon: number },
-    currentTime: Date,
-) {
-    const { sunrise: sunriseStart, sunset: sunsetStart } = getSunriseSunset(
-        { lat, lon },
-        currentTime,
-    );
-
-    const sunrise = sunriseStart.getHours() * 60 + sunriseStart.getMinutes();
-    const sunset = sunsetStart.getHours() * 60 + sunsetStart.getMinutes();
-
-    // 00 - 0
-    // example: 7:00 - 0.2 (sunriseValue)
-    // example: 19:00 - 0.8 (sunsetValue)
-    // 23:59 - 1
-    const time = currentTime.getHours() * 60 + currentTime.getMinutes();
-    if (time < sunrise) {
-        return (time / sunrise) * sunriseValue;
-    } else if (time < sunset) {
-        return (
-            sunriseValue +
-            ((time - sunrise) / (sunset - sunrise)) *
-                (sunsetValue - sunriseValue)
-        );
-    } else {
-        return (
-            sunsetValue +
-            ((time - sunset) / (24 * 60 - sunset)) * (1 - sunsetValue)
-        );
-    }
-}
-
-function resolveTimeOfDay(currentTime: Date, dayNightCycleDisabled: boolean) {
-    return dayNightCycleDisabled
-        ? ALWAYS_DAY_TIME
-        : getTimeOfDay(defaultLocation, currentTime);
-}
 
 export type WinterMode = 'summer' | 'winter' | 'holiday';
 
@@ -147,6 +88,7 @@ export type GameState = {
     appBaseUrl: string;
     spriteBaseUrl: string;
     audio: GameAudio;
+    localSandboxStorageKey: string | null;
     freezeTime?: Date | null;
     setFreezeTime: (freezeTime: Date | null) => void;
     dayNightCycleDisabled: boolean;
@@ -168,6 +110,8 @@ export type GameState = {
     setStationaryPickupOutlineTarget: (
         target: ActiveDragPreviewTarget | null,
     ) => void;
+    sandboxBlockTrashDropTargetActive: boolean;
+    setSandboxBlockTrashDropTargetActive: (active: boolean) => void;
     activeDragPreview: ActiveDragPreview | null;
     setActiveDragPreview: (dragPreview: ActiveDragPreview | null) => void;
     openGardenBoxBlockId: string | null;
@@ -237,14 +181,13 @@ export type GameState = {
     setIsDragging: (isDragging: boolean) => void;
 };
 
-const defaultLocation = { lat: 45.739, lon: 16.572 };
-
 export function createGameState({
     appBaseUrl,
     spriteBaseUrl,
     dayNightCycleDisabled: initialDayNightCycleDisabled,
     freezeTime,
     isMock,
+    localSandboxStorageKey,
     winterMode,
 }: {
     appBaseUrl: string;
@@ -252,6 +195,7 @@ export function createGameState({
     dayNightCycleDisabled?: boolean;
     freezeTime: Date | null;
     isMock: boolean;
+    localSandboxStorageKey?: string;
     winterMode?: WinterMode;
 }) {
     const dayNightCycleDisabled =
@@ -260,8 +204,8 @@ export function createGameState({
     const gameQualitySetting = getGameQualitySetting();
     const weatherVisualizationDisabled = isWeatherVisualizationDisabled();
     const now = freezeTime ?? new Date();
-    const timeOfDay = resolveTimeOfDay(now, dayNightCycleDisabled);
-    const { sunrise, sunset } = getSunriseSunset(defaultLocation, now);
+    const timeOfDay = resolveGameTimeOfDay(now, dayNightCycleDisabled);
+    const { sunrise, sunset } = getGameSunriseSunset(defaultGameLocation, now);
     return createStore<GameState>((set, get) => ({
         isMock: isMock,
         winterMode: winterMode ?? 'summer',
@@ -269,16 +213,17 @@ export function createGameState({
         appBaseUrl: appBaseUrl,
         spriteBaseUrl: spriteBaseUrl ?? appBaseUrl,
         audio: createGameAudio(getAudioConfig()),
+        localSandboxStorageKey: localSandboxStorageKey ?? null,
         freezeTime,
         setFreezeTime: (freezeTime) => {
             const referenceTime = freezeTime ?? new Date();
-            const { sunrise, sunset } = getSunriseSunset(
-                defaultLocation,
+            const { sunrise, sunset } = getGameSunriseSunset(
+                defaultGameLocation,
                 referenceTime,
             );
             set({
                 freezeTime,
-                timeOfDay: resolveTimeOfDay(
+                timeOfDay: resolveGameTimeOfDay(
                     referenceTime,
                     get().dayNightCycleDisabled,
                 ),
@@ -291,7 +236,7 @@ export function createGameState({
             persistDayNightCycleDisabled(disabled);
             set({
                 dayNightCycleDisabled: disabled,
-                timeOfDay: resolveTimeOfDay(
+                timeOfDay: resolveGameTimeOfDay(
                     get().freezeTime ?? new Date(),
                     disabled,
                 ),
@@ -328,6 +273,10 @@ export function createGameState({
         stationaryPickupOutlineTarget: null,
         setStationaryPickupOutlineTarget: (stationaryPickupOutlineTarget) =>
             set({ stationaryPickupOutlineTarget }),
+        sandboxBlockTrashDropTargetActive: false,
+        setSandboxBlockTrashDropTargetActive: (
+            sandboxBlockTrashDropTargetActive,
+        ) => set({ sandboxBlockTrashDropTargetActive }),
         activeDragPreview: null,
         setActiveDragPreview: (activeDragPreview) => set({ activeDragPreview }),
         openGardenBoxBlockId: null,

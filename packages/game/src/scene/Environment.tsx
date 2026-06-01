@@ -530,7 +530,7 @@ export function Environment({
     }, [garden]);
 
     const gameWeather = useGameState((state) => state.weather);
-    const hasWeatherOverride = Boolean(weather);
+    const hasWeatherOverride = Boolean(weather ?? gameWeather);
     const { data: weatherNow } = useWeatherNow(
         !weatherDisabled && !hasWeatherOverride,
     );
@@ -542,42 +542,32 @@ export function Environment({
             return undefined;
         }
 
-        if (weather) {
-            return {
-                ...fallbackWeather,
-                ...weather,
-                windDirection: resolveWindDirection(
-                    weather.windDirection,
-                    fallbackWeather.windDirection,
-                ),
-            };
-        }
-
-        if (!weatherNow) {
-            return undefined;
-        }
-
         if (!overrideWeather) {
+            if (!weatherNow) {
+                return undefined;
+            }
             return weatherNow;
         }
 
-        console.debug('Overriding weather', overrideWeather);
+        const baseWeather = weatherNow ?? fallbackWeather;
 
         return {
-            ...weatherNow,
-            rainy: overrideWeather.rainy ?? weatherNow.rainy,
-            foggy: overrideWeather.foggy ?? weatherNow.foggy,
-            cloudy: overrideWeather.cloudy ?? weatherNow.cloudy,
-            snowy: overrideWeather.snowy ?? weatherNow.snowy,
-            windSpeed: overrideWeather.windSpeed ?? weatherNow.windSpeed,
+            ...baseWeather,
+            rainy: overrideWeather.rainy ?? baseWeather.rainy,
+            foggy: overrideWeather.foggy ?? baseWeather.foggy,
+            cloudy: overrideWeather.cloudy ?? baseWeather.cloudy,
+            snowy: overrideWeather.snowy ?? baseWeather.snowy,
+            thundery: overrideWeather.thundery ?? baseWeather.thundery,
+            windSpeed: overrideWeather.windSpeed ?? baseWeather.windSpeed,
             windDirection: resolveWindDirection(
                 overrideWeather.windDirection,
-                weatherNow.windDirection,
+                baseWeather.windDirection,
             ),
             snowAccumulation:
-                overrideWeather.snowAccumulation ?? weatherNow.snowAccumulation,
+                overrideWeather.snowAccumulation ??
+                baseWeather.snowAccumulation,
         };
-    }, [overrideWeather, weather, weatherDisabled, weatherNow]);
+    }, [overrideWeather, weatherDisabled, weatherNow]);
 
     // Sound management
     const morningAmbient = ambientAudioMixer.useMusic(

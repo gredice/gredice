@@ -1,6 +1,7 @@
 import { useGameSceneDetails } from '../../GameSceneDetailContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
+import { useGameState } from '../../useGameState';
 import {
     findRaisedBedByBlockId,
     getRaisedBedBlockIds,
@@ -11,7 +12,10 @@ import { RaisedBedPlantField } from './RaisedBedPlantField';
 export function RaisedBedFields({ blockId }: { blockId: string }) {
     const { renderDetails } = useGameSceneDetails();
     const { data: currentGarden } = useCurrentGarden();
-    const { data: cart } = useShoppingCart(renderDetails);
+    const isLocalSandbox = useGameState(
+        (state) => state.localSandboxStorageKey !== null,
+    );
+    const { data: cart } = useShoppingCart(renderDetails && !isLocalSandbox);
     const raisedBed = findRaisedBedByBlockId(currentGarden, blockId);
     const orientation = raisedBed?.orientation ?? 'vertical';
 

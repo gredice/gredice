@@ -19,6 +19,7 @@ export function GameSceneWrapper({
     freezeTime,
     dayNightCycleDisabled,
     mockGarden,
+    localSandboxStorageKey,
     winterMode,
     ...rest
 }: GameSceneProps) {
@@ -30,6 +31,7 @@ export function GameSceneWrapper({
             dayNightCycleDisabled,
             freezeTime: freezeTime || null,
             isMock: mockGarden || false,
+            localSandboxStorageKey,
             winterMode: winterMode ?? 'summer',
         });
     }

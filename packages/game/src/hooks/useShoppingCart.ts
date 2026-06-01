@@ -5,7 +5,7 @@ import { useCurrentUser } from './useCurrentUser';
 export const useShoppingCartQueryKey = ['shopping-cart'];
 
 export function useShoppingCart(enabled = true) {
-    const { data: currentUser } = useCurrentUser();
+    const { data: currentUser } = useCurrentUser(enabled);
     return useQuery({
         queryKey: useShoppingCartQueryKey,
         queryFn: async () => {

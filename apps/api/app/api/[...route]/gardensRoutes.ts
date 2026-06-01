@@ -18,6 +18,7 @@ import {
     createGardenStack,
     createSandboxGarden,
     deleteGardenStack,
+    deleteSandboxGardenCompletely,
     GardenBoxInventoryLimitError,
     getAccount,
     getAccountGardens,
@@ -34,6 +35,7 @@ import {
     getRaisedBedFieldDiaryEntries,
     getRaisedBedIdsByAccount,
     getRaisedBedSensors,
+    getSandboxGardenDeletionCandidate,
     knownEvents,
     knownEventTypes,
     sowSandboxField,
@@ -814,6 +816,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId',
         describeRoute({
             description: 'Update garden information',
+            security: authSecurity,
         }),
         zValidator(
             'param',
@@ -853,6 +856,55 @@ const app = new Hono<{ Variables: AuthVariables }>()
             await updateGarden(updateData);
 
             return context.json({ success: true });
+        },
+    )
+    .delete(
+        '/:gardenId',
+        describeRoute({
+            description:
+                'Delete a sandbox garden accessible to the current user, including related blocks, raised beds, notifications, operations, cart rows, transactions, and events. Real gardens cannot be deleted from this endpoint. Large deletions may return 202 and should be retried until complete.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { user } = context.get('authContext');
+            const garden =
+                await getSandboxGardenDeletionCandidate(gardenIdNumber);
+            if (!garden) {
+                return context.json(
+                    { success: true, complete: true, deletedRows: 0 },
+                    200,
+                );
+            }
+            if (!user.accountIds.includes(garden.accountId)) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            if (!garden.isSandbox) {
+                return context.json(
+                    { error: 'Only sandbox gardens can be deleted' },
+                    400,
+                );
+            }
+
+            const result = await deleteSandboxGardenCompletely(gardenIdNumber);
+
+            return context.json(
+                { success: true, ...result },
+                result.complete ? 200 : 202,
+            );
         },
     )
     // See: https://datatracker.ietf.org/doc/html/rfc6902
@@ -1831,7 +1883,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
         describeRoute({
             description: 'Delete a block in a garden.',
             summary:
-                'Recycles the block by default and refunds the sunflowers.',
+                'Recycles the block by default and refunds the sunflowers outside sandbox gardens.',
+            security: authSecurity,
+            tags: ['Gardens'],
         }),
         zValidator(
             'param',

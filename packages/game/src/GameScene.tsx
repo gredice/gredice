@@ -62,6 +62,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     noWeather?: boolean;
     noSound?: boolean;
     mockGarden?: boolean;
+    localSandboxStorageKey?: string;
     winterMode?: WinterMode;
     weather?: Partial<GameState['weather']>;
     deferDetails?: boolean;
@@ -141,6 +142,9 @@ export function GameScene({
     const weatherVisualizationDisabled = useGameState(
         (state) => state.weatherVisualizationDisabled,
     );
+    const isLocalSandbox = useGameState(
+        (state) => state.localSandboxStorageKey !== null,
+    );
     const gameQualitySetting = useGameState(
         (state) => state.gameQualitySetting,
     );
@@ -168,7 +172,7 @@ export function GameScene({
     // Start non-critical metadata early, but don't block the first scene frame.
     useBlockData();
     const { data: garden, isLoading: gardenLoading } = useCurrentGarden();
-    useWeatherNow(!weatherDisabled && !weather);
+    useWeatherNow(!isLocalSandbox && !weatherDisabled && !weather);
     const isLoading = gardenLoading;
 
     const loadingContext = useGameLoading();
@@ -229,13 +233,15 @@ export function GameScene({
                                     </Suspense>
                                 )),
                             )}
-                            {renderDetails && zoom !== 'far' && (
-                                <Suspense fallback={null}>
-                                    <RaisedBedMulchOverlays
-                                        quality={qualityProfile}
-                                    />
-                                </Suspense>
-                            )}
+                            {!isLocalSandbox &&
+                                renderDetails &&
+                                zoom !== 'far' && (
+                                    <Suspense fallback={null}>
+                                        <RaisedBedMulchOverlays
+                                            quality={qualityProfile}
+                                        />
+                                    </Suspense>
+                                )}
                             <EntityInstances
                                 quality={qualityProfile}
                                 renderGroundDecorations={

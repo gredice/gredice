@@ -13,6 +13,8 @@ import { InventoryHud } from './hud/InventoryHud';
 import { ItemsHud } from './hud/ItemsHud';
 import { PaymentSuccessfulMessage } from './hud/PaymentSuccessfulMessage';
 import { RaisedBedFieldHud } from './hud/RaisedBedFieldHud';
+import { SandboxBlockTrashDropTarget } from './hud/SandboxBlockTrashDropTarget';
+import { SandboxEnvironmentHud } from './hud/SandboxEnvironmentHud';
 import { ShoppingCartHud } from './hud/ShoppingCartHud';
 import { SunflowersHud } from './hud/SunflowersHud';
 import { WeatherHud } from './hud/WeatherHud';
@@ -36,9 +38,11 @@ export function GameHud({
     noWeather?: boolean;
 }) {
     const isCloseup = useGameState((state) => state.view) === 'closeup';
-    // Sandbox ("play") gardens are decoration only: no economy, inventory or
-    // weather HUD.
+    // Sandbox ("play") gardens are decoration only: no economy or inventory.
     const isSandbox = useIsSandboxGarden();
+    const isLocalSandbox = useGameState(
+        (state) => state.localSandboxStorageKey !== null,
+    );
     const closeupHiddenHudClassName = cx(
         'empty:hidden',
         isCloseup && 'hidden md:block',
@@ -47,7 +51,7 @@ export function GameHud({
     return (
         <>
             <div className="absolute top-2 left-2 flex flex-col items-start gap-2">
-                <AccountHud />
+                {!isLocalSandbox && <AccountHud />}
                 {!isSandbox && <ShoppingCartHud />}
                 {!isSandbox && (
                     <div className={closeupHiddenHudClassName}>
@@ -62,7 +66,11 @@ export function GameHud({
             </div>
             <div className="absolute top-2 right-2 flex items-end flex-col-reverse md:flex-row gap-1 md:gap-2">
                 <div className={closeupHiddenHudClassName}>
-                    <WeatherHud noWeather={noWeather || isSandbox} />
+                    {isSandbox ? (
+                        <SandboxEnvironmentHud />
+                    ) : (
+                        <WeatherHud noWeather={noWeather} />
+                    )}
                 </div>
                 {!isSandbox && <SunflowersHud />}
             </div>
@@ -72,14 +80,15 @@ export function GameHud({
                     <AudioHud />
                     <ControlsTooltipHud />
                 </div>
+                <SandboxBlockTrashDropTarget />
                 <ItemsHud />
             </div>
-            <RaisedBedFieldHud flags={flags} />
-            <OverviewModal />
-            <AdventModal />
-            <GiftBoxModal />
-            <WelcomeMessage />
-            <PaymentSuccessfulMessage />
+            {!isLocalSandbox && <RaisedBedFieldHud flags={flags} />}
+            {!isLocalSandbox && <OverviewModal />}
+            {!isLocalSandbox && <AdventModal />}
+            {!isLocalSandbox && <GiftBoxModal />}
+            {!isLocalSandbox && <WelcomeMessage />}
+            {!isLocalSandbox && <PaymentSuccessfulMessage />}
             {Boolean(flags?.enableDebugHudFlag) && <DebugHud />}
         </>
     );

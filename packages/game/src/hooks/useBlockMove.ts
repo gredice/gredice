@@ -2,6 +2,7 @@ import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Vector3 } from 'three';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
+import { persistLocalSandboxGarden } from '../localSandboxGarden';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
@@ -122,6 +123,9 @@ function moveBlockOptimistically(
 export function useBlockMove() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
+    const localSandboxStorageKey = useGameState(
+        (state) => state.localSandboxStorageKey,
+    );
     const winterMode = useGameState((state) => state.winterMode);
     const gardenQueryKey = currentGardenKeys(winterMode, garden?.id);
 
@@ -130,6 +134,9 @@ export function useBlockMove() {
         mutationFn: async (args: MoveArgs) => {
             if (!garden) {
                 throw new Error('No garden selected');
+            }
+            if (localSandboxStorageKey) {
+                return;
             }
             const gardenId = garden.id;
             const operations: MovePatchOperation[] = getMoveBlocks(args).map(
@@ -177,6 +184,12 @@ export function useBlockMove() {
                     stacks: [...updatedStacks],
                 },
             );
+            if (localSandboxStorageKey) {
+                persistLocalSandboxGarden(localSandboxStorageKey, {
+                    ...garden,
+                    stacks: updatedStacks,
+                });
+            }
 
             return {
                 previousItem,
@@ -189,6 +202,10 @@ export function useBlockMove() {
             }
         },
         onSettled: async () => {
+            if (localSandboxStorageKey) {
+                return;
+            }
+
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({
                     queryKey: gardenQueryKey,

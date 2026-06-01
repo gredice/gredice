@@ -67,6 +67,7 @@ export {
     Hourglass,
     Inbox,
     Info,
+    Joystick,
     KeyRound as Password,
     Landmark as Bank,
     Laptop,

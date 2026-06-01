@@ -1,6 +1,10 @@
 import { clientAuthenticated, type GardenResponse } from '@gredice/client';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 import { Vector3 } from 'three';
+import {
+    loadLocalSandboxGarden,
+    localSandboxGardenId,
+} from '../localSandboxGarden';
 import type { Stack } from '../types/Stack';
 import { useGameState, type WinterMode } from '../useGameState';
 import { useCurrentGardenIdParam } from '../useUrlState';
@@ -534,18 +538,26 @@ function mockGarden(winterMode: WinterMode): useCurrentGardenResponse {
 
 export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | null> {
     const isMock = useGameState((state) => state.isMock);
+    const localSandboxStorageKey = useGameState(
+        (state) => state.localSandboxStorageKey,
+    );
     const winterMode = useGameState((state) => state.winterMode);
-    const { data: gardens } = useGardens(isMock);
+    const isLocalSandbox = localSandboxStorageKey !== null;
+    const { data: gardens } = useGardens(isMock || isLocalSandbox);
     const [selectedGardenId] = useCurrentGardenIdParam();
 
     // Use the selected garden ID from URL, or default to the first garden
     const currentGardenId =
-        selectedGardenId ??
+        (isLocalSandbox ? localSandboxGardenId : selectedGardenId) ??
         (gardens && gardens.length > 0 ? gardens[0].id : null);
 
     return useQuery({
         queryKey: currentGardenKeys(winterMode, currentGardenId),
         queryFn: async () => {
+            if (localSandboxStorageKey) {
+                return loadLocalSandboxGarden(localSandboxStorageKey);
+            }
+
             if (isMock) {
                 console.debug('Using mock garden data');
                 return mockGarden(winterMode);
@@ -627,15 +639,15 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
         },
         retry: false,
         staleTime: 1000 * 60, // 1m
-        enabled: isMock || Boolean(gardens),
+        enabled: isLocalSandbox || isMock || Boolean(gardens),
     });
 }
 
 /**
  * Whether the currently selected garden is a sandbox ("play") garden.
  *
- * Sandbox gardens are decoration only: free building, no inventory/economy,
- * no plant-status lifecycle and no weather.
+ * Sandbox gardens are decoration only: free building, no inventory/economy and
+ * no plant-status lifecycle.
  */
 export function useIsSandboxGarden(): boolean {
     const { data: currentGarden } = useCurrentGarden();

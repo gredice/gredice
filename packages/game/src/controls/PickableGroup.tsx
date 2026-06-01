@@ -22,6 +22,7 @@ import {
 import { blockPickupOutlineStyle } from '../entities/helpers/blockPickupOutlineStyle';
 import { HoverOutline } from '../entities/helpers/HoverOutline';
 import { useBlockData } from '../hooks/useBlockData';
+import { useBlockDelete } from '../hooks/useBlockDelete';
 import { useBlockMove } from '../hooks/useBlockMove';
 import { useBlockRecycle } from '../hooks/useBlockRecycle';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
@@ -30,6 +31,7 @@ import {
     resolveBlockParticleType,
     useParticles,
 } from '../particles/ParticleSystem';
+import { isPointOverSandboxBlockTrashDropTarget } from '../sandboxBlockTrashDropTarget';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
@@ -202,10 +204,17 @@ export function PickableGroup({
     const setStationaryPickupOutlineTarget = useGameState(
         (state) => state.setStationaryPickupOutlineTarget,
     );
+    const setSandboxBlockTrashDropTargetActive = useGameState(
+        (state) => state.setSandboxBlockTrashDropTargetActive,
+    );
+    const localSandboxStorageKey = useGameState(
+        (state) => state.localSandboxStorageKey,
+    );
 
     const [isBlocked, setIsBlocked] = useState(false);
     const [isOverRecycler, setIsOverRecycler] = useState(false);
     const [pickupOutlineVisible, setPickupOutlineVisible] = useState(false);
+    const deleteBlocks = useBlockDelete();
     const moveBlock = useBlockMove();
     const recycleBlock = useBlockRecycle();
     const storeBlockInGardenBox = useGardenBoxStoreBlock();
@@ -466,6 +475,7 @@ export function PickableGroup({
                     : null;
                 const isRecycler =
                     segment.canRecycle &&
+                    blockUnder?.name !== 'Composter' &&
                     (blockUnderData?.functions?.recycler ?? false);
                 const isStackable =
                     blockUnderData?.attributes?.stackable ?? true;
@@ -621,6 +631,7 @@ export function PickableGroup({
                 (preview) => preview.blockUnderName === 'GardenBox',
             )?.blockUnderId ?? null;
         const canStoreInGardenBox =
+            !localSandboxStorageKey &&
             hoveredGardenBoxBlockId !== null &&
             sourcePreview.segment.blocks.length === 1 &&
             sourcePreview.segment.blocks[0]?.name !== 'GardenBox' &&
@@ -815,6 +826,14 @@ export function PickableGroup({
         setIsOverRecycler(false);
         setPickupOutlineVisible(false);
         setPickupBlock(null);
+        setSandboxBlockTrashDropTargetActive(false);
+    }
+
+    function isPointerOverSandboxTrash(clientX: number, clientY: number) {
+        return (
+            Boolean(garden?.isSandbox) &&
+            isPointOverSandboxBlockTrashDropTarget(clientX, clientY)
+        );
     }
 
     function cancelPointerSession(resetSpring: boolean) {
@@ -828,6 +847,7 @@ export function PickableGroup({
         pointerSession.current = null;
         cleanupPointerSessionListeners();
         setPickupOutlineVisible(false);
+        setSandboxBlockTrashDropTargetActive(false);
         if (resetSpring) {
             dragSpringsApi.start({ internalPosition: [0, 0, 0], scale: 1 });
         }
@@ -906,8 +926,50 @@ export function PickableGroup({
         applyActivePreview(preview);
     }
 
-    async function finishPickup(preview: ResolvedPlacementPreview | null) {
+    async function finishPickup(
+        preview: ResolvedPlacementPreview | null,
+        deleteRequested: boolean,
+    ) {
+        const blockIdsToDelete = deleteRequested
+            ? getMovingSegments().flatMap((segment) =>
+                  segment.blocks.map((segmentBlock) => segmentBlock.id),
+              )
+            : [];
         resetPickupVisualState();
+
+        if (deleteRequested) {
+            if (blockIdsToDelete.length === 0) {
+                dragSpringsApi.start({
+                    internalPosition: [0, 0, 0],
+                    scale: 1,
+                });
+                return;
+            }
+
+            dragSpringsApi.start({
+                internalPosition: preview
+                    ? [
+                          preview.relative.x,
+                          preview.previewHoverHeight + 0.2,
+                          preview.relative.z,
+                      ]
+                    : [0, pickupLift, 0],
+                scale: 0.1,
+            });
+            dropSound.play();
+            triggerPlaceHaptic();
+            try {
+                await deleteBlocks.mutateAsync({
+                    blockIds: blockIdsToDelete,
+                });
+            } finally {
+                dragSpringsApi.start({
+                    internalPosition: [0, 0, 0],
+                    scale: 1,
+                });
+            }
+            return;
+        }
 
         if (!preview || preview.nextIsBlocked) {
             dragSpringsApi.start({ internalPosition: [0, 0, 0], scale: 1 });
@@ -1065,6 +1127,10 @@ export function PickableGroup({
             session.hasDraggedAfterPickup = true;
         }
 
+        setSandboxBlockTrashDropTargetActive(
+            isPointerOverSandboxTrash(event.clientX, event.clientY),
+        );
+
         const preview = resolvePlacementPreview(
             event.clientX,
             event.clientY,
@@ -1108,7 +1174,10 @@ export function PickableGroup({
                 session.lastClientY,
                 session.pickupAnchorOffset,
             );
-        void finishPickup(preview);
+        void finishPickup(
+            preview,
+            isPointerOverSandboxTrash(session.lastClientX, session.lastClientY),
+        );
     }
 
     function handleWindowPointerCancel(event: PointerEvent) {
