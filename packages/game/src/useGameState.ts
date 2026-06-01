@@ -86,6 +86,17 @@ export type AnimalDisturbance = {
     radius: number;
 };
 
+type WeatherOverride = {
+    cloudy: number;
+    rainy: number;
+    snowy: number;
+    foggy: number;
+    thundery?: number;
+    windSpeed?: number;
+    windDirection?: number;
+    snowAccumulation?: number;
+};
+
 export type GameState = {
     // General
     isMock: boolean;
@@ -154,26 +165,9 @@ export type GameState = {
     setEditHitboxDebugVisible: (visible: boolean) => void;
     entityRenderModeDebugVisible: boolean;
     setEntityRenderModeDebugVisible: (visible: boolean) => void;
-    weather?: {
-        cloudy: number;
-        rainy: number;
-        snowy: number;
-        foggy: number;
-        thundery?: number;
-        windSpeed?: number;
-        windDirection?: number;
-        snowAccumulation?: number;
-    };
-    setWeather: (weather: {
-        cloudy: number;
-        rainy: number;
-        snowy: number;
-        foggy: number;
-        thundery?: number;
-        windSpeed?: number;
-        windDirection?: number;
-        snowAccumulation?: number;
-    }) => void;
+    weather?: WeatherOverride;
+    setWeather: (weather: WeatherOverride | undefined) => void;
+    clearEnvironmentOverrides: () => void;
 
     // Environment derived state
     snowCoverage: number;
@@ -436,6 +430,23 @@ export function createGameState({
         setEntityRenderModeDebugVisible: (entityRenderModeDebugVisible) =>
             set({ entityRenderModeDebugVisible }),
         setWeather: (weather) => set({ weather }),
+        clearEnvironmentOverrides: () => {
+            const referenceTime = new Date();
+            const { sunrise, sunset } = getGameSunriseSunset(
+                defaultGameLocation,
+                referenceTime,
+            );
+            set({
+                freezeTime: null,
+                weather: undefined,
+                timeOfDay: resolveGameTimeOfDay(
+                    referenceTime,
+                    get().dayNightCycleDisabled,
+                ),
+                sunriseTime: sunrise,
+                sunsetTime: sunset,
+            });
+        },
         snowCoverage: 0,
         setSnowCoverage: (snowCoverage) => set({ snowCoverage }),
         waterColors: defaultWaterColors,
