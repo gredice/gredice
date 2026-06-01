@@ -139,6 +139,8 @@ test('desktop release workflows can sign macOS artifacts when credentials exist'
     assert.match(packageSource, /forceCodeSigning:/);
     assert.match(packageSource, /GREDICE_DESKTOP_REQUIRE_MAC_SIGNING/);
     assert.match(packageSource, /GREDICE_DESKTOP_SKIP_MAC_NOTARIZATION/);
+    assert.match(packageSource, /withoutEmptySigningEnv/);
+    assert.match(packageSource, /delete nextEnv\[name\]/);
     assert.match(prepareSigningSource, /CSC_LINK is not configured/);
     assert.match(prepareSigningSource, /ad-hoc signing/);
     assert.match(prepareSigningSource, /APPLE_API_KEY_CONTENT/);
