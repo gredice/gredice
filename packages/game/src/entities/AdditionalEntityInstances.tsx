@@ -929,15 +929,22 @@ function PotInstances({
 }: { stacks: Stack[] | undefined } & CommonWeatherProps) {
     return (
         <>
-            {potConfigs.map((config) => (
-                <Suspense key={config.name} fallback={null}>
-                    <LoadedPotVariant
-                        config={config}
-                        stacks={stacks}
-                        {...commonSnowProps}
-                    />
-                </Suspense>
-            ))}
+            {potConfigs
+                .filter((config) =>
+                    hasRenderableBlockInstance({
+                        name: config.name,
+                        stacks,
+                    }),
+                )
+                .map((config) => (
+                    <Suspense key={config.name} fallback={null}>
+                        <LoadedPotVariant
+                            config={config}
+                            stacks={stacks}
+                            {...commonSnowProps}
+                        />
+                    </Suspense>
+                ))}
         </>
     );
 }
