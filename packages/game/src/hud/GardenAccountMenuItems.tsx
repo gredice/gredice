@@ -12,7 +12,7 @@ import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { useQueryClient } from '@tanstack/react-query';
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCreateGarden } from '../hooks/useCreateGarden';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
@@ -39,6 +39,7 @@ export function GardenAccountMenuItems({
     const queryClient = useQueryClient();
     const [sandboxGardenToDelete, setSandboxGardenToDelete] =
         useState<SandboxGardenToDelete | null>(null);
+    const [useSandboxSubmenu, setUseSandboxSubmenu] = useState(false);
     const [selectedGardenId, setSelectedGardenId] = useCurrentGardenIdParam();
     const { track } = useGameAnalytics();
     const { data: currentGarden } = useCurrentGarden();
@@ -90,6 +91,16 @@ export function GardenAccountMenuItems({
         sandboxGardenGroups.length > 1 ||
         sandboxGardenGroups.some((accountGroup) => !accountGroup.isCurrent);
     const isLoading = currentGardensLoading || accountGroupsLoading;
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(min-width: 768px)');
+        const handleChange = (event: MediaQueryListEvent) =>
+            setUseSandboxSubmenu(event.matches);
+
+        setUseSandboxSubmenu(mediaQuery.matches);
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+    }, []);
 
     async function handleGardenSelect(
         accountGroup: (typeof gardenGroups)[number],
@@ -209,6 +220,94 @@ export function GardenAccountMenuItems({
         );
     }
 
+    function renderSandboxGardenItems() {
+        return (
+            <>
+                {sandboxGardenGroups.map((accountGroup, groupIndex) => (
+                    <Fragment key={accountGroup.accountId}>
+                        {groupIndex > 0 && (
+                            <DropdownMenuSeparator className="my-2" />
+                        )}
+                        {showSandboxAccountLabels && (
+                            <DropdownMenuLabel className="text-muted-foreground text-xs px-2 py-1">
+                                <Typography noWrap>
+                                    {accountGroup.name}
+                                </Typography>
+                            </DropdownMenuLabel>
+                        )}
+                        {accountGroup.gardens.map((garden) => (
+                            <div
+                                className="flex items-center gap-1"
+                                key={`${accountGroup.accountId}:${garden.id}`}
+                            >
+                                <DropdownMenuItem
+                                    className="min-w-0 flex-1 gap-3"
+                                    onClick={() =>
+                                        handleGardenSelect(accountGroup, garden)
+                                    }
+                                >
+                                    <Check
+                                        aria-hidden={
+                                            garden.id !== currentGarden?.id
+                                        }
+                                        className={cx(
+                                            'size-4 shrink-0 opacity-0',
+                                            garden.id === currentGarden?.id &&
+                                                'opacity-100',
+                                        )}
+                                    />
+                                    <Typography noWrap>
+                                        {garden.name}
+                                    </Typography>
+                                </DropdownMenuItem>
+                                <IconButton
+                                    title={`Obriši ${garden.name}`}
+                                    type="button"
+                                    variant="plain"
+                                    size="sm"
+                                    disabled={deleteSandboxGarden.isPending}
+                                    className="size-7 shrink-0 rounded-full p-0 text-red-600 hover:bg-red-50 hover:text-red-700 focus-visible:ring-red-600"
+                                    onClick={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        setSandboxGardenToDelete({
+                                            id: garden.id,
+                                            name: garden.name,
+                                            accountId: accountGroup.accountId,
+                                            isCurrentAccount:
+                                                accountGroup.isCurrent,
+                                        });
+                                    }}
+                                    onPointerDown={(event) => {
+                                        event.stopPropagation();
+                                    }}
+                                >
+                                    <Delete className="size-4" />
+                                </IconButton>
+                            </div>
+                        ))}
+                    </Fragment>
+                ))}
+                {sandboxGardenGroups.length > 0 && canCreateSandboxGarden && (
+                    <DropdownMenuSeparator className="my-2" />
+                )}
+                {canCreateSandboxGarden && (
+                    <DropdownMenuItem
+                        className="gap-3"
+                        disabled={createGarden.isPending}
+                        onSelect={(event) => {
+                            event.preventDefault();
+                            void handleCreateSandboxGarden();
+                        }}
+                    >
+                        <Add className="size-4" />
+                        <span>Kreiraj vrt za igru</span>
+                    </DropdownMenuItem>
+                )}
+            </>
+        );
+    }
+
     return (
         <>
             {normalGardenGroups.map((accountGroup, groupIndex) => (
@@ -245,105 +344,28 @@ export function GardenAccountMenuItems({
             {normalGardenGroups.length > 0 && showSandboxMenu && (
                 <DropdownMenuSeparator className="my-2" />
             )}
-            {showSandboxMenu && (
+            {showSandboxMenu && useSandboxSubmenu && (
                 <DropdownMenuSub>
                     <DropdownMenuSubTrigger className="gap-3">
                         <Joystick className="size-4 shrink-0" />
                         <span>Vrtovi za igru</span>
                     </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="w-80 p-2">
-                        {sandboxGardenGroups.map((accountGroup, groupIndex) => (
-                            <Fragment key={accountGroup.accountId}>
-                                {groupIndex > 0 && (
-                                    <DropdownMenuSeparator className="my-2" />
-                                )}
-                                {showSandboxAccountLabels && (
-                                    <DropdownMenuLabel className="text-muted-foreground text-xs px-2 py-1">
-                                        <Typography noWrap>
-                                            {accountGroup.name}
-                                        </Typography>
-                                    </DropdownMenuLabel>
-                                )}
-                                {accountGroup.gardens.map((garden) => (
-                                    <div
-                                        className="flex items-center gap-1"
-                                        key={`${accountGroup.accountId}:${garden.id}`}
-                                    >
-                                        <DropdownMenuItem
-                                            className="min-w-0 flex-1 gap-3"
-                                            onClick={() =>
-                                                handleGardenSelect(
-                                                    accountGroup,
-                                                    garden,
-                                                )
-                                            }
-                                        >
-                                            <Check
-                                                aria-hidden={
-                                                    garden.id !==
-                                                    currentGarden?.id
-                                                }
-                                                className={cx(
-                                                    'size-4 shrink-0 opacity-0',
-                                                    garden.id ===
-                                                        currentGarden?.id &&
-                                                        'opacity-100',
-                                                )}
-                                            />
-                                            <Typography noWrap>
-                                                {garden.name}
-                                            </Typography>
-                                        </DropdownMenuItem>
-                                        <IconButton
-                                            title={`Obriši ${garden.name}`}
-                                            type="button"
-                                            variant="plain"
-                                            size="sm"
-                                            disabled={
-                                                deleteSandboxGarden.isPending
-                                            }
-                                            className="size-7 shrink-0 rounded-full p-0 text-red-600 hover:bg-red-50 hover:text-red-700 focus-visible:ring-red-600"
-                                            onClick={(event) => {
-                                                event.preventDefault();
-                                                event.stopPropagation();
-                                                setSandboxGardenToDelete({
-                                                    id: garden.id,
-                                                    name: garden.name,
-                                                    accountId:
-                                                        accountGroup.accountId,
-                                                    isCurrentAccount:
-                                                        accountGroup.isCurrent,
-                                                });
-                                            }}
-                                            onPointerDown={(event) => {
-                                                event.stopPropagation();
-                                            }}
-                                        >
-                                            <Delete className="size-4" />
-                                        </IconButton>
-                                    </div>
-                                ))}
-                            </Fragment>
-                        ))}
-                        {sandboxGardenGroups.length > 0 &&
-                            canCreateSandboxGarden && (
-                                <DropdownMenuSeparator className="my-2" />
-                            )}
-                        {canCreateSandboxGarden && (
-                            <DropdownMenuItem
-                                className="gap-3"
-                                disabled={createGarden.isPending}
-                                onSelect={(event) => {
-                                    event.preventDefault();
-                                    void handleCreateSandboxGarden();
-                                }}
-                            >
-                                <Add className="size-4" />
-                                <span>Kreiraj vrt za igru</span>
-                            </DropdownMenuItem>
-                        )}
+                    <DropdownMenuSubContent
+                        className="w-80 max-w-[calc(100vw-1rem)] p-2"
+                        collisionPadding={8}
+                    >
+                        {renderSandboxGardenItems()}
                     </DropdownMenuSubContent>
                 </DropdownMenuSub>
+            )}
+            {showSandboxMenu && !useSandboxSubmenu && (
+                <>
+                    <DropdownMenuLabel className="flex items-center gap-3 px-2 py-1.5 text-sm font-normal text-muted-foreground">
+                        <Joystick className="size-4 shrink-0" />
+                        <span>Vrtovi za igru</span>
+                    </DropdownMenuLabel>
+                    {renderSandboxGardenItems()}
+                </>
             )}
             <ModalConfirm
                 open={sandboxGardenToDelete !== null}
