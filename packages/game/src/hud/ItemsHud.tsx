@@ -67,14 +67,14 @@ const items: HudItem[] = [
     {
         type: 'picker',
         label: 'Gredice',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Raised_Bed.png',
+        imageSrc: 'https://www.gredice.com/assets/blocks/Raised_Bed.webp',
         items: [{ type: 'entity', name: 'Raised_Bed' }],
     },
     { type: 'separator' },
     {
         type: 'picker',
         label: 'Alat',
-        imageSrc: 'https://www.gredice.com/assets/blocks/GardenBox.png',
+        imageSrc: 'https://www.gredice.com/assets/blocks/GardenBox.webp',
         items: [
             { type: 'entity', name: 'Bucket' },
             { type: 'entity', name: 'WateringCan' },
@@ -86,26 +86,26 @@ const items: HudItem[] = [
     {
         type: 'picker',
         label: 'Dekoracija',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Tree.png',
+        imageSrc: 'https://www.gredice.com/assets/blocks/Tree.webp',
         items: [
             {
                 type: 'picker',
                 label: 'Posude',
                 imageSrc:
-                    'https://www.gredice.com/assets/blocks/PotRoundedBowl.png',
+                    'https://www.gredice.com/assets/blocks/PotRoundedBowl.webp',
                 items: potItems,
             },
             {
                 type: 'picker',
                 label: 'Kamenje',
                 imageSrc:
-                    'https://www.gredice.com/assets/blocks/StoneMedium.png',
+                    'https://www.gredice.com/assets/blocks/StoneMedium.webp',
                 items: rockItems,
             },
             {
                 type: 'picker',
                 label: 'Malč',
-                imageSrc: 'https://www.gredice.com/assets/blocks/MulchHey.png',
+                imageSrc: 'https://www.gredice.com/assets/blocks/MulchHey.webp',
                 items: mulchItems,
             },
             { type: 'entity', name: 'Shade' },
@@ -130,7 +130,7 @@ const items: HudItem[] = [
         type: 'picker',
         label: 'Blokovi',
         imageSrc:
-            'https://www.gredice.com/assets/blocks/Block_Icon_GroundOverGrass.png',
+            'https://www.gredice.com/assets/blocks/Block_Icon_GroundOverGrass.webp',
         items: [
             { type: 'entity', name: 'Block_Grass' },
             { type: 'entity', name: 'Block_Ground' },

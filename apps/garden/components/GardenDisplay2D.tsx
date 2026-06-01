@@ -129,7 +129,7 @@ export function GardenDisplay2D({
             return {
                 id: block.id,
                 name: block.name,
-                src: `https://www.gredice.com/assets/blocks/${block.name}_${rotationSuffix}.png`,
+                src: `https://www.gredice.com/assets/blocks/${block.name}_${rotationSuffix}.webp`,
                 realizedBlockSize,
                 horizontalOffset,
                 underStackHeight: currentUnderStackHeight,

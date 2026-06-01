@@ -10,6 +10,7 @@ import { GameFlagsContext } from '../GameFlagsContext';
 import { GameSceneDetailContext } from '../GameSceneDetailContext';
 import { DebugHud } from '../hud/DebugHud';
 import { Environment, StaticEnvironment } from '../scene/Environment';
+import type { GameQualityProfile } from '../scene/gameQuality';
 import { Scene } from '../scene/Scene';
 import type { Block } from '../types/Block';
 import {
@@ -41,6 +42,11 @@ export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
      * @default 0
      */
     rotation?: number;
+    /**
+     * Optional render quality override. When omitted the scene auto-detects the
+     * quality profile. Used by snapshot generation to render at a higher dpr.
+     */
+    quality?: GameQualityProfile;
 };
 
 export function EntityViewer({
@@ -55,6 +61,7 @@ export function EntityViewer({
     renderDetails = true,
     showBackground,
     rotation = 0,
+    quality,
     ...rest
 }: EntityViewerProps) {
     const storeRef = useRef<GameStateStore>(null);
@@ -133,6 +140,7 @@ export function EntityViewer({
                         <Scene
                             position={100}
                             zoom={zoom ?? 90}
+                            quality={quality}
                             className={className}
                             {...rest}
                         >
