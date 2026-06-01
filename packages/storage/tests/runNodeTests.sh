@@ -20,11 +20,9 @@ trap 'exit 143' TERM
 bash ./tests/startTestDb.sh
 bash ./tests/migrateTestDb.sh
 
-DB_PROVIDER="$(awk -F= '$1 == "GREDICE_TEST_DB_PROVIDER" { value = substr($0, index($0, "=") + 1) } END { print value }' .env.test)"
-NODE_TEST_ARGS=(--import tsx --import ./tests/testSetup.ts --test --env-file=.env.test --conditions=react-server)
-if [[ "$DB_PROVIDER" == "pglite" ]]; then
-    NODE_TEST_ARGS+=(--test-concurrency=1)
-fi
+# Storage specs share one disposable database, so run files serially to keep
+# cross-spec fixtures from racing through global farm and event state.
+NODE_TEST_ARGS=(--import tsx --import ./tests/testSetup.ts --test --test-concurrency=1 --env-file=.env.test --conditions=react-server)
 
 TEST_FILES=("$@")
 if [[ ${#TEST_FILES[@]} -eq 0 ]]; then

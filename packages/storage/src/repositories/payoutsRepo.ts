@@ -91,7 +91,7 @@ const VERIFIED_SOWING_STATUSES = new Set([
 const SOWING_DURATION_MINUTES = 5;
 
 function getOperationDurationMinutes(operationData: OperationData | undefined) {
-    const durationValue = operationData?.attributes.duration;
+    const durationValue = operationData?.attributes?.duration;
 
     if (typeof durationValue === 'number' && Number.isFinite(durationValue)) {
         return Math.max(durationValue, 0);
@@ -279,7 +279,7 @@ export async function getFarmerBalance(
     const operationLabelById = new Map(
         operationsData.map((operation) => [
             operation.id,
-            operation.information.label || operation.information.name,
+            operation.information?.label || operation.information?.name,
         ]),
     );
     const operationDurationById = new Map(
