@@ -1,5 +1,4 @@
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
-import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
 import LoginDialog from '../../components/auth/LoginDialog';
 import { HomeButton } from '../../components/HomeButton';
@@ -15,16 +14,8 @@ async function OperationsHandbookContent() {
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
-            <div className="space-y-2">
-                <Row spacing={2}>
-                    <HomeButton />
-                    <Typography level="h4" component="h1" semiBold>
-                        Priručnik radnji
-                    </Typography>
-                </Row>
-                <Typography className="text-muted-foreground">
-                    Pregled svih radnji i ključnih detalja za brži rad na farmi.
-                </Typography>
+            <div className="flex min-w-0 items-center">
+                <HomeButton />
             </div>
             {operationsData.length > 0 ? (
                 <OperationsHandbook operationsData={operationsData} />

@@ -40,6 +40,7 @@ export type GardenBlockPlacementResult =
 
 const CANDIDATE_BLOCK_ID = '__candidate_block__';
 const MAX_SPIRAL_STEPS = 1000;
+const WATER_BLOCK_NAME = 'Block_Water';
 
 function spiral(step: number): Position {
     const r = Math.floor((Math.sqrt(step + 1) - 1) / 2) + 1;
@@ -70,6 +71,15 @@ function findStackAtPosition(stacks: GardenBlockStack[], position: Position) {
 
 function isGroundBlock(blockName: string) {
     return blockName.startsWith('Block');
+}
+
+function isWaterPlacement(
+    placement: Placement,
+    blockNameById: Map<string, string>,
+) {
+    return placement.existingBlocks.some(
+        (blockId) => blockNameById.get(blockId) === WATER_BLOCK_NAME,
+    );
 }
 
 export function validateStackPlacement(params: {
@@ -284,6 +294,8 @@ export function resolveGardenBlockPlacement(params: {
         });
     }
 
+    let waterPlacementFallback: GardenBlockPlacementResult | null = null;
+
     const originPlacement = validatePlacementAtPosition({
         blockName,
         position: { x: 0, y: 0 },
@@ -292,7 +304,11 @@ export function resolveGardenBlockPlacement(params: {
         blockDataByName,
     });
     if (originPlacement.valid) {
-        return originPlacement;
+        if (isWaterPlacement(originPlacement.placement, blockNameById)) {
+            waterPlacementFallback = originPlacement;
+        } else {
+            return originPlacement;
+        }
     }
 
     for (let step = 0; step < MAX_SPIRAL_STEPS; step++) {
@@ -304,9 +320,20 @@ export function resolveGardenBlockPlacement(params: {
             blockNameById,
             blockDataByName,
         });
-        if (placement.valid) {
-            return placement;
+        if (!placement.valid) {
+            continue;
         }
+
+        if (isWaterPlacement(placement.placement, blockNameById)) {
+            waterPlacementFallback ??= placement;
+            continue;
+        }
+
+        return placement;
+    }
+
+    if (waterPlacementFallback) {
+        return waterPlacementFallback;
     }
 
     return {

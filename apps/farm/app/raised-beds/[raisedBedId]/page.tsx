@@ -1,9 +1,4 @@
 import {
-    plantFieldStatusEmoji,
-    plantFieldStatusLabel,
-    userAllowedPlantStatusTransitions,
-} from '@gredice/js/plants';
-import {
     type ApprovalRequest,
     type EntityStandardized,
     getApprovalRequests,
@@ -12,8 +7,7 @@ import {
 } from '@gredice/storage';
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
-import { Chip } from '@gredice/ui/Chip';
-import { Row } from '@gredice/ui/Row';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Stack } from '@gredice/ui/Stack';
 import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
@@ -44,23 +38,15 @@ function formatDate(value?: Date | string | null) {
 
 function resolvePlantName(
     plantSortId: number | null | undefined,
-    plantSortNamesById: Map<number, string>,
+    plantSort: EntityStandardized | null | undefined,
 ) {
     if (!plantSortId) {
         return 'Prazno';
     }
 
-    const name = plantSortNamesById.get(plantSortId);
+    const name = plantSort?.information?.name;
 
     return name ? String(name) : `Sorta #${plantSortId}`;
-}
-
-function statusLabel(status?: string | null) {
-    if (!status) {
-        return '—';
-    }
-
-    return plantFieldStatusLabel(status).shortLabel;
 }
 
 function getPendingPlantStatusRequest(
@@ -109,13 +95,10 @@ async function RaisedBedDetailPageContent({
                 kind: 'raisedBedField.plantStatus',
             }),
         ]);
-    const plantSortNamesById = new Map<number, string>();
+    const plantSortsById = new Map<number, EntityStandardized>();
     if (plantSorts) {
         for (const plantSort of plantSorts) {
-            const name = plantSort.information?.name;
-            if (name) {
-                plantSortNamesById.set(plantSort.id, name);
-            }
+            plantSortsById.set(plantSort.id, plantSort);
         }
     }
 
@@ -140,12 +123,9 @@ async function RaisedBedDetailPageContent({
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
-            <Row spacing={2}>
-                <HomeButton />
-                <Typography level="h4" component="h1">
-                    {raisedBed.name || `Gredica #${raisedBed.id}`}
-                </Typography>
-            </Row>
+            <div className="flex min-w-0 items-center">
+                <HomeButton href="/raised-beds" title="Povratak na gredice" />
+            </div>
 
             <Card>
                 <CardHeader>
@@ -166,7 +146,6 @@ async function RaisedBedDetailPageContent({
                                     <Table.Head>Pozicija</Table.Head>
                                     <Table.Head>Biljka</Table.Head>
                                     <Table.Head>Status</Table.Head>
-                                    <Table.Head>Promjena</Table.Head>
                                     <Table.Head>Planirano</Table.Head>
                                     <Table.Head>Posijano</Table.Head>
                                     <Table.Head>Spremno</Table.Head>
@@ -200,15 +179,15 @@ async function RaisedBedDetailPageContent({
                                             ? activePendingRequest.target
                                                   .requestedStatus
                                             : null;
-                                    const hasAllowedChange =
-                                        Boolean(field?.plantStatus) &&
-                                        Boolean(
-                                            field?.plantStatus
-                                                ? userAllowedPlantStatusTransitions[
-                                                      field.plantStatus
-                                                  ]?.length
-                                                : false,
-                                        );
+                                    const plantSort = field?.plantSortId
+                                        ? (plantSortsById.get(
+                                              field.plantSortId,
+                                          ) ?? null)
+                                        : null;
+                                    const plantName = resolvePlantName(
+                                        field?.plantSortId,
+                                        plantSort,
+                                    );
 
                                     return (
                                         <Table.Row key={positionIndex}>
@@ -216,50 +195,29 @@ async function RaisedBedDetailPageContent({
                                                 {positionIndex + 1}
                                             </Table.Cell>
                                             <Table.Cell>
-                                                {resolvePlantName(
-                                                    field?.plantSortId,
-                                                    plantSortNamesById,
+                                                {plantSort ? (
+                                                    <div className="flex min-w-0 items-center gap-3">
+                                                        <PlantOrSortImage
+                                                            plantSort={
+                                                                plantSort
+                                                            }
+                                                            width={40}
+                                                            height={40}
+                                                            className="size-10 shrink-0 rounded-md object-cover"
+                                                        />
+                                                        <Typography
+                                                            level="body2"
+                                                            className="min-w-0 [overflow-wrap:anywhere]"
+                                                        >
+                                                            {plantName}
+                                                        </Typography>
+                                                    </div>
+                                                ) : (
+                                                    plantName
                                                 )}
                                             </Table.Cell>
                                             <Table.Cell>
-                                                <Row
-                                                    spacing={1}
-                                                    className="items-center flex-wrap"
-                                                >
-                                                    {currentStatus && (
-                                                        <span
-                                                            className="text-base leading-none"
-                                                            aria-hidden="true"
-                                                        >
-                                                            {plantFieldStatusEmoji(
-                                                                currentStatus,
-                                                            )}
-                                                        </span>
-                                                    )}
-                                                    <Typography level="body2">
-                                                        {statusLabel(
-                                                            currentStatus,
-                                                        )}
-                                                    </Typography>
-                                                    {pendingRequestedStatus && (
-                                                        <Chip
-                                                            color="warning"
-                                                            size="sm"
-                                                            variant="soft"
-                                                        >
-                                                            Čeka odobrenje:{' '}
-                                                            {plantFieldStatusEmoji(
-                                                                pendingRequestedStatus,
-                                                            )}{' '}
-                                                            {statusLabel(
-                                                                pendingRequestedStatus,
-                                                            )}
-                                                        </Chip>
-                                                    )}
-                                                </Row>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {field && hasAllowedChange ? (
+                                                {field?.plantStatus ? (
                                                     <PlantStateRequestForm
                                                         raisedBedId={
                                                             raisedBed.id

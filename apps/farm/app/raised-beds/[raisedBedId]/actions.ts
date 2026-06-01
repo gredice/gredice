@@ -1,12 +1,12 @@
 'use server';
 
-import { userAllowedPlantStatusTransitions } from '@gredice/js/plants';
 import {
     createPlantStatusApprovalRequest,
     getFarmUserRaisedBeds,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../../lib/auth/auth';
+import { isFarmPlantFieldStatus } from './plantStatusOptions';
 
 export type PlantStateRequestActionState =
     | {
@@ -35,13 +35,17 @@ export async function requestPlantStateChangeAction(
     const { userId } = await auth(['farmer', 'admin']);
     const raisedBedId = parseNumber(formData.get('raisedBedId'));
     const positionIndex = parseNumber(formData.get('positionIndex'));
-    const requestedStatus = formData.get('status');
+    const requestedStatusValue = formData.get('status');
+    const requestedStatus =
+        typeof requestedStatusValue === 'string'
+            ? requestedStatusValue.trim()
+            : null;
 
     if (
         raisedBedId === null ||
         positionIndex === null ||
-        typeof requestedStatus !== 'string' ||
-        requestedStatus.trim().length === 0
+        requestedStatus === null ||
+        !isFarmPlantFieldStatus(requestedStatus)
     ) {
         return {
             success: false,
@@ -62,12 +66,10 @@ export async function requestPlantStateChangeAction(
         };
     }
 
-    const allowedNextStatuses =
-        userAllowedPlantStatusTransitions[field.plantStatus] ?? [];
-    if (!allowedNextStatuses.includes(requestedStatus)) {
+    if (requestedStatus === field.plantStatus) {
         return {
             success: false,
-            message: 'Odabrano stanje nije dopušten sljedeći korak.',
+            message: 'Biljka je već u odabranom stanju.',
         };
     }
 

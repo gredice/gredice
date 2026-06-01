@@ -7,7 +7,7 @@ import {
     getLabelPrinterAvailabilityMessage,
     type LabelPrinterSnapshot,
 } from '@gredice/label-printer';
-import { Button } from '@gredice/ui/Button';
+import { Button, type ButtonProps } from '@gredice/ui/Button';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -44,11 +44,46 @@ function getConsumableUsageLabel(snapshot: LabelPrinterSnapshot) {
     return `${snapshot.consumableUsage.remaining}/${snapshot.consumableUsage.total} etiketa`;
 }
 
+function getLabelPreviewItems(labels: FieldOperationLabelData[]) {
+    const keyCounts = new Map<string, number>();
+    const items: Array<{
+        key: string;
+        label: FieldOperationLabelData;
+        position: number;
+    }> = [];
+    let position = 0;
+
+    for (const label of labels) {
+        position += 1;
+        const baseKey = [
+            label.raisedBedPhysicalId,
+            label.fieldLabel,
+            label.detailLabel,
+            label.plantSortName,
+        ].join('|');
+        const count = keyCounts.get(baseKey) ?? 0;
+        keyCounts.set(baseKey, count + 1);
+
+        items.push({
+            key: count === 0 ? baseKey : `${baseKey}|${count + 1}`,
+            label,
+            position,
+        });
+    }
+
+    return items;
+}
+
 interface FieldOperationPrintModalProps {
     title: string;
     description: ReactNode;
-    labelData: FieldOperationLabelData;
+    labelData: FieldOperationLabelData | FieldOperationLabelData[];
     triggerLabel?: string;
+    triggerStartDecorator?: ReactNode;
+    triggerVariant?: ButtonProps['variant'];
+    triggerSize?: ButtonProps['size'];
+    triggerClassName?: string;
+    printButtonLabel?: string;
 }
 
 export function FieldOperationPrintModal({
@@ -56,7 +91,14 @@ export function FieldOperationPrintModal({
     description,
     labelData,
     triggerLabel = 'Etiketa',
+    triggerStartDecorator,
+    triggerVariant = 'outlined',
+    triggerSize = 'sm',
+    triggerClassName,
+    printButtonLabel,
 }: FieldOperationPrintModalProps) {
+    const labels = Array.isArray(labelData) ? labelData : [labelData];
+    const labelPreviewItems = getLabelPreviewItems(labels);
     const [isOpen, setIsOpen] = useState(false);
     const [snapshot, setSnapshot] = useState(() =>
         sharedLabelPrinter.getSnapshot(),
@@ -123,11 +165,32 @@ export function FieldOperationPrintModal({
         setActionError(null);
         setSuccessMessage(null);
 
+        if (labels.length === 0) {
+            setActionError('Nema etiketa za ispis.');
+            return;
+        }
+
         try {
-            await sharedLabelPrinter.printFieldOperationLabel(labelData, {
-                preset: DEFAULT_HARVEST_LABEL_PRESET,
-            });
-            setSuccessMessage('Etiketa je poslana na pisač.');
+            if (labels.length === 1) {
+                const firstLabel = labels.at(0);
+                if (!firstLabel) {
+                    setActionError('Nema etiketa za ispis.');
+                    return;
+                }
+
+                await sharedLabelPrinter.printFieldOperationLabel(firstLabel, {
+                    preset: DEFAULT_HARVEST_LABEL_PRESET,
+                });
+            } else {
+                await sharedLabelPrinter.printFieldOperationLabels(labels, {
+                    preset: DEFAULT_HARVEST_LABEL_PRESET,
+                });
+            }
+            setSuccessMessage(
+                labels.length === 1
+                    ? 'Etiketa je poslana na pisač.'
+                    : 'Etikete su poslane na pisač.',
+            );
         } catch (error) {
             setActionError(getErrorMessage(error));
         }
@@ -141,8 +204,12 @@ export function FieldOperationPrintModal({
         snapshot.isConnected &&
         !snapshot.isConnecting &&
         !snapshot.isPrinting &&
+        labels.length > 0 &&
         snapshot.paperInserted !== false &&
         snapshot.lidClosed !== false;
+    const resolvedPrintButtonLabel =
+        printButtonLabel ??
+        (labels.length === 1 ? 'Ispiši etiketu' : 'Ispiši etikete');
 
     return (
         <Modal
@@ -151,9 +218,12 @@ export function FieldOperationPrintModal({
             onOpenChange={handleOpenChange}
             trigger={
                 <Button
-                    variant="outlined"
+                    variant={triggerVariant}
+                    size={triggerSize}
                     type="button"
-                    className="h-8 px-3 text-xs"
+                    className={triggerClassName}
+                    disabled={labels.length === 0}
+                    startDecorator={triggerStartDecorator}
                 >
                     {triggerLabel}
                 </Button>
@@ -163,10 +233,40 @@ export function FieldOperationPrintModal({
                 {description}
 
                 <div className="rounded-lg border bg-muted/20 p-3">
-                    <FieldOperationLabelPreviewCanvas
-                        labelData={labelData}
-                        className="mx-auto block w-full max-w-sm rounded border bg-white shadow-xs"
-                    />
+                    <Stack spacing={2}>
+                        {labels.length > 1 && (
+                            <Typography
+                                level="body2"
+                                className="text-muted-foreground"
+                            >
+                                Pregled: {labels.length} etiketa
+                            </Typography>
+                        )}
+                        <div
+                            className={
+                                labels.length > 1
+                                    ? 'grid max-h-[28rem] gap-3 overflow-y-auto sm:grid-cols-2'
+                                    : ''
+                            }
+                        >
+                            {labelPreviewItems.map((item) => (
+                                <div key={item.key} className="min-w-0">
+                                    {labels.length > 1 && (
+                                        <Typography
+                                            level="body2"
+                                            className="mb-1 text-xs text-muted-foreground"
+                                        >
+                                            #{item.position}
+                                        </Typography>
+                                    )}
+                                    <FieldOperationLabelPreviewCanvas
+                                        labelData={item.label}
+                                        className="mx-auto block w-full max-w-sm rounded border bg-white shadow-xs"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </Stack>
                 </div>
 
                 {availabilityMessage ? (
@@ -350,7 +450,7 @@ export function FieldOperationPrintModal({
                                 loading={snapshot.isPrinting}
                                 disabled={!canPrint}
                             >
-                                Ispiši etiketu
+                                {resolvedPrintButtonLabel}
                             </Button>
                         </div>
                     </Stack>

@@ -112,6 +112,7 @@ export {
     PinOff,
     Play,
     Plus as Add,
+    Printer,
     RadioReceiver as Station,
     Redo,
     Replace,
