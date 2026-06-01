@@ -2,12 +2,15 @@ export type GroundDecorationSurface = 'grass' | 'sand';
 
 type GroundFlowerOptions = {
     clusterChance: number;
-    colors: readonly string[];
     maxCount: number;
     minDistance: number;
     scaleRange: [number, number];
     spread: number;
     spawnChance: number;
+    variants: readonly {
+        color: string;
+        spriteName: string;
+    }[];
 };
 
 type GroundDecorationOptions = {
@@ -40,17 +43,17 @@ export const groundDecorationOptions: Record<
         clusterChance: 0.42,
         flowers: {
             clusterChance: 0.46,
-            colors: [
-                '#f7f1d0',
-                '#ffd35a',
-                '#f58ab7',
-                '#9f8cff',
-                '#73c7ff',
-                '#ff9f6e',
+            variants: [
+                { color: '#f7f1d0', spriteName: 'flower__cream' },
+                { color: '#ffd35a', spriteName: 'flower__yellow' },
+                { color: '#f58ab7', spriteName: 'flower__pink' },
+                { color: '#9f8cff', spriteName: 'flower__violet' },
+                { color: '#73c7ff', spriteName: 'flower__blue' },
+                { color: '#ff9f6e', spriteName: 'flower__orange' },
             ],
             maxCount: 2,
             minDistance: 0.055,
-            scaleRange: [0.165, 0.4],
+            scaleRange: [0.12, 0.3],
             spread: 0.085,
             spawnChance: 0.7,
         },
