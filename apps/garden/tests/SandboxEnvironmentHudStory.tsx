@@ -80,7 +80,7 @@ function SandboxEnvironmentResetControls({
     garden,
     onNormalGardenSelect,
 }: {
-    garden: { id: number; isSandbox: boolean };
+    garden: { id: number; isSandbox: boolean } | null;
     onNormalGardenSelect: () => void;
 }) {
     const setWeather = useGameState((state) => state.setWeather);
@@ -108,7 +108,7 @@ function SandboxEnvironmentResetControls({
                 Select normal garden
             </button>
             <output data-testid="garden-mode-value">
-                {garden.isSandbox ? 'sandbox' : 'normal'}
+                {garden ? (garden.isSandbox ? 'sandbox' : 'normal') : 'loading'}
             </output>
             <SandboxEnvironmentHudStatus />
         </div>
@@ -116,7 +116,10 @@ function SandboxEnvironmentResetControls({
 }
 
 export function SandboxEnvironmentResetStory() {
-    const [garden, setGarden] = useState({ id: 1, isSandbox: true });
+    const [garden, setGarden] = useState<{
+        id: number;
+        isSandbox: boolean;
+    } | null>({ id: 1, isSandbox: true });
     const gameStore = useMemo(
         () =>
             createGameState({
@@ -132,9 +135,13 @@ export function SandboxEnvironmentResetStory() {
         <GameStateContext.Provider value={gameStore}>
             <SandboxEnvironmentResetControls
                 garden={garden}
-                onNormalGardenSelect={() =>
-                    setGarden({ id: 2, isSandbox: false })
-                }
+                onNormalGardenSelect={() => {
+                    setGarden(null);
+                    window.setTimeout(
+                        () => setGarden({ id: 2, isSandbox: false }),
+                        100,
+                    );
+                }}
             />
         </GameStateContext.Provider>
     );

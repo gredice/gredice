@@ -2,7 +2,6 @@
 
 import { cx } from '@gredice/ui/utils';
 import type { GameSceneProps } from './GameScene';
-import { useClearSandboxEnvironmentOverrides } from './hooks/useClearSandboxEnvironmentOverrides';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { AccountHud } from './hud/AccountHud';
 import { AdventHud } from './hud/AdventHud';
@@ -42,7 +41,6 @@ export function GameHud({
     const { data: currentGarden } = useCurrentGarden();
     // Sandbox ("play") gardens are decoration only: no economy or inventory.
     const isSandbox = Boolean(currentGarden?.isSandbox);
-    useClearSandboxEnvironmentOverrides(currentGarden);
     const isLocalSandbox = useGameState(
         (state) => state.localSandboxStorageKey !== null,
     );

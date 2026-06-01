@@ -62,7 +62,7 @@ test('sandbox environment HUD can scrub time and change date', async ({
     );
 });
 
-test('switching from sandbox to a normal garden clears environment overrides', async ({
+test('switching from sandbox to a normal garden clears environment overrides after loading', async ({
     mount,
     page,
 }) => {
@@ -75,6 +75,11 @@ test('switching from sandbox to a normal garden clears environment overrides', a
     );
 
     await page.getByTestId('select-normal-garden').click();
+
+    await expect(page.getByTestId('garden-mode-value')).toHaveText('loading');
+    await expect(page.getByTestId('sandbox-weather-value')).toContainText(
+        '"rainy":1',
+    );
 
     await expect(page.getByTestId('garden-mode-value')).toHaveText('normal');
     await expect(page.getByTestId('sandbox-time-value')).toHaveText('');

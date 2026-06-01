@@ -27,6 +27,7 @@ import {
     farGameCameraZoom,
 } from './gameCamera';
 import { useBlockData } from './hooks/useBlockData';
+import { useClearSandboxEnvironmentOverrides } from './hooks/useClearSandboxEnvironmentOverrides';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useDeferredSceneDetails } from './hooks/useDeferredSceneDetails';
 import { useFocusPlacedBlock } from './hooks/useFocusPlacedBlock';
@@ -171,6 +172,7 @@ export function GameScene({
     // Start non-critical metadata early, but don't block the first scene frame.
     useBlockData();
     const { data: garden, isLoading: gardenLoading } = useCurrentGarden();
+    useClearSandboxEnvironmentOverrides(garden);
     useWeatherNow(!isLocalSandbox && !weatherDisabled && !weather);
     const isLoading = gardenLoading;
 
