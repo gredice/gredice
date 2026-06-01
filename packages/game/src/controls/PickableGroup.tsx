@@ -648,6 +648,7 @@ export function PickableGroup({
             )?.blockUnderId ?? null;
         const canStoreInGardenBox =
             !localSandboxStorageKey &&
+            !garden.isSandbox &&
             hoveredGardenBoxBlockId !== null &&
             sourcePreview.segment.blocks.length === 1 &&
             sourcePreview.segment.blocks[0]?.name !== 'GardenBox' &&

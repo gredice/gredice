@@ -6,6 +6,7 @@ import { Input } from '@gredice/ui/Input';
 import {
     Calendar,
     Cloud,
+    Custom,
     Droplets,
     Lightning,
     Moon,
@@ -13,6 +14,7 @@ import {
     Snowflake,
     Sun,
     SunMoon,
+    Wind,
 } from '@gredice/ui/icons';
 import { Popper } from '@gredice/ui/Popper';
 import { Row } from '@gredice/ui/Row';
@@ -25,6 +27,7 @@ import {
     type PointerEvent as ReactPointerEvent,
     useCallback,
     useEffect,
+    useState,
 } from 'react';
 import { useLiveTime } from '../hooks/useLiveTime';
 import { type GameState, useGameState } from '../useGameState';
@@ -115,6 +118,14 @@ function formatPercent(value: number) {
     return `${Math.round(clampTimeOfDay(value) * 100)}%`;
 }
 
+function formatWholeNumber(value: number) {
+    return Math.round(value).toString();
+}
+
+function formatCentimeters(value: number) {
+    return `${Math.round(value)} cm`;
+}
+
 function formatDateInputValue(date: Date) {
     const year = date.getFullYear().toString().padStart(4, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -170,6 +181,23 @@ function formatTimeOfDayLabel(timeOfDay: number) {
     return `${hours.toString().padStart(2, '0')}:${minutes
         .toString()
         .padStart(2, '0')}`;
+}
+
+type TimeTickLabelPosition = {
+    textAnchor: 'end' | 'middle' | 'start';
+    x: number;
+};
+
+function getTimeTickLabelPosition(tick: number): TimeTickLabelPosition {
+    if (tick <= 0) {
+        return { textAnchor: 'start', x: 1 };
+    }
+
+    if (tick >= 1) {
+        return { textAnchor: 'end', x: 99 };
+    }
+
+    return { textAnchor: 'middle', x: tick * 100 };
 }
 
 function getDayPoint(timeOfDay: number) {
@@ -335,26 +363,30 @@ function SandboxTimeVisualization({
                     strokeLinecap="round"
                     strokeWidth="1.4"
                 />
-                {[0, 0.25, 0.5, 0.75, 1].map((tick) => (
-                    <g key={tick} opacity="0.55">
-                        <line
-                            x1={tick * 100}
-                            x2={tick * 100}
-                            y1="25"
-                            y2="27"
-                            stroke="currentColor"
-                            strokeWidth="0.4"
-                        />
-                        <text
-                            x={tick * 100}
-                            y="31"
-                            textAnchor="middle"
-                            className="fill-current text-[3px]"
-                        >
-                            {formatTimeOfDayLabel(tick)}
-                        </text>
-                    </g>
-                ))}
+                {[0, 0.25, 0.5, 0.75, 1].map((tick) => {
+                    const labelPosition = getTimeTickLabelPosition(tick);
+
+                    return (
+                        <g key={tick} opacity="0.55">
+                            <line
+                                x1={tick * 100}
+                                x2={tick * 100}
+                                y1="25"
+                                y2="27"
+                                stroke="currentColor"
+                                strokeWidth="0.4"
+                            />
+                            <text
+                                x={labelPosition.x}
+                                y="30.5"
+                                textAnchor={labelPosition.textAnchor}
+                                className="fill-current text-[3px]"
+                            >
+                                {formatTimeOfDayLabel(tick)}
+                            </text>
+                        </g>
+                    );
+                })}
                 <line
                     x1="0"
                     x2="100"
@@ -455,8 +487,32 @@ function weatherIcon(weather: SandboxWeather) {
     return Sun;
 }
 
+function WeatherSliderLabel({
+    icon: Icon,
+    label,
+    value,
+}: {
+    icon: typeof Cloud;
+    label: string;
+    value: string;
+}) {
+    return (
+        <span className="flex w-full items-center justify-between gap-3">
+            <span className="inline-flex min-w-0 items-center gap-2">
+                <Icon className="size-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">{label}</span>
+            </span>
+            <span className="shrink-0 text-right tabular-nums text-muted-foreground">
+                {value}
+            </span>
+        </span>
+    );
+}
+
 export function SandboxEnvironmentHud() {
     const currentTime = useLiveTime();
+    const [customWeatherControlsOpen, setCustomWeatherControlsOpen] =
+        useState(false);
     const weatherOverride = useGameState((state) => state.weather);
     const setWeather = useGameState((state) => state.setWeather);
     const setWeatherVisualizationDisabled = useGameState(
@@ -473,6 +529,11 @@ export function SandboxEnvironmentHud() {
         ...(weatherOverride ?? {}),
     };
     const WeatherIcon = weatherIcon(weather);
+    const activeWeatherPreset = weatherPresets.find((preset) =>
+        isPresetActive(weather, preset.weather),
+    );
+    const customWeatherSelected =
+        customWeatherControlsOpen || !activeWeatherPreset;
 
     useEffect(() => {
         if (weatherOverride) {
@@ -559,10 +620,10 @@ export function SandboxEnvironmentHud() {
                             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                                 {weatherPresets.map((preset) => {
                                     const PresetIcon = preset.icon;
-                                    const active = isPresetActive(
-                                        weather,
-                                        preset.weather,
-                                    );
+                                    const active =
+                                        !customWeatherSelected &&
+                                        activeWeatherPreset?.label ===
+                                            preset.label;
                                     return (
                                         <Button
                                             key={preset.label}
@@ -578,137 +639,217 @@ export function SandboxEnvironmentHud() {
                                             startDecorator={
                                                 <PresetIcon className="size-4" />
                                             }
-                                            onClick={() =>
-                                                updateWeather(preset.weather)
-                                            }
+                                            onClick={() => {
+                                                setCustomWeatherControlsOpen(
+                                                    false,
+                                                );
+                                                updateWeather(preset.weather);
+                                            }}
                                         >
                                             {preset.label}
                                         </Button>
                                     );
                                 })}
+                                <Button
+                                    size="sm"
+                                    variant={
+                                        customWeatherSelected
+                                            ? 'solid'
+                                            : 'outlined'
+                                    }
+                                    startDecorator={
+                                        <Custom className="size-4" />
+                                    }
+                                    onClick={() =>
+                                        setCustomWeatherControlsOpen(true)
+                                    }
+                                >
+                                    Prilagođeno
+                                </Button>
                             </div>
-                            <Stack spacing={3}>
-                                <Slider
-                                    aria-label="Oblaci"
-                                    label={`Oblaci ${formatPercent(weather.cloudy)}`}
-                                    min={0}
-                                    max={1}
-                                    step={0.01}
-                                    value={[weather.cloudy]}
-                                    onValueChange={([nextValue]) => {
-                                        if (typeof nextValue === 'number') {
-                                            updateWeather({
-                                                cloudy: clampTimeOfDay(
-                                                    nextValue,
-                                                ),
-                                            });
+                            {customWeatherSelected ? (
+                                <Stack spacing={3}>
+                                    <Slider
+                                        aria-label="Oblaci"
+                                        label={
+                                            <WeatherSliderLabel
+                                                icon={Cloud}
+                                                label="Oblaci"
+                                                value={formatPercent(
+                                                    weather.cloudy,
+                                                )}
+                                            />
                                         }
-                                    }}
-                                />
-                                <Slider
-                                    aria-label="Kiša"
-                                    label={`Kiša ${formatPercent(weather.rainy)}`}
-                                    min={0}
-                                    max={1}
-                                    step={0.01}
-                                    value={[weather.rainy]}
-                                    onValueChange={([nextValue]) => {
-                                        if (typeof nextValue === 'number') {
-                                            updateWeather({
-                                                rainy: clampTimeOfDay(
-                                                    nextValue,
-                                                ),
-                                            });
+                                        min={0}
+                                        max={1}
+                                        step={0.01}
+                                        value={[weather.cloudy]}
+                                        onValueChange={([nextValue]) => {
+                                            if (typeof nextValue === 'number') {
+                                                updateWeather({
+                                                    cloudy: clampTimeOfDay(
+                                                        nextValue,
+                                                    ),
+                                                });
+                                            }
+                                        }}
+                                    />
+                                    <Slider
+                                        aria-label="Kiša"
+                                        label={
+                                            <WeatherSliderLabel
+                                                icon={Droplets}
+                                                label="Kiša"
+                                                value={formatPercent(
+                                                    weather.rainy,
+                                                )}
+                                            />
                                         }
-                                    }}
-                                />
-                                <Slider
-                                    aria-label="Snijeg"
-                                    label={`Snijeg ${formatPercent(weather.snowy)}`}
-                                    min={0}
-                                    max={1}
-                                    step={0.01}
-                                    value={[weather.snowy]}
-                                    onValueChange={([nextValue]) => {
-                                        if (typeof nextValue === 'number') {
-                                            updateWeather({
-                                                snowy: clampTimeOfDay(
-                                                    nextValue,
-                                                ),
-                                            });
+                                        min={0}
+                                        max={1}
+                                        step={0.01}
+                                        value={[weather.rainy]}
+                                        onValueChange={([nextValue]) => {
+                                            if (typeof nextValue === 'number') {
+                                                updateWeather({
+                                                    rainy: clampTimeOfDay(
+                                                        nextValue,
+                                                    ),
+                                                });
+                                            }
+                                        }}
+                                    />
+                                    <Slider
+                                        aria-label="Snijeg"
+                                        label={
+                                            <WeatherSliderLabel
+                                                icon={Snowflake}
+                                                label="Snijeg"
+                                                value={formatPercent(
+                                                    weather.snowy,
+                                                )}
+                                            />
                                         }
-                                    }}
-                                />
-                                <Slider
-                                    aria-label="Magla"
-                                    label={`Magla ${formatPercent(weather.foggy)}`}
-                                    min={0}
-                                    max={1}
-                                    step={0.01}
-                                    value={[weather.foggy]}
-                                    onValueChange={([nextValue]) => {
-                                        if (typeof nextValue === 'number') {
-                                            updateWeather({
-                                                foggy: clampTimeOfDay(
-                                                    nextValue,
-                                                ),
-                                            });
+                                        min={0}
+                                        max={1}
+                                        step={0.01}
+                                        value={[weather.snowy]}
+                                        onValueChange={([nextValue]) => {
+                                            if (typeof nextValue === 'number') {
+                                                updateWeather({
+                                                    snowy: clampTimeOfDay(
+                                                        nextValue,
+                                                    ),
+                                                });
+                                            }
+                                        }}
+                                    />
+                                    <Slider
+                                        aria-label="Magla"
+                                        label={
+                                            <WeatherSliderLabel
+                                                icon={Cloud}
+                                                label="Magla"
+                                                value={formatPercent(
+                                                    weather.foggy,
+                                                )}
+                                            />
                                         }
-                                    }}
-                                />
-                                <Slider
-                                    aria-label="Oluja"
-                                    label={`Oluja ${formatPercent(weather.thundery ?? 0)}`}
-                                    min={0}
-                                    max={1}
-                                    step={0.01}
-                                    value={[weather.thundery ?? 0]}
-                                    onValueChange={([nextValue]) => {
-                                        if (typeof nextValue === 'number') {
-                                            updateWeather({
-                                                thundery:
-                                                    clampTimeOfDay(nextValue),
-                                            });
+                                        min={0}
+                                        max={1}
+                                        step={0.01}
+                                        value={[weather.foggy]}
+                                        onValueChange={([nextValue]) => {
+                                            if (typeof nextValue === 'number') {
+                                                updateWeather({
+                                                    foggy: clampTimeOfDay(
+                                                        nextValue,
+                                                    ),
+                                                });
+                                            }
+                                        }}
+                                    />
+                                    <Slider
+                                        aria-label="Oluja"
+                                        label={
+                                            <WeatherSliderLabel
+                                                icon={Lightning}
+                                                label="Oluja"
+                                                value={formatPercent(
+                                                    weather.thundery ?? 0,
+                                                )}
+                                            />
                                         }
-                                    }}
-                                />
-                                <Slider
-                                    aria-label="Vjetar"
-                                    label={`Vjetar ${Math.round(weather.windSpeed ?? 0)}`}
-                                    min={0}
-                                    max={3}
-                                    step={1}
-                                    value={[weather.windSpeed ?? 0]}
-                                    onValueChange={([nextValue]) => {
-                                        if (typeof nextValue === 'number') {
-                                            updateWeather({
-                                                windSpeed: Math.min(
-                                                    3,
-                                                    Math.max(0, nextValue),
-                                                ),
-                                            });
+                                        min={0}
+                                        max={1}
+                                        step={0.01}
+                                        value={[weather.thundery ?? 0]}
+                                        onValueChange={([nextValue]) => {
+                                            if (typeof nextValue === 'number') {
+                                                updateWeather({
+                                                    thundery:
+                                                        clampTimeOfDay(
+                                                            nextValue,
+                                                        ),
+                                                });
+                                            }
+                                        }}
+                                    />
+                                    <Slider
+                                        aria-label="Vjetar"
+                                        label={
+                                            <WeatherSliderLabel
+                                                icon={Wind}
+                                                label="Vjetar"
+                                                value={formatWholeNumber(
+                                                    weather.windSpeed ?? 0,
+                                                )}
+                                            />
                                         }
-                                    }}
-                                />
-                                <Slider
-                                    aria-label="Snježni pokrov"
-                                    label={`Snježni pokrov ${Math.round(weather.snowAccumulation ?? 0)} cm`}
-                                    min={0}
-                                    max={50}
-                                    step={1}
-                                    value={[weather.snowAccumulation ?? 0]}
-                                    onValueChange={([nextValue]) => {
-                                        if (typeof nextValue === 'number') {
-                                            updateWeather({
-                                                snowAccumulation: Math.min(
-                                                    50,
-                                                    Math.max(0, nextValue),
-                                                ),
-                                            });
+                                        min={0}
+                                        max={3}
+                                        step={1}
+                                        value={[weather.windSpeed ?? 0]}
+                                        onValueChange={([nextValue]) => {
+                                            if (typeof nextValue === 'number') {
+                                                updateWeather({
+                                                    windSpeed: Math.min(
+                                                        3,
+                                                        Math.max(0, nextValue),
+                                                    ),
+                                                });
+                                            }
+                                        }}
+                                    />
+                                    <Slider
+                                        aria-label="Snježni pokrov"
+                                        label={
+                                            <WeatherSliderLabel
+                                                icon={Snowflake}
+                                                label="Snježni pokrov"
+                                                value={formatCentimeters(
+                                                    weather.snowAccumulation ??
+                                                        0,
+                                                )}
+                                            />
                                         }
-                                    }}
-                                />
-                            </Stack>
+                                        min={0}
+                                        max={50}
+                                        step={1}
+                                        value={[weather.snowAccumulation ?? 0]}
+                                        onValueChange={([nextValue]) => {
+                                            if (typeof nextValue === 'number') {
+                                                updateWeather({
+                                                    snowAccumulation: Math.min(
+                                                        50,
+                                                        Math.max(0, nextValue),
+                                                    ),
+                                                });
+                                            }
+                                        }}
+                                    />
+                                </Stack>
+                            ) : null}
                         </Stack>
                     </Stack>
                 </Popper>
@@ -771,23 +912,41 @@ export function SandboxEnvironmentHud() {
                                     )}
                                     {formatTime(currentTime)}
                                 </Typography>
-                                <Typography
-                                    level="body2"
-                                    className="inline-flex items-center gap-1 text-muted-foreground"
+                                <Popper
+                                    align="end"
+                                    className="w-56 p-3"
+                                    side="bottom"
+                                    sideOffset={8}
+                                    trigger={
+                                        <Button
+                                            aria-label={`Promijeni datum ${formatShortDate(currentTime)}`}
+                                            className="-mr-2 px-2 text-muted-foreground hover:text-foreground"
+                                            color="neutral"
+                                            size="sm"
+                                            title="Promijeni datum"
+                                            type="button"
+                                            variant="plain"
+                                        >
+                                            <Calendar className="size-4" />
+                                            {formatShortDate(currentTime)}
+                                        </Button>
+                                    }
                                 >
-                                    <Calendar className="size-4" />
-                                    {formatShortDate(currentTime)}
-                                </Typography>
+                                    <Input
+                                        fullWidth
+                                        label="Datum"
+                                        type="date"
+                                        value={formatDateInputValue(
+                                            currentTime,
+                                        )}
+                                        onChange={(event) =>
+                                            updateDate(
+                                                event.currentTarget.value,
+                                            )
+                                        }
+                                    />
+                                </Popper>
                             </Row>
-                            <Input
-                                fullWidth
-                                label="Datum"
-                                type="date"
-                                value={formatDateInputValue(currentTime)}
-                                onChange={(event) =>
-                                    updateDate(event.currentTarget.value)
-                                }
-                            />
                         </Stack>
                     </Stack>
                 </Popper>

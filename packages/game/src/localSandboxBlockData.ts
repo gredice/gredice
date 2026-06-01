@@ -62,10 +62,38 @@ const localSandboxBlockNames = [
     'Block_Snow_Reverse_Corner',
 ] as const;
 
+type LocalSandboxBlockName = (typeof localSandboxBlockNames)[number];
+
 const createdAt = new Date(0).toISOString();
 
+const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
+    {
+        Block_Grass: 0.4,
+        Block_Ground: 0.4,
+        Block_Sand: 0.4,
+        Block_Snow: 0.4,
+        Block_Water: 0.4,
+        Block_Grass_Angle: 0.25,
+        Block_Ground_Angle: 0.25,
+        Block_Sand_Angle: 0.25,
+        Block_Snow_Angle: 0.4,
+        Block_Grass_Corner: 0.25,
+        Block_Ground_Corner: 0.25,
+        Block_Sand_Corner: 0.25,
+        Block_Snow_Corner: 0.4,
+        Block_Grass_Reverse_Corner: 0.25,
+        Block_Ground_Reverse_Corner: 0.25,
+        Block_Sand_Reverse_Corner: 0.25,
+        Block_Snow_Reverse_Corner: 0.4,
+        Raised_Bed: 0.35,
+    };
+
+function getLocalSandboxStackHeight(name: LocalSandboxBlockName) {
+    return localSandboxStackHeights[name] ?? 0.8;
+}
+
 function createLocalSandboxBlockData(
-    name: (typeof localSandboxBlockNames)[number],
+    name: LocalSandboxBlockName,
     index: number,
 ): BlockData {
     const isGroundBlock = name.startsWith('Block_');
@@ -85,7 +113,7 @@ function createLocalSandboxBlockData(
             fullDescription: '',
         },
         attributes: {
-            height: isGroundBlock ? 1 : 0.8,
+            height: getLocalSandboxStackHeight(name),
             stackable: isGroundBlock,
             type: isRaisedBed ? 'raisedBed' : 'decoration',
             nightOnlyPurchase: false,

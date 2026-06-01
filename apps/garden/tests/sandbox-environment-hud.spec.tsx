@@ -8,6 +8,7 @@ test('sandbox environment HUD applies weather presets', async ({
     await mount(<SandboxEnvironmentHudStory />);
 
     await page.getByTitle('Uvjeti u vrtu').click();
+    await expect(page.getByRole('slider', { name: 'Kiša' })).toHaveCount(0);
     await page.getByRole('button', { name: 'Snijeg' }).click();
 
     await expect(page.getByTestId('sandbox-weather-value')).toContainText(
@@ -16,6 +17,10 @@ test('sandbox environment HUD applies weather presets', async ({
     await expect(page.getByTestId('sandbox-weather-value')).toContainText(
         '"snowAccumulation":30',
     );
+
+    await expect(page.getByRole('slider', { name: 'Kiša' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Prilagođeno' }).click();
+    await expect(page.getByRole('slider', { name: 'Kiša' })).toBeVisible();
 });
 
 test('sandbox environment HUD can scrub time and change date', async ({
@@ -47,7 +52,8 @@ test('sandbox environment HUD can scrub time and change date', async ({
         .poll(() => page.getByTestId('sandbox-timeofday-value').textContent())
         .not.toBe(initialTimeOfDay);
 
-    await page.getByLabel('Datum').fill('2026-12-21');
+    await page.getByTitle('Promijeni datum').click();
+    await page.getByRole('textbox', { name: 'Datum' }).fill('2026-12-21');
     await expect(page.getByTestId('sandbox-date-value')).toHaveText(
         '2026-12-21',
     );

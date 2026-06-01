@@ -5,6 +5,7 @@ import { RotatableGroup } from '../controls/RotatableGroup';
 import { SelectableGroup } from '../controls/SelectableGroup';
 import { useDeferredSingleClick } from '../controls/useDeferredSingleClick';
 import { useBlockData } from '../hooks/useBlockData';
+import { useIsSandboxGarden } from '../hooks/useCurrentGarden';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
 import { getBlockHitboxSize } from '../utils/blockHitbox';
@@ -82,11 +83,12 @@ function InstancedEntityControlTarget({
     const hasActiveDragPreview = useGameState((state) =>
         Boolean(state.activeDragPreview),
     );
+    const isSandbox = useIsSandboxGarden();
     const setOpenGardenBoxBlockId = useGameState(
         (state) => state.setOpenGardenBoxBlockId,
     );
     const handleGardenBoxClick = useDeferredSingleClick(() => {
-        if (block.name !== 'GardenBox' || hasActiveDragPreview) {
+        if (block.name !== 'GardenBox' || isSandbox || hasActiveDragPreview) {
             return;
         }
 
