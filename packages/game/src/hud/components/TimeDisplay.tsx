@@ -4,17 +4,34 @@ import { Divider } from '@gredice/ui/Divider';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { useCallback } from 'react';
+import { useGameFlags } from '../../GameFlagsContext';
 import { useLiveTime } from '../../hooks/useLiveTime';
 import { useGameState } from '../../useGameState';
-import { DayNightVisualization } from './DayNightVisualization';
+import { createDateForGameTimeOfDay } from '../../utils/timeOfDay';
+import { TimeOfDayVisualization } from './TimeOfDayVisualization';
 
 export function TimeDisplay() {
+    const { enableDebugHudFlag = false } = useGameFlags();
     const currentTime = useLiveTime();
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const sunrise = useGameState((state) => state.sunriseTime);
     const sunset = useGameState((state) => state.sunsetTime);
+    const setFreezeTime = useGameState((state) => state.setFreezeTime);
+    const setDayNightCycleDisabled = useGameState(
+        (state) => state.setDayNightCycleDisabled,
+    );
 
-    const isDaytime = timeOfDay > 0.2 && timeOfDay < 0.8;
+    const isDaytime = timeOfDay >= 0.2 && timeOfDay <= 0.8;
+    const updateTimeOfDay = useCallback(
+        (nextTimeOfDay: number) => {
+            setDayNightCycleDisabled(false);
+            setFreezeTime(
+                createDateForGameTimeOfDay(currentTime, nextTimeOfDay),
+            );
+        },
+        [currentTime, setDayNightCycleDisabled, setFreezeTime],
+    );
 
     return (
         <Stack data-time-display="true" className="min-w-0">
@@ -28,7 +45,12 @@ export function TimeDisplay() {
             </Row>
             <Divider />
             <Stack className="px-4 py-3">
-                <DayNightVisualization className="mb-3 h-14 w-full" />
+                <TimeOfDayVisualization
+                    className="mb-2"
+                    interactive={enableDebugHudFlag}
+                    onChange={updateTimeOfDay}
+                    timeOfDay={timeOfDay}
+                />
                 <Row className="gap-3" justifyContent="space-between">
                     <Typography level="body3" className="whitespace-nowrap">
                         {(isDaytime ? sunrise : sunset)?.toLocaleTimeString(
@@ -53,7 +75,7 @@ export function TimeDisplay() {
                     </Typography>
                 </Row>
                 <Typography level="body2" center>
-                    {new Date().toLocaleDateString('hr-HR', {
+                    {currentTime.toLocaleDateString('hr-HR', {
                         day: 'numeric',
                         month: 'long',
                         year: 'numeric',

@@ -21,7 +21,7 @@ async function expectTimePopoverWithinViewport(
         viewport.width,
     );
 
-    const visualization = page.getByRole('img', { name: 'Dan/noć' });
+    const visualization = page.locator('[data-time-of-day-visualization]');
     const visualizationBox = await visualization.boundingBox();
     expect(visualizationBox).not.toBeNull();
     expect(visualizationBox?.x ?? 0).toBeGreaterThanOrEqual(popoverBox?.x ?? 0);

@@ -14,6 +14,10 @@ const blockData: PlacementBlockData[] = [
         attributes: { stackable: true, height: 1 },
     },
     {
+        information: { name: 'Block_Water' },
+        attributes: { stackable: true, height: 1 },
+    },
+    {
         information: { name: 'Raised_Bed' },
         attributes: { stackable: true, height: 1 },
     },
@@ -73,6 +77,41 @@ describe('createOptimisticBlockPlacement', () => {
                 {
                     id: 'optimistic-bed',
                     name: 'Raised_Bed',
+                    rotation: 0,
+                },
+            ],
+        });
+    });
+
+    it('avoids water stacks when automatically placing new blocks', () => {
+        const placement = createOptimisticBlockPlacement(
+            {
+                stacks: [
+                    {
+                        position: new Vector3(0, 0, 0),
+                        blocks: [
+                            {
+                                id: 'water-a',
+                                name: 'Block_Water',
+                                rotation: 0,
+                            },
+                        ],
+                    },
+                ],
+            },
+            blockData,
+            'Shade',
+            'optimistic-shade',
+        );
+
+        assert.ok(placement);
+        assert.deepStrictEqual(placement.position, new Vector3(0, 0, -1));
+        assert.deepStrictEqual(placement.stacks.at(-1), {
+            position: new Vector3(0, 0, -1),
+            blocks: [
+                {
+                    id: 'optimistic-shade',
+                    name: 'Shade',
                     rotation: 0,
                 },
             ],
