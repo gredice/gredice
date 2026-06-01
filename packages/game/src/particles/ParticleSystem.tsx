@@ -3,6 +3,7 @@ import {
     createContext,
     type PropsWithChildren,
     useContext,
+    useLayoutEffect,
     useMemo,
     useRef,
 } from 'react';
@@ -216,6 +217,32 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
     };
 
     const dummy = useMemo(() => new Object3D(), []);
+    const hiddenMatrix = useMemo(() => new Matrix4().makeScale(0, 0, 0), []);
+
+    useLayoutEffect(() => {
+        // InstancedMesh starts every instance at identity; hide pooled particles
+        // until spawn assigns real transforms.
+        const meshes = [
+            meshDefault.current,
+            meshHay.current,
+            meshLeaf.current,
+            meshTreeLeaf.current,
+            meshStone.current,
+            meshWater.current,
+        ];
+
+        for (const mesh of meshes) {
+            if (!mesh) {
+                continue;
+            }
+
+            for (let i = 0; i < count; i++) {
+                mesh.setMatrixAt(i, hiddenMatrix);
+            }
+            mesh.instanceMatrix.needsUpdate = true;
+        }
+    }, [hiddenMatrix]);
+
     useFrame((_, delta) => {
         let i = -1;
         let updateDefaultMesh = false;
@@ -360,9 +387,7 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
             }
             targetMesh?.setMatrixAt(
                 i,
-                p.life < p.maxLife
-                    ? dummy.matrix
-                    : new Matrix4().makeScale(0, 0, 0),
+                p.life < p.maxLife ? dummy.matrix : hiddenMatrix,
             );
         }
 

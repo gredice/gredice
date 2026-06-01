@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useGameSceneDetails } from '../../GameSceneDetailContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
 import { SpriteAtlasBillboard } from '../../sprites/SpriteAtlasBillboard';
@@ -132,6 +133,12 @@ export function PrecomputedBlockSurfaceDecorationSprites({
 export function BlockSurfaceDecorationSprites(
     props: BlockSurfaceDecorationSpritesProps,
 ) {
+    const { renderDetails } = useGameSceneDetails();
+
+    if (!renderDetails) {
+        return null;
+    }
+
     if ('placements' in props) {
         return <PrecomputedBlockSurfaceDecorationSprites {...props} />;
     }

@@ -60,7 +60,7 @@ export function BlockGrassReverseCorner({
                 castShadow
                 receiveShadow
                 geometry={nodes.Block_Grass_Reverse_Corner_1_1.geometry}
-                material={nodes.Block_Grass_Reverse_Corner_1_1.material}
+                material={nodes.Block_Grass_Reverse_Corner_1_2.material}
             />
             <mesh
                 castShadow

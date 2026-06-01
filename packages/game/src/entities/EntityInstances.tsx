@@ -304,7 +304,7 @@ export function EntityInstances({
                 name="Block_Grass_Corner"
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Grass_Corner_1_1.geometry}
-                material={(gltf) => gltf.nodes.Block_Grass_Corner_1_1.material}
+                material={(gltf) => gltf.nodes.Block_Grass_Corner_1_2.material}
                 {...commonSnowProps}
             />
             <EntityInstancesAssetBlock
@@ -328,7 +328,7 @@ export function EntityInstances({
                     gltf.nodes.Block_Grass_Reverse_Corner_1_1.geometry
                 }
                 material={(gltf) =>
-                    gltf.nodes.Block_Grass_Reverse_Corner_1_1.material
+                    gltf.nodes.Block_Grass_Reverse_Corner_1_2.material
                 }
                 {...commonSnowProps}
             />
