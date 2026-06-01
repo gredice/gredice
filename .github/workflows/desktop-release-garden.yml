@@ -1,11 +1,11 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 
-name: "Release - Desktop (app)"
+name: "Release - Desktop (garden)"
 
 on:
   push:
     tags:
-      - "desktop-app-v*"
+      - "desktop-garden-v*"
   workflow_dispatch:
     inputs:
       version:
@@ -48,17 +48,17 @@ jobs:
           set -euo pipefail
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${DISPATCH_VERSION}" ]; then
             VERSION="${DISPATCH_VERSION}"
-          elif [[ "${GITHUB_REF}" == refs/tags/desktop-app-v* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/desktop-app-v}"
+          elif [[ "${GITHUB_REF}" == refs/tags/desktop-garden-v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/desktop-garden-v}"
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             # Single timestamp shared across all downstream jobs so the DMG
             # filenames, package version, tag, and release name agree.
             VERSION="0.0.0-$(date -u +%Y%m%d%H%M%S)"
           else
-            echo "::error::Unable to resolve release version. Trigger this workflow with a desktop-app-v* tag or provide a workflow_dispatch version input." >&2
+            echo "::error::Unable to resolve release version. Trigger this workflow with a desktop-garden-v* tag or provide a workflow_dispatch version input." >&2
             exit 1
           fi
-          TAG="desktop-app-v${VERSION}"
+          TAG="desktop-garden-v${VERSION}"
           echo "Resolved version: ${VERSION}"
           echo "Resolved tag: ${TAG}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
@@ -124,19 +124,19 @@ jobs:
         working-directory: apps/desktop
         run: node scripts/prepare-macos-signing-env.mjs
 
-      - name: 🛠️ Build Gredice Admin desktop DMG (arm64)
+      - name: 🛠️ Build Gredice Garden desktop DMG (arm64)
         env:
           GREDICE_DESKTOP_VERSION: ${{ needs.resolve_version.outputs.version }}
         working-directory: apps/desktop
-        run: pnpm dist:app --mac --arm64
+        run: pnpm dist:garden --mac --arm64
 
       - name: 📤 Upload DMG artifact
         uses: actions/upload-artifact@v5.0.0
         with:
-          name: gredice-admin-desktop-arm64
+          name: gredice-garden-desktop-arm64
           path: |
-            apps/desktop/dist/app/*.dmg
-            apps/desktop/dist/app/*.dmg.blockmap
+            apps/desktop/dist/garden/*.dmg
+            apps/desktop/dist/garden/*.dmg.blockmap
           if-no-files-found: error
           retention-days: 14
 
@@ -150,7 +150,7 @@ jobs:
         uses: actions/download-artifact@v6.0.0
         with:
           path: release-artifacts
-          pattern: gredice-admin-desktop-*
+          pattern: gredice-garden-desktop-*
           merge-multiple: true
 
       - name: 📜 List artifacts
@@ -160,21 +160,11 @@ jobs:
       - name: 🚀 Create or update GitHub release
         uses: softprops/action-gh-release@v2.2.2
         with:
-          name: "Gredice Admin Desktop ${{ needs.resolve_version.outputs.version }}"
+          name: "Gredice Garden Desktop ${{ needs.resolve_version.outputs.version }}"
           tag_name: ${{ needs.resolve_version.outputs.tag }}
           draft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft || false }}
           prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
-          # Generated notes can exceed GitHub's 125k release body limit for the
-          # first desktop tag because the comparison spans too much repo history.
-          generate_release_notes: false
-          body: |
-            Gredice Admin Desktop ${{ needs.resolve_version.outputs.version }}.
-
-            Install the DMG for your Mac architecture:
-            - `arm64` for Apple Silicon Macs.
-            - `x64` for Intel Macs.
-
-            The DMG and blockmap files are attached below.
+          generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
             release-artifacts/*.dmg

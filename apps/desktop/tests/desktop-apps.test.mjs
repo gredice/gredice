@@ -109,10 +109,55 @@ test('desktop shell hands OAuth login to the system browser', () => {
     assert.match(mainSource, /auth-callback/);
     assert.match(packageSource, /protocols:/);
     assert.match(packageSource, /favicon\.ico/);
+    assert.match(
+        packageSource,
+        /com\.apple\.security\.cs\.disable-library-validation/,
+    );
     assert.match(packageSource, /installerIcon: 'favicon\.ico'/);
     assert.match(packageSource, /uninstallerIcon: 'favicon\.ico'/);
     assert.match(packageSource, /icon: 'favicon\.ico'/);
     assert.match(packageSource, /schemes: \[desktopApp\.protocol\]/);
+});
+
+test('desktop release workflows can sign macOS artifacts when credentials exist', () => {
+    const packageSource = fs.readFileSync(
+        resolve(repoRoot, 'apps/desktop/scripts/package-desktop-app.mjs'),
+        'utf8',
+    );
+    const prepareSigningSource = fs.readFileSync(
+        resolve(repoRoot, 'apps/desktop/scripts/prepare-macos-signing-env.mjs'),
+        'utf8',
+    );
+    const workflowSources = [
+        '.github/workflows/desktop-release-app.yml',
+        '.github/workflows/desktop-release-farm.yml',
+        '.github/workflows/desktop-release-garden.yml',
+    ].map((workflowPath) =>
+        fs.readFileSync(resolve(repoRoot, workflowPath), 'utf8'),
+    );
+
+    assert.match(packageSource, /forceCodeSigning:/);
+    assert.match(packageSource, /GREDICE_DESKTOP_REQUIRE_MAC_SIGNING/);
+    assert.match(packageSource, /GREDICE_DESKTOP_SKIP_MAC_NOTARIZATION/);
+    assert.match(prepareSigningSource, /CSC_LINK is not configured/);
+    assert.match(prepareSigningSource, /ad-hoc signing/);
+    assert.match(prepareSigningSource, /APPLE_API_KEY_CONTENT/);
+    assert.match(prepareSigningSource, /APPLE_APP_SPECIFIC_PASSWORD/);
+    assert.match(prepareSigningSource, /APPLE_KEYCHAIN_PROFILE/);
+    assert.match(prepareSigningSource, /GREDICE_DESKTOP_SKIP_MAC_NOTARIZATION/);
+
+    for (const workflowSource of workflowSources) {
+        assert.match(workflowSource, /Prepare macOS signing and notarization/);
+        assert.match(
+            workflowSource,
+            /node scripts\/prepare-macos-signing-env\.mjs/,
+        );
+        assert.doesNotMatch(
+            workflowSource,
+            /GREDICE_DESKTOP_REQUIRE_MAC_SIGNING/,
+        );
+        assert.doesNotMatch(workflowSource, /CSC_IDENTITY_AUTO_DISCOVERY/);
+    }
 });
 
 test('desktop shell sets app identity before creating the macOS menu', () => {
