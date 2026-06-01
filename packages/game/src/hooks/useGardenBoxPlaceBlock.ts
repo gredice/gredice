@@ -96,6 +96,9 @@ export function useGardenBoxPlaceBlock() {
     const { data: currentGarden } = useCurrentGarden();
     const { data: blockData } = useBlockData();
     const winterMode = useGameState((state) => state.winterMode);
+    const queueBlockPlacementDropAnimation = useGameState(
+        (state) => state.queueBlockPlacementDropAnimation,
+    );
 
     return useMutation({
         mutationKey,
@@ -159,7 +162,8 @@ export function useGardenBoxPlaceBlock() {
                       )
                     : null;
 
-            if (garden && optimisticPlacement) {
+            if (garden && optimisticBlockId && optimisticPlacement) {
+                queueBlockPlacementDropAnimation(optimisticBlockId);
                 queryClient.setQueryData<CurrentGardenData>(gardenQueryKey, {
                     ...garden,
                     stacks: optimisticPlacement.stacks,

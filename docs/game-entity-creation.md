@@ -177,22 +177,22 @@ the directories API or a direct DB query that the row appears in
 
 ## Validation
 
-Use the narrowest reliable checks, then include consuming apps because
+Use the narrowest reliable checks, then include consumer typechecks because
 `@gredice/game` is shared by `garden` and `www`:
 
 ```bash
 pnpm lint --filter @gredice/game
-pnpm --filter @gredice/game typecheck
+pnpm typecheck --filter @gredice/game
 pnpm test --filter @gredice/game
-pnpm lint --filter garden
-pnpm test --filter garden
-pnpm build --filter garden
-pnpm lint --filter www
-pnpm build --filter www
+pnpm typecheck --filter garden
+pnpm typecheck --filter www
 git diff --check
 ```
 
-Run `pnpm test --filter www` when public route behavior changed or when there
-is time for the broader suite. It may depend on local API services and can emit
-proxy noise if `api` is not running; record the exact failure if it does not
-pass.
+Run app lint when app files changed. Run `pnpm build --filter garden`,
+`pnpm build --filter www`, or the app Playwright suites only when routing,
+static assets, bundling, production-only code paths, visual behavior, or user
+flows changed. Run `pnpm test --filter www` when public route behavior changed
+or when there is time for the broader suite. It may depend on local API services
+and can emit proxy noise if `api` is not running; record the exact failure if it
+does not pass.

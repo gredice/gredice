@@ -121,7 +121,7 @@ void main() {
 }
 `;
 
-function useWaterBlockMaterial(foamEdges: Vector4) {
+export function useWaterBlockMaterial(foamEdges: Vector4) {
     const waterColors = useGameState((state) => state.waterColors);
     const material = useMemo(() => {
         const waterMaterial = new ShaderMaterial({

@@ -89,6 +89,9 @@ export function useBlockPlace() {
     const queuePlacedBlockEffect = useGameState(
         (state) => state.queuePlacedBlockEffect,
     );
+    const queueBlockPlacementDropAnimation = useGameState(
+        (state) => state.queueBlockPlacementDropAnimation,
+    );
     const gardenQueryKey = currentGardenKeys(winterMode, garden?.id);
 
     return useMutation({
@@ -172,6 +175,7 @@ export function useBlockPlace() {
                         ...currentGarden,
                         stacks: optimisticPlacement.stacks,
                     };
+                    queueBlockPlacementDropAnimation(optimisticBlockId);
                     queryClient.setQueryData<CurrentGardenData>(
                         gardenQueryKey,
                         nextGarden,

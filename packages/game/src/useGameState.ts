@@ -51,6 +51,12 @@ export type PlacedBlockEffect = {
     amount: number;
 };
 
+export type BlockPlacementDropAnimation = {
+    createdAt: number;
+    particlesSpawned: boolean;
+    sequence: number;
+};
+
 export type AnimalDebugEntry = {
     id: string;
     species: string;
@@ -122,6 +128,10 @@ export type GameState = {
         effect: PlacedBlockEffect,
     ) => void;
     consumePlacedBlockEffect: (blockId: string) => PlacedBlockEffect | null;
+    blockPlacementDropAnimations: Record<string, BlockPlacementDropAnimation>;
+    queueBlockPlacementDropAnimation: (blockId: string) => void;
+    markBlockPlacementDropParticlesSpawned: (blockId: string) => boolean;
+    completeBlockPlacementDropAnimation: (blockId: string) => void;
     animalDebugEntries: AnimalDebugEntry[];
     setAnimalDebugEntry: (entry: AnimalDebugEntry) => void;
     removeAnimalDebugEntry: (id: string) => void;
@@ -303,6 +313,57 @@ export function createGameState({
             });
             return effect;
         },
+        blockPlacementDropAnimations: {},
+        queueBlockPlacementDropAnimation: (blockId) =>
+            set((state) => ({
+                blockPlacementDropAnimations: {
+                    ...state.blockPlacementDropAnimations,
+                    [blockId]: {
+                        createdAt: Date.now(),
+                        particlesSpawned: false,
+                        sequence:
+                            (state.blockPlacementDropAnimations[blockId]
+                                ?.sequence ?? 0) + 1,
+                    },
+                },
+            })),
+        markBlockPlacementDropParticlesSpawned: (blockId) => {
+            const animation = get().blockPlacementDropAnimations[blockId];
+            if (!animation || animation.particlesSpawned) {
+                return false;
+            }
+
+            set((state) => {
+                const current = state.blockPlacementDropAnimations[blockId];
+                if (!current || current.particlesSpawned) {
+                    return state;
+                }
+
+                return {
+                    blockPlacementDropAnimations: {
+                        ...state.blockPlacementDropAnimations,
+                        [blockId]: {
+                            ...current,
+                            particlesSpawned: true,
+                        },
+                    },
+                };
+            });
+            return true;
+        },
+        completeBlockPlacementDropAnimation: (blockId) =>
+            set((state) => {
+                if (!state.blockPlacementDropAnimations[blockId]) {
+                    return state;
+                }
+
+                const blockPlacementDropAnimations = {
+                    ...state.blockPlacementDropAnimations,
+                };
+                delete blockPlacementDropAnimations[blockId];
+
+                return { blockPlacementDropAnimations };
+            }),
         animalDebugEntries: [],
         setAnimalDebugEntry: (entry) =>
             set((state) => {

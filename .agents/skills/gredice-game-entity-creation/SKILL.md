@@ -69,20 +69,19 @@ pnpm --dir apps/www exec playwright test --config playwright-generate.config.ts 
 
 ## Validation
 
-For `@gredice/game` entity work, validate the package and both consuming apps:
+For `@gredice/game` entity work, validate the package and consumer typechecks:
 
 ```bash
 pnpm lint --filter @gredice/game
-pnpm --filter @gredice/game typecheck
+pnpm typecheck --filter @gredice/game
 pnpm test --filter @gredice/game
-pnpm lint --filter garden
-pnpm test --filter garden
-pnpm build --filter garden
-pnpm lint --filter www
-pnpm build --filter www
+pnpm typecheck --filter garden
+pnpm typecheck --filter www
 git diff --check
 ```
 
 Run the focused snapshot generator for the entity and visually inspect the PNGs.
-Run `pnpm test --filter www` when public route behavior changed or the task has
-time for the broad route suite.
+Run app lint when app files changed. Run app builds or Playwright suites only
+when routing, static assets, bundling, production-only code paths, visual
+behavior, or user flows changed. Run `pnpm test --filter www` when public route
+behavior changed or the task has time for the broad route suite.

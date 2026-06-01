@@ -79,9 +79,9 @@ const defaultDevices = [
 ];
 
 function createDeferred(): Deferred {
-    let resolve = () => undefined;
+    let resolve: () => void = () => undefined;
     const promise = new Promise<void>((next) => {
-        resolve = next;
+        resolve = () => next();
     });
     return { promise, resolve };
 }

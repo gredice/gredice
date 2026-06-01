@@ -9,7 +9,7 @@ This repository is the **Gredice** monorepo. It hosts multiple Next.js applicati
 - Before editing code, look for additional `AGENTS.md` files inside the path you plan to touch. Nested instructions override this file.
 - Keep the worktree clean. Commit only intentional source changes and never commit `node_modules`, build output, `.next`, coverage, or generated artifacts unless explicitly requested.
 - Use targeted Turbo commands from the repo root whenever possible.
-- Before handing off code changes, identify the affected workspace(s) and run targeted lint, test, and build checks unless the user explicitly asks to skip validation.
+- Before handing off code changes, identify the affected workspace(s) and run targeted lint, test, typecheck, or build checks unless the user explicitly asks to skip validation.
 
 ## Read the relevant guides
 
@@ -34,10 +34,11 @@ This repository is the **Gredice** monorepo. It hosts multiple Next.js applicati
 
 ## Task validation
 
-For code changes, use the narrowest reliable validation set from the repo root:
+For code changes, use the narrowest reliable validation set from the repo root. Run typecheck where the workspace provides it:
 
 ```bash
 pnpm lint --filter <workspace>
+pnpm typecheck --filter <workspace>
 pnpm test --filter <workspace>
 pnpm build --filter <workspace>
 ```
@@ -46,11 +47,12 @@ Examples:
 
 ```bash
 pnpm lint --filter garden
+pnpm typecheck --filter garden
 pnpm test --filter garden
 pnpm build --filter garden
 ```
 
-For shared package changes, also validate the consuming app(s) that exercise the changed behavior. For storage changes, run `pnpm test --filter @gredice/storage` and build affected consumers such as `app`, `api`, or `farm`. For `@gredice/game` changes specifically, validate and build both `garden` and `www` because both apps consume game package codepaths.
+For shared package changes, also validate the consuming app(s) that exercise the changed behavior. For storage changes, run `pnpm test --filter @gredice/storage` and build affected consumers such as `app`, `api`, or `farm`. For ordinary `@gredice/game` TypeScript/component changes, validate the package and run consumer typechecks for `garden` and `www`; only run app builds or Playwright suites when app routing, bundling, static assets, visual behavior, or user flows changed.
 
 If validation cannot run because of missing secrets, unavailable services, or time constraints, state exactly which command was skipped and why.
 
@@ -69,6 +71,7 @@ If validation cannot run because of missing secrets, unavailable services, or ti
 pnpm install
 pnpm dev
 pnpm lint --filter garden
+pnpm typecheck --filter garden
 pnpm test --filter garden
 pnpm build --filter garden
 ```

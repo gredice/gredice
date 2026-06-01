@@ -14,6 +14,7 @@ import {
 } from 'react';
 import { Plane, Raycaster, Vector2, Vector3 } from 'three';
 import {
+    type ActiveDragPreviewTarget,
     type ActiveDragPreviewTargetOffset,
     activeDragPreviewTargetMatches,
     createActiveDragPreviewTarget,
@@ -34,7 +35,7 @@ import {
 import { isPointOverSandboxBlockTrashDropTarget } from '../sandboxBlockTrashDropTarget';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import type { Stack } from '../types/Stack';
-import { useGameState } from '../useGameState';
+import { type ActiveDragPreview, useGameState } from '../useGameState';
 import {
     getBlockDataByName,
     getStackHeight,
@@ -153,6 +154,16 @@ function pointerDistance(session: PointerSession, x: number, y: number) {
     return Math.hypot(x - session.startClientX, y - session.startClientY);
 }
 
+function activeDragPreviewAffectsTarget(
+    preview: ActiveDragPreview | null | undefined,
+    target: ActiveDragPreviewTarget,
+) {
+    return (
+        activeDragPreviewTargetMatches(preview?.source, target) ||
+        Boolean(findActiveDragPreviewTargetOffset(preview?.targets, target))
+    );
+}
+
 export function PickableGroup({
     children,
     stack,
@@ -195,9 +206,6 @@ export function PickableGroup({
 
     const setPickupBlock = useGameState((state) => state.setPickupBlock);
     const disturbAnimals = useGameState((state) => state.disturbAnimals);
-    const activeDragPreview = useGameState(
-        (state) => state.activeDragPreview ?? null,
-    );
     const setActiveDragPreview = useGameState(
         (state) => state.setActiveDragPreview,
     );
@@ -262,6 +270,14 @@ export function PickableGroup({
                 },
             }),
         [block.id, blockIndex, stack.position.x, stack.position.z],
+    );
+    const activeDragPreview = useGameState((state) =>
+        activeDragPreviewAffectsTarget(
+            state.activeDragPreview,
+            activePreviewTarget,
+        )
+            ? state.activeDragPreview
+            : null,
     );
     const isPreviewSource = activeDragPreviewTargetMatches(
         activeDragPreview?.source,
@@ -822,6 +838,10 @@ export function PickableGroup({
 
     function resetPickupVisualState() {
         setActiveDragPreview(null);
+        clearPickupInteractionState();
+    }
+
+    function clearPickupInteractionState() {
         setIsBlocked(false);
         setIsOverRecycler(false);
         setPickupOutlineVisible(false);
@@ -834,6 +854,28 @@ export function PickableGroup({
             Boolean(garden?.isSandbox) &&
             isPointOverSandboxBlockTrashDropTarget(clientX, clientY)
         );
+    }
+
+    function createActivePreviewResetQueue() {
+        let resetQueued = false;
+
+        return {
+            queue: () => {
+                if (resetQueued) {
+                    return;
+                }
+
+                resetQueued = true;
+                window.requestAnimationFrame(() => {
+                    setActiveDragPreview(null);
+                });
+            },
+            resetIfUnqueued: () => {
+                if (!resetQueued) {
+                    setActiveDragPreview(null);
+                }
+            },
+        };
     }
 
     function cancelPointerSession(resetSpring: boolean) {
@@ -935,9 +977,9 @@ export function PickableGroup({
                   segment.blocks.map((segmentBlock) => segmentBlock.id),
               )
             : [];
-        resetPickupVisualState();
 
         if (deleteRequested) {
+            resetPickupVisualState();
             if (blockIdsToDelete.length === 0) {
                 dragSpringsApi.start({
                     internalPosition: [0, 0, 0],
@@ -972,6 +1014,7 @@ export function PickableGroup({
         }
 
         if (!preview || preview.nextIsBlocked) {
+            resetPickupVisualState();
             dragSpringsApi.start({ internalPosition: [0, 0, 0], scale: 1 });
             return;
         }
@@ -985,6 +1028,7 @@ export function PickableGroup({
             !preview.canStoreInGardenBox &&
             !preview.nextIsOverRecycler
         ) {
+            resetPickupVisualState();
             dragSpringsApi.start({ internalPosition: [0, 0, 0], scale: 1 });
             return;
         }
@@ -995,6 +1039,8 @@ export function PickableGroup({
             .setY(preview.previewHoverHeight + currentStackHeight);
 
         if (preview.canStoreInGardenBox && preview.hoveredGardenBoxBlockId) {
+            clearPickupInteractionState();
+            const activePreviewReset = createActivePreviewResetQueue();
             dragSpringsApi.start({
                 internalPosition: [
                     relative.x,
@@ -1015,56 +1061,55 @@ export function PickableGroup({
                 block.name,
             );
 
-            await storeBlockInGardenBox.mutateAsync({
-                sourcePosition: {
-                    x: stack.position.x,
-                    z: stack.position.z,
-                },
-                blockIndex,
-                sourceBlockId: block.id,
-                blockName: block.name,
-                blockEntityId: blockDataForInventory?.id.toString(),
-                blockLabel:
-                    blockDataForInventory?.information?.label ?? block.name,
-                gardenBoxBlockId: preview.hoveredGardenBoxBlockId,
-            });
+            await storeBlockInGardenBox
+                .mutateAsync({
+                    sourcePosition: {
+                        x: stack.position.x,
+                        z: stack.position.z,
+                    },
+                    blockIndex,
+                    sourceBlockId: block.id,
+                    blockName: block.name,
+                    blockEntityId: blockDataForInventory?.id.toString(),
+                    blockLabel:
+                        blockDataForInventory?.information?.label ?? block.name,
+                    gardenBoxBlockId: preview.hoveredGardenBoxBlockId,
+                    onOptimisticUpdate: activePreviewReset.queue,
+                })
+                .finally(activePreviewReset.resetIfUnqueued);
             return;
         }
 
         if (preview.nextIsOverRecycler) {
+            clearPickupInteractionState();
+            const activePreviewReset = createActivePreviewResetQueue();
             dragSpringsApi.start({
                 internalPosition: [relative.x, -1.5, relative.z],
                 scale: 0.1,
             });
             triggerPlaceHaptic();
-            await recycleBlock.mutateAsync({
-                position: stack.position,
-                blockIndex,
-                raisedBedId: raisedBed?.id,
-                attached: attachedPlacement
-                    ? {
-                          position: {
-                              x: attachedPlacement.candidateStack.position.x,
-                              z: attachedPlacement.candidateStack.position.z,
-                          },
-                          blockIndex: attachedPlacement.candidateBlockIndex,
-                      }
-                    : undefined,
-            });
+            await recycleBlock
+                .mutateAsync({
+                    position: stack.position,
+                    blockIndex,
+                    raisedBedId: raisedBed?.id,
+                    attached: attachedPlacement
+                        ? {
+                              position: {
+                                  x: attachedPlacement.candidateStack.position
+                                      .x,
+                                  z: attachedPlacement.candidateStack.position
+                                      .z,
+                              },
+                              blockIndex: attachedPlacement.candidateBlockIndex,
+                          }
+                        : undefined,
+                    onOptimisticUpdate: activePreviewReset.queue,
+                })
+                .finally(activePreviewReset.resetIfUnqueued);
             return;
         }
 
-        dragSpringsApi.start({
-            internalPosition: [
-                relative.x,
-                preview.previewHoverHeight,
-                relative.z,
-            ],
-            scale: 1,
-        });
-        dropSound.play();
-        triggerPlaceHaptic();
-        spawn(resolveBlockParticleType(block.name), previewDropPosition, 12);
         const moveRequests = getMovingSegments().flatMap((segment) =>
             segment.blocks.map((segmentBlock) => ({
                 sourcePosition: {
@@ -1081,14 +1126,32 @@ export function PickableGroup({
         );
         const [primaryMoveRequest, ...additionalBlockMoves] = moveRequests;
         if (!primaryMoveRequest) {
+            resetPickupVisualState();
             dragSpringsApi.start({ internalPosition: [0, 0, 0], scale: 1 });
             return;
         }
 
-        await moveBlock.mutateAsync({
-            ...primaryMoveRequest,
-            additionalBlocks: additionalBlockMoves,
+        clearPickupInteractionState();
+        const activePreviewReset = createActivePreviewResetQueue();
+        dragSpringsApi.start({
+            internalPosition: [
+                relative.x,
+                preview.previewHoverHeight,
+                relative.z,
+            ],
+            scale: 1,
         });
+        dropSound.play();
+        triggerPlaceHaptic();
+        spawn(resolveBlockParticleType(block.name), previewDropPosition, 12);
+
+        await moveBlock
+            .mutateAsync({
+                ...primaryMoveRequest,
+                additionalBlocks: additionalBlockMoves,
+                onOptimisticUpdate: activePreviewReset.queue,
+            })
+            .finally(activePreviewReset.resetIfUnqueued);
     }
 
     function handleWindowPointerMove(event: PointerEvent) {

@@ -6,14 +6,17 @@ import { useGameState } from '../useGameState';
 import { useCurrentGarden } from './useCurrentGarden';
 
 const focusAnimationDurationMs = 650;
+const focusFollowTimeConstantMs = focusAnimationDurationMs / 4;
 const sunflowerAnimationDelayMs = 420;
 const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
+const focusStopDistance = 0.01;
 
-function easeInOutCubic(progress: number) {
-    return progress < 0.5
-        ? 4 * progress * progress * progress
-        : 1 - (-2 * progress + 2) ** 3 / 2;
-}
+type FocusAnimationState = {
+    cameraPosition: Vector3;
+    lastFrameTime: number | null;
+    orbitControls: OrbitControls;
+    targetPosition: Vector3;
+};
 
 function prefersReducedMotion() {
     return (
@@ -23,61 +26,97 @@ function prefersReducedMotion() {
     );
 }
 
+function stepFocusAnimation({
+    animationFrameRef,
+    focusAnimationRef,
+}: {
+    animationFrameRef: MutableRefObject<number | null>;
+    focusAnimationRef: MutableRefObject<FocusAnimationState | null>;
+}) {
+    const step = (currentTime: number) => {
+        const state = focusAnimationRef.current;
+        if (!state) {
+            animationFrameRef.current = null;
+            return;
+        }
+
+        const deltaMs =
+            state.lastFrameTime === null
+                ? 16.67
+                : Math.min(currentTime - state.lastFrameTime, 100);
+        state.lastFrameTime = currentTime;
+
+        const alpha = 1 - Math.exp(-deltaMs / focusFollowTimeConstantMs);
+        state.orbitControls.target.lerp(state.targetPosition, alpha);
+        state.orbitControls.object.position.lerp(state.cameraPosition, alpha);
+        state.orbitControls.update();
+
+        const targetDistance = state.orbitControls.target.distanceTo(
+            state.targetPosition,
+        );
+        const cameraDistance = state.orbitControls.object.position.distanceTo(
+            state.cameraPosition,
+        );
+
+        if (
+            targetDistance <= focusStopDistance &&
+            cameraDistance <= focusStopDistance
+        ) {
+            state.orbitControls.target.copy(state.targetPosition);
+            state.orbitControls.object.position.copy(state.cameraPosition);
+            state.orbitControls.update();
+            focusAnimationRef.current = null;
+            animationFrameRef.current = null;
+            return;
+        }
+
+        animationFrameRef.current = window.requestAnimationFrame(step);
+    };
+
+    animationFrameRef.current = window.requestAnimationFrame(step);
+}
+
 function focusOrbitControlsOnPosition({
     animationFrameRef,
+    focusAnimationRef,
     orbitControls,
     targetPosition,
 }: {
     animationFrameRef: MutableRefObject<number | null>;
+    focusAnimationRef: MutableRefObject<FocusAnimationState | null>;
     orbitControls: OrbitControls;
     targetPosition: Vector3;
 }) {
-    if (animationFrameRef.current !== null) {
-        window.cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-    }
-
-    const offset = new Vector3().subVectors(
-        targetPosition,
+    const cameraOffset = new Vector3().subVectors(
+        orbitControls.object.position,
         orbitControls.target,
     );
-    const startTarget = orbitControls.target.clone();
-    const endTarget = startTarget.clone().add(offset);
-    const startCameraPosition = orbitControls.object.position.clone();
-    const endCameraPosition = startCameraPosition.clone().add(offset);
+    const nextTargetPosition = targetPosition.clone();
+    const nextCameraPosition = targetPosition.clone().add(cameraOffset);
 
     if (prefersReducedMotion()) {
-        orbitControls.target.copy(endTarget);
-        orbitControls.object.position.copy(endCameraPosition);
+        if (animationFrameRef.current !== null) {
+            window.cancelAnimationFrame(animationFrameRef.current);
+            animationFrameRef.current = null;
+        }
+
+        focusAnimationRef.current = null;
+        orbitControls.target.copy(nextTargetPosition);
+        orbitControls.object.position.copy(nextCameraPosition);
         orbitControls.update();
         return;
     }
 
-    const startTime = performance.now();
-    const step = (currentTime: number) => {
-        const progress = Math.min(
-            (currentTime - startTime) / focusAnimationDurationMs,
-            1,
-        );
-        const easedProgress = easeInOutCubic(progress);
-
-        orbitControls.target.lerpVectors(startTarget, endTarget, easedProgress);
-        orbitControls.object.position.lerpVectors(
-            startCameraPosition,
-            endCameraPosition,
-            easedProgress,
-        );
-        orbitControls.update();
-
-        if (progress < 1) {
-            animationFrameRef.current = window.requestAnimationFrame(step);
-            return;
-        }
-
-        animationFrameRef.current = null;
+    focusAnimationRef.current = {
+        cameraPosition: nextCameraPosition,
+        lastFrameTime: focusAnimationRef.current?.lastFrameTime ?? null,
+        orbitControls,
+        targetPosition: nextTargetPosition,
     };
 
-    animationFrameRef.current = window.requestAnimationFrame(step);
+    if (animationFrameRef.current === null) {
+        stepFocusAnimation({ animationFrameRef, focusAnimationRef });
+    }
 }
 
 function getWorldScreenPoint({
@@ -108,6 +147,7 @@ export function useFocusPlacedBlock() {
     );
 
     const previousPlacements = useRef<Set<string> | null>(null);
+    const focusAnimationRef = useRef<FocusAnimationState | null>(null);
     const animationFrameRef = useRef<number | null>(null);
     const sunflowerTimeoutsRef = useRef<number[]>([]);
 
@@ -116,6 +156,7 @@ export function useFocusPlacedBlock() {
             if (animationFrameRef.current !== null) {
                 window.cancelAnimationFrame(animationFrameRef.current);
             }
+            focusAnimationRef.current = null;
             for (const timeoutId of sunflowerTimeoutsRef.current) {
                 window.clearTimeout(timeoutId);
             }
@@ -153,6 +194,7 @@ export function useFocusPlacedBlock() {
                 const targetPosition = latestPlacement.position.clone();
                 focusOrbitControlsOnPosition({
                     animationFrameRef,
+                    focusAnimationRef,
                     orbitControls,
                     targetPosition,
                 });

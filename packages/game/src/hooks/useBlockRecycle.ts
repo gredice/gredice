@@ -61,6 +61,7 @@ export function useBlockRecycle() {
                 position: { x: number; z: number };
                 blockIndex: number;
             };
+            onOptimisticUpdate?: () => void;
         }) => {
             console.debug('Recycling block', position, blockIndex);
             if (!garden) {
@@ -94,7 +95,13 @@ export function useBlockRecycle() {
                 await removeShoppingCartItems(shoppingCart, raisedBedId);
             }
         },
-        onMutate: async ({ position, blockIndex, raisedBedId, attached }) => {
+        onMutate: async ({
+            position,
+            blockIndex,
+            raisedBedId,
+            attached,
+            onOptimisticUpdate,
+        }) => {
             if (!garden) {
                 return;
             }
@@ -142,6 +149,9 @@ export function useBlockRecycle() {
                     ...garden,
                     stacks: updatedStacks,
                 });
+            }
+            if (previousItem) {
+                onOptimisticUpdate?.();
             }
 
             // Optimistically remove from shopping cart if raisedBedId is provided
