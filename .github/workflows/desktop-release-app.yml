@@ -155,7 +155,17 @@ jobs:
           tag_name: ${{ needs.resolve_version.outputs.tag }}
           draft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft || false }}
           prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
-          generate_release_notes: true
+          # Generated notes can exceed GitHub's 125k release body limit for the
+          # first desktop tag because the comparison spans too much repo history.
+          generate_release_notes: false
+          body: |
+            Gredice Admin Desktop ${{ needs.resolve_version.outputs.version }}.
+
+            Install the DMG for your Mac architecture:
+            - `arm64` for Apple Silicon Macs.
+            - `x64` for Intel Macs.
+
+            The DMG and blockmap files are attached below.
           fail_on_unmatched_files: true
           files: |
             release-artifacts/*.dmg
