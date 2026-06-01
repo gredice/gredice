@@ -1,6 +1,6 @@
 ---
 name: gredice-storybook-component-docs
-description: Create, update, or review Gredice Storybook component documentation. Use for apps/storybook stories, MDX docs, autodocs metadata, shared UI examples, @gredice/ui components, app-adjacent reusable components, component state coverage, accessibility story setup, and docs changes required after reusable UI changes.
+description: Use for Gredice Storybook docs: stories, MDX, autodocs, @gredice/ui/shared components, states, accessibility, and reusable UI docs.
 ---
 
 # Gredice Storybook Component Docs
@@ -99,19 +99,4 @@ Follow `FRONTEND.md` and `DESIGN.md`:
 
 ## Validation
 
-Run targeted checks:
-
-```bash
-pnpm lint --filter storybook
-pnpm build --filter storybook
-```
-
-When a story documents changed source code from another workspace, also run the smallest relevant check for that workspace.
-
-For visual confidence, start Storybook with:
-
-```bash
-pnpm --filter storybook dev
-```
-
-Open `https://storybook.dev.gredice.test` and inspect the changed story. Use screenshots when layout, responsive behavior, or visual state is part of the change.
+Run targeted Storybook lint/build checks. If the story documents changed source from another workspace, also run that workspace's smallest relevant check. For visual confidence, start Storybook, inspect the changed story, and use screenshots when layout, responsive behavior, or visual state changed.
