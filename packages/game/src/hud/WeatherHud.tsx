@@ -15,6 +15,8 @@ import { WeatherNowDetails } from './components/weather/WeatherNowDetails';
 
 const weatherPopperClassName =
     'w-fit max-w-[calc(100vw-1rem)] overflow-hidden border-tertiary border-b-4';
+const timePopperClassName =
+    'w-[min(calc(100vw-1rem),26rem)] overflow-hidden border-tertiary border-b-4';
 
 export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
     const currentTime = useLiveTime();
@@ -109,7 +111,7 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
                     <Popper
                         side="bottom"
                         sideOffset={12}
-                        className="overflow-hidden border-tertiary border-b-4"
+                        className={timePopperClassName}
                         trigger={
                             <Button
                                 title="Doba dana"

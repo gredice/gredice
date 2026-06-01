@@ -34,7 +34,7 @@ export function TimeDisplay() {
     );
 
     return (
-        <Stack className="w-[22rem] max-w-[calc(100vw-1rem)]">
+        <Stack data-time-display="true" className="min-w-0">
             <Row
                 className="bg-background px-4 py-2"
                 justifyContent="space-between"
@@ -51,20 +51,23 @@ export function TimeDisplay() {
                     onChange={updateTimeOfDay}
                     timeOfDay={timeOfDay}
                 />
-                <Row justifyContent="space-between">
-                    <Typography level="body3">
+                <Row className="gap-3" justifyContent="space-between">
+                    <Typography level="body3" className="whitespace-nowrap">
                         {(isDaytime ? sunrise : sunset)?.toLocaleTimeString(
                             'hr-HR',
                             { hour: '2-digit', minute: '2-digit' },
                         )}
                     </Typography>
-                    <Typography center className="font-[Arial,sans-serif]">
+                    <Typography
+                        center
+                        className="min-w-0 whitespace-nowrap font-[Arial,sans-serif]"
+                    >
                         {currentTime?.toLocaleTimeString('hr-HR', {
                             hour: '2-digit',
                             minute: '2-digit',
                         })}
                     </Typography>
-                    <Typography level="body3">
+                    <Typography level="body3" className="whitespace-nowrap">
                         {(isDaytime ? sunset : sunrise)?.toLocaleTimeString(
                             'hr-HR',
                             { hour: '2-digit', minute: '2-digit' },
