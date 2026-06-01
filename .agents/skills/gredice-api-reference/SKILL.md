@@ -1,6 +1,6 @@
 ---
 name: gredice-api-reference
-description: Maintain Gredice API documentation and contracts. Use when changing Hono route docs, describeRoute metadata, OpenAPI generation, Scalar API reference pages, API auth/security schemes, Zod validation schemas, directories API schemas, generated directory types, packages/client API helpers, or any docs under apps/api.
+description: Use for Gredice API docs/contracts: Hono routes, OpenAPI/Scalar, auth/security, validation schemas, generated directory types, and client helpers.
 ---
 
 # Gredice API Reference
@@ -76,16 +76,6 @@ Write API descriptions that help consumers call the endpoint:
 
 ## Validation
 
-Choose the smallest check that covers the change:
-
-```bash
-pnpm --filter api test:node
-pnpm test --filter api
-pnpm build --filter api
-pnpm --filter @gredice/directory-types regenerate
-pnpm lint --filter @gredice/directory-types
-```
-
-For visual API reference changes, start the API app and inspect `https://api.gredice.test/docs/{slug}` or the local test URL defined by `scripts/app-registry.ts`.
+Choose the smallest `api` test/build check that covers the route or docs change. Regenerate and lint `@gredice/directory-types` only when public directory/CMS API docs affect generated contracts. For visual API reference changes, start the API app and inspect the relevant `/docs/{slug}` page.
 
 Only query a live API or database when source code and tests cannot answer whether a documented response matches production data.
