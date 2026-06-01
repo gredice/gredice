@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useClearSandboxEnvironmentOverrides } from '../../../packages/game/src/hooks/useClearSandboxEnvironmentOverrides';
 import { SandboxEnvironmentHud } from '../../../packages/game/src/hud/SandboxEnvironmentHud';
 import {
     createGameState,
@@ -71,6 +72,77 @@ export function SandboxEnvironmentHudStory() {
                 </div>
                 <SandboxEnvironmentHudStatus />
             </div>
+        </GameStateContext.Provider>
+    );
+}
+
+function SandboxEnvironmentResetControls({
+    garden,
+    onNormalGardenSelect,
+}: {
+    garden: { id: number; isSandbox: boolean } | null;
+    onNormalGardenSelect: () => void;
+}) {
+    const setWeather = useGameState((state) => state.setWeather);
+    useClearSandboxEnvironmentOverrides(garden);
+
+    useEffect(() => {
+        setWeather({
+            cloudy: 0.9,
+            rainy: 1,
+            snowy: 0,
+            foggy: 0.2,
+            thundery: 1,
+            windSpeed: 3,
+            snowAccumulation: 0,
+        });
+    }, [setWeather]);
+
+    return (
+        <div className="relative h-screen w-screen overflow-hidden">
+            <button
+                data-testid="select-normal-garden"
+                type="button"
+                onClick={onNormalGardenSelect}
+            >
+                Select normal garden
+            </button>
+            <output data-testid="garden-mode-value">
+                {garden ? (garden.isSandbox ? 'sandbox' : 'normal') : 'loading'}
+            </output>
+            <SandboxEnvironmentHudStatus />
+        </div>
+    );
+}
+
+export function SandboxEnvironmentResetStory() {
+    const [garden, setGarden] = useState<{
+        id: number;
+        isSandbox: boolean;
+    } | null>({ id: 1, isSandbox: true });
+    const gameStore = useMemo(
+        () =>
+            createGameState({
+                appBaseUrl: 'http://localhost',
+                freezeTime: new Date(2026, 5, 21, 22, 0, 0),
+                isMock: false,
+                winterMode: 'summer',
+            }),
+        [],
+    );
+
+    return (
+        <GameStateContext.Provider value={gameStore}>
+            <SandboxEnvironmentResetControls
+                garden={garden}
+                onNormalGardenSelect={() => {
+                    setGarden(null);
+                    window.setTimeout(
+                        () => setGarden({ id: 2, isSandbox: false }),
+                        100,
+                    );
+                }}
+            />
         </GameStateContext.Provider>
     );
 }
