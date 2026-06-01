@@ -22,6 +22,7 @@ type SpriteAtlasBillboardProps = {
     opacity?: number;
     position?: [number, number, number];
     renderOrder?: number;
+    rotationZ?: number;
     spriteName: string;
     windDirection?: number;
     windSpeed?: number;
@@ -48,6 +49,7 @@ type BillboardMeshProps = {
     geometry: PlaneGeometry;
     opacity: number;
     renderOrder?: number;
+    rotationZ: number;
     texture: Texture;
 };
 
@@ -68,6 +70,7 @@ export function SpriteAtlasBillboard({
     opacity = 1,
     position = [0, 0, 0],
     renderOrder,
+    rotationZ = 0,
     spriteName,
     windDirection = 0,
     windSpeed = 0,
@@ -231,6 +234,7 @@ export function SpriteAtlasBillboard({
                 geometry={geometry}
                 opacity={opacity}
                 renderOrder={renderOrder}
+                rotationZ={rotationZ}
                 texture={texture}
                 wobbleAnimation={wobbleAnimation}
             />
@@ -261,10 +265,15 @@ function StaticSpriteAtlasBillboardMesh({
     geometry,
     opacity,
     renderOrder,
+    rotationZ,
     texture,
 }: BillboardMeshProps) {
     return (
-        <mesh renderOrder={renderOrder} receiveShadow>
+        <mesh
+            renderOrder={renderOrder}
+            receiveShadow
+            rotation={[0, 0, rotationZ]}
+        >
             <primitive attach="geometry" object={geometry} />
             <meshLambertMaterial
                 alphaTest={alphaTest}
@@ -285,6 +294,7 @@ function AnimatedSpriteAtlasBillboardMesh({
     geometry,
     opacity,
     renderOrder,
+    rotationZ,
     texture,
     wobbleAnimation,
 }: AnimatedBillboardMeshProps) {
@@ -334,6 +344,7 @@ function AnimatedSpriteAtlasBillboardMesh({
                 wobbleAnimation.wobbleAmplitude *
                 0.55;
         mesh.rotation.z =
+            rotationZ +
             -wobbleAnimation.directionX *
                 directionalWave *
                 wobbleAnimation.wobbleAmplitude +
@@ -344,7 +355,12 @@ function AnimatedSpriteAtlasBillboardMesh({
     });
 
     return (
-        <mesh ref={meshRef} renderOrder={renderOrder} receiveShadow>
+        <mesh
+            ref={meshRef}
+            renderOrder={renderOrder}
+            receiveShadow
+            rotation={[0, 0, rotationZ]}
+        >
             <primitive attach="geometry" object={geometry} />
             <meshLambertMaterial
                 alphaTest={alphaTest}

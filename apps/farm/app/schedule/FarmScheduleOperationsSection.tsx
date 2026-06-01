@@ -10,6 +10,7 @@ import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { FieldOperationPrintModal } from './FieldOperationPrintModal';
 import { OperationCompletionAttachments } from './OperationCompletionAttachments';
+import { ScheduleTaskAgeIndicatorChip } from './ScheduleTaskAgeIndicatorChip';
 import type { FarmScheduleDayData } from './scheduleData';
 import {
     formatMinutes,
@@ -344,6 +345,11 @@ export function FarmScheduleOperationsSection({
                                         'Danas'
                                     )}
                                 </Typography>
+                                {!completed && (
+                                    <ScheduleTaskAgeIndicatorChip
+                                        scheduledDate={operation.scheduledDate}
+                                    />
+                                )}
                                 {!completed &&
                                     completionRequirementTexts.length > 0 && (
                                         <Typography
@@ -651,6 +657,13 @@ export function FarmScheduleOperationsSection({
                                                                     'Danas'
                                                                 )}
                                                             </Typography>
+                                                            {!completed && (
+                                                                <ScheduleTaskAgeIndicatorChip
+                                                                    scheduledDate={
+                                                                        operation.scheduledDate
+                                                                    }
+                                                                />
+                                                            )}
                                                             {!completed &&
                                                                 completionRequirementTexts.length >
                                                                     0 && (
