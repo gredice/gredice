@@ -7,9 +7,11 @@ import { auth } from '../../lib/auth/auth';
 import { FarmScheduleDay } from './FarmScheduleDay';
 import { ScheduleDaySummarySection } from './ScheduleDaySummarySection';
 import { ScheduleDaySummarySkeleton } from './ScheduleDaySummarySkeleton';
+import { ScheduleLabelPrintSection } from './ScheduleLabelPrintSection';
 import {
     getFarmScheduleDayData,
     getFarmScheduleOperationsData,
+    getFarmSchedulePlantSorts,
 } from './scheduleData';
 
 export const dynamic = 'force-dynamic';
@@ -20,6 +22,7 @@ async function FarmScheduleContent({ date }: { date: Date }) {
     const dateKey = date.toISOString();
     const dayDataPromise = getFarmScheduleDayData(userId, dateKey, isToday);
     const operationsDataPromise = getFarmScheduleOperationsData();
+    const plantSortsPromise = getFarmSchedulePlantSorts();
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
@@ -30,11 +33,18 @@ async function FarmScheduleContent({ date }: { date: Date }) {
                     </div>
                     <ScheduleDateNavigation date={date} basePath="/schedule" />
                 </div>
-                <div className="min-w-0">
+                <div className="flex min-w-0 flex-col items-start gap-2 sm:items-end">
                     <Suspense fallback={<ScheduleDaySummarySkeleton />}>
                         <ScheduleDaySummarySection
                             dayDataPromise={dayDataPromise}
                             operationsDataPromise={operationsDataPromise}
+                        />
+                    </Suspense>
+                    <Suspense fallback={null}>
+                        <ScheduleLabelPrintSection
+                            dayDataPromise={dayDataPromise}
+                            operationsDataPromise={operationsDataPromise}
+                            plantSortsPromise={plantSortsPromise}
                         />
                     </Suspense>
                 </div>
@@ -42,6 +52,7 @@ async function FarmScheduleContent({ date }: { date: Date }) {
             <FarmScheduleDay
                 dayDataPromise={dayDataPromise}
                 operationsDataPromise={operationsDataPromise}
+                plantSortsPromise={plantSortsPromise}
                 userId={userId}
             />
         </div>

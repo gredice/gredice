@@ -2,7 +2,10 @@ import type { EntityStandardized } from '@gredice/storage';
 import type { FarmScheduleDayData } from './scheduleData';
 
 type FarmRaisedBed = FarmScheduleDayData['raisedBeds'][number];
+type FarmRaisedBedField = FarmRaisedBed['fields'][number];
 type ScheduleTaskAgeIndicatorLevel = 'warning' | 'critical';
+
+const RAISED_BED_FIELDS_PER_BLOCK = 9;
 
 export type RaisedBedScheduleGroup = {
     key: string;
@@ -125,6 +128,21 @@ export function getOperationDurationMinutes(
 }
 
 export const PLANTING_TASK_DURATION_MINUTES = 5;
+
+export function getFieldPhysicalPositionIndex(
+    field: Pick<FarmRaisedBedField, 'positionIndex' | 'raisedBedId'>,
+    raisedBeds: FarmRaisedBed[],
+) {
+    const raisedBedIndex = [...raisedBeds]
+        .sort((left, right) => left.id - right.id)
+        .findIndex((raisedBed) => raisedBed.id === field.raisedBedId);
+
+    return (
+        field.positionIndex +
+        1 +
+        Math.max(raisedBedIndex, 0) * RAISED_BED_FIELDS_PER_BLOCK
+    );
+}
 
 function getLocalDayNumber(date: Date) {
     return (
