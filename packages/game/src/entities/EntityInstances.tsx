@@ -20,6 +20,10 @@ import {
     type EntityInstancesBlockBaseProps,
 } from './EntityInstancesBlock';
 import { GroundBlockDecorations } from './groundDecorations/GroundBlockDecorations';
+import {
+    type GroundPatchSurface,
+    useGroundPatchMaterial,
+} from './helpers/groundPatchMaterial';
 import { tulipBouquetStems } from './tulipBouquet';
 
 export const instancedBlockNames = [
@@ -146,6 +150,7 @@ type EntityInstancesAssetBlockProps = Omit<
     'geometry'
 > & {
     assetName: GameAssetName;
+    groundPatch?: GroundPatchSurface;
     geometry: (gltf: GLTFResult) => EntityInstancesBlockBaseProps['geometry'];
     material: (gltf: GLTFResult) => Material | Material[];
 };
@@ -166,17 +171,19 @@ function hasRenderableBlockInstance({
 
 function LoadedEntityInstancesAssetBlock({
     assetName,
+    groundPatch,
     geometry,
     material,
     ...props
 }: EntityInstancesAssetBlockProps) {
     const gltf = useGameGLTF(assetName);
+    const patchedMaterial = useGroundPatchMaterial(material(gltf), groundPatch);
 
     return (
         <EntityInstancesBlock
             {...props}
             geometry={geometry(gltf)}
-            material={material(gltf)}
+            material={patchedMaterial}
         />
     );
 }
@@ -222,7 +229,7 @@ export function EntityInstances({
     const snowMaterial = useMemo(
         () =>
             new MeshStandardMaterial({
-                color: '#FFFFFF',
+                color: '#f0f7ff',
                 roughness: 1,
                 metalness: 0,
             }),
@@ -278,6 +285,7 @@ export function EntityInstances({
                 assetName="BlockGrass"
                 stacks={stacks}
                 name="Block_Grass"
+                groundPatch="grass"
                 renderRainWetOverlay
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Grass_1_2.geometry}
@@ -290,6 +298,7 @@ export function EntityInstances({
                 assetName="BlockGrassAngle"
                 stacks={stacks}
                 name="Block_Grass_Angle"
+                groundPatch="grass"
                 renderRainWetOverlay
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Grass_Angle_1_2.geometry}
@@ -302,6 +311,7 @@ export function EntityInstances({
                 assetName="BlockTerrainCorner"
                 stacks={stacks}
                 name="Block_Grass_Corner"
+                groundPatch="grass"
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Grass_Corner_1_1.geometry}
                 material={(gltf) => gltf.nodes.Block_Grass_Corner_1_1.material}
@@ -311,6 +321,7 @@ export function EntityInstances({
                 assetName="BlockTerrainCorner"
                 stacks={stacks}
                 name="Block_Grass_Corner"
+                groundPatch="grass"
                 renderRainWetOverlay
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Grass_Corner_1_2.geometry}
@@ -323,6 +334,7 @@ export function EntityInstances({
                 assetName="BlockTerrainReverseCorner"
                 stacks={stacks}
                 name="Block_Grass_Reverse_Corner"
+                groundPatch="grass"
                 yOffset={0.2}
                 geometry={(gltf) =>
                     gltf.nodes.Block_Grass_Reverse_Corner_1_1.geometry
@@ -336,6 +348,7 @@ export function EntityInstances({
                 assetName="BlockTerrainReverseCorner"
                 stacks={stacks}
                 name="Block_Grass_Reverse_Corner"
+                groundPatch="grass"
                 renderRainWetOverlay
                 yOffset={0.2}
                 geometry={(gltf) =>
@@ -352,6 +365,7 @@ export function EntityInstances({
                 assetName="BlockSand"
                 stacks={stacks}
                 name="Block_Sand"
+                groundPatch="sand"
                 renderRainWetOverlay
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Sand_1.geometry}
@@ -364,6 +378,7 @@ export function EntityInstances({
                 assetName="BlockSandAngle"
                 stacks={stacks}
                 name="Block_Sand_Angle"
+                groundPatch="sand"
                 renderRainWetOverlay
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Sand_Angle_1.geometry}
@@ -376,6 +391,7 @@ export function EntityInstances({
                 assetName="BlockTerrainCorner"
                 stacks={stacks}
                 name="Block_Sand_Corner"
+                groundPatch="sand"
                 renderRainWetOverlay
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Sand_Corner_1.geometry}
@@ -388,6 +404,7 @@ export function EntityInstances({
                 assetName="BlockTerrainReverseCorner"
                 stacks={stacks}
                 name="Block_Sand_Reverse_Corner"
+                groundPatch="sand"
                 renderRainWetOverlay
                 yOffset={0.2}
                 geometry={(gltf) =>
@@ -404,6 +421,7 @@ export function EntityInstances({
                 assetName="BlockSand"
                 stacks={stacks}
                 name="Block_Snow"
+                groundPatch="snow"
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Sand_1.geometry}
                 material={() => snowMaterial}
@@ -415,6 +433,7 @@ export function EntityInstances({
                 assetName="BlockSandAngle"
                 stacks={stacks}
                 name="Block_Snow_Angle"
+                groundPatch="snow"
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Sand_Angle_1.geometry}
                 material={() => snowMaterial}
@@ -426,6 +445,7 @@ export function EntityInstances({
                 assetName="BlockTerrainCorner"
                 stacks={stacks}
                 name="Block_Snow_Corner"
+                groundPatch="snow"
                 yOffset={0.2}
                 geometry={(gltf) => gltf.nodes.Block_Sand_Corner_1.geometry}
                 material={() => snowMaterial}
@@ -437,6 +457,7 @@ export function EntityInstances({
                 assetName="BlockTerrainReverseCorner"
                 stacks={stacks}
                 name="Block_Snow_Reverse_Corner"
+                groundPatch="snow"
                 yOffset={0.2}
                 geometry={(gltf) =>
                     gltf.nodes.Block_Sand_Reverse_Corner_1.geometry

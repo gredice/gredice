@@ -3,6 +3,7 @@ import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { useGroundPatchMaterial } from './helpers/groundPatchMaterial';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function BlockGroundAngle({
@@ -14,8 +15,11 @@ export function BlockGroundAngle({
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
 
-    const variantResolved1: 'Block_Ground_Angle_1_1' = 'Block_Ground_Angle_1_1';
-    const variantResolved2: 'Block_Ground_Angle_1_2' = 'Block_Ground_Angle_1_2';
+    const variantResolved1: 'Block_Ground_Angle_1' = 'Block_Ground_Angle_1';
+    const groundMaterial1 = useGroundPatchMaterial(
+        nodes[variantResolved1].material,
+        'dirt',
+    );
 
     return (
         <animated.group
@@ -26,19 +30,13 @@ export function BlockGroundAngle({
                 castShadow
                 receiveShadow
                 geometry={nodes[variantResolved1].geometry}
-                material={nodes[variantResolved1].material}
+                material={groundMaterial1}
             />
             <SnowOverlay
                 geometry={nodes[variantResolved1].geometry}
                 maxThickness={0.18}
                 slopeExponent={2.2}
                 noiseScale={1.8}
-            />
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes[variantResolved2].geometry}
-                material={nodes[variantResolved2].material}
             />
         </animated.group>
     );

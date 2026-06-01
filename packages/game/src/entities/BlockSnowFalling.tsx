@@ -7,6 +7,7 @@ import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { useGroundPatchStandardMaterial } from './helpers/groundPatchMaterial';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 const SNOW_BLOCK_NAMES = [
@@ -97,6 +98,12 @@ export function BlockSnowFalling({
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     const snowArea = useSnowArea(stack);
+    const snowMaterial = useGroundPatchStandardMaterial({
+        color: '#f0f7ff',
+        metalness: 0,
+        roughness: 1,
+        surface: 'snow',
+    });
 
     // Only render snow on the first BlockSnowFalling in a connected group
     // to avoid overlapping snow particles
@@ -167,13 +174,8 @@ export function BlockSnowFalling({
                 castShadow
                 receiveShadow
                 geometry={nodes.Block_Sand_1.geometry}
-            >
-                <meshStandardMaterial
-                    color={'#FFFFFF'}
-                    roughness={1}
-                    metalness={0}
-                />
-            </mesh>
+                material={snowMaterial}
+            />
             <SnowOverlay
                 geometry={nodes.Block_Sand_1.geometry}
                 {...snowPresets.snow}
