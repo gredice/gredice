@@ -1,6 +1,6 @@
 ---
 name: gredice-domain-workflow-docs
-description: Document Gredice business and operational workflows across apps and packages. Use for delivery, checkout, payments, Stripe, notifications, Slack, email, inventory, garden operations, farm/admin workflows, scheduled jobs, background work, state transitions, failure handling, environment configuration, and cross-app workflow docs under docs/ or package guides.
+description: Use for documenting Gredice workflows: delivery, checkout, payments, notifications, inventory, operations, crons, env, and failures across apps/packages.
 ---
 
 # Gredice Domain Workflow Docs
@@ -92,15 +92,6 @@ For Slack notification docs, use current keys and behavior from `docs/notificati
 
 ## Validation
 
-Use the smallest commands that exercise the source you documented:
-
-```bash
-pnpm test --filter @gredice/storage
-pnpm test --filter api
-pnpm build --filter app
-pnpm build --filter farm
-pnpm build --filter garden
-git diff --check
-```
+Use the smallest checks for the source you documented, usually storage/API tests plus app builds for changed admin, farm, or garden behavior. Docs-only changes need `git diff --check`.
 
 Query Linear, GitHub, the API, or the database only when documenting current operational state, open work, live configuration, or production data that cannot be inferred from source.
