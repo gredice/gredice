@@ -11,3 +11,15 @@ test('local sandbox grass block data uses the rendered surface height', () => {
     assert.equal(grass?.attributes.height, 0.4);
     assert.equal(grass?.attributes.stackable, true);
 });
+
+test('local sandbox exposes special seasonal blocks', () => {
+    const blockData = getLocalSandboxBlockData();
+    const blockNames = new Set(
+        blockData.map((block) => block.information.name),
+    );
+
+    assert.equal(blockNames.has('Snowman'), true);
+    assert.equal(blockNames.has('GiftBox_RedWhite'), true);
+    assert.equal(blockNames.has('PineAdvent'), true);
+    assert.equal(blockNames.has('Block_Snow_Falling'), true);
+});
