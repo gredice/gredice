@@ -12,6 +12,10 @@ import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import {
+    AdditionalEntityInstances,
+    additionalInstancedBlockNames,
+} from './AdditionalEntityInstances';
+import {
     EntityInstancesBlock,
     type EntityInstancesBlockBaseProps,
 } from './EntityInstancesBlock';
@@ -48,6 +52,7 @@ export const instancedBlockNames = [
     'DesertStoneSmall',
     'DesertStoneMedium',
     'DesertStoneLarge',
+    ...additionalInstancedBlockNames,
 ];
 
 const instancedSnowOverlayCounts = {
@@ -77,6 +82,39 @@ const instancedSnowOverlayCounts = {
     DesertStoneLarge: 1,
     DesertStoneMedium: 1,
     DesertStoneSmall: 1,
+    Block_Ground: 1,
+    Block_Ground_Angle: 1,
+    Block_Ground_Corner: 1,
+    Block_Ground_Reverse_Corner: 1,
+    Bucket: 3,
+    CatPillow: 2,
+    Cat_Pillow: 2,
+    Composter: 2,
+    DeadTreeStump: 4,
+    DeadTreeTall: 7,
+    Fence: 1,
+    GardenBox: 2,
+    GiftBox_BlueWhite: 3,
+    GiftBox_GoldRed: 3,
+    GiftBox_GreenGold: 3,
+    GiftBox_PurpleSilver: 3,
+    GiftBox_RedWhite: 3,
+    GiftBox_WhiteGreen: 3,
+    PotBulbousNeck: 2,
+    PotHourglass: 2,
+    PotLowBowl: 2,
+    PotNarrowFootBowl: 2,
+    PotRoundedBowl: 2,
+    PotSquatRidged: 2,
+    PotStraightShortTub: 2,
+    PotTallSlenderCone: 2,
+    PotTallTapered: 2,
+    PotWideLippedCup: 2,
+    Raised_Bed: 2,
+    Shade: 1,
+    Stool: 1,
+    WateringCan: 7,
+    WaterWell: 4,
     Tree: 1,
     Tulip: tulipBouquetStems.length * 2,
 } satisfies Partial<Record<(typeof instancedBlockNames)[number], number>>;
@@ -685,6 +723,12 @@ export function EntityInstances({
                 geometry={(gltf) => gltf.nodes.Seed.geometry}
                 material={(gltf) => gltf.nodes.Seed.material}
             />
+            <Suspense fallback={null}>
+                <AdditionalEntityInstances
+                    stacks={stacks}
+                    {...commonSnowProps}
+                />
+            </Suspense>
         </>
     );
 }

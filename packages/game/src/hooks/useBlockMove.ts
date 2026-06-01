@@ -18,6 +18,7 @@ type MoveBlockArgs = {
 type MoveArgs = MoveBlockArgs & {
     additionalBlocks?: MoveBlockArgs[];
     attached?: MoveBlockArgs;
+    onOptimisticUpdate?: () => void;
 };
 
 type MovePatchOperation = {
@@ -177,6 +178,9 @@ export function useBlockMove() {
                     stacks: [...updatedStacks],
                 },
             );
+            if (previousItem) {
+                args.onOptimisticUpdate?.();
+            }
 
             return {
                 previousItem,

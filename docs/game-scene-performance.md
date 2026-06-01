@@ -47,6 +47,15 @@ not accidentally based on `next dev`.
   models first, then preloads raised bed and common assets, while less common
   block assets load behind local Suspense boundaries only when present in the
   scene.
+- The latest instancing pass moved base rendering for additional repeated block
+  types into instanced meshes, including water blocks, raised beds, shade,
+  garden boxes, pots, cactus variants, dead trees, buckets, watering cans, water
+  wells, composters, cat pillows, fences, stools, bird houses, gift boxes, and
+  remaining ground block variants.
+- Snow and rain overlays are intentionally still a follow-up optimization. Many
+  newly instanced base meshes still mount per-block `SnowOverlay` or
+  `RainWetOverlay` meshes when weather makes them visible, so snow/rain profiles
+  can remain overlay-bound even after base draw calls improve.
 - The remaining expensive areas are continuous `useFrame` systems, snow overlays,
   CPU weather loops, animated sprite billboard callbacks, plant/detail LOD, and
   profiling noise from app-level providers.

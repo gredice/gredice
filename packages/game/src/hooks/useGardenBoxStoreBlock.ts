@@ -35,6 +35,7 @@ type StoreBlockArgs = {
     blockEntityId?: string;
     blockLabel?: string;
     gardenBoxBlockId: string;
+    onOptimisticUpdate?: () => void;
 };
 
 function incrementInventoryItem(
@@ -161,6 +162,9 @@ export function useGardenBoxStoreBlock() {
                     stacks: updatedStacks,
                 },
             );
+            if (previousGarden) {
+                args.onOptimisticUpdate?.();
+            }
 
             await queryClient.cancelQueries({ queryKey: inventoryQueryKey });
             const previousInventory =
