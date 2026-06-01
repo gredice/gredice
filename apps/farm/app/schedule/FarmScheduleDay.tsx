@@ -4,8 +4,8 @@ import { FarmScheduleEmptyState } from './FarmScheduleEmptyState';
 import { FarmScheduleOperationsSectionContent } from './FarmScheduleOperationsSectionContent';
 import { FarmSchedulePlantingsSectionContent } from './FarmSchedulePlantingsSectionContent';
 import { FarmScheduleSectionSkeleton } from './FarmScheduleSectionSkeleton';
-import {
-    type FarmScheduleDayData,
+import type {
+    FarmScheduleDayData,
     getFarmSchedulePlantSorts,
 } from './scheduleData';
 
@@ -14,16 +14,16 @@ interface FarmScheduleDayProps {
     operationsDataPromise: ReturnType<
         typeof import('./scheduleData').getFarmScheduleOperationsData
     >;
+    plantSortsPromise: ReturnType<typeof getFarmSchedulePlantSorts>;
     userId: string;
 }
 
 export function FarmScheduleDay({
     dayDataPromise,
     operationsDataPromise,
+    plantSortsPromise,
     userId,
 }: FarmScheduleDayProps) {
-    const plantSortsPromise = getFarmSchedulePlantSorts();
-
     return (
         <Stack spacing={8}>
             <Suspense fallback={null}>
