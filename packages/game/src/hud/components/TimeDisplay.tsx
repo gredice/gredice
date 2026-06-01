@@ -17,7 +17,7 @@ export function TimeDisplay() {
     const isDaytime = timeOfDay > 0.2 && timeOfDay < 0.8;
 
     return (
-        <Stack>
+        <Stack data-time-display="true" className="min-w-0">
             <Row
                 className="bg-background px-4 py-2"
                 justifyContent="space-between"
@@ -28,21 +28,24 @@ export function TimeDisplay() {
             </Row>
             <Divider />
             <Stack className="px-4 py-3">
-                <DayNightVisualization className="w-full h-12 overflow-visible mb-2" />
-                <Row justifyContent="space-between">
-                    <Typography level="body3">
+                <DayNightVisualization className="mb-3 h-14 w-full" />
+                <Row className="gap-3" justifyContent="space-between">
+                    <Typography level="body3" className="whitespace-nowrap">
                         {(isDaytime ? sunrise : sunset)?.toLocaleTimeString(
                             'hr-HR',
                             { hour: '2-digit', minute: '2-digit' },
                         )}
                     </Typography>
-                    <Typography center className="font-[Arial,sans-serif]">
+                    <Typography
+                        center
+                        className="min-w-0 whitespace-nowrap font-[Arial,sans-serif]"
+                    >
                         {currentTime?.toLocaleTimeString('hr-HR', {
                             hour: '2-digit',
                             minute: '2-digit',
                         })}
                     </Typography>
-                    <Typography level="body3">
+                    <Typography level="body3" className="whitespace-nowrap">
                         {(isDaytime ? sunset : sunrise)?.toLocaleTimeString(
                             'hr-HR',
                             { hour: '2-digit', minute: '2-digit' },

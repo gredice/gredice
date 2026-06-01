@@ -6,12 +6,12 @@ import { SunMoonIndicator } from './SunMoonIndicator';
 export function DayNightVisualization({ className }: { className?: string }) {
     return (
         <svg
-            viewBox="0 0 100 20"
+            viewBox="-6 -6 112 32"
             className={className}
             aria-labelledby="day-night-cycle"
             role="img"
         >
-            <title>Dan/noć</title>
+            <title id="day-night-cycle">Dan/noć</title>
             <defs>
                 <linearGradient
                     id="curveGradient"
