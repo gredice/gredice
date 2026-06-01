@@ -12,6 +12,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { CompletePlantingModal } from './CompletePlantingModal';
+import { ScheduleTaskAgeIndicatorChip } from './ScheduleTaskAgeIndicatorChip';
 import type { FarmScheduleDayData } from './scheduleData';
 import {
     formatMinutes,
@@ -277,6 +278,13 @@ export function FarmSchedulePlantingsSection({
                                                                     'Danas'
                                                                 )}
                                                             </Typography>
+                                                            {!completed && (
+                                                                <ScheduleTaskAgeIndicatorChip
+                                                                    scheduledDate={
+                                                                        field.plantScheduledDate
+                                                                    }
+                                                                />
+                                                            )}
                                                         </Row>
                                                     </Stack>
                                                 </Row>

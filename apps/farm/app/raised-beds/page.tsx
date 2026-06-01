@@ -1,12 +1,14 @@
 import {
+    plantFieldStatusEmoji,
+    plantFieldStatusLabel,
+} from '@gredice/js/plants';
+import {
     type EntityStandardized,
     getEntitiesFormatted,
     getFarmUserRaisedBeds,
 } from '@gredice/storage';
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
-import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
-import { Chip } from '@gredice/ui/Chip';
 import { Sprout } from '@gredice/ui/icons';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIdentifierIcon } from '@gredice/ui/RaisedBedIdentifierIcon';
@@ -19,8 +21,10 @@ import { auth } from '../../lib/auth/auth';
 
 export const dynamic = 'force-dynamic';
 
-function getPlantPreview(
-    fields: Awaited<ReturnType<typeof getFarmUserRaisedBeds>>[number]['fields'],
+type FarmRaisedBed = Awaited<ReturnType<typeof getFarmUserRaisedBeds>>[number];
+
+function getFieldPreviews(
+    fields: FarmRaisedBed['fields'],
     sorts: EntityStandardized[] | null | undefined,
 ) {
     const plantSortsById = new Map<number, EntityStandardized>();
@@ -30,24 +34,52 @@ function getPlantPreview(
         }
     }
 
-    return fields
-        .filter(
-            (field): field is typeof field & { plantSortId: number } =>
-                field.active && typeof field.plantSortId === 'number',
-        )
-        .map((field) => {
-            const plantSort = plantSortsById.get(field.plantSortId);
+    const activeFieldsByPosition = new Map(
+        fields
+            .filter((field) => field.active)
+            .map((field) => [field.positionIndex, field]),
+    );
+    const highestPositionIndex = Math.max(
+        8,
+        ...fields.map((field) => field.positionIndex),
+    );
+
+    return Array.from(
+        { length: highestPositionIndex + 1 },
+        (_, positionIndex) => {
+            const field = activeFieldsByPosition.get(positionIndex);
+            const plantSortId = field?.plantSortId;
+            const hasPlant = typeof plantSortId === 'number';
+            const plantSort = hasPlant ? plantSortsById.get(plantSortId) : null;
+            const status = hasPlant ? field?.plantStatus : undefined;
+            const statusLabel = status
+                ? plantFieldStatusLabel(status).shortLabel
+                : null;
+
+            if (!hasPlant) {
+                return {
+                    hasPlant,
+                    key: `position-${positionIndex}`,
+                    label: `Polje ${positionIndex + 1} prazno`,
+                    plantSort: null,
+                    status: null,
+                    statusLabel: null,
+                };
+            }
 
             return {
-                fieldId: field.id,
-                plantSortId: field.plantSortId,
+                hasPlant,
+                key: field ? `field-${field.id}` : `position-${positionIndex}`,
                 label:
                     plantSort?.information?.label ??
                     plantSort?.information?.name ??
-                    `Sorta #${field.plantSortId}`,
+                    `Sorta #${plantSortId}`,
                 plantSort: plantSort ?? null,
+                status,
+                statusLabel,
             };
-        });
+        },
+    );
 }
 
 function comparePhysicalIdsDescending(
@@ -103,12 +135,9 @@ async function RaisedBedsPageContent() {
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
-            <Row spacing={2}>
+            <div className="flex min-w-0 items-center">
                 <HomeButton />
-                <Typography level="h4" component="h1">
-                    Gredice
-                </Typography>
-            </Row>
+            </div>
 
             {activeRaisedBeds.length === 0 ? (
                 <Card>
@@ -125,13 +154,17 @@ async function RaisedBedsPageContent() {
             ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {activeRaisedBeds.map((raisedBed) => {
-                        const plants = getPlantPreview(
+                        const fields = getFieldPreviews(
                             raisedBed.fields,
                             plantSorts,
                         );
 
                         return (
-                            <Card key={raisedBed.id}>
+                            <Card
+                                key={raisedBed.id}
+                                href={`/raised-beds/${raisedBed.id}`}
+                                className="cursor-pointer"
+                            >
                                 <CardHeader>
                                     <Stack spacing={2}>
                                         <CardTitle>
@@ -155,44 +188,55 @@ async function RaisedBedsPageContent() {
                                 </CardHeader>
                                 <CardContent>
                                     <Stack spacing={4}>
-                                        {plants.length > 0 ? (
-                                            <div className="grid grid-cols-3 gap-2">
-                                                {plants.map((plant) => (
-                                                    <div
-                                                        key={`${raisedBed.id}-${plant.fieldId}`}
-                                                        title={plant.label}
-                                                        className="flex aspect-square items-center justify-center rounded-md border bg-muted/40 p-1"
-                                                    >
-                                                        {plant.plantSort ? (
-                                                            <PlantOrSortImage
-                                                                plantSort={
-                                                                    plant.plantSort
-                                                                }
-                                                                width={40}
-                                                                height={40}
-                                                                className="size-10 rounded-md object-cover"
-                                                            />
-                                                        ) : (
-                                                            <Sprout className="size-6 text-primary" />
-                                                        )}
-                                                        <span className="sr-only">
-                                                            {plant.label}
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {fields.map((field) => (
+                                                <div
+                                                    key={`${raisedBed.id}-${field.key}`}
+                                                    title={
+                                                        field.statusLabel
+                                                            ? `${field.label} - ${field.statusLabel}`
+                                                            : field.label
+                                                    }
+                                                    className={
+                                                        field.hasPlant
+                                                            ? 'relative flex aspect-square items-center justify-center rounded-md border bg-muted/40 p-1'
+                                                            : 'aspect-square rounded-md border border-dashed bg-muted/20'
+                                                    }
+                                                >
+                                                    {field.plantSort ? (
+                                                        <PlantOrSortImage
+                                                            plantSort={
+                                                                field.plantSort
+                                                            }
+                                                            width={40}
+                                                            height={40}
+                                                            className="size-10 rounded-md object-cover"
+                                                        />
+                                                    ) : field.hasPlant ? (
+                                                        <Sprout className="size-6 text-primary" />
+                                                    ) : null}
+                                                    {field.status ? (
+                                                        <span
+                                                            aria-hidden="true"
+                                                            className="absolute right-1 top-1 inline-flex size-5 items-center justify-center rounded-full bg-white/90 text-xs leading-none shadow-xs"
+                                                            title={
+                                                                field.statusLabel ??
+                                                                undefined
+                                                            }
+                                                        >
+                                                            {plantFieldStatusEmoji(
+                                                                field.status,
+                                                            )}
                                                         </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <Row>
-                                                <Chip color="neutral">
-                                                    Nema aktivnih biljaka
-                                                </Chip>
-                                            </Row>
-                                        )}
-                                        <Button
-                                            href={`/raised-beds/${raisedBed.id}`}
-                                        >
-                                            Otvori detalje
-                                        </Button>
+                                                    ) : null}
+                                                    <span className="sr-only">
+                                                        {field.statusLabel
+                                                            ? `${field.label}, ${field.statusLabel}`
+                                                            : field.label}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </Stack>
                                 </CardContent>
                             </Card>
