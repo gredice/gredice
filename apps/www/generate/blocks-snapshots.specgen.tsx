@@ -1,12 +1,38 @@
 import { readFileSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { BlockData } from '@gredice/client';
-import { EntityViewer } from '@gredice/game';
 import { test } from '@playwright/experimental-ct-react';
+import sharp from 'sharp';
 import { allGameAssetNames } from '../../../packages/game/src/data/models';
+import { gameQualityProfiles } from '../../../packages/game/src/scene/gameQuality';
+// Load EntityViewer through a lazy wrapper (not the @gredice/game barrel) so the
+// component-test bundle does not pull in GameSceneDynamic -> next/dynamic, and
+// resolves three.js deps through a dynamic chunk that Rollup can build.
+import { EntitySnapshotViewer } from './EntitySnapshotViewer';
+
+// Snapshots render at 640x640 (double the previous 320x320). A device scale
+// factor of 4 over the 160px CSS canvas produces a 640px capture, and the
+// matching dpr=4 quality override makes the WebGL buffer render natively at
+// that resolution instead of being upscaled, so the result stays crisp.
+const SNAPSHOT_DEVICE_SCALE_FACTOR = 4;
+
+// Keep the low-tier look (no shadows/ground decoration) to match the previous
+// snapshots, but force a high dpr so the higher-resolution capture is sharp.
+const snapshotQuality = {
+    ...gameQualityProfiles.low,
+    dpr: SNAPSHOT_DEVICE_SCALE_FACTOR,
+};
+
+// Playwright can only screenshot to PNG/JPEG, so capture the PNG buffer and
+// re-encode to lossy WebP (with alpha) at 90% quality for small, fast assets.
+async function saveWebp(buffer: Buffer, path: string) {
+    const webp = await sharp(buffer).webp({ quality: 90 }).toBuffer();
+    await writeFile(path, webp);
+}
 
 test.use({
-    deviceScaleFactor: 2,
+    deviceScaleFactor: SNAPSHOT_DEVICE_SCALE_FACTOR,
     viewport: { width: 320 / 2, height: 320 },
 });
 
@@ -100,12 +126,13 @@ test.describe('block screenshots', async () => {
                 );
                 const component = await mount(
                     <div style={{ width: 160, height: 160 }}>
-                        <EntityViewer
+                        <EntitySnapshotViewer
                             style={{ width: 160, height: 160 }}
                             zoom={zoom}
                             itemPosition={itemPosition}
                             entityName={entity.information.name}
                             appBaseUrl={gameAssetBaseUrl}
+                            quality={snapshotQuality}
                             noControl
                             rotation={rotation}
                             renderDetails={false}
@@ -114,27 +141,31 @@ test.describe('block screenshots', async () => {
                     </div>,
                 );
 
-                // Wait for possible animations to finish
-                await new Promise((resolve) => setTimeout(resolve, 1000));
+                // EntitySnapshotViewer mounts the canvas lazily, so wait for it
+                // first, then let the model load and any animations settle.
                 const canvas = component.locator('canvas').first();
                 await canvas.waitFor({ state: 'visible' });
+                await new Promise((resolve) => setTimeout(resolve, 1000));
 
                 console.debug('Taking screenshot now...');
 
-                // Save rotation-specific version
-                await canvas.screenshot({
+                const buffer = await canvas.screenshot({
                     omitBackground: true,
-                    path: `./public/assets/blocks/${entity.information.name}_${rotation + 1}.png`,
                     animations: 'disabled',
                 });
 
+                // Save rotation-specific version
+                await saveWebp(
+                    buffer,
+                    `./public/assets/blocks/${entity.information.name}_${rotation + 1}.webp`,
+                );
+
                 // Save base version (unsuffixed) for the first rotation to maintain backward compatibility
                 if (rotation === 0) {
-                    await canvas.screenshot({
-                        omitBackground: true,
-                        path: `./public/assets/blocks/${entity.information.name}.png`,
-                        animations: 'disabled',
-                    });
+                    await saveWebp(
+                        buffer,
+                        `./public/assets/blocks/${entity.information.name}.webp`,
+                    );
                 }
             });
         }
@@ -147,7 +178,7 @@ test.describe('icons', () => {
             <div style={{ position: 'relative' }}>
                 {/** biome-ignore lint/performance/noImgElement: Not part of NextJS app */}
                 <img
-                    src="/assets/blocks/Block_Grass.png"
+                    src="/assets/blocks/Block_Grass.webp"
                     alt="Block_Grass"
                     width={320 / 2}
                     height={320 / 2}
@@ -155,7 +186,7 @@ test.describe('icons', () => {
                 />
                 {/** biome-ignore lint/performance/noImgElement: Not part of NextJS app */}
                 <img
-                    src="/assets/blocks/Block_Ground.png"
+                    src="/assets/blocks/Block_Ground.webp"
                     alt="Block_Ground"
                     width={320 / 2}
                     height={320 / 2}
@@ -164,9 +195,12 @@ test.describe('icons', () => {
             </div>,
         );
         await new Promise((resolve) => setTimeout(resolve, 5000));
-        await component.screenshot({
+        const buffer = await component.screenshot({
             omitBackground: true,
-            path: `./public/assets/blocks/Block_Icon_GroundOverGrass.png`,
         });
+        await saveWebp(
+            buffer,
+            `./public/assets/blocks/Block_Icon_GroundOverGrass.webp`,
+        );
     });
 });

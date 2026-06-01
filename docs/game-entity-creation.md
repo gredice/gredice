@@ -104,8 +104,8 @@ database `information.name` attribute must match exactly.
 
 ## Public Block Images
 
-Public block cards use PNGs in `apps/www/public/assets/blocks`. Generate all
-four rotations plus the unsuffixed base image.
+Public block cards use 640x640 WebP images in `apps/www/public/assets/blocks`.
+Generate all four rotations plus the unsuffixed base image.
 
 For an entity that is not available from the production directories API yet,
 create a temporary ignored `apps/www/generate/test-cases.json` with just that

@@ -492,7 +492,7 @@ test('directory entity search derives block images from block names', async () =
     assert.equal(rows[0]?.entityId, blockId);
     assert.equal(
         rows[0]?.imageUrl,
-        'https://www.gredice.com/assets/blocks/Block_Snow.png',
+        'https://www.gredice.com/assets/blocks/Block_Snow.webp',
     );
     assert.equal(rows[0]?.imageAlt, `Snijeg ${blockToken}`);
 });

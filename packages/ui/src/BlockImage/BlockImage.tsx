@@ -8,7 +8,7 @@ type BlockImageProps = Omit<ImageProps, 'src' | 'alt'> & {
 export function BlockImage({ alt, blockName, ...rest }: BlockImageProps) {
     return (
         <Image
-            src={`https://www.gredice.com/assets/blocks/${blockName}.png`}
+            src={`https://www.gredice.com/assets/blocks/${blockName}.webp`}
             alt={alt || blockName}
             {...rest}
         />
