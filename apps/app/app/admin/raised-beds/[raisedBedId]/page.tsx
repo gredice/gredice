@@ -182,21 +182,12 @@ export default async function RaisedBedPage({
                 />
                 <EntityDetailsPropertiesLayout properties={propertiesPanel}>
                     {recentImages.length > 0 && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Nedavne slike</CardTitle>
-                            </CardHeader>
-                            <CardOverflow>
-                                <Row className="w-full px-2 pb-2" spacing={4}>
-                                    <ImageGallery
-                                        images={recentImages}
-                                        previewWidth={240}
-                                        previewHeight={160}
-                                        previewVariant="carousel"
-                                    />
-                                </Row>
-                            </CardOverflow>
-                        </Card>
+                        <ImageGallery
+                            images={recentImages}
+                            previewWidth={240}
+                            previewHeight={160}
+                            previewVariant="carousel"
+                        />
                     )}
                     {isAbandoned && (
                         <Alert
