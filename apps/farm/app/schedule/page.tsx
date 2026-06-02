@@ -45,6 +45,7 @@ async function FarmScheduleContent({ date }: { date: Date }) {
                             dayDataPromise={dayDataPromise}
                             operationsDataPromise={operationsDataPromise}
                             plantSortsPromise={plantSortsPromise}
+                            date={date}
                         />
                     </Suspense>
                 </div>

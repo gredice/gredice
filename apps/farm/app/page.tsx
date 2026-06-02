@@ -204,9 +204,9 @@ async function FarmerDashboard() {
                                     size="lg"
                                     fullWidth
                                     className="h-24 flex-col text-center text-base"
-                                    href="/debug/labels"
+                                    href="/debug"
                                 >
-                                    Etiketa
+                                    Debug
                                 </Button>
                             )}
                         </div>
