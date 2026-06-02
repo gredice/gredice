@@ -60,11 +60,11 @@ export default async function TransactionDetailsPage({
             label: 'Računi',
             value:
                 invoiceCount === 0 ? (
-                    <Chip color="success" className="w-fit">
+                    <Chip color="success">
                         Bez računa - dostupna za fakturiranje
                     </Chip>
                 ) : (
-                    <Chip color="neutral" className="w-fit">
+                    <Chip color="neutral">
                         {invoiceCount} račun{invoiceCount > 1 ? 'a' : ''}
                     </Chip>
                 ),

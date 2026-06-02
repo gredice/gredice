@@ -108,7 +108,6 @@ export default async function ReceiptsPage() {
                                             color={getCisStatusColor(
                                                 receipt.cisStatus,
                                             )}
-                                            className="w-fit"
                                         >
                                             {getCisStatusLabel(
                                                 receipt.cisStatus,
@@ -116,7 +115,7 @@ export default async function ReceiptsPage() {
                                         </Chip>
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <Chip className="w-fit">
+                                        <Chip>
                                             {receipt.totalAmount}
                                             {receipt.currency === 'eur'
                                                 ? '€'

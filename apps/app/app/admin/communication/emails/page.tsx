@@ -222,7 +222,7 @@ export default async function EmailsPage({
                                         </Table.Cell>
                                         <Table.Cell>
                                             {email.messageType ? (
-                                                <Chip className="w-fit">
+                                                <Chip>
                                                     {email.messageType}
                                                 </Chip>
                                             ) : (
