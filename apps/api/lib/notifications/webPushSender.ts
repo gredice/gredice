@@ -138,6 +138,30 @@ function normalizeUrgency(value: string | null): Urgency | undefined {
     }
 }
 
+function plainTextForWebPush(value: string) {
+    return value
+        .replace(/\r\n?/gu, '\n')
+        .replace(/!\[([^\]]*)\]\(([^)]*)\)/gu, '$1')
+        .replace(/\[([^\]]+)\]\(([^)]*)\)/gu, '$1')
+        .replace(/`([^`]+)`/gu, '$1')
+        .replace(/^#{1,6}\s+/gmu, '')
+        .replace(/^\s{0,3}[-*+]\s+/gmu, '')
+        .replace(/^\s{0,3}>\s?/gmu, '')
+        .replace(/(\*\*|__)(.*?)\1/gu, '$2')
+        .replace(/(^|[\s([{])\*([^*\n]+)\*(?=$|[\s)\]},.!?:;])/gmu, '$1$2')
+        .replace(/(^|[\s([{])_([^_\n]+)_(?=$|[\s)\]},.!?:;])/gmu, '$1$2')
+        .replace(/~~(.*?)~~/gu, '$1')
+        .replace(/\\([\\`*_{}[\]()#+\-.!>])/gu, '$1')
+        .replace(/[ \t]{2,}/gu, ' ')
+        .replace(/\n{3,}/gu, '\n\n')
+        .trim();
+}
+
+function plainTextForWebPushActionTitle(value: string | null) {
+    if (!value) return 'Otvori';
+    return plainTextForWebPush(value) || 'Otvori';
+}
+
 function webPushSubscription(attempt: QueuedWebPushAttempt): PushSubscription {
     return {
         endpoint: attempt.endpoint,
@@ -161,12 +185,14 @@ export function buildWebPushPayload(
             ? [
                   {
                       action: 'open',
-                      title: attempt.actionLabel ?? 'Otvori',
+                      title: plainTextForWebPushActionTitle(
+                          attempt.actionLabel,
+                      ),
                       url: actionUrl,
                   },
               ]
             : undefined,
-        body: attempt.content,
+        body: plainTextForWebPush(attempt.content),
         campaignId: undefined,
         category: attempt.category,
         deliveryAttemptId: attempt.attemptId,
@@ -181,7 +207,7 @@ export function buildWebPushPayload(
             attempt.threadKey ??
             attempt.collapseKey ??
             attempt.notificationId.slice(0, 64),
-        title: attempt.header,
+        title: plainTextForWebPush(attempt.header),
         url,
     });
 }

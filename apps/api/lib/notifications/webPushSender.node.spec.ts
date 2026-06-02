@@ -72,6 +72,37 @@ test('buildWebPushPayload serializes notification content without subscription s
     });
 });
 
+test('buildWebPushPayload strips unsupported Markdown from browser-visible text', () => {
+    const payload = buildWebPushPayload(
+        queuedAttempt({
+            actionLabel: '**Otvori obavijest**',
+            actionUrl: '/vrtovi/1',
+            content:
+                'U gredici **Zabavna Pahuljica** na poziciji **18** proklijala je biljka **Grah Borlotto lingua di fuoco nano**.',
+            header: '🌱 **Proklijala** je biljka Grah Borlotto!',
+        }),
+    );
+
+    assert.deepEqual(JSON.parse(payload), {
+        actions: [
+            {
+                action: 'open',
+                title: 'Otvori obavijest',
+                url: '/vrtovi/1',
+            },
+        ],
+        body: 'U gredici Zabavna Pahuljica na poziciji 18 proklijala je biljka Grah Borlotto lingua di fuoco nano.',
+        category: 'general',
+        deliveryAttemptId: 1,
+        icon: '/icon.png',
+        notificationId: 'notification-1',
+        requireInteraction: false,
+        tag: 'notification-1',
+        title: '🌱 Proklijala je biljka Grah Borlotto!',
+        url: '/',
+    });
+});
+
 test('processWebPushAttempts records accepted provider success', async () => {
     const accepted: QueuedWebPushAttempt[] = [];
     const failed: WebPushFailure[] = [];
