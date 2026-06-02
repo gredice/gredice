@@ -9,6 +9,7 @@ import { EntityFactory } from '../entities/EntityFactory';
 import { entityNameMap } from '../entities/entityNameMap';
 import { GameFlagsContext } from '../GameFlagsContext';
 import { DebugHud } from '../hud/DebugHud';
+import { ParticleSystemProvider } from '../particles/ParticleSystem';
 import { Environment } from '../scene/Environment';
 import { Scene } from '../scene/Scene';
 import type { Block } from '../types/Block';
@@ -107,57 +108,61 @@ export function EntityGridViewer({
                         zoom={zoom}
                         className={className}
                     >
-                        <Environment
-                            noBackground={!showBackground}
-                            noSound
-                            noWeather
-                        />
-                        <OrbitControls
-                            enableDamping
-                            screenSpacePanning={false}
-                            minZoom={10}
-                            maxZoom={120}
-                            mouseButtons={{
-                                LEFT: MOUSE.PAN,
-                                MIDDLE: MOUSE.DOLLY,
-                                RIGHT: MOUSE.ROTATE,
-                            }}
-                        />
-                        <group position={[-centerX, 0, -centerZ]}>
-                            {entities.map(
-                                ({
-                                    entityName,
-                                    stack,
-                                    block,
-                                    variant,
-                                    position,
-                                }) => (
-                                    <group key={entityName}>
-                                        <EntityFactory
-                                            name={entityName}
-                                            stack={stack}
-                                            block={block}
-                                            rotation={0}
-                                            variant={variant}
-                                        />
-                                        <Html
-                                            position={[
-                                                position.x + 0.5,
-                                                -0.5,
-                                                position.z + 0.5,
-                                            ]}
-                                            center
-                                            distanceFactor={15}
-                                            style={{ pointerEvents: 'none' }}
-                                        >
-                                            <div className="text-white text-xs bg-black/70 px-2 py-1 rounded whitespace-nowrap pointer-events-none">
-                                                {entityName}
-                                            </div>
-                                        </Html>
-                                    </group>
-                                ),
-                            )}
-                        </group>
+                        <ParticleSystemProvider>
+                            <Environment
+                                noBackground={!showBackground}
+                                noSound
+                                noWeather
+                            />
+                            <OrbitControls
+                                enableDamping
+                                screenSpacePanning={false}
+                                minZoom={10}
+                                maxZoom={120}
+                                mouseButtons={{
+                                    LEFT: MOUSE.PAN,
+                                    MIDDLE: MOUSE.DOLLY,
+                                    RIGHT: MOUSE.ROTATE,
+                                }}
+                            />
+                            <group position={[-centerX, 0, -centerZ]}>
+                                {entities.map(
+                                    ({
+                                        entityName,
+                                        stack,
+                                        block,
+                                        variant,
+                                        position,
+                                    }) => (
+                                        <group key={entityName}>
+                                            <EntityFactory
+                                                name={entityName}
+                                                stack={stack}
+                                                block={block}
+                                                rotation={0}
+                                                variant={variant}
+                                            />
+                                            <Html
+                                                position={[
+                                                    position.x + 0.5,
+                                                    -0.5,
+                                                    position.z + 0.5,
+                                                ]}
+                                                center
+                                                distanceFactor={15}
+                                                style={{
+                                                    pointerEvents: 'none',
+                                                }}
+                                            >
+                                                <div className="text-white text-xs bg-black/70 px-2 py-1 rounded whitespace-nowrap pointer-events-none">
+                                                    {entityName}
+                                                </div>
+                                            </Html>
+                                        </group>
+                                    ),
+                                )}
+                            </group>
+                        </ParticleSystemProvider>
                     </Scene>
                     {debugHud && <DebugHud />}
                 </GameFlagsContext.Provider>
