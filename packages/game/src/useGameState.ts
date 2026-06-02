@@ -62,6 +62,7 @@ export type BlockPlacementDropAnimation = {
 };
 
 export type AnimalDebugEntry = {
+    debugBehaviors?: string[];
     id: string;
     species: string;
     label: string;
@@ -74,7 +75,31 @@ export type AnimalDebugEntry = {
         y: number;
         z: number;
     };
+    pathfinding?: {
+        blockedCellCount: number;
+        distance: number;
+        nextWaypoint?: {
+            x: number;
+            y: number;
+            z: number;
+        };
+        status: string;
+        targetCell?: {
+            x: number;
+            z: number;
+        };
+        visitedCellCount: number;
+        waypointCount: number;
+    };
     updatedAt: number;
+};
+
+export type AnimalDebugCommand = {
+    behavior: string;
+    createdAt: number;
+    sequence: number;
+    species: string;
+    targetId?: string | null;
 };
 
 export type AnimalDisturbance = {
@@ -151,6 +176,10 @@ export type GameState = {
     animalDebugEntries: AnimalDebugEntry[];
     setAnimalDebugEntry: (entry: AnimalDebugEntry) => void;
     removeAnimalDebugEntry: (id: string) => void;
+    animalDebugCommand: AnimalDebugCommand | null;
+    triggerAnimalDebugBehavior: (
+        command: Omit<AnimalDebugCommand, 'createdAt' | 'sequence'>,
+    ) => void;
     animalDisturbance: AnimalDisturbance | null;
     disturbAnimals: (
         disturbance: Omit<AnimalDisturbance, 'createdAt' | 'sequence'>,
@@ -396,6 +425,15 @@ export function createGameState({
                 animalDebugEntries: state.animalDebugEntries.filter(
                     (entry) => entry.id !== id,
                 ),
+            })),
+        animalDebugCommand: null,
+        triggerAnimalDebugBehavior: (command) =>
+            set((state) => ({
+                animalDebugCommand: {
+                    ...command,
+                    createdAt: Date.now(),
+                    sequence: (state.animalDebugCommand?.sequence ?? 0) + 1,
+                },
             })),
         animalDisturbance: null,
         disturbAnimals: (disturbance) =>
