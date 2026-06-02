@@ -16,6 +16,7 @@ type ApprovalTaskBase = {
     accountId?: string | null;
     gardenId?: number | null;
     raisedBedId?: number | null;
+    raisedBedPhysicalId?: string | null;
     positionIndex?: number | null;
 };
 
@@ -57,20 +58,10 @@ function plantSortName(
     );
 }
 
-function raisedBedLabel(input: {
-    raisedBedName?: string | null;
-    physicalId?: string | null;
-    raisedBedId: number;
-    positionIndex?: number | null;
-}) {
-    const base =
-        input.raisedBedName ??
-        (input.physicalId ? `Gredica ${input.physicalId}` : null) ??
-        `Gredica #${input.raisedBedId}`;
-
-    return input.positionIndex === null || input.positionIndex === undefined
-        ? base
-        : `${base}, polje ${input.positionIndex + 1}`;
+function raisedBedFieldLabel(positionIndex?: number | null) {
+    return positionIndex === null || positionIndex === undefined
+        ? null
+        : `Polje ${positionIndex + 1}`;
 }
 
 function approvalRequestRequesterLabel(requestedBy: string) {
@@ -101,23 +92,19 @@ function buildPlantStatusRequestTask(
         request.target.requestedStatus,
     ).shortLabel;
     const plantName = plantSortName(plantSortsById, request.target.plantSortId);
-    const targetLabel = raisedBedLabel({
-        raisedBedName: raisedBed?.name,
-        physicalId: raisedBed?.physicalId,
-        raisedBedId: request.target.raisedBedId,
-        positionIndex: request.target.positionIndex,
-    });
+    const fieldLabel = raisedBedFieldLabel(request.target.positionIndex);
 
     return {
         id: `approval:${request.id}`,
         kind: 'plantStatusRequest',
         requestId: request.id,
         title: 'Promjena stanja biljke',
-        description: `${targetLabel}: ${plantName}, ${currentStatusLabel} → ${requestedStatusLabel}`,
+        description: `${fieldLabel ? `${fieldLabel}: ` : ''}${plantName}, ${currentStatusLabel} → ${requestedStatusLabel}`,
         receivedAt: request.requestedAt,
         accountId: request.target.accountId,
         gardenId: request.target.gardenId,
         raisedBedId: request.target.raisedBedId,
+        raisedBedPhysicalId: raisedBed?.physicalId,
         positionIndex: request.target.positionIndex,
         currentStatus: request.target.currentStatus,
         requestedStatus: request.target.requestedStatus,
@@ -166,23 +153,20 @@ export async function getPendingAdminApprovalTasks() {
                 operationsById.get(operation.entityId),
                 `Radnja #${operation.entityId}`,
             );
-            const raisedBed = operation.raisedBedId
-                ? raisedBedsById.get(operation.raisedBedId)
-                : undefined;
-            const targetLabel = operation.raisedBedId
-                ? raisedBedLabel({
-                      raisedBedName: raisedBed?.name,
-                      physicalId: raisedBed?.physicalId,
-                      raisedBedId: operation.raisedBedId,
-                  })
-                : 'Farma';
+            const raisedBed =
+                operation.raisedBedId != null
+                    ? raisedBedsById.get(operation.raisedBedId)
+                    : undefined;
 
             return {
                 id: `operation:${operation.id}`,
                 kind: 'scheduleOperationVerification',
                 operationId: operation.id,
                 title: 'Verifikacija radnje',
-                description: `${operationName} • ${targetLabel}`,
+                description:
+                    operation.raisedBedId != null
+                        ? operationName
+                        : `${operationName} • Farma`,
                 receivedAt:
                     operation.completedAt ??
                     operation.scheduledDate ??
@@ -190,6 +174,7 @@ export async function getPendingAdminApprovalTasks() {
                 accountId: operation.accountId,
                 gardenId: operation.gardenId,
                 raisedBedId: operation.raisedBedId,
+                raisedBedPhysicalId: raisedBed?.physicalId,
                 positionIndex: null,
                 completedBy: operation.completedBy,
             };
@@ -202,22 +187,22 @@ export async function getPendingAdminApprovalTasks() {
                 (field) =>
                     field.active && field.plantStatus === 'pendingVerification',
             )
-            .map((field) => ({
-                id: `planting:${field.id}`,
-                kind: 'schedulePlantingVerification',
-                raisedBedId: raisedBed.id,
-                positionIndex: field.positionIndex,
-                title: 'Verifikacija sijanja',
-                description: `${raisedBedLabel({
-                    raisedBedName: raisedBed.name,
-                    physicalId: raisedBed.physicalId,
+            .map((field) => {
+                const fieldLabel = raisedBedFieldLabel(field.positionIndex);
+
+                return {
+                    id: `planting:${field.id}`,
+                    kind: 'schedulePlantingVerification',
                     raisedBedId: raisedBed.id,
                     positionIndex: field.positionIndex,
-                })}: ${plantSortName(plantSortsById, field.plantSortId)}`,
-                receivedAt: field.plantSowDate ?? field.updatedAt,
-                accountId: raisedBed.accountId,
-                gardenId: raisedBed.gardenId,
-            })),
+                    title: 'Verifikacija sijanja',
+                    description: `${fieldLabel ? `${fieldLabel}: ` : ''}${plantSortName(plantSortsById, field.plantSortId)}`,
+                    receivedAt: field.plantSowDate ?? field.updatedAt,
+                    accountId: raisedBed.accountId,
+                    gardenId: raisedBed.gardenId,
+                    raisedBedPhysicalId: raisedBed.physicalId,
+                };
+            }),
     );
 
     return [...plantStatusTasks, ...operationTasks, ...plantingTasks].sort(
