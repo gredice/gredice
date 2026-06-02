@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import {
     ItemsHudAlignmentStory,
     ItemsHudControlsTooltipStory,
-    SandboxItemsHudStory,
     SandboxBlockTrashDropTargetStory,
+    SandboxItemsHudStory,
 } from './ItemsHudStory';
 
 const TABLET_VIEWPORT = { width: 820, height: 1180 };
@@ -137,6 +137,37 @@ test('pots are listed under the decoration picker', async ({ mount, page }) => {
     ).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'PotWideLippedCup' }),
+    ).toBeVisible();
+});
+
+test('tool picker lists functional garden boxes outside sandbox', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudAlignmentStory />);
+
+    await page.getByRole('button', { name: 'Alat' }).click();
+    await expect(page.getByRole('button', { name: 'GardenBox' })).toBeVisible();
+});
+
+test('sandbox tool picker hides nonfunctional garden boxes', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<SandboxItemsHudStory />);
+
+    await page.getByRole('button', { name: 'Alat' }).click();
+    await expect(page.getByRole('button', { name: 'GardenBox' })).toHaveCount(
+        0,
+    );
+    await expect(page.getByRole('button', { name: 'Bucket' })).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'WateringCan' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'ShovelSmall' }),
     ).toBeVisible();
 });
 
