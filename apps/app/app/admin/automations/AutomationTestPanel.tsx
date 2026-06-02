@@ -101,12 +101,12 @@ export function AutomationTestPanel({
             ) : null}
             {triggerMode === 'schedule' ? (
                 <Typography level="body3" className="text-muted-foreground">
-                    Test će koristiti sintetički mjesečni schedule run.
+                    Pokretanje će koristiti sintetički mjesečni schedule run.
                 </Typography>
             ) : null}
             {triggerMode === 'unsupported' ? (
                 <Typography level="body3" className="text-muted-foreground">
-                    Ovaj tip triggera još nema testni ulaz.
+                    Ovaj tip triggera još nema ulaz za pokretanje.
                 </Typography>
             ) : null}
             <Checkbox
@@ -138,11 +138,11 @@ export function AutomationTestPanel({
                     })
                 }
             >
-                Pokreni test
+                Pokreni
             </Button>
             {result?.ok ? (
                 <Typography level="body2" className="text-green-700">
-                    Test run #{result.runId} dodan je u red čekanja.
+                    Run #{result.runId} dodan je u red čekanja.
                 </Typography>
             ) : null}
             {result && !result.ok ? (
