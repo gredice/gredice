@@ -12,6 +12,7 @@ import { BlockInteractionLayer } from './controls/BlockInteractionLayer';
 import { BlockInteractionRegistryProvider } from './controls/BlockInteractionRegistry';
 import { GameCameraRig } from './controls/GameCameraRig';
 import { Bees } from './entities/bees/Bees';
+import { Birds } from './entities/birds/Birds';
 import { Cats } from './entities/cats/Cats';
 import { EntityFactory } from './entities/EntityFactory';
 import {
@@ -319,6 +320,11 @@ export function GameScene({
                                     controlsEnabled={!noControls}
                                     stacks={garden?.stacks}
                                 />
+                                {renderDetails && zoom !== 'far' && (
+                                    <Suspense fallback={null}>
+                                        <Birds stacks={garden?.stacks} />
+                                    </Suspense>
+                                )}
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
                                         <Cats
