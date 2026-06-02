@@ -9,6 +9,7 @@ import {
 import type { BufferGeometry } from 'three/src/Three.Core.js';
 import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import type { GameAssetName } from '../data/models';
+import { useBlockData } from '../hooks/useBlockData';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { GLTFResult } from '../models/GameAssets';
 import { snowPresets } from '../snow/snowPresets';
@@ -381,6 +382,7 @@ function BlockGroundInstances({
 }
 
 function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
+    const { data: blockData } = useBlockData();
     const waterInstances = useEntityBlockInstances({
         name: 'Block_Water',
         stacks,
@@ -393,6 +395,7 @@ function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
 
     const topSurfaceInstances = waterInstances.filter(isWaterTopSurfaceVisible);
     const groupedInstances = resolveWaterBlockInstanceGroups({
+        blockData,
         instances: topSurfaceInstances,
         stacks,
     });
@@ -432,9 +435,11 @@ function waterFoamMaskKey({
 }
 
 function resolveWaterBlockInstanceGroups({
+    blockData,
     instances,
     stacks,
 }: {
+    blockData: Parameters<typeof resolveWaterFoamEdges>[0]['blockData'];
     instances: EntityBlockInstance[];
     stacks: Stack[] | undefined;
 }) {
@@ -451,11 +456,13 @@ function resolveWaterBlockInstanceGroups({
     for (const instance of instances) {
         const foamEdges = resolveWaterFoamEdges({
             block: instance.block,
+            blockData,
             stack: instance.stack,
             stacks,
         });
         const foamCorners = resolveWaterFoamCorners({
             block: instance.block,
+            blockData,
             stack: instance.stack,
             stacks,
         });
