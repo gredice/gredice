@@ -10,6 +10,7 @@ import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Calendar, Timer } from '@gredice/ui/icons';
 import { SelectItems } from '@gredice/ui/SelectItems';
+import { Stack } from '@gredice/ui/Stack';
 import { cx } from '@gredice/ui/utils';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
@@ -226,10 +227,16 @@ function MockRaisedBedFieldCard({ field }: { field: MockField }) {
             historyControl={field.hasHistory ? <HistoryButton /> : undefined}
             plantSortControl={<PlantSortSelect field={field} />}
             statusControl={
-                field.status ? <StatusSelect field={field} /> : undefined
-            }
-            datesControl={
-                field.date ? <DatesButton date={field.date} /> : undefined
+                field.status || field.date ? (
+                    <Stack spacing={0.5}>
+                        {field.status ? (
+                            <StatusSelect field={field} />
+                        ) : undefined}
+                        {field.date ? (
+                            <DatesButton date={field.date} />
+                        ) : undefined}
+                    </Stack>
+                ) : undefined
             }
         />
     );
