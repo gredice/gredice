@@ -1,9 +1,11 @@
 'use client';
 
 import { Button } from '@gredice/ui/Button';
+import { Warning } from '@gredice/ui/icons';
 import { Popper } from '@gredice/ui/Popper';
 import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useLiveTime } from '../hooks/useLiveTime';
 import { useWeatherForecast } from '../hooks/useWeatherForecast';
 import { useWeatherNow } from '../hooks/useWeatherNow';
@@ -21,7 +23,9 @@ const timePopperClassName =
 export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
     const currentTime = useLiveTime();
     const weatherEnabled = !noWeather;
-    const { data: weatherData } = useWeatherNow(weatherEnabled);
+    const { data: currentGarden } = useCurrentGarden();
+    const farmId = currentGarden?.farmId;
+    const { data: weatherData } = useWeatherNow(weatherEnabled, farmId);
     const { data: forecastData } = useWeatherForecast(weatherEnabled);
     if (!weatherEnabled) return null;
     // TODO: Add loading indicator
@@ -30,6 +34,7 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
 
     const WeatherIcon =
         weatherData?.symbol != null ? weatherIcons[weatherData.symbol] : null;
+    const hasAlerts = (weatherData?.alerts?.length ?? 0) > 0;
     const formattedTime = currentTime?.toLocaleTimeString('hr-HR', {
         hour: '2-digit',
         minute: '2-digit',
@@ -53,6 +58,9 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
                                     {WeatherIcon && (
                                         <WeatherIcon.day className="size-6" />
                                     )}
+                                    {hasAlerts && (
+                                        <Warning className="size-4 shrink-0 text-amber-600" />
+                                    )}
                                     <Typography
                                         level="body2"
                                         className="text-base pl-0.5"
@@ -68,7 +76,7 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
                             </Button>
                         }
                     >
-                        <WeatherNowDetails />
+                        <WeatherNowDetails farmId={farmId} />
                     </Popper>
                 )}
                 {weatherData && (forecastData || formattedTime) && (

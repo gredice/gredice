@@ -28,6 +28,7 @@ import { AdminPageHeader } from '../../../components/admin/navigation';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
 import { KnownPages } from '../../../src/KnownPages';
+import { AutomationJobsQueueTable } from './AutomationJobsQueueTable';
 import {
     automationActionSummary,
     automationRunStatusMeta,
@@ -108,6 +109,12 @@ export default async function AutomationsPage({
             limit: 300,
         }),
     ]);
+    const queuedRunsCount = runs.filter(
+        (run) => run.status === 'queued' || run.status === 'retrying',
+    ).length;
+    const runningRunsCount = runs.filter(
+        (run) => run.status === 'running',
+    ).length;
     const runsByDefinitionId = new Map<number, typeof runs>();
 
     for (const run of runs) {
@@ -228,7 +235,7 @@ export default async function AutomationsPage({
                 </CardContent>
             </Card>
 
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
                 <Card>
                     <CardContent>
                         <Typography level="body3" secondary>
@@ -255,9 +262,25 @@ export default async function AutomationsPage({
                 <Card>
                     <CardContent>
                         <Typography level="body3" secondary>
-                            Izvođenja
+                            Poslovi
                         </Typography>
                         <Typography level="h4">{runs.length}</Typography>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent>
+                        <Typography level="body3" secondary>
+                            Čeka
+                        </Typography>
+                        <Typography level="h4">{queuedRunsCount}</Typography>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent>
+                        <Typography level="body3" secondary>
+                            U tijeku
+                        </Typography>
+                        <Typography level="h4">{runningRunsCount}</Typography>
                     </CardContent>
                 </Card>
                 <Card>
@@ -274,6 +297,8 @@ export default async function AutomationsPage({
                     </CardContent>
                 </Card>
             </div>
+
+            <AutomationJobsQueueTable runs={runs} />
 
             <Card>
                 <CardHeader>

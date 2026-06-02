@@ -202,6 +202,27 @@ const notificationRolloutPreferenceDefaults: NotificationRolloutPreferenceDefaul
             required: false,
         },
         {
+            category: 'weather_alerts',
+            channel: 'in_app',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: false,
+        },
+        {
+            category: 'weather_alerts',
+            channel: 'email',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: false,
+        },
+        {
+            category: 'weather_alerts',
+            channel: 'push',
+            defaultEnabled: true,
+            digestEligible: false,
+            required: false,
+        },
+        {
             category: 'reminders',
             channel: 'in_app',
             defaultEnabled: true,

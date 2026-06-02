@@ -31,8 +31,9 @@ export const currentGardenKeys = (
 
 type useCurrentGardenResponse = Omit<
     GardenResponse,
-    'stacks' | 'latitude' | 'longitude' | 'createdAt' | 'updatedAt'
+    'stacks' | 'farmId' | 'latitude' | 'longitude' | 'createdAt' | 'updatedAt'
 > & {
+    farmId?: number | null;
     stacks: Stack[];
     location: {
         lat: number;
@@ -848,6 +849,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 id: garden.id,
                 name: garden.name,
                 isSandbox: garden.isSandbox,
+                farmId: garden.farmId,
                 stacks,
                 location: {
                     lat: garden.latitude,
