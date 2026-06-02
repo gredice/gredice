@@ -21,6 +21,7 @@ const focusAnimationDurationSeconds = 0.65;
 const focusStopDistance = 0.01;
 const minZoom = 50;
 const maxZoom = 500;
+const cameraDragThresholdPx = 4;
 const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
 
 const up = new Vector3(0, 1, 0);
@@ -52,6 +53,8 @@ type PointerState = {
     distance: number;
     midpoint: Vector2;
     pointerCount: number;
+    startDistance: number;
+    startMidpoint: Vector2;
 };
 
 type NormalCameraSnapshot = {
@@ -525,20 +528,34 @@ export function GameCameraRig({
         const element = gl.domElement;
         const previousTouchAction = element.style.touchAction;
         element.style.touchAction = 'none';
+        let cameraDragging = false;
+
+        const setCameraDragging = (dragging: boolean) => {
+            if (cameraDragging === dragging) {
+                return;
+            }
+
+            cameraDragging = dragging;
+            setIsDragging(dragging);
+        };
 
         const clearPointers = () => {
             activePointersRef.current.clear();
             pointerStateRef.current = null;
-            setIsDragging(false);
+            setCameraDragging(false);
         };
 
         const updatePointerState = () => {
             const pointers = Array.from(activePointersRef.current.values());
             if (pointers.length >= 2) {
+                const distance = getPointerDistance(pointers[0], pointers[1]);
+                const midpoint = getPointerMidpoint(pointers[0], pointers[1]);
                 pointerStateRef.current = {
-                    distance: getPointerDistance(pointers[0], pointers[1]),
-                    midpoint: getPointerMidpoint(pointers[0], pointers[1]),
+                    distance,
+                    midpoint,
                     pointerCount: 2,
+                    startDistance: distance,
+                    startMidpoint: midpoint.clone(),
                 };
                 return;
             }
@@ -548,6 +565,8 @@ export function GameCameraRig({
                     distance: 0,
                     midpoint: pointers[0].clone(),
                     pointerCount: 1,
+                    startDistance: 0,
+                    startMidpoint: pointers[0].clone(),
                 };
                 return;
             }
@@ -566,7 +585,9 @@ export function GameCameraRig({
             );
             updatePointerState();
             element.setPointerCapture(event.pointerId);
-            setIsDragging(true);
+            if (activePointersRef.current.size >= 2) {
+                setCameraDragging(true);
+            }
         };
 
         const handlePointerMove = (event: PointerEvent) => {
@@ -609,20 +630,39 @@ export function GameCameraRig({
                     distance: nextDistance,
                     midpoint: nextMidpoint,
                     pointerCount: 2,
+                    startDistance: pointerState.startDistance,
+                    startMidpoint: pointerState.startMidpoint,
                 };
+                if (
+                    Math.abs(nextDistance - pointerState.startDistance) >
+                        cameraDragThresholdPx ||
+                    nextMidpoint.distanceTo(pointerState.startMidpoint) >
+                        cameraDragThresholdPx
+                ) {
+                    setCameraDragging(true);
+                }
                 return;
             }
 
             if (pointers.length === 1 && pointerState.pointerCount === 1) {
+                const nextMidpoint = new Vector2(event.clientX, event.clientY);
                 panByScreenPixels(
-                    event.clientX - pointerState.midpoint.x,
-                    event.clientY - pointerState.midpoint.y,
+                    nextMidpoint.x - pointerState.midpoint.x,
+                    nextMidpoint.y - pointerState.midpoint.y,
                 );
                 pointerStateRef.current = {
                     distance: 0,
-                    midpoint: new Vector2(event.clientX, event.clientY),
+                    midpoint: nextMidpoint,
                     pointerCount: 1,
+                    startDistance: pointerState.startDistance,
+                    startMidpoint: pointerState.startMidpoint,
                 };
+                if (
+                    nextMidpoint.distanceTo(pointerState.startMidpoint) >
+                    cameraDragThresholdPx
+                ) {
+                    setCameraDragging(true);
+                }
                 return;
             }
 
@@ -636,7 +676,7 @@ export function GameCameraRig({
             }
             updatePointerState();
             if (activePointersRef.current.size === 0) {
-                setIsDragging(false);
+                setCameraDragging(false);
             }
         };
 
