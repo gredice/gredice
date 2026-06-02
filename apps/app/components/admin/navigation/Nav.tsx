@@ -44,6 +44,7 @@ import { usePathname } from 'next/navigation';
 import type { CSSProperties } from 'react';
 import { useContext, useState } from 'react';
 import { reorderEntityType } from '../../../app/(actions)/entityActions';
+import { getDashboardQuickActionBadge } from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { EntityTypeIcon } from '../directories/EntityTypeIcon';
 import { adminPages } from './adminPages';
@@ -71,18 +72,52 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
     }
 
     switch (quickAction.href) {
+        case KnownPages.Accounts:
+            return <Bank className="size-5" />;
+        case KnownPages.Achievements:
+        case KnownPages.Sunflowers:
+            return <Success className="size-5" />;
+        case KnownPages.AiAnalytics:
+            return <AI className="size-5" />;
+        case KnownPages.Approvals:
+        case KnownPages.CommunicationInbox:
+            return <Inbox className="size-5" />;
+        case KnownPages.Automations:
+            return <Lightning className="size-5" />;
+        case KnownPages.CommunicationEmails:
+            return <Mail className="size-5" />;
+        case KnownPages.DeliveryRequests:
+        case KnownPages.DeliverySlots:
+            return <Truck className="size-5" />;
+        case KnownPages.FarmerPayouts:
+        case KnownPages.FarmerPrices:
+        case KnownPages.Transactions:
+            return <Euro className="size-5" />;
+        case KnownPages.Farms:
+            return <MapIcon className="size-5" />;
+        case KnownPages.Gardens:
+            return <Fence className="size-5" />;
+        case KnownPages.Inventory:
+        case KnownPages.SowingStatistics:
+            return <Tally3 className="size-5" />;
+        case KnownPages.Notifications:
+        case KnownPages.SocialPublishing:
+            return <Megaphone className="size-5" />;
+        case KnownPages.Occasions:
         case KnownPages.Schedule:
             return <Calendar className="size-5" />;
         case KnownPages.RaisedBeds:
             return <RaisedBedIcon className="size-5" physicalId={null} />;
         case KnownPages.Operations:
             return <Hammer className="size-5" />;
-        case KnownPages.DeliveryRequests:
-            return <Truck className="size-5" />;
-        case KnownPages.Transactions:
-            return <Euro className="size-5" />;
-        case KnownPages.Sunflowers:
-            return <Success className="size-5" />;
+        case KnownPages.Settings:
+            return <Settings className="size-5" />;
+        case KnownPages.Users:
+            return <User className="size-5" />;
+        case KnownPages.Weather:
+            return <Cloud className="size-5" />;
+        case KnownPages.Feedback:
+            return <SmileHappy className="size-5" />;
         default:
             return <File className="size-5" />;
     }
@@ -200,6 +235,10 @@ export function Nav({
     const pendingAchievementsCount = navContext?.pendingAchievementsCount ?? 0;
     const pendingApprovalTasksCount =
         navContext?.pendingApprovalTasksCount ?? 0;
+    const quickActionBadgeCounts = {
+        pendingAchievementsCount,
+        pendingApprovalTasksCount,
+    };
     const quickActions = navContext?.quickActions || [];
     const hasDirectoryRecords =
         categorizedTypes.length > 0 ||
@@ -230,6 +269,10 @@ export function Nav({
                         label={quickAction.label}
                         icon={quickActionIcon(quickAction)}
                         onClick={onItemClick}
+                        badge={getDashboardQuickActionBadge(
+                            quickAction,
+                            quickActionBadgeCounts,
+                        )}
                         compact={compact}
                     />
                 ))}
