@@ -40,11 +40,13 @@ async function applyRaisedBedFieldPlantUpdate({
     positionIndex,
     status,
     plantSortId,
+    timestamp,
 }: {
     raisedBed: NonNullable<Awaited<ReturnType<typeof getRaisedBed>>>;
     positionIndex: number;
     status?: string;
     plantSortId?: number;
+    timestamp?: string;
 }) {
     const aggregateId = `${raisedBed.id.toString()}|${positionIndex.toString()}`;
     const existingField = raisedBed.fields.find(
@@ -59,15 +61,21 @@ async function applyRaisedBedFieldPlantUpdate({
     }
 
     if (status) {
-        await createEvent(
-            knownEvents.raisedBedFields.plantUpdateV1(
+        const createdAt = timestamp ? new Date(timestamp) : undefined;
+        if (createdAt && Number.isNaN(createdAt.getTime())) {
+            throw new Error('Invalid plant status timestamp.');
+        }
+
+        await createEvent({
+            ...knownEvents.raisedBedFields.plantUpdateV1(
                 aggregateId,
                 buildRaisedBedFieldPlantUpdatePayload(
                     status,
                     existingField?.assignedUserIds,
                 ),
             ),
-        );
+            ...(createdAt ? { createdAt } : {}),
+        });
     }
 
     const sortIdToUse = plantSortId ?? existingField?.plantSortId;
@@ -190,11 +198,13 @@ export async function raisedBedFieldUpdatePlant({
     positionIndex,
     status,
     plantSortId,
+    timestamp,
 }: {
     raisedBedId: number;
     positionIndex: number;
     status?: string;
     plantSortId?: number;
+    timestamp?: string;
 }) {
     await auth(['admin']);
 
@@ -208,6 +218,7 @@ export async function raisedBedFieldUpdatePlant({
         positionIndex,
         status,
         plantSortId,
+        timestamp,
     });
 
     await revalidateRaisedBedPaths(raisedBed);
