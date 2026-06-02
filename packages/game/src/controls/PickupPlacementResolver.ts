@@ -7,6 +7,7 @@ import {
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 import { getBlockDataByName, getStackHeight } from '../utils/stackHeightCore';
+import { isRecyclerPlacementTarget } from './recyclerPlacement';
 
 export type MovingSegment = {
     sourceStack: Stack;
@@ -266,10 +267,12 @@ export function resolvePickupPlacementPreviewForRelative({
             const blockUnderData = blockUnder
                 ? getBlockDataByName(blockData, blockUnder.name)
                 : null;
-            const isRecycler =
-                segment.canRecycle &&
-                blockUnder?.name !== 'Composter' &&
-                (blockUnderData?.functions?.recycler ?? false);
+            const isRecycler = isRecyclerPlacementTarget({
+                canRecycle: segment.canRecycle,
+                sourcePosition: segment.sourceStack.position,
+                destination,
+                blockUnderData,
+            });
             const isStackable = blockUnderData?.attributes?.stackable ?? true;
             const hoverHeight =
                 getStackHeight(blockData, destinationWithoutMoving) -

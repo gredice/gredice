@@ -110,6 +110,12 @@ const blockData = [
         name: 'Raised_Bed',
         stackable: false,
     }),
+    createBlockData({
+        id: 6,
+        name: 'Composter',
+        recycler: true,
+        stackable: false,
+    }),
 ];
 
 describe('resolvePickupPlacementPreviewForRelative', () => {
@@ -180,6 +186,55 @@ describe('resolvePickupPlacementPreviewForRelative', () => {
         assert.equal(preview?.nextIsOverRecycler, true);
         assert.equal(preview?.nextIsBlocked, false);
         assert.equal(preview?.canStoreInGardenBox, false);
+    });
+
+    it('routes recyclable selections to composter recycler targets', () => {
+        const raisedBed = createBlock('Raised_Bed', 'raised-bed');
+        const composter = createBlock('Composter', 'composter');
+        const sourceStack = createStack(0, 0, [raisedBed]);
+        const composterStack = createStack(1, 0, [composter]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({
+                    block: raisedBed,
+                    canRecycle: true,
+                    sourceStack,
+                }),
+            ],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, composterStack],
+        });
+
+        assert.equal(preview?.nextIsOverRecycler, true);
+        assert.equal(preview?.nextIsBlocked, false);
+        assert.equal(preview?.canStoreInGardenBox, false);
+    });
+
+    it('does not recycle when the selection is released at its source position', () => {
+        const raisedBed = createBlock('Raised_Bed', 'raised-bed');
+        const sourceStack = createStack(0, 0, [raisedBed]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({
+                    block: raisedBed,
+                    canRecycle: true,
+                    sourceStack,
+                }),
+            ],
+            relative: new Vector3(0, 0, 0),
+            stacks: [sourceStack],
+        });
+
+        assert.equal(preview?.nextIsOverRecycler, false);
+        assert.equal(preview?.nextIsBlocked, false);
     });
 
     it('blocks drops onto non-stackable non-recycler targets', () => {
