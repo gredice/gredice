@@ -5,8 +5,14 @@ export { knownEvents } from './knownEvents';
 
 // Constants
 export { knownEventTypes } from './knownEventTypes';
+export type {
+    AiAnalyticsOperation,
+    AiAnalyticsOperationData,
+    AiAnalyticsOperationType,
+} from './queries';
 // Query functions
 export {
+    aiAnalyticsOperationTypes,
     countAiRequestEventsSince,
     countEventsSince,
     createEvent,

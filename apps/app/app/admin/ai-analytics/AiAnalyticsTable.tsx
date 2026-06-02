@@ -16,21 +16,33 @@ import {
     estimateAiAnalysisCostUsd,
     formatAiCostUsd,
 } from '../../../src/ai/aiAnalyticsCost';
+import type { AiAnalyticsOperationType } from './aiAnalyticsPresentation';
 
 export type AiAnalyticsRow = {
     id: number;
     createdAt: string;
+    type: AiAnalyticsOperationType;
+    typeLabel: string;
     raisedBedName: string;
     raisedBedPhysicalId: string | null;
     positionIndex: number | null;
+    sourceEventType: string | null;
+    sourceAggregateId: string | null;
+    automationRunId: number | null;
     data: {
-        markdown: string;
-        imageUrl: string;
-        imageUrls?: string[];
-        model?: string | null;
-        inputTokens?: number | null;
-        outputTokens?: number | null;
-        totalTokens?: number | null;
+        markdown?: string | undefined;
+        imageUrl?: string | undefined;
+        imageUrls?: string[] | undefined;
+        model?: string | null | undefined;
+        inputTokens?: number | null | undefined;
+        outputTokens?: number | null | undefined;
+        totalTokens?: number | null | undefined;
+        summary?: string | undefined;
+        source?: string | undefined;
+        imageCount?: number | null | undefined;
+        proposalCount?: number | null | undefined;
+        acceptedProposalCount?: number | null | undefined;
+        requestCount?: number | null | undefined;
     } | null;
 };
 
@@ -81,18 +93,25 @@ function RaisedBedCell({ row }: { row: AiAnalyticsRow }) {
 
 function AiAnalysisDetails({ row }: { row: AiAnalyticsRow }) {
     const images = imageItems(row);
-    const markdown = row.data?.markdown.trim();
+    const markdown = row.data?.markdown?.trim();
+    const summary = row.data?.summary?.trim();
+    const generatedContent = markdown || summary;
+    const imageCount = row.data?.imageCount ?? images.length;
 
     return (
         <Stack spacing={4}>
             <Stack spacing={1} className="pr-6">
                 <Typography level="h4" semiBold>
-                    AI analiza
+                    {row.typeLabel}
                 </Typography>
                 <RaisedBedCell row={row} />
             </Stack>
 
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+                <Stack spacing={0}>
+                    <Typography level="body3">Tip</Typography>
+                    <Typography level="body2">{row.typeLabel}</Typography>
+                </Stack>
                 <Stack spacing={0}>
                     <Typography level="body3">Model</Typography>
                     <Typography level="body2">
@@ -119,13 +138,47 @@ function AiAnalysisDetails({ row }: { row: AiAnalyticsRow }) {
                 </Stack>
             </div>
 
+            {(row.data?.source ||
+                row.data?.proposalCount != null ||
+                row.data?.requestCount != null ||
+                row.automationRunId != null) && (
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                    <Stack spacing={0}>
+                        <Typography level="body3">Izvor</Typography>
+                        <Typography level="body2">
+                            {row.data?.source ?? row.sourceEventType ?? 'Ručno'}
+                        </Typography>
+                    </Stack>
+                    <Stack spacing={0}>
+                        <Typography level="body3">Prijedlozi</Typography>
+                        <Typography level="body2">
+                            {formatTokens(row.data?.proposalCount)}
+                        </Typography>
+                    </Stack>
+                    <Stack spacing={0}>
+                        <Typography level="body3">Zahtjevi</Typography>
+                        <Typography level="body2">
+                            {formatTokens(row.data?.requestCount)}
+                        </Typography>
+                    </Stack>
+                    <Stack spacing={0}>
+                        <Typography level="body3">Automation run</Typography>
+                        <Typography level="body2">
+                            {row.automationRunId
+                                ? `#${row.automationRunId}`
+                                : '-'}
+                        </Typography>
+                    </Stack>
+                </div>
+            )}
+
             <Stack spacing={2}>
                 <Typography level="body2" semiBold>
                     Generirani sadržaj
                 </Typography>
-                {markdown ? (
+                {generatedContent ? (
                     <Markdown className="rounded-md border bg-muted/20 p-3">
-                        {markdown}
+                        {generatedContent}
                     </Markdown>
                 ) : (
                     <NoDataPlaceholder>Nema sadržaja</NoDataPlaceholder>
@@ -144,7 +197,13 @@ function AiAnalysisDetails({ row }: { row: AiAnalyticsRow }) {
                         previewVariant="carousel"
                     />
                 ) : (
-                    <NoDataPlaceholder>Nema priloženih slika</NoDataPlaceholder>
+                    <NoDataPlaceholder>
+                        {imageCount > 0
+                            ? `Analizirano slika: ${imageCount.toLocaleString(
+                                  'hr-HR',
+                              )}`
+                            : 'Nema priloženih slika'}
+                    </NoDataPlaceholder>
                 )}
             </Stack>
         </Stack>
@@ -162,6 +221,7 @@ export function AiAnalyticsTable({ rows }: { rows: AiAnalyticsRow[] }) {
                         <Table.Header>
                             <Table.Row>
                                 <Table.Head>Gredica | Polje</Table.Head>
+                                <Table.Head>Tip</Table.Head>
                                 <Table.Head>Model</Table.Head>
                                 <Table.Head className="text-right">
                                     Ulazni tokeni
@@ -181,9 +241,9 @@ export function AiAnalyticsTable({ rows }: { rows: AiAnalyticsRow[] }) {
                         <Table.Body>
                             {rows.length === 0 && (
                                 <Table.Row>
-                                    <Table.Cell colSpan={7}>
+                                    <Table.Cell colSpan={8}>
                                         <NoDataPlaceholder>
-                                            Nema AI analiza
+                                            Nema AI operacija
                                         </NoDataPlaceholder>
                                     </Table.Cell>
                                 </Table.Row>
@@ -207,6 +267,9 @@ export function AiAnalyticsTable({ rows }: { rows: AiAnalyticsRow[] }) {
                                 >
                                     <Table.Cell>
                                         <RaisedBedCell row={row} />
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        <Chip size="sm">{row.typeLabel}</Chip>
                                     </Table.Cell>
                                     <Table.Cell>
                                         <Chip size="sm">
