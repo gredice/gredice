@@ -302,9 +302,12 @@ export function AutomationFlowEditor({
     const selectedModule = selectedNode
         ? modulesByKey.get(selectedNode.data.moduleKey)
         : null;
-    const generatedKey = useMemo(
-        () => slugify(name) || initialKey || 'nova-automatizacija',
-        [initialKey, name],
+    const automationKey = useMemo(
+        () =>
+            automationId
+                ? initialKey
+                : slugify(name) || initialKey || 'nova-automatizacija',
+        [automationId, initialKey, name],
     );
     const groupedModules = useMemo(
         () =>
@@ -429,7 +432,7 @@ export function AutomationFlowEditor({
         startTransition(async () => {
             const saveResult = await saveAutomationDefinitionAction({
                 id: automationId,
-                key: generatedKey,
+                key: automationKey,
                 name,
                 description,
                 status,
@@ -459,9 +462,13 @@ export function AutomationFlowEditor({
             />
             <Input
                 label="Ključ"
-                value={generatedKey}
+                value={automationKey}
                 readOnly
-                helperText="Automatski se generira iz naziva."
+                helperText={
+                    automationId
+                        ? 'Postojeći ključ ostaje nepromijenjen.'
+                        : 'Automatski se generira iz naziva.'
+                }
                 fullWidth
             />
             <SelectItems<AutomationDefinitionStatus>
