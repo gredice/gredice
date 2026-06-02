@@ -15,21 +15,75 @@ import {
     bustDeliveryRequestsCache,
     bustScheduleCache,
 } from '../../cache/scheduleCache';
-import { events } from '../../schema';
+import { automationRunSteps, automationRuns, events } from '../../schema';
 import { storage } from '../../storage';
 import { knownEventTypes } from './knownEventTypes';
-import type {
-    Event,
-    RaisedBedFieldAiAnalysisPayload,
-    UserBirthdayRewardPayload,
-} from './types';
+import type { AiRequestKind, Event, UserBirthdayRewardPayload } from './types';
 
 type DatabaseClient = ReturnType<typeof storage>;
+
+export type AiAnalyticsOperationType =
+    | 'raisedBedImageAnalysis'
+    | 'raisedBedFieldImageAnalysis'
+    | 'raisedBedImagePlantStatusReview';
+
+export const aiAnalyticsOperationTypes: AiAnalyticsOperationType[] = [
+    'raisedBedImageAnalysis',
+    'raisedBedFieldImageAnalysis',
+    'raisedBedImagePlantStatusReview',
+];
+
+export type AiAnalyticsOperationData = {
+    markdown?: string;
+    imageUrl?: string;
+    imageUrls?: string[];
+    model?: string | null;
+    analyzedAt?: string;
+    referenceDate?: string;
+    accountId?: string;
+    aiRequestKind?: AiRequestKind;
+    inputTokens?: number | null;
+    outputTokens?: number | null;
+    totalTokens?: number | null;
+    source?: string;
+    summary?: string;
+    raisedBedId?: number | null;
+    operationId?: number | null;
+    focusPositionIndex?: number | null;
+    imageCount?: number | null;
+    skippedInvalidImageCount?: number | null;
+    proposalCount?: number | null;
+    acceptedProposalCount?: number | null;
+    requestCount?: number | null;
+};
+
+export type AiAnalyticsOperation = {
+    id: number;
+    type: string;
+    version: number;
+    aggregateId: string;
+    data: AiAnalyticsOperationData | null;
+    createdAt: Date;
+    aiOperationType: AiAnalyticsOperationType;
+    source: 'domainEvent' | 'automationRunStep';
+    automationRunId?: number | null;
+    sourceEventType?: string | null;
+    sourceAggregateId?: string | null;
+};
+
+type AiAnalysisEventsFilter = {
+    from?: Date;
+    to?: Date;
+    operationTypes?: AiAnalyticsOperationType[];
+};
 
 const aiAnalysisEventTypes = [
     knownEventTypes.raisedBeds.aiAnalysis,
     knownEventTypes.raisedBedFields.aiAnalysis,
 ];
+
+const aiPlantStatusReviewModuleKey =
+    'action.createPlantStatusRequestsFromImageAnalysis';
 
 const scheduleInvalidatingEventTypes = new Set<string>([
     knownEventTypes.operations.assign,
@@ -66,6 +120,108 @@ function eventTypeFilter(type: string | string[]) {
     return Array.isArray(type)
         ? inArray(events.type, type)
         : eq(events.type, type);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function optionalString(value: unknown) {
+    return typeof value === 'string' && value.trim().length > 0
+        ? value
+        : undefined;
+}
+
+function optionalNumber(value: unknown) {
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function optionalStringArray(value: unknown) {
+    return Array.isArray(value)
+        ? value.filter((item): item is string => typeof item === 'string')
+        : undefined;
+}
+
+function optionalAiRequestKind(value: unknown): AiRequestKind | undefined {
+    return value === 'raisedBedImageAnalysis' ? value : undefined;
+}
+
+function normalizeAiAnalyticsData(
+    value: unknown,
+): AiAnalyticsOperationData | null {
+    if (!isRecord(value)) {
+        return null;
+    }
+
+    const markdown = optionalString(value.markdown);
+    const imageUrl = optionalString(value.imageUrl);
+    const imageUrls = optionalStringArray(value.imageUrls);
+    const model = optionalString(value.model);
+    const analyzedAt = optionalString(value.analyzedAt);
+    const referenceDate = optionalString(value.referenceDate);
+    const accountId = optionalString(value.accountId);
+    const aiRequestKind = optionalAiRequestKind(value.aiRequestKind);
+    const source = optionalString(value.source);
+    const summary = optionalString(value.summary);
+
+    return {
+        ...(markdown ? { markdown } : {}),
+        ...(imageUrl ? { imageUrl } : {}),
+        ...(imageUrls ? { imageUrls } : {}),
+        ...(model ? { model } : {}),
+        ...(analyzedAt ? { analyzedAt } : {}),
+        ...(referenceDate ? { referenceDate } : {}),
+        ...(accountId ? { accountId } : {}),
+        ...(aiRequestKind ? { aiRequestKind } : {}),
+        inputTokens: optionalNumber(value.inputTokens),
+        outputTokens: optionalNumber(value.outputTokens),
+        totalTokens: optionalNumber(value.totalTokens),
+        ...(source ? { source } : {}),
+        ...(summary ? { summary } : {}),
+        raisedBedId: optionalNumber(value.raisedBedId),
+        operationId: optionalNumber(value.operationId),
+        focusPositionIndex: optionalNumber(value.focusPositionIndex),
+        imageCount: optionalNumber(value.imageCount),
+        skippedInvalidImageCount: optionalNumber(
+            value.skippedInvalidImageCount,
+        ),
+        proposalCount: optionalNumber(value.proposalCount),
+        acceptedProposalCount: optionalNumber(value.acceptedProposalCount),
+        requestCount: optionalNumber(value.requestCount),
+    };
+}
+
+function aiAnalysisEventTypesForFilter(
+    operationTypes?: AiAnalyticsOperationType[],
+) {
+    if (!operationTypes?.length) {
+        return aiAnalysisEventTypes;
+    }
+
+    const eventTypes: string[] = [];
+    if (operationTypes.includes('raisedBedImageAnalysis')) {
+        eventTypes.push(knownEventTypes.raisedBeds.aiAnalysis);
+    }
+    if (operationTypes.includes('raisedBedFieldImageAnalysis')) {
+        eventTypes.push(knownEventTypes.raisedBedFields.aiAnalysis);
+    }
+
+    return eventTypes;
+}
+
+function includesAutomationAiAnalysisType(
+    operationTypes?: AiAnalyticsOperationType[],
+) {
+    return (
+        !operationTypes?.length ||
+        operationTypes.includes('raisedBedImagePlantStatusReview')
+    );
+}
+
+function aiOperationTypeForDomainEvent(type: string): AiAnalyticsOperationType {
+    return type === knownEventTypes.raisedBedFields.aiAnalysis
+        ? 'raisedBedFieldImageAnalysis'
+        : 'raisedBedImageAnalysis';
 }
 
 async function bustReadModelCachesForEvent(event: Event) {
@@ -265,36 +421,169 @@ export async function createEvent(
     await bustReadModelCachesForEvent({ type, version, aggregateId, data });
 }
 
-export async function getAiAnalysisEvents(filter?: { from?: Date; to?: Date }) {
+async function getDomainAiAnalysisEvents(
+    filter?: AiAnalysisEventsFilter,
+): Promise<AiAnalyticsOperation[]> {
+    const eventTypes = aiAnalysisEventTypesForFilter(filter?.operationTypes);
+    if (eventTypes.length === 0) {
+        return [];
+    }
+
     const results = await storage().query.events.findMany({
         where: and(
-            inArray(events.type, aiAnalysisEventTypes),
+            inArray(events.type, eventTypes),
             filter?.from ? gte(events.createdAt, filter.from) : undefined,
             filter?.to ? lte(events.createdAt, filter.to) : undefined,
         ),
-        orderBy: [desc(events.createdAt)],
+        orderBy: [desc(events.createdAt), desc(events.id)],
     });
 
     return results.map((event) => ({
-        ...event,
-        data: event.data as RaisedBedFieldAiAnalysisPayload | null,
+        id: event.id,
+        type: event.type,
+        version: event.version,
+        aggregateId: event.aggregateId,
+        data: normalizeAiAnalyticsData(event.data),
+        createdAt: event.createdAt,
+        aiOperationType: aiOperationTypeForDomainEvent(event.type),
+        source: 'domainEvent',
     }));
 }
 
-export async function getAiAnalysisTotals(filter?: { from?: Date; to?: Date }) {
-    const whereConditions = [
-        inArray(events.type, aiAnalysisEventTypes),
-        ...(filter?.from ? [gte(events.createdAt, filter.from)] : []),
-        ...(filter?.to ? [lte(events.createdAt, filter.to)] : []),
-    ];
+async function getAutomationAiAnalysisEvents(
+    filter?: AiAnalysisEventsFilter,
+): Promise<AiAnalyticsOperation[]> {
+    if (!includesAutomationAiAnalysisType(filter?.operationTypes)) {
+        return [];
+    }
+
+    const results = await storage()
+        .select({
+            id: automationRunSteps.id,
+            runId: automationRunSteps.runId,
+            output: automationRunSteps.output,
+            completedAt: automationRunSteps.completedAt,
+            createdAt: automationRunSteps.createdAt,
+            sourceEventType: automationRuns.sourceEventType,
+            sourceAggregateId: automationRuns.sourceAggregateId,
+        })
+        .from(automationRunSteps)
+        .innerJoin(
+            automationRuns,
+            eq(automationRunSteps.runId, automationRuns.id),
+        )
+        .where(
+            and(
+                eq(automationRunSteps.moduleKey, aiPlantStatusReviewModuleKey),
+                eq(automationRunSteps.status, 'succeeded'),
+                eq(automationRuns.dryRun, false),
+                sql<boolean>`${automationRunSteps.output}->>'model' is not null`,
+                filter?.from
+                    ? gte(automationRunSteps.completedAt, filter.from)
+                    : undefined,
+                filter?.to
+                    ? lte(automationRunSteps.completedAt, filter.to)
+                    : undefined,
+            ),
+        )
+        .orderBy(
+            desc(automationRunSteps.completedAt),
+            desc(automationRunSteps.id),
+        );
+
+    return results.map((row) => ({
+        id: row.id,
+        type: aiPlantStatusReviewModuleKey,
+        version: 1,
+        aggregateId:
+            row.sourceAggregateId ??
+            normalizeAiAnalyticsData(row.output)?.raisedBedId?.toString() ??
+            row.runId.toString(),
+        data: normalizeAiAnalyticsData(row.output),
+        createdAt: row.completedAt ?? row.createdAt,
+        aiOperationType: 'raisedBedImagePlantStatusReview',
+        source: 'automationRunStep',
+        automationRunId: row.runId,
+        sourceEventType: row.sourceEventType,
+        sourceAggregateId: row.sourceAggregateId,
+    }));
+}
+
+export async function getAiAnalysisEvents(
+    filter?: AiAnalysisEventsFilter,
+): Promise<AiAnalyticsOperation[]> {
+    const [domainEvents, automationEvents] = await Promise.all([
+        getDomainAiAnalysisEvents(filter),
+        getAutomationAiAnalysisEvents(filter),
+    ]);
+
+    return [...domainEvents, ...automationEvents].sort((a, b) => {
+        const dateDifference = b.createdAt.getTime() - a.createdAt.getTime();
+        if (dateDifference !== 0) {
+            return dateDifference;
+        }
+        return b.id - a.id;
+    });
+}
+
+async function getDomainAiAnalysisCount(filter?: AiAnalysisEventsFilter) {
+    const eventTypes = aiAnalysisEventTypesForFilter(filter?.operationTypes);
+    if (eventTypes.length === 0) {
+        return 0;
+    }
 
     const result = await storage()
         .select({ count: count() })
         .from(events)
-        .where(and(...whereConditions));
+        .where(
+            and(
+                inArray(events.type, eventTypes),
+                filter?.from ? gte(events.createdAt, filter.from) : undefined,
+                filter?.to ? lte(events.createdAt, filter.to) : undefined,
+            ),
+        );
+
+    return result[0]?.count ?? 0;
+}
+
+async function getAutomationAiAnalysisCount(filter?: AiAnalysisEventsFilter) {
+    if (!includesAutomationAiAnalysisType(filter?.operationTypes)) {
+        return 0;
+    }
+
+    const result = await storage()
+        .select({ count: count() })
+        .from(automationRunSteps)
+        .innerJoin(
+            automationRuns,
+            eq(automationRunSteps.runId, automationRuns.id),
+        )
+        .where(
+            and(
+                eq(automationRunSteps.moduleKey, aiPlantStatusReviewModuleKey),
+                eq(automationRunSteps.status, 'succeeded'),
+                eq(automationRuns.dryRun, false),
+                sql<boolean>`${automationRunSteps.output}->>'model' is not null`,
+                filter?.from
+                    ? gte(automationRunSteps.completedAt, filter.from)
+                    : undefined,
+                filter?.to
+                    ? lte(automationRunSteps.completedAt, filter.to)
+                    : undefined,
+            ),
+        );
+
+    return result[0]?.count ?? 0;
+}
+
+export async function getAiAnalysisTotals(filter?: AiAnalysisEventsFilter) {
+    const [domainCount, automationCount] = await Promise.all([
+        getDomainAiAnalysisCount(filter),
+        getAutomationAiAnalysisCount(filter),
+    ]);
 
     return {
-        count: result[0]?.count ?? 0,
+        count: domainCount + automationCount,
     };
 }
 

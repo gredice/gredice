@@ -1,4 +1,6 @@
 import {
+    type AiAnalyticsOperation,
+    type AiAnalyticsOperationType,
     getAiAnalysisEvents,
     getAiAnalysisTotals,
     getRaisedBedMetadataByIds,
@@ -11,7 +13,12 @@ import {
     formatAiCostUsd,
     sumAiAnalysisCostUsd,
 } from '../../../src/ai/aiAnalyticsCost';
+import { AiAnalyticsFilters } from './AiAnalyticsFilters';
 import { type AiAnalyticsRow, AiAnalyticsTable } from './AiAnalyticsTable';
+import {
+    aiAnalyticsOperationTypeLabel,
+    isAiAnalyticsOperationType,
+} from './aiAnalyticsPresentation';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,23 +38,58 @@ function parseRaisedBedAggregateId(aggregateId: string) {
     };
 }
 
-export default async function AiAnalyticsPage() {
+function parseOperationTypeFilter(
+    value: string | string[] | undefined,
+): AiAnalyticsOperationType | undefined {
+    const normalized = typeof value === 'string' ? value : undefined;
+    return isAiAnalyticsOperationType(normalized) ? normalized : undefined;
+}
+
+function getRaisedBedReference(event: AiAnalyticsOperation) {
+    const raisedBedId = event.data?.raisedBedId;
+    if (typeof raisedBedId === 'number') {
+        return {
+            raisedBedId,
+            positionIndex:
+                typeof event.data?.focusPositionIndex === 'number'
+                    ? event.data.focusPositionIndex
+                    : null,
+        };
+    }
+
+    return parseRaisedBedAggregateId(event.aggregateId);
+}
+
+export default async function AiAnalyticsPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ type?: string | string[] }>;
+}) {
     await auth(['admin']);
+    const params = await searchParams;
+    const selectedOperationType = parseOperationTypeFilter(params.type);
+    const operationTypes = selectedOperationType
+        ? [selectedOperationType]
+        : undefined;
 
     const now = new Date();
     const last30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
     const [events, totals30d, totals24h] = await Promise.all([
-        getAiAnalysisEvents(),
-        getAiAnalysisTotals({ from: last30d }),
-        getAiAnalysisTotals({ from: last24h }),
+        getAiAnalysisEvents({ operationTypes }),
+        getAiAnalysisTotals({ from: last30d, operationTypes }),
+        getAiAnalysisTotals({ from: last24h, operationTypes }),
     ]);
-    const raisedBedIds = events
-        .map(
-            (event) => parseRaisedBedAggregateId(event.aggregateId).raisedBedId,
-        )
-        .filter((raisedBedId): raisedBedId is number => raisedBedId != null);
+    const raisedBedIds = Array.from(
+        new Set(
+            events
+                .map((event) => getRaisedBedReference(event).raisedBedId)
+                .filter(
+                    (raisedBedId): raisedBedId is number => raisedBedId != null,
+                ),
+        ),
+    );
     const raisedBeds = await getRaisedBedMetadataByIds(raisedBedIds);
     const raisedBedsById = new Map(
         raisedBeds.map((raisedBed) => [raisedBed.id, raisedBed]),
@@ -67,23 +109,28 @@ export default async function AiAnalyticsPage() {
     );
     const totalCostUsd = sumAiAnalysisCostUsd(events);
     const rows: AiAnalyticsRow[] = events.map((event) => {
-        const { raisedBedId, positionIndex } = parseRaisedBedAggregateId(
-            event.aggregateId,
-        );
+        const { raisedBedId, positionIndex } = getRaisedBedReference(event);
         const raisedBed =
             raisedBedId == null ? undefined : raisedBedsById.get(raisedBedId);
         const raisedBedName =
             raisedBed?.name?.trim() ||
             (raisedBed?.physicalId
                 ? `Gredica ${raisedBed.physicalId}`
-                : 'Nepoznata gredica');
+                : raisedBedId != null
+                  ? `Gredica #${raisedBedId}`
+                  : 'Nepoznata gredica');
 
         return {
             id: event.id,
             createdAt: event.createdAt.toISOString(),
+            type: event.aiOperationType,
+            typeLabel: aiAnalyticsOperationTypeLabel(event.aiOperationType),
             raisedBedName,
             raisedBedPhysicalId: raisedBed?.physicalId ?? null,
             positionIndex,
+            sourceEventType: event.sourceEventType ?? null,
+            sourceAggregateId: event.sourceAggregateId ?? null,
+            automationRunId: event.automationRunId ?? null,
             data: event.data
                 ? {
                       markdown: event.data.markdown,
@@ -93,6 +140,12 @@ export default async function AiAnalyticsPage() {
                       inputTokens: event.data.inputTokens,
                       outputTokens: event.data.outputTokens,
                       totalTokens: event.data.totalTokens,
+                      summary: event.data.summary,
+                      source: event.data.source,
+                      imageCount: event.data.imageCount,
+                      proposalCount: event.data.proposalCount,
+                      acceptedProposalCount: event.data.acceptedProposalCount,
+                      requestCount: event.data.requestCount,
                   }
                 : null,
         };
@@ -105,7 +158,7 @@ export default async function AiAnalyticsPage() {
                     <CardOverflow>
                         <Stack className="p-2">
                             <Typography level="body3">
-                                Ukupno zahtjeva
+                                Ukupno operacija
                             </Typography>
                             <Typography level="h4" semiBold>
                                 {events.length}
@@ -198,6 +251,7 @@ export default async function AiAnalyticsPage() {
                     </CardOverflow>
                 </Card>
             </div>
+            <AiAnalyticsFilters />
             <AiAnalyticsTable rows={rows} />
         </Stack>
     );
