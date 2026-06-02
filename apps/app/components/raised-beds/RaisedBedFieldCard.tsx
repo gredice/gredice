@@ -33,7 +33,6 @@ export function RaisedBedFieldCardGrid({
 }
 
 type RaisedBedFieldCardProps = {
-    datesControl?: ReactNode;
     fieldBadge: ReactNode;
     historyControl?: ReactNode;
     image?: ReactNode;
@@ -44,7 +43,6 @@ type RaisedBedFieldCardProps = {
 };
 
 export function RaisedBedFieldCard({
-    datesControl,
     fieldBadge,
     historyControl,
     image,
@@ -77,16 +75,9 @@ export function RaisedBedFieldCard({
             )}
             <div className="relative z-10 mt-auto flex min-w-0 flex-col gap-0.5 px-2 pb-2 pt-8">
                 <div className="min-w-0">{plantSortControl}</div>
-                {(statusControl || datesControl) && (
+                {statusControl && (
                     <Stack spacing={0.5}>
-                        {statusControl ? (
-                            <div className="min-w-0">
-                                {statusControl}
-                                {datesControl}
-                            </div>
-                        ) : (
-                            <div>{datesControl}</div>
-                        )}
+                        <div className="min-w-0">{statusControl}</div>
                     </Stack>
                 )}
             </div>

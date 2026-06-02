@@ -8,7 +8,6 @@ import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Stack } from '@gredice/ui/Stack';
 import { RaisedBedFieldLocationSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldLocationSelector';
 import { RaisedBedFieldPlantSortSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantSortSelector';
-import { RaisedBedFieldPlantStatusSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantStatusSelector';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
 import { MoveRaisedBedFieldPlantModal } from './MoveRaisedBedFieldPlantModal';
 import {
@@ -18,10 +17,8 @@ import {
     raisedBedFieldCardChipClassName,
     raisedBedFieldCardSelectClassName,
 } from './RaisedBedFieldCard';
-import {
-    type RaisedBedFieldDateItem,
-    RaisedBedFieldDatesPopover,
-} from './RaisedBedFieldDatesPopover';
+import type { RaisedBedFieldDateItem } from './RaisedBedFieldDatesPopover';
+import { RaisedBedFieldStatusDateChip } from './RaisedBedFieldStatusDateChip';
 import {
     RaisedBedRemovedFieldsModal,
     type RemovedFieldDetails,
@@ -446,20 +443,14 @@ function RaisedBedFieldTile({
     );
     const statusControl =
         field?.active && field.plantStatus ? (
-            <RaisedBedFieldPlantStatusSelector
+            <RaisedBedFieldStatusDateChip
                 raisedBedId={raisedBedId}
                 positionIndex={positionIndex}
                 status={field.plantStatus}
-                variant="plain"
-                className={raisedBedFieldCardSelectClassName}
+                date={dateItems.find((item) => item.current)?.value ?? null}
+                className={raisedBedFieldCardButtonClassName}
             />
         ) : undefined;
-    const datesControl = field?.active ? (
-        <RaisedBedFieldDatesPopover
-            items={dateItems}
-            className={raisedBedFieldCardButtonClassName}
-        />
-    ) : undefined;
 
     return (
         <RaisedBedFieldCard
@@ -469,7 +460,6 @@ function RaisedBedFieldTile({
             historyControl={historyControl}
             plantSortControl={plantSortControl}
             statusControl={statusControl}
-            datesControl={datesControl}
         />
     );
 }

@@ -90,9 +90,7 @@ export async function InvoicesTable({
                             </div>
                         </Table.Cell>
                         <Table.Cell>
-                            <Chip
-                                color={getStatusColor(invoice.status)}
-                            >
+                            <Chip color={getStatusColor(invoice.status)}>
                                 {getStatusLabel(invoice.status)}
                             </Chip>
                         </Table.Cell>

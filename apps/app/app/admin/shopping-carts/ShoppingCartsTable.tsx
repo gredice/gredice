@@ -53,11 +53,7 @@ export async function ShoppingCartsTable({
                 )}
                 {shoppingCarts.map((cart) => {
                     const user = cart.account?.accountUsers.at(0)?.user;
-                    const itemCount = (
-                        <Chip>
-                            {cart.items.length} stavke
-                        </Chip>
-                    );
+                    const itemCount = <Chip>{cart.items.length} stavke</Chip>;
                     return (
                         <Table.Row key={cart.id}>
                             {showIdColumn && (
