@@ -10,13 +10,12 @@ import {
     automationModuleKeys,
     createAutomationDefinition,
     createAutomationRun,
-    executeAutomationRun,
     getAutomationDefinitionById,
     getAutomationDefinitionByKey,
     getAutomationRunById,
     getDomainEventById,
     listAutomationRunSteps,
-    startAutomationRun,
+    maxAutomationMaxConcurrentRuns,
     updateAutomationDefinition,
     validateAutomationGraph,
 } from '@gredice/storage';
@@ -51,6 +50,7 @@ export type SaveAutomationDefinitionPayload = {
     name: string;
     description?: string | null;
     status: AutomationDefinitionStatus;
+    maxConcurrentRuns: number;
     graph: AutomationGraph;
 };
 
@@ -84,6 +84,15 @@ function normalizeModuleKind(kind: unknown): AutomationModuleKind | null {
     }
 
     return null;
+}
+
+function normalizeMaxConcurrentRuns(value: unknown) {
+    return typeof value === 'number' &&
+        Number.isInteger(value) &&
+        value >= 1 &&
+        value <= maxAutomationMaxConcurrentRuns
+        ? value
+        : null;
 }
 
 function normalizeGraph(graph: AutomationGraph): AutomationGraph {
@@ -176,6 +185,9 @@ export async function saveAutomationDefinitionAction(
     const graph = normalizeGraph(payload.graph);
     const key = payload.key.trim() || slugify(payload.name);
     const name = payload.name.trim();
+    const maxConcurrentRuns = normalizeMaxConcurrentRuns(
+        payload.maxConcurrentRuns,
+    );
 
     if (!key) {
         errors.push('Automation key is required.');
@@ -186,13 +198,18 @@ export async function saveAutomationDefinitionAction(
     if (!status) {
         errors.push('Automation status is invalid.');
     }
+    if (!maxConcurrentRuns) {
+        errors.push(
+            `Automation parallelism must be between 1 and ${maxAutomationMaxConcurrentRuns}.`,
+        );
+    }
 
     const validation = validateAutomationGraph(graph);
     if (!validation.ok) {
         errors.push(...validation.errors);
     }
 
-    if (errors.length > 0 || !status) {
+    if (errors.length > 0 || !status || !maxConcurrentRuns) {
         return { ok: false, errors };
     }
 
@@ -212,6 +229,7 @@ export async function saveAutomationDefinitionAction(
         name,
         description: payload.description?.trim() || null,
         status,
+        maxConcurrentRuns,
         graph,
         updatedByUserId: userId,
     };
@@ -386,14 +404,8 @@ export async function runAutomationTestAction(
             };
         }
 
-        const started =
-            (await startAutomationRun(run.id, {
-                lockedBy: `app-admin-test:${userId}`,
-            })) ?? run;
-        const result = await executeAutomationRun(started);
-
         revalidateAutomationPages(definition.id);
-        return { ok: true, runId: run.id, status: result.status };
+        return { ok: true, runId: run.id, status: run.status };
     } catch (error) {
         return {
             ok: false,
@@ -408,12 +420,10 @@ async function runAutomationRunAgain({
     runId,
     dryRun,
     actionName,
-    lockedByScope,
 }: {
     runId: number;
     dryRun: boolean;
     actionName: 'replay' | 'retry';
-    lockedByScope: 'app-admin-replay' | 'app-admin-retry';
 }): Promise<AutomationRunActionResult> {
     const { userId } = await auth(['admin']);
     const originalRun = await getAutomationRunById(runId);
@@ -460,14 +470,8 @@ async function runAutomationRunAgain({
         };
     }
 
-    const started =
-        (await startAutomationRun(run.id, {
-            lockedBy: `${lockedByScope}:${userId}`,
-        })) ?? run;
-    const result = await executeAutomationRun(started);
-
     revalidateAutomationPages(definition.id);
-    return { ok: true, runId: run.id, status: result.status };
+    return { ok: true, runId: run.id, status: run.status };
 }
 
 export async function replayAutomationRunAction(
@@ -477,7 +481,6 @@ export async function replayAutomationRunAction(
         runId,
         dryRun: true,
         actionName: 'replay',
-        lockedByScope: 'app-admin-replay',
     });
 }
 
@@ -488,7 +491,6 @@ export async function retryAutomationRunAction(
         runId,
         dryRun: false,
         actionName: 'retry',
-        lockedByScope: 'app-admin-retry',
     });
 }
 
