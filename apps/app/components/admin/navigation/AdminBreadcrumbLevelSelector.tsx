@@ -33,6 +33,7 @@ import {
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { AdminBreadcrumbSelectorLink } from './AdminBreadcrumbSelectorLink';
 import { AdminBreadcrumbSelectorTrigger } from './AdminBreadcrumbSelectorTrigger';
 import { adminBreadcrumbPages, adminPages } from './adminPages';
 
@@ -187,32 +188,40 @@ export function AdminBreadcrumbLevelSelector() {
         resolveCurrentTopLevel(pathname) ?? adminBreadcrumbPages[0];
 
     return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <AdminBreadcrumbSelectorTrigger>
-                    {currentTopLevel.label}
-                </AdminBreadcrumbSelectorTrigger>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-                {breadcrumbSections.map((section, index) => (
-                    <div key={section.title}>
-                        <DropdownMenuLabel className="text-muted-foreground text-xs">
-                            {section.title}
-                        </DropdownMenuLabel>
-                        {section.pages.map((page) => (
-                            <DropdownMenuItem key={page.href} href={page.href}>
-                                <div className="flex items-center gap-2">
-                                    {page.icon}
-                                    <span>{page.label}</span>
-                                </div>
-                            </DropdownMenuItem>
-                        ))}
-                        {index < breadcrumbSections.length - 1 && (
-                            <DropdownMenuSeparator />
-                        )}
-                    </div>
-                ))}
-            </DropdownMenuContent>
-        </DropdownMenu>
+        <span className="inline-flex min-w-0 items-center gap-0.5">
+            <AdminBreadcrumbSelectorLink href={currentTopLevel.href}>
+                {currentTopLevel.label}
+            </AdminBreadcrumbSelectorLink>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <AdminBreadcrumbSelectorTrigger
+                        aria-label={`Prikaži podizbornik za ${currentTopLevel.label}`}
+                    />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    {breadcrumbSections.map((section, index) => (
+                        <div key={section.title}>
+                            <DropdownMenuLabel className="text-muted-foreground text-xs">
+                                {section.title}
+                            </DropdownMenuLabel>
+                            {section.pages.map((page) => (
+                                <DropdownMenuItem
+                                    key={page.href}
+                                    href={page.href}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        {page.icon}
+                                        <span>{page.label}</span>
+                                    </div>
+                                </DropdownMenuItem>
+                            ))}
+                            {index < breadcrumbSections.length - 1 && (
+                                <DropdownMenuSeparator />
+                            )}
+                        </div>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </span>
     );
 }

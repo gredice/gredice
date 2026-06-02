@@ -83,3 +83,23 @@ export const ButtonTrigger: Story = {
         </DropdownMenu>
     ),
 };
+
+export const ScrollableContent: Story = {
+    render: (args) => (
+        <div className="flex h-72 items-end">
+            <DropdownMenu {...args}>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outlined">Otvori dugi izbornik</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                    <DropdownMenuLabel>Odaberi stranicu</DropdownMenuLabel>
+                    {Array.from({ length: 24 }, (_, index) => (
+                        <DropdownMenuItem key={`page-${index + 1}`}>
+                            Stranica {index + 1}
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+    ),
+};
