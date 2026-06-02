@@ -175,26 +175,41 @@ test.describe('block screenshots', async () => {
 test.describe('icons', () => {
     test('block ground over grass', async ({ mount }) => {
         const component = await mount(
-            <div style={{ position: 'relative' }}>
+            <div
+                style={{
+                    height: 160,
+                    overflow: 'hidden',
+                    position: 'relative',
+                    width: 160,
+                }}
+            >
                 {/** biome-ignore lint/performance/noImgElement: Not part of NextJS app */}
                 <img
                     src="/assets/blocks/Block_Grass.webp"
                     alt="Block_Grass"
-                    width={320 / 2}
-                    height={320 / 2}
-                    style={{ marginLeft: -8 }}
+                    width={128}
+                    height={128}
+                    style={{ left: 16, position: 'absolute', top: 20 }}
+                />
+                {/** biome-ignore lint/performance/noImgElement: Not part of NextJS app */}
+                <img
+                    src="/assets/blocks/Block_Sand.webp"
+                    alt="Block_Sand"
+                    width={128}
+                    height={128}
+                    style={{ left: 16, position: 'absolute', top: -10 }}
                 />
                 {/** biome-ignore lint/performance/noImgElement: Not part of NextJS app */}
                 <img
                     src="/assets/blocks/Block_Ground.webp"
                     alt="Block_Ground"
-                    width={320 / 2}
-                    height={320 / 2}
-                    style={{ position: 'fixed', top: -40, left: 0 }}
+                    width={128}
+                    height={128}
+                    style={{ left: 16, position: 'absolute', top: -40 }}
                 />
             </div>,
         );
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         const buffer = await component.screenshot({
             omitBackground: true,
         });
