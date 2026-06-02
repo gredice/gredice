@@ -1631,10 +1631,68 @@ function GiftBoxInstances({
                         snow={snowPresets.giftBox}
                         {...commonSnowProps}
                     />
+                    <GiftBoxHoverOutlines
+                        name={name}
+                        nodes={nodes}
+                        stacks={stacks}
+                    />
                 </Suspense>
             ))}
         </>
     );
+}
+
+function GiftBoxHoverOutlines({
+    name,
+    nodes,
+    stacks,
+}: {
+    name: string;
+    nodes: GLTFResult['nodes'];
+    stacks: Stack[] | undefined;
+}) {
+    const hoveredBlock = useHoveredBlockStore((state) => state.hoveredBlock);
+    const instances = useEntityBlockInstances({
+        name,
+        stacks,
+        yOffset: 0.25,
+    });
+
+    return instances?.map((instance) => {
+        if (hoveredBlock !== instance.block) {
+            return null;
+        }
+
+        return (
+            <HoverOutline key={`GiftBox-hover-${instance.id}`} hovered>
+                <group
+                    position={instance.position}
+                    rotation={[0, instance.rotation * (Math.PI / 2), 0]}
+                >
+                    <mesh
+                        geometry={nodes.GiftBox_Box.geometry}
+                        raycast={() => null}
+                    >
+                        <meshBasicMaterial visible={false} />
+                    </mesh>
+                    <mesh
+                        geometry={nodes.GiftBox_Strip.geometry}
+                        raycast={() => null}
+                    >
+                        <meshBasicMaterial visible={false} />
+                    </mesh>
+                    <mesh
+                        geometry={nodes.GiftBox_Bow.geometry}
+                        position={[0, 0.25, 0]}
+                        rotation={[0, -Math.PI / 4, 0]}
+                        raycast={() => null}
+                    >
+                        <meshBasicMaterial visible={false} />
+                    </mesh>
+                </group>
+            </HoverOutline>
+        );
+    });
 }
 
 function CatPillowInstances({

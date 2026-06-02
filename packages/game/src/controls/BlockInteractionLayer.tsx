@@ -1,7 +1,7 @@
 'use client';
 
 import type { ThreeEvent } from '@react-three/fiber';
-import { useLayoutEffect, useMemo } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import { MeshBasicMaterial, type Vector3 } from 'three';
 import { instancedBlockNames } from '../entities/EntityInstances';
 import { useBlockData } from '../hooks/useBlockData';
@@ -93,6 +93,7 @@ export function BlockInteractionLayer({
 }) {
     const { data: blockData } = useBlockData();
     const registry = useBlockInteractionRegistry();
+    const hoveredTargetKeyRef = useRef<string | null>(null);
     const view = useGameState((state) => state.view);
     const editHitboxDebugVisible = useGameState(
         (state) => state.editHitboxDebugVisible,
@@ -153,8 +154,43 @@ export function BlockInteractionLayer({
 
         return {
             event: createLayerEvent(event, resolvedLayerTarget.hitPoint),
+            key: resolvedLayerTarget.target.key,
             target: registeredTarget,
         };
+    }
+
+    function clearHoveredTarget(
+        event: ThreeEvent<PointerEvent>,
+        layerEvent?: LayerEvent<PointerEvent>,
+    ) {
+        const hoveredTargetKey = hoveredTargetKeyRef.current;
+        if (!hoveredTargetKey) {
+            return;
+        }
+
+        hoveredTargetKeyRef.current = null;
+
+        const registeredTarget = registry?.getTarget(hoveredTargetKey);
+        if (!registeredTarget) {
+            return;
+        }
+
+        registeredTarget.handlers.onPointerLeave?.(
+            layerEvent ?? createLayerEvent(event, event.point),
+        );
+    }
+
+    function handlePointerMove(event: ThreeEvent<PointerEvent>) {
+        const resolved = getRegisteredTarget(event);
+        const nextTargetKey = resolved?.key ?? null;
+
+        if (hoveredTargetKeyRef.current === nextTargetKey) {
+            return;
+        }
+
+        clearHoveredTarget(event, resolved?.event);
+        hoveredTargetKeyRef.current = nextTargetKey;
+        resolved?.target.handlers.onPointerEnter?.(resolved.event);
     }
 
     function handlePointerDown(event: ThreeEvent<PointerEvent>) {
@@ -172,6 +208,7 @@ export function BlockInteractionLayer({
     function handlePointerLeave(event: ThreeEvent<PointerEvent>) {
         const resolved = getRegisteredTarget(event);
         resolved?.target.handlers.onRotatePointerLeave?.(resolved.event);
+        clearHoveredTarget(event, resolved?.event);
     }
 
     function handlePointerUp(event: ThreeEvent<PointerEvent>) {
@@ -198,6 +235,8 @@ export function BlockInteractionLayer({
             onClick={handleClick}
             onPointerDown={handlePointerDown}
             onPointerLeave={handlePointerLeave}
+            onPointerMove={handlePointerMove}
+            onPointerOver={handlePointerMove}
             onPointerUp={handlePointerUp}
             position={[
                 interactionBounds.centerX,

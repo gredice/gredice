@@ -125,6 +125,10 @@ function InstancedEntitySelectionRegistration({
         block.name === 'Raised_Bed'
             ? findRaisedBedByBlockId(garden, block.id)
             : null;
+    const selectable =
+        block.name === 'GardenBox' ||
+        block.name.startsWith('GiftBox_') ||
+        Boolean(raisedBed);
     const handleSelected = useDeferredSingleClick(() => {
         if (block.name === 'GardenBox') {
             if (!isSandbox && !hasActiveDragPreview) {
@@ -161,6 +165,20 @@ function InstancedEntitySelectionRegistration({
             onSelectClick: (event: ThreeEvent<MouseEvent>) => {
                 handleSelected(event);
             },
+            ...(selectable
+                ? {
+                      onPointerEnter: (event: ThreeEvent<PointerEvent>) => {
+                          event.stopPropagation();
+                          hovered.setHoveredBlock(block);
+                      },
+                      onPointerLeave: (event: ThreeEvent<PointerEvent>) => {
+                          if (hovered.hoveredBlock === block) {
+                              event.stopPropagation();
+                              hovered.setHoveredBlock(null);
+                          }
+                      },
+                  }
+                : {}),
         },
     );
 
