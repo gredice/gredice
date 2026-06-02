@@ -2,6 +2,7 @@ import { bustRedisCached, redisCached, redisCachedInfo } from './redisCache';
 
 export const grediceCacheKeys = {
     forecastBjelovar: 'forecastBjelovar',
+    weatherAlertsCroatia: 'weatherAlertsCroatia',
     airSensorOpgIb: 'airSensorOpgIb',
 };
 

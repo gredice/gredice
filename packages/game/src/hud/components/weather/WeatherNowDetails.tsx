@@ -1,3 +1,4 @@
+import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
 import {
@@ -12,6 +13,7 @@ import {
     Empty,
     Navigate,
     Snowflake,
+    Warning,
     Wind,
 } from '@gredice/ui/icons';
 import { Link } from '@gredice/ui/Link';
@@ -41,8 +43,28 @@ export const windDirectionIcons: Record<string, FC> = {
     NW: ArrowUpLeft,
 };
 
-export function WeatherNowDetails() {
-    const { data } = useWeatherNow();
+function formatAlertDateTime(value: string) {
+    return new Date(value).toLocaleString('hr-HR', {
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        month: '2-digit',
+    });
+}
+
+function alertLevelLabel(alert: {
+    awarenessLevel?: { color?: string | null; label?: string | null } | null;
+    severity?: string | null;
+}) {
+    const color = alert.awarenessLevel?.color;
+    if (color === 'yellow') return 'Žuto upozorenje';
+    if (color === 'orange') return 'Narančasto upozorenje';
+    if (color === 'red') return 'Crveno upozorenje';
+    return alert.awarenessLevel?.label ?? alert.severity ?? 'Upozorenje';
+}
+
+export function WeatherNowDetails({ farmId }: { farmId?: number | null } = {}) {
+    const { data } = useWeatherNow(true, farmId);
     // TODO: Add loading indicator
     // TODO: Add error message
 
@@ -64,6 +86,7 @@ export function WeatherNowDetails() {
     // Chance of rain is a number between 0 and 1,
     // chance is 100 when there is 10 or more mm of rain
     const rainChance = data.rain > 10 ? 1 : 10 / data.rain;
+    const alerts = data.alerts ?? [];
 
     return (
         <Stack
@@ -164,6 +187,46 @@ export function WeatherNowDetails() {
                             )}
                         </div>
                     </Row>
+                    {alerts.length > 0 && (
+                        <Stack className="col-span-full px-4 pb-4" spacing={2}>
+                            {alerts.map((alert) => (
+                                <Alert
+                                    key={alert.id}
+                                    color="warning"
+                                    className="p-3"
+                                    startDecorator={
+                                        <Warning className="size-4" />
+                                    }
+                                >
+                                    <Stack spacing={1}>
+                                        <div>
+                                            <Typography semiBold>
+                                                {alert.event}
+                                            </Typography>
+                                            <Typography level="body3" secondary>
+                                                {alertLevelLabel(alert)} ·{' '}
+                                                {formatAlertDateTime(
+                                                    alert.onset,
+                                                )}{' '}
+                                                -{' '}
+                                                {formatAlertDateTime(
+                                                    alert.expires,
+                                                )}
+                                            </Typography>
+                                        </div>
+                                        <Typography level="body3">
+                                            {alert.description}
+                                        </Typography>
+                                        {alert.instruction && (
+                                            <Typography level="body3" secondary>
+                                                {alert.instruction}
+                                            </Typography>
+                                        )}
+                                    </Stack>
+                                </Alert>
+                            ))}
+                        </Stack>
+                    )}
                     <div className="border-l block md:hidden">
                         <Button
                             variant="plain"
@@ -196,6 +259,18 @@ export function WeatherNowDetails() {
                         />
                         <span>DHMZ</span>
                     </Link>
+                    {alerts.length > 0 && (
+                        <>
+                            <span>•</span>
+                            <Link
+                                href="https://meteoalarm.org"
+                                target="_blank"
+                                className="flex gap-1 items-center"
+                            >
+                                <span>MeteoAlarm</span>
+                            </Link>
+                        </>
+                    )}
                     <span>•</span>
                     <Link
                         href="https://signalco.io"
