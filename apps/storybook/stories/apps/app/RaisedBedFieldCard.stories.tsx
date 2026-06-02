@@ -171,40 +171,40 @@ function PlantSortSelect({ field }: { field: MockField }) {
     );
 }
 
-function StatusSelect({ field }: { field: MockField }) {
+function StatusDateButton({ field }: { field: MockField }) {
     if (!field.status) {
         return undefined;
     }
 
-    return (
-        <SelectItems
-            value={field.status}
-            items={statusItems}
-            onValueChange={() => {}}
-            variant="plain"
-            className={raisedBedFieldCardSelectClassName}
-        />
-    );
-}
-
-function DatesButton({ date }: { date?: string }) {
-    if (!date) {
-        return undefined;
-    }
+    const statusItem = statusItems.find((item) => item.value === field.status);
 
     return (
         <Button
             color="neutral"
             size="sm"
-            startDecorator={<Calendar className="size-3.5" />}
-            title="Prikazi datume biljke"
+            startDecorator={
+                statusItem?.icon ? (
+                    <span aria-hidden="true">{statusItem.icon}</span>
+                ) : undefined
+            }
+            endDecorator={
+                field.date ? (
+                    <span className="ml-auto inline-flex items-center gap-1 text-muted-foreground">
+                        <Calendar className="size-3.5" />
+                        {field.date}
+                    </span>
+                ) : undefined
+            }
+            title="Promijeni stanje i datum biljke"
             variant="plain"
             className={cx(
-                'h-8 shrink-0 justify-start px-2 text-muted-foreground hover:text-foreground',
+                'h-8 w-full justify-start px-2 text-foreground',
                 raisedBedFieldCardButtonClassName,
             )}
         >
-            {date}
+            <span className="truncate">
+                {statusItem?.label ?? field.status}
+            </span>
         </Button>
     );
 }
@@ -226,10 +226,7 @@ function MockRaisedBedFieldCard({ field }: { field: MockField }) {
             historyControl={field.hasHistory ? <HistoryButton /> : undefined}
             plantSortControl={<PlantSortSelect field={field} />}
             statusControl={
-                field.status ? <StatusSelect field={field} /> : undefined
-            }
-            datesControl={
-                field.date ? <DatesButton date={field.date} /> : undefined
+                field.status ? <StatusDateButton field={field} /> : undefined
             }
         />
     );
