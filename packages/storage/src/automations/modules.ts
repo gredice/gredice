@@ -17,6 +17,12 @@ import {
 import { queueSeasonalSowingOfferOperations } from '../repositories/seasonalOffersRepo';
 import type { AutomationGraphNode, AutomationJsonObject } from '../schema';
 import {
+    hasRaisedBedImagePlantStatusReviewAiConfig,
+    previewRaisedBedImagePlantStatusReview,
+    RAISED_BED_IMAGE_PLANT_STATUS_REVIEW_REQUESTER,
+    runRaisedBedImagePlantStatusReview,
+} from './raisedBedImagePlantStatusAnalysis';
+import {
     type AutomationModule,
     AutomationModuleExecutionError,
     type AutomationModuleMetadata,
@@ -35,9 +41,12 @@ const createFarmInventoryOperationsActionKey =
     'action.createFarmInventoryOperations';
 const updateRaisedBedFieldPlantStatusActionKey =
     'action.updateRaisedBedFieldPlantStatus';
+const createPlantStatusRequestsFromImageAnalysisActionKey =
+    'action.createPlantStatusRequestsFromImageAnalysis';
 const logActionKey = 'action.log';
 const monthlyScheduleEventType = 'automation.schedule.monthly';
 const defaultScheduleTimeZone = 'Europe/Zagreb';
+const defaultImagePlantStatusReviewMinConfidence = 0.9;
 
 export const automationModuleKeys = {
     triggerDomainEvent: domainEventTriggerKey,
@@ -51,6 +60,8 @@ export const automationModuleKeys = {
     actionCreateFarmInventoryOperations: createFarmInventoryOperationsActionKey,
     actionUpdateRaisedBedFieldPlantStatus:
         updateRaisedBedFieldPlantStatusActionKey,
+    actionCreatePlantStatusRequestsFromImageAnalysis:
+        createPlantStatusRequestsFromImageAnalysisActionKey,
     actionLog: logActionKey,
 } as const;
 
@@ -252,6 +263,17 @@ function validateFarmInventoryOperationsConfig(config: AutomationJsonObject) {
         return [
             'Each operation must include a positive integer entityId. Optional fields: entityTypeName, integer scheduledInDays.',
         ];
+    }
+
+    return [];
+}
+
+function validateImagePlantStatusReviewConfig(config: AutomationJsonObject) {
+    const minConfidence =
+        getNumber(config, 'minConfidence') ??
+        defaultImagePlantStatusReviewMinConfidence;
+    if (minConfidence < 0 || minConfidence > 1) {
+        return ['minConfidence must be a number from 0 to 1.'];
     }
 
     return [];
@@ -1157,6 +1179,96 @@ const updateRaisedBedFieldPlantStatusActionModule: AutomationModule = {
     },
 };
 
+const createPlantStatusRequestsFromImageAnalysisActionModule: AutomationModule =
+    {
+        key: createPlantStatusRequestsFromImageAnalysisActionKey,
+        kind: 'action',
+        title: 'Review raised-bed images for plant status',
+        description:
+            'Analyzes raised-bed images and creates pending plant-status approval requests for high-confidence visual changes.',
+        category: 'Raised-bed fields',
+        configFields: [
+            {
+                key: 'minConfidence',
+                label: 'Minimum confidence',
+                type: 'number',
+                required: false,
+                placeholder:
+                    defaultImagePlantStatusReviewMinConfidence.toString(),
+                description:
+                    'Only proposals at or above this confidence create approval requests.',
+            },
+            {
+                key: 'requestedBy',
+                label: 'Requested by',
+                type: 'string',
+                required: false,
+                placeholder: RAISED_BED_IMAGE_PLANT_STATUS_REVIEW_REQUESTER,
+            },
+        ],
+        inputDescription:
+            'An operation completion event with hosted images, or a raised-bed image analysis event.',
+        outputDescription:
+            'Created approval request ids, skipped proposals, token usage, and review summary.',
+        dryRunSupported: true,
+        mutatesData: true,
+        retryable: true,
+        validateConfig: validateImagePlantStatusReviewConfig,
+        execute: async (context, node) => {
+            if (!context.event) {
+                return skip('No source event is available.');
+            }
+
+            const minConfidence =
+                getNumber(node.config, 'minConfidence') ??
+                defaultImagePlantStatusReviewMinConfidence;
+            const requestedBy =
+                getString(node.config, 'requestedBy') ??
+                RAISED_BED_IMAGE_PLANT_STATUS_REVIEW_REQUESTER;
+
+            if (context.dryRun) {
+                const preview = await previewRaisedBedImagePlantStatusReview(
+                    context.event,
+                );
+                if (!preview.ok) {
+                    return skip(preview.reason, preview.output);
+                }
+
+                return success({
+                    dryRun: true,
+                    minConfidence,
+                    requestedBy,
+                    ...preview.output,
+                });
+            }
+
+            if (!hasRaisedBedImagePlantStatusReviewAiConfig()) {
+                return skip('AI Gateway credentials are not configured.');
+            }
+
+            try {
+                const result = await runRaisedBedImagePlantStatusReview({
+                    event: context.event,
+                    minConfidence,
+                    requestedBy,
+                });
+                if (!result.ok) {
+                    return skip(result.reason, result.output);
+                }
+
+                return success(result.output);
+            } catch (error) {
+                throw new AutomationModuleExecutionError(
+                    error instanceof Error
+                        ? error.message
+                        : 'Raised-bed image plant-status review failed.',
+                    'raised_bed_image_plant_status_review_failed',
+                    true,
+                );
+            }
+        },
+    };
+
 const logActionModule: AutomationModule = {
     key: logActionKey,
     kind: 'action',
@@ -1193,6 +1305,7 @@ export const automationModules = [
     createOperationActionModule,
     createFarmInventoryOperationsActionModule,
     updateRaisedBedFieldPlantStatusActionModule,
+    createPlantStatusRequestsFromImageAnalysisActionModule,
     logActionModule,
 ] as const satisfies readonly AutomationModule[];
 
