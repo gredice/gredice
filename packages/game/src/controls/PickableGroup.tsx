@@ -50,6 +50,7 @@ import {
     areBlockInteractionsSuppressed,
     suppressBlockInteractions,
 } from './blockInteractionSuppression';
+import { isRecyclerPlacementTarget } from './recyclerPlacement';
 
 const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
 const pickupHintDelayMs = 120;
@@ -489,10 +490,12 @@ export function PickableGroup({
                 const blockUnderData = blockUnder
                     ? getBlockDataByName(blocksData, blockUnder.name)
                     : null;
-                const isRecycler =
-                    segment.canRecycle &&
-                    blockUnder?.name !== 'Composter' &&
-                    (blockUnderData?.functions?.recycler ?? false);
+                const isRecycler = isRecyclerPlacementTarget({
+                    canRecycle: segment.canRecycle,
+                    sourcePosition: segment.sourceStack.position,
+                    destination,
+                    blockUnderData,
+                });
                 const isStackable =
                     blockUnderData?.attributes?.stackable ?? true;
                 const hoverHeight =
