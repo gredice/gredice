@@ -121,15 +121,24 @@ export function RaisedBedFieldStatusDateChip({
 
     function handleSave() {
         startTransition(async () => {
-            await raisedBedFieldUpdatePlant({
-                raisedBedId,
-                positionIndex,
-                status: selectedStatus,
-                timestamp: selectedDate
-                    ? dateInputToTimestamp(selectedDate)
-                    : undefined,
-            });
-            setOpen(false);
+            try {
+                await raisedBedFieldUpdatePlant({
+                    raisedBedId,
+                    positionIndex,
+                    status: selectedStatus,
+                    timestamp: selectedDate
+                        ? dateInputToTimestamp(selectedDate)
+                        : undefined,
+                });
+                setOpen(false);
+            } catch (error) {
+                console.error('Error updating plant status date:', error);
+                alert(
+                    error instanceof Error
+                        ? error.message
+                        : 'Spremanje stanja biljke nije uspjelo.',
+                );
+            }
         });
     }
 

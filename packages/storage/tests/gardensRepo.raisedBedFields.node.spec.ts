@@ -1058,6 +1058,12 @@ test('active plant status date updates the existing status event', async () => {
         }),
         createdAt: new Date('2026-01-10T12:00:00.000Z'),
     });
+    await createEvent({
+        ...knownEvents.raisedBedFields.plantScheduleV1(aggregateId, {
+            scheduledDate: null,
+        }),
+        createdAt: new Date('2026-01-15T12:00:00.000Z'),
+    });
 
     const eventsBefore = await getPlantEventsForAggregate(aggregateId);
     const sproutedEventBefore = eventsBefore.find((event) => {
@@ -1065,6 +1071,37 @@ test('active plant status date updates the existing status event', async () => {
         return data?.status === 'sprouted';
     });
     assert.ok(sproutedEventBefore);
+
+    const tooEarlyUpdated =
+        await updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
+            raisedBedId,
+            positionIndex: 0,
+            status: 'sprouted',
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        });
+    const tooLateUpdated =
+        await updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
+            raisedBedId,
+            positionIndex: 0,
+            status: 'sprouted',
+            createdAt: new Date('2026-01-16T12:00:00.000Z'),
+        });
+
+    assert.strictEqual(tooEarlyUpdated, false);
+    assert.strictEqual(tooLateUpdated, false);
+
+    const eventsAfterRejectedEdits =
+        await getPlantEventsForAggregate(aggregateId);
+    const sproutedEventAfterRejectedEdits = eventsAfterRejectedEdits.find(
+        (event) => {
+            const data = event.data as Record<string, unknown> | null;
+            return data?.status === 'sprouted';
+        },
+    );
+    assert.strictEqual(
+        sproutedEventAfterRejectedEdits?.createdAt.toISOString(),
+        '2026-01-10T12:00:00.000Z',
+    );
 
     const updated = await updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
         raisedBedId,

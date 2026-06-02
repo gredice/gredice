@@ -914,6 +914,51 @@ function plantUpdateEventStatus(event: RaisedBedFieldPlantCycleEvent) {
         : undefined;
 }
 
+function comparePlantCycleEventOrder(
+    left: Pick<RaisedBedFieldPlantCycleEvent, 'createdAt' | 'id'>,
+    right: Pick<RaisedBedFieldPlantCycleEvent, 'createdAt' | 'id'>,
+) {
+    const timestampDifference =
+        left.createdAt.getTime() - right.createdAt.getTime();
+    if (timestampDifference !== 0) {
+        return timestampDifference;
+    }
+
+    return left.id - right.id;
+}
+
+function wouldKeepPlantCycleEventOrder({
+    plantCycleEvents,
+    targetEvent,
+    createdAt,
+}: {
+    plantCycleEvents: RaisedBedFieldPlantCycleEvent[];
+    targetEvent: RaisedBedFieldPlantCycleEvent;
+    createdAt: Date;
+}) {
+    const targetIndex = plantCycleEvents.findIndex(
+        (event) => event.id === targetEvent.id,
+    );
+    if (targetIndex < 0) {
+        return false;
+    }
+
+    const proposedEventOrder = {
+        createdAt,
+        id: targetEvent.id,
+    };
+    const previousEvent = plantCycleEvents[targetIndex - 1];
+    const nextEvent = plantCycleEvents[targetIndex + 1];
+
+    return (
+        (!previousEvent ||
+            comparePlantCycleEventOrder(proposedEventOrder, previousEvent) >=
+                0) &&
+        (!nextEvent ||
+            comparePlantCycleEventOrder(proposedEventOrder, nextEvent) <= 0)
+    );
+}
+
 export async function updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
     raisedBedId,
     positionIndex,
@@ -955,7 +1000,17 @@ export async function updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
                     .find((event) => plantUpdateEventStatus(event) === status)
               : undefined;
 
-    if (!targetEvent) {
+    if (!activePlantCycleEvents || !targetEvent) {
+        return false;
+    }
+
+    if (
+        !wouldKeepPlantCycleEventOrder({
+            plantCycleEvents: activePlantCycleEvents,
+            targetEvent,
+            createdAt,
+        })
+    ) {
         return false;
     }
 
@@ -977,13 +1032,10 @@ function plantCyclesOverlap(
         left: { createdAt: Date; eventId: number },
         right: { createdAt: Date; eventId: number },
     ) => {
-        const timestampDifference =
-            left.createdAt.getTime() - right.createdAt.getTime();
-        if (timestampDifference !== 0) {
-            return timestampDifference;
-        }
-
-        return left.eventId - right.eventId;
+        return comparePlantCycleEventOrder(
+            { createdAt: left.createdAt, id: left.eventId },
+            { createdAt: right.createdAt, id: right.eventId },
+        );
     };
 
     return (

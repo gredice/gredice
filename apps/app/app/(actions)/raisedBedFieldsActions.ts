@@ -70,12 +70,18 @@ async function applyRaisedBedFieldPlantUpdate({
         const statusChanged = existingField?.plantStatus !== status;
         if (!statusChanged) {
             if (createdAt) {
-                await updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
-                    raisedBedId: raisedBed.id,
-                    positionIndex,
-                    status,
-                    createdAt,
-                });
+                const updated =
+                    await updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
+                        raisedBedId: raisedBed.id,
+                        positionIndex,
+                        status,
+                        createdAt,
+                    });
+                if (!updated) {
+                    throw new Error(
+                        'Datum stanja mora ostati u redoslijedu događaja biljke.',
+                    );
+                }
             }
         } else {
             await createEvent({
