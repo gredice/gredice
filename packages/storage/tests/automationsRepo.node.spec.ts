@@ -331,6 +331,75 @@ test('automation run claiming respects definition concurrency', async () => {
     assert.strictEqual(claimedSecondRun.id, secondRun.id);
 });
 
+test('automation run claiming scans past saturated definition backlog', async () => {
+    createTestDb();
+    const dueAt = new Date('2026-06-01T08:00:00.000Z');
+    const saturatedDefinition = await createAutomationDefinition({
+        key: 'test.saturated-automation',
+        name: 'Saturated automation',
+        status: 'enabled',
+        maxConcurrentRuns: 1,
+        graph: seasonalSowedWateringAutomationGraph(),
+    });
+    const runningRun = await createAutomationRun({
+        automationDefinition: saturatedDefinition,
+        source: 'test',
+        nextRunAt: dueAt,
+        input: {
+            eventType: knownEventTypes.raisedBedFields.plantUpdate,
+            aggregateId: 'saturated|running',
+            data: { status: 'sowed' },
+        },
+    });
+    assert.ok(runningRun);
+    const startedRun = await startAutomationRun(runningRun.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    for (let index = 0; index < 60; index += 1) {
+        const run = await createAutomationRun({
+            automationDefinition: saturatedDefinition,
+            source: 'test',
+            nextRunAt: dueAt,
+            input: {
+                eventType: knownEventTypes.raisedBedFields.plantUpdate,
+                aggregateId: `saturated|${index}`,
+                data: { status: 'sowed' },
+            },
+        });
+        assert.ok(run);
+    }
+
+    const otherDefinition = await createAutomationDefinition({
+        key: 'test.available-automation',
+        name: 'Available automation',
+        status: 'enabled',
+        maxConcurrentRuns: 1,
+        graph: seasonalSowedWateringAutomationGraph(),
+    });
+    const otherRun = await createAutomationRun({
+        automationDefinition: otherDefinition,
+        source: 'test',
+        nextRunAt: dueAt,
+        input: {
+            eventType: knownEventTypes.raisedBedFields.plantUpdate,
+            aggregateId: 'available|0',
+            data: { status: 'sowed' },
+        },
+    });
+    assert.ok(otherRun);
+
+    const claimedRuns = await claimDueAutomationRuns({
+        limit: 1,
+        now: dueAt,
+        lockedBy: 'automations-test',
+    });
+
+    assert.strictEqual(claimedRuns.length, 1);
+    assert.strictEqual(claimedRuns[0]?.id, otherRun.id);
+});
+
 test('monthly schedule automation enqueues once per configured period', async () => {
     createTestDb();
     const graph = {

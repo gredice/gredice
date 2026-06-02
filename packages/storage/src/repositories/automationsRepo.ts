@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { and, asc, desc, eq, gt, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, lte, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
     type AutomationDefinitionStatus,
@@ -475,93 +475,156 @@ export async function claimDueAutomationRuns({
     lockedBy?: string;
     db?: DatabaseClient;
 } = {}): Promise<SelectAutomationRun[]> {
+    if (limit <= 0) {
+        return [];
+    }
+
     const runningAutomationRuns = alias(
         automationRuns,
         'running_automation_runs',
     );
-    const candidateLimit = Math.max(limit * 4, limit);
-    const candidates = await db
-        .select({
-            id: automationRuns.id,
-            automationDefinitionId: automationRuns.automationDefinitionId,
-        })
-        .from(automationRuns)
-        .where(
-            and(
-                inArray(automationRuns.status, ['queued', 'retrying']),
-                lte(automationRuns.nextRunAt, now),
-            ),
-        )
-        .orderBy(asc(automationRuns.nextRunAt), asc(automationRuns.id))
-        .limit(candidateLimit);
+    const candidatePageSize = Math.max(limit * 4, 50);
 
     return db.transaction(async (tx) => {
         const claimed: SelectAutomationRun[] = [];
-        for (const candidate of candidates) {
-            if (claimed.length >= limit) {
+        const remainingCapacityByDefinitionId = new Map<number, number>();
+        let cursor: { id: number; nextRunAt: Date } | null = null;
+
+        while (claimed.length < limit) {
+            const candidates = await tx
+                .select({
+                    id: automationRuns.id,
+                    automationDefinitionId:
+                        automationRuns.automationDefinitionId,
+                    nextRunAt: automationRuns.nextRunAt,
+                })
+                .from(automationRuns)
+                .where(
+                    and(
+                        inArray(automationRuns.status, ['queued', 'retrying']),
+                        lte(automationRuns.nextRunAt, now),
+                        cursor
+                            ? or(
+                                  gt(
+                                      automationRuns.nextRunAt,
+                                      cursor.nextRunAt,
+                                  ),
+                                  and(
+                                      eq(
+                                          automationRuns.nextRunAt,
+                                          cursor.nextRunAt,
+                                      ),
+                                      gt(automationRuns.id, cursor.id),
+                                  ),
+                              )
+                            : undefined,
+                    ),
+                )
+                .orderBy(asc(automationRuns.nextRunAt), asc(automationRuns.id))
+                .limit(candidatePageSize);
+
+            if (candidates.length === 0) {
                 break;
             }
 
-            await tx.execute(
-                sql`select pg_advisory_xact_lock(${automationDefinitionAdvisoryLockNamespace}, ${candidate.automationDefinitionId});`,
-            );
+            for (const candidate of candidates) {
+                cursor = {
+                    id: candidate.id,
+                    nextRunAt: candidate.nextRunAt,
+                };
 
-            const [capacity] = await tx
-                .select({
-                    maxConcurrentRuns: automationDefinitions.maxConcurrentRuns,
-                    runningCount: sql<number>`count(${runningAutomationRuns.id})::int`,
-                })
-                .from(automationDefinitions)
-                .leftJoin(
-                    runningAutomationRuns,
-                    and(
-                        eq(
-                            runningAutomationRuns.automationDefinitionId,
+                if (claimed.length >= limit) {
+                    break;
+                }
+
+                let remainingCapacity = remainingCapacityByDefinitionId.get(
+                    candidate.automationDefinitionId,
+                );
+
+                if (remainingCapacity === undefined) {
+                    await tx.execute(
+                        sql`select pg_advisory_xact_lock(${automationDefinitionAdvisoryLockNamespace}, ${candidate.automationDefinitionId});`,
+                    );
+
+                    const [capacity] = await tx
+                        .select({
+                            maxConcurrentRuns:
+                                automationDefinitions.maxConcurrentRuns,
+                            runningCount: sql<number>`count(${runningAutomationRuns.id})::int`,
+                        })
+                        .from(automationDefinitions)
+                        .leftJoin(
+                            runningAutomationRuns,
+                            and(
+                                eq(
+                                    runningAutomationRuns.automationDefinitionId,
+                                    automationDefinitions.id,
+                                ),
+                                eq(runningAutomationRuns.status, 'running'),
+                            ),
+                        )
+                        .where(
+                            eq(
+                                automationDefinitions.id,
+                                candidate.automationDefinitionId,
+                            ),
+                        )
+                        .groupBy(
                             automationDefinitions.id,
-                        ),
-                        eq(runningAutomationRuns.status, 'running'),
-                    ),
-                )
-                .where(
-                    eq(
-                        automationDefinitions.id,
-                        candidate.automationDefinitionId,
-                    ),
-                )
-                .groupBy(
-                    automationDefinitions.id,
-                    automationDefinitions.maxConcurrentRuns,
-                )
-                .limit(1);
+                            automationDefinitions.maxConcurrentRuns,
+                        )
+                        .limit(1);
 
-            if (
-                !capacity ||
-                Number(capacity.runningCount) >= capacity.maxConcurrentRuns
-            ) {
-                continue;
+                    remainingCapacity = capacity
+                        ? Math.max(
+                              0,
+                              capacity.maxConcurrentRuns -
+                                  Number(capacity.runningCount),
+                          )
+                        : 0;
+                    remainingCapacityByDefinitionId.set(
+                        candidate.automationDefinitionId,
+                        remainingCapacity,
+                    );
+                }
+
+                if (remainingCapacity <= 0) {
+                    continue;
+                }
+
+                const [updated] = await tx
+                    .update(automationRuns)
+                    .set({
+                        status: 'running',
+                        attempt: sql`${automationRuns.attempt} + 1`,
+                        lockedAt: now,
+                        lockedBy,
+                        startedAt: now,
+                        updatedAt: now,
+                    })
+                    .where(
+                        and(
+                            eq(automationRuns.id, candidate.id),
+                            inArray(automationRuns.status, [
+                                'queued',
+                                'retrying',
+                            ]),
+                            lte(automationRuns.nextRunAt, now),
+                        ),
+                    )
+                    .returning();
+
+                if (updated) {
+                    claimed.push(updated);
+                    remainingCapacityByDefinitionId.set(
+                        candidate.automationDefinitionId,
+                        remainingCapacity - 1,
+                    );
+                }
             }
 
-            const [updated] = await tx
-                .update(automationRuns)
-                .set({
-                    status: 'running',
-                    attempt: sql`${automationRuns.attempt} + 1`,
-                    lockedAt: now,
-                    lockedBy,
-                    startedAt: now,
-                    updatedAt: now,
-                })
-                .where(
-                    and(
-                        eq(automationRuns.id, candidate.id),
-                        inArray(automationRuns.status, ['queued', 'retrying']),
-                        lte(automationRuns.nextRunAt, now),
-                    ),
-                )
-                .returning();
-
-            if (updated) {
-                claimed.push(updated);
+            if (candidates.length < candidatePageSize) {
+                break;
             }
         }
 
