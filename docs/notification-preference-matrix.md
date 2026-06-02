@@ -14,7 +14,7 @@ schema/API/UI/router/bulk implementation for:
 
 Every notification must carry the following dimensions:
 
-- `domain`: `garden` | `account_security` | `billing_order_delivery` | `reminders` | `digests` | `admin_campaigns` | `promotional`
+- `domain`: `garden` | `weather_alerts` | `account_security` | `billing_order_delivery` | `reminders` | `digests` | `admin_campaigns` | `promotional`
 - `eventType`: stable machine key for a concrete trigger.
 - `priority`: `critical` | `high` | `normal` | `low`.
 - `audienceType`: `single_user` | `segment` | `all_users`.
@@ -51,7 +51,8 @@ Per eventType, each channel gets one of:
 | `billing_order_delivery` | `delivery_status_changed`, `delivery_delay`, `delivery_ready` | high | ❌ | ✅ | ❌ | ✅ | default_on | default_on | default_on | never | never |
 | `billing_order_delivery` | `order_confirmation` | high | ✅ | ❌ | ❌ | ❌ | required | required | default_on | never | never |
 | `garden` | `operation_scheduled`, `operation_rescheduled`, `operation_completed`, `operation_canceled` | high | ❌ | ✅ | ✅ | ✅ | default_on | default_on | default_on | default_on | never |
-| `garden` | `garden_health_alert`, `weather_risk_alert` | high | ❌ | ✅ | ❌ | ❌ | default_on | default_on | default_on | never | never |
+| `garden` | `garden_health_alert` | high | ❌ | ✅ | ❌ | ❌ | default_on | default_on | default_on | never | never |
+| `weather_alerts` | `weather_risk_alert` | high | ❌ | ✅ | ❌ | ❌ | default_on | default_on | default_on | never | never |
 | `garden` | `harvest_ready`, `harvest_window_ending` | normal | ❌ | ✅ | ✅ | ✅ | default_on | default_on | default_on | default_on | never |
 | `reminders` | `task_reminder`, `cart_abandonment_reminder`, `subscription_renewal_reminder` | normal | ❌ | ✅ | ✅ | ✅ | default_on | default_on | default_off | default_on | never |
 | `digests` | `daily_digest`, `weekly_digest`, `monthly_digest` | low | ❌ | ✅ | ❌ | ✅ | default_on | default_on | never | required | never |
@@ -76,6 +77,7 @@ Garden settings currently expose domain-level controls for the canonical
 preference categories that are safe to adjust from the customer UI:
 
 - `garden`
+- `weather_alerts`
 - `reminders`
 - `admin_campaigns`
 - `promotional`

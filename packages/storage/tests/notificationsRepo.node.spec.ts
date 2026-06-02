@@ -1227,6 +1227,29 @@ test('backfillNotificationRolloutDefaults limits subscription updates with batch
     assert.ok(result.deniedSubscriptionsDisabled >= 1);
     assert.ok(result.deviceLabelsBackfilled >= 1);
 
+    const weatherAlertPreferences = await storage()
+        .select({
+            channel: notificationUserChannelPreferences.channel,
+            enabled: notificationUserChannelPreferences.enabled,
+        })
+        .from(notificationUserChannelPreferences)
+        .where(
+            eq(notificationUserChannelPreferences.category, 'weather_alerts'),
+        );
+    assert.deepEqual(
+        weatherAlertPreferences
+            .map((preference) => ({
+                channel: preference.channel,
+                enabled: preference.enabled,
+            }))
+            .sort((left, right) => left.channel.localeCompare(right.channel)),
+        [
+            { channel: 'email', enabled: true },
+            { channel: 'in_app', enabled: true },
+            { channel: 'push', enabled: true },
+        ],
+    );
+
     const subscriptions = await storage()
         .select({
             id: webPushSubscriptions.id,

@@ -1,5 +1,6 @@
 import { getFarms, insertWeatherHistory, updateFarm } from '@gredice/storage';
 import type { NextRequest } from 'next/server';
+import { notifyWeatherRiskAlerts } from '../../../../../lib/weather/alertNotifications';
 import { getBjelovarForecast } from '../../../../../lib/weather/forecast';
 import { populateWeatherFromSymbol } from '../../../../../lib/weather/populateWeatherFromSymbol';
 
@@ -148,10 +149,20 @@ export async function GET(request: NextRequest) {
             }
         }
 
+        const weatherAlertNotifications = await notifyWeatherRiskAlerts().catch(
+            (error) => {
+                console.warn('Failed to create weather alert notifications', {
+                    error,
+                });
+                return null;
+            },
+        );
+
         return Response.json({
             success: true,
             updatedFarms: updates.length,
             updates,
+            weatherAlertNotifications,
             weather: {
                 temperature,
                 snowy: weather.snowy,

@@ -87,10 +87,20 @@ const categoryPreferences: NotificationPreferenceItem[] = [
         channel: 'push',
         defaultEnabled: true,
         description:
-            'Radovi u vrtu, promjene termina i berba. Hitna upozorenja o vrtu ostaju odmah vidljiva.',
+            'Radovi u vrtu, promjene termina, berba i zdravstvena upozorenja o vrtu.',
         digestEligible: true,
         label: 'Radovi i berba u vrtu',
         quietHoursEligible: true,
+    },
+    {
+        category: 'weather_alerts',
+        channel: 'push',
+        defaultEnabled: true,
+        description:
+            'Upozorenja za grmljavinu, vjetar, kišu, snijeg, poledicu i druge vremenske rizike za regiju vrta.',
+        digestEligible: false,
+        label: 'Vremenska upozorenja',
+        quietHoursEligible: false,
     },
     {
         category: 'reminders',
