@@ -6,7 +6,7 @@ import {
 
 export function DeliveryRequestStatusChip({ status }: { status: string }) {
     return (
-        <Chip color={getDeliveryRequestStatusColor(status)} className="w-fit">
+        <Chip color={getDeliveryRequestStatusColor(status)}>
             {getDeliveryRequestStatusLabel(status)}
         </Chip>
     );

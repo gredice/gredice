@@ -22,7 +22,7 @@ export function EmailStatusBadge({ status }: { status: EmailStatus }) {
     const { label, color } = getStatusMetadata(status);
 
     return (
-        <Chip color={color} className="w-fit">
+        <Chip color={color}>
             {label}
         </Chip>
     );

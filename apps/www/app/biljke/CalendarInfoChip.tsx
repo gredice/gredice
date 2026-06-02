@@ -10,7 +10,7 @@ export function CalendarInfoChip({ className }: { className?: string }) {
             color="neutral"
             size="sm"
             href={sowingCalendarHref}
-            className={cx('w-fit shrink-0 whitespace-nowrap', className)}
+            className={cx('shrink-0 whitespace-nowrap', className)}
             title="Saznaj više o kalendaru sijanja i rasta biljaka"
         >
             <Info className="size-4 shrink-0" />
