@@ -1,15 +1,27 @@
 import { Edges } from '@react-three/drei';
+import type { ThreeEvent } from '@react-three/fiber';
 import type { PropsWithChildren } from 'react';
+import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import {
+    createBlockInteractionTargetKey,
+    useBlockInteractionTargetRegistration,
+} from '../controls/BlockInteractionRegistry';
 import { PickableGroup } from '../controls/PickableGroup';
 import { RotatableGroup } from '../controls/RotatableGroup';
 import { SelectableGroup } from '../controls/SelectableGroup';
 import { useDeferredSingleClick } from '../controls/useDeferredSingleClick';
+import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import { useBlockData } from '../hooks/useBlockData';
-import { useIsSandboxGarden } from '../hooks/useCurrentGarden';
+import {
+    useCurrentGarden,
+    useIsSandboxGarden,
+} from '../hooks/useCurrentGarden';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
-import { getBlockHitboxSize } from '../utils/blockHitbox';
+import { useSetRaisedBedCloseupParam } from '../useRaisedBedCloseup';
+import { useGiftBoxParam } from '../useUrlState';
 import { useStackHeight } from '../utils/getStackHeight';
+import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
 import { entityNameMap } from './entityNameMap';
 import { QueuedPlacementDropAnimation } from './helpers/PlacementDropAnimation';
 
@@ -67,56 +79,6 @@ function EntityRenderModeDebugOverlay({
     );
 }
 
-function InstancedEntityControlTarget({
-    stack,
-    block,
-}: Pick<EntityInstanceProps, 'stack' | 'block'>) {
-    const { data: blockData } = useBlockData();
-    const currentStackHeight = useStackHeight(stack, block);
-    const editHitboxDebugVisible = useGameState(
-        (state) => state.editHitboxDebugVisible,
-    );
-    const blockEntity = blockData?.find(
-        (entity) => entity.information.name === block.name,
-    );
-    const hitbox = getBlockHitboxSize(blockEntity);
-    const hasActiveDragPreview = useGameState((state) =>
-        Boolean(state.activeDragPreview),
-    );
-    const isSandbox = useIsSandboxGarden();
-    const setOpenGardenBoxBlockId = useGameState(
-        (state) => state.setOpenGardenBoxBlockId,
-    );
-    const handleGardenBoxClick = useDeferredSingleClick(() => {
-        if (block.name !== 'GardenBox' || isSandbox || hasActiveDragPreview) {
-            return;
-        }
-
-        setOpenGardenBoxBlockId(block.id);
-    });
-
-    return (
-        // biome-ignore lint/a11y/noStaticElementInteractions: Three.js mesh is an invisible block interaction target.
-        <mesh
-            onClick={
-                block.name === 'GardenBox' ? handleGardenBoxClick : undefined
-            }
-            position={[
-                stack.position.x,
-                currentStackHeight + hitbox.height / 2,
-                stack.position.z,
-            ]}
-            rotation={[0, block.rotation * (Math.PI / 2), 0]}
-        >
-            <boxGeometry args={[hitbox.width, hitbox.height, hitbox.depth]} />
-            <meshBasicMaterial visible={false} />
-            {editHitboxDebugVisible && (
-                <Edges color="#22d3ee" renderOrder={10_000} threshold={1} />
-            )}
-        </mesh>
-    );
-}
-
 function EntityPlacementDropAnimation({
     children,
     stack,
@@ -138,6 +100,91 @@ function EntityPlacementDropAnimation({
     );
 }
 
+function InstancedEntitySelectionRegistration({
+    block,
+    blockIndex,
+    interactionTargetKey,
+    stack,
+}: Pick<EntityInstanceProps, 'stack' | 'block'> & {
+    blockIndex: number;
+    interactionTargetKey: string | undefined;
+}) {
+    const { data: garden } = useCurrentGarden();
+    const { track } = useGameAnalytics();
+    const hovered = useHoveredBlockStore();
+    const isSandbox = useIsSandboxGarden();
+    const hasActiveDragPreview = useGameState((state) =>
+        Boolean(state.activeDragPreview),
+    );
+    const setOpenGardenBoxBlockId = useGameState(
+        (state) => state.setOpenGardenBoxBlockId,
+    );
+    const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
+    const [, setGiftBoxParam] = useGiftBoxParam();
+    const raisedBed =
+        block.name === 'Raised_Bed'
+            ? findRaisedBedByBlockId(garden, block.id)
+            : null;
+    const selectable =
+        block.name === 'GardenBox' ||
+        block.name.startsWith('GiftBox_') ||
+        Boolean(raisedBed);
+    const handleSelected = useDeferredSingleClick(() => {
+        if (block.name === 'GardenBox') {
+            if (!isSandbox && !hasActiveDragPreview) {
+                setOpenGardenBoxBlockId(block.id);
+            }
+            return;
+        }
+
+        if (block.name === 'Raised_Bed' && raisedBed) {
+            track('game_raised_bed_opened', {
+                block_id: block.id,
+                raised_bed_name: raisedBed.name,
+            });
+            setRaisedBedCloseupParam(raisedBed.name);
+            hovered.setHoveredBlock(null);
+            return;
+        }
+
+        if (block.name.startsWith('GiftBox_')) {
+            setGiftBoxParam(block.id);
+        }
+    });
+
+    useBlockInteractionTargetRegistration(
+        interactionTargetKey,
+        interactionTargetKey
+            ? {
+                  block,
+                  blockIndex,
+                  stack,
+              }
+            : undefined,
+        {
+            onSelectClick: (event: ThreeEvent<MouseEvent>) => {
+                handleSelected(event);
+            },
+            ...(selectable
+                ? {
+                      onPointerEnter: (event: ThreeEvent<PointerEvent>) => {
+                          event.stopPropagation();
+                          hovered.setHoveredBlock(block);
+                      },
+                      onPointerLeave: (event: ThreeEvent<PointerEvent>) => {
+                          if (hovered.hoveredBlock === block) {
+                              event.stopPropagation();
+                              hovered.setHoveredBlock(null);
+                          }
+                      },
+                  }
+                : {}),
+        },
+    );
+
+    return null;
+}
+
 export function EntityFactory({
     name,
     stack,
@@ -149,6 +196,14 @@ export function EntityFactory({
     const EntityComponent = entityNameMap[name];
     const view = useGameState((state) => state.view);
     const isInstancedInView = noRenderInView?.includes(name) ?? false;
+    const blockIndex = stack.blocks.indexOf(block);
+    const interactionTargetKey = isInstancedInView
+        ? createBlockInteractionTargetKey({
+              blockId: block.id,
+              blockIndex,
+              stackPosition: stack.position,
+          })
+        : undefined;
 
     if (!EntityComponent) {
         console.error(
@@ -171,17 +226,25 @@ export function EntityFactory({
 
         return (
             <SelectableGroup block={block}>
+                <InstancedEntitySelectionRegistration
+                    block={block}
+                    blockIndex={blockIndex}
+                    interactionTargetKey={interactionTargetKey}
+                    stack={stack}
+                />
                 <PickableGroup
                     stack={stack}
                     block={block}
+                    interactionTargetKey={interactionTargetKey}
                     noControl={noControl}
                     renderPickupOutline={false}
                 >
-                    <RotatableGroup block={block}>
-                        <InstancedEntityControlTarget
-                            stack={stack}
-                            block={block}
-                        />
+                    <RotatableGroup
+                        block={block}
+                        blockIndex={blockIndex}
+                        interactionTargetKey={interactionTargetKey}
+                        stack={stack}
+                    >
                         <EntityRenderModeDebugOverlay
                             stack={stack}
                             block={block}

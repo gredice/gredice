@@ -26,6 +26,7 @@ export type AdminApprovalTask =
           currentStatus?: string | null;
           requestedStatus: string;
           requestedBy: string;
+          note?: string | null;
       })
     | (ApprovalTaskBase & {
           kind: 'scheduleOperationVerification';
@@ -72,6 +73,14 @@ function raisedBedLabel(input: {
         : `${base}, polje ${input.positionIndex + 1}`;
 }
 
+function approvalRequestRequesterLabel(requestedBy: string) {
+    if (requestedBy === 'automation:raised-bed-image-status-review') {
+        return 'AI analiza gredice';
+    }
+
+    return requestedBy;
+}
+
 function buildPlantStatusRequestTask(
     request: ApprovalRequest,
     plantSortsById: Map<number, EntityStandardized>,
@@ -112,7 +121,8 @@ function buildPlantStatusRequestTask(
         positionIndex: request.target.positionIndex,
         currentStatus: request.target.currentStatus,
         requestedStatus: request.target.requestedStatus,
-        requestedBy: request.requestedBy,
+        requestedBy: approvalRequestRequesterLabel(request.requestedBy),
+        note: request.note,
     };
 }
 

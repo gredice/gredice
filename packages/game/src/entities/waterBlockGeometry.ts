@@ -158,8 +158,8 @@ export function createWaterBlockGeometry(
     return createGeometryFromFaces(faces);
 }
 
-function positionKey(x: number, z: number) {
-    return `${x}|${z}`;
+function positionKey(x: number, y: number, z: number) {
+    return `${x}|${y}|${z}`;
 }
 
 function segmentGroupKey(segment: WaterSideSegment) {
@@ -330,7 +330,11 @@ function waterSideSegmentToFace(segment: WaterSideSegment): WaterFace {
 export function createMergedWaterSideGeometry(instances: WaterSideInstance[]) {
     const waterPositions = new Set(
         instances.map((instance) =>
-            positionKey(instance.position[0], instance.position[2]),
+            positionKey(
+                instance.position[0],
+                instance.position[1],
+                instance.position[2],
+            ),
         ),
     );
     const sideSegments: WaterSideSegment[] = [];
@@ -340,7 +344,7 @@ export function createMergedWaterSideGeometry(instances: WaterSideInstance[]) {
         const yMin = y + waterBlockMinY;
         const yMax = y + waterBlockMaxY;
 
-        if (!waterPositions.has(positionKey(x - 1, z))) {
+        if (!waterPositions.has(positionKey(x - 1, y, z))) {
             sideSegments.push({
                 axis: 'x',
                 line: x - waterBlockHalfSize,
@@ -352,7 +356,7 @@ export function createMergedWaterSideGeometry(instances: WaterSideInstance[]) {
             });
         }
 
-        if (!waterPositions.has(positionKey(x + 1, z))) {
+        if (!waterPositions.has(positionKey(x + 1, y, z))) {
             sideSegments.push({
                 axis: 'x',
                 line: x + waterBlockHalfSize,
@@ -364,7 +368,7 @@ export function createMergedWaterSideGeometry(instances: WaterSideInstance[]) {
             });
         }
 
-        if (!waterPositions.has(positionKey(x, z - 1))) {
+        if (!waterPositions.has(positionKey(x, y, z - 1))) {
             sideSegments.push({
                 axis: 'z',
                 line: z - waterBlockHalfSize,
@@ -376,7 +380,7 @@ export function createMergedWaterSideGeometry(instances: WaterSideInstance[]) {
             });
         }
 
-        if (!waterPositions.has(positionKey(x, z + 1))) {
+        if (!waterPositions.has(positionKey(x, y, z + 1))) {
             sideSegments.push({
                 axis: 'z',
                 line: z + waterBlockHalfSize,

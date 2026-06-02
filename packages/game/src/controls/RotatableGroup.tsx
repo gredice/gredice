@@ -4,8 +4,10 @@ import type { Vector3 } from 'three';
 import { useBlockRotate } from '../hooks/useBlockRotate';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { Block } from '../types/Block';
+import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { findAttachedRaisedBedBlockId } from '../utils/raisedBedBlocks';
+import { useBlockInteractionTargetRegistration } from './BlockInteractionRegistry';
 
 const ROTATE_DRAG_THRESHOLD = 0.1;
 const DOUBLE_TAP_THRESHOLD_MS = 320;
@@ -13,7 +15,15 @@ const DOUBLE_TAP_THRESHOLD_MS = 320;
 export function RotatableGroup({
     children,
     block,
-}: PropsWithChildren<{ block: Block }>) {
+    interactionTargetKey,
+    stack,
+    blockIndex,
+}: PropsWithChildren<{
+    block: Block;
+    blockIndex?: number;
+    interactionTargetKey?: string;
+    stack?: Stack;
+}>) {
     const blockRotate = useBlockRotate();
     const { data: garden } = useCurrentGarden();
     const effectsAudioMixer = useGameState((state) => state.audio.effects);
@@ -89,11 +99,31 @@ export function RotatableGroup({
         }
     }
 
+    useBlockInteractionTargetRegistration(
+        interactionTargetKey && stack && blockIndex !== undefined
+            ? interactionTargetKey
+            : undefined,
+        stack && blockIndex !== undefined
+            ? {
+                  block,
+                  blockIndex,
+                  stack,
+              }
+            : undefined,
+        {
+            onRotatePointerDown: handlePointerDown,
+            onRotatePointerLeave: handleRotateCancel,
+            onRotatePointerUp: handlePointerUp,
+        },
+    );
+
     return (
         <group
-            onPointerDown={handlePointerDown}
-            onPointerLeave={handleRotateCancel}
-            onPointerUp={handlePointerUp}
+            onPointerDown={interactionTargetKey ? undefined : handlePointerDown}
+            onPointerLeave={
+                interactionTargetKey ? undefined : handleRotateCancel
+            }
+            onPointerUp={interactionTargetKey ? undefined : handlePointerUp}
         >
             {children}
         </group>

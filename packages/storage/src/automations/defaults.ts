@@ -8,6 +8,8 @@ import { automationModuleKeys } from './modules';
 
 export const seasonalSowedWateringAutomationKey =
     'default.seasonal-sowed-watering';
+export const operationImagePlantStatusReviewAutomationKey =
+    'default.operation-image-plant-status-review';
 
 export function seasonalSowedWateringAutomationGraph(): AutomationGraph {
     return {
@@ -56,6 +58,54 @@ export function seasonalSowedWateringAutomationGraph(): AutomationGraph {
     };
 }
 
+export function operationImagePlantStatusReviewAutomationGraph(): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerDomainEvent,
+                position: { x: 0, y: 160 },
+                config: {
+                    eventType: knownEventTypes.operations.complete,
+                },
+            },
+            {
+                id: 'has-images',
+                kind: 'condition',
+                moduleKey: automationModuleKeys.conditionEventDataEquals,
+                position: { x: 280, y: 160 },
+                config: {
+                    path: 'images',
+                    operator: 'exists',
+                },
+            },
+            {
+                id: 'review-plant-statuses',
+                kind: 'action',
+                moduleKey:
+                    automationModuleKeys.actionCreatePlantStatusRequestsFromImageAnalysis,
+                position: { x: 620, y: 160 },
+                config: {
+                    minConfidence: 0.9,
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-images',
+                source: 'trigger',
+                target: 'has-images',
+            },
+            {
+                id: 'images-to-review',
+                source: 'has-images',
+                target: 'review-plant-statuses',
+            },
+        ],
+    };
+}
+
 export async function ensureDefaultAutomationDefinitions() {
     await initializeAutomationEventCursorToLatest();
 
@@ -72,7 +122,22 @@ export async function ensureDefaultAutomationDefinitions() {
         },
     });
 
+    const operationImagePlantStatusReview =
+        await upsertAutomationDefinitionByKey({
+            key: operationImagePlantStatusReviewAutomationKey,
+            name: 'Review operation images for plant status changes',
+            description:
+                'When a raised-bed operation is completed with images, analyze the photos and create pending approval requests for high-confidence plant status changes.',
+            status: 'enabled',
+            graph: operationImagePlantStatusReviewAutomationGraph(),
+            metadata: {
+                managedBy: 'gredice',
+                defaultAutomation: true,
+            },
+        });
+
     return {
         seasonalSowedWatering,
+        operationImagePlantStatusReview,
     };
 }

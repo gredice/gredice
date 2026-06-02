@@ -83,6 +83,20 @@ describe('createMergedWaterSideGeometry', () => {
         geometry.dispose();
     });
 
+    it('keeps side walls when adjacent water blocks are on different levels', () => {
+        const geometry = createMergedWaterSideGeometry([
+            { position: [0, 0, 0] },
+            { position: [1, 0.4, 0] },
+        ]);
+        const positionAttribute = geometry.getAttribute('position');
+        const indexAttribute = geometry.getIndex();
+
+        assert.equal(positionAttribute.count, 32);
+        assert.equal(indexAttribute?.count, 48);
+
+        geometry.dispose();
+    });
+
     it('merges continuous exterior side walls across stacked water blocks', () => {
         const geometry = createMergedWaterSideGeometry([
             { position: [0, 0, 0] },

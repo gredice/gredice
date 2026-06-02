@@ -106,11 +106,17 @@ step. It supports these stable modes:
 - `/debug/profile/game?mode=baseline&controls=0&quality=medium`
 - `/debug/profile/game?mode=baseline&controls=0&quality=low`
 - `/debug/profile/game?mode=details&controls=0&quality=medium`
-- `/debug/profile/game?mode=rain&controls=0&quality=low`
-- `/debug/profile/game?mode=snow&controls=0&quality=low`
+- `/debug/profile/game?mode=rain&controls=0&quality=medium`
+- `/debug/profile/game?mode=snow&controls=0&quality=medium`
+- `/debug/profile/game?mode=cloudy&controls=0&quality=medium`
+- `/debug/profile/game?mode=windy&controls=0&quality=medium`
+- `/debug/profile/game?mode=details&profile=dense&controls=0&quality=medium`
+- `/debug/profile/game?mode=details&profile=plant-heavy&controls=0&quality=medium`
 
 The `quality` query accepts `low`, `medium`, or `high`. When omitted, the game
-uses the automatic quality resolver.
+uses the automatic quality resolver. The `profile` query accepts `default`,
+`dense`, or `plant-heavy`. Dense profile scenes use deterministic 25x25 mock
+gardens so larger-scene measurements do not depend on signed-in garden data.
 
 Generate the default production report. This builds the garden app, starts it
 with `pnpm start` on `http://localhost:3101`, profiles the scenarios, and then
@@ -119,6 +125,21 @@ stops the managed server:
 ```bash
 cd apps/garden
 pnpm run profile:game
+```
+
+Run the dense production report when measuring larger scenes or validating one
+of the rendering architecture tasks:
+
+```bash
+cd apps/garden
+pnpm run profile:game:dense
+```
+
+Run every core and dense scenario together:
+
+```bash
+cd apps/garden
+pnpm run profile:game:all
 ```
 
 Run the same production build/start flow as a CI gate with budget failures
@@ -152,7 +173,7 @@ The JSON is intended for CI/trend comparison, while the Markdown summary is mean
 for quick review in a PR. Reports also include whether the profiler ran a build
 and whether the server was managed with `pnpm start` or supplied externally.
 
-The profiler currently samples these scenarios:
+The default `core` scenario set currently samples these scenarios:
 
 - `game-baseline-desktop`
 - `game-baseline-mobile`
@@ -161,13 +182,25 @@ The profiler currently samples these scenarios:
 - `game-snow-mobile`
 - `plants-desktop`
 
+The `dense` scenario set samples:
+
+- `game-dense-25x25-desktop`
+- `game-dense-25x25-high-desktop`
+- `game-dense-25x25-controls-desktop`
+- `game-dense-25x25-camera-motion`
+- `game-dense-25x25-rain-desktop`
+- `game-dense-25x25-snow-desktop`
+- `game-dense-25x25-cloudy-desktop`
+- `game-dense-25x25-windy-desktop`
+- `game-plant-heavy-25x25-desktop`
+
 Each scenario records startup readiness, canvas backing size, reported DPR,
-active quality tier, DPR cap, shadow map size, rain/snow particle counts, active
-snow overlay count, raised-bed mulch overlay count, ground decoration count, FPS,
+requested mode, garden profile, controls mode, camera-motion mode, active
+quality tier, DPR cap, shadow map size, rain/snow particle counts, active snow
+overlay count, raised-bed mulch overlay count, ground decoration count, FPS,
 frame-time percentiles, long tasks, draw calls, instanced draw calls, submitted
 triangles, JS heap, CDP task/script/layout duration, console warnings, and
-budget pass/fail. Budgets
-warn during local runs and fail the process only when
+budget pass/fail. Budgets warn during local runs and fail the process only when
 `GAME_PROFILE_FAIL_ON_BUDGET=1` is set, which `profile:game:ci` does for
 production checks. Managed production profiling refuses to reuse an already
 reachable base URL so it cannot silently profile a running `next dev` server.
@@ -177,8 +210,33 @@ Useful overrides:
 ```bash
 GAME_PROFILE_BASE_URL=http://localhost:3001 pnpm run profile:game:existing
 GAME_PROFILE_BASE_URL=http://localhost:3201 pnpm run profile:game
+GAME_PROFILE_SCENARIO_SET=dense pnpm run profile:game
+GAME_PROFILE_SCENARIO_SET=all pnpm run profile:game
 GAME_PROFILE_WARMUP_MS=8000 GAME_PROFILE_SAMPLE_MS=10000 pnpm run profile:game
 GAME_PROFILE_FAIL_ON_BUDGET=1 pnpm run profile:game
+```
+
+### Optimization report template
+
+Use this short format when adding before/after measurements for a rendering
+optimization:
+
+```md
+### YYYY-MM-DD optimization name
+
+Build: production profile via `pnpm run profile:game:dense`
+Change: short description of the optimization
+
+| Scenario | Quality | Controls | Motion | FPS | p95 | Draw/frame | Triangles/frame | Heap | Notes |
+| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| before | medium | 0 | none |  |  |  |  |  |  |
+| after | medium | 0 | none |  |  |  |  |  |  |
+
+Visual smoke:
+- Desktop canvas nonblank and framed correctly.
+- Mobile/touch canvas nonblank and controls usable.
+- Drag/drop, rotate, close-up, GardenBox, raised beds, rain, snow, clouds, and
+  windy sway checked where relevant.
 ```
 
 ### 2026-04-29 quality pass measurement

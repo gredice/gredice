@@ -59,6 +59,46 @@ describe('getBlockHitboxSize', () => {
         );
     });
 
+    it('keeps known tall asset hitboxes at least as large as their rendered model bounds', () => {
+        assert.deepEqual(
+            getBlockHitboxSize(
+                createBlockData({
+                    height: 0.8,
+                    hitboxWidth: 0.34,
+                    hitboxHeight: 1.25,
+                    hitboxDepth: 0.34,
+                }),
+            ),
+            {
+                width: 0.34,
+                height: 1.25,
+                depth: 0.34,
+            },
+        );
+
+        assert.deepEqual(
+            getBlockHitboxSize({
+                ...createBlockData({
+                    height: 0.8,
+                    hitboxWidth: 0.34,
+                    hitboxHeight: 1.25,
+                    hitboxDepth: 0.34,
+                }),
+                information: {
+                    name: 'Tree',
+                    label: 'Tree',
+                    shortDescription: 'Tree.',
+                    fullDescription: 'Tree.',
+                },
+            }),
+            {
+                width: 1.36,
+                height: 2.38,
+                depth: 1.43,
+            },
+        );
+    });
+
     it('ignores non-positive and non-finite hitbox attributes', () => {
         assert.deepEqual(
             getBlockHitboxSize(

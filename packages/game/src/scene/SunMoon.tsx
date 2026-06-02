@@ -1,8 +1,8 @@
 'use client';
 
-import { useFrame, useThree } from '@react-three/fiber';
+import { useThree } from '@react-three/fiber';
 import chroma from 'chroma-js';
-import { useMemo, useRef } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import { getMoonIllumination, getMoonPosition, getPosition } from 'suncalc';
 import {
     AdditiveBlending,
@@ -188,7 +188,9 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
     const dayNightCycleDisabled = useGameState(
         (state) => state.dayNightCycleDisabled,
     );
+    const gameCamera = useGameState((state) => state.gameCamera);
     const { data: garden } = useCurrentGarden();
+    const camera = useThree((state) => state.camera);
     const { width: viewportWidth, height: viewportHeight } = useThree(
         (state) => state.size,
     );
@@ -248,7 +250,7 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
     const rightRef = useRef(new Vector3());
     const viewUpRef = useRef(new Vector3());
 
-    useFrame(({ camera }) => {
+    const updateSunMoon = useCallback(() => {
         if (!sunMesh.current || !moonMesh.current) return;
 
         const orthographic = camera as OrthographicCamera;
@@ -361,7 +363,29 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
             moonMaterial.uniforms.uOpacity.value = 0;
             moonMesh.current.visible = false;
         }
-    });
+    }, [
+        camera,
+        currentTime,
+        dayNightCycleDisabled,
+        location.lat,
+        location.lon,
+        moonMaterial,
+        sunMaterial,
+        sunViewportTuning.horizontalOffsetMultiplier,
+        sunViewportTuning.sizeMultiplier,
+        sunViewportTuning.verticalOffsetMultiplier,
+        timeOfDay,
+        visibility,
+    ]);
+
+    useLayoutEffect(() => {
+        if (!gameCamera) {
+            updateSunMoon();
+            return;
+        }
+
+        return gameCamera.subscribe(() => updateSunMoon());
+    }, [gameCamera, updateSunMoon]);
 
     return (
         <>

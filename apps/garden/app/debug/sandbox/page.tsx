@@ -3,6 +3,7 @@ import type { ComponentProps } from 'react';
 import { SandboxDebugActions } from './SandboxDebugActions';
 
 const debugSandboxFlags = {
+    enableDebugHudFlag: true,
     enableRainWetOverlayFlag: true,
 } satisfies NonNullable<ComponentProps<typeof GameScene>['flags']>;
 

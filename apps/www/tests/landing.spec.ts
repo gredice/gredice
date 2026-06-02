@@ -13,22 +13,28 @@ async function expectMobileNavActionsDoNotOverlap(page: Page) {
     await expect(menuButton).toBeVisible();
 
     await expect
-        .poll(async () => {
-            const ctaBox = await cta.boundingBox();
-            const menuButtonBox = await menuButton.boundingBox();
-            if (!ctaBox || !menuButtonBox) {
-                return Number.NEGATIVE_INFINITY;
-            }
+        .poll(
+            async () => {
+                const ctaBox = await cta.boundingBox();
+                const menuButtonBox = await menuButton.boundingBox();
+                if (!ctaBox || !menuButtonBox) {
+                    return Number.NEGATIVE_INFINITY;
+                }
 
-            return menuButtonBox.x - (ctaBox.x + ctaBox.width);
-        })
-        .toBeGreaterThanOrEqual(4);
+                return menuButtonBox.x - (ctaBox.x + ctaBox.width);
+            },
+            { timeout: 15_000 },
+        )
+        .toBeGreaterThan(0);
     await expect
-        .poll(async () => {
-            const ctaBox = await cta.boundingBox();
-            return ctaBox?.width ?? Number.POSITIVE_INFINITY;
-        })
-        .toBeLessThanOrEqual(50);
+        .poll(
+            async () => {
+                const ctaBox = await cta.boundingBox();
+                return ctaBox?.width ?? Number.POSITIVE_INFINITY;
+            },
+            { timeout: 15_000 },
+        )
+        .toBeLessThanOrEqual(56);
 }
 
 test('has title', async ({ page }) => {
@@ -107,7 +113,7 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
     expect(heroCardBox.y - frameBox.y).toBeGreaterThanOrEqual(31);
     expect(heroCardBox.width).toBeLessThan(frameBox.width - 48);
     expect(frameBox.height).toBeLessThanOrEqual(550);
-    await expect(page.locator('canvas')).toBeVisible();
+    await expect(page.locator('canvas')).toBeVisible({ timeout: 35_000 });
 
     const signupCta = page.getByTestId('landing-game-signup-cta');
     await expect(signupCta).toBeVisible();

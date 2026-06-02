@@ -1,8 +1,15 @@
 'use client';
 
-import { Billboard } from '@react-three/drei';
-import { useMemo } from 'react';
+import { useThree } from '@react-three/fiber';
+import {
+    type PropsWithChildren,
+    useCallback,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+} from 'react';
 import * as THREE from 'three';
+import { useGameState } from '../../../useGameState';
 import type { PlantLodLevel } from '../hooks/usePlantLod';
 
 export interface PlantBillboardSummary {
@@ -23,6 +30,28 @@ interface PlantBillboardProps {
     summary: PlantBillboardSummary;
 }
 
+function CameraFacingBillboard({ children }: PropsWithChildren) {
+    const groupRef = useRef<THREE.Group>(null);
+    const camera = useThree((state) => state.camera);
+    const gameCamera = useGameState((state) => state.gameCamera);
+
+    const updateCameraFacing = useCallback(() => {
+        groupRef.current?.quaternion.copy(camera.quaternion);
+    }, [camera]);
+
+    useLayoutEffect(() => {
+        updateCameraFacing();
+
+        if (!gameCamera) {
+            return;
+        }
+
+        return gameCamera.subscribe(() => updateCameraFacing());
+    }, [gameCamera, updateCameraFacing]);
+
+    return <group ref={groupRef}>{children}</group>;
+}
+
 export function PlantBillboard({ level, summary }: PlantBillboardProps) {
     const farColor = useMemo(
         () => new THREE.Color(summary.dominantColor),
@@ -30,7 +59,7 @@ export function PlantBillboard({ level, summary }: PlantBillboardProps) {
     );
 
     return (
-        <Billboard follow>
+        <CameraFacingBillboard>
             {level === 'mid' ? (
                 <group>
                     <mesh position={[0, summary.height * 0.42, -0.02]}>
@@ -131,6 +160,6 @@ export function PlantBillboard({ level, summary }: PlantBillboardProps) {
                     />
                 </mesh>
             )}
-        </Billboard>
+        </CameraFacingBillboard>
     );
 }
