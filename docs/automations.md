@@ -1,9 +1,10 @@
 # Automations
 
 Automations are configurable, trusted server-side workflows that react to
-Gredice domain events. The MVP covers the existing planting workflow where a
-`raisedBedField.plantUpdate` event with `data.status = "sowed"` queues seasonal
-watering operations asynchronously.
+Gredice domain events or scheduled occurrences. The first workflows cover the
+existing planting flow where a `raisedBedField.plantUpdate` event with
+`data.status = "sowed"` queues seasonal watering operations asynchronously, and
+monthly schedules that can create recurring farm operations.
 
 ## Ownership
 
@@ -36,13 +37,15 @@ context.
 
 ## Runner Lifecycle
 
-`runAutomations()` in `packages/storage/src/automations/runner.ts` performs three
+`runAutomations()` in `packages/storage/src/automations/runner.ts` performs four
 bounded phases:
 
 1. Ensure default automation definitions exist.
-2. Read new domain events after the cursor and enqueue matching enabled
+2. Enqueue due scheduled automation runs, using deterministic occurrence keys so
+   repeated cron ticks do not duplicate the same period.
+3. Read new domain events after the cursor and enqueue matching enabled
    automation runs.
-3. Recover stale running jobs, claim due queued/retryable runs, and execute them
+4. Recover stale running jobs, claim due queued/retryable runs, and execute them
    through the graph executor.
 
 When defaults are first installed, the runner initializes the event cursor to
@@ -71,6 +74,7 @@ MVP modules:
 
 - `trigger.domainEvent`: starts from a stored domain event and filters by event
   type.
+- `trigger.scheduleMonthly`: starts once per month on the configured local day.
 - `condition.eventDataEquals`: compares a value in event data.
 - `condition.operationMatches`: checks operation status, entity id, or
   operation application.
@@ -78,6 +82,9 @@ MVP modules:
 - `action.queueSeasonalSowingOfferOperations`: queues seasonal free watering
   operations.
 - `action.createOperation`: creates an operation for the event context.
+- `action.createFarmInventoryOperations`: creates accepted, scheduled farm-level
+  operations for every active farm from a JSON list in the automation
+  definition.
 - `action.updateRaisedBedFieldPlantStatus`: writes a
   `raisedBedField.plantUpdate` event for an operation target.
 - `action.log`: records a no-op step for diagnostics.

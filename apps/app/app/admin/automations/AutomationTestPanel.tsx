@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from '@gredice/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Input } from '@gredice/ui/Input';
 import { Play } from '@gredice/ui/icons';
@@ -23,12 +22,19 @@ export type RecentAutomationEvent = {
     createdAt: string;
 };
 
+export type AutomationTestTriggerMode =
+    | 'domainEvent'
+    | 'schedule'
+    | 'unsupported';
+
 export function AutomationTestPanel({
     automationId,
     recentEvents,
+    triggerMode,
     triggerEventType,
 }: {
     automationId: number;
+    triggerMode: AutomationTestTriggerMode;
     triggerEventType: string | null;
     recentEvents: RecentAutomationEvent[];
 }) {
@@ -43,12 +49,9 @@ export function AutomationTestPanel({
     const [isPending, startTransition] = useTransition();
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Testiranje</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <Stack spacing={3}>
+        <Stack spacing={3}>
+            {triggerMode === 'domainEvent' ? (
+                <>
                     <SelectItems
                         label="Ulazni event"
                         value={selectedEventId}
@@ -87,72 +90,79 @@ export function AutomationTestPanel({
                                     onChange={(event) =>
                                         setEventDataJson(event.target.value)
                                     }
-                                    className="min-h-28 rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-hidden ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                    className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-hidden ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                                 />
                             </Stack>
                         </>
                     ) : null}
-                    <Checkbox
-                        label="Dry-run"
-                        checked={dryRun}
-                        onCheckedChange={(checked) =>
-                            setDryRun(checked === true)
-                        }
-                    />
-                    <Button
-                        type="button"
-                        disabled={isPending || !triggerEventType}
-                        startDecorator={<Play className="size-4" />}
-                        onClick={() =>
-                            startTransition(async () => {
-                                const runResult = await runAutomationTestAction(
-                                    {
-                                        automationId,
-                                        eventId: selectedEventId
-                                            ? Number(selectedEventId)
-                                            : null,
-                                        aggregateId,
-                                        eventDataJson,
-                                        dryRun,
-                                    },
-                                );
-                                setResult(runResult);
-                                router.refresh();
-                            })
-                        }
-                    >
-                        Pokreni test
-                    </Button>
-                    {result?.ok ? (
-                        <Typography level="body2" className="text-green-700">
-                            Test run #{result.runId} završen je statusom{' '}
-                            {result.status}.
-                        </Typography>
-                    ) : null}
-                    {result && !result.ok ? (
-                        <Stack spacing={1}>
-                            {result.errors.map((error) => (
-                                <Typography
-                                    key={error}
-                                    level="body2"
-                                    className="text-red-700 dark:text-red-300"
-                                >
-                                    {error}
-                                </Typography>
-                            ))}
-                        </Stack>
-                    ) : null}
-                    {!triggerEventType ? (
+                </>
+            ) : null}
+            {triggerMode === 'schedule' ? (
+                <Typography level="body3" className="text-muted-foreground">
+                    Test će koristiti sintetički mjesečni schedule run.
+                </Typography>
+            ) : null}
+            {triggerMode === 'unsupported' ? (
+                <Typography level="body3" className="text-muted-foreground">
+                    Ovaj tip triggera još nema testni ulaz.
+                </Typography>
+            ) : null}
+            <Checkbox
+                label="Dry-run"
+                checked={dryRun}
+                onCheckedChange={(checked) => setDryRun(checked === true)}
+            />
+            <Button
+                type="button"
+                disabled={
+                    isPending ||
+                    triggerMode === 'unsupported' ||
+                    (triggerMode === 'domainEvent' && !triggerEventType)
+                }
+                startDecorator={<Play className="size-4" />}
+                onClick={() =>
+                    startTransition(async () => {
+                        const runResult = await runAutomationTestAction({
+                            automationId,
+                            eventId: selectedEventId
+                                ? Number(selectedEventId)
+                                : null,
+                            aggregateId,
+                            eventDataJson,
+                            dryRun,
+                        });
+                        setResult(runResult);
+                        router.refresh();
+                    })
+                }
+            >
+                Pokreni test
+            </Button>
+            {result?.ok ? (
+                <Typography level="body2" className="text-green-700">
+                    Test run #{result.runId} završen je statusom {result.status}
+                    .
+                </Typography>
+            ) : null}
+            {result && !result.ok ? (
+                <Stack spacing={1}>
+                    {result.errors.map((error) => (
                         <Typography
-                            level="body3"
-                            className="text-muted-foreground"
+                            key={error}
+                            level="body2"
+                            className="text-red-700 dark:text-red-300"
                         >
-                            Trigger nema konfiguriran tip eventa.
+                            {error}
                         </Typography>
-                    ) : null}
+                    ))}
                 </Stack>
-            </CardContent>
-        </Card>
+            ) : null}
+            {triggerMode === 'domainEvent' && !triggerEventType ? (
+                <Typography level="body3" className="text-muted-foreground">
+                    Trigger nema konfiguriran tip eventa.
+                </Typography>
+            ) : null}
+        </Stack>
     );
 }
 

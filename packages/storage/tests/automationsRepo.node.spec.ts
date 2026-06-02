@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    acceptOperation,
     automationEventCursors,
     automationModuleKeys,
     claimDueAutomationRuns,
@@ -9,14 +10,18 @@ import {
     createAutomationDefinition,
     createAutomationRun,
     createEvent,
+    createFarm,
     createOperation,
     enqueueAutomationRunsFromDomainEvents,
+    enqueueAutomationRunsFromSchedules,
     ensureDefaultAutomationDefinitions,
     executeAutomationRun,
     FREE_WATERING_OPERATION_ID,
     getAutomationEventCursor,
     getAutomationRunWithSteps,
     getEvents,
+    getFarmAcceptedOperationsByScheduleRange,
+    getFarms,
     getOperations,
     getRaisedBed,
     knownEvents,
@@ -29,6 +34,7 @@ import {
     seasonalSowedWateringAutomationGraph,
     startAutomationRun,
     storage,
+    updateAutomationDefinition,
     upsertRaisedBedField,
     validateAutomationGraph,
 } from '@gredice/storage';
@@ -83,6 +89,12 @@ async function getScheduledFreeWateringDates(
         )
         .map((operation) => operation.scheduledDate?.toISOString())
         .sort();
+}
+
+function addUtcDays(date: Date, days: number) {
+    const nextDate = new Date(date);
+    nextDate.setUTCDate(nextDate.getUTCDate() + days);
+    return nextDate;
 }
 
 test('automation definitions persist graph trigger metadata and event-run idempotency', async () => {
@@ -259,6 +271,257 @@ test('automation graph validation waits for all incoming dependencies', () => {
             'queue-seasonal-waterings',
         ],
     );
+});
+
+test('monthly schedule automation enqueues once per configured period', async () => {
+    createTestDb();
+    const graph = {
+        nodes: [
+            {
+                id: 'trigger',
+                moduleKey: automationModuleKeys.triggerScheduleMonthly,
+                kind: 'trigger' as const,
+                position: { x: 0, y: 0 },
+                config: {
+                    dayOfMonth: 1,
+                    timeZone: 'Europe/Zagreb',
+                },
+            },
+            {
+                id: 'log',
+                moduleKey: automationModuleKeys.actionLog,
+                kind: 'action' as const,
+                position: { x: 280, y: 0 },
+                config: {
+                    message: 'Monthly schedule reached log action.',
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-log',
+                source: 'trigger',
+                target: 'log',
+            },
+        ],
+    };
+    const definition = await createAutomationDefinition({
+        key: 'test.monthly-schedule',
+        name: 'Monthly schedule',
+        status: 'enabled',
+        graph,
+    });
+
+    const firstResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-01T08:00:00.000Z'),
+    });
+    const duplicateResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-01T09:00:00.000Z'),
+    });
+    const offDayResult = await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-02T08:00:00.000Z'),
+    });
+
+    assert.strictEqual(firstResult.enqueuedRuns, 1);
+    assert.strictEqual(duplicateResult.enqueuedRuns, 0);
+    assert.strictEqual(offDayResult.enqueuedRuns, 0);
+
+    const runs = await listAutomationRuns({
+        automationDefinitionId: definition.id,
+    });
+    assert.strictEqual(runs.length, 1);
+    assert.strictEqual(runs[0]?.source, 'schedule');
+    assert.strictEqual(
+        runs[0]?.sourceAggregateId,
+        'trigger.scheduleMonthly:Europe/Zagreb:2026-06:day-1',
+    );
+    for (const run of runs) {
+        await completeAutomationRun({
+            id: run.id,
+            status: 'skipped',
+            output: { testCleanup: true },
+        });
+    }
+    await updateAutomationDefinition(definition.id, { status: 'disabled' });
+});
+
+test('monthly farm inventory automation creates accepted scheduled farm tasks', async () => {
+    createTestDb();
+    await createFarm({
+        name: 'Automation Inventory Farm A',
+        latitude: 45.8,
+        longitude: 15.9,
+    });
+    await createFarm({
+        name: 'Automation Inventory Farm B',
+        latitude: 46.1,
+        longitude: 16.2,
+    });
+    const activeFarms = (await getFarms()).filter((farm) => !farm.isDeleted);
+    const referenceDate = new Date('2026-07-01T08:00:00.000Z');
+    const operationConfigs = [
+        {
+            entityId: 9_910_001,
+            entityTypeName: 'operation',
+            scheduledInDays: 0,
+        },
+        {
+            entityId: 9_910_002,
+            entityTypeName: 'operation',
+            scheduledInDays: 2,
+        },
+    ];
+    const preexistingFarm = activeFarms[0];
+    assert.ok(preexistingFarm);
+    const preexistingOperationId = await createOperation({
+        entityId: operationConfigs[0].entityId,
+        entityTypeName: operationConfigs[0].entityTypeName,
+        farmId: preexistingFarm.id,
+        timestamp: new Date('2026-05-01T08:00:00.000Z'),
+    });
+    await acceptOperation(preexistingOperationId);
+    await createEvent(
+        knownEvents.operations.scheduledV1(preexistingOperationId.toString(), {
+            scheduledDate: referenceDate.toISOString(),
+        }),
+    );
+    const graph = {
+        nodes: [
+            {
+                id: 'trigger',
+                moduleKey: automationModuleKeys.triggerScheduleMonthly,
+                kind: 'trigger' as const,
+                position: { x: 0, y: 0 },
+                config: {
+                    dayOfMonth: 1,
+                    timeZone: 'Europe/Zagreb',
+                },
+            },
+            {
+                id: 'create-inventory-operations',
+                moduleKey:
+                    automationModuleKeys.actionCreateFarmInventoryOperations,
+                kind: 'action' as const,
+                position: { x: 300, y: 0 },
+                config: {
+                    operations: operationConfigs,
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-create-inventory-operations',
+                source: 'trigger',
+                target: 'create-inventory-operations',
+            },
+        ],
+    };
+    const definition = await createAutomationDefinition({
+        key: 'test.monthly-farm-inventory',
+        name: 'Monthly farm inventory',
+        status: 'enabled',
+        graph,
+    });
+
+    const enqueueResult = await enqueueAutomationRunsFromSchedules({
+        now: referenceDate,
+    });
+    assert.strictEqual(enqueueResult.enqueuedRuns, 1);
+
+    const processResult = await processDueAutomationRuns({
+        limit: 10,
+        lockedBy: 'automations-test',
+    });
+    assert.strictEqual(processResult.succeeded, 1);
+
+    const expectedScheduledDates = operationConfigs.map((operationConfig) =>
+        addUtcDays(
+            referenceDate,
+            operationConfig.scheduledInDays,
+        ).toISOString(),
+    );
+    for (const farm of activeFarms) {
+        const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
+            farmId: farm.id,
+            from: referenceDate,
+            to: addUtcDays(referenceDate, 3),
+        });
+        const inventoryOperations = farmOperations
+            .filter((operation) =>
+                operationConfigs.some(
+                    (operationConfig) =>
+                        operationConfig.entityId === operation.entityId,
+                ),
+            )
+            .sort((left, right) => left.entityId - right.entityId);
+
+        assert.strictEqual(
+            inventoryOperations.length,
+            operationConfigs.length,
+            `Expected ${operationConfigs.length} inventory operations for farm ${farm.id}, got ${JSON.stringify(
+                inventoryOperations.map((operation) => ({
+                    id: operation.id,
+                    entityId: operation.entityId,
+                    scheduledDate: operation.scheduledDate?.toISOString(),
+                    timestamp: operation.timestamp.toISOString(),
+                })),
+            )}`,
+        );
+        assert.deepStrictEqual(
+            inventoryOperations.map((operation) =>
+                operation.scheduledDate?.toISOString(),
+            ),
+            expectedScheduledDates,
+        );
+        assert.ok(
+            inventoryOperations.every((operation) => operation.isAccepted),
+        );
+        assert.ok(
+            inventoryOperations.every(
+                (operation) => operation.farmId === farm.id,
+            ),
+        );
+        if (farm.id === preexistingFarm.id) {
+            assert.ok(
+                inventoryOperations.some(
+                    (operation) => operation.id === preexistingOperationId,
+                ),
+            );
+        }
+    }
+
+    const [firstRun] = await listAutomationRuns({
+        automationDefinitionId: definition.id,
+    });
+    assert.ok(firstRun);
+    const replayRun = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'replay',
+        input: firstRun.input,
+    });
+    assert.ok(replayRun);
+    const startedReplay = await startAutomationRun(replayRun.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedReplay);
+
+    const replayResult = await executeAutomationRun(startedReplay);
+
+    assert.strictEqual(replayResult.status, 'skipped');
+    for (const farm of activeFarms) {
+        const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
+            farmId: farm.id,
+            from: referenceDate,
+            to: addUtcDays(referenceDate, 3),
+        });
+        const inventoryOperations = farmOperations.filter((operation) =>
+            operationConfigs.some(
+                (operationConfig) =>
+                    operationConfig.entityId === operation.entityId,
+            ),
+        );
+        assert.strictEqual(inventoryOperations.length, operationConfigs.length);
+    }
 });
 
 test('default sowed automation queues seasonal watering operations through executor', async () => {

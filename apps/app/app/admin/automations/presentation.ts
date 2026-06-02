@@ -5,6 +5,8 @@ import type {
     AutomationRunStatus,
 } from '@gredice/storage';
 
+const triggerScheduleMonthlyModuleKey = 'trigger.scheduleMonthly';
+
 type ChipColor =
     | 'primary'
     | 'secondary'
@@ -66,6 +68,19 @@ export function automationTriggerSummary(
     }
 
     const module = modules.get(trigger.moduleKey);
+    if (trigger.moduleKey === triggerScheduleMonthlyModuleKey) {
+        const dayOfMonth = trigger.config.dayOfMonth;
+        const timeZone = trigger.config.timeZone;
+        const dayText =
+            typeof dayOfMonth === 'number' ? dayOfMonth.toString() : '?';
+        const timeZoneText =
+            typeof timeZone === 'string' && timeZone.trim().length > 0
+                ? timeZone
+                : 'Europe/Zagreb';
+
+        return `${module?.title ?? trigger.moduleKey}: day ${dayText} (${timeZoneText})`;
+    }
+
     const eventType = trigger.config.eventType;
     const eventTypeText =
         typeof eventType === 'string' && eventType.trim().length > 0

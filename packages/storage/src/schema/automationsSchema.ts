@@ -56,6 +56,7 @@ export const automationRunStatusEnum = pgEnum(
 export const automationRunSourceValues = [
     'event',
     'manual',
+    'schedule',
     'test',
     'replay',
 ] as const;
@@ -213,6 +214,11 @@ export const automationRuns = pgTable(
         uniqueIndex('automation_runs_definition_source_event_idx')
             .on(table.automationDefinitionId, table.sourceEventId)
             .where(sql`${table.source} = 'event'`),
+        uniqueIndex('automation_runs_definition_source_schedule_idx')
+            .on(table.automationDefinitionId, table.sourceAggregateId)
+            .where(
+                sql`${table.sourceEventType} = 'automation.schedule.monthly'`,
+            ),
         index('automation_runs_definition_id_idx').on(
             table.automationDefinitionId,
         ),

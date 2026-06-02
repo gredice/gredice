@@ -1,14 +1,17 @@
 import {
     advanceAutomationEventCursor,
     claimDueAutomationRuns,
+    createAutomationRun,
     enqueueAutomationRunsForEvent,
     getAutomationEventCursor,
     getRunnableAutomationEventTypes,
     listDomainEventsAfterId,
+    listEnabledAutomationDefinitionsForTriggerModule,
     recoverStaleAutomationRuns,
 } from '../repositories/automationsRepo';
 import { ensureDefaultAutomationDefinitions } from './defaults';
 import { executeAutomationRun } from './executor';
+import { automationModuleKeys, getMonthlyScheduleOccurrence } from './modules';
 
 const defaultEventBatchLimit = 500;
 const defaultRunBatchLimit = 25;
@@ -16,7 +19,10 @@ const defaultStaleRunMinutes = 15;
 
 export type AutomationRunnerResult = {
     scannedEvents: number;
+    scannedSchedules: number;
     enqueuedRuns: number;
+    enqueuedEventRuns: number;
+    enqueuedScheduledRuns: number;
     claimedRuns: number;
     succeeded: number;
     skipped: number;
@@ -25,6 +31,53 @@ export type AutomationRunnerResult = {
     recoveredStaleRuns: number;
     failedStaleRuns: number;
 };
+
+export async function enqueueAutomationRunsFromSchedules({
+    now = new Date(),
+    limit = 500,
+}: {
+    now?: Date;
+    limit?: number;
+} = {}) {
+    await ensureDefaultAutomationDefinitions();
+    const definitions = await listEnabledAutomationDefinitionsForTriggerModule(
+        automationModuleKeys.triggerScheduleMonthly,
+    );
+    let enqueuedRuns = 0;
+
+    for (const definition of definitions.slice(0, limit)) {
+        const trigger = definition.graph.nodes.find(
+            (node) =>
+                node.kind === 'trigger' &&
+                node.moduleKey === automationModuleKeys.triggerScheduleMonthly,
+        );
+        if (!trigger) {
+            continue;
+        }
+
+        const occurrence = getMonthlyScheduleOccurrence(trigger, now);
+        if (!occurrence) {
+            continue;
+        }
+
+        const run = await createAutomationRun({
+            automationDefinition: definition,
+            source: 'schedule',
+            sourceEventType: occurrence.eventType,
+            sourceAggregateId: occurrence.aggregateId,
+            input: occurrence.input,
+        });
+
+        if (run) {
+            enqueuedRuns += 1;
+        }
+    }
+
+    return {
+        scannedSchedules: Math.min(definitions.length, limit),
+        enqueuedRuns,
+    };
+}
 
 export async function enqueueAutomationRunsFromDomainEvents({
     limit = defaultEventBatchLimit,
@@ -109,13 +162,18 @@ export async function processDueAutomationRuns({
 
 export async function runAutomations({
     eventBatchLimit = defaultEventBatchLimit,
+    scheduleBatchLimit,
     runBatchLimit = defaultRunBatchLimit,
     lockedBy = 'automation-runner',
 }: {
     eventBatchLimit?: number;
+    scheduleBatchLimit?: number;
     runBatchLimit?: number;
     lockedBy?: string;
 } = {}): Promise<AutomationRunnerResult> {
+    const scheduleResult = await enqueueAutomationRunsFromSchedules({
+        limit: scheduleBatchLimit,
+    });
     const enqueueResult = await enqueueAutomationRunsFromDomainEvents({
         limit: eventBatchLimit,
     });
@@ -126,7 +184,10 @@ export async function runAutomations({
 
     return {
         scannedEvents: enqueueResult.scannedEvents,
-        enqueuedRuns: enqueueResult.enqueuedRuns,
+        scannedSchedules: scheduleResult.scannedSchedules,
+        enqueuedRuns: enqueueResult.enqueuedRuns + scheduleResult.enqueuedRuns,
+        enqueuedEventRuns: enqueueResult.enqueuedRuns,
+        enqueuedScheduledRuns: scheduleResult.enqueuedRuns,
         ...processResult,
     };
 }
