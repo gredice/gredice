@@ -85,11 +85,18 @@ export function pickFarmSnowAccumulation(
     farms: Array<{ id: number | string; snowAccumulation: number }>,
     farmId?: string,
 ): number {
+    return pickWeatherFarm(farms, farmId)?.snowAccumulation ?? 0;
+}
+
+export function pickWeatherFarm<T extends { id: number | string }>(
+    farms: T[],
+    farmId?: string,
+): T | undefined {
     if (farmId) {
         const farm = farms.find(
             (currentFarm) => String(currentFarm.id) === farmId,
         );
-        if (farm) return farm.snowAccumulation;
+        if (farm) return farm;
     }
-    return farms[0]?.snowAccumulation ?? 0;
+    return farms[0];
 }

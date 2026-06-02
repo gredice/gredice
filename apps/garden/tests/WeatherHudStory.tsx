@@ -1,10 +1,20 @@
 import * as ReactQuery from '@tanstack/react-query';
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useMemo } from 'react';
+import { currentGardenKeys } from '../../../packages/game/src/hooks/useCurrentGarden';
+import { useGardensKeys } from '../../../packages/game/src/hooks/useGardens';
 import { WeatherHud } from '../../../packages/game/src/hud/WeatherHud';
 import {
     createGameState,
     GameStateContext,
 } from '../../../packages/game/src/useGameState';
+
+const currentGarden = {
+    id: 1,
+    name: 'Test',
+    isSandbox: false,
+    createdAt: '2026-06-01T00:00:00.000Z',
+};
 
 function createWeatherHudQueryClient() {
     const queryClient = new ReactQuery.QueryClient({
@@ -13,7 +23,18 @@ function createWeatherHudQueryClient() {
         },
     });
 
-    queryClient.setQueryData(['weather', 'now'], {
+    queryClient.setQueryData(useGardensKeys, [currentGarden]);
+    queryClient.setQueryData(currentGardenKeys('summer', currentGarden.id), {
+        id: currentGarden.id,
+        name: currentGarden.name,
+        isSandbox: currentGarden.isSandbox,
+        farmId: 1,
+        stacks: [],
+        location: { lat: 45.739, lon: 16.572 },
+        raisedBeds: [],
+    });
+    queryClient.setQueryData(['weather', 'now', 1], {
+        alerts: [],
         cloudy: 0.1,
         foggy: 0,
         measuredTemperature: 20,
@@ -46,9 +67,11 @@ function WeatherHudTestProviders({ children }: PropsWithChildren) {
 
     return (
         <ReactQuery.QueryClientProvider client={queryClient}>
-            <GameStateContext.Provider value={gameStore}>
-                {children}
-            </GameStateContext.Provider>
+            <NuqsTestingAdapter>
+                <GameStateContext.Provider value={gameStore}>
+                    {children}
+                </GameStateContext.Provider>
+            </NuqsTestingAdapter>
         </ReactQuery.QueryClientProvider>
     );
 }
