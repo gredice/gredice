@@ -43,6 +43,12 @@ function formatPieceCountLabel(count: number) {
     return `${count} ${count === 1 ? 'KOMAD' : 'KOMADA'}`;
 }
 
+function formatScheduleLabelDate(date: Date) {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    return `${day}.${month}.${date.getFullYear()}.`;
+}
+
 function formatFieldRange(fields: SowingLabelField[]) {
     const positions = fields.map((field) => field.physicalPositionIndex);
     const firstPosition = positions.at(0);
@@ -63,12 +69,14 @@ function addSowingLabel(
     fields: SowingLabelField[],
     plantCount: number,
     plantSortName: string,
+    dateLabel: string,
 ) {
     labels.push({
         raisedBedPhysicalId: physicalId,
         fieldLabel: formatFieldRange(fields),
         detailLabel: formatPieceCountLabel(plantCount),
         plantSortName,
+        dateLabel,
     });
 }
 
@@ -76,6 +84,7 @@ function buildSowingLabelsForFields(
     fields: SowingLabelField[],
     physicalId: string,
     plantSortById: Map<number, EntityStandardized>,
+    dateLabel: string,
 ) {
     const labels: FieldOperationLabelData[] = [];
     let activeFields: SowingLabelField[] = [];
@@ -98,6 +107,7 @@ function buildSowingLabelsForFields(
             activeFields,
             activePlantCount,
             activePlantSortName,
+            dateLabel,
         );
         activeFields = [];
         activePlantSortId = null;
@@ -149,6 +159,7 @@ function buildSowingLabelsForFields(
                     [field],
                     labelPlantCount,
                     plantSortName,
+                    dateLabel,
                 );
                 remainingPlants -= labelPlantCount;
             }
@@ -172,6 +183,7 @@ function buildSowingLabelsForFields(
 function buildSowingLabels(
     dayData: FarmScheduleDayData,
     plantSortById: Map<number, EntityStandardized>,
+    dateLabel: string,
 ) {
     const affectedRaisedBedIds = [
         ...new Set(dayData.scheduledFields.map((field) => field.raisedBedId)),
@@ -208,7 +220,12 @@ function buildSowingLabels(
             );
 
         labels.push(
-            ...buildSowingLabelsForFields(fields, physicalId, plantSortById),
+            ...buildSowingLabelsForFields(
+                fields,
+                physicalId,
+                plantSortById,
+                dateLabel,
+            ),
         );
     }
 
@@ -258,7 +275,8 @@ function buildHarvestFieldLabel(
     raisedBeds: FarmRaisedBed[],
     plantSortById: Map<number, EntityStandardized>,
     detailLabel: string,
-) {
+    dateLabel: string,
+): FieldOperationLabelData | null {
     const plantSortName = field.plantSortId
         ? plantSortById.get(field.plantSortId)?.information?.name
         : undefined;
@@ -272,6 +290,7 @@ function buildHarvestFieldLabel(
         fieldLabel: getFieldPhysicalPositionIndex(field, raisedBeds).toString(),
         detailLabel,
         plantSortName,
+        dateLabel,
     };
 }
 
@@ -280,6 +299,7 @@ function buildOperationLabels(
     operationData: EntityStandardized | undefined,
     groupedRaisedBeds: FarmRaisedBed[],
     plantSortById: Map<number, EntityStandardized>,
+    dateLabel: string,
 ) {
     if (
         !shouldPrintOperationLabel(operationData) ||
@@ -310,6 +330,7 @@ function buildOperationLabels(
             groupedRaisedBeds,
             plantSortById,
             detailLabel,
+            dateLabel,
         );
         return label ? [label] : [];
     }
@@ -329,6 +350,7 @@ function buildOperationLabels(
                 groupedRaisedBeds,
                 plantSortById,
                 detailLabel,
+                dateLabel,
             ),
         )
         .filter((label): label is FieldOperationLabelData => label !== null);
@@ -365,6 +387,7 @@ function buildHarvestLabels(
     dayData: FarmScheduleDayData,
     plantSortById: Map<number, EntityStandardized>,
     operationDataById: Map<number, EntityStandardized>,
+    dateLabel: string,
 ) {
     const affectedRaisedBedIds = [
         ...new Set(
@@ -395,6 +418,7 @@ function buildHarvestLabels(
                 operationDataById.get(operation.entityId),
                 raisedBedGroup.raisedBeds,
                 plantSortById,
+                dateLabel,
             ),
         );
     }
@@ -406,14 +430,17 @@ export function buildScheduleLabelPrintData(
     dayData: FarmScheduleDayData,
     plantSorts: EntityStandardized[] | null | undefined,
     operationsData: EntityStandardized[] | null | undefined,
+    date: Date,
 ) {
     const plantSortById = getEntityById(plantSorts);
     const operationDataById = getEntityById(operationsData);
-    const sowingLabels = buildSowingLabels(dayData, plantSortById);
+    const dateLabel = formatScheduleLabelDate(date);
+    const sowingLabels = buildSowingLabels(dayData, plantSortById, dateLabel);
     const harvestLabels = buildHarvestLabels(
         dayData,
         plantSortById,
         operationDataById,
+        dateLabel,
     );
 
     return {

@@ -207,9 +207,20 @@ export function renderFieldOperationLabel(
 	const topFieldText = sanitizeText(data.fieldLabel);
 	const detailText = sanitizeText(data.detailLabel);
 	const plantSortName = sanitizeText(data.plantSortName);
+	const dateLabel = data.dateLabel ? sanitizeText(data.dateLabel) : "";
 	const detailTop = Math.round(height * 0.58);
 	const plantTop = Math.round(height * 0.75);
 	const bottomMaxWidth = width - paddingX * 2;
+	const dateFontSize = dateLabel
+		? fitSingleLineFont(
+				context,
+				dateLabel,
+				width * 0.28,
+				Math.round(height * 0.085),
+				Math.round(height * 0.06),
+				500,
+			)
+		: 0;
 	const headerMaxWidth = Math.max(
 		width * 0.25,
 		rightColumnX - headerLabelX - Math.round(width * 0.08),
@@ -260,12 +271,18 @@ export function renderFieldOperationLabel(
 		Math.round(height * 0.12),
 		800,
 	);
+	const fieldBaseline = headerTop + bedFontSize + headerLineHeight;
 	context.font = `800 ${fieldFontSize}px ${FONT_FAMILY}`;
-	context.fillText(
-		topFieldText,
-		rightColumnX,
-		headerTop + bedFontSize + headerLineHeight,
-	);
+	context.fillText(topFieldText, rightColumnX, fieldBaseline);
+
+	if (dateLabel) {
+		context.font = `500 ${dateFontSize}px ${FONT_FAMILY}`;
+		context.fillText(
+			dateLabel,
+			rightColumnX,
+			fieldBaseline + dateFontSize + Math.round(height * 0.015),
+		);
+	}
 
 	const detailFontSize = fitSingleLineFont(
 		context,
@@ -311,6 +328,7 @@ export function renderHarvestLabel(
 			fieldLabel: data.fieldIndex.toString(),
 			detailLabel: data.operationLabel ?? "BERBA",
 			plantSortName: data.plantSortName,
+			dateLabel: data.dateLabel,
 		},
 		preset,
 	);

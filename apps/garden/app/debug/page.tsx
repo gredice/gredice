@@ -33,6 +33,12 @@ const debugGroups = [
                 description:
                     'Animal behavior scene with spawn presets, entity placement, and debug controls.',
             },
+            {
+                href: '/debug/profile/game',
+                title: 'Game profile viewer',
+                description:
+                    'Mocked garden scene profiles for weather, season, quality, and HUD checks.',
+            },
         ],
     },
     {
