@@ -15,6 +15,7 @@ import {
 } from './BlockInteractionRegistry';
 import {
     type BlockInteractionLayerTarget,
+    getBlockInteractionLayerBounds,
     resolveBlockInteractionLayerTarget,
 } from './BlockInteractionResolver';
 
@@ -61,40 +62,6 @@ function getLayerTargets({
     return targets;
 }
 
-function getPlaneBounds(targets: BlockInteractionLayerTarget[]) {
-    if (targets.length === 0) {
-        return {
-            centerX: 0,
-            centerZ: 0,
-            depth: 1,
-            width: 1,
-        };
-    }
-
-    let minX = Number.POSITIVE_INFINITY;
-    let maxX = Number.NEGATIVE_INFINITY;
-    let minZ = Number.POSITIVE_INFINITY;
-    let maxZ = Number.NEGATIVE_INFINITY;
-
-    for (const target of targets) {
-        const halfWidth =
-            Math.max(target.hitbox.width, target.hitbox.depth) / 2;
-        minX = Math.min(minX, target.stack.position.x - halfWidth);
-        maxX = Math.max(maxX, target.stack.position.x + halfWidth);
-        minZ = Math.min(minZ, target.stack.position.z - halfWidth);
-        maxZ = Math.max(maxZ, target.stack.position.z + halfWidth);
-    }
-
-    const margin = 1;
-
-    return {
-        centerX: (minX + maxX) / 2,
-        centerZ: (minZ + maxZ) / 2,
-        depth: Math.max(maxZ - minZ + margin * 2, 1),
-        width: Math.max(maxX - minX + margin * 2, 1),
-    };
-}
-
 function createLayerEvent<TEvent extends PointerEvent | MouseEvent>(
     event: ThreeEvent<TEvent>,
     hitPoint: Vector3,
@@ -134,7 +101,10 @@ export function BlockInteractionLayer({
         () => getLayerTargets({ blockData, stacks }),
         [blockData, stacks],
     );
-    const planeBounds = useMemo(() => getPlaneBounds(targets), [targets]);
+    const interactionBounds = useMemo(
+        () => getBlockInteractionLayerBounds(targets),
+        [targets],
+    );
     const material = useMemo(
         () =>
             new MeshBasicMaterial({
@@ -229,11 +199,20 @@ export function BlockInteractionLayer({
             onPointerDown={handlePointerDown}
             onPointerLeave={handlePointerLeave}
             onPointerUp={handlePointerUp}
-            position={[planeBounds.centerX, 0, planeBounds.centerZ]}
+            position={[
+                interactionBounds.centerX,
+                interactionBounds.centerY,
+                interactionBounds.centerZ,
+            ]}
             renderOrder={10_000}
-            rotation={[-Math.PI / 2, 0, 0]}
         >
-            <planeGeometry args={[planeBounds.width, planeBounds.depth]} />
+            <boxGeometry
+                args={[
+                    interactionBounds.width,
+                    interactionBounds.height,
+                    interactionBounds.depth,
+                ]}
+            />
             <primitive attach="material" object={material} />
         </mesh>
     );

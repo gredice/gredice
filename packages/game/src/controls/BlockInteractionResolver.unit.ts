@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { Ray, Vector3 } from 'three';
 import {
     type BlockInteractionLayerTarget,
+    getBlockInteractionLayerBounds,
     getBlockInteractionRotatedHitboxFootprint,
     resolveBlockInteractionLayerTarget,
 } from './BlockInteractionResolver';
@@ -112,5 +113,35 @@ describe('resolveBlockInteractionLayerTarget', () => {
         const ray = new Ray(new Vector3(-2, 0.25, 2), new Vector3(1, 0, 0));
 
         assert.equal(resolveBlockInteractionLayerTarget([target], ray), null);
+    });
+
+    it('builds a three-dimensional receiver bound for tall hitboxes', () => {
+        const target = createTarget({
+            hitbox: {
+                depth: 1.43,
+                height: 2.38,
+                width: 1.36,
+            },
+            key: 'tree',
+            stackHeight: 0.4,
+        });
+
+        const bounds = getBlockInteractionLayerBounds([target]);
+
+        assert.deepEqual(
+            {
+                ...bounds,
+                centerY: Number(bounds.centerY.toFixed(2)),
+                width: Number(bounds.width.toFixed(2)),
+            },
+            {
+                centerX: 0,
+                centerY: 1.59,
+                centerZ: 0,
+                depth: 1.53,
+                height: 2.48,
+                width: 1.46,
+            },
+        );
     });
 });
