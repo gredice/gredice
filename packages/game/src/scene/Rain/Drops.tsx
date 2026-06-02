@@ -14,7 +14,7 @@ interface DropsProps {
     count?: number;
 }
 
-const RAIN_ALPHA = 0.24;
+const RAIN_ALPHA = 0.56;
 
 export const Drops = ({ count = 2000 }: DropsProps) => {
     const fref = useRef<THREE.Group>(null);
@@ -78,18 +78,22 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
             return;
         }
 
-        group.position.set(x + 100, 0, z + 100);
+        group.position.set(x, 0, z);
     }, []);
 
     useLayoutEffect(() => {
-        updateRainFieldPosition(camera.position.x, camera.position.z);
+        const snapshot = gameCamera?.getSnapshot();
+        updateRainFieldPosition(
+            snapshot?.target[0] ?? camera.position.x,
+            snapshot?.target[2] ?? camera.position.z,
+        );
 
         if (!gameCamera) {
             return;
         }
 
         return gameCamera.subscribe((snapshot) => {
-            updateRainFieldPosition(snapshot.position[0], snapshot.position[2]);
+            updateRainFieldPosition(snapshot.target[0], snapshot.target[2]);
         });
     }, [camera, gameCamera, updateRainFieldPosition]);
 
@@ -203,10 +207,11 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
             <instancedMesh
                 args={[geometry, undefined, count]}
                 frustumCulled={false}
-                renderOrder={2}
+                renderOrder={35}
             >
                 <shaderMaterial
                     key={vertexShader + fragmentShader}
+                    depthTest={false}
                     depthWrite={false}
                     vertexShader={vertexShader}
                     fragmentShader={fragmentShader}
