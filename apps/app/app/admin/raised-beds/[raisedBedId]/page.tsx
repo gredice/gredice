@@ -158,8 +158,8 @@ export default async function RaisedBedPage({
                             </Stack>
                         </Alert>
                     )}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <Card className="h-fit">
+                    <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+                        <Card>
                             <CardHeader>
                                 <CardTitle>Polja</CardTitle>
                             </CardHeader>
