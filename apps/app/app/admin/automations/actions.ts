@@ -363,14 +363,28 @@ export async function runAutomationTestAction(
     }
 }
 
-export async function replayAutomationRunAction(
-    runId: number,
-    dryRun = true,
-): Promise<AutomationRunActionResult> {
+async function runAutomationRunAgain({
+    runId,
+    dryRun,
+    actionName,
+    lockedByScope,
+}: {
+    runId: number;
+    dryRun: boolean;
+    actionName: 'replay' | 'retry';
+    lockedByScope: 'app-admin-replay' | 'app-admin-retry';
+}): Promise<AutomationRunActionResult> {
     const { userId } = await auth(['admin']);
     const originalRun = await getAutomationRunById(runId);
     if (!originalRun) {
         return { ok: false, errors: ['Automation run was not found.'] };
+    }
+
+    if (actionName === 'retry' && originalRun.status !== 'failed') {
+        return {
+            ok: false,
+            errors: ['Only failed automation runs can be retried.'],
+        };
     }
 
     const definition = await getAutomationDefinitionById(
@@ -385,8 +399,13 @@ export async function replayAutomationRunAction(
         : null;
     const run = await createAutomationRun({
         automationDefinition: definition,
-        source: 'replay',
+        source: dryRun ? 'replay' : 'manual',
         sourceEvent,
+        sourceEventType: originalRun.sourceEventType,
+        sourceAggregateId:
+            originalRun.sourceEventType === 'automation.schedule.monthly'
+                ? null
+                : originalRun.sourceAggregateId,
         parentRunId: originalRun.id,
         input: originalRun.input,
         dryRun,
@@ -396,18 +415,40 @@ export async function replayAutomationRunAction(
     if (!run) {
         return {
             ok: false,
-            errors: ['Automation replay run was not created.'],
+            errors: [`Automation ${actionName} run was not created.`],
         };
     }
 
     const started =
         (await startAutomationRun(run.id, {
-            lockedBy: `app-admin-replay:${userId}`,
+            lockedBy: `${lockedByScope}:${userId}`,
         })) ?? run;
     const result = await executeAutomationRun(started);
 
     revalidateAutomationPages(definition.id);
     return { ok: true, runId: run.id, status: result.status };
+}
+
+export async function replayAutomationRunAction(
+    runId: number,
+): Promise<AutomationRunActionResult> {
+    return runAutomationRunAgain({
+        runId,
+        dryRun: true,
+        actionName: 'replay',
+        lockedByScope: 'app-admin-replay',
+    });
+}
+
+export async function retryAutomationRunAction(
+    runId: number,
+): Promise<AutomationRunActionResult> {
+    return runAutomationRunAgain({
+        runId,
+        dryRun: false,
+        actionName: 'retry',
+        lockedByScope: 'app-admin-retry',
+    });
 }
 
 export async function getAutomationRunStepsAction(runId: number) {

@@ -20,7 +20,7 @@ import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { AutomationSlidePanel } from './AutomationSlidePanel';
-import { ReplayAutomationRunButton } from './AutomationTestPanel';
+import { AutomationRunRetryControls } from './AutomationTestPanel';
 import { automationRunStatusMeta } from './presentation';
 
 export type AutomationRunStatusFilter =
@@ -364,7 +364,7 @@ export function AutomationRunsTable({
                                 </Typography>
                             ) : null}
                             {selectedRun.run.status === 'failed' ? (
-                                <ReplayAutomationRunButton
+                                <AutomationRunRetryControls
                                     runId={selectedRun.run.id}
                                 />
                             ) : null}
