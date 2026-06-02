@@ -513,6 +513,14 @@ export function Nav({
                 </NavGroup>
             </NavSection>
             <NavSection label="Upravljanje" compact={compact}>
+                <NavItem
+                    href={adminPages.Approvals.href}
+                    label={adminPages.Approvals.label}
+                    icon={<Inbox className="size-5" />}
+                    onClick={onItemClick}
+                    badge={pendingApprovalTasksCount}
+                    compact={compact}
+                />
                 <NavGroup
                     label="Inventar"
                     icon={<Tally3 className="size-5" />}
@@ -543,31 +551,12 @@ export function Nav({
                     label="Logistika"
                     icon={<Truck className="size-5" />}
                     forceOpen={includesSelectedPath(pathname, [
-                        adminPages.Approvals.href,
-                        adminPages.Automations.href,
                         adminPages.Schedule.href,
                         adminPages.DeliverySlots.href,
                         adminPages.DeliveryRequests.href,
                     ])}
                     compact={compact}
                 >
-                    <NavItem
-                        href={adminPages.Approvals.href}
-                        label={adminPages.Approvals.label}
-                        icon={<Inbox className="size-5" />}
-                        onClick={onItemClick}
-                        badge={pendingApprovalTasksCount}
-                        compact={compact}
-                        nested
-                    />
-                    <NavItem
-                        href={adminPages.Automations.href}
-                        label={adminPages.Automations.label}
-                        icon={<Lightning className="size-5" />}
-                        onClick={onItemClick}
-                        compact={compact}
-                        nested
-                    />
                     <NavItem
                         href={adminPages.Schedule.href}
                         label={adminPages.Schedule.label}
@@ -664,6 +653,13 @@ export function Nav({
                 </NavGroup>
             </NavSection>
             <NavSection label="Sustavi" compact={compact}>
+                <NavItem
+                    href={adminPages.Automations.href}
+                    label={adminPages.Automations.label}
+                    icon={<Lightning className="size-5" />}
+                    onClick={onItemClick}
+                    compact={compact}
+                />
                 <NavGroup
                     label="Održavanje"
                     icon={<File className="size-5" />}
@@ -701,24 +697,13 @@ export function Nav({
                 </NavGroup>
             </NavSection>
             <NavSection label="Postavke" compact={compact}>
-                <NavGroup
-                    label="Aplikacija"
+                <NavItem
+                    href={adminPages.Settings.href}
+                    label={adminPages.Settings.label}
                     icon={<Settings className="size-5" />}
-                    forceOpen={isSelectedPath(
-                        pathname,
-                        adminPages.Settings.href,
-                    )}
+                    onClick={onItemClick}
                     compact={compact}
-                >
-                    <NavItem
-                        href={adminPages.Settings.href}
-                        label={adminPages.Settings.label}
-                        icon={<Settings className="size-5" />}
-                        onClick={onItemClick}
-                        compact={compact}
-                        nested
-                    />
-                </NavGroup>
+                />
             </NavSection>
         </div>
     );

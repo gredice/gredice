@@ -10,6 +10,10 @@ import { InventoryQuantityValue } from '../../../../components/shared/inventory/
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../../src/KnownPages';
 import { DeleteInventoryItemButton } from './DeleteInventoryItemButton';
+import {
+    getInventoryItemState,
+    type InventoryStateFilter,
+} from './inventoryStatus';
 
 type InventoryItemTableRow = {
     id: number;
@@ -39,14 +43,19 @@ export function InventoryItemsTable({
     entityTypeName,
     items,
     tracksSerialNumbers,
+    stateFilter,
 }: {
     inventoryConfigId: number;
     entityTypeName: string;
     items: InventoryItemTableRow[];
     tracksSerialNumbers: boolean;
+    stateFilter?: InventoryStateFilter | '';
 }) {
     const [sort, setSort] = useState<SortState>(defaultSort);
-    const sortedItems = [...items].sort((left, right) =>
+    const filteredItems = stateFilter
+        ? items.filter((item) => getInventoryItemState(item) === stateFilter)
+        : items;
+    const sortedItems = [...filteredItems].sort((left, right) =>
         compareInventoryItems(left, right, sort),
     );
     const columnCount = tracksSerialNumbers ? 6 : 5;
@@ -116,7 +125,9 @@ export function InventoryItemsTable({
                     <Table.Row>
                         <Table.Cell colSpan={columnCount}>
                             <NoDataPlaceholder>
-                                Nema stavki u zalihi. Dodajte prvu stavku.
+                                {items.length === 0
+                                    ? 'Nema stavki u zalihi. Dodajte prvu stavku.'
+                                    : 'Nema stavki za odabrano stanje zalihe.'}
                             </NoDataPlaceholder>
                         </Table.Cell>
                     </Table.Row>

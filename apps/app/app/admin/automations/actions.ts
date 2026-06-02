@@ -7,6 +7,7 @@ import {
     type AutomationJsonObject,
     type AutomationModuleKind,
     automationDefinitionStatusValues,
+    automationModuleKeys,
     createAutomationDefinition,
     createAutomationRun,
     executeAutomationRun,
@@ -120,6 +121,12 @@ function getTriggerEventType(graph: AutomationGraph) {
     return typeof eventType === 'string' && eventType.trim().length > 0
         ? eventType.trim()
         : null;
+}
+
+function getTriggerModuleKey(graph: AutomationGraph) {
+    return (
+        graph.nodes.find((node) => node.kind === 'trigger')?.moduleKey ?? null
+    );
 }
 
 function parseEventDataJson(value: string | undefined) {
@@ -242,8 +249,14 @@ export async function runAutomationTestAction(
         return { ok: false, errors: validation.errors };
     }
 
+    const triggerModuleKey = getTriggerModuleKey(definition.graph);
     const eventType = getTriggerEventType(definition.graph);
-    if (!eventType) {
+    const isDomainEventTrigger =
+        triggerModuleKey === automationModuleKeys.triggerDomainEvent;
+    const isMonthlyScheduleTrigger =
+        triggerModuleKey === automationModuleKeys.triggerScheduleMonthly;
+
+    if (isDomainEventTrigger && !eventType) {
         return {
             ok: false,
             errors: ['Automation trigger event type is missing.'],
@@ -251,33 +264,75 @@ export async function runAutomationTestAction(
     }
 
     try {
-        const sourceEvent = payload.eventId
-            ? await getDomainEventById(payload.eventId)
-            : null;
+        const sourceEvent =
+            isDomainEventTrigger && payload.eventId
+                ? await getDomainEventById(payload.eventId)
+                : null;
 
-        if (payload.eventId && !sourceEvent) {
+        if (isDomainEventTrigger && payload.eventId && !sourceEvent) {
             return { ok: false, errors: ['Source event was not found.'] };
         }
 
-        const input = sourceEvent
-            ? {
-                  eventId: sourceEvent.id,
-                  eventType: sourceEvent.type,
-                  aggregateId: sourceEvent.aggregateId,
-                  data: isRecord(sourceEvent.data) ? sourceEvent.data : {},
-                  createdAt: sourceEvent.createdAt.toISOString(),
-              }
-            : {
-                  eventType,
-                  aggregateId: payload.aggregateId?.trim() || 'manual-test',
-                  data: parseEventDataJson(payload.eventDataJson),
-                  createdAt: new Date().toISOString(),
-              };
+        let input: AutomationJsonObject;
+        let sourceEventType: string | null = eventType;
+        let sourceAggregateId: string | null = null;
+
+        if (isMonthlyScheduleTrigger) {
+            const now = new Date();
+            const trigger = definition.graph.nodes.find(
+                (node) => node.kind === 'trigger',
+            );
+            const dayOfMonth = trigger?.config.dayOfMonth;
+            const timeZone = trigger?.config.timeZone;
+            const occurrenceKey = `test:${definition.id}:${now.getTime()}`;
+
+            sourceEventType = 'automation.schedule.monthly';
+            sourceAggregateId = occurrenceKey;
+            input = {
+                scheduleType: 'monthly',
+                triggerModuleKey: automationModuleKeys.triggerScheduleMonthly,
+                occurrenceKey,
+                period: now.toISOString().slice(0, 7),
+                occurrenceDate: now.toISOString().slice(0, 10),
+                dayOfMonth: typeof dayOfMonth === 'number' ? dayOfMonth : null,
+                timeZone:
+                    typeof timeZone === 'string' && timeZone.trim().length > 0
+                        ? timeZone.trim()
+                        : 'Europe/Zagreb',
+                enqueuedAt: now.toISOString(),
+            };
+        } else if (isDomainEventTrigger) {
+            input = sourceEvent
+                ? {
+                      eventId: sourceEvent.id,
+                      eventType: sourceEvent.type,
+                      aggregateId: sourceEvent.aggregateId,
+                      data: isRecord(sourceEvent.data) ? sourceEvent.data : {},
+                      createdAt: sourceEvent.createdAt.toISOString(),
+                  }
+                : {
+                      eventType,
+                      aggregateId: payload.aggregateId?.trim() || 'manual-test',
+                      data: parseEventDataJson(payload.eventDataJson),
+                      createdAt: new Date().toISOString(),
+                  };
+            sourceAggregateId =
+                typeof input.aggregateId === 'string'
+                    ? input.aggregateId
+                    : null;
+        } else {
+            return {
+                ok: false,
+                errors: ['Automation trigger type cannot be tested yet.'],
+            };
+        }
 
         const run = await createAutomationRun({
             automationDefinition: definition,
             source: 'test',
             sourceEvent,
+            sourceEventType,
+            sourceAggregateId,
             input,
             dryRun: payload.dryRun,
             manualRequestedByUserId: userId,

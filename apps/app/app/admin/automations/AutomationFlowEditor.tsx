@@ -2,6 +2,7 @@
 
 import '@xyflow/react/dist/style.css';
 
+import { slugify } from '@gredice/js/slug';
 import type {
     AutomationDefinitionStatus,
     AutomationGraph,
@@ -10,11 +11,18 @@ import type {
     AutomationModuleMetadata,
 } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Chip } from '@gredice/ui/Chip';
 import { Input } from '@gredice/ui/Input';
-import { Add, Delete, Save } from '@gredice/ui/icons';
+import {
+    Add,
+    Configuration,
+    Delete,
+    Layers,
+    Play,
+    Save,
+    Settings,
+} from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
@@ -33,8 +41,10 @@ import {
     useNodesState,
 } from '@xyflow/react';
 import { useRouter } from 'next/navigation';
+import type { ReactNode } from 'react';
 import { useMemo, useState, useTransition } from 'react';
 import { KnownPages } from '../../../src/KnownPages';
+import { AutomationSlidePanel } from './AutomationSlidePanel';
 import {
     type AutomationSaveResult,
     saveAutomationDefinitionAction,
@@ -49,6 +59,7 @@ type FlowNodeData = Record<string, unknown> & {
 };
 
 type FlowNode = Node<FlowNodeData>;
+type AutomationEditorPanel = 'details' | 'modules' | 'settings' | 'testing';
 
 type AutomationFlowEditorProps = {
     automationId?: number;
@@ -58,6 +69,7 @@ type AutomationFlowEditorProps = {
     initialStatus: AutomationDefinitionStatus;
     initialGraph: AutomationGraph;
     modules: AutomationModuleMetadata[];
+    testPanel?: ReactNode;
 };
 
 const definitionStatusItems = [
@@ -190,6 +202,66 @@ function parseJsonField(value: string): unknown {
     return JSON.parse(value);
 }
 
+function panelTitle(panel: AutomationEditorPanel | null) {
+    switch (panel) {
+        case 'details':
+            return 'Detalji workflowa';
+        case 'modules':
+            return 'Moduli';
+        case 'settings':
+            return 'Postavke modula';
+        case 'testing':
+            return 'Testiranje';
+        default:
+            return '';
+    }
+}
+
+function panelDescription(panel: AutomationEditorPanel | null) {
+    switch (panel) {
+        case 'details':
+            return 'Naziv, ključ, status i opis automatizacije.';
+        case 'modules':
+            return 'Dodajte triggere, uvjete i akcije u dijagram.';
+        case 'settings':
+            return 'Konfiguracija trenutno odabranog modula.';
+        case 'testing':
+            return 'Pokrenite probno izvođenje iz sintetičkog ili postojećeg ulaza.';
+        default:
+            return undefined;
+    }
+}
+
+function SaveResultNotice({ result }: { result: AutomationSaveResult }) {
+    if (result.ok) {
+        return (
+            <div
+                role="status"
+                className="rounded-md border border-green-200 bg-green-50 p-3 text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200"
+            >
+                <Typography level="body2">
+                    Automatizacija je spremljena.
+                </Typography>
+            </div>
+        );
+    }
+
+    return (
+        <div
+            role="alert"
+            className="rounded-md border border-red-200 bg-red-50 p-3 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
+        >
+            <Stack spacing={1}>
+                {result.errors.map((error) => (
+                    <Typography key={error} level="body2">
+                        {error}
+                    </Typography>
+                ))}
+            </Stack>
+        </div>
+    );
+}
+
 export function AutomationFlowEditor({
     automationId,
     initialDescription,
@@ -198,17 +270,19 @@ export function AutomationFlowEditor({
     initialName,
     initialStatus,
     modules,
+    testPanel,
 }: AutomationFlowEditorProps) {
     const router = useRouter();
     const modulesByKey = useMemo(
         () => new Map(modules.map((module) => [module.key, module])),
         [modules],
     );
-    const [key, setKey] = useState(initialKey);
     const [name, setName] = useState(initialName);
     const [description, setDescription] = useState(initialDescription ?? '');
     const [status, setStatus] =
         useState<AutomationDefinitionStatus>(initialStatus);
+    const [activePanel, setActivePanel] =
+        useState<AutomationEditorPanel | null>(automationId ? null : 'details');
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
         initialGraph.nodes[0]?.id ?? null,
     );
@@ -228,6 +302,10 @@ export function AutomationFlowEditor({
     const selectedModule = selectedNode
         ? modulesByKey.get(selectedNode.data.moduleKey)
         : null;
+    const generatedKey = useMemo(
+        () => slugify(name) || initialKey || 'nova-automatizacija',
+        [initialKey, name],
+    );
     const groupedModules = useMemo(
         () =>
             modules.reduce<
@@ -268,6 +346,12 @@ export function AutomationFlowEditor({
         );
     };
 
+    function openPanel(panel: AutomationEditorPanel) {
+        setActivePanel((currentPanel) =>
+            currentPanel === panel ? null : panel,
+        );
+    }
+
     function addModule(module: AutomationModuleMetadata) {
         const moduleCount = nodes.filter(
             (node) => node.data.moduleKey === module.key,
@@ -293,6 +377,7 @@ export function AutomationFlowEditor({
             updateNodeClassNames([...current, nextNode], nextNode.id),
         );
         setSelectedNodeId(nextNode.id);
+        setActivePanel('settings');
         setResult(null);
     }
 
@@ -312,6 +397,7 @@ export function AutomationFlowEditor({
             ),
         );
         setSelectedNodeId(null);
+        setResult(null);
     }
 
     function updateSelectedConfig(key: string, value: unknown) {
@@ -343,7 +429,7 @@ export function AutomationFlowEditor({
         startTransition(async () => {
             const saveResult = await saveAutomationDefinitionAction({
                 id: automationId,
-                key,
+                key: generatedKey,
                 name,
                 description,
                 status,
@@ -360,83 +446,297 @@ export function AutomationFlowEditor({
 
     const statusMeta = automationStatusMeta(status);
 
-    return (
+    const detailPanel = (
         <Stack spacing={4}>
-            <Card>
-                <CardContent className="grid gap-3 md:grid-cols-[1fr_1fr_180px_auto] md:items-end">
-                    <Input
-                        label="Naziv"
-                        value={name}
-                        onChange={(event) => setName(event.target.value)}
-                        fullWidth
-                    />
-                    <Input
-                        label="Ključ"
-                        value={key}
-                        onChange={(event) => setKey(event.target.value)}
-                        fullWidth
-                    />
-                    <SelectItems<AutomationDefinitionStatus>
-                        label="Status"
-                        value={status}
-                        items={definitionStatusItems}
-                        onValueChange={(nextStatus) => setStatus(nextStatus)}
-                    />
-                    <Button
-                        type="button"
-                        disabled={isPending}
-                        onClick={save}
-                        startDecorator={<Save className="size-4" />}
-                    >
-                        Spremi
-                    </Button>
-                    <div className="md:col-span-4">
-                        <label
-                            className="mb-1 block text-sm font-medium"
-                            htmlFor="automation-description"
+            <Input
+                label="Naziv"
+                value={name}
+                onChange={(event) => {
+                    setName(event.target.value);
+                    setResult(null);
+                }}
+                fullWidth
+            />
+            <Input
+                label="Ključ"
+                value={generatedKey}
+                readOnly
+                helperText="Automatski se generira iz naziva."
+                fullWidth
+            />
+            <SelectItems<AutomationDefinitionStatus>
+                className="w-full"
+                label="Status"
+                value={status}
+                items={definitionStatusItems}
+                onValueChange={(nextStatus) => {
+                    setStatus(nextStatus);
+                    setResult(null);
+                }}
+            />
+            <Stack spacing={1}>
+                <label
+                    className="text-sm font-medium"
+                    htmlFor="automation-description"
+                >
+                    Opis
+                </label>
+                <textarea
+                    id="automation-description"
+                    value={description}
+                    onChange={(event) => {
+                        setDescription(event.target.value);
+                        setResult(null);
+                    }}
+                    className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                />
+            </Stack>
+            <Button
+                type="button"
+                disabled={isPending}
+                loading={isPending}
+                onClick={save}
+                startDecorator={<Save className="size-4" />}
+            >
+                Spremi
+            </Button>
+        </Stack>
+    );
+
+    const modulesPanel = (
+        <Stack spacing={4}>
+            {(
+                [
+                    'trigger',
+                    'filter',
+                    'condition',
+                    'action',
+                ] satisfies AutomationModuleKind[]
+            ).map((kind) => (
+                <Stack key={kind} spacing={2}>
+                    <Typography level="body2" semiBold>
+                        {kindLabel(kind)}
+                    </Typography>
+                    {groupedModules[kind].length === 0 ? (
+                        <Typography
+                            level="body3"
+                            className="text-muted-foreground"
                         >
-                            Opis
-                        </label>
-                        <textarea
-                            id="automation-description"
-                            value={description}
-                            onChange={(event) =>
-                                setDescription(event.target.value)
-                            }
-                            className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                        />
-                    </div>
-                </CardContent>
-            </Card>
-
-            {result && !result.ok ? (
-                <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950">
-                    <CardContent>
-                        <Stack spacing={1}>
-                            {result.errors.map((error) => (
-                                <Typography key={error} level="body2">
-                                    {error}
-                                </Typography>
-                            ))}
-                        </Stack>
-                    </CardContent>
-                </Card>
-            ) : null}
-
-            {result?.ok ? (
-                <Card className="border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950">
-                    <CardContent>
-                        <Typography level="body2">
-                            Automatizacija je spremljena.
+                            Nema dostupnih modula.
                         </Typography>
-                    </CardContent>
-                </Card>
-            ) : null}
+                    ) : (
+                        groupedModules[kind].map((module) => (
+                            <button
+                                key={module.key}
+                                type="button"
+                                onClick={() => addModule(module)}
+                                className="w-full rounded-md border bg-background p-3 text-left transition-colors hover:border-primary/60 hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            >
+                                <Row spacing={2} className="items-start">
+                                    <Add className="mt-0.5 size-4 shrink-0" />
+                                    <Stack spacing={1}>
+                                        <Typography level="body2" semiBold>
+                                            {module.title}
+                                        </Typography>
+                                        <Typography
+                                            level="body3"
+                                            className="text-muted-foreground"
+                                        >
+                                            {module.description}
+                                        </Typography>
+                                        <Typography
+                                            level="body3"
+                                            className="break-all text-muted-foreground"
+                                        >
+                                            {module.key}
+                                        </Typography>
+                                    </Stack>
+                                </Row>
+                            </button>
+                        ))
+                    )}
+                </Stack>
+            ))}
+        </Stack>
+    );
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-                <Card className="min-w-0 overflow-hidden p-0">
-                    <div className="flex items-center justify-between border-b px-4 py-3">
-                        <Row spacing={2}>
+    const settingsPanel =
+        !selectedNode || !selectedModule ? (
+            <Typography level="body2" className="text-muted-foreground">
+                Odaberite modul u grafu.
+            </Typography>
+        ) : (
+            <Stack spacing={3}>
+                <Stack spacing={1}>
+                    <Typography level="body2" semiBold>
+                        {selectedModule.title}
+                    </Typography>
+                    <Typography level="body3" className="text-muted-foreground">
+                        {selectedModule.description}
+                    </Typography>
+                    <Row spacing={1} className="flex-wrap">
+                        <Chip size="sm" variant="soft">
+                            {kindLabel(selectedModule.kind)}
+                        </Chip>
+                        {selectedModule.mutatesData ? (
+                            <Chip size="sm" color="warning" variant="soft">
+                                Mijenja podatke
+                            </Chip>
+                        ) : null}
+                        {selectedModule.dryRunSupported ? (
+                            <Chip size="sm" color="info" variant="soft">
+                                Dry-run
+                            </Chip>
+                        ) : null}
+                    </Row>
+                </Stack>
+
+                {selectedModule.configFields.length === 0 ? (
+                    <Typography level="body3" className="text-muted-foreground">
+                        Modul nema konfiguracijskih polja.
+                    </Typography>
+                ) : null}
+
+                {selectedModule.configFields.map((field) => {
+                    const value = selectedNode.data.config[field.key];
+
+                    if (field.type === 'select') {
+                        return (
+                            <SelectItems
+                                key={field.key}
+                                className="w-full"
+                                label={field.label}
+                                value={typeof value === 'string' ? value : ''}
+                                items={
+                                    field.options?.map((option) => ({
+                                        value: option.value,
+                                        label: option.label,
+                                    })) ?? []
+                                }
+                                helperText={field.description}
+                                onValueChange={(nextValue) =>
+                                    updateSelectedConfig(field.key, nextValue)
+                                }
+                            />
+                        );
+                    }
+
+                    if (field.type === 'boolean') {
+                        return (
+                            <Checkbox
+                                key={field.key}
+                                label={field.label}
+                                checked={value === true}
+                                onCheckedChange={(checked) =>
+                                    updateSelectedConfig(
+                                        field.key,
+                                        checked === true,
+                                    )
+                                }
+                            />
+                        );
+                    }
+
+                    if (field.type === 'json') {
+                        return (
+                            <Stack key={field.key} spacing={1}>
+                                <label
+                                    className="text-sm font-medium"
+                                    htmlFor={`automation-config-${field.key}`}
+                                >
+                                    {field.label}
+                                </label>
+                                <textarea
+                                    id={`automation-config-${field.key}`}
+                                    value={jsonFieldValue(value)}
+                                    onChange={(event) => {
+                                        try {
+                                            updateSelectedConfig(
+                                                field.key,
+                                                parseJsonField(
+                                                    event.target.value,
+                                                ),
+                                            );
+                                            setJsonError(null);
+                                        } catch (error) {
+                                            setJsonError(
+                                                error instanceof Error
+                                                    ? error.message
+                                                    : 'Invalid JSON.',
+                                            );
+                                        }
+                                    }}
+                                    className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-hidden ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                />
+                                {field.description ? (
+                                    <Typography
+                                        level="body3"
+                                        className="text-muted-foreground"
+                                    >
+                                        {field.description}
+                                    </Typography>
+                                ) : null}
+                            </Stack>
+                        );
+                    }
+
+                    return (
+                        <Input
+                            key={field.key}
+                            label={field.label}
+                            helperText={field.description}
+                            placeholder={field.placeholder}
+                            type={field.type === 'number' ? 'number' : 'text'}
+                            value={
+                                typeof value === 'string' ||
+                                typeof value === 'number'
+                                    ? value
+                                    : ''
+                            }
+                            onChange={(event) =>
+                                updateSelectedConfig(
+                                    field.key,
+                                    field.type === 'number'
+                                        ? event.target.value.trim()
+                                            ? Number(event.target.value)
+                                            : undefined
+                                        : event.target.value,
+                                )
+                            }
+                            fullWidth
+                        />
+                    );
+                })}
+
+                {selectedModule.inputDescription ? (
+                    <Typography level="body3" className="text-muted-foreground">
+                        Ulaz: {selectedModule.inputDescription}
+                    </Typography>
+                ) : null}
+                {selectedModule.outputDescription ? (
+                    <Typography level="body3" className="text-muted-foreground">
+                        Izlaz: {selectedModule.outputDescription}
+                    </Typography>
+                ) : null}
+                {jsonError ? (
+                    <Typography
+                        level="body3"
+                        className="text-red-700 dark:text-red-300"
+                    >
+                        {jsonError}
+                    </Typography>
+                ) : null}
+            </Stack>
+        );
+
+    return (
+        <>
+            <Stack spacing={3}>
+                {result ? <SaveResultNotice result={result} /> : null}
+
+                <div className="min-w-0 overflow-hidden rounded-md border bg-background">
+                    <div className="flex flex-col gap-3 border-b px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+                        <Row spacing={2} className="min-w-0 flex-wrap">
                             <Chip
                                 color={statusMeta.color}
                                 size="sm"
@@ -448,19 +748,91 @@ export function AutomationFlowEditor({
                                 {nodes.length} modula, {edges.length} veza
                             </Typography>
                         </Row>
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="outlined"
-                            color="danger"
-                            disabled={!selectedNodeId}
-                            onClick={removeSelectedNode}
-                            startDecorator={<Delete className="size-4" />}
-                        >
-                            Ukloni
-                        </Button>
+                        <Row spacing={2} className="flex-wrap">
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant={
+                                    activePanel === 'details'
+                                        ? 'soft'
+                                        : 'outlined'
+                                }
+                                aria-pressed={activePanel === 'details'}
+                                onClick={() => openPanel('details')}
+                                startDecorator={<Settings className="size-4" />}
+                            >
+                                Detalji
+                            </Button>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant={
+                                    activePanel === 'modules'
+                                        ? 'soft'
+                                        : 'outlined'
+                                }
+                                aria-pressed={activePanel === 'modules'}
+                                onClick={() => openPanel('modules')}
+                                startDecorator={<Layers className="size-4" />}
+                            >
+                                Moduli
+                            </Button>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant={
+                                    activePanel === 'settings'
+                                        ? 'soft'
+                                        : 'outlined'
+                                }
+                                aria-pressed={activePanel === 'settings'}
+                                onClick={() => openPanel('settings')}
+                                startDecorator={
+                                    <Configuration className="size-4" />
+                                }
+                            >
+                                Postavke
+                            </Button>
+                            {testPanel ? (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={
+                                        activePanel === 'testing'
+                                            ? 'soft'
+                                            : 'outlined'
+                                    }
+                                    aria-pressed={activePanel === 'testing'}
+                                    onClick={() => openPanel('testing')}
+                                    startDecorator={<Play className="size-4" />}
+                                >
+                                    Testiranje
+                                </Button>
+                            ) : null}
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outlined"
+                                color="danger"
+                                disabled={!selectedNodeId}
+                                onClick={removeSelectedNode}
+                                startDecorator={<Delete className="size-4" />}
+                            >
+                                Ukloni
+                            </Button>
+                            <Button
+                                type="button"
+                                size="sm"
+                                disabled={isPending}
+                                loading={isPending}
+                                onClick={save}
+                                startDecorator={<Save className="size-4" />}
+                            >
+                                Spremi
+                            </Button>
+                        </Row>
                     </div>
-                    <div className="h-[640px] min-h-[420px]">
+                    <div className="h-[calc(100vh-260px)] min-h-[560px]">
                         <ReactFlowProvider>
                             <ReactFlow
                                 nodes={nodes}
@@ -468,9 +840,10 @@ export function AutomationFlowEditor({
                                 onNodesChange={onNodesChange}
                                 onEdgesChange={onEdgesChange}
                                 onConnect={onConnect}
-                                onNodeClick={(_event, node) =>
-                                    selectNode(node.id)
-                                }
+                                onNodeClick={(_event, node) => {
+                                    selectNode(node.id);
+                                    setActivePanel('settings');
+                                }}
                                 onPaneClick={() => selectNode(null)}
                                 fitView
                             >
@@ -479,328 +852,24 @@ export function AutomationFlowEditor({
                             </ReactFlow>
                         </ReactFlowProvider>
                     </div>
-                </Card>
+                </div>
+            </Stack>
 
-                <Stack spacing={4}>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Moduli</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Stack spacing={4}>
-                                {(
-                                    [
-                                        'trigger',
-                                        'filter',
-                                        'condition',
-                                        'action',
-                                    ] satisfies AutomationModuleKind[]
-                                ).map((kind) => (
-                                    <Stack key={kind} spacing={2}>
-                                        <Typography level="body2" semiBold>
-                                            {kindLabel(kind)}
-                                        </Typography>
-                                        {groupedModules[kind].length === 0 ? (
-                                            <Typography
-                                                level="body3"
-                                                className="text-muted-foreground"
-                                            >
-                                                Nema dostupnih modula.
-                                            </Typography>
-                                        ) : (
-                                            groupedModules[kind].map(
-                                                (module) => (
-                                                    <button
-                                                        key={module.key}
-                                                        type="button"
-                                                        onClick={() =>
-                                                            addModule(module)
-                                                        }
-                                                        className="rounded-md border bg-background p-3 text-left transition-colors hover:border-primary/60 hover:bg-muted"
-                                                    >
-                                                        <Row
-                                                            spacing={2}
-                                                            className="items-start"
-                                                        >
-                                                            <Add className="mt-0.5 size-4 shrink-0" />
-                                                            <Stack spacing={1}>
-                                                                <Typography
-                                                                    level="body2"
-                                                                    semiBold
-                                                                >
-                                                                    {
-                                                                        module.title
-                                                                    }
-                                                                </Typography>
-                                                                <Typography
-                                                                    level="body3"
-                                                                    className="text-muted-foreground"
-                                                                >
-                                                                    {
-                                                                        module.description
-                                                                    }
-                                                                </Typography>
-                                                                <Typography
-                                                                    level="body3"
-                                                                    className="text-muted-foreground"
-                                                                >
-                                                                    {module.key}
-                                                                </Typography>
-                                                            </Stack>
-                                                        </Row>
-                                                    </button>
-                                                ),
-                                            )
-                                        )}
-                                    </Stack>
-                                ))}
-                            </Stack>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Postavke modula</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {!selectedNode || !selectedModule ? (
-                                <Typography
-                                    level="body2"
-                                    className="text-muted-foreground"
-                                >
-                                    Odaberite modul u grafu.
-                                </Typography>
-                            ) : (
-                                <Stack spacing={3}>
-                                    <Stack spacing={1}>
-                                        <Typography level="body2" semiBold>
-                                            {selectedModule.title}
-                                        </Typography>
-                                        <Typography
-                                            level="body3"
-                                            className="text-muted-foreground"
-                                        >
-                                            {selectedModule.description}
-                                        </Typography>
-                                        <Row spacing={1} className="flex-wrap">
-                                            <Chip size="sm" variant="soft">
-                                                {kindLabel(selectedModule.kind)}
-                                            </Chip>
-                                            {selectedModule.mutatesData ? (
-                                                <Chip
-                                                    size="sm"
-                                                    color="warning"
-                                                    variant="soft"
-                                                >
-                                                    Mijenja podatke
-                                                </Chip>
-                                            ) : null}
-                                            {selectedModule.dryRunSupported ? (
-                                                <Chip
-                                                    size="sm"
-                                                    color="info"
-                                                    variant="soft"
-                                                >
-                                                    Dry-run
-                                                </Chip>
-                                            ) : null}
-                                        </Row>
-                                    </Stack>
-
-                                    {selectedModule.configFields.length ===
-                                    0 ? (
-                                        <Typography
-                                            level="body3"
-                                            className="text-muted-foreground"
-                                        >
-                                            Modul nema konfiguracijskih polja.
-                                        </Typography>
-                                    ) : null}
-
-                                    {selectedModule.configFields.map(
-                                        (field) => {
-                                            const value =
-                                                selectedNode.data.config[
-                                                    field.key
-                                                ];
-
-                                            if (field.type === 'select') {
-                                                return (
-                                                    <SelectItems
-                                                        key={field.key}
-                                                        label={field.label}
-                                                        value={
-                                                            typeof value ===
-                                                            'string'
-                                                                ? value
-                                                                : ''
-                                                        }
-                                                        items={
-                                                            field.options?.map(
-                                                                (option) => ({
-                                                                    value: option.value,
-                                                                    label: option.label,
-                                                                }),
-                                                            ) ?? []
-                                                        }
-                                                        helperText={
-                                                            field.description
-                                                        }
-                                                        onValueChange={(
-                                                            nextValue,
-                                                        ) =>
-                                                            updateSelectedConfig(
-                                                                field.key,
-                                                                nextValue,
-                                                            )
-                                                        }
-                                                    />
-                                                );
-                                            }
-
-                                            if (field.type === 'boolean') {
-                                                return (
-                                                    <Checkbox
-                                                        key={field.key}
-                                                        label={field.label}
-                                                        checked={value === true}
-                                                        onCheckedChange={(
-                                                            checked,
-                                                        ) =>
-                                                            updateSelectedConfig(
-                                                                field.key,
-                                                                checked ===
-                                                                    true,
-                                                            )
-                                                        }
-                                                    />
-                                                );
-                                            }
-
-                                            if (field.type === 'json') {
-                                                return (
-                                                    <Stack
-                                                        key={field.key}
-                                                        spacing={1}
-                                                    >
-                                                        <label
-                                                            className="text-sm font-medium"
-                                                            htmlFor={`automation-config-${field.key}`}
-                                                        >
-                                                            {field.label}
-                                                        </label>
-                                                        <textarea
-                                                            id={`automation-config-${field.key}`}
-                                                            value={jsonFieldValue(
-                                                                value,
-                                                            )}
-                                                            onChange={(
-                                                                event,
-                                                            ) => {
-                                                                try {
-                                                                    updateSelectedConfig(
-                                                                        field.key,
-                                                                        parseJsonField(
-                                                                            event
-                                                                                .target
-                                                                                .value,
-                                                                        ),
-                                                                    );
-                                                                    setJsonError(
-                                                                        null,
-                                                                    );
-                                                                } catch (error) {
-                                                                    setJsonError(
-                                                                        error instanceof
-                                                                            Error
-                                                                            ? error.message
-                                                                            : 'Invalid JSON.',
-                                                                    );
-                                                                }
-                                                            }}
-                                                            className="min-h-28 rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-hidden ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                                        />
-                                                    </Stack>
-                                                );
-                                            }
-
-                                            return (
-                                                <Input
-                                                    key={field.key}
-                                                    label={field.label}
-                                                    helperText={
-                                                        field.description
-                                                    }
-                                                    placeholder={
-                                                        field.placeholder
-                                                    }
-                                                    type={
-                                                        field.type === 'number'
-                                                            ? 'number'
-                                                            : 'text'
-                                                    }
-                                                    value={
-                                                        typeof value ===
-                                                            'string' ||
-                                                        typeof value ===
-                                                            'number'
-                                                            ? value
-                                                            : ''
-                                                    }
-                                                    onChange={(event) =>
-                                                        updateSelectedConfig(
-                                                            field.key,
-                                                            field.type ===
-                                                                'number'
-                                                                ? event.target.value.trim()
-                                                                    ? Number(
-                                                                          event
-                                                                              .target
-                                                                              .value,
-                                                                      )
-                                                                    : undefined
-                                                                : event.target
-                                                                      .value,
-                                                        )
-                                                    }
-                                                    fullWidth
-                                                />
-                                            );
-                                        },
-                                    )}
-
-                                    {selectedModule.inputDescription ? (
-                                        <Typography
-                                            level="body3"
-                                            className="text-muted-foreground"
-                                        >
-                                            Ulaz:{' '}
-                                            {selectedModule.inputDescription}
-                                        </Typography>
-                                    ) : null}
-                                    {selectedModule.outputDescription ? (
-                                        <Typography
-                                            level="body3"
-                                            className="text-muted-foreground"
-                                        >
-                                            Izlaz:{' '}
-                                            {selectedModule.outputDescription}
-                                        </Typography>
-                                    ) : null}
-                                    {jsonError ? (
-                                        <Typography
-                                            level="body3"
-                                            className="text-red-700 dark:text-red-300"
-                                        >
-                                            {jsonError}
-                                        </Typography>
-                                    ) : null}
-                                </Stack>
-                            )}
-                        </CardContent>
-                    </Card>
-                </Stack>
-            </div>
-        </Stack>
+            <AutomationSlidePanel
+                open={Boolean(activePanel)}
+                title={panelTitle(activePanel)}
+                description={panelDescription(activePanel)}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setActivePanel(null);
+                    }
+                }}
+            >
+                {activePanel === 'details' ? detailPanel : null}
+                {activePanel === 'modules' ? modulesPanel : null}
+                {activePanel === 'settings' ? settingsPanel : null}
+                {activePanel === 'testing' ? testPanel : null}
+            </AutomationSlidePanel>
+        </>
     );
 }

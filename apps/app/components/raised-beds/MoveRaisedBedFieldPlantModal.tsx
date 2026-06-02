@@ -8,8 +8,10 @@ import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { useEffect, useState, useTransition } from 'react';
 import { moveRaisedBedFieldPlantAction } from '../../app/(actions)/raisedBedFieldsActions';
+import { raisedBedFieldCardButtonClassName } from './RaisedBedFieldCard';
 
 type MoveRaisedBedFieldPlantOption = {
     value: string;
@@ -79,9 +81,11 @@ export function MoveRaisedBedFieldPlantModal({
                         type="button"
                         title="Premjesti biljku"
                         disabled={targetOptions.length === 0}
-                        className="inline-flex min-w-0 shrink-0 items-center gap-1 rounded-full bg-background/90 px-2 py-1 text-xs font-semibold text-foreground shadow transition-opacity hover:opacity-80 disabled:pointer-events-none disabled:opacity-50"
+                        className={cx(
+                            'inline-flex min-w-0 shrink-0 items-center rounded-full px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-80 disabled:pointer-events-none disabled:opacity-50',
+                            raisedBedFieldCardButtonClassName,
+                        )}
                     >
-                        <Replace aria-hidden className="size-3.5 shrink-0" />#
                         {sourcePositionIndex + 1}
                     </button>
                 ) : triggerVariant === 'icon' ? (

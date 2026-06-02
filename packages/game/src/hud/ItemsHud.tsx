@@ -153,6 +153,11 @@ const items: HudItem[] = [
     },
 ];
 
+const sandboxHiddenEntityNames = new Set(['GardenBox']);
+const sandboxPickerImageSrcByLabel = new Map([
+    ['Alat', 'https://www.gredice.com/assets/blocks/WateringCan.webp'],
+]);
+
 function collectEntityNames(hudItems: HudItem[], names = new Set<string>()) {
     for (const item of hudItems) {
         if (item.type === 'entity') {
@@ -187,7 +192,11 @@ function getSandboxExtraItemsByPicker(
     for (const block of blockData) {
         const name = block.information.name;
 
-        if (defaultHudEntityNames.has(name) || names.has(name)) {
+        if (
+            defaultHudEntityNames.has(name) ||
+            names.has(name) ||
+            sandboxHiddenEntityNames.has(name)
+        ) {
             continue;
         }
 
@@ -201,6 +210,29 @@ function getSandboxExtraItemsByPicker(
     return extraItemsByPicker;
 }
 
+function getSandboxHudItems(hudItems: HudItem[]): HudItem[] {
+    return hudItems.flatMap<HudItem>((item) => {
+        if (item.type === 'entity') {
+            return sandboxHiddenEntityNames.has(item.name) ? [] : [item];
+        }
+
+        if (item.type === 'picker') {
+            const imageSrc =
+                sandboxPickerImageSrcByLabel.get(item.label) ?? item.imageSrc;
+
+            return [
+                {
+                    ...item,
+                    imageSrc,
+                    items: getSandboxHudItems(item.items),
+                },
+            ];
+        }
+
+        return [item];
+    });
+}
+
 function getHudItems({
     blockData,
     isSandbox,
@@ -212,15 +244,16 @@ function getHudItems({
         return items;
     }
 
+    const sandboxItems = getSandboxHudItems(items);
     const sandboxExtraItemsByPicker = getSandboxExtraItemsByPicker(blockData);
     if (
         sandboxExtraItemsByPicker.Blokovi.length === 0 &&
         sandboxExtraItemsByPicker.Dekoracija.length === 0
     ) {
-        return items;
+        return sandboxItems;
     }
 
-    return items.map((item) => {
+    return sandboxItems.map((item) => {
         if (
             item.type === 'picker' &&
             (item.label === 'Blokovi' || item.label === 'Dekoracija')
