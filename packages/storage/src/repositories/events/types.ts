@@ -205,6 +205,7 @@ export type RaisedBedFieldAiAnalysisPayload = {
     imageUrls?: string[];
     model: string;
     analyzedAt: string;
+    referenceDate?: string;
     accountId?: string;
     aiRequestKind?: AiRequestKind;
     inputTokens?: number;

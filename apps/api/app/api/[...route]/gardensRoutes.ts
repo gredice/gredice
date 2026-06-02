@@ -64,6 +64,7 @@ import {
     AI_REQUEST_WEEKLY_LIMIT_PER_ACTIVE_RAISED_BED,
     type AiRequestKind,
     getRaisedBedImageAnalysisWeeklyLimit,
+    normalizeAnalysisReferenceDate,
     RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
     streamRaisedBedImageAnalysis,
     validateImageUrls,
@@ -88,6 +89,7 @@ const analyzeImageBodySchema = z
     .object({
         imageUrl: z.url().optional(),
         imageUrls: z.array(z.url()).min(1).optional(),
+        referenceDate: z.iso.datetime().optional(),
     })
     .refine((body) => Boolean(body.imageUrl || body.imageUrls?.length), {
         message: 'At least one image URL is required',
@@ -112,6 +114,10 @@ function normalizeAnalysisImageUrls(body: AnalyzeImageBody) {
           : [];
 
     return Array.from(new Set(imageUrls));
+}
+
+function getAnalysisReferenceDate(body: AnalyzeImageBody) {
+    return normalizeAnalysisReferenceDate(body.referenceDate);
 }
 
 const aiTextStreamResponseInit = {
@@ -2229,9 +2235,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId } = context.req.valid('param');
-            const imageUrls = normalizeAnalysisImageUrls(
-                context.req.valid('json'),
-            );
+            const body = context.req.valid('json');
+            const imageUrls = normalizeAnalysisImageUrls(body);
+            const referenceDate = getAnalysisReferenceDate(body);
             const firstImageUrl = imageUrls[0];
             if (!firstImageUrl) {
                 return context.json({ error: 'Image URL is required' }, 400);
@@ -2294,6 +2300,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     gardenId: gardenIdNumber,
                     raisedBed,
                     imageUrls,
+                    referenceDate,
                 },
                 async (analysis) => {
                     await createEvent(
@@ -2305,6 +2312,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 imageUrls,
                                 model: analysis.model,
                                 analyzedAt: analysis.analyzedAt,
+                                referenceDate:
+                                    referenceDate?.toISOString() ?? undefined,
                                 accountId,
                                 aiRequestKind:
                                     RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
@@ -2794,9 +2803,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { gardenId, raisedBedId, positionIndex } =
                 context.req.valid('param');
-            const imageUrls = normalizeAnalysisImageUrls(
-                context.req.valid('json'),
-            );
+            const body = context.req.valid('json');
+            const imageUrls = normalizeAnalysisImageUrls(body);
+            const referenceDate = getAnalysisReferenceDate(body);
             const firstImageUrl = imageUrls[0];
             if (!firstImageUrl) {
                 return context.json({ error: 'Image URL is required' }, 400);
@@ -2881,6 +2890,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     raisedBed,
                     positionIndex: positionIndexNumber,
                     imageUrls,
+                    referenceDate,
                 },
                 async (analysis) => {
                     await createEvent(
@@ -2892,6 +2902,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 imageUrls,
                                 model: analysis.model,
                                 analyzedAt: analysis.analyzedAt,
+                                referenceDate:
+                                    referenceDate?.toISOString() ?? undefined,
                                 accountId,
                                 aiRequestKind:
                                     RAISED_BED_IMAGE_ANALYSIS_REQUEST_KIND,
