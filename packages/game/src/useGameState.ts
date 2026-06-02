@@ -1,7 +1,10 @@
 import { createContext, useContext, useEffect } from 'react';
-import type { OrbitControls } from 'three-stdlib';
 import { createStore, useStore } from 'zustand';
 import { createGameAudio, type GameAudio } from './audio/audioMixer';
+import type {
+    GameCameraRigApi,
+    GameCameraSnapshot,
+} from './controls/GameCameraRigApi';
 import type {
     ActiveDragPreviewTarget,
     ActiveDragPreviewTargetOffset,
@@ -33,6 +36,7 @@ import {
 } from './utils/weather';
 
 export type WinterMode = 'summer' | 'winter' | 'holiday';
+export type MockGardenProfile = 'default' | 'dense' | 'plant-heavy';
 
 export type ActiveDragPreview = {
     source: ActiveDragPreviewTarget;
@@ -100,6 +104,7 @@ type WeatherOverride = {
 export type GameState = {
     // General
     isMock: boolean;
+    mockGardenProfile: MockGardenProfile;
     winterMode: WinterMode;
     setWinterMode: (winterMode: WinterMode) => void;
     appBaseUrl: string;
@@ -176,8 +181,10 @@ export type GameState = {
     setWaterColors: (waterColors: WaterColors) => void;
 
     // World
-    orbitControls: OrbitControls | null;
-    setOrbitControls: (ref: OrbitControls | null) => void;
+    gameCamera: GameCameraRigApi | null;
+    setGameCamera: (ref: GameCameraRigApi | null) => void;
+    gameCameraSnapshot: GameCameraSnapshot | null;
+    setGameCameraSnapshot: (snapshot: GameCameraSnapshot) => void;
     worldRotation: number;
     worldRotate: (direction: 'cw' | 'ccw') => void;
     setWorldRotation: (worldRotation: number) => void;
@@ -193,6 +200,7 @@ export function createGameState({
     initialQualitySetting,
     isMock,
     localSandboxStorageKey,
+    mockGardenProfile,
     winterMode,
 }: {
     appBaseUrl: string;
@@ -202,6 +210,7 @@ export function createGameState({
     initialQualitySetting?: GameQualitySetting;
     isMock: boolean;
     localSandboxStorageKey?: string;
+    mockGardenProfile?: MockGardenProfile;
     winterMode?: WinterMode;
 }) {
     const dayNightCycleDisabled =
@@ -214,6 +223,7 @@ export function createGameState({
     const { sunrise, sunset } = getGameSunriseSunset(defaultGameLocation, now);
     return createStore<GameState>((set, get) => ({
         isMock: isMock,
+        mockGardenProfile: mockGardenProfile ?? 'default',
         winterMode: winterMode ?? 'summer',
         setWinterMode: (winterMode) => set({ winterMode }),
         appBaseUrl: appBaseUrl,
@@ -415,8 +425,11 @@ export function createGameState({
         },
 
         isDragging: false,
-        orbitControls: null,
-        setOrbitControls: (ref) => set({ orbitControls: ref }),
+        gameCamera: null,
+        setGameCamera: (ref) => set({ gameCamera: ref }),
+        gameCameraSnapshot: null,
+        setGameCameraSnapshot: (gameCameraSnapshot) =>
+            set({ gameCameraSnapshot }),
         worldRotation: 0,
         worldRotate: (direction) =>
             set((state) => ({

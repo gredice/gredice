@@ -36,9 +36,15 @@ varying vec3 vWorldPos;
 varying vec3 vWorldNormal;
 
 void main() {
-    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vec4 localPos = vec4(position, 1.0);
+    vec3 objectNormal = normal;
+    #ifdef USE_INSTANCING
+        localPos = instanceMatrix * localPos;
+        objectNormal = normalize(mat3(instanceMatrix) * objectNormal);
+    #endif
+    vec4 worldPos = modelMatrix * localPos;
     vWorldPos = worldPos.xyz;
-    vWorldNormal = normalize(mat3(modelMatrix) * normal);
+    vWorldNormal = normalize(mat3(modelMatrix) * objectNormal);
     gl_Position = projectionMatrix * viewMatrix * worldPos;
 }
 `;

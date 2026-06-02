@@ -12,6 +12,8 @@
         "build": "next build",
         "start": "node ../../scripts/run-app-command.mjs start",
         "profile:game": "GAME_PROFILE_BUILD=1 GAME_PROFILE_BASE_URL=http://localhost:3101 GAME_PROFILE_START_SERVER=1 node scripts/profile-game-scene.mjs",
+        "profile:game:all": "GAME_PROFILE_SCENARIO_SET=all pnpm run profile:game",
+        "profile:game:dense": "GAME_PROFILE_SCENARIO_SET=dense pnpm run profile:game",
         "profile:game:existing": "node scripts/profile-game-scene.mjs",
         "profile:game:start": "GAME_PROFILE_BASE_URL=http://localhost:3101 GAME_PROFILE_START_SERVER=1 node scripts/profile-game-scene.mjs",
         "profile:game:ci": "GAME_PROFILE_FAIL_ON_BUDGET=1 pnpm run profile:game",

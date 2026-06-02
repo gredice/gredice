@@ -1,14 +1,35 @@
 'use client';
 
 import { useFrame, useThree } from '@react-three/fiber';
-import { type RefObject, useMemo, useState } from 'react';
+import {
+    type RefObject,
+    useCallback,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import * as THREE from 'three';
+import { useGameState } from '../../../useGameState';
 
 export type PlantLodLevel = 'near' | 'mid' | 'far';
 
 const NEAR_THRESHOLD = 0.12;
 const FAR_THRESHOLD = 0.045;
 const HYSTERESIS = 0.012;
+const DEFAULT_VISIBILITY_MARGIN = 0.14;
+
+export type PlantLodState = {
+    level: PlantLodLevel;
+    measured: boolean;
+    screenOccupancy: number;
+    visible: boolean;
+};
+
+type PlantLodOptions = {
+    cullOffscreen?: boolean;
+    visibilityMargin?: number;
+};
 
 function resolveLodLevel(screenOccupancy: number): PlantLodLevel {
     if (screenOccupancy >= NEAR_THRESHOLD) {
@@ -50,23 +71,74 @@ function resolveLodLevelWithHysteresis(
     return screenOccupancy >= FAR_THRESHOLD + HYSTERESIS ? 'mid' : 'far';
 }
 
-export function usePlantLod(
+function resolvePlantVisibility({
+    approximatePlantHeight,
+    camera,
+    cullOffscreen,
+    visibilityMargin,
+    viewportHeight,
+    worldPosition,
+}: {
+    approximatePlantHeight: number;
+    camera: THREE.Camera;
+    cullOffscreen: boolean;
+    visibilityMargin: number;
+    viewportHeight: number;
+    worldPosition: THREE.Vector3;
+}) {
+    if (!cullOffscreen) {
+        return true;
+    }
+
+    const projected = worldPosition.clone().project(camera);
+    if (
+        !Number.isFinite(projected.x) ||
+        !Number.isFinite(projected.y) ||
+        !Number.isFinite(projected.z)
+    ) {
+        return true;
+    }
+
+    const plantMargin = Math.max(approximatePlantHeight, 0.25) / viewportHeight;
+    const ndcMargin = visibilityMargin + plantMargin * 2;
+
+    return (
+        Math.abs(projected.x) <= 1 + ndcMargin &&
+        Math.abs(projected.y) <= 1 + ndcMargin
+    );
+}
+
+export function usePlantLodState(
     objectRef: RefObject<THREE.Object3D | null>,
     approximatePlantHeight: number,
+    {
+        cullOffscreen = false,
+        visibilityMargin = DEFAULT_VISIBILITY_MARGIN,
+    }: PlantLodOptions = {},
 ) {
     const camera = useThree((state) => state.camera);
     const viewport = useThree((state) => state.viewport);
+    const gameCamera = useGameState((state) => state.gameCamera);
     const worldPosition = useMemo(() => new THREE.Vector3(), []);
-    const [lodLevel, setLodLevel] = useState<PlantLodLevel>(() =>
-        resolveLodLevel(1),
-    );
+    const [lodState, setLodState] = useState<PlantLodState>(() => ({
+        level: cullOffscreen ? 'far' : resolveLodLevel(1),
+        measured: false,
+        screenOccupancy: cullOffscreen ? 0 : 1,
+        visible: !cullOffscreen,
+    }));
+    const lodStateRef = useRef(lodState);
 
-    useFrame(() => {
+    useLayoutEffect(() => {
+        lodStateRef.current = lodState;
+    }, [lodState]);
+
+    const updateLod = useCallback(() => {
         const object = objectRef.current;
         if (!object) {
             return;
         }
 
+        object.updateWorldMatrix(true, false);
         object.getWorldPosition(worldPosition);
         const currentViewport = viewport.getCurrentViewport(
             camera,
@@ -75,15 +147,73 @@ export function usePlantLod(
         const viewportHeight = Math.max(currentViewport.height, 0.001);
         const screenOccupancy =
             Math.max(approximatePlantHeight, 0.25) / viewportHeight;
+        const visible = resolvePlantVisibility({
+            approximatePlantHeight,
+            camera,
+            cullOffscreen,
+            visibilityMargin,
+            viewportHeight,
+            worldPosition,
+        });
         const nextLevel = resolveLodLevelWithHysteresis(
-            lodLevel,
+            lodStateRef.current.level,
             screenOccupancy,
         );
 
-        if (nextLevel !== lodLevel) {
-            setLodLevel(nextLevel);
+        const resolvedLevel = visible ? nextLevel : 'far';
+        setLodState((current) => {
+            if (
+                current.level === resolvedLevel &&
+                current.measured &&
+                current.visible === visible &&
+                Math.abs(current.screenOccupancy - screenOccupancy) < 0.001
+            ) {
+                return current;
+            }
+
+            return {
+                level: resolvedLevel,
+                measured: true,
+                screenOccupancy,
+                visible,
+            };
+        });
+    }, [
+        approximatePlantHeight,
+        camera,
+        cullOffscreen,
+        objectRef,
+        viewport,
+        visibilityMargin,
+        worldPosition,
+    ]);
+
+    useLayoutEffect(() => {
+        updateLod();
+
+        if (!gameCamera) {
+            return;
         }
+
+        return gameCamera.subscribe(() => updateLod());
+    }, [gameCamera, updateLod]);
+
+    useFrame(() => {
+        if (gameCamera) {
+            return;
+        }
+
+        updateLod();
     });
 
-    return lodLevel;
+    return lodState;
+}
+
+export function usePlantLod(
+    objectRef: RefObject<THREE.Object3D | null>,
+    approximatePlantHeight: number,
+) {
+    const lodState = usePlantLodState(objectRef, approximatePlantHeight);
+
+    return lodState.level;
 }

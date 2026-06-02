@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { Vector3 } from 'three';
+import { getLocalSandboxBlockData } from '../localSandboxBlockData';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 import {
@@ -14,6 +15,10 @@ function waterBlock(id: string): Block {
 
 function grassBlock(id: string): Block {
     return { id, name: 'Block_Grass', rotation: 0 };
+}
+
+function sandBlock(id: string): Block {
+    return { id, name: 'Block_Sand', rotation: 0 };
 }
 
 function stack(x: number, z: number, blocks: Block[]): Stack {
@@ -62,26 +67,69 @@ describe('resolveWaterFoamEdges', () => {
         );
     });
 
-    it('removes foam when the adjacent water block is at a different stack index', () => {
+    it('removes foam when adjacent water is on the same stack level', () => {
+        const blockData = getLocalSandboxBlockData();
         const currentWater = waterBlock('water-a');
-        const currentStack = stack(0, 0, [grassBlock('grass-a'), currentWater]);
+        const currentStack = stack(0, 0, [sandBlock('sand-a'), currentWater]);
         const stacks = [
             currentStack,
-            stack(1, 0, [waterBlock('water-b')]),
-            stack(0, 1, [
-                grassBlock('grass-b'),
-                grassBlock('grass-c'),
-                waterBlock('water-c'),
-            ]),
+            stack(1, 0, [sandBlock('sand-b'), waterBlock('water-b')]),
+            stack(0, 1, [sandBlock('sand-c'), waterBlock('water-c')]),
         ];
 
         assert.deepEqual(
             resolveWaterFoamEdges({
                 block: currentWater,
+                blockData,
                 stack: currentStack,
                 stacks,
             }).toArray(),
             [1, 0, 1, 0],
+        );
+    });
+
+    it('keeps foam when adjacent water is on a lower stack level', () => {
+        const blockData = getLocalSandboxBlockData();
+        const currentWater = waterBlock('water-upper');
+        const currentStack = stack(0, 0, [
+            sandBlock('sand-a'),
+            waterBlock('water-lower'),
+            currentWater,
+        ]);
+        const stacks = [
+            currentStack,
+            stack(1, 0, [sandBlock('sand-b'), waterBlock('water-east')]),
+            stack(0, 1, [sandBlock('sand-c'), waterBlock('water-south')]),
+        ];
+
+        assert.deepEqual(
+            resolveWaterFoamEdges({
+                block: currentWater,
+                blockData,
+                stack: currentStack,
+                stacks,
+            }).toArray(),
+            [1, 1, 1, 1],
+        );
+    });
+
+    it('keeps foam for unplaced water previews', () => {
+        const currentWater = waterBlock('water-preview');
+        const currentStack = stack(0, 0, [sandBlock('sand-a')]);
+        const stacks = [
+            currentStack,
+            stack(1, 0, [sandBlock('sand-b'), waterBlock('water-east')]),
+            stack(0, 1, [sandBlock('sand-c'), waterBlock('water-south')]),
+        ];
+
+        assert.deepEqual(
+            resolveWaterFoamEdges({
+                block: currentWater,
+                blockData: getLocalSandboxBlockData(),
+                stack: currentStack,
+                stacks,
+            }).toArray(),
+            [1, 1, 1, 1],
         );
     });
 });

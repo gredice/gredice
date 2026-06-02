@@ -1,7 +1,10 @@
 import { calculatePlantsPerField } from '@gredice/js/plants';
 import { animated, useSpring } from '@react-spring/three';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
+import type { Group } from 'three';
 import { useGameFlags } from '../../GameFlagsContext';
+import { usePlantLodState } from '../../generators/plant/hooks/usePlantLod';
+import { getApproximatePlantHeight } from '../../generators/plant/lib/buildPlantRenderData';
 import {
     calculateInGamePlantGeneration,
     getPlantLifecycleWindowDays,
@@ -18,6 +21,17 @@ import {
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { RaisedBedGeneratedPlantBatch } from './RaisedBedGeneratedPlantBatch';
 
+const mockPlantPresetLabelsBySortId: Record<number, string> = {
+    219: 'pepper',
+    226: 'cucumber',
+    230: 'carrot',
+    284: 'spinach',
+    337: 'tomato',
+    353: 'broccoli',
+    357: 'lettuce',
+    373: 'onion',
+};
+
 export function RaisedBedPlantField({
     field,
     orientation,
@@ -33,6 +47,7 @@ export function RaisedBedPlantField({
     blockIndex: number;
 }) {
     const { positionIndex, plantSortId, plantSowDate } = field;
+    const fieldGroupRef = useRef<Group | null>(null);
     const { data: sortData } = usePlantSort(plantSortId);
     const flags = useGameFlags();
     const isMock = useGameState((state) => state.isMock);
@@ -79,8 +94,14 @@ export function RaisedBedPlantField({
             sortData?.information.name,
             sortData?.information.plant.information?.name,
             sortData?.information.plant.information?.latinName,
+            isMock || isSandbox
+                ? mockPlantPresetLabelsBySortId[plantSortId ?? 0]
+                : undefined,
         ]);
     }, [
+        isMock,
+        isSandbox,
+        plantSortId,
         sortData?.information.name,
         sortData?.information.plant.information?.latinName,
         sortData?.information.plant.information?.name,
@@ -113,6 +134,20 @@ export function RaisedBedPlantField({
         ? resolvedPlantPreset.instanceScale *
           Math.max(0.72, 1 - Math.max(0, safePlantsPerRow - 2) * 0.12)
         : 0;
+    const approximateFieldPlantHeight = resolvedPlantPreset
+        ? getApproximatePlantHeight(
+              resolvedPlantPreset.definition,
+              plantGeneration,
+          ) * plantInstanceScale
+        : 0.25;
+    const fieldLod = usePlantLodState(
+        fieldGroupRef,
+        approximateFieldPlantHeight,
+        {
+            cullOffscreen: true,
+            visibilityMargin: 0.24,
+        },
+    );
     const generatedPlantInstances = useMemo(() => {
         if (!resolvedPlantPreset) {
             return [];
@@ -158,34 +193,37 @@ export function RaisedBedPlantField({
     }
 
     return (
-        <group position={fieldPosition}>
-            {shouldRenderGeneratedPlants && resolvedPlantPreset ? (
-                <RaisedBedGeneratedPlantBatch
-                    definition={resolvedPlantPreset.definition}
-                    instances={generatedPlantInstances}
-                />
-            ) : (
-                fieldSlots.map((position) => {
-                    const slotKey = `${plantSortId ?? 'sort'}:${positionIndex}:${position[0].toFixed(3)}:${position[2].toFixed(3)}`;
+        <group ref={fieldGroupRef} position={fieldPosition}>
+            {fieldLod.visible ? (
+                shouldRenderGeneratedPlants && resolvedPlantPreset ? (
+                    <RaisedBedGeneratedPlantBatch
+                        definition={resolvedPlantPreset.definition}
+                        instances={generatedPlantInstances}
+                        lodLevel={fieldLod.level}
+                    />
+                ) : (
+                    fieldSlots.map((position) => {
+                        const slotKey = `${plantSortId ?? 'sort'}:${positionIndex}:${position[0].toFixed(3)}:${position[2].toFixed(3)}`;
 
-                    return (
-                        <mesh
-                            key={slotKey}
-                            castShadow
-                            receiveShadow
-                            position={position}
-                            scale={seedLayout.scale}
-                            geometry={nodes.Seed.geometry}
-                        >
-                            <animated.meshStandardMaterial
-                                color={seedColor}
-                                transparent
-                                {...seedOpacityToMax}
-                            />
-                        </mesh>
-                    );
-                })
-            )}
+                        return (
+                            <mesh
+                                key={slotKey}
+                                castShadow
+                                receiveShadow
+                                position={position}
+                                scale={seedLayout.scale}
+                                geometry={nodes.Seed.geometry}
+                            >
+                                <animated.meshStandardMaterial
+                                    color={seedColor}
+                                    transparent
+                                    {...seedOpacityToMax}
+                                />
+                            </mesh>
+                        );
+                    })
+                )
+            ) : null}
         </group>
     );
 }

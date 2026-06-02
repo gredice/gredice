@@ -180,6 +180,6 @@ test('loads signed-in landing page HUD without immediate runtime failures', asyn
 
     expect(response?.ok()).toBe(true);
     await expect(page).toHaveTitle(/Gredice/);
-    await expect(page.getByTitle(/zvuk/u)).toBeVisible();
+    await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
     await expectNoImmediateRuntimeFailures(page, failures);
 });

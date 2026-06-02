@@ -1,5 +1,5 @@
-import { useFrame } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
+import { useThree } from '@react-three/fiber';
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import {
     AdditiveBlending,
     type OrthographicCamera,
@@ -7,6 +7,8 @@ import {
     Vector3,
 } from 'three';
 import { defaultGameCameraZoom } from '../gameCamera';
+import { useGameState } from '../useGameState';
+import { useSceneTimeUniform } from './SceneTime';
 
 const STAR_VISIBILITY = {
     min: 0,
@@ -65,6 +67,9 @@ type StarsProps = {
 
 export function Stars({ visibility = 1 }: StarsProps) {
     const pointsRef = useRef<Points>(null);
+    const camera = useThree((state) => state.camera);
+    const gameCamera = useGameState((state) => state.gameCamera);
+    const timeUniform = useSceneTimeUniform();
     const cameraForwardRef = useRef(new Vector3());
     const clampedVisibility = Math.min(
         STAR_VISIBILITY.max,
@@ -157,19 +162,37 @@ export function Stars({ visibility = 1 }: StarsProps) {
         const colors = new Float32Array(
             STAR_FIELD.count * STAR_RENDERING.positionStride,
         );
+        const twinkleColors = new Float32Array(
+            STAR_FIELD.count * STAR_RENDERING.positionStride,
+        );
+        const twinkleParams = new Float32Array(
+            STAR_FIELD.count * STAR_RENDERING.positionStride,
+        );
 
         for (let i = 0; i < STAR_FIELD.count; i += 1) {
             const star = stars[i];
+            const attributeOffset = i * STAR_RENDERING.positionStride;
 
-            values[i * STAR_RENDERING.positionStride] = star.x;
-            values[i * STAR_RENDERING.positionStride + 1] = star.y;
-            values[i * STAR_RENDERING.positionStride + 2] = star.z;
-            colors[i * STAR_RENDERING.positionStride] = star.baseColor.r;
-            colors[i * STAR_RENDERING.positionStride + 1] = star.baseColor.g;
-            colors[i * STAR_RENDERING.positionStride + 2] = star.baseColor.b;
+            values[attributeOffset] = star.x;
+            values[attributeOffset + 1] = star.y;
+            values[attributeOffset + 2] = star.z;
+            colors[attributeOffset] = star.baseColor.r;
+            colors[attributeOffset + 1] = star.baseColor.g;
+            colors[attributeOffset + 2] = star.baseColor.b;
+            twinkleColors[attributeOffset] = star.twinkleColor.r;
+            twinkleColors[attributeOffset + 1] = star.twinkleColor.g;
+            twinkleColors[attributeOffset + 2] = star.twinkleColor.b;
+            twinkleParams[attributeOffset] = star.twinkleSpeed;
+            twinkleParams[attributeOffset + 1] = star.twinkleOffset;
+            twinkleParams[attributeOffset + 2] = star.twinkleStrength;
         }
 
-        return { colors, positions: values, stars };
+        return {
+            colors,
+            positions: values,
+            twinkleColors,
+            twinkleParams,
+        };
     }, []);
 
     const visibleCount = useMemo(() => {
@@ -199,8 +222,37 @@ export function Stars({ visibility = 1 }: StarsProps) {
             ),
         [starField, visibleCount],
     );
+    const visibleTwinkleColors = useMemo(
+        () =>
+            starField.twinkleColors.subarray(
+                0,
+                visibleCount * STAR_RENDERING.positionStride,
+            ),
+        [starField, visibleCount],
+    );
+    const visibleTwinkleParams = useMemo(
+        () =>
+            starField.twinkleParams.subarray(
+                0,
+                visibleCount * STAR_RENDERING.positionStride,
+            ),
+        [starField, visibleCount],
+    );
+    const starUniforms = useMemo(
+        () => ({
+            uOpacity: {
+                value:
+                    STAR_TWINKLE.opacityBase +
+                    clampedVisibility * STAR_TWINKLE.opacityVisibilityFactor,
+            },
+            uPointSize: { value: STAR_RENDERING.materialSize },
+            uTime: timeUniform,
+            uVisibility: { value: clampedVisibility },
+        }),
+        [clampedVisibility, timeUniform],
+    );
 
-    useFrame(({ camera, clock }) => {
+    const updateCameraFacing = useCallback(() => {
         if (!pointsRef.current) {
             return;
         }
@@ -220,60 +272,16 @@ export function Stars({ visibility = 1 }: StarsProps) {
                 STAR_FIELD.radiusBase + STAR_FIELD.radiusRange,
             );
         pointsRef.current.quaternion.copy(camera.quaternion);
+    }, [camera]);
 
-        if (clampedVisibility <= STAR_VISIBILITY.min) {
+    useLayoutEffect(() => {
+        if (!gameCamera) {
+            updateCameraFacing();
             return;
         }
 
-        const material = pointsRef.current.material;
-        if (Array.isArray(material)) {
-            return;
-        }
-
-        material.opacity =
-            STAR_TWINKLE.opacityBase +
-            clampedVisibility * STAR_TWINKLE.opacityVisibilityFactor;
-
-        const colorAttribute = pointsRef.current.geometry.getAttribute('color');
-        if (!colorAttribute) {
-            return;
-        }
-
-        const colorValues = colorAttribute.array;
-        if (!(colorValues instanceof Float32Array)) {
-            return;
-        }
-
-        for (let i = 0; i < visibleCount; i += 1) {
-            const star = starField.stars[i];
-            const twinkle =
-                star.twinkleStrength > 0
-                    ? ((Math.sin(
-                          clock.elapsedTime * star.twinkleSpeed +
-                              star.twinkleOffset,
-                      ) +
-                          1) /
-                          2) *
-                      star.twinkleStrength *
-                      clampedVisibility
-                    : 0;
-
-            colorValues[i * STAR_RENDERING.positionStride] = Math.min(
-                STAR_VISIBILITY.max,
-                star.baseColor.r * (1 + twinkle * star.twinkleColor.r),
-            );
-            colorValues[i * STAR_RENDERING.positionStride + 1] = Math.min(
-                STAR_VISIBILITY.max,
-                star.baseColor.g * (1 + twinkle * star.twinkleColor.g),
-            );
-            colorValues[i * STAR_RENDERING.positionStride + 2] = Math.min(
-                STAR_VISIBILITY.max,
-                star.baseColor.b * (1 + twinkle * star.twinkleColor.b),
-            );
-        }
-
-        colorAttribute.needsUpdate = true;
-    });
+        return gameCamera.subscribe(() => updateCameraFacing());
+    }, [gameCamera, updateCameraFacing]);
 
     return (
         <points
@@ -293,19 +301,70 @@ export function Stars({ visibility = 1 }: StarsProps) {
                     args={[visibleColors, STAR_RENDERING.positionStride]}
                     count={visibleCount}
                 />
+                <bufferAttribute
+                    attach="attributes-twinkleColor"
+                    args={[
+                        visibleTwinkleColors,
+                        STAR_RENDERING.positionStride,
+                    ]}
+                    count={visibleCount}
+                />
+                <bufferAttribute
+                    attach="attributes-twinkleParams"
+                    args={[
+                        visibleTwinkleParams,
+                        STAR_RENDERING.positionStride,
+                    ]}
+                    count={visibleCount}
+                />
             </bufferGeometry>
-            <pointsMaterial
-                size={STAR_RENDERING.materialSize}
-                sizeAttenuation
-                transparent={false}
-                opacity={
-                    STAR_TWINKLE.opacityBase +
-                    clampedVisibility * STAR_TWINKLE.opacityVisibilityFactor
-                }
+            <shaderMaterial
+                uniforms={starUniforms}
+                vertexShader={/* glsl */ `
+                    attribute vec3 color;
+                    attribute vec3 twinkleColor;
+                    attribute vec3 twinkleParams;
+
+                    uniform float uPointSize;
+                    uniform float uTime;
+                    uniform float uVisibility;
+
+                    varying vec3 vColor;
+
+                    void main() {
+                        float twinkle = twinkleParams.z > 0.0
+                            ? ((sin(uTime * twinkleParams.x + twinkleParams.y) + 1.0) * 0.5) *
+                                twinkleParams.z *
+                                uVisibility
+                            : 0.0;
+
+                        vColor = min(
+                            vec3(1.0),
+                            color * (1.0 + twinkle * twinkleColor)
+                        );
+                        gl_PointSize = uPointSize;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `}
+                fragmentShader={/* glsl */ `
+                    uniform float uOpacity;
+                    varying vec3 vColor;
+
+                    void main() {
+                        vec2 pointUv = gl_PointCoord - vec2(0.5);
+                        float pointAlpha = smoothstep(0.5, 0.16, length(pointUv));
+                        if (pointAlpha <= 0.01) {
+                            discard;
+                        }
+
+                        gl_FragColor = vec4(vColor, pointAlpha * uOpacity);
+                        #include <colorspace_fragment>
+                    }
+                `}
+                transparent
                 depthTest={false}
                 depthWrite={false}
                 blending={AdditiveBlending}
-                vertexColors
             />
         </points>
     );
