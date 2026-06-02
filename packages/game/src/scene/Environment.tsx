@@ -8,6 +8,7 @@ import { Color, Quaternion, Vector3 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
+import type { Stack } from '../types/Stack';
 import { type GameState, useGameState } from '../useGameState';
 import { CloudLayer } from './CloudLayer';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
@@ -17,6 +18,7 @@ import {
 } from './gameQuality';
 import { getMoonlitNightScales } from './moonlight';
 import { Drops } from './Rain/Drops';
+import { ShadowMapController } from './ShadowMapController';
 import Snow from './Snow/Snow';
 import { Stars } from './Stars';
 import { SunMoon } from './SunMoon';
@@ -416,6 +418,63 @@ function useEnvironmentElements({
 const baseCameraShadowSize = 20;
 const defaultLocation = { lat: 45.739, lon: 16.572 };
 
+function roundShadowSignatureValue(value: number) {
+    return Number.isFinite(value) ? value.toFixed(4) : '0';
+}
+
+function buildStackShadowSignature(stacks: Stack[] | undefined) {
+    return (stacks ?? [])
+        .map((stack) => {
+            const blocks = stack.blocks
+                .map(
+                    (block) =>
+                        `${block.id}:${block.name}:${block.rotation}:${block.variant ?? ''}`,
+                )
+                .join(',');
+
+            return `${roundShadowSignatureValue(stack.position.x)},${roundShadowSignatureValue(stack.position.y)},${roundShadowSignatureValue(stack.position.z)}:${blocks}`;
+        })
+        .join('|');
+}
+
+function buildLightShadowSignature({
+    currentTime,
+    directionalLight,
+    shadowCameraSize,
+    shadowMapSize,
+    shadowVisibility,
+    shadows,
+    timeOfDay,
+}: {
+    currentTime: Date;
+    directionalLight: {
+        color: Color;
+        intensity: number;
+        position: Vector3;
+    };
+    shadowCameraSize: number;
+    shadowMapSize: number;
+    shadowVisibility: number;
+    shadows: boolean;
+    timeOfDay: number;
+}) {
+    return [
+        shadows ? 'shadows' : 'no-shadows',
+        shadowMapSize,
+        roundShadowSignatureValue(shadowCameraSize),
+        roundShadowSignatureValue(timeOfDay),
+        currentTime.toISOString(),
+        roundShadowSignatureValue(shadowVisibility),
+        roundShadowSignatureValue(directionalLight.intensity),
+        roundShadowSignatureValue(directionalLight.position.x),
+        roundShadowSignatureValue(directionalLight.position.y),
+        roundShadowSignatureValue(directionalLight.position.z),
+        roundShadowSignatureValue(directionalLight.color.r),
+        roundShadowSignatureValue(directionalLight.color.g),
+        roundShadowSignatureValue(directionalLight.color.b),
+    ].join('|');
+}
+
 export function StaticEnvironment({
     noBackground,
     quality,
@@ -431,6 +490,25 @@ export function StaticEnvironment({
             timeOfDay,
             weather: undefined,
         });
+    const shadowInvalidationKey = useMemo(
+        () =>
+            buildLightShadowSignature({
+                currentTime,
+                directionalLight,
+                shadowCameraSize: baseCameraShadowSize,
+                shadowMapSize: qualityProfile.shadowMapSize,
+                shadowVisibility: 1,
+                shadows: qualityProfile.shadows,
+                timeOfDay,
+            }),
+        [
+            currentTime,
+            directionalLight,
+            qualityProfile.shadowMapSize,
+            qualityProfile.shadows,
+            timeOfDay,
+        ],
+    );
     const waterDeep = waterColors.deep;
     const waterFoam = waterColors.foam;
     const waterShallow = waterColors.shallow;
@@ -445,6 +523,10 @@ export function StaticEnvironment({
 
     return (
         <>
+            <ShadowMapController
+                enabled={qualityProfile.shadows}
+                invalidationKey={shadowInvalidationKey}
+            />
             {!noBackground && (
                 <color
                     attach="background"
@@ -495,6 +577,19 @@ export function Environment({
 
     const currentTime = useSnapshotTime();
     const timeOfDay = useGameState((state) => state.timeOfDay);
+    const view = useGameState((state) => state.view);
+    const closeupBlockId = useGameState((state) => state.closeupBlock?.id);
+    const pickupBlockId = useGameState((state) => state.pickupBlock?.id);
+    const winterMode = useGameState((state) => state.winterMode);
+    const dropAnimationSignature = useGameState((state) =>
+        Object.entries(state.blockPlacementDropAnimations)
+            .map(
+                ([blockId, animation]) =>
+                    `${blockId}:${animation.sequence}:${animation.particlesSpawned ? 'particles' : 'pending'}`,
+            )
+            .sort()
+            .join('|'),
+    );
     const ambientAudioMixer = useGameState((state) => state.audio.ambient);
     const setSnowCoverage = useGameState((state) => state.setSnowCoverage);
     const setWaterColors = useGameState((state) => state.setWaterColors);
@@ -530,13 +625,13 @@ export function Environment({
     }, [garden]);
 
     const gameWeather = useGameState((state) => state.weather);
-    const hasWeatherOverride = Boolean(weather ?? gameWeather);
+    const hasWeatherOverride = Boolean(gameWeather ?? weather);
     const { data: weatherNow } = useWeatherNow(
         !weatherDisabled && !hasWeatherOverride,
     );
     const overrideWeather = weatherDisabled
         ? undefined
-        : (weather ?? gameWeather);
+        : (gameWeather ?? weather);
     const actualWeather = useMemo<EnvironmentWeather | undefined>(() => {
         if (weatherDisabled) {
             return undefined;
@@ -770,6 +865,44 @@ export function Environment({
         : daylightVisibility *
           smoothstep(0.08, 0.22, cloudCover) *
           (1 - smoothstep(0.5, 0.9, effectiveCloudCover));
+    const gardenShadowSignature = useMemo(
+        () => buildStackShadowSignature(garden?.stacks),
+        [garden?.stacks],
+    );
+    const shadowInvalidationKey = useMemo(
+        () =>
+            [
+                buildLightShadowSignature({
+                    currentTime,
+                    directionalLight,
+                    shadowCameraSize,
+                    shadowMapSize: qualityProfile.shadowMapSize,
+                    shadowVisibility,
+                    shadows: qualityProfile.shadows,
+                    timeOfDay,
+                }),
+                `garden:${gardenShadowSignature}`,
+                `view:${view}:${closeupBlockId ?? ''}`,
+                `pickup:${pickupBlockId ?? ''}`,
+                `drop:${dropAnimationSignature}`,
+                `winter:${winterMode}`,
+            ].join('||'),
+        [
+            closeupBlockId,
+            currentTime,
+            directionalLight,
+            dropAnimationSignature,
+            gardenShadowSignature,
+            pickupBlockId,
+            qualityProfile.shadowMapSize,
+            qualityProfile.shadows,
+            shadowCameraSize,
+            shadowVisibility,
+            timeOfDay,
+            view,
+            winterMode,
+        ],
+    );
 
     // Handle ground snow coverage - based on accumulated snow in cm
     const snowAccumulationCm = blendedWeather?.snowAccumulation ?? 0;
@@ -872,6 +1005,10 @@ export function Environment({
 
     return (
         <>
+            <ShadowMapController
+                enabled={qualityProfile.shadows}
+                invalidationKey={shadowInvalidationKey}
+            />
             {!noBackground && (
                 <color
                     attach="background"

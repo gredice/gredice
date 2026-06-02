@@ -503,28 +503,6 @@ export function DebugHud() {
                 windDirection,
                 snowAccumulation,
             });
-            return;
-        }
-
-        if (weather) {
-            setWeather({
-                cloudy: weather.cloudy ?? 0,
-                rainy: weather.rainy ?? 0,
-                snowy: weather.snowy ?? 0,
-                foggy: weather.foggy ?? 0,
-                windSpeed:
-                    typeof weather.windSpeed === 'number'
-                        ? weather.windSpeed
-                        : undefined,
-                windDirection:
-                    typeof weather.windDirection === 'number'
-                        ? weather.windDirection
-                        : undefined,
-                snowAccumulation:
-                    typeof weather.snowAccumulation === 'number'
-                        ? weather.snowAccumulation
-                        : undefined,
-            });
         }
     }, [
         overrideWeather,
@@ -535,7 +513,6 @@ export function DebugHud() {
         windSpeed,
         windDirection,
         snowAccumulation,
-        weather,
         setWeather,
     ]);
 
@@ -641,6 +618,18 @@ export function DebugHud() {
                                     {profileSnapshot?.shadowsEnabled
                                         ? `${profileSnapshot.shadowMapSize}px`
                                         : 'off'}
+                                    {profileSnapshot?.shadowsEnabled
+                                        ? ` / ${profileSnapshot.shadowMapAutoUpdate === false ? 'cached' : 'auto'} / ${profileSnapshot.shadowMapInvalidationCount ?? 0} invalidations`
+                                        : ''}
+                                </div>
+                                <div>
+                                    Cloud shadows{' '}
+                                    {profileSnapshot?.cloudProjectedShadowCount ??
+                                        0}{' '}
+                                    projected /{' '}
+                                    {profileSnapshot?.cloudRealShadowCasterCount ??
+                                        0}{' '}
+                                    real
                                 </div>
                                 <div>
                                     Weather{' '}
@@ -657,6 +646,10 @@ export function DebugHud() {
                                     / decor{' '}
                                     {profileSnapshot?.groundDecorationCount ??
                                         0}
+                                    {profileSnapshot?.groundDecorationVisibleCount !==
+                                    undefined
+                                        ? ` (${profileSnapshot.groundDecorationVisibleCount} visible, ${profileSnapshot.groundDecorationAtlasPageCount ?? 0} pages, ${profileSnapshot.groundDecorationChunkCount ?? 0} chunks)`
+                                        : ''}
                                 </div>
                             </Stack>
                         </DebugPanelSection>

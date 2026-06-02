@@ -1,7 +1,7 @@
 import { animated } from '@react-spring/three';
-import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
 import { Color, DoubleSide, ShaderMaterial, type Vector4 } from 'three';
+import { useSceneTimeUniform } from '../scene/SceneTime';
 import { defaultWaterColors } from '../scene/waterColors';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
@@ -123,6 +123,7 @@ void main() {
 
 export function useWaterBlockMaterial(foamEdges: Vector4) {
     const waterColors = useGameState((state) => state.waterColors);
+    const timeUniform = useSceneTimeUniform();
     const material = useMemo(() => {
         const waterMaterial = new ShaderMaterial({
             vertexShader: waterVertexShader,
@@ -132,7 +133,7 @@ export function useWaterBlockMaterial(foamEdges: Vector4) {
             depthTest: true,
             side: DoubleSide,
             uniforms: {
-                uTime: { value: 0 },
+                uTime: timeUniform,
                 uDeepColor: { value: new Color(defaultWaterColors.deep) },
                 uShallowColor: {
                     value: new Color(defaultWaterColors.shallow),
@@ -145,7 +146,7 @@ export function useWaterBlockMaterial(foamEdges: Vector4) {
         waterMaterial.polygonOffsetFactor = -0.5;
         waterMaterial.polygonOffsetUnits = -0.5;
         return waterMaterial;
-    }, [foamEdges]);
+    }, [foamEdges, timeUniform]);
 
     useEffect(() => {
         material.uniforms.uFoamEdges.value.copy(foamEdges);
@@ -158,10 +159,6 @@ export function useWaterBlockMaterial(foamEdges: Vector4) {
     }, [material, waterColors.deep, waterColors.foam, waterColors.shallow]);
 
     useEffect(() => () => material.dispose(), [material]);
-
-    useFrame(({ clock }) => {
-        material.uniforms.uTime.value = clock.elapsedTime;
-    });
 
     return material;
 }

@@ -12,6 +12,7 @@ import {
     type GameQualityProfile,
     resolveGameQualityProfile,
 } from './gameQuality';
+import { SceneTimeProvider } from './SceneTime';
 
 export type SceneProps = HTMLAttributes<HTMLDivElement> &
     PropsWithChildren<{
@@ -60,10 +61,12 @@ export function Scene({
             }}
             {...rest}
         >
-            <HoverOutlineProvider>
-                {children}
-                <HoverOutlineEffect />
-            </HoverOutlineProvider>
+            <SceneTimeProvider>
+                <HoverOutlineProvider>
+                    {children}
+                    <HoverOutlineEffect />
+                </HoverOutlineProvider>
+            </SceneTimeProvider>
         </Canvas>
     );
 }

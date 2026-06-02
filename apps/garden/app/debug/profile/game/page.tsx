@@ -6,12 +6,18 @@ type GameProfileSearchParams = Promise<
 
 type GameProfileMode =
     | 'baseline'
+    | 'cloudy'
     | 'details'
     | 'rain'
     | 'snow'
     | 'night'
     | 'storm'
-    | 'autumn';
+    | 'autumn'
+    | 'windy';
+
+type GameProfileMockGardenProfile = NonNullable<
+    GameSceneProps['mockGardenProfile']
+>;
 
 const clearWeather = {
     cloudy: 0,
@@ -39,12 +45,14 @@ function resolveMode(value: string | undefined): GameProfileMode {
 
     if (
         value === 'baseline' ||
+        value === 'cloudy' ||
         value === 'details' ||
         value === 'rain' ||
         value === 'snow' ||
         value === 'night' ||
         value === 'storm' ||
-        value === 'autumn'
+        value === 'autumn' ||
+        value === 'windy'
     ) {
         return value;
     }
@@ -60,9 +68,29 @@ function resolveQuality(value: string | undefined): GameSceneProps['quality'] {
     return undefined;
 }
 
+function resolveMockGardenProfile(
+    value: string | undefined,
+): GameProfileMockGardenProfile {
+    if (value === 'dense' || value === 'plant-heavy') {
+        return value;
+    }
+
+    return 'default';
+}
+
 function resolveWeather(
     mode: GameProfileMode,
 ): NonNullable<GameSceneProps['weather']> {
+    if (mode === 'cloudy') {
+        return {
+            ...clearWeather,
+            cloudy: 0.85,
+            foggy: 0.06,
+            windSpeed: 0.35,
+            windDirection: 80,
+        };
+    }
+
     if (mode === 'rain') {
         return {
             cloudy: 0.85,
@@ -119,6 +147,16 @@ function resolveWeather(
         };
     }
 
+    if (mode === 'windy') {
+        return {
+            ...clearWeather,
+            cloudy: 0.45,
+            foggy: 0.04,
+            windSpeed: 2.4,
+            windDirection: 235,
+        };
+    }
+
     return clearWeather;
 }
 
@@ -149,6 +187,9 @@ export default async function GameProfilePage({
         mode === 'details' || firstValue(params.details) === '1';
     const showHud = firstValue(params.hud) === '1';
     const enableControls = firstValue(params.controls) !== '0';
+    const mockGardenProfile = resolveMockGardenProfile(
+        firstValue(params.profile),
+    );
     const quality = resolveQuality(firstValue(params.quality));
     const weather = resolveWeather(mode);
     const freezeTime = resolveFreezeTime(mode);
@@ -157,6 +198,8 @@ export default async function GameProfilePage({
         <main
             className="h-screen w-screen overflow-hidden bg-[#e7e2cc]"
             data-game-profile-mode={mode}
+            data-game-profile-controls={enableControls ? '1' : '0'}
+            data-game-profile-garden-profile={mockGardenProfile}
             data-game-profile-quality={quality ?? 'auto'}
         >
             <GameScene
@@ -167,6 +210,7 @@ export default async function GameProfilePage({
                 freezeTime={freezeTime}
                 hideHud={!showHud}
                 mockGarden
+                mockGardenProfile={mockGardenProfile}
                 noControls={!enableControls}
                 noSound
                 quality={quality}
