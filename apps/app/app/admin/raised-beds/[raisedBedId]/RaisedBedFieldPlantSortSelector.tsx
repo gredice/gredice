@@ -11,6 +11,7 @@ type RaisedBedFieldPlantSortSelectorProps = {
     plantSortId?: number | null;
     plantSorts: PlantSortData[];
     variant?: 'outlined' | 'plain';
+    className?: string;
 };
 
 export function RaisedBedFieldPlantSortSelector({
@@ -20,6 +21,7 @@ export function RaisedBedFieldPlantSortSelector({
     plantSortId,
     plantSorts,
     variant = 'outlined',
+    className,
 }: RaisedBedFieldPlantSortSelectorProps) {
     const items = plantSorts
         .map((sort) => ({
@@ -67,6 +69,7 @@ export function RaisedBedFieldPlantSortSelector({
             items={items}
             disabled={items.length === 0}
             variant={variant}
+            className={className}
         />
     );
 }

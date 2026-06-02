@@ -9,14 +9,20 @@ export function RaisedBedFieldPlantStatusSelector({
     raisedBedId,
     positionIndex,
     status,
+    variant = 'outlined',
+    className,
 }: {
     raisedBedId: number;
     positionIndex: number;
     status: string;
+    variant?: 'outlined' | 'plain';
+    className?: string;
 }) {
     return (
         <SelectItems
             value={status}
+            variant={variant}
+            className={className}
             onValueChange={(newValue) => {
                 raisedBedFieldUpdatePlant({
                     raisedBedId,
