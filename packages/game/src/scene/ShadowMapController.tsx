@@ -1,8 +1,9 @@
 'use client';
 
 import { useFrame, useThree } from '@react-three/fiber';
-import { useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
+import { useSceneTimeInvalidation } from './SceneTime';
 
 const shadowSettleMs = 900;
 
@@ -16,13 +17,16 @@ export function ShadowMapController({
     invalidationKey: string;
 }) {
     const gl = useThree((state) => state.gl);
+    const invalidate = useThree((state) => state.invalidate);
     const invalidationCountRef = useRef(0);
     const nextDynamicRefreshRef = useRef(0);
     const settleUntilRef = useRef(0);
+    const [shadowSettling, setShadowSettling] = useState(false);
     const normalizedDynamicRefreshMs =
         enabled && typeof dynamicRefreshMs === 'number' && dynamicRefreshMs > 0
             ? dynamicRefreshMs
             : undefined;
+    useSceneTimeInvalidation(enabled && shadowSettling);
 
     useLayoutEffect(() => {
         const previousAutoUpdate = gl.shadowMap.autoUpdate;
@@ -31,6 +35,7 @@ export function ShadowMapController({
         gl.shadowMap.enabled = enabled;
         gl.shadowMap.autoUpdate = !enabled;
         gl.shadowMap.needsUpdate = true;
+        invalidate();
         updateGameProfileMetadata({
             shadowMapAutoUpdate: gl.shadowMap.autoUpdate,
             shadowMapDynamicRefreshMs: normalizedDynamicRefreshMs,
@@ -42,12 +47,14 @@ export function ShadowMapController({
             gl.shadowMap.enabled = previousEnabled;
             gl.shadowMap.needsUpdate = true;
         };
-    }, [enabled, gl, normalizedDynamicRefreshMs]);
+    }, [enabled, gl, invalidate, normalizedDynamicRefreshMs]);
 
     useLayoutEffect(() => {
         void invalidationKey;
 
         if (!enabled) {
+            setShadowSettling(false);
+            invalidate();
             updateGameProfileMetadata({
                 shadowMapAutoUpdate: gl.shadowMap.autoUpdate,
                 shadowMapDynamicRefreshMs: normalizedDynamicRefreshMs,
@@ -60,13 +67,29 @@ export function ShadowMapController({
         gl.shadowMap.needsUpdate = true;
         nextDynamicRefreshRef.current = 0;
         settleUntilRef.current = performance.now() + shadowSettleMs;
+        setShadowSettling(true);
         invalidationCountRef.current += 1;
+        invalidate();
         updateGameProfileMetadata({
             shadowMapAutoUpdate: gl.shadowMap.autoUpdate,
             shadowMapDynamicRefreshMs: normalizedDynamicRefreshMs,
             shadowMapInvalidationCount: invalidationCountRef.current,
         });
-    }, [enabled, gl, invalidationKey, normalizedDynamicRefreshMs]);
+    }, [enabled, gl, invalidate, invalidationKey, normalizedDynamicRefreshMs]);
+
+    useEffect(() => {
+        void invalidationKey;
+
+        if (!shadowSettling) {
+            return;
+        }
+
+        const timeout = window.setTimeout(() => {
+            setShadowSettling(false);
+        }, shadowSettleMs);
+
+        return () => window.clearTimeout(timeout);
+    }, [invalidationKey, shadowSettling]);
 
     useFrame(() => {
         if (!enabled) {

@@ -22,6 +22,7 @@ import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import type { GameCloudShadowMode } from './gameQuality';
+import { useSceneTimeInvalidation } from './SceneTime';
 
 const MAX_CLOUDS = 8;
 const CLOUD_ALPHA_TEST = 0.025;
@@ -300,6 +301,7 @@ export function CloudLayer({
     const visibleOpacity =
         daylightVisibility * (0.2 + effectiveCloudiness * 0.26 + foggy * 0.035);
     const windStrength = Math.min(1.4, Math.max(0, windSpeed / 12));
+    useSceneTimeInvalidation(visibleOpacity > 0.005);
 
     useEffect(() => {
         updateGameProfileMetadata({

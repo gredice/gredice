@@ -917,6 +917,10 @@ export function Environment({
             winterMode,
         ],
     );
+    const shadowMapSize = qualityProfile.shadows
+        ? qualityProfile.shadowMapSize
+        : 1;
+    const directionalLightKey = `directional-shadow:${qualityProfile.shadows ? qualityProfile.shadowMapSize : 0}:${qualityProfile.cloudShadowMode}`;
 
     // Handle ground snow coverage - based on accumulated snow in cm
     const snowAccumulationCm = blendedWeather?.snowAccumulation ?? 0;
@@ -1045,13 +1049,13 @@ export function Environment({
             />
             {/* TODO: Update shadow camera position based on camera position */}
             <directionalLight
+                key={directionalLightKey}
                 intensity={directionalLight.intensity}
                 color={directionalLight.color}
                 position={directionalLight.position}
                 shadow-intensity={qualityProfile.shadows ? shadowVisibility : 0}
-                shadow-mapSize={
-                    qualityProfile.shadows ? qualityProfile.shadowMapSize : 1
-                }
+                shadow-mapSize-height={shadowMapSize}
+                shadow-mapSize-width={shadowMapSize}
                 shadow-radius={2.2}
                 // shadow-near={0.01}
                 // shadow-far={1000}
