@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
     filterWeatherAlertsForFarm,
+    getDhmzWeatherAlerts,
     parseDhmzCapAlertXml,
     resolveWeatherAlertRegionCode,
 } from './alerts';
@@ -96,6 +97,57 @@ describe('parseDhmzCapAlertXml', () => {
         assert.equal(
             croatianAlert.description,
             'Lokalno mogući izraženiji pljuskovi s grmljavinom.',
+        );
+    });
+});
+
+describe('getDhmzWeatherAlerts', () => {
+    it('falls back to the misspelled DHMZ tomorrow feed candidate', async () => {
+        const requestedUrls: string[] = [];
+        const fetchAlerts: typeof fetch = async (input) => {
+            const url = input.toString();
+            requestedUrls.push(url);
+
+            if (
+                url.endsWith('/cap_hr_today.xml') ||
+                url.endsWith('/cap_hr_day_after_tomorrow.xml')
+            ) {
+                return new Response('<alert />', {
+                    headers: {
+                        'content-type': 'text/xml',
+                    },
+                    status: 200,
+                });
+            }
+
+            if (url.endsWith('/cap_hr_tomorrow.xml')) {
+                return new Response('', { status: 404 });
+            }
+
+            if (url.endsWith('/cap_hr_tmorrow.xml')) {
+                return new Response(sampleCapXml, {
+                    headers: {
+                        'content-type': 'text/xml',
+                    },
+                    status: 200,
+                });
+            }
+
+            throw new Error(`Unexpected weather alert URL: ${url}`);
+        };
+
+        const alerts = await getDhmzWeatherAlerts(fetchAlerts);
+
+        assert.deepEqual(requestedUrls, [
+            'https://meteo.hr/upozorenja/cap_hr_today.xml',
+            'https://meteo.hr/upozorenja/cap_hr_tomorrow.xml',
+            'https://meteo.hr/upozorenja/cap_hr_day_after_tomorrow.xml',
+            'https://meteo.hr/upozorenja/cap_hr_tmorrow.xml',
+        ]);
+        assert.equal(alerts.length, 2);
+        assert.equal(
+            alerts[0]?.sourceUrl,
+            'https://meteo.hr/upozorenja/cap_hr_tmorrow.xml',
         );
     });
 });

@@ -1,10 +1,13 @@
 import { parseStringPromise } from 'xml2js';
 
-const dhmzCapUrls = [
-    'https://meteo.hr/upozorenja/cap_hr_today.xml',
-    'https://meteo.hr/upozorenja/cap_hr_tomorrow.xml',
-    'https://meteo.hr/upozorenja/cap_hr_day_after_tomorrow.xml',
-] as const;
+const dhmzCapUrlGroups = [
+    ['https://meteo.hr/upozorenja/cap_hr_today.xml'],
+    [
+        'https://meteo.hr/upozorenja/cap_hr_tomorrow.xml',
+        'https://meteo.hr/upozorenja/cap_hr_tmorrow.xml',
+    ],
+    ['https://meteo.hr/upozorenja/cap_hr_day_after_tomorrow.xml'],
+];
 
 const defaultAlertRegionCode = 'HR002';
 
@@ -333,29 +336,44 @@ export async function parseDhmzCapAlertXml(
     });
 }
 
+async function fetchDhmzWeatherAlertsFromUrlGroup(
+    urls: string[],
+    fetchFn: typeof fetch,
+): Promise<DhmzWeatherAlert[]> {
+    let lastFailure: unknown = null;
+
+    for (const url of urls) {
+        try {
+            const response = await fetchFn(url);
+            if (!response.ok) {
+                lastFailure = {
+                    status: response.status,
+                    url,
+                };
+                continue;
+            }
+
+            return await parseDhmzCapAlertXml(await response.text(), url);
+        } catch (error) {
+            lastFailure = error;
+        }
+    }
+
+    console.warn('Failed to fetch DHMZ weather alerts feed', {
+        error: lastFailure,
+        url: urls[0],
+        fallbackUrls: urls.slice(1),
+    });
+    return [];
+}
+
 export async function getDhmzWeatherAlerts(
     fetchFn: typeof fetch = fetch,
 ): Promise<DhmzWeatherAlert[]> {
     const parsedGroups = await Promise.all(
-        dhmzCapUrls.map(async (url) => {
-            try {
-                const response = await fetchFn(url);
-                if (!response.ok) {
-                    console.warn('DHMZ weather alerts feed unavailable', {
-                        status: response.status,
-                        url,
-                    });
-                    return [];
-                }
-                return await parseDhmzCapAlertXml(await response.text(), url);
-            } catch (error) {
-                console.warn('Failed to fetch DHMZ weather alerts feed', {
-                    error,
-                    url,
-                });
-                return [];
-            }
-        }),
+        dhmzCapUrlGroups.map((urls) =>
+            fetchDhmzWeatherAlertsFromUrlGroup(urls, fetchFn),
+        ),
     );
 
     const alertsByKey = new Map<string, DhmzWeatherAlert>();
