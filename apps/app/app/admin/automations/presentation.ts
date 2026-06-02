@@ -38,7 +38,7 @@ export function automationRunStatusMeta(status: AutomationRunStatus): {
 } {
     switch (status) {
         case 'queued':
-            return { label: 'U redu', color: 'neutral' };
+            return { label: 'U redu čekanja', color: 'neutral' };
         case 'running':
             return { label: 'Izvodi se', color: 'info' };
         case 'succeeded':
