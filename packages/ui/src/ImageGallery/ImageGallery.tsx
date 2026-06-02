@@ -20,6 +20,7 @@ import { cx } from '../utils';
 interface ImageGalleryItem {
     src: string;
     alt: string;
+    dateLabel?: string;
 }
 
 interface ImageGalleryProps {
@@ -417,6 +418,11 @@ export function ImageGallery({
                                 sizes={`${previewWidth}px`}
                                 className="h-full w-full object-cover"
                             />
+                            {image.dateLabel && (
+                                <span className="absolute inset-x-0 bottom-0 z-10 bg-black/55 px-2 py-1 text-left text-[11px] leading-none text-white/90 backdrop-blur-sm">
+                                    {image.dateLabel}
+                                </span>
+                            )}
                             <div className="absolute inset-0 bg-white/30 opacity-0 transition-opacity group-hover:opacity-100" />
                         </PreviewComponent>
                     ))}
