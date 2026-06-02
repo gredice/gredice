@@ -6,9 +6,12 @@ import {
     knownEvents,
     knownEventTypes,
 } from '../repositories/events';
+import { getFarms } from '../repositories/farmsRepo';
 import { getRaisedBed } from '../repositories/gardensRepo';
 import {
+    acceptOperation,
     createOperation,
+    getFarmAcceptedOperations,
     getOperationById,
 } from '../repositories/operationsRepo';
 import { queueSeasonalSowingOfferOperations } from '../repositories/seasonalOffersRepo';
@@ -21,24 +24,31 @@ import {
 } from './types';
 
 const domainEventTriggerKey = 'trigger.domainEvent';
+const scheduleMonthlyTriggerKey = 'trigger.scheduleMonthly';
 const eventDataEqualsConditionKey = 'condition.eventDataEquals';
 const operationMatchesConditionKey = 'condition.operationMatches';
 const plantStatusEqualsConditionKey = 'condition.plantStatusEquals';
 const queueSeasonalSowingOfferOperationsActionKey =
     'action.queueSeasonalSowingOfferOperations';
 const createOperationActionKey = 'action.createOperation';
+const createFarmInventoryOperationsActionKey =
+    'action.createFarmInventoryOperations';
 const updateRaisedBedFieldPlantStatusActionKey =
     'action.updateRaisedBedFieldPlantStatus';
 const logActionKey = 'action.log';
+const monthlyScheduleEventType = 'automation.schedule.monthly';
+const defaultScheduleTimeZone = 'Europe/Zagreb';
 
 export const automationModuleKeys = {
     triggerDomainEvent: domainEventTriggerKey,
+    triggerScheduleMonthly: scheduleMonthlyTriggerKey,
     conditionEventDataEquals: eventDataEqualsConditionKey,
     conditionOperationMatches: operationMatchesConditionKey,
     conditionPlantStatusEquals: plantStatusEqualsConditionKey,
     actionQueueSeasonalSowingOfferOperations:
         queueSeasonalSowingOfferOperationsActionKey,
     actionCreateOperation: createOperationActionKey,
+    actionCreateFarmInventoryOperations: createFarmInventoryOperationsActionKey,
     actionUpdateRaisedBedFieldPlantStatus:
         updateRaisedBedFieldPlantStatusActionKey,
     actionLog: logActionKey,
@@ -72,6 +82,179 @@ function getNumber(config: AutomationJsonObject, key: string) {
 function requiredString(config: AutomationJsonObject, key: string) {
     const value = getString(config, key);
     return value ? [] : [`${key} is required.`];
+}
+
+function isValidTimeZone(timeZone: string) {
+    try {
+        new Intl.DateTimeFormat('en-US', { timeZone }).format(new Date());
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function getTimeZoneDateParts(date: Date, timeZone: string) {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    });
+    const parts = Object.fromEntries(
+        formatter
+            .formatToParts(date)
+            .filter((part) => part.type !== 'literal')
+            .map((part) => [part.type, part.value]),
+    );
+    const year = Number(parts.year);
+    const month = Number(parts.month);
+    const day = Number(parts.day);
+
+    if (
+        !Number.isInteger(year) ||
+        !Number.isInteger(month) ||
+        !Number.isInteger(day)
+    ) {
+        throw new Error(`Unable to resolve date parts for ${timeZone}.`);
+    }
+
+    return {
+        year,
+        month,
+        day,
+        dateKey: `${parts.year}-${parts.month}-${parts.day}`,
+        periodKey: `${parts.year}-${parts.month}`,
+    };
+}
+
+function validateMonthlyScheduleConfig(config: AutomationJsonObject) {
+    const errors: string[] = [];
+    const dayOfMonth = getNumber(config, 'dayOfMonth');
+    const timeZone = getString(config, 'timeZone') ?? defaultScheduleTimeZone;
+
+    if (
+        !Number.isInteger(dayOfMonth) ||
+        dayOfMonth === undefined ||
+        dayOfMonth < 1 ||
+        dayOfMonth > 31
+    ) {
+        errors.push('dayOfMonth must be an integer from 1 to 31.');
+    }
+
+    if (!isValidTimeZone(timeZone)) {
+        errors.push('timeZone must be a valid IANA time zone.');
+    }
+
+    return errors;
+}
+
+export function getMonthlyScheduleOccurrence(
+    node: AutomationGraphNode,
+    now = new Date(),
+) {
+    const dayOfMonth = getNumber(node.config, 'dayOfMonth');
+    const timeZone =
+        getString(node.config, 'timeZone') ?? defaultScheduleTimeZone;
+
+    if (
+        !Number.isInteger(dayOfMonth) ||
+        dayOfMonth === undefined ||
+        dayOfMonth < 1 ||
+        dayOfMonth > 31 ||
+        !isValidTimeZone(timeZone)
+    ) {
+        return null;
+    }
+
+    const parts = getTimeZoneDateParts(now, timeZone);
+    if (parts.day !== dayOfMonth) {
+        return null;
+    }
+
+    const occurrenceKey = `${scheduleMonthlyTriggerKey}:${timeZone}:${parts.periodKey}:day-${dayOfMonth}`;
+
+    return {
+        eventType: monthlyScheduleEventType,
+        aggregateId: occurrenceKey,
+        input: {
+            scheduleType: 'monthly',
+            triggerModuleKey: scheduleMonthlyTriggerKey,
+            occurrenceKey,
+            period: parts.periodKey,
+            occurrenceDate: parts.dateKey,
+            dayOfMonth,
+            timeZone,
+            enqueuedAt: now.toISOString(),
+        } satisfies AutomationJsonObject,
+    };
+}
+
+type FarmInventoryOperationConfig = {
+    entityId: number;
+    entityTypeName: string;
+    scheduledInDays: number;
+};
+
+function parseFarmInventoryOperationConfigs(
+    value: unknown,
+): FarmInventoryOperationConfig[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value.flatMap((item) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+            return [];
+        }
+
+        const entityId = Reflect.get(item, 'entityId');
+        const entityTypeName = Reflect.get(item, 'entityTypeName');
+        const scheduledInDays = Reflect.get(item, 'scheduledInDays');
+        const hasScheduledInDays = Reflect.has(item, 'scheduledInDays');
+        if (
+            typeof entityId !== 'number' ||
+            !Number.isInteger(entityId) ||
+            entityId <= 0
+        ) {
+            return [];
+        }
+        if (
+            hasScheduledInDays &&
+            (typeof scheduledInDays !== 'number' ||
+                !Number.isInteger(scheduledInDays))
+        ) {
+            return [];
+        }
+
+        return [
+            {
+                entityId,
+                entityTypeName:
+                    typeof entityTypeName === 'string' &&
+                    entityTypeName.trim().length > 0
+                        ? entityTypeName.trim()
+                        : 'operation',
+                scheduledInDays:
+                    typeof scheduledInDays === 'number' ? scheduledInDays : 0,
+            },
+        ];
+    });
+}
+
+function validateFarmInventoryOperationsConfig(config: AutomationJsonObject) {
+    const operations = config.operations;
+    if (!Array.isArray(operations) || operations.length === 0) {
+        return ['operations must be a non-empty JSON array.'];
+    }
+
+    const validOperations = parseFarmInventoryOperationConfigs(operations);
+    if (validOperations.length !== operations.length) {
+        return [
+            'Each operation must include a positive integer entityId. Optional fields: entityTypeName, integer scheduledInDays.',
+        ];
+    }
+
+    return [];
 }
 
 function readPath(source: AutomationJsonObject, path: string): unknown {
@@ -125,6 +308,40 @@ function success(output: AutomationJsonObject = {}) {
         status: 'succeeded',
         output,
     } satisfies AutomationModuleResult;
+}
+
+function addUtcDays(date: Date, days: number) {
+    const nextDate = new Date(date);
+    nextDate.setUTCDate(nextDate.getUTCDate() + days);
+    return nextDate;
+}
+
+function toUtcDayKey(date: Date) {
+    return date.toISOString().slice(0, 10);
+}
+
+function getScheduleReferenceDate(input: AutomationJsonObject) {
+    const enqueuedAt = input.enqueuedAt;
+    if (typeof enqueuedAt === 'string') {
+        const date = new Date(enqueuedAt);
+        if (!Number.isNaN(date.getTime())) {
+            return date;
+        }
+    }
+
+    return new Date();
+}
+
+function farmOperationKey({
+    entityId,
+    entityTypeName,
+    scheduledDate,
+}: {
+    entityId: number;
+    entityTypeName: string;
+    scheduledDate: Date;
+}) {
+    return `${entityTypeName}:${entityId}:${toUtcDayKey(scheduledDate)}`;
 }
 
 function parseRaisedBedFieldAggregateId(aggregateId: string) {
@@ -190,6 +407,67 @@ const triggerDomainEventModule: AutomationModule = {
             eventType: context.event.type,
             aggregateId: context.event.aggregateId,
             data: context.event.data,
+        });
+    },
+};
+
+const triggerScheduleMonthlyModule: AutomationModule = {
+    key: scheduleMonthlyTriggerKey,
+    kind: 'trigger',
+    title: 'Monthly schedule',
+    description:
+        'Starts an automation once per month on the configured local day.',
+    category: 'Schedules',
+    configFields: [
+        {
+            key: 'dayOfMonth',
+            label: 'Day of month',
+            type: 'number',
+            required: true,
+            placeholder: '1',
+        },
+        {
+            key: 'timeZone',
+            label: 'Time zone',
+            type: 'string',
+            required: false,
+            placeholder: defaultScheduleTimeZone,
+        },
+    ],
+    inputDescription:
+        'A scheduled monthly occurrence generated by the automation runner.',
+    outputDescription: 'The monthly occurrence key and configured local date.',
+    dryRunSupported: true,
+    mutatesData: false,
+    retryable: false,
+    validateConfig: validateMonthlyScheduleConfig,
+    execute: async (context, node) => {
+        const input = context.run.input;
+        const scheduleType = input.scheduleType;
+        const triggerModuleKey = input.triggerModuleKey;
+        const occurrenceKey = input.occurrenceKey;
+
+        if (
+            scheduleType !== 'monthly' ||
+            triggerModuleKey !== scheduleMonthlyTriggerKey ||
+            typeof occurrenceKey !== 'string'
+        ) {
+            return skip('Automation run is not a monthly schedule occurrence.');
+        }
+
+        const dayOfMonth = getNumber(node.config, 'dayOfMonth');
+        const timeZone =
+            getString(node.config, 'timeZone') ?? defaultScheduleTimeZone;
+
+        return success({
+            occurrenceKey,
+            period: typeof input.period === 'string' ? input.period : null,
+            occurrenceDate:
+                typeof input.occurrenceDate === 'string'
+                    ? input.occurrenceDate
+                    : null,
+            dayOfMonth: dayOfMonth ?? null,
+            timeZone,
         });
     },
 };
@@ -599,6 +877,195 @@ const createOperationActionModule: AutomationModule = {
     },
 };
 
+const createFarmInventoryOperationsActionModule: AutomationModule = {
+    key: createFarmInventoryOperationsActionKey,
+    kind: 'action',
+    title: 'Create farm inventory operations',
+    description:
+        'Creates configured inventory task operations for every active farm.',
+    category: 'Operations',
+    configFields: [
+        {
+            key: 'operations',
+            label: 'Operations',
+            type: 'json',
+            required: true,
+            description:
+                'JSON array: [{"entityId": 123, "entityTypeName": "operation", "scheduledInDays": 0}]',
+        },
+    ],
+    inputDescription: 'A monthly schedule occurrence.',
+    outputDescription: 'Created operation ids and skipped existing counts.',
+    dryRunSupported: true,
+    mutatesData: true,
+    retryable: true,
+    validateConfig: validateFarmInventoryOperationsConfig,
+    execute: async (context, node) => {
+        const operationConfigs = parseFarmInventoryOperationConfigs(
+            node.config.operations,
+        );
+        if (operationConfigs.length === 0) {
+            throw new AutomationModuleExecutionError(
+                'Farm inventory operation action is missing operations config.',
+                'invalid_config',
+            );
+        }
+
+        const referenceDate = getScheduleReferenceDate(context.run.input);
+        const scheduledDates = operationConfigs.map((operationConfig) =>
+            addUtcDays(referenceDate, operationConfig.scheduledInDays),
+        );
+        const from = new Date(
+            Math.min(...scheduledDates.map((date) => date.getTime())),
+        );
+        const to = addUtcDays(
+            new Date(Math.max(...scheduledDates.map((date) => date.getTime()))),
+            1,
+        );
+        const activeFarms = (await getFarms()).filter(
+            (farm) => !farm.isDeleted,
+        );
+
+        if (activeFarms.length === 0) {
+            return skip('No active farms were found.');
+        }
+
+        let skippedExistingCount = 0;
+        const createdOperationIds: number[] = [];
+        const repairedScheduledOperationIds: number[] = [];
+
+        for (const farm of activeFarms) {
+            const existingOperations = await getFarmAcceptedOperations(
+                farm.id,
+                {
+                    from,
+                    to,
+                },
+            );
+            const existingOperationsByKey = new Map(
+                existingOperations.flatMap((operation) => {
+                    if (
+                        operation.status === 'canceled' ||
+                        operation.status === 'failed'
+                    ) {
+                        return [];
+                    }
+
+                    return [
+                        [
+                            farmOperationKey({
+                                entityId: operation.entityId,
+                                entityTypeName: operation.entityTypeName,
+                                scheduledDate:
+                                    operation.scheduledDate ??
+                                    operation.timestamp,
+                            }),
+                            operation,
+                        ],
+                    ];
+                }),
+            );
+            const existingOperationKeys = new Set(
+                existingOperationsByKey.keys(),
+            );
+
+            for (const operationConfig of operationConfigs) {
+                const scheduledDate = addUtcDays(
+                    referenceDate,
+                    operationConfig.scheduledInDays,
+                );
+                const operationKey = farmOperationKey({
+                    entityId: operationConfig.entityId,
+                    entityTypeName: operationConfig.entityTypeName,
+                    scheduledDate,
+                });
+                const existingOperation =
+                    existingOperationsByKey.get(operationKey);
+
+                if (
+                    existingOperation ||
+                    existingOperationKeys.has(operationKey)
+                ) {
+                    skippedExistingCount += 1;
+                    if (
+                        existingOperation &&
+                        !existingOperation.scheduledDate &&
+                        !context.dryRun
+                    ) {
+                        await createEvent(
+                            knownEvents.operations.scheduledV1(
+                                existingOperation.id.toString(),
+                                {
+                                    scheduledDate: scheduledDate.toISOString(),
+                                },
+                            ),
+                        );
+                        repairedScheduledOperationIds.push(
+                            existingOperation.id,
+                        );
+                    }
+                    continue;
+                }
+
+                if (context.dryRun) {
+                    continue;
+                }
+
+                const operationId = await createOperation({
+                    entityId: operationConfig.entityId,
+                    entityTypeName: operationConfig.entityTypeName,
+                    farmId: farm.id,
+                    timestamp: scheduledDate,
+                });
+                await acceptOperation(operationId);
+                await createEvent(
+                    knownEvents.operations.scheduledV1(operationId.toString(), {
+                        scheduledDate: scheduledDate.toISOString(),
+                    }),
+                );
+                createdOperationIds.push(operationId);
+                existingOperationKeys.add(operationKey);
+            }
+        }
+
+        if (context.dryRun) {
+            return success({
+                dryRun: true,
+                farmCount: activeFarms.length,
+                operationCount: operationConfigs.length,
+                projectedCreateCount:
+                    activeFarms.length * operationConfigs.length -
+                    skippedExistingCount,
+                skippedExistingCount,
+            });
+        }
+
+        if (
+            createdOperationIds.length === 0 &&
+            repairedScheduledOperationIds.length === 0
+        ) {
+            return skip(
+                'All configured farm inventory operations already exist.',
+                {
+                    farmCount: activeFarms.length,
+                    operationCount: operationConfigs.length,
+                    skippedExistingCount,
+                },
+            );
+        }
+
+        return success({
+            createdOperationIds,
+            createdCount: createdOperationIds.length,
+            repairedScheduledOperationIds,
+            repairedScheduledCount: repairedScheduledOperationIds.length,
+            skippedExistingCount,
+            farmCount: activeFarms.length,
+            operationCount: operationConfigs.length,
+        });
+    },
+};
+
 const updateRaisedBedFieldPlantStatusActionModule: AutomationModule = {
     key: updateRaisedBedFieldPlantStatusActionKey,
     kind: 'action',
@@ -719,11 +1186,13 @@ const logActionModule: AutomationModule = {
 
 export const automationModules = [
     triggerDomainEventModule,
+    triggerScheduleMonthlyModule,
     eventDataEqualsConditionModule,
     operationMatchesConditionModule,
     plantStatusEqualsConditionModule,
     queueSeasonalSowingOfferOperationsActionModule,
     createOperationActionModule,
+    createFarmInventoryOperationsActionModule,
     updateRaisedBedFieldPlantStatusActionModule,
     logActionModule,
 ] as const satisfies readonly AutomationModule[];

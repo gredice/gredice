@@ -1,5 +1,6 @@
 import {
     type AutomationGraph,
+    automationModuleKeys,
     getAutomationDefinitionById,
     getAutomationModuleMetadata,
     listAutomationRunSteps,
@@ -51,6 +52,12 @@ function getTriggerEventType(graph: AutomationGraph) {
     return typeof eventType === 'string' && eventType.trim().length > 0
         ? eventType.trim()
         : null;
+}
+
+function getTriggerModuleKey(graph: AutomationGraph) {
+    return (
+        graph.nodes.find((node) => node.kind === 'trigger')?.moduleKey ?? null
+    );
 }
 
 function formatDuration(startedAt: Date | null, completedAt: Date | null) {
@@ -116,15 +123,24 @@ export default async function AutomationDetailPage({
     const modules = getAutomationModuleMetadata();
     const modulesByKey = moduleMetadataByKey(modules);
     const triggerEventType = getTriggerEventType(definition.graph);
+    const triggerModuleKey = getTriggerModuleKey(definition.graph);
+    const triggerMode =
+        triggerModuleKey === automationModuleKeys.triggerDomainEvent
+            ? 'domainEvent'
+            : triggerModuleKey === automationModuleKeys.triggerScheduleMonthly
+              ? 'schedule'
+              : 'unsupported';
     const [runs, recentEvents] = await Promise.all([
         listAutomationRuns({
             automationDefinitionId: definition.id,
             limit: 25,
         }),
-        listRecentDomainEvents({
-            eventTypes: triggerEventType ? [triggerEventType] : undefined,
-            limit: 20,
-        }),
+        triggerMode === 'domainEvent' && triggerEventType
+            ? listRecentDomainEvents({
+                  eventTypes: [triggerEventType],
+                  limit: 20,
+              })
+            : Promise.resolve([]),
     ]);
     const runsWithSteps = await Promise.all(
         runs.map(async (run) => ({
@@ -262,6 +278,7 @@ export default async function AutomationDetailPage({
                 </Stack>
                 <AutomationTestPanel
                     automationId={definition.id}
+                    triggerMode={triggerMode}
                     triggerEventType={triggerEventType}
                     recentEvents={recentAutomationEvents}
                 />

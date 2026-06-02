@@ -23,12 +23,19 @@ export type RecentAutomationEvent = {
     createdAt: string;
 };
 
+export type AutomationTestTriggerMode =
+    | 'domainEvent'
+    | 'schedule'
+    | 'unsupported';
+
 export function AutomationTestPanel({
     automationId,
     recentEvents,
+    triggerMode,
     triggerEventType,
 }: {
     automationId: number;
+    triggerMode: AutomationTestTriggerMode;
     triggerEventType: string | null;
     recentEvents: RecentAutomationEvent[];
 }) {
@@ -49,48 +56,70 @@ export function AutomationTestPanel({
             </CardHeader>
             <CardContent>
                 <Stack spacing={3}>
-                    <SelectItems
-                        label="Ulazni event"
-                        value={selectedEventId}
-                        placeholder="Sintetički event"
-                        items={[
-                            { value: '', label: 'Sintetički event' },
-                            ...recentEvents.map((event) => ({
-                                value: event.id.toString(),
-                                label: `#${event.id} ${event.aggregateId}`,
-                                content: `#${event.id} ${event.aggregateId}`,
-                            })),
-                        ]}
-                        onValueChange={setSelectedEventId}
-                    />
-                    {!selectedEventId ? (
+                    {triggerMode === 'domainEvent' ? (
                         <>
-                            <Input
-                                label="Aggregate ID"
-                                value={aggregateId}
-                                placeholder="raisedBedId|positionIndex"
-                                onChange={(event) =>
-                                    setAggregateId(event.target.value)
-                                }
-                                fullWidth
+                            <SelectItems
+                                label="Ulazni event"
+                                value={selectedEventId}
+                                placeholder="Sintetički event"
+                                items={[
+                                    { value: '', label: 'Sintetički event' },
+                                    ...recentEvents.map((event) => ({
+                                        value: event.id.toString(),
+                                        label: `#${event.id} ${event.aggregateId}`,
+                                        content: `#${event.id} ${event.aggregateId}`,
+                                    })),
+                                ]}
+                                onValueChange={setSelectedEventId}
                             />
-                            <Stack spacing={1}>
-                                <label
-                                    className="text-sm font-medium"
-                                    htmlFor="automation-test-event-data"
-                                >
-                                    Event data
-                                </label>
-                                <textarea
-                                    id="automation-test-event-data"
-                                    value={eventDataJson}
-                                    onChange={(event) =>
-                                        setEventDataJson(event.target.value)
-                                    }
-                                    className="min-h-28 rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-hidden ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                />
-                            </Stack>
+                            {!selectedEventId ? (
+                                <>
+                                    <Input
+                                        label="Aggregate ID"
+                                        value={aggregateId}
+                                        placeholder="raisedBedId|positionIndex"
+                                        onChange={(event) =>
+                                            setAggregateId(event.target.value)
+                                        }
+                                        fullWidth
+                                    />
+                                    <Stack spacing={1}>
+                                        <label
+                                            className="text-sm font-medium"
+                                            htmlFor="automation-test-event-data"
+                                        >
+                                            Event data
+                                        </label>
+                                        <textarea
+                                            id="automation-test-event-data"
+                                            value={eventDataJson}
+                                            onChange={(event) =>
+                                                setEventDataJson(
+                                                    event.target.value,
+                                                )
+                                            }
+                                            className="min-h-28 rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-hidden ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                        />
+                                    </Stack>
+                                </>
+                            ) : null}
                         </>
+                    ) : null}
+                    {triggerMode === 'schedule' ? (
+                        <Typography
+                            level="body3"
+                            className="text-muted-foreground"
+                        >
+                            Test će koristiti sintetički mjesečni schedule run.
+                        </Typography>
+                    ) : null}
+                    {triggerMode === 'unsupported' ? (
+                        <Typography
+                            level="body3"
+                            className="text-muted-foreground"
+                        >
+                            Ovaj tip triggera još nema testni ulaz.
+                        </Typography>
                     ) : null}
                     <Checkbox
                         label="Dry-run"
@@ -101,7 +130,11 @@ export function AutomationTestPanel({
                     />
                     <Button
                         type="button"
-                        disabled={isPending || !triggerEventType}
+                        disabled={
+                            isPending ||
+                            triggerMode === 'unsupported' ||
+                            (triggerMode === 'domainEvent' && !triggerEventType)
+                        }
                         startDecorator={<Play className="size-4" />}
                         onClick={() =>
                             startTransition(async () => {
@@ -142,7 +175,7 @@ export function AutomationTestPanel({
                             ))}
                         </Stack>
                     ) : null}
-                    {!triggerEventType ? (
+                    {triggerMode === 'domainEvent' && !triggerEventType ? (
                         <Typography
                             level="body3"
                             className="text-muted-foreground"

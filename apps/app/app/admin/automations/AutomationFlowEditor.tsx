@@ -720,6 +720,16 @@ export function AutomationFlowEditor({
                                                             }}
                                                             className="min-h-28 rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-hidden ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                                                         />
+                                                        {field.description ? (
+                                                            <Typography
+                                                                level="body3"
+                                                                className="text-muted-foreground"
+                                                            >
+                                                                {
+                                                                    field.description
+                                                                }
+                                                            </Typography>
+                                                        ) : null}
                                                     </Stack>
                                                 );
                                             }

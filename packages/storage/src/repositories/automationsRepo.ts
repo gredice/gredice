@@ -50,6 +50,8 @@ export type CreateAutomationRunInput = {
     automationDefinition: SelectAutomationDefinition;
     source: AutomationRunSource;
     sourceEvent?: DomainEventRow | null;
+    sourceEventType?: string | null;
+    sourceAggregateId?: string | null;
     parentRunId?: number | null;
     dryRun?: boolean;
     input?: AutomationJsonObject;
@@ -287,29 +289,72 @@ export function listEnabledAutomationDefinitionsForEventType(
     });
 }
 
+export function listEnabledAutomationDefinitionsForTriggerModule(
+    triggerModuleKey: string,
+): Promise<SelectAutomationDefinition[]> {
+    return storage()
+        .select()
+        .from(automationDefinitions)
+        .where(
+            and(
+                eq(automationDefinitions.status, 'enabled'),
+                eq(automationDefinitions.triggerModuleKey, triggerModuleKey),
+            ),
+        )
+        .orderBy(desc(automationDefinitions.updatedAt))
+        .limit(500);
+}
+
 export async function createAutomationRun(
     input: CreateAutomationRunInput,
 ): Promise<SelectAutomationRun | null> {
     const definition = input.automationDefinition;
     const sourceEvent = input.sourceEvent ?? null;
+    const sourceEventType = input.sourceEventType ?? sourceEvent?.type ?? null;
+    const sourceAggregateId =
+        input.sourceAggregateId ?? sourceEvent?.aggregateId ?? null;
+    const values = {
+        automationDefinitionId: definition.id,
+        automationDefinitionKey: definition.key,
+        automationDefinitionName: definition.name,
+        source: input.source,
+        sourceEventId: sourceEvent?.id ?? null,
+        sourceEventType,
+        sourceAggregateId,
+        parentRunId: input.parentRunId ?? null,
+        dryRun: input.dryRun ?? input.source === 'test',
+        maxAttempts: input.maxAttempts ?? defaultRunMaxAttempts,
+        nextRunAt: input.nextRunAt ?? new Date(),
+        manualRequestedByUserId: input.manualRequestedByUserId ?? null,
+        graphSnapshot: definition.graph,
+        input: input.input ?? {},
+    };
+
+    if (input.source === 'schedule' && !sourceAggregateId) {
+        throw new Error(
+            'Scheduled automation runs require a sourceAggregateId.',
+        );
+    }
+
+    if (input.source === 'schedule') {
+        const [created] = await storage()
+            .insert(automationRuns)
+            .values(values)
+            .onConflictDoNothing({
+                target: [
+                    automationRuns.automationDefinitionId,
+                    automationRuns.sourceAggregateId,
+                ],
+                where: sql`${automationRuns.sourceEventType} = 'automation.schedule.monthly'`,
+            })
+            .returning();
+
+        return created ?? null;
+    }
+
     const [created] = await storage()
         .insert(automationRuns)
-        .values({
-            automationDefinitionId: definition.id,
-            automationDefinitionKey: definition.key,
-            automationDefinitionName: definition.name,
-            source: input.source,
-            sourceEventId: sourceEvent?.id ?? null,
-            sourceEventType: sourceEvent?.type ?? null,
-            sourceAggregateId: sourceEvent?.aggregateId ?? null,
-            parentRunId: input.parentRunId ?? null,
-            dryRun: input.dryRun ?? input.source === 'test',
-            maxAttempts: input.maxAttempts ?? defaultRunMaxAttempts,
-            nextRunAt: input.nextRunAt ?? new Date(),
-            manualRequestedByUserId: input.manualRequestedByUserId ?? null,
-            graphSnapshot: definition.graph,
-            input: input.input ?? {},
-        })
+        .values(values)
         .onConflictDoNothing({
             target: [
                 automationRuns.automationDefinitionId,
