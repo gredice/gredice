@@ -1,4 +1,3 @@
-import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import type { ReactNode } from 'react';
@@ -9,12 +8,13 @@ type RaisedBedFieldCardGridProps = {
 };
 
 export const raisedBedFieldCardSelectClassName =
-    'w-full min-w-0 [&_[role=combobox]]:h-8 [&_[role=combobox]]:!bg-background/80 [&_[role=combobox]]:px-2 [&_[role=combobox]]:text-foreground [&_[role=combobox]]:ring-1 [&_[role=combobox]]:ring-border/70 [&_[role=combobox]]:backdrop-blur-md [&_[role=combobox]]:hover:!bg-background/90 [&_[role=combobox]>span]:min-w-0';
+    'w-full min-w-0 [&_[role=combobox]]:h-8 [&_[role=combobox]]:min-w-0 [&_[role=combobox]]:gap-1.5 [&_[role=combobox]]:overflow-hidden [&_[role=combobox]]:!bg-background/80 [&_[role=combobox]]:px-2 [&_[role=combobox]]:text-foreground [&_[role=combobox]]:ring-1 [&_[role=combobox]]:ring-border/70 [&_[role=combobox]]:backdrop-blur-md [&_[role=combobox]]:hover:!bg-background/90 [&_[role=combobox]>span]:block [&_[role=combobox]>span]:min-w-0 [&_[role=combobox]>span]:truncate';
 
 export const raisedBedFieldCardButtonClassName =
-    '!bg-background/80 text-foreground ring-1 ring-border/70 backdrop-blur-md hover:!bg-background/90 hover:text-foreground';
+    'max-w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap !bg-background/80 text-foreground ring-1 ring-border/70 backdrop-blur-md hover:!bg-background/90 hover:text-foreground';
 
-export const raisedBedFieldCardChipClassName = 'backdrop-blur-md';
+export const raisedBedFieldCardChipClassName =
+    'min-w-0 max-w-full overflow-hidden backdrop-blur-md';
 
 export function RaisedBedFieldCardGrid({
     children,
@@ -76,9 +76,7 @@ export function RaisedBedFieldCard({
             <div className="relative z-10 mt-auto flex min-w-0 flex-col gap-0.5 px-2 pb-2 pt-8">
                 <div className="min-w-0">{plantSortControl}</div>
                 {statusControl && (
-                    <Stack spacing={0.5}>
-                        <div className="min-w-0">{statusControl}</div>
-                    </Stack>
+                    <div className="min-w-0">{statusControl}</div>
                 )}
             </div>
         </div>

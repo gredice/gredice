@@ -45,6 +45,14 @@ function formatLocalDateInput(value: string | null) {
     return `${year}-${month}-${day}`;
 }
 
+function formatDateInputValue(date: Date) {
+    const year = date.getFullYear().toString();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
 function formatShortDate(value: string | null) {
     const date = parseDate(value);
     if (!date) {
@@ -99,6 +107,18 @@ export function RaisedBedFieldStatusDateChip({
         setSelectedDate(formatLocalDateInput(date));
     }, [date, status]);
 
+    function resetForm() {
+        setSelectedStatus(status);
+        setSelectedDate(formatLocalDateInput(date));
+    }
+
+    function handleOpenChange(nextOpen: boolean) {
+        if (nextOpen) {
+            resetForm();
+        }
+        setOpen(nextOpen);
+    }
+
     function handleSave() {
         startTransition(async () => {
             await raisedBedFieldUpdatePlant({
@@ -113,12 +133,21 @@ export function RaisedBedFieldStatusDateChip({
         });
     }
 
+    function handleStatusChange(nextStatus: string) {
+        setSelectedStatus(nextStatus);
+        setSelectedDate(
+            nextStatus === status
+                ? formatLocalDateInput(date)
+                : formatDateInputValue(new Date()),
+        );
+    }
+
     const dateLabel = mounted ? formatShortDate(date) : '...';
 
     return (
         <Popper
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={handleOpenChange}
             align="start"
             className="w-72 p-3"
             side="bottom"
@@ -136,13 +165,13 @@ export function RaisedBedFieldStatusDateChip({
                         <span aria-hidden="true">{statusItem.icon}</span>
                     }
                     endDecorator={
-                        <span className="ml-auto inline-flex items-center gap-1 text-muted-foreground">
-                            <Calendar className="size-3.5" />
-                            {dateLabel}
+                        <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-muted-foreground">
+                            <Calendar className="size-3.5 shrink-0" />
+                            <span>{dateLabel}</span>
                         </span>
                     }
                 >
-                    <span className="truncate">{statusItem.label}</span>
+                    <span className="min-w-0 truncate">{statusItem.label}</span>
                 </Button>
             }
         >
@@ -150,7 +179,7 @@ export function RaisedBedFieldStatusDateChip({
                 <SelectItems
                     label="Stanje"
                     value={selectedStatus}
-                    onValueChange={setSelectedStatus}
+                    onValueChange={handleStatusChange}
                     items={raisedBedFieldPlantStatusItems}
                 />
                 <Input

@@ -16,6 +16,7 @@ import {
     knownEvents,
     moveRaisedBedFieldPlantHistory,
     type RaisedBedFieldSowingLocation,
+    updateActiveRaisedBedFieldPlantStatusEventCreatedAt,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
@@ -52,6 +53,11 @@ async function applyRaisedBedFieldPlantUpdate({
     const existingField = raisedBed.fields.find(
         (field) => field.positionIndex === positionIndex && field.active,
     );
+    const createdAt = timestamp ? new Date(timestamp) : undefined;
+    if (createdAt && Number.isNaN(createdAt.getTime())) {
+        throw new Error('Invalid plant status timestamp.');
+    }
+
     if (plantSortId && existingField?.plantSortId !== plantSortId) {
         await createEvent(
             knownEvents.raisedBedFields.plantReplaceSortV1(aggregateId, {
@@ -61,25 +67,32 @@ async function applyRaisedBedFieldPlantUpdate({
     }
 
     if (status) {
-        const createdAt = timestamp ? new Date(timestamp) : undefined;
-        if (createdAt && Number.isNaN(createdAt.getTime())) {
-            throw new Error('Invalid plant status timestamp.');
-        }
-
-        await createEvent({
-            ...knownEvents.raisedBedFields.plantUpdateV1(
-                aggregateId,
-                buildRaisedBedFieldPlantUpdatePayload(
+        const statusChanged = existingField?.plantStatus !== status;
+        if (!statusChanged) {
+            if (createdAt) {
+                await updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
+                    raisedBedId: raisedBed.id,
+                    positionIndex,
                     status,
-                    existingField?.assignedUserIds,
+                    createdAt,
+                });
+            }
+        } else {
+            await createEvent({
+                ...knownEvents.raisedBedFields.plantUpdateV1(
+                    aggregateId,
+                    buildRaisedBedFieldPlantUpdatePayload(
+                        status,
+                        existingField?.assignedUserIds,
+                    ),
                 ),
-            ),
-            ...(createdAt ? { createdAt } : {}),
-        });
+                ...(createdAt ? { createdAt } : {}),
+            });
+        }
     }
 
     const sortIdToUse = plantSortId ?? existingField?.plantSortId;
-    if (sortIdToUse && status) {
+    if (sortIdToUse && status && existingField?.plantStatus !== status) {
         const sortData =
             await getEntityFormatted<EntityStandardized>(sortIdToUse);
         if (sortData) {
@@ -240,7 +253,7 @@ export async function verifyRaisedBedPlantingAction(
     const field = raisedBed.fields.find(
         (item) => item.positionIndex === positionIndex && item.active,
     );
-    if (!field || field.plantStatus !== 'pendingVerification') {
+    if (field?.plantStatus !== 'pendingVerification') {
         throw new Error('Sijanje ne čeka verifikaciju.');
     }
 

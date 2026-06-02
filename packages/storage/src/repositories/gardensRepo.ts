@@ -56,6 +56,7 @@ import {
     knownEvents,
     knownEventTypes,
     type RaisedBedFieldSowingLocation,
+    updateEventCreatedAt,
 } from './eventsRepo';
 import { getFarms } from './farmsRepo';
 import { processReferralRewardsForAccount } from './referralsRepo';
@@ -896,6 +897,70 @@ function summarizePlantCycles(
         .filter((plantCycle): plantCycle is RaisedBedFieldPlantCycle =>
             Boolean(plantCycle),
         );
+}
+
+function eventDataRecord(event: RaisedBedFieldPlantCycleEvent) {
+    return event.data && typeof event.data === 'object'
+        ? (event.data as Record<string, unknown>)
+        : {};
+}
+
+function plantUpdateEventStatus(event: RaisedBedFieldPlantCycleEvent) {
+    const data = eventDataRecord(event);
+
+    return event.type === knownEventTypes.raisedBedFields.plantUpdate &&
+        typeof data.status === 'string'
+        ? data.status
+        : undefined;
+}
+
+export async function updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
+    raisedBedId,
+    positionIndex,
+    status,
+    createdAt,
+}: {
+    raisedBedId: number;
+    positionIndex: number;
+    status: string;
+    createdAt: Date;
+}) {
+    const aggregateId = `${raisedBedId.toString()}|${positionIndex.toString()}`;
+    const plantEvents = await getEvents(
+        [...PLANT_CYCLE_EVENT_TYPES],
+        [aggregateId],
+        0,
+        100000,
+    );
+    const activePlantCycleEvents = splitPlantCycleEvents(plantEvents).find(
+        (plantCycleEvents) => {
+            const plantCycle = summarizePlantCycle(
+                aggregateId,
+                positionIndex,
+                plantCycleEvents,
+            );
+
+            return plantCycle?.active && plantCycle.plantStatus === status;
+        },
+    );
+    const targetEvent =
+        status === 'new'
+            ? activePlantCycleEvents?.find(
+                  (event) =>
+                      event.type === knownEventTypes.raisedBedFields.plantPlace,
+              )
+            : activePlantCycleEvents
+              ? [...activePlantCycleEvents]
+                    .reverse()
+                    .find((event) => plantUpdateEventStatus(event) === status)
+              : undefined;
+
+    if (!targetEvent) {
+        return false;
+    }
+
+    await updateEventCreatedAt(targetEvent.id, createdAt);
+    return true;
 }
 
 function plantCyclesOverlap(
