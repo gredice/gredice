@@ -19,6 +19,7 @@ type RaisedBedDiaryAiActionProps = {
     entryName: string;
     imageUrls: string[];
     positionIndex?: number;
+    referenceDate?: Date | string | null;
     historyEntries?: Array<{
         id: number;
         description: string | undefined;
@@ -35,6 +36,7 @@ export function RaisedBedDiaryAiAction({
     entryName,
     imageUrls,
     positionIndex,
+    referenceDate,
     historyEntries,
 }: RaisedBedDiaryAiActionProps) {
     const [open, setOpen] = useState(false);
@@ -138,6 +140,7 @@ export function RaisedBedDiaryAiAction({
                     raisedBedId,
                     positionIndex,
                     imageUrls,
+                    referenceDate,
                     onChunk,
                 },
                 callbacks,
@@ -148,6 +151,7 @@ export function RaisedBedDiaryAiAction({
                     gardenId,
                     raisedBedId,
                     imageUrls,
+                    referenceDate,
                     onChunk,
                 },
                 callbacks,

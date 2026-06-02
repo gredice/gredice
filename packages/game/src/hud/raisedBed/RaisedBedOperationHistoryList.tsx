@@ -113,6 +113,17 @@ function getAiHistoryForOperation({
         : undefined;
 }
 
+function getOperationReferenceDate(operation: GardenOperationItem) {
+    return (
+        operation.completedAt ??
+        operation.verifiedAt ??
+        operation.canceledAt ??
+        operation.scheduledAt ??
+        operation.scheduledDate ??
+        operation.createdAt
+    );
+}
+
 export function RaisedBedOperationHistoryList({
     raisedBedId,
     positionIndex,
@@ -274,6 +285,7 @@ export function RaisedBedOperationHistoryList({
                                 operation.targetLabel
                             }
                             imageUrls={operation.imageUrls}
+                            referenceDate={getOperationReferenceDate(operation)}
                             historyEntries={getAiHistoryForOperation({
                                 imageUrls: operation.imageUrls,
                                 entries: aiHistoryEntries,
