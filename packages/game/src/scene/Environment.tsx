@@ -18,6 +18,7 @@ import {
 } from './gameQuality';
 import { getMoonlitNightScales } from './moonlight';
 import { Drops } from './Rain/Drops';
+import { useSceneTimeInvalidation } from './SceneTime';
 import { ShadowMapController } from './ShadowMapController';
 import Snow from './Snow/Snow';
 import { Stars } from './Stars';
@@ -420,8 +421,8 @@ const cloudShadowRefreshMsByMode: Record<
     GameQualityProfile['cloudShadowMode'],
     number
 > = {
-    hard: 320,
-    soft: 240,
+    hard: 96,
+    soft: 64,
 };
 const defaultLocation = { lat: 45.739, lon: 16.572 };
 
@@ -670,6 +671,13 @@ export function Environment({
                 baseWeather.snowAccumulation,
         };
     }, [overrideWeather, weatherDisabled, weatherNow]);
+    const activeWeatherAnimation =
+        !weatherDisabled &&
+        ((actualWeather?.cloudy ?? 0) > 0.01 ||
+            (actualWeather?.foggy ?? 0) > 0.01 ||
+            (actualWeather?.rainy ?? 0) > 0 ||
+            (actualWeather?.snowy ?? 0) > 0);
+    useSceneTimeInvalidation(activeWeatherAnimation);
 
     // Sound management
     const morningAmbient = ambientAudioMixer.useMusic(
