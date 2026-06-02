@@ -123,7 +123,8 @@ snapshot reaches the runner.
 Admins manage automations in `apps/app` at `/admin/automations`.
 
 - The list page shows definition status, trigger summary, action summary, latest
-  run status, recent failed-run count, and filters for definition status,
+  run status, recent failed-run count, a jobs queue table with run state,
+  attempts, timing, and source context, and filters for definition status,
   trigger event type, run status, and failed-only runs.
 - The detail page shows the editor, test controls, and expandable run logs with
   per-step input/output/error snapshots.
