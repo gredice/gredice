@@ -5,6 +5,7 @@ export type FieldOperationLabelData = {
 	fieldLabel: string;
 	detailLabel: string;
 	plantSortName: string;
+	dateLabel?: string;
 };
 
 export type HarvestLabelData = {
@@ -12,6 +13,7 @@ export type HarvestLabelData = {
 	fieldIndex: number;
 	plantSortName: string;
 	operationLabel?: string;
+	dateLabel?: string;
 };
 
 export type HarvestLabelPreset = {

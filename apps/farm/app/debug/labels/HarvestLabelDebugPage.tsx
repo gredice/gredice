@@ -22,6 +22,7 @@ const DEFAULT_LABEL_DATA: HarvestLabelData = {
     fieldIndex: 4,
     operationLabel: 'Berba',
     plantSortName: 'Salata Batavia',
+    dateLabel: '02.06.2026.',
 };
 
 const LABEL_SAMPLES: Array<{
@@ -39,6 +40,7 @@ const LABEL_SAMPLES: Array<{
             fieldIndex: 2,
             operationLabel: 'Berba',
             plantSortName: 'Mladi špinat',
+            dateLabel: '02.06.2026.',
         },
     },
     {
@@ -48,6 +50,7 @@ const LABEL_SAMPLES: Array<{
             fieldIndex: 7,
             operationLabel: 'Berba zrelih plodova',
             plantSortName: 'Cherry rajčica',
+            dateLabel: '02.06.2026.',
         },
     },
 ];
@@ -139,6 +142,16 @@ export function HarvestLabelDebugPage() {
                                         setLabelData((current) => ({
                                             ...current,
                                             plantSortName: value,
+                                        }))
+                                    }
+                                />
+                                <DebugTextInput
+                                    label="Datum"
+                                    value={labelData.dateLabel ?? ''}
+                                    onChange={(value) =>
+                                        setLabelData((current) => ({
+                                            ...current,
+                                            dateLabel: value,
                                         }))
                                     }
                                 />

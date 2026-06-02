@@ -60,6 +60,7 @@ function getLabelPreviewItems(labels: FieldOperationLabelData[]) {
             label.fieldLabel,
             label.detailLabel,
             label.plantSortName,
+            label.dateLabel ?? '',
         ].join('|');
         const count = keyCounts.get(baseKey) ?? 0;
         keyCounts.set(baseKey, count + 1);
