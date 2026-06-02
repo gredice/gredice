@@ -25,7 +25,6 @@ import type { GameCloudShadowMode } from './gameQuality';
 
 const MAX_CLOUDS = 8;
 const CLOUD_ALPHA_TEST = 0.025;
-const CLOUD_SHADOW_ALPHA_TEST = 0.08;
 const CLOUD_MARGIN = 12;
 const CLOUD_WORLD_ALTITUDE = 10;
 const CLOUD_ALTITUDE_VARIATION = 4;
@@ -42,10 +41,9 @@ const CLOUD_MAX_COVERAGE_SCALE = 1.14;
 const CLOUD_BASE_DRIFT_SPEED = 0.35;
 const CLOUD_WIND_DRIFT_SPEED = 0.5;
 const CLOUD_RENDER_ORDER = 30;
-const CLOUD_SHADOW_RENDER_ORDER = 18;
-const CLOUD_SHADOW_WORLD_Y = 0.28;
-const CLOUD_SHADOW_ALTITUDE_OFFSET_SCALE = 0.13;
-const CLOUD_SHADOW_BASE_OPACITY = 0.42;
+const CLOUD_SHADOW_CASTER_BASE_ALPHA_TEST = 0.2;
+const CLOUD_SHADOW_CASTER_HARD_ALPHA_TEST = 0.08;
+const CLOUD_SHADOW_CASTER_SOFT_ALPHA_TEST = 0.02;
 
 function smoothstep(edge0: number, edge1: number, value: number) {
     const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
@@ -298,18 +296,18 @@ export function CloudLayer({
         CLOUD_MAX_COVERAGE_SCALE,
         smoothstep(0.08, 0.78, visibleCloudiness),
     );
-    const projectedShadowCount = shadowStrength > 0 ? visibleCloudCount : 0;
+    const realShadowCasterCount = shadowStrength > 0 ? visibleCloudCount : 0;
     const visibleOpacity =
         daylightVisibility * (0.2 + effectiveCloudiness * 0.26 + foggy * 0.035);
     const windStrength = Math.min(1.4, Math.max(0, windSpeed / 12));
 
     useEffect(() => {
         updateGameProfileMetadata({
-            cloudProjectedShadowCount: projectedShadowCount,
-            cloudRealShadowCasterCount: 0,
+            cloudProjectedShadowCount: 0,
+            cloudRealShadowCasterCount: realShadowCasterCount,
             cloudVisualCount: visibleCloudCount,
         });
-    }, [projectedShadowCount, visibleCloudCount]);
+    }, [realShadowCasterCount, visibleCloudCount]);
 
     useEffect(
         () => () => {
@@ -426,11 +424,19 @@ export function CloudLayer({
         const windZ = -Math.cos(windDirectionRadians);
         const crossX = -windZ;
         const crossZ = windX;
-        const sunAzimuth = (timeOfDay - 0.25) * Math.PI * 2;
-        const lowSunStretch = Math.max(0, 1 - daylightVisibility);
         const driftSpeed =
             (CLOUD_BASE_DRIFT_SPEED + windStrength * CLOUD_WIND_DRIFT_SPEED) *
             0.5;
+        const targetShadowAlphaTest =
+            shadowMode === 'hard'
+                ? CLOUD_SHADOW_CASTER_HARD_ALPHA_TEST
+                : CLOUD_SHADOW_CASTER_SOFT_ALPHA_TEST;
+        const shadowCoverage = smoothstep(0.08, 0.75, shadowStrength);
+        const shadowAlphaTest = MathUtils.lerp(
+            CLOUD_SHADOW_CASTER_BASE_ALPHA_TEST,
+            targetShadowAlphaTest,
+            shadowCoverage,
+        );
         const travelRangeX = Math.max(
             28,
             bounds.spanX + CLOUD_TRAVEL_MARGIN * 2,
@@ -480,9 +486,6 @@ export function CloudLayer({
                 if (material) {
                     material.opacity = 0;
                 }
-                if (shadowMaterial) {
-                    shadowMaterial.opacity = 0;
-                }
                 continue;
             }
 
@@ -514,9 +517,6 @@ export function CloudLayer({
                 }
                 if (material) {
                     material.opacity = 0;
-                }
-                if (shadowMaterial) {
-                    shadowMaterial.opacity = 0;
                 }
                 continue;
             }
@@ -573,48 +573,32 @@ export function CloudLayer({
                     visibleOpacity * cloud.opacityScale * slot.visibility;
             }
             const shouldRenderShadow =
-                index < projectedShadowCount && slot.visibility > 0.001;
+                index < realShadowCasterCount && slot.visibility > 0.001;
             if (shadowMesh) {
                 if (!shouldRenderShadow) {
                     shadowMesh.visible = false;
                 } else {
-                    const shadowOffsetDistance =
-                        cloud.altitude *
-                        CLOUD_SHADOW_ALTITUDE_OFFSET_SCALE *
-                        (1 + lowSunStretch * 1.4);
                     const shadowScale =
                         (CLOUD_BASE_SCALE +
                             slot.visibility * CLOUD_SCALE_RANGE) *
                         cloud.sizeScale *
                         coverageScale;
                     shadowMesh.visible = true;
-                    shadowMesh.position.set(
-                        x + Math.sin(sunAzimuth) * shadowOffsetDistance,
-                        CLOUD_SHADOW_WORLD_Y,
-                        z + Math.cos(sunAzimuth) * shadowOffsetDistance,
-                    );
+                    shadowMesh.position.set(x, y, z);
                     shadowMesh.rotation.set(
                         -Math.PI / 2,
                         0,
                         cloud.phase * 0.08,
                     );
                     shadowMesh.scale.set(
-                        shadowScale * (1.12 + lowSunStretch * 0.7),
-                        shadowScale * (1.05 + lowSunStretch * 0.28),
+                        shadowScale * 1.12,
+                        shadowScale * 1.05,
                         1,
                     );
                 }
             }
             if (shadowMaterial) {
-                shadowMaterial.opacity = shouldRenderShadow
-                    ? Math.min(
-                          0.34,
-                          shadowStrength *
-                              CLOUD_SHADOW_BASE_OPACITY *
-                              cloud.opacityScale *
-                              slot.visibility,
-                      )
-                    : 0;
+                shadowMaterial.alphaTest = shadowAlphaTest;
             }
         }
     });
@@ -628,8 +612,9 @@ export function CloudLayer({
             {cloudDefinitions.map((cloud, index) => (
                 <group key={cloud.id}>
                     <mesh
+                        castShadow
                         frustumCulled={false}
-                        renderOrder={CLOUD_SHADOW_RENDER_ORDER}
+                        receiveShadow={false}
                         ref={(mesh) => {
                             cloudShadowRefs.current[index] = mesh;
                         }}
@@ -638,23 +623,15 @@ export function CloudLayer({
                         <planeGeometry args={[cloud.width, cloud.height]} />
                         <meshBasicMaterial
                             alphaMap={cloudAlphaTexture}
-                            alphaTest={
-                                shadowMode === 'hard'
-                                    ? CLOUD_SHADOW_ALPHA_TEST
-                                    : 0.015
-                            }
-                            color="#17210f"
+                            alphaTest={CLOUD_SHADOW_CASTER_HARD_ALPHA_TEST}
+                            colorWrite={false}
                             depthWrite={false}
                             fog={false}
-                            opacity={0}
-                            polygonOffset
-                            polygonOffsetFactor={-1}
                             ref={(material) => {
                                 shadowMaterialRefs.current[index] = material;
                             }}
                             side={DoubleSide}
                             toneMapped={false}
-                            transparent
                         />
                     </mesh>
                     <mesh

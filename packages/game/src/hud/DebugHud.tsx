@@ -666,6 +666,12 @@ export function DebugHud() {
         profileSnapshot?.canvasWidth && profileSnapshot.canvasHeight
             ? `${profileSnapshot.canvasWidth}×${profileSnapshot.canvasHeight}`
             : 'n/a';
+    const shadowMapMode =
+        profileSnapshot?.shadowMapAutoUpdate === false
+            ? profileSnapshot.shadowMapDynamicRefreshMs
+                ? `cached · ${profileSnapshot.shadowMapDynamicRefreshMs}ms dynamic`
+                : 'cached'
+            : 'auto';
 
     return (
         <div
@@ -713,7 +719,7 @@ export function DebugHud() {
                                     label="Shadows"
                                     value={
                                         profileSnapshot?.shadowsEnabled
-                                            ? `${profileSnapshot.shadowMapSize}px · ${profileSnapshot.shadowMapAutoUpdate === false ? 'cached' : 'auto'} · ${profileSnapshot.shadowMapInvalidationCount ?? 0} invalidations`
+                                            ? `${profileSnapshot.shadowMapSize}px · ${shadowMapMode} · ${profileSnapshot.shadowMapInvalidationCount ?? 0} invalidations`
                                             : 'off'
                                     }
                                 />

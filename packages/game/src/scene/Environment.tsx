@@ -416,6 +416,13 @@ function useEnvironmentElements({
 }
 
 const baseCameraShadowSize = 20;
+const cloudShadowRefreshMsByMode: Record<
+    GameQualityProfile['cloudShadowMode'],
+    number
+> = {
+    hard: 320,
+    soft: 240,
+};
 const defaultLocation = { lat: 45.739, lon: 16.572 };
 
 function roundShadowSignatureValue(value: number) {
@@ -865,6 +872,10 @@ export function Environment({
         : daylightVisibility *
           smoothstep(0.08, 0.22, cloudCover) *
           (1 - smoothstep(0.5, 0.9, effectiveCloudCover));
+    const cloudShadowDynamicRefreshMs =
+        qualityProfile.shadows && cloudShadowStrength > 0
+            ? cloudShadowRefreshMsByMode[qualityProfile.cloudShadowMode]
+            : undefined;
     const gardenShadowSignature = useMemo(
         () => buildStackShadowSignature(garden?.stacks),
         [garden?.stacks],
@@ -881,6 +892,7 @@ export function Environment({
                     shadows: qualityProfile.shadows,
                     timeOfDay,
                 }),
+                `cloud:${roundShadowSignatureValue(cloudShadowStrength)}:${cloudShadowDynamicRefreshMs ?? 0}`,
                 `garden:${gardenShadowSignature}`,
                 `view:${view}:${closeupBlockId ?? ''}`,
                 `pickup:${pickupBlockId ?? ''}`,
@@ -889,6 +901,8 @@ export function Environment({
             ].join('||'),
         [
             closeupBlockId,
+            cloudShadowDynamicRefreshMs,
+            cloudShadowStrength,
             currentTime,
             directionalLight,
             dropAnimationSignature,
@@ -1006,6 +1020,7 @@ export function Environment({
     return (
         <>
             <ShadowMapController
+                dynamicRefreshMs={cloudShadowDynamicRefreshMs}
                 enabled={qualityProfile.shadows}
                 invalidationKey={shadowInvalidationKey}
             />

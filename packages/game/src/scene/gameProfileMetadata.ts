@@ -17,6 +17,7 @@ export type GameProfileMetadata = {
     rainParticleCount?: number;
     raisedBedMulchOverlayCount?: number;
     shadowMapAutoUpdate?: boolean;
+    shadowMapDynamicRefreshMs?: number;
     shadowMapInvalidationCount?: number;
     shadowMapSize?: number;
     shadowsEnabled?: boolean;
