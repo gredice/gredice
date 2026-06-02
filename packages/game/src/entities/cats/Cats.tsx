@@ -1258,7 +1258,8 @@ function Cat({
         runtimeRef.current = makeMovingState({
             blockedCells: habitat.blockedCells,
             from: group.position.clone(),
-            fromTarget: runtime.target,
+            fromTarget:
+                runtime.phase === 'settled' ? runtime.target : undefined,
             groundSurfaces: habitat.groundSurfaces,
             now,
             target,
@@ -1341,7 +1342,10 @@ function Cat({
                             : makeMovingState({
                                   blockedCells: habitat.blockedCells,
                                   from: group.position.clone(),
-                                  fromTarget: runtime.target,
+                                  fromTarget:
+                                      runtime.phase === 'settled'
+                                          ? runtime.target
+                                          : undefined,
                                   groundSurfaces: habitat.groundSurfaces,
                                   now,
                                   target,
