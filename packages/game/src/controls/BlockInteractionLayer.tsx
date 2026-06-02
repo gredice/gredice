@@ -24,7 +24,7 @@ type LayerEvent<TEvent extends PointerEvent | MouseEvent> =
         __blockInteractionStopped?: () => boolean;
     };
 
-function getLayerTargets({
+export function getBlockInteractionLayerTargets({
     blockData,
     stacks,
 }: {
@@ -34,28 +34,28 @@ function getLayerTargets({
     const targets: BlockInteractionLayerTarget[] = [];
 
     for (const stack of stacks ?? []) {
-        const block = stack.blocks.at(-1);
-        if (!block || !instancedBlockNames.includes(block.name)) {
-            continue;
-        }
+        stack.blocks.forEach((block, blockIndex) => {
+            if (!instancedBlockNames.includes(block.name)) {
+                return;
+            }
 
-        const blockIndex = stack.blocks.length - 1;
-        const blockEntity = blockData?.find(
-            (entity) => entity.information.name === block.name,
-        );
-        const hitbox = getBlockHitboxSize(blockEntity);
-        const stackHeight = getStackHeight(blockData, stack, block);
-        targets.push({
-            block,
-            blockIndex,
-            hitbox,
-            key: createBlockInteractionTargetKey({
-                blockId: block.id,
+            const blockEntity = blockData?.find(
+                (entity) => entity.information.name === block.name,
+            );
+            const hitbox = getBlockHitboxSize(blockEntity);
+            const stackHeight = getStackHeight(blockData, stack, block);
+            targets.push({
+                block,
                 blockIndex,
-                stackPosition: stack.position,
-            }),
-            stack,
-            stackHeight,
+                hitbox,
+                key: createBlockInteractionTargetKey({
+                    blockId: block.id,
+                    blockIndex,
+                    stackPosition: stack.position,
+                }),
+                stack,
+                stackHeight,
+            });
         });
     }
 
@@ -98,7 +98,7 @@ export function BlockInteractionLayer({
         (state) => state.editHitboxDebugVisible,
     );
     const targets = useMemo(
-        () => getLayerTargets({ blockData, stacks }),
+        () => getBlockInteractionLayerTargets({ blockData, stacks }),
         [blockData, stacks],
     );
     const interactionBounds = useMemo(

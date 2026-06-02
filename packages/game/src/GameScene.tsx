@@ -154,7 +154,7 @@ function shouldRenderEntityFactoryForBlock({
         return false;
     }
 
-    return blockIndex === stackLength - 1;
+    return blockIndex >= 0 && blockIndex < stackLength;
 }
 
 export function GameScene({

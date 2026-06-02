@@ -108,6 +108,36 @@ describe('resolveBlockInteractionLayerTarget', () => {
         );
     });
 
+    it('selects a lower stacked target when the ray hits below the top block', () => {
+        const lowerTarget = createTarget({
+            key: 'grass',
+            stackHeight: 0,
+            hitbox: {
+                depth: 1,
+                height: 0.4,
+                width: 1,
+            },
+        });
+        const upperTarget = createTarget({
+            key: 'tree',
+            stackHeight: 0.4,
+            hitbox: {
+                depth: 1.43,
+                height: 2.38,
+                width: 1.36,
+            },
+        });
+        const lowerRay = new Ray(new Vector3(-2, 0.2, 0), new Vector3(1, 0, 0));
+
+        assert.equal(
+            resolveBlockInteractionLayerTarget(
+                [lowerTarget, upperTarget],
+                lowerRay,
+            )?.target.key,
+            'grass',
+        );
+    });
+
     it('returns null when the ray does not intersect a data hitbox', () => {
         const target = createTarget({ key: 'missed' });
         const ray = new Ray(new Vector3(-2, 0.25, 2), new Vector3(1, 0, 0));
