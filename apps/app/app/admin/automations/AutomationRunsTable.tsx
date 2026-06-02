@@ -21,7 +21,11 @@ import { useMemo, useState } from 'react';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { AutomationSlidePanel } from './AutomationSlidePanel';
 import { AutomationRunRetryControls } from './AutomationTestPanel';
-import { automationRunStatusMeta } from './presentation';
+import {
+    automationModuleKindLabel,
+    automationRunStatusMeta,
+    automationStepStatusMeta,
+} from './presentation';
 
 export type AutomationRunStatusFilter =
     | 'withoutSkipped'
@@ -61,6 +65,15 @@ export type AutomationRunsTableRun = {
 
 function RunStatusChip({ status }: { status: AutomationRunStatus }) {
     const meta = automationRunStatusMeta(status);
+    return (
+        <Chip color={meta.color} size="sm" variant="soft">
+            {meta.label}
+        </Chip>
+    );
+}
+
+function StepStatusChip({ status }: { status: AutomationStepStatus }) {
+    const meta = automationStepStatusMeta(status);
     return (
         <Chip color={meta.color} size="sm" variant="soft">
             {meta.label}
@@ -189,7 +202,7 @@ export function AutomationRunsTable({
                     <Table.Header>
                         <Table.Row>
                             <Table.Head>Status</Table.Head>
-                            <Table.Head>Event</Table.Head>
+                            <Table.Head>Događaj</Table.Head>
                             <Table.Head>Trajanje</Table.Head>
                             <Table.Head>Greška</Table.Head>
                             <Table.Head>Vrijeme</Table.Head>
@@ -236,7 +249,7 @@ export function AutomationRunsTable({
                                                 color="info"
                                                 variant="soft"
                                             >
-                                                Dry-run
+                                                Probno
                                             </Chip>
                                         ) : null}
                                     </Stack>
@@ -318,15 +331,15 @@ export function AutomationRunsTable({
                                 />
                                 {selectedRun.run.dryRun ? (
                                     <Chip size="sm" color="info" variant="soft">
-                                        Dry-run
+                                        Probno
                                     </Chip>
                                 ) : null}
                             </Row>
                             <dl className="grid grid-cols-[8rem_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
-                                <DetailItem label="Event">
+                                <DetailItem label="Tip eventa">
                                     {selectedRun.run.sourceEventType ?? '-'}
                                 </DetailItem>
-                                <DetailItem label="Aggregate">
+                                <DetailItem label="Agregat">
                                     {selectedRun.run.sourceAggregateId ?? '-'}
                                 </DetailItem>
                                 <DetailItem label="Pokušaj">
@@ -376,13 +389,13 @@ export function AutomationRunsTable({
                             </Typography>
                             <details>
                                 <summary className="cursor-pointer text-sm font-medium">
-                                    Input
+                                    Ulaz
                                 </summary>
                                 <JsonPreview value={selectedRun.run.input} />
                             </details>
                             <details>
                                 <summary className="cursor-pointer text-sm font-medium">
-                                    Output
+                                    Izlaz
                                 </summary>
                                 <JsonPreview value={selectedRun.run.output} />
                             </details>
@@ -410,11 +423,13 @@ export function AutomationRunsTable({
                                             <Typography level="body2" semiBold>
                                                 {step.nodeId}
                                             </Typography>
+                                            <StepStatusChip
+                                                status={step.status}
+                                            />
                                             <Chip size="sm" variant="soft">
-                                                {step.status}
-                                            </Chip>
-                                            <Chip size="sm" variant="soft">
-                                                {step.moduleKind}
+                                                {automationModuleKindLabel(
+                                                    step.moduleKind,
+                                                )}
                                             </Chip>
                                         </Row>
                                         <Typography
@@ -433,13 +448,13 @@ export function AutomationRunsTable({
                                         ) : null}
                                         <details>
                                             <summary className="cursor-pointer text-xs font-medium">
-                                                Input
+                                                Ulaz
                                             </summary>
                                             <JsonPreview value={step.input} />
                                         </details>
                                         <details>
                                             <summary className="cursor-pointer text-xs font-medium">
-                                                Output
+                                                Izlaz
                                             </summary>
                                             <JsonPreview value={step.output} />
                                         </details>

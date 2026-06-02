@@ -16,26 +16,48 @@ import { Checkbox } from '@gredice/ui/Checkbox';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
-import { Add, Configuration, Play, Settings } from '@gredice/ui/icons';
+import {
+    Add,
+    AI,
+    Calendar,
+    Channel,
+    CircleEqual,
+    Configuration,
+    Droplets,
+    Filter,
+    Hammer,
+    Lightning,
+    ListTodo,
+    Play,
+    Settings,
+    Sprout,
+    Store,
+    Text,
+} from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import {
     addEdge,
     Background,
     Controls,
     type Edge,
+    Handle,
+    MarkerType,
     type Node,
     type NodeChange,
+    type NodeProps,
     type OnConnect,
+    Position,
     ReactFlow,
     ReactFlowProvider,
     useEdgesState,
     useNodesState,
 } from '@xyflow/react';
 import { useRouter } from 'next/navigation';
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode, SVGProps } from 'react';
 import {
     useCallback,
     useEffect,
@@ -54,18 +76,32 @@ import {
     saveAutomationDefinitionAction,
     updateAutomationStatusAction,
 } from './actions';
-import { automationStatusMeta } from './presentation';
+import {
+    automationConfigFieldDescription,
+    automationConfigFieldLabel,
+    automationConfigFieldOptionLabel,
+    automationConfigFieldPlaceholder,
+    automationModuleDescription,
+    automationModuleInputDescription,
+    automationModuleKeys,
+    automationModuleKindLabel,
+    automationModuleOutputDescription,
+    automationModuleTitle,
+    automationStatusMeta,
+} from './presentation';
 
 type FlowNodeData = Record<string, unknown> & {
     moduleKey: string;
     kind: AutomationModuleKind;
     config: AutomationJsonObject;
     label: string;
+    description: string;
 };
 
 type FlowNode = Node<FlowNodeData>;
 type AutomationEditorPanel = 'details' | 'modules' | 'settings' | 'testing';
 type AutosaveStatus = 'saved' | 'unsaved' | 'saving' | 'failed';
+type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
 type AutomationFlowEditorProps = {
     automationId?: number;
@@ -81,40 +117,160 @@ type AutomationFlowEditorProps = {
 };
 
 function kindLabel(kind: AutomationModuleKind) {
-    switch (kind) {
-        case 'trigger':
-            return 'Trigger';
-        case 'filter':
-            return 'Filter';
-        case 'condition':
-            return 'Uvjet';
-        case 'action':
-            return 'Akcija';
-    }
+    return automationModuleKindLabel(kind);
 }
 
-function kindClassName(kind: AutomationModuleKind) {
-    switch (kind) {
-        case 'trigger':
-            return 'border-blue-300 bg-blue-50 text-blue-950 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-100';
-        case 'filter':
-            return 'border-slate-300 bg-slate-50 text-slate-950 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100';
-        case 'condition':
-            return 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100';
-        case 'action':
-            return 'border-green-300 bg-green-50 text-green-950 dark:border-green-800 dark:bg-green-950 dark:text-green-100';
+const automationNodeKindTheme = {
+    trigger: {
+        accent: 'bg-cyan-500 dark:bg-cyan-400',
+        badge: 'bg-cyan-100 text-cyan-900 dark:bg-cyan-950 dark:text-cyan-200',
+        handle: '!border-cyan-300 !bg-cyan-500 dark:!border-cyan-700 dark:!bg-cyan-400',
+        icon: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-200',
+        node: 'border-cyan-200/80 bg-white text-slate-950 shadow-cyan-950/5 dark:border-cyan-900/70 dark:bg-neutral-950 dark:text-neutral-100',
+        selected:
+            'ring-2 ring-cyan-500/70 ring-offset-2 ring-offset-background dark:ring-cyan-300/70',
+    },
+    filter: {
+        accent: 'bg-sky-500 dark:bg-sky-400',
+        badge: 'bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200',
+        handle: '!border-sky-300 !bg-sky-500 dark:!border-sky-700 dark:!bg-sky-400',
+        icon: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200',
+        node: 'border-sky-200/80 bg-white text-slate-950 shadow-sky-950/5 dark:border-sky-900/70 dark:bg-neutral-950 dark:text-neutral-100',
+        selected:
+            'ring-2 ring-sky-500/70 ring-offset-2 ring-offset-background dark:ring-sky-300/70',
+    },
+    condition: {
+        accent: 'bg-amber-500 dark:bg-amber-400',
+        badge: 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200',
+        handle: '!border-amber-300 !bg-amber-500 dark:!border-amber-700 dark:!bg-amber-400',
+        icon: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
+        node: 'border-amber-200/80 bg-white text-slate-950 shadow-amber-950/5 dark:border-amber-900/70 dark:bg-neutral-950 dark:text-neutral-100',
+        selected:
+            'ring-2 ring-amber-500/70 ring-offset-2 ring-offset-background dark:ring-amber-300/70',
+    },
+    action: {
+        accent: 'bg-emerald-500 dark:bg-emerald-400',
+        badge: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200',
+        handle: '!border-emerald-300 !bg-emerald-500 dark:!border-emerald-700 dark:!bg-emerald-400',
+        icon: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
+        node: 'border-emerald-200/80 bg-white text-slate-950 shadow-emerald-950/5 dark:border-emerald-900/70 dark:bg-neutral-950 dark:text-neutral-100',
+        selected:
+            'ring-2 ring-emerald-500/70 ring-offset-2 ring-offset-background dark:ring-emerald-300/70',
+    },
+} satisfies Record<
+    AutomationModuleKind,
+    {
+        accent: string;
+        badge: string;
+        handle: string;
+        icon: string;
+        node: string;
+        selected: string;
     }
+>;
+
+const automationKindIcons = {
+    trigger: Lightning,
+    filter: Filter,
+    condition: CircleEqual,
+    action: Play,
+} satisfies Record<AutomationModuleKind, IconComponent>;
+
+const automationModuleIcons = new Map<string, IconComponent>([
+    [automationModuleKeys.triggerDomainEvent, Channel],
+    [automationModuleKeys.triggerScheduleMonthly, Calendar],
+    [automationModuleKeys.conditionEventDataEquals, CircleEqual],
+    [automationModuleKeys.conditionOperationMatches, ListTodo],
+    [automationModuleKeys.conditionPlantStatusEquals, Sprout],
+    [automationModuleKeys.actionQueueSeasonalSowingOfferOperations, Droplets],
+    [automationModuleKeys.actionCreateOperation, Hammer],
+    [automationModuleKeys.actionCreateFarmInventoryOperations, Store],
+    [automationModuleKeys.actionUpdateRaisedBedFieldPlantStatus, Sprout],
+    [automationModuleKeys.actionCreatePlantStatusRequestsFromImageAnalysis, AI],
+    [automationModuleKeys.actionLog, Text],
+]);
+
+function automationNodeIcon(moduleKey: string, kind: AutomationModuleKind) {
+    return automationModuleIcons.get(moduleKey) ?? automationKindIcons[kind];
 }
 
-function nodeClassName(kind: AutomationModuleKind, selected: boolean) {
-    return [
-        'rounded-md border px-3 py-2 text-left shadow-xs',
-        kindClassName(kind),
-        selected ? 'ring-2 ring-primary ring-offset-2' : '',
-    ]
-        .filter(Boolean)
-        .join(' ');
+function ModuleIconBadge({
+    kind,
+    moduleKey,
+}: {
+    kind: AutomationModuleKind;
+    moduleKey: string;
+}) {
+    const Icon = automationNodeIcon(moduleKey, kind);
+    return (
+        <span
+            className={cx(
+                'flex size-9 shrink-0 items-center justify-center rounded-md',
+                automationNodeKindTheme[kind].icon,
+            )}
+        >
+            <Icon className="size-4" aria-hidden="true" />
+        </span>
+    );
 }
+
+function AutomationFlowNode({ data, selected }: NodeProps<FlowNode>) {
+    const theme = automationNodeKindTheme[data.kind];
+
+    return (
+        <div
+            className={cx(
+                'relative min-w-60 max-w-72 rounded-md border px-3 py-3 text-left shadow-lg transition-shadow',
+                theme.node,
+                selected && theme.selected,
+            )}
+        >
+            {data.kind === 'trigger' ? null : (
+                <Handle
+                    type="target"
+                    position={Position.Left}
+                    className={cx('!size-3 !border-2', theme.handle)}
+                />
+            )}
+            <Handle
+                type="source"
+                position={Position.Right}
+                className={cx('!size-3 !border-2', theme.handle)}
+            />
+            <span
+                className={cx(
+                    'absolute inset-y-3 left-0 w-1 rounded-r-full',
+                    theme.accent,
+                )}
+            />
+            <div className="flex min-w-0 items-start gap-3 pl-1">
+                <ModuleIconBadge kind={data.kind} moduleKey={data.moduleKey} />
+                <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                        <p className="truncate text-sm font-semibold leading-5">
+                            {data.label}
+                        </p>
+                        <span
+                            className={cx(
+                                'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium',
+                                theme.badge,
+                            )}
+                        >
+                            {kindLabel(data.kind)}
+                        </span>
+                    </div>
+                    <p className="mt-1 max-h-10 overflow-hidden text-xs leading-5 text-muted-foreground">
+                        {data.description}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+const nodeTypes = {
+    automation: AutomationFlowNode,
+};
 
 function graphToNodes(
     graph: AutomationGraph,
@@ -124,25 +280,41 @@ function graphToNodes(
         const module = modulesByKey.get(node.moduleKey);
         return {
             id: node.id,
-            type: 'default',
+            type: 'automation',
             position: node.position,
             data: {
                 moduleKey: node.moduleKey,
                 kind: node.kind,
                 config: node.config,
-                label: module?.title ?? node.moduleKey,
+                label: module ? automationModuleTitle(module) : node.moduleKey,
+                description: module
+                    ? automationModuleDescription(module)
+                    : node.moduleKey,
             },
-            className: nodeClassName(node.kind, false),
         };
     });
 }
+
+const automationEdgeOptions = {
+    markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: 'hsl(var(--muted-foreground))',
+        height: 18,
+        width: 18,
+    },
+    style: {
+        stroke: 'hsl(var(--muted-foreground))',
+        strokeWidth: 2,
+    },
+    type: 'smoothstep',
+};
 
 function graphToEdges(graph: AutomationGraph): Edge[] {
     return graph.edges.map((edge) => ({
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        animated: false,
+        ...automationEdgeOptions,
     }));
 }
 
@@ -165,13 +337,10 @@ function flowToGraph(nodes: FlowNode[], edges: Edge[]): AutomationGraph {
     };
 }
 
-function updateNodeClassNames(
-    nodes: FlowNode[],
-    selectedNodeId: string | null,
-) {
+function updateNodeSelection(nodes: FlowNode[], selectedNodeId: string | null) {
     return nodes.map((node) => ({
         ...node,
-        className: nodeClassName(node.data.kind, node.id === selectedNodeId),
+        selected: node.id === selectedNodeId,
     }));
 }
 
@@ -206,7 +375,7 @@ function parseJsonField(value: string): unknown {
 function panelTitle(panel: AutomationEditorPanel | null) {
     switch (panel) {
         case 'details':
-            return 'Detalji workflowa';
+            return 'Detalji tijeka rada';
         case 'modules':
             return 'Moduli';
         case 'settings':
@@ -223,11 +392,11 @@ function panelDescription(panel: AutomationEditorPanel | null) {
         case 'details':
             return 'Naziv i ključ automatizacije.';
         case 'modules':
-            return 'Dodajte triggere, uvjete i akcije u dijagram.';
+            return 'Dodajte okidače, uvjete i akcije u dijagram.';
         case 'settings':
             return 'Konfiguracija trenutno odabranog modula.';
         case 'testing':
-            return 'Pokrenite workflow iz sintetičkog ili postojećeg ulaza.';
+            return 'Pokrenite tijek rada iz sintetičkog ili postojećeg ulaza.';
         default:
             return undefined;
     }
@@ -325,7 +494,7 @@ export function AutomationFlowEditor({
         initialGraph.nodes[0]?.id ?? null,
     );
     const [nodes, setNodes, onNodesChangeBase] = useNodesState<FlowNode>(
-        updateNodeClassNames(
+        updateNodeSelection(
             graphToNodes(initialGraph, modulesByKey),
             selectedNodeId,
         ),
@@ -407,7 +576,7 @@ export function AutomationFlowEditor({
 
     function selectNode(nodeId: string | null) {
         setSelectedNodeId(nodeId);
-        setNodes((current) => updateNodeClassNames(current, nodeId));
+        setNodes((current) => updateNodeSelection(current, nodeId));
     }
 
     function onNodesChange(changes: NodeChange<FlowNode>[]) {
@@ -420,6 +589,7 @@ export function AutomationFlowEditor({
                 {
                     ...connection,
                     id: `edge-${connection.source}-${connection.target}-${Date.now()}`,
+                    ...automationEdgeOptions,
                 },
                 currentEdges,
             ),
@@ -440,7 +610,8 @@ export function AutomationFlowEditor({
         const id = `${module.kind}-${module.key.replaceAll('.', '-')}-${Date.now()}`;
         const nextNode: FlowNode = {
             id,
-            type: 'default',
+            selected: true,
+            type: 'automation',
             position: {
                 x: 80 + moduleCount * 24,
                 y: 80 + nodes.length * 70,
@@ -449,13 +620,13 @@ export function AutomationFlowEditor({
                 moduleKey: module.key,
                 kind: module.kind,
                 config: defaultConfig(module),
-                label: module.title,
+                label: automationModuleTitle(module),
+                description: automationModuleDescription(module),
             },
-            className: nodeClassName(module.kind, true),
         };
 
         setNodes((current) =>
-            updateNodeClassNames([...current, nextNode], nextNode.id),
+            updateNodeSelection([...current, nextNode], nextNode.id),
         );
         setSelectedNodeId(nextNode.id);
         setActivePanel('settings');
@@ -782,19 +953,27 @@ export function AutomationFlowEditor({
                                 key={module.key}
                                 type="button"
                                 onClick={() => addModule(module)}
-                                className="w-full rounded-md border bg-background p-3 text-left transition-colors hover:border-primary/60 hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                className={cx(
+                                    'w-full rounded-md border bg-background p-3 text-left transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                                    automationNodeKindTheme[module.kind].node,
+                                )}
                             >
                                 <Row spacing={2} className="items-start">
-                                    <Add className="mt-0.5 size-4 shrink-0" />
+                                    <ModuleIconBadge
+                                        kind={module.kind}
+                                        moduleKey={module.key}
+                                    />
                                     <Stack spacing={1}>
                                         <Typography level="body2" semiBold>
-                                            {module.title}
+                                            {automationModuleTitle(module)}
                                         </Typography>
                                         <Typography
                                             level="body3"
                                             className="text-muted-foreground"
                                         >
-                                            {module.description}
+                                            {automationModuleDescription(
+                                                module,
+                                            )}
                                         </Typography>
                                         <Typography
                                             level="body3"
@@ -821,10 +1000,10 @@ export function AutomationFlowEditor({
             <Stack spacing={3}>
                 <Stack spacing={1}>
                     <Typography level="body2" semiBold>
-                        {selectedModule.title}
+                        {automationModuleTitle(selectedModule)}
                     </Typography>
                     <Typography level="body3" className="text-muted-foreground">
-                        {selectedModule.description}
+                        {automationModuleDescription(selectedModule)}
                     </Typography>
                     <Row spacing={1} className="flex-wrap">
                         <Chip size="sm" variant="soft">
@@ -837,7 +1016,7 @@ export function AutomationFlowEditor({
                         ) : null}
                         {selectedModule.dryRunSupported ? (
                             <Chip size="sm" color="info" variant="soft">
-                                Dry-run
+                                Probno izvođenje
                             </Chip>
                         ) : null}
                     </Row>
@@ -857,15 +1036,27 @@ export function AutomationFlowEditor({
                             <SelectItems
                                 key={field.key}
                                 className="w-full"
-                                label={field.label}
+                                label={automationConfigFieldLabel(
+                                    selectedModule,
+                                    field,
+                                )}
                                 value={typeof value === 'string' ? value : ''}
                                 items={
                                     field.options?.map((option) => ({
                                         value: option.value,
-                                        label: option.label,
+                                        label: automationConfigFieldOptionLabel(
+                                            {
+                                                field,
+                                                module: selectedModule,
+                                                option,
+                                            },
+                                        ),
                                     })) ?? []
                                 }
-                                helperText={field.description}
+                                helperText={automationConfigFieldDescription(
+                                    selectedModule,
+                                    field,
+                                )}
                                 onValueChange={(nextValue) =>
                                     updateSelectedConfig(field.key, nextValue)
                                 }
@@ -877,7 +1068,10 @@ export function AutomationFlowEditor({
                         return (
                             <Checkbox
                                 key={field.key}
-                                label={field.label}
+                                label={automationConfigFieldLabel(
+                                    selectedModule,
+                                    field,
+                                )}
                                 checked={value === true}
                                 onCheckedChange={(checked) =>
                                     updateSelectedConfig(
@@ -896,7 +1090,10 @@ export function AutomationFlowEditor({
                                     className="text-sm font-medium"
                                     htmlFor={`automation-config-${field.key}`}
                                 >
-                                    {field.label}
+                                    {automationConfigFieldLabel(
+                                        selectedModule,
+                                        field,
+                                    )}
                                 </label>
                                 <textarea
                                     id={`automation-config-${field.key}`}
@@ -914,18 +1111,24 @@ export function AutomationFlowEditor({
                                             setJsonError(
                                                 error instanceof Error
                                                     ? error.message
-                                                    : 'Invalid JSON.',
+                                                    : 'JSON nije valjan.',
                                             );
                                         }
                                     }}
                                     className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-hidden ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                                 />
-                                {field.description ? (
+                                {automationConfigFieldDescription(
+                                    selectedModule,
+                                    field,
+                                ) ? (
                                     <Typography
                                         level="body3"
                                         className="text-muted-foreground"
                                     >
-                                        {field.description}
+                                        {automationConfigFieldDescription(
+                                            selectedModule,
+                                            field,
+                                        )}
                                     </Typography>
                                 ) : null}
                             </Stack>
@@ -935,9 +1138,18 @@ export function AutomationFlowEditor({
                     return (
                         <Input
                             key={field.key}
-                            label={field.label}
-                            helperText={field.description}
-                            placeholder={field.placeholder}
+                            label={automationConfigFieldLabel(
+                                selectedModule,
+                                field,
+                            )}
+                            helperText={automationConfigFieldDescription(
+                                selectedModule,
+                                field,
+                            )}
+                            placeholder={automationConfigFieldPlaceholder(
+                                selectedModule,
+                                field,
+                            )}
                             type={field.type === 'number' ? 'number' : 'text'}
                             value={
                                 typeof value === 'string' ||
@@ -960,14 +1172,15 @@ export function AutomationFlowEditor({
                     );
                 })}
 
-                {selectedModule.inputDescription ? (
+                {automationModuleInputDescription(selectedModule) ? (
                     <Typography level="body3" className="text-muted-foreground">
-                        Ulaz: {selectedModule.inputDescription}
+                        Ulaz: {automationModuleInputDescription(selectedModule)}
                     </Typography>
                 ) : null}
-                {selectedModule.outputDescription ? (
+                {automationModuleOutputDescription(selectedModule) ? (
                     <Typography level="body3" className="text-muted-foreground">
-                        Izlaz: {selectedModule.outputDescription}
+                        Izlaz:{' '}
+                        {automationModuleOutputDescription(selectedModule)}
                     </Typography>
                 ) : null}
                 {jsonError ? (
@@ -987,7 +1200,7 @@ export function AutomationFlowEditor({
             <Stack spacing={3}>
                 {result ? <SaveResultNotice result={result} /> : null}
 
-                <div className="min-w-0 overflow-hidden rounded-md border bg-background">
+                <div className="min-w-0 overflow-hidden rounded-md border bg-background shadow-xs dark:bg-neutral-950">
                     <div className="flex flex-col gap-3 border-b px-4 py-3 lg:flex-row lg:items-center">
                         <div className="min-w-0 flex-1">
                             {canAutosave ? (
@@ -1072,8 +1285,11 @@ export function AutomationFlowEditor({
                     <div className="h-[calc(100vh-260px)] min-h-[560px]">
                         <ReactFlowProvider>
                             <ReactFlow
+                                className="bg-slate-50 text-foreground dark:bg-neutral-950 [&_.react-flow__attribution]:bg-card/80 [&_.react-flow__attribution]:text-muted-foreground [&_.react-flow__controls]:overflow-hidden [&_.react-flow__controls]:rounded-md [&_.react-flow__controls]:border [&_.react-flow__controls]:border-border [&_.react-flow__controls]:bg-card [&_.react-flow__controls]:shadow-lg [&_.react-flow__controls-button]:border-border [&_.react-flow__controls-button]:bg-card [&_.react-flow__controls-button]:text-foreground [&_.react-flow__controls-button:hover]:bg-muted [&_.react-flow__controls-button_svg]:fill-foreground [&_.react-flow__edge-path]:stroke-muted-foreground [&_.react-flow__pane]:cursor-grab [&_.react-flow__pane.dragging]:cursor-grabbing"
+                                defaultEdgeOptions={automationEdgeOptions}
                                 nodes={nodes}
                                 edges={edges}
+                                nodeTypes={nodeTypes}
                                 onNodesChange={onNodesChange}
                                 onEdgesChange={onEdgesChange}
                                 onConnect={onConnect}
@@ -1084,8 +1300,12 @@ export function AutomationFlowEditor({
                                 onPaneClick={() => selectNode(null)}
                                 fitView
                             >
-                                <Background />
-                                <Controls />
+                                <Background
+                                    color="hsl(var(--border))"
+                                    gap={24}
+                                    size={1.5}
+                                />
+                                <Controls showInteractive={false} />
                             </ReactFlow>
                         </ReactFlowProvider>
                     </div>
