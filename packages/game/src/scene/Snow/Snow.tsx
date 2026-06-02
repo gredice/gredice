@@ -1,8 +1,16 @@
-import { useEffect, useMemo } from 'react';
+import { useThree } from '@react-three/fiber';
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+} from 'react';
 import * as THREE from 'three';
+import { useGameState } from '../../useGameState';
 import { useSceneTimeUniform } from '../SceneTime';
 
-const DEFAULT_FLAKE_SIZE = 0.03;
+const DEFAULT_FLAKE_SIZE = 0.07;
 const DEFAULT_SIZE = 30;
 const DEFAULT_HEIGHT = 5;
 const DEFAULT_HEIGHT_OFFSET = 10;
@@ -19,6 +27,7 @@ const snowVertexShader = /* glsl */ `
     uniform float uHeightRange;
     uniform float uGroundLevel;
 
+    varying vec2 vUv;
     varying float vSnowBrightness;
 
     float wrapRange(float value, float minValue, float maxValue) {
@@ -26,61 +35,67 @@ const snowVertexShader = /* glsl */ `
         return mod(value - minValue, range) + minValue;
     }
 
-    mat3 rotateX(float angle) {
+    mat2 rotate2d(float angle) {
         float s = sin(angle);
         float c = cos(angle);
-        return mat3(
-            1.0, 0.0, 0.0,
-            0.0, c, -s,
-            0.0, s, c
-        );
-    }
-
-    mat3 rotateY(float angle) {
-        float s = sin(angle);
-        float c = cos(angle);
-        return mat3(
-            c, 0.0, s,
-            0.0, 1.0, 0.0,
-            -s, 0.0, c
+        return mat2(
+            c, -s,
+            s, c
         );
     }
 
     void main() {
+        vUv = uv;
         float halfSize = uSize * 0.5;
-        float y = uGroundLevel + mod(
-            instanceSnowBase.y - uGroundLevel - uTime * instanceSnowBase.w * 60.0,
-            uHeightRange
-        );
+        float screenY =
+            mod(instanceSnowBase.y - uTime * instanceSnowBase.w, uHeightRange) -
+            uHeightRange * 0.5;
         float x = wrapRange(
             instanceSnowBase.x +
-                instanceSnowMotion.x * uTime * 60.0 +
-                sin(uTime + instanceSnowMotion.z) * 0.32,
+                instanceSnowMotion.x * uTime +
+                sin(uTime * 0.85 + instanceSnowMotion.z) * 0.28,
             -halfSize,
             halfSize
         );
         float z = wrapRange(
-            instanceSnowBase.z + instanceSnowMotion.y * uTime * 60.0,
+            instanceSnowBase.z + instanceSnowMotion.y * uTime,
             -halfSize,
             halfSize
         );
 
-        float rotationX = uTime * instanceSnowMotion.w + instanceSnowMotion.z;
-        float rotationY = uTime * instanceSnowMotion.w * 1.45 + instanceSnowMotion.z * 0.7;
-        vec3 rotatedPosition =
-            rotateY(rotationY) * rotateX(rotationX) * position * instanceSnowShape.x;
-        vec3 transformed = rotatedPosition + vec3(x, y, z);
+        float rotation = uTime * instanceSnowMotion.w + instanceSnowMotion.z;
+        vec3 localCenter = vec3(x, uGroundLevel + 2.0, z);
+        vec4 centerView = modelViewMatrix * vec4(localCenter, 1.0);
+        centerView.y += screenY;
+        vec2 flakeCorner = position.xy * vec2(0.72, 1.18) * instanceSnowShape.x;
+        centerView.xy += rotate2d(rotation) * flakeCorner;
 
         vSnowBrightness = instanceSnowShape.y;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.0);
+        gl_Position = projectionMatrix * centerView;
     }
 `;
 
 const snowFragmentShader = /* glsl */ `
+    varying vec2 vUv;
     varying float vSnowBrightness;
 
     void main() {
-        gl_FragColor = vec4(vec3(vSnowBrightness), 1.0);
+        vec2 center = vUv - 0.5;
+        float core = 1.0 - smoothstep(0.14, 0.5, length(center));
+        float sparkle = 1.0 - smoothstep(0.0, 0.5, abs(center.x) + abs(center.y));
+        float alpha = max(core, sparkle * 0.45);
+
+        if (alpha < 0.02) {
+            discard;
+        }
+
+        vec3 snowColor = vec3(
+            vSnowBrightness * 0.95,
+            vSnowBrightness * 0.98,
+            vSnowBrightness
+        );
+
+        gl_FragColor = vec4(snowColor, alpha * 0.96);
     }
 `;
 
@@ -113,6 +128,9 @@ const Snow = ({
     /** Base gravity/fall speed */
     gravity?: number;
 }) => {
+    const fref = useRef<THREE.Group>(null);
+    const camera = useThree((state) => state.camera);
+    const gameCamera = useGameState((state) => state.gameCamera);
     const timeUniform = useSceneTimeUniform();
     // Convert wind direction (0-360 degrees) to directional components
     // 0° = North (negative z), 90° = East (positive x), 180° = South (positive z), 270° = West (negative x)
@@ -120,9 +138,10 @@ const Snow = ({
     const windDriftX = Math.sin(windDirectionRadians) * windSpeed;
     const windDriftZ = -Math.cos(windDirectionRadians) * windSpeed;
     const heightRange = Math.max(0.001, height + heightOffset - groundLevel);
+    const fallSpeedBase = Math.max(0.2, gravity * 280 + windSpeed * 0.08);
 
     const geometry = useMemo(() => {
-        const snowGeometry = new THREE.OctahedronGeometry(flakeSize, 0);
+        const snowGeometry = new THREE.PlaneGeometry(1, 1);
         const baseAttributes = new Float32Array(count * 4);
         const motionAttributes = new Float32Array(count * 4);
         const shapeAttributes = new Float32Array(count * 4);
@@ -130,28 +149,25 @@ const Snow = ({
         for (let i = 0; i < count; i++) {
             const baseOffset = i * 4;
             baseAttributes[baseOffset] = (Math.random() - 0.5) * size;
-            baseAttributes[baseOffset + 1] =
-                Math.random() * height + heightOffset;
+            baseAttributes[baseOffset + 1] = Math.random() * heightRange;
             baseAttributes[baseOffset + 2] = (Math.random() - 0.5) * size;
             baseAttributes[baseOffset + 3] =
-                Math.random() * 0.02 + gravity * windSpeed * 10;
+                THREE.MathUtils.randFloat(0.55, 1.35) + fallSpeedBase;
 
             const motionOffset = i * 4;
             motionAttributes[motionOffset] =
-                (Math.random() - 0.5) * 0.02 + windDriftX * gravity * 10;
+                THREE.MathUtils.randFloatSpread(0.22) + windDriftX * 0.3;
             motionAttributes[motionOffset + 1] =
-                (Math.random() - 0.5) * 0.01 + windDriftZ * gravity * 10;
+                THREE.MathUtils.randFloatSpread(0.16) + windDriftZ * 0.3;
             motionAttributes[motionOffset + 2] = Math.random() * Math.PI * 2;
             motionAttributes[motionOffset + 3] = THREE.MathUtils.randFloat(
-                1.4,
-                3.4,
+                0.45,
+                1.25,
             );
 
             const shapeOffset = i * 4;
-            shapeAttributes[shapeOffset] = THREE.MathUtils.randFloat(
-                0.75,
-                1.25,
-            );
+            shapeAttributes[shapeOffset] =
+                flakeSize * THREE.MathUtils.randFloat(0.75, 1.25);
             shapeAttributes[shapeOffset + 1] = THREE.MathUtils.randFloat(
                 0.86,
                 1,
@@ -176,17 +192,40 @@ const Snow = ({
         return snowGeometry;
     }, [
         count,
+        fallSpeedBase,
         flakeSize,
-        gravity,
-        height,
-        heightOffset,
+        heightRange,
         size,
         windDriftX,
         windDriftZ,
-        windSpeed,
     ]);
 
     useEffect(() => () => geometry.dispose(), [geometry]);
+
+    const updateSnowFieldPosition = useCallback((x: number, z: number) => {
+        const group = fref.current;
+        if (!group) {
+            return;
+        }
+
+        group.position.set(x, 0, z);
+    }, []);
+
+    useLayoutEffect(() => {
+        const snapshot = gameCamera?.getSnapshot();
+        updateSnowFieldPosition(
+            snapshot?.target[0] ?? camera.position.x,
+            snapshot?.target[2] ?? camera.position.z,
+        );
+
+        if (!gameCamera) {
+            return;
+        }
+
+        return gameCamera.subscribe((snapshot) => {
+            updateSnowFieldPosition(snapshot.target[0], snapshot.target[2]);
+        });
+    }, [camera, gameCamera, updateSnowFieldPosition]);
 
     const uniforms = useMemo(
         () => ({
@@ -199,16 +238,23 @@ const Snow = ({
     );
 
     return (
-        <instancedMesh
-            args={[geometry, undefined, count]}
-            frustumCulled={false}
-        >
-            <shaderMaterial
-                vertexShader={snowVertexShader}
-                fragmentShader={snowFragmentShader}
-                uniforms={uniforms}
-            />
-        </instancedMesh>
+        <group ref={fref}>
+            <instancedMesh
+                args={[geometry, undefined, count]}
+                frustumCulled={false}
+                renderOrder={36}
+            >
+                <shaderMaterial
+                    depthTest={false}
+                    depthWrite={false}
+                    vertexShader={snowVertexShader}
+                    fragmentShader={snowFragmentShader}
+                    side={THREE.DoubleSide}
+                    transparent
+                    uniforms={uniforms}
+                />
+            </instancedMesh>
+        </group>
     );
 };
 
