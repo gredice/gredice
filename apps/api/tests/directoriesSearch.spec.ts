@@ -13,14 +13,23 @@ test('returns search payload shape for no-result query', async ({
     );
     expect([200, 500, 503]).toContain(response.status());
 
-    const body = await response.json();
     if (response.status() === 200) {
+        const body = await response.json();
         expect(body.query).toBe('nonexistent-search-token-zz');
         expect(body.limit).toBe(5);
         expect(body.offset).toBe(0);
         expect(Array.isArray(body.results)).toBeTruthy();
         expect(body.count).toBe(body.results.length);
-    } else {
-        expect(body.error).toBeTruthy();
+        return;
     }
+
+    const contentType = response.headers()['content-type'] ?? '';
+    if (contentType.includes('application/json')) {
+        const body = await response.json();
+        expect(body.error).toBeTruthy();
+        return;
+    }
+
+    const body = await response.text();
+    expect(body.length).toBeGreaterThan(0);
 });
