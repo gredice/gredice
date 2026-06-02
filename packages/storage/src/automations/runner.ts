@@ -144,8 +144,11 @@ export async function processDueAutomationRuns({
         failedStaleRuns: staleResult.failed,
     };
 
-    for (const run of runs) {
-        const runResult = await executeAutomationRun(run);
+    const runResults = await Promise.all(
+        runs.map((run) => executeAutomationRun(run)),
+    );
+
+    for (const runResult of runResults) {
         if (runResult.status === 'succeeded') {
             result.succeeded += 1;
         } else if (runResult.status === 'skipped') {

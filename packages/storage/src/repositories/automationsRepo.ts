@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { and, asc, desc, eq, gt, inArray, lte, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import {
     type AutomationDefinitionStatus,
     type AutomationGraph,
@@ -28,12 +29,17 @@ type DomainEventRow = typeof events.$inferSelect;
 const defaultCursorKey = 'domain-events';
 const defaultRunLimit = 50;
 const defaultRunMaxAttempts = 3;
+const automationDefinitionAdvisoryLockNamespace = 707_001;
+
+export const defaultAutomationMaxConcurrentRuns = 1;
+export const maxAutomationMaxConcurrentRuns = 25;
 
 export type AutomationDefinitionInput = {
     key: string;
     name: string;
     description?: string | null;
     status?: AutomationDefinitionStatus;
+    maxConcurrentRuns?: number;
     graph?: AutomationGraph;
     metadata?: AutomationJsonObject;
     createdByUserId?: string | null;
@@ -129,6 +135,8 @@ function automationDefinitionValues(input: AutomationDefinitionInput) {
         name: input.name,
         description: input.description ?? null,
         status: input.status ?? 'draft',
+        maxConcurrentRuns:
+            input.maxConcurrentRuns ?? defaultAutomationMaxConcurrentRuns,
         triggerModuleKey: trigger?.moduleKey ?? null,
         triggerEventType: getTriggerEventTypeFromNode(trigger),
         graph,
@@ -149,6 +157,9 @@ function automationDefinitionUpdateValues(input: AutomationDefinitionUpdate) {
             ? { description: input.description }
             : {}),
         ...(input.status !== undefined ? { status: input.status } : {}),
+        ...(input.maxConcurrentRuns !== undefined
+            ? { maxConcurrentRuns: input.maxConcurrentRuns }
+            : {}),
         ...(graph
             ? {
                   graph,
@@ -192,6 +203,9 @@ export async function upsertAutomationDefinitionByKey(
                 name: values.name,
                 description: values.description,
                 status: values.status,
+                ...(input.maxConcurrentRuns !== undefined
+                    ? { maxConcurrentRuns: values.maxConcurrentRuns }
+                    : {}),
                 triggerModuleKey: values.triggerModuleKey,
                 triggerEventType: values.triggerEventType,
                 graph: values.graph,
@@ -461,8 +475,16 @@ export async function claimDueAutomationRuns({
     lockedBy?: string;
     db?: DatabaseClient;
 } = {}): Promise<SelectAutomationRun[]> {
+    const runningAutomationRuns = alias(
+        automationRuns,
+        'running_automation_runs',
+    );
+    const candidateLimit = Math.max(limit * 4, limit);
     const candidates = await db
-        .select({ id: automationRuns.id })
+        .select({
+            id: automationRuns.id,
+            automationDefinitionId: automationRuns.automationDefinitionId,
+        })
         .from(automationRuns)
         .where(
             and(
@@ -471,35 +493,80 @@ export async function claimDueAutomationRuns({
             ),
         )
         .orderBy(asc(automationRuns.nextRunAt), asc(automationRuns.id))
-        .limit(limit);
+        .limit(candidateLimit);
 
-    const claimed: SelectAutomationRun[] = [];
-    for (const candidate of candidates) {
-        const [updated] = await db
-            .update(automationRuns)
-            .set({
-                status: 'running',
-                attempt: sql`${automationRuns.attempt} + 1`,
-                lockedAt: now,
-                lockedBy,
-                startedAt: now,
-                updatedAt: now,
-            })
-            .where(
-                and(
-                    eq(automationRuns.id, candidate.id),
-                    inArray(automationRuns.status, ['queued', 'retrying']),
-                    lte(automationRuns.nextRunAt, now),
-                ),
-            )
-            .returning();
+    return db.transaction(async (tx) => {
+        const claimed: SelectAutomationRun[] = [];
+        for (const candidate of candidates) {
+            if (claimed.length >= limit) {
+                break;
+            }
 
-        if (updated) {
-            claimed.push(updated);
+            await tx.execute(
+                sql`select pg_advisory_xact_lock(${automationDefinitionAdvisoryLockNamespace}, ${candidate.automationDefinitionId});`,
+            );
+
+            const [capacity] = await tx
+                .select({
+                    maxConcurrentRuns: automationDefinitions.maxConcurrentRuns,
+                    runningCount: sql<number>`count(${runningAutomationRuns.id})::int`,
+                })
+                .from(automationDefinitions)
+                .leftJoin(
+                    runningAutomationRuns,
+                    and(
+                        eq(
+                            runningAutomationRuns.automationDefinitionId,
+                            automationDefinitions.id,
+                        ),
+                        eq(runningAutomationRuns.status, 'running'),
+                    ),
+                )
+                .where(
+                    eq(
+                        automationDefinitions.id,
+                        candidate.automationDefinitionId,
+                    ),
+                )
+                .groupBy(
+                    automationDefinitions.id,
+                    automationDefinitions.maxConcurrentRuns,
+                )
+                .limit(1);
+
+            if (
+                !capacity ||
+                Number(capacity.runningCount) >= capacity.maxConcurrentRuns
+            ) {
+                continue;
+            }
+
+            const [updated] = await tx
+                .update(automationRuns)
+                .set({
+                    status: 'running',
+                    attempt: sql`${automationRuns.attempt} + 1`,
+                    lockedAt: now,
+                    lockedBy,
+                    startedAt: now,
+                    updatedAt: now,
+                })
+                .where(
+                    and(
+                        eq(automationRuns.id, candidate.id),
+                        inArray(automationRuns.status, ['queued', 'retrying']),
+                        lte(automationRuns.nextRunAt, now),
+                    ),
+                )
+                .returning();
+
+            if (updated) {
+                claimed.push(updated);
+            }
         }
-    }
 
-    return claimed;
+        return claimed;
+    });
 }
 
 export async function recoverStaleAutomationRuns({

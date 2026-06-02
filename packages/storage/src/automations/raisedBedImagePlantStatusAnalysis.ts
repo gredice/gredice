@@ -27,6 +27,10 @@ const GREENHOUSE_SEEDLING_STATUSES = new Set([
 
 export const RAISED_BED_IMAGE_PLANT_STATUS_REVIEW_REQUESTER = REVIEW_REQUESTER;
 
+function hasNonBlankEnvValue(value: string | undefined) {
+    return typeof value === 'string' && value.trim().length > 0;
+}
+
 const plantStatusReviewOutputSchema = z.object({
     summary: z.string(),
     proposals: z
@@ -598,8 +602,9 @@ function buildApprovalNote({
 }
 
 export function hasRaisedBedImagePlantStatusReviewAiConfig() {
-    return Boolean(
-        process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN,
+    return (
+        hasNonBlankEnvValue(process.env.AI_GATEWAY_API_KEY) ||
+        hasNonBlankEnvValue(process.env.VERCEL_OIDC_TOKEN)
     );
 }
 

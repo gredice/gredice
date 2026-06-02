@@ -274,6 +274,63 @@ test('automation graph validation waits for all incoming dependencies', () => {
     );
 });
 
+test('automation run claiming respects definition concurrency', async () => {
+    createTestDb();
+    const definition = await createAutomationDefinition({
+        key: 'test.concurrent-automation',
+        name: 'Concurrent automation',
+        status: 'enabled',
+        maxConcurrentRuns: 1,
+        graph: seasonalSowedWateringAutomationGraph(),
+    });
+    const firstRun = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'test',
+        input: {
+            eventType: knownEventTypes.raisedBedFields.plantUpdate,
+            aggregateId: 'concurrency|first',
+            data: { status: 'sowed' },
+        },
+    });
+    const secondRun = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'test',
+        input: {
+            eventType: knownEventTypes.raisedBedFields.plantUpdate,
+            aggregateId: 'concurrency|second',
+            data: { status: 'sowed' },
+        },
+    });
+    assert.ok(firstRun);
+    assert.ok(secondRun);
+
+    const firstClaim = await claimDueAutomationRuns({
+        limit: 2,
+        lockedBy: 'automations-test',
+    });
+
+    assert.strictEqual(firstClaim.length, 1);
+    const claimedFirstRun = firstClaim.at(0);
+    assert.ok(claimedFirstRun);
+    assert.strictEqual(claimedFirstRun.id, firstRun.id);
+
+    await completeAutomationRun({
+        id: claimedFirstRun.id,
+        status: 'succeeded',
+        output: { completed: true },
+    });
+
+    const secondClaim = await claimDueAutomationRuns({
+        limit: 2,
+        lockedBy: 'automations-test',
+    });
+
+    assert.strictEqual(secondClaim.length, 1);
+    const claimedSecondRun = secondClaim.at(0);
+    assert.ok(claimedSecondRun);
+    assert.strictEqual(claimedSecondRun.id, secondRun.id);
+});
+
 test('monthly schedule automation enqueues once per configured period', async () => {
     createTestDb();
     const graph = {
@@ -841,6 +898,72 @@ test('image plant-status review automation previews operation completion images 
         1,
     );
     assert.strictEqual(Reflect.get(actionStep.output, 'plantedFieldCount'), 1);
+});
+
+test('image plant-status review automation skips non-dry runs when AI Gateway credentials are blank', async (t) => {
+    const originalApiKey = process.env.AI_GATEWAY_API_KEY;
+    const originalOidcToken = process.env.VERCEL_OIDC_TOKEN;
+    t.after(() => {
+        if (typeof originalApiKey === 'string') {
+            process.env.AI_GATEWAY_API_KEY = originalApiKey;
+        } else {
+            delete process.env.AI_GATEWAY_API_KEY;
+        }
+
+        if (typeof originalOidcToken === 'string') {
+            process.env.VERCEL_OIDC_TOKEN = originalOidcToken;
+        } else {
+            delete process.env.VERCEL_OIDC_TOKEN;
+        }
+    });
+    process.env.AI_GATEWAY_API_KEY = '   ';
+    process.env.VERCEL_OIDC_TOKEN = '';
+
+    createTestDb();
+    const definition = await createAutomationDefinition({
+        key: 'test.image-plant-status-review-blank-ai-config',
+        name: 'Image plant status review blank AI config',
+        status: 'enabled',
+        graph: operationImagePlantStatusReviewAutomationGraph(),
+    });
+    const run = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'test',
+        dryRun: false,
+        input: {
+            eventType: knownEventTypes.operations.complete,
+            aggregateId: 'operation:credential-check',
+            data: {
+                images: [
+                    'https://myegtvromcktt2y7.public.blob.vercel-storage.com/operations/test-field.jpg',
+                ],
+            },
+            createdAt: '2026-06-01T08:00:00.000Z',
+        },
+    });
+    assert.ok(run);
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'skipped');
+    const runWithSteps = await getAutomationRunWithSteps(startedRun.id);
+    const actionStep = runWithSteps?.steps.find(
+        (step) => step.nodeId === 'review-plant-statuses',
+    );
+    assert.strictEqual(actionStep?.status, 'skipped');
+    assert.ok(
+        actionStep?.output &&
+            typeof actionStep.output === 'object' &&
+            !Array.isArray(actionStep.output),
+    );
+    assert.strictEqual(
+        Reflect.get(actionStep.output, 'reason'),
+        'AI Gateway credentials are not configured.',
+    );
 });
 
 test('automation runner seeds the initial event cursor without backfilling historical events', async () => {

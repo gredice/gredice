@@ -8,6 +8,7 @@ import {
     listAutomationRunSteps,
     listAutomationRuns,
     listRecentDomainEvents,
+    maxAutomationMaxConcurrentRuns,
 } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
@@ -257,6 +258,8 @@ export default async function AutomationDetailPage({
                 initialName={definition.name}
                 initialDescription={definition.description}
                 initialStatus={definition.status}
+                initialMaxConcurrentRuns={definition.maxConcurrentRuns}
+                maxConcurrentRunsLimit={maxAutomationMaxConcurrentRuns}
                 initialGraph={definition.graph}
                 modules={modules}
                 testPanel={

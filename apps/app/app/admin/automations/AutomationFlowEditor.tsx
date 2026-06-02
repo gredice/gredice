@@ -67,6 +67,8 @@ type AutomationFlowEditorProps = {
     initialName: string;
     initialDescription: string | null;
     initialStatus: AutomationDefinitionStatus;
+    initialMaxConcurrentRuns: number;
+    maxConcurrentRunsLimit: number;
     initialGraph: AutomationGraph;
     modules: AutomationModuleMetadata[];
     testPanel?: ReactNode;
@@ -267,8 +269,10 @@ export function AutomationFlowEditor({
     initialDescription,
     initialGraph,
     initialKey,
+    initialMaxConcurrentRuns,
     initialName,
     initialStatus,
+    maxConcurrentRunsLimit,
     modules,
     testPanel,
 }: AutomationFlowEditorProps) {
@@ -281,6 +285,9 @@ export function AutomationFlowEditor({
     const [description, setDescription] = useState(initialDescription ?? '');
     const [status, setStatus] =
         useState<AutomationDefinitionStatus>(initialStatus);
+    const [maxConcurrentRunsInput, setMaxConcurrentRunsInput] = useState(
+        initialMaxConcurrentRuns.toString(),
+    );
     const [activePanel, setActivePanel] =
         useState<AutomationEditorPanel | null>(automationId ? null : 'details');
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
@@ -433,6 +440,7 @@ export function AutomationFlowEditor({
                 name,
                 description,
                 status,
+                maxConcurrentRuns: Number(maxConcurrentRunsInput),
                 graph: flowToGraph(nodes, edges),
             });
 
@@ -473,6 +481,20 @@ export function AutomationFlowEditor({
                     setStatus(nextStatus);
                     setResult(null);
                 }}
+            />
+            <Input
+                label="Paralelna izvođenja"
+                helperText={`Najviše ${maxConcurrentRunsLimit} runova ove automatizacije istovremeno.`}
+                type="number"
+                min={1}
+                max={maxConcurrentRunsLimit}
+                step={1}
+                value={maxConcurrentRunsInput}
+                onChange={(event) => {
+                    setMaxConcurrentRunsInput(event.target.value);
+                    setResult(null);
+                }}
+                fullWidth
             />
             <Stack spacing={1}>
                 <label
