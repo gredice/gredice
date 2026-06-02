@@ -12,6 +12,7 @@ import {
     createAutomationRun,
     executeAutomationRun,
     getAutomationDefinitionById,
+    getAutomationDefinitionByKey,
     getAutomationRunById,
     getDomainEventById,
     listAutomationRunSteps,
@@ -149,6 +150,23 @@ function revalidateAutomationPages(automationId?: number) {
     }
 }
 
+function automationKeyExistsMessage(key: string) {
+    return `Automation key "${key}" already exists.`;
+}
+
+function isAutomationKeyUniqueConstraintError(error: unknown) {
+    if (!isRecord(error)) {
+        return false;
+    }
+
+    const candidate = isRecord(error.cause) ? error.cause : error;
+
+    return (
+        candidate.code === '23505' &&
+        candidate.constraint === 'automation_definitions_key_idx'
+    );
+}
+
 export async function saveAutomationDefinitionAction(
     payload: SaveAutomationDefinitionPayload,
 ): Promise<AutomationSaveResult> {
@@ -178,6 +196,17 @@ export async function saveAutomationDefinitionAction(
         return { ok: false, errors };
     }
 
+    const existingDefinition = await getAutomationDefinitionByKey(key);
+    if (
+        existingDefinition &&
+        (!payload.id || existingDefinition.id !== payload.id)
+    ) {
+        return {
+            ok: false,
+            errors: [automationKeyExistsMessage(key)],
+        };
+    }
+
     const input = {
         key,
         name,
@@ -187,12 +216,24 @@ export async function saveAutomationDefinitionAction(
         updatedByUserId: userId,
     };
 
-    const definition = payload.id
-        ? await updateAutomationDefinition(payload.id, input)
-        : await createAutomationDefinition({
-              ...input,
-              createdByUserId: userId,
-          });
+    let definition: Awaited<ReturnType<typeof updateAutomationDefinition>>;
+    try {
+        definition = payload.id
+            ? await updateAutomationDefinition(payload.id, input)
+            : await createAutomationDefinition({
+                  ...input,
+                  createdByUserId: userId,
+              });
+    } catch (error) {
+        if (isAutomationKeyUniqueConstraintError(error)) {
+            return {
+                ok: false,
+                errors: [automationKeyExistsMessage(key)],
+            };
+        }
+
+        throw error;
+    }
 
     if (!definition) {
         return {
