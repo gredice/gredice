@@ -1,10 +1,11 @@
 'use client';
 
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import {
     createContext,
     type PropsWithChildren,
     useContext,
+    useEffect,
     useMemo,
 } from 'react';
 import type { IUniform } from 'three';
@@ -32,4 +33,27 @@ export function useSceneTimeUniform() {
     }
 
     return timeUniform;
+}
+
+export function useSceneTimeInvalidation(enabled = true) {
+    const invalidate = useThree((state) => state.invalidate);
+
+    useEffect(() => {
+        if (!enabled) {
+            return;
+        }
+
+        let animationFrame = 0;
+
+        const requestFrame = () => {
+            invalidate();
+            animationFrame = window.requestAnimationFrame(requestFrame);
+        };
+
+        animationFrame = window.requestAnimationFrame(requestFrame);
+
+        return () => {
+            window.cancelAnimationFrame(animationFrame);
+        };
+    }, [enabled, invalidate]);
 }

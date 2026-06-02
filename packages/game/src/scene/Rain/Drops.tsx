@@ -8,7 +8,7 @@ import {
 } from 'react';
 import * as THREE from 'three';
 import { useGameState } from '../../useGameState';
-import { useSceneTimeUniform } from '../SceneTime';
+import { useSceneTimeInvalidation, useSceneTimeUniform } from '../SceneTime';
 
 interface DropsProps {
     count?: number;
@@ -21,6 +21,7 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
     const camera = useThree((state) => state.camera);
     const gameCamera = useGameState((state) => state.gameCamera);
     const timeUniform = useSceneTimeUniform();
+    useSceneTimeInvalidation();
 
     const size = 40;
     const speed = 15;

@@ -8,7 +8,7 @@ import {
 } from 'react';
 import * as THREE from 'three';
 import { useGameState } from '../../useGameState';
-import { useSceneTimeUniform } from '../SceneTime';
+import { useSceneTimeInvalidation, useSceneTimeUniform } from '../SceneTime';
 
 const DEFAULT_FLAKE_SIZE = 0.07;
 const DEFAULT_SIZE = 30;
@@ -132,6 +132,7 @@ const Snow = ({
     const camera = useThree((state) => state.camera);
     const gameCamera = useGameState((state) => state.gameCamera);
     const timeUniform = useSceneTimeUniform();
+    useSceneTimeInvalidation();
     // Convert wind direction (0-360 degrees) to directional components
     // 0° = North (negative z), 90° = East (positive x), 180° = South (positive z), 270° = West (negative x)
     const windDirectionRadians = (windDirection * Math.PI) / 180;
