@@ -4,6 +4,7 @@ import { Button } from '@gredice/ui/Button';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Input } from '@gredice/ui/Input';
 import { Play } from '@gredice/ui/icons';
+import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -12,6 +13,7 @@ import { useState, useTransition } from 'react';
 import {
     type AutomationRunActionResult,
     replayAutomationRunAction,
+    retryAutomationRunAction,
     runAutomationTestAction,
 } from './actions';
 
@@ -166,7 +168,7 @@ export function AutomationTestPanel({
     );
 }
 
-export function ReplayAutomationRunButton({ runId }: { runId: number }) {
+export function AutomationRunRetryControls({ runId }: { runId: number }) {
     const router = useRouter();
     const [result, setResult] = useState<AutomationRunActionResult | null>(
         null,
@@ -175,23 +177,50 @@ export function ReplayAutomationRunButton({ runId }: { runId: number }) {
 
     return (
         <Stack spacing={1}>
-            <Button
-                type="button"
-                size="sm"
-                variant="outlined"
-                disabled={isPending}
-                startDecorator={<Play className="size-4" />}
-                onClick={() =>
-                    startTransition(async () => {
-                        const replayResult =
-                            await replayAutomationRunAction(runId);
-                        setResult(replayResult);
-                        router.refresh();
-                    })
-                }
-            >
-                Replay
-            </Button>
+            <Row spacing={2} className="flex-wrap">
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="outlined"
+                    disabled={isPending}
+                    startDecorator={<Play className="size-4" />}
+                    onClick={() =>
+                        startTransition(async () => {
+                            const replayResult =
+                                await replayAutomationRunAction(runId);
+                            setResult(replayResult);
+                            router.refresh();
+                        })
+                    }
+                >
+                    Replay dry-run
+                </Button>
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="solid"
+                    disabled={isPending}
+                    startDecorator={<Play className="size-4" />}
+                    onClick={() => {
+                        if (
+                            !confirm(
+                                'Retry will execute this automation for real. Continue?',
+                            )
+                        ) {
+                            return;
+                        }
+
+                        startTransition(async () => {
+                            const retryResult =
+                                await retryAutomationRunAction(runId);
+                            setResult(retryResult);
+                            router.refresh();
+                        });
+                    }}
+                >
+                    Retry
+                </Button>
+            </Row>
             {result?.ok ? (
                 <Typography level="body3" className="text-green-700">
                     Run #{result.runId}: {result.status}
