@@ -1,4 +1,5 @@
 import { Typography } from '@gredice/ui/Typography';
+import { getInventoryItemState } from './inventoryStatus';
 
 type InventoryStatusProgressProps = {
     items: {
@@ -19,15 +20,11 @@ function getInventoryStatusCounts({
 }: InventoryStatusProgressProps) {
     return items.reduce(
         (counts, item) => {
-            const minimumQuantity =
-                item.lowCountThreshold ?? defaultLowCountThreshold;
+            const state = getInventoryItemState(item, defaultLowCountThreshold);
 
-            if (item.quantity === 0) {
+            if (state === 'critical') {
                 counts.empty += 1;
-            } else if (
-                minimumQuantity !== null &&
-                item.quantity <= minimumQuantity
-            ) {
+            } else if (state === 'warning') {
                 counts.low += 1;
             } else {
                 counts.normal += 1;
