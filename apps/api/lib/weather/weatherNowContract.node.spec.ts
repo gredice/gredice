@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
     findClosestForecastEntry,
     pickFarmSnowAccumulation,
+    pickWeatherFarm,
 } from './weatherNowContract';
 
 describe('findClosestForecastEntry', () => {
@@ -89,5 +90,16 @@ describe('pickFarmSnowAccumulation', () => {
     it('falls back to first farm when id is missing or invalid', () => {
         assert.equal(pickFarmSnowAccumulation(farms), 1);
         assert.equal(pickFarmSnowAccumulation(farms, 'missing'), 1);
+    });
+
+    it('uses the same selected farm for alert region matching', () => {
+        assert.deepEqual(pickWeatherFarm(farms, '2'), {
+            id: 2,
+            snowAccumulation: 4,
+        });
+        assert.deepEqual(pickWeatherFarm(farms, 'missing'), {
+            id: 1,
+            snowAccumulation: 1,
+        });
     });
 });

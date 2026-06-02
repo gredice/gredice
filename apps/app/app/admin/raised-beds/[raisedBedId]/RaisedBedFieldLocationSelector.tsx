@@ -98,7 +98,7 @@ export function RaisedBedFieldLocationSelector({
                     className={className}
                     onClick={() => {}}
                 >
-                    {current.label}
+                    <span className="min-w-0 truncate">{current.label}</span>
                 </Chip>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">

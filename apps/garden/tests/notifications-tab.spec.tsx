@@ -32,6 +32,15 @@ const defaultPreferences = [
         scope: 'global',
     },
     {
+        category: 'weather_alerts',
+        channel: 'push',
+        digestFrequency: 'off',
+        enabled: true,
+        quietHoursEndMinute: null,
+        quietHoursStartMinute: null,
+        scope: 'global',
+    },
+    {
         category: 'reminders',
         channel: 'push',
         digestFrequency: 'weekly',

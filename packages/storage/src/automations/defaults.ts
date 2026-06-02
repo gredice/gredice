@@ -111,9 +111,9 @@ export async function ensureDefaultAutomationDefinitions() {
 
     const seasonalSowedWatering = await upsertAutomationDefinitionByKey({
         key: seasonalSowedWateringAutomationKey,
-        name: 'Queue seasonal waterings when planting is sowed',
+        name: 'Dodaj sezonska zalijevanja nakon sjetve',
         description:
-            'When a raised-bed field plant update marks a planting as sowed, queue the current seasonal free watering offer for that raised bed.',
+            'Kada ažuriranje polja gredice označi biljku kao posijanu, dodaj trenutačnu sezonsku ponudu besplatnog zalijevanja za tu gredicu.',
         status: 'enabled',
         graph: seasonalSowedWateringAutomationGraph(),
         metadata: {
@@ -125,9 +125,9 @@ export async function ensureDefaultAutomationDefinitions() {
     const operationImagePlantStatusReview =
         await upsertAutomationDefinitionByKey({
             key: operationImagePlantStatusReviewAutomationKey,
-            name: 'Review operation images for plant status changes',
+            name: 'Provjeri fotografije radnje za promjene statusa biljke',
             description:
-                'When a raised-bed operation is completed with images, analyze the photos and create pending approval requests for high-confidence plant status changes.',
+                'Kada je radnja na gredici završena s fotografijama, analiziraj fotografije i kreiraj zahtjeve za potvrdu pouzdanih promjena statusa biljke.',
             status: 'enabled',
             graph: operationImagePlantStatusReviewAutomationGraph(),
             metadata: {

@@ -28,7 +28,7 @@ const mockFields: MockField[] = [
     {
         id: 'tomato-saint',
         number: 18,
-        plant: 'Rajcica saint...',
+        plant: 'Rajcica saint pierre dugi naziv',
         status: 'firstFruitSet',
         date: '22. 05.',
         imageSrc: '/assets/plants/tomato_mature.png',
@@ -47,8 +47,8 @@ const mockFields: MockField[] = [
     {
         id: 'tomato-mini-b',
         number: 16,
-        plant: 'Rajcica mini...',
-        status: 'firstFlowers',
+        plant: 'Luk Red Baron (lukovica)',
+        status: 'pendingVerification',
         date: '22. 05.',
         imageSrc: '/assets/plants/tomato_growing.png',
         location: 'greenhouse',
@@ -90,6 +90,7 @@ const plantItems = mockFields.map((field) => ({
 const statusItems = [
     { value: 'new', label: 'Novo', icon: '🆕' },
     { value: 'planned', label: 'Planirano', icon: '🗓️' },
+    { value: 'pendingVerification', label: 'Čeka verifikaciju', icon: '🔍' },
     { value: 'sprouted', label: 'Proklijalo', icon: '🌱' },
     { value: 'firstFlowers', label: 'Prvi cvjetovi', icon: '🌸' },
     { value: 'firstFruitSet', label: 'Prvi plodovi', icon: '🍅' },
@@ -129,7 +130,9 @@ function LocationChip({ location }: { location?: MockField['location'] }) {
             title="Promijeni trenutnu lokaciju biljke"
             className={raisedBedFieldCardChipClassName}
         >
-            {isGreenhouse ? 'Staklenik' : 'Gredica'}
+            <span className="min-w-0 truncate">
+                {isGreenhouse ? 'Staklenik' : 'Gredica'}
+            </span>
         </Chip>
     );
 }
@@ -177,34 +180,31 @@ function StatusDateButton({ field }: { field: MockField }) {
     }
 
     const statusItem = statusItems.find((item) => item.value === field.status);
+    const label = statusItem?.label ?? field.status;
 
     return (
         <Button
             color="neutral"
             size="sm"
-            startDecorator={
-                statusItem?.icon ? (
-                    <span aria-hidden="true">{statusItem.icon}</span>
-                ) : undefined
-            }
-            endDecorator={
-                field.date ? (
-                    <span className="ml-auto inline-flex items-center gap-1 text-muted-foreground">
-                        <Calendar className="size-3.5" />
-                        {field.date}
-                    </span>
-                ) : undefined
-            }
             title="Promijeni stanje i datum biljke"
             variant="plain"
             className={cx(
                 'h-8 w-full justify-start px-2 text-foreground',
                 raisedBedFieldCardButtonClassName,
             )}
+            startDecorator={
+                statusItem?.icon ? (
+                    <span aria-hidden="true">{statusItem.icon}</span>
+                ) : undefined
+            }
+            endDecorator={
+                <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-muted-foreground">
+                    <Calendar className="size-3.5 shrink-0" />
+                    <span>{field.date ?? 'Datum'}</span>
+                </span>
+            }
         >
-            <span className="truncate">
-                {statusItem?.label ?? field.status}
-            </span>
+            <span className="min-w-0 truncate">{label}</span>
         </Button>
     );
 }

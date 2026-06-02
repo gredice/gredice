@@ -696,6 +696,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 id: garden.id,
                 name: garden.name,
                 isSandbox: garden.isSandbox,
+                farmId: garden.farmId,
                 latitude: garden.farm.latitude,
                 longitude: garden.farm.longitude,
                 stacks,
