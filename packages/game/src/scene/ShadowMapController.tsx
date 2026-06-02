@@ -19,8 +19,11 @@ export function ShadowMapController({
 
     useLayoutEffect(() => {
         const previousAutoUpdate = gl.shadowMap.autoUpdate;
+        const previousEnabled = gl.shadowMap.enabled;
 
+        gl.shadowMap.enabled = enabled;
         gl.shadowMap.autoUpdate = !enabled;
+        gl.shadowMap.needsUpdate = true;
         updateGameProfileMetadata({
             shadowMapAutoUpdate: gl.shadowMap.autoUpdate,
             shadowMapInvalidationCount: invalidationCountRef.current,
@@ -28,6 +31,7 @@ export function ShadowMapController({
 
         return () => {
             gl.shadowMap.autoUpdate = previousAutoUpdate;
+            gl.shadowMap.enabled = previousEnabled;
             gl.shadowMap.needsUpdate = true;
         };
     }, [enabled, gl]);
@@ -43,6 +47,7 @@ export function ShadowMapController({
             return;
         }
 
+        gl.shadowMap.enabled = true;
         gl.shadowMap.needsUpdate = true;
         settleUntilRef.current = performance.now() + shadowSettleMs;
         invalidationCountRef.current += 1;
@@ -57,6 +62,7 @@ export function ShadowMapController({
             return;
         }
 
+        gl.shadowMap.enabled = true;
         gl.shadowMap.needsUpdate = true;
     });
 

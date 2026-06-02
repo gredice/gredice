@@ -38,13 +38,15 @@ export type GroundDecorationInstance = {
 };
 
 type GroundDecorationBatch = {
+    atlasPageIndex: number;
     instances: GroundDecorationBatchInstance[];
     key: string;
+    sprite: SpriteAtlasSprite;
+    spriteName: string;
 };
 
 type GroundDecorationBatchInstance = GroundDecorationInstance & {
     aspect: number;
-    uvRect: [u: number, v: number, width: number, height: number];
     wobble: [
         waveScale: number,
         driftScale: number,
@@ -56,10 +58,12 @@ type GroundDecorationBatchInstance = GroundDecorationInstance & {
 type GroundDecorationChunk = {
     bounds: Box3;
     instances: GroundDecorationBatchInstance[];
+    key: string;
 };
 
 type GroundDecorationProfileBatchStats = {
-    chunkCount: number;
+    atlasPageIndex: number;
+    chunkKeys: string[];
     instanceCount: number;
     visibleCount: number;
 };
@@ -115,18 +119,28 @@ function resolveAtlasPage(
         : null;
 }
 
-function createSpriteGeometry(maxInstanceCount: number) {
+function createSpriteGeometry(
+    maxInstanceCount: number,
+    atlasPage: SpriteAtlasPage,
+    sprite: SpriteAtlasSprite,
+) {
     const geometry = new PlaneGeometry(1, 1);
     geometry.translate(0, 0.5, 0);
+    const atlas = atlasPage.atlas;
+    const u0 = sprite.frame.x / atlas.width;
+    const u1 = (sprite.frame.x + sprite.frame.width) / atlas.width;
+    const v0 = 1 - (sprite.frame.y + sprite.frame.height) / atlas.height;
+    const v1 = 1 - sprite.frame.y / atlas.height;
+    const uv = geometry.getAttribute('uv');
+
+    uv.setXY(0, u0, v1);
+    uv.setXY(1, u1, v1);
+    uv.setXY(2, u0, v0);
+    uv.setXY(3, u1, v0);
+    uv.needsUpdate = true;
+
     geometry.setAttribute(
         'instanceWobble',
-        new InstancedBufferAttribute(
-            new Float32Array(maxInstanceCount * 4),
-            4,
-        ).setUsage(DynamicDrawUsage),
-    );
-    geometry.setAttribute(
-        'instanceUvRect',
         new InstancedBufferAttribute(
             new Float32Array(maxInstanceCount * 4),
             4,
@@ -152,11 +166,6 @@ function createBatchInstance({
     instance: GroundDecorationInstance;
     sprite: SpriteAtlasSprite;
 }): GroundDecorationBatchInstance {
-    const atlas = atlasPage.atlas;
-    const u0 = sprite.frame.x / atlas.width;
-    const u1 = (sprite.frame.x + sprite.frame.width) / atlas.width;
-    const v0 = 1 - (sprite.frame.y + sprite.frame.height) / atlas.height;
-    const v1 = 1 - sprite.frame.y / atlas.height;
     const positionKey = instance.position
         .map((value) => value.toFixed(3))
         .join(':');
@@ -167,7 +176,6 @@ function createBatchInstance({
     return {
         ...instance,
         aspect: sprite.aspect,
-        uvRect: [u0, v0, u1 - u0, v1 - v0],
         wobble: [
             rng.nextRange(1.15, 1.75),
             rng.nextRange(0.7, 1.25),
@@ -211,6 +219,7 @@ function createGroundDecorationChunks(
         chunksByKey.set(chunkKey, {
             bounds: instanceBounds,
             instances: [instance],
+            key: chunkKey,
         });
     }
 
@@ -235,7 +244,6 @@ function applyGroundDecorationWobbleShader(
             `
 #include <common>
 attribute vec4 instanceWobble;
-attribute vec4 instanceUvRect;
 attribute vec2 instanceAlphaOpacity;
 varying float vGroundDecorationAlphaTest;
 varying float vGroundDecorationOpacity;
@@ -243,10 +251,6 @@ uniform float uTime;
 uniform vec3 uWindDirection;
 uniform float uWindStrength;
 `,
-        );
-        shader.vertexShader = shader.vertexShader.replace(
-            'vMapUv = ( mapTransform * vec3( MAP_UV, 1 ) ).xy;',
-            'vMapUv = instanceUvRect.xy + ( mapTransform * vec3( MAP_UV, 1 ) ).xy * instanceUvRect.zw;',
         );
         shader.vertexShader = shader.vertexShader.replace(
             '#include <begin_vertex>',
@@ -293,7 +297,7 @@ if ( diffuseColor.a < vGroundDecorationAlphaTest ) discard;
         );
         material.userData.groundDecorationShader = shader;
     };
-    material.customProgramCacheKey = () => 'ground-decoration-atlas-page-v1';
+    material.customProgramCacheKey = () => 'ground-decoration-sprite-batch-v2';
 }
 
 export function GroundDecorationInstances({
@@ -313,16 +317,20 @@ export function GroundDecorationInstances({
                 profileBatches.delete(key);
             }
 
-            let groundDecorationChunkCount = 0;
+            const groundDecorationAtlasPages = new Set<number>();
+            const groundDecorationChunks = new Set<string>();
             let groundDecorationVisibleCount = 0;
             for (const batchStats of profileBatches.values()) {
-                groundDecorationChunkCount += batchStats.chunkCount;
+                groundDecorationAtlasPages.add(batchStats.atlasPageIndex);
+                for (const chunkKey of batchStats.chunkKeys) {
+                    groundDecorationChunks.add(chunkKey);
+                }
                 groundDecorationVisibleCount += batchStats.visibleCount;
             }
 
             updateGameProfileMetadata({
-                groundDecorationAtlasPageCount: profileBatches.size,
-                groundDecorationChunkCount,
+                groundDecorationAtlasPageCount: groundDecorationAtlasPages.size,
+                groundDecorationChunkCount: groundDecorationChunks.size,
                 groundDecorationVisibleCount,
             });
         },
@@ -435,7 +443,7 @@ function GroundDecorationPageInstances({
     const { error: textureError, texture } =
         useSpriteAtlasTexture(pageAssetPaths);
     const batches = useMemo(() => {
-        const batchInstances: GroundDecorationBatchInstance[] = [];
+        const batchBySpriteName = new Map<string, GroundDecorationBatch>();
 
         for (const instance of instances) {
             const sprite = manifestSprites[instance.spriteName];
@@ -443,23 +451,30 @@ function GroundDecorationPageInstances({
                 continue;
             }
 
-            batchInstances.push(
-                createBatchInstance({
-                    atlasPage,
-                    instance,
-                    sprite,
-                }),
-            );
+            const batchInstance = createBatchInstance({
+                atlasPage,
+                instance,
+                sprite,
+            });
+            const batch = batchBySpriteName.get(instance.spriteName);
+
+            if (batch) {
+                batch.instances.push(batchInstance);
+                continue;
+            }
+
+            batchBySpriteName.set(instance.spriteName, {
+                atlasPageIndex: atlasPage.index,
+                instances: [batchInstance],
+                key: `page:${atlasPage.index}:sprite:${instance.spriteName}`,
+                sprite,
+                spriteName: instance.spriteName,
+            });
         }
 
-        return batchInstances.length > 0
-            ? ([
-                  {
-                      instances: batchInstances,
-                      key: `page:${atlasPage.index}`,
-                  },
-              ] satisfies GroundDecorationBatch[])
-            : [];
+        return [...batchBySpriteName.values()].sort((left, right) =>
+            left.key.localeCompare(right.key),
+        );
     }, [atlasPage, instances, manifestSprites]);
 
     if (textureError) {
@@ -479,6 +494,7 @@ function GroundDecorationPageInstances({
             {batches.map((batch) => (
                 <GroundDecorationInstancedBatch
                     key={batch.key}
+                    atlasPage={atlasPage}
                     batch={batch}
                     recordProfileBatch={recordProfileBatch}
                     texture={texture}
@@ -489,10 +505,12 @@ function GroundDecorationPageInstances({
 }
 
 function GroundDecorationInstancedBatch({
+    atlasPage,
     batch,
     recordProfileBatch,
     texture,
 }: {
+    atlasPage: SpriteAtlasPage;
     batch: GroundDecorationBatch;
     recordProfileBatch: RecordGroundDecorationProfileBatch;
     texture: NonNullable<ReturnType<typeof useSpriteAtlasTexture>['texture']>;
@@ -507,8 +525,12 @@ function GroundDecorationInstancedBatch({
     const rotationZ = useMemo(() => new Quaternion(), []);
     const scale = useMemo(() => new Vector3(), []);
     const geometry = useMemo(() => {
-        return createSpriteGeometry(batch.instances.length);
-    }, [batch.instances.length]);
+        return createSpriteGeometry(
+            batch.instances.length,
+            atlasPage,
+            batch.sprite,
+        );
+    }, [atlasPage, batch.instances.length, batch.sprite]);
     const chunks = useMemo(
         () => createGroundDecorationChunks(batch.instances),
         [batch.instances],
@@ -578,9 +600,6 @@ function GroundDecorationInstancedBatch({
             const wobbleAttribute = geometry.getAttribute(
                 'instanceWobble',
             ) as InstancedBufferAttribute;
-            const uvRectAttribute = geometry.getAttribute(
-                'instanceUvRect',
-            ) as InstancedBufferAttribute;
             const alphaOpacityAttribute = geometry.getAttribute(
                 'instanceAlphaOpacity',
             ) as InstancedBufferAttribute;
@@ -603,7 +622,6 @@ function GroundDecorationInstancedBatch({
                     matrix.compose(position, quaternion, scale);
                     mesh.setMatrixAt(visibleIndex, matrix);
                     wobbleAttribute.setXYZW(visibleIndex, ...instance.wobble);
-                    uvRectAttribute.setXYZW(visibleIndex, ...instance.uvRect);
                     alphaOpacityAttribute.setXY(
                         visibleIndex,
                         instance.alphaTest,
@@ -616,12 +634,12 @@ function GroundDecorationInstancedBatch({
             mesh.count = visibleIndex;
             mesh.instanceMatrix.needsUpdate = true;
             wobbleAttribute.needsUpdate = true;
-            uvRectAttribute.needsUpdate = true;
             alphaOpacityAttribute.needsUpdate = true;
             mesh.computeBoundingBox();
             mesh.computeBoundingSphere();
             recordProfileBatch(batch.key, {
-                chunkCount: chunks.length,
+                atlasPageIndex: batch.atlasPageIndex,
+                chunkKeys: chunks.map((chunk) => chunk.key),
                 instanceCount: batch.instances.length,
                 visibleCount: visibleIndex,
             });
@@ -629,6 +647,7 @@ function GroundDecorationInstancedBatch({
         [
             batch.instances.length,
             batch.key,
+            batch.atlasPageIndex,
             camera,
             chunks,
             frustum,
