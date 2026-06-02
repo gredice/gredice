@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/experimental-ct-react';
-import { SandboxEnvironmentHudStory } from './SandboxEnvironmentHudStory';
+import {
+    SandboxEnvironmentHudStory,
+    SandboxEnvironmentResetStory,
+} from './SandboxEnvironmentHudStory';
 
 test('sandbox environment HUD applies weather presets', async ({
     mount,
@@ -57,4 +60,28 @@ test('sandbox environment HUD can scrub time and change date', async ({
     await expect(page.getByTestId('sandbox-date-value')).toHaveText(
         '2026-12-21',
     );
+});
+
+test('switching from sandbox to a normal garden clears environment overrides after loading', async ({
+    mount,
+    page,
+}) => {
+    await mount(<SandboxEnvironmentResetStory />);
+
+    await expect(page.getByTestId('garden-mode-value')).toHaveText('sandbox');
+    await expect(page.getByTestId('sandbox-time-value')).toHaveText('22:00');
+    await expect(page.getByTestId('sandbox-weather-value')).toContainText(
+        '"rainy":1',
+    );
+
+    await page.getByTestId('select-normal-garden').click();
+
+    await expect(page.getByTestId('garden-mode-value')).toHaveText('loading');
+    await expect(page.getByTestId('sandbox-weather-value')).toContainText(
+        '"rainy":1',
+    );
+
+    await expect(page.getByTestId('garden-mode-value')).toHaveText('normal');
+    await expect(page.getByTestId('sandbox-time-value')).toHaveText('');
+    await expect(page.getByTestId('sandbox-weather-value')).toHaveText('null');
 });

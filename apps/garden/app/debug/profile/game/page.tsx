@@ -209,11 +209,11 @@ export default async function GameProfilePage({
                 flags={debugGameFlags}
                 freezeTime={freezeTime}
                 hideHud={!showHud}
+                initialQualitySetting={quality}
                 mockGarden
                 mockGardenProfile={mockGardenProfile}
                 noControls={!enableControls}
                 noSound
-                quality={quality}
                 weather={weather}
                 winterMode={mode === 'snow' ? 'winter' : 'summer'}
             />

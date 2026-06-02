@@ -12,7 +12,7 @@ export {
     PLANT_STAGES,
 } from './hud/raisedBed/featuredOperations';
 export { defaultLocalSandboxStorageKey } from './localSandboxGarden';
-export type { GameQualityTier } from './scene/gameQuality';
+export type { GameQualitySetting, GameQualityTier } from './scene/gameQuality';
 export { resolveSpriteAtlasAssetPaths } from './sprites/resolveSpriteAtlasAssetPaths';
 export { SpriteAtlasBillboard } from './sprites/SpriteAtlasBillboard';
 export type {

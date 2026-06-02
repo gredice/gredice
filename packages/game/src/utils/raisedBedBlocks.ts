@@ -94,12 +94,12 @@ function sortBlockIdsByOrientation(
     });
 }
 
-function getConnectedRaisedBedBlockIds(
+export function getConnectedRaisedBedBlockIds(
     stacks: Stack[],
     blockId: string,
 ): string[] {
     const startPlacement = getBlockPlacement(stacks, blockId);
-    if (!startPlacement || startPlacement.block.name !== 'Raised_Bed') {
+    if (startPlacement?.block.name !== 'Raised_Bed') {
         return [];
     }
 
@@ -113,7 +113,7 @@ function getConnectedRaisedBedBlockIds(
         }
 
         const currentPlacement = getBlockPlacement(stacks, currentId);
-        if (!currentPlacement || currentPlacement.block.name !== 'Raised_Bed') {
+        if (currentPlacement?.block.name !== 'Raised_Bed') {
             continue;
         }
 
@@ -139,7 +139,7 @@ export function findAttachedRaisedBedBlockId(
     blockId: string,
 ): string | null {
     const placement = getBlockPlacement(stacks, blockId);
-    if (!placement || placement.block.name !== 'Raised_Bed') {
+    if (placement?.block.name !== 'Raised_Bed') {
         return null;
     }
 

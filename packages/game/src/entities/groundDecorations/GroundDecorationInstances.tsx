@@ -9,12 +9,12 @@ import {
     Frustum,
     InstancedBufferAttribute,
     type InstancedMesh,
+    type IUniform,
     Matrix4,
     MeshLambertMaterial,
     PlaneGeometry,
     Quaternion,
     Vector3,
-    type IUniform,
 } from 'three';
 import { SeededRNG } from '../../generators/plant/lib/rng';
 import { useWeatherNow } from '../../hooks/useWeatherNow';

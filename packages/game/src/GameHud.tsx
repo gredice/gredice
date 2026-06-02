@@ -2,7 +2,7 @@
 
 import { cx } from '@gredice/ui/utils';
 import type { GameSceneProps } from './GameScene';
-import { useIsSandboxGarden } from './hooks/useCurrentGarden';
+import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { AccountHud } from './hud/AccountHud';
 import { AdventHud } from './hud/AdventHud';
 import { AudioHud } from './hud/AudioHud';
@@ -38,8 +38,9 @@ export function GameHud({
     noWeather?: boolean;
 }) {
     const isCloseup = useGameState((state) => state.view) === 'closeup';
+    const { data: currentGarden } = useCurrentGarden();
     // Sandbox ("play") gardens are decoration only: no economy or inventory.
-    const isSandbox = useIsSandboxGarden();
+    const isSandbox = Boolean(currentGarden?.isSandbox);
     const isLocalSandbox = useGameState(
         (state) => state.localSandboxStorageKey !== null,
     );

@@ -90,6 +90,17 @@ export type AnimalDisturbance = {
     radius: number;
 };
 
+type WeatherOverride = {
+    cloudy: number;
+    rainy: number;
+    snowy: number;
+    foggy: number;
+    thundery?: number;
+    windSpeed?: number;
+    windDirection?: number;
+    snowAccumulation?: number;
+};
+
 export type GameState = {
     // General
     isMock: boolean;
@@ -159,26 +170,9 @@ export type GameState = {
     setEditHitboxDebugVisible: (visible: boolean) => void;
     entityRenderModeDebugVisible: boolean;
     setEntityRenderModeDebugVisible: (visible: boolean) => void;
-    weather?: {
-        cloudy: number;
-        rainy: number;
-        snowy: number;
-        foggy: number;
-        thundery?: number;
-        windSpeed?: number;
-        windDirection?: number;
-        snowAccumulation?: number;
-    };
-    setWeather: (weather: {
-        cloudy: number;
-        rainy: number;
-        snowy: number;
-        foggy: number;
-        thundery?: number;
-        windSpeed?: number;
-        windDirection?: number;
-        snowAccumulation?: number;
-    }) => void;
+    weather?: WeatherOverride;
+    setWeather: (weather: WeatherOverride | undefined) => void;
+    clearEnvironmentOverrides: () => void;
 
     // Environment derived state
     snowCoverage: number;
@@ -203,6 +197,7 @@ export function createGameState({
     spriteBaseUrl,
     dayNightCycleDisabled: initialDayNightCycleDisabled,
     freezeTime,
+    initialQualitySetting,
     isMock,
     localSandboxStorageKey,
     mockGardenProfile,
@@ -212,6 +207,7 @@ export function createGameState({
     spriteBaseUrl?: string;
     dayNightCycleDisabled?: boolean;
     freezeTime: Date | null;
+    initialQualitySetting?: GameQualitySetting;
     isMock: boolean;
     localSandboxStorageKey?: string;
     mockGardenProfile?: MockGardenProfile;
@@ -220,7 +216,7 @@ export function createGameState({
     const dayNightCycleDisabled =
         initialDayNightCycleDisabled ?? isDayNightCycleDisabled();
     const gameQualityCustomProfile = getGameQualityCustomProfile();
-    const gameQualitySetting = getGameQualitySetting();
+    const gameQualitySetting = initialQualitySetting ?? getGameQualitySetting();
     const weatherVisualizationDisabled = isWeatherVisualizationDisabled();
     const now = freezeTime ?? new Date();
     const timeOfDay = resolveGameTimeOfDay(now, dayNightCycleDisabled);
@@ -449,6 +445,23 @@ export function createGameState({
         setEntityRenderModeDebugVisible: (entityRenderModeDebugVisible) =>
             set({ entityRenderModeDebugVisible }),
         setWeather: (weather) => set({ weather }),
+        clearEnvironmentOverrides: () => {
+            const referenceTime = new Date();
+            const { sunrise, sunset } = getGameSunriseSunset(
+                defaultGameLocation,
+                referenceTime,
+            );
+            set({
+                freezeTime: null,
+                weather: undefined,
+                timeOfDay: resolveGameTimeOfDay(
+                    referenceTime,
+                    get().dayNightCycleDisabled,
+                ),
+                sunriseTime: sunrise,
+                sunsetTime: sunset,
+            });
+        },
         snowCoverage: 0,
         setSnowCoverage: (snowCoverage) => set({ snowCoverage }),
         waterColors: defaultWaterColors,

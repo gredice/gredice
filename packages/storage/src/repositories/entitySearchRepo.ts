@@ -185,7 +185,7 @@ function blockImageMetadata(entity: EntitySearchSource): ImageMetadata | null {
     }
 
     return {
-        url: `https://www.gredice.com/assets/blocks/${encodeURIComponent(blockName)}.png`,
+        url: `https://www.gredice.com/assets/blocks/${encodeURIComponent(blockName)}.webp`,
         alt: entityTitle(entity),
     };
 }

@@ -29,6 +29,7 @@ import {
     farGameCameraZoom,
 } from './gameCamera';
 import { useBlockData } from './hooks/useBlockData';
+import { useClearSandboxEnvironmentOverrides } from './hooks/useClearSandboxEnvironmentOverrides';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useDeferredSceneDetails } from './hooks/useDeferredSceneDetails';
 import { useFocusPlacedBlock } from './hooks/useFocusPlacedBlock';
@@ -40,6 +41,7 @@ import { ParticleSystemProvider } from './particles/ParticleSystem';
 import { Environment } from './scene/Environment';
 import {
     type GameQualityAutoProfileMetrics,
+    type GameQualitySetting,
     type GameQualityTier,
     getGameQualityAutoProfileMetrics,
     resolveGameQualityProfile,
@@ -74,10 +76,13 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     weather?: Partial<GameState['weather']>;
     deferDetails?: boolean;
     quality?: GameQualityTier;
+    initialQualitySetting?: GameQualitySetting;
 
     // Development purposes
     flags?: GameFeatureFlags;
 };
+
+type GameSceneInnerProps = Omit<GameSceneProps, 'initialQualitySetting'>;
 
 function useAutoQualityProfileMetrics(enabled: boolean) {
     const [metrics, setMetrics] = useState<
@@ -165,7 +170,7 @@ export function GameScene({
     weather,
     deferDetails,
     ...rest
-}: GameSceneProps) {
+}: GameSceneInnerProps) {
     useFocusPlacedBlock();
     useRaisedBedCloseup();
     const weatherVisualizationDisabled = useGameState(
@@ -201,6 +206,7 @@ export function GameScene({
     // Start non-critical metadata early, but don't block the first scene frame.
     useBlockData();
     const { data: garden, isLoading: gardenLoading } = useCurrentGarden();
+    useClearSandboxEnvironmentOverrides(garden);
     useWeatherNow(!isLocalSandbox && !weatherDisabled && !weather);
     const isLoading = gardenLoading;
 

@@ -1,6 +1,6 @@
 ---
 name: gredice-domain-workflow-docs
-description: Use for documenting Gredice workflows: delivery, checkout, payments, notifications, inventory, operations, crons, env, and failures across apps/packages.
+description: "Use for documenting Gredice workflows: delivery, checkout, payments, notifications, inventory, operations, crons, env, and failures across apps/packages."
 ---
 
 # Gredice Domain Workflow Docs

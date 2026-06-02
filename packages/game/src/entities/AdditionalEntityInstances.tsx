@@ -1,4 +1,4 @@
-import { type ReactNode, Suspense, useMemo } from 'react';
+import { type ReactNode, Suspense, useEffect, useMemo } from 'react';
 import {
     Color,
     DoubleSide,
@@ -7,11 +7,14 @@ import {
     Vector4,
 } from 'three';
 import type { BufferGeometry } from 'three/src/Three.Core.js';
+import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import type { GameAssetName } from '../data/models';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { GLTFResult } from '../models/GameAssets';
 import { snowPresets } from '../snow/snowPresets';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
+import { getConnectedRaisedBedBlockIds } from '../utils/raisedBedBlocks';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useWaterBlockMaterial } from './BlockWater';
 import { getCactusVariantConfig } from './Cactus';
@@ -27,9 +30,17 @@ import {
     type GroundPatchSurface,
     useGroundPatchMaterial,
 } from './helpers/groundPatchMaterial';
+import { HoverOutline } from './helpers/HoverOutline';
 import { resolveEntityNeighbors } from './helpers/useEntityNeighbors';
 import { RaisedBedFields } from './raisedBed/RaisedBedFields';
-import { resolveWaterFoamEdges } from './waterBlockFoam';
+import {
+    resolveWaterFoamCorners,
+    resolveWaterFoamEdges,
+} from './waterBlockFoam';
+import {
+    createMergedWaterSideGeometry,
+    createWaterBlockGeometry,
+} from './waterBlockGeometry';
 
 type CommonWeatherProps = Pick<
     EntityInstancesBlockBaseProps,
@@ -370,7 +381,6 @@ function BlockGroundInstances({
 }
 
 function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
-    const { nodes } = useGameGLTF('BlockSand');
     const waterInstances = useEntityBlockInstances({
         name: 'Block_Water',
         stacks,
@@ -381,65 +391,110 @@ function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
         return null;
     }
 
-    const groupedInstances = waterFoamEdgeMasks
-        .map((mask) => ({
-            ...mask,
-            instances: waterInstances.filter((instance) => {
-                const foamEdges = resolveWaterFoamEdges({
-                    block: instance.block,
-                    stack: instance.stack,
-                    stacks,
-                });
-                return foamEdgeKey(foamEdges) === mask.key;
-            }),
-        }))
-        .filter((mask) => mask.instances.length > 0);
+    const topSurfaceInstances = waterInstances.filter(isWaterTopSurfaceVisible);
+    const groupedInstances = resolveWaterBlockInstanceGroups({
+        instances: topSurfaceInstances,
+        stacks,
+    });
 
     return (
         <>
             {groupedInstances.map((mask) => (
                 <WaterBlockMaskInstances
                     key={`Block_Water-${mask.key}`}
+                    foamCorners={mask.foamCorners}
                     foamEdges={mask.foamEdges}
-                    geometry={nodes.Block_Sand_1.geometry}
                     instances={mask.instances}
                     maskKey={mask.key}
                 />
             ))}
+            <WaterBlockMergedSides instances={waterInstances} />
         </>
     );
 }
 
-const waterFoamEdgeMasks = Array.from({ length: 16 }, (_, mask) => {
-    const foamEdges = new Vector4(
-        mask & 1 ? 1 : 0,
-        mask & 2 ? 1 : 0,
-        mask & 4 ? 1 : 0,
-        mask & 8 ? 1 : 0,
-    );
-
-    return {
-        key: foamEdgeKey(foamEdges),
-        foamEdges,
-    };
-});
+function isWaterTopSurfaceVisible(instance: EntityBlockInstance) {
+    return instance.blockIndex === instance.stack.blocks.length - 1;
+}
 
 function foamEdgeKey(foamEdges: Vector4) {
     return `${foamEdges.x}${foamEdges.y}${foamEdges.z}${foamEdges.w}`;
 }
 
-function WaterBlockMaskInstances({
+function waterFoamMaskKey({
+    foamCorners,
     foamEdges,
-    geometry,
+}: {
+    foamCorners: Vector4;
+    foamEdges: Vector4;
+}) {
+    return `${foamEdgeKey(foamEdges)}-${foamEdgeKey(foamCorners)}`;
+}
+
+function resolveWaterBlockInstanceGroups({
+    instances,
+    stacks,
+}: {
+    instances: EntityBlockInstance[];
+    stacks: Stack[] | undefined;
+}) {
+    const groupedInstances = new Map<
+        string,
+        {
+            foamCorners: Vector4;
+            foamEdges: Vector4;
+            instances: EntityBlockInstance[];
+            key: string;
+        }
+    >();
+
+    for (const instance of instances) {
+        const foamEdges = resolveWaterFoamEdges({
+            block: instance.block,
+            stack: instance.stack,
+            stacks,
+        });
+        const foamCorners = resolveWaterFoamCorners({
+            block: instance.block,
+            stack: instance.stack,
+            stacks,
+        });
+        const key = waterFoamMaskKey({ foamCorners, foamEdges });
+        const group = groupedInstances.get(key);
+
+        if (group) {
+            group.instances.push(instance);
+        } else {
+            groupedInstances.set(key, {
+                foamCorners,
+                foamEdges,
+                instances: [instance],
+                key,
+            });
+        }
+    }
+
+    return [...groupedInstances.values()];
+}
+
+function WaterBlockMaskInstances({
+    foamCorners,
+    foamEdges,
     instances,
     maskKey,
 }: {
+    foamCorners: Vector4;
     foamEdges: Vector4;
-    geometry: BufferGeometry;
     instances: EntityBlockInstance[];
     maskKey: string;
 }) {
-    const material = useWaterBlockMaterial(foamEdges);
+    const material = useWaterBlockMaterial(foamEdges, true, foamCorners);
+    const geometry = useMemo(
+        () => createWaterBlockGeometry(foamEdges, { includeSides: false }),
+        [foamEdges],
+    );
+
+    useEffect(() => () => geometry.dispose(), [geometry]);
 
     if (instances.length === 0) {
         return null;
@@ -453,6 +508,38 @@ function WaterBlockMaskInstances({
             material={material}
             castShadow={false}
             renderOrder={1}
+        />
+    );
+}
+
+const mergedWaterSideFoamEdges = new Vector4(0, 0, 0, 0);
+
+function WaterBlockMergedSides({
+    instances,
+}: {
+    instances: EntityBlockInstance[];
+}) {
+    const material = useWaterBlockMaterial(mergedWaterSideFoamEdges, false);
+    const geometry = useMemo(
+        () => createMergedWaterSideGeometry(instances),
+        [instances],
+    );
+    const hasSideFaces = (geometry.getIndex()?.count ?? 0) > 0;
+
+    useEffect(() => () => geometry.dispose(), [geometry]);
+
+    if (!hasSideFaces) {
+        return null;
+    }
+
+    return (
+        <mesh
+            castShadow={false}
+            receiveShadow={false}
+            geometry={geometry}
+            material={material}
+            renderOrder={1}
+            raycast={() => null}
         />
     );
 }
@@ -599,6 +686,11 @@ function RaisedBedInstances({
                     <RaisedBedFields blockId={instance.block.id} />
                 </group>
             ))}
+            <RaisedBedHoverOutlines
+                instances={instances}
+                nodes={nodes}
+                stacks={stacks}
+            />
         </>
     );
 }
@@ -609,6 +701,69 @@ const raisedBedShapeKeys = [
     'Raised_Bed_I',
     'Raised_Bed_U',
 ] satisfies RaisedBedShapeKey[];
+
+const raisedBedShapeParts = {
+    Raised_Bed_O: ['Raised_Bed_O_1', 'Raised_Bed_O_2'],
+    Raised_Bed_L: ['Raised_Bed_L_1', 'Raised_Bed_L_2'],
+    Raised_Bed_I: ['Raised_Bed_I_1', 'Raised_Bed_I_2'],
+    Raised_Bed_U: ['Raised_Bed_U_1', 'Raised_Bed_U_2'],
+} satisfies Record<
+    RaisedBedShapeKey,
+    [keyof GLTFResult['nodes'], keyof GLTFResult['nodes']]
+>;
+
+function RaisedBedHoverOutlines({
+    instances,
+    nodes,
+    stacks,
+}: {
+    instances: RaisedBedResolvedInstance[];
+    nodes: GLTFResult['nodes'];
+    stacks: Stack[] | undefined;
+}) {
+    const hoveredBlock = useHoveredBlockStore((state) => state.hoveredBlock);
+
+    if (hoveredBlock?.name !== 'Raised_Bed' || !stacks) {
+        return null;
+    }
+
+    const hoveredBlockIds = new Set(
+        getConnectedRaisedBedBlockIds(stacks, hoveredBlock.id),
+    );
+    if (hoveredBlockIds.size === 0) {
+        return null;
+    }
+
+    return instances.map((instance) => {
+        if (!hoveredBlockIds.has(instance.block.id)) {
+            return null;
+        }
+
+        const [shape1, shape2] = raisedBedShapeParts[instance.shape];
+
+        return (
+            <HoverOutline key={`Raised_Bed-hover-${instance.id}`} hovered>
+                <group
+                    position={instance.position}
+                    rotation={[0, instance.rotation * (Math.PI / 2), 0]}
+                >
+                    <mesh
+                        geometry={nodes[shape1].geometry}
+                        raycast={() => null}
+                    >
+                        <meshBasicMaterial visible={false} />
+                    </mesh>
+                    <mesh
+                        geometry={nodes[shape2].geometry}
+                        raycast={() => null}
+                    >
+                        <meshBasicMaterial visible={false} />
+                    </mesh>
+                </group>
+            </HoverOutline>
+        );
+    });
+}
 
 type ShadeKey =
     | 'Shade_Solo'
@@ -936,6 +1091,7 @@ function GardenBoxInstances({
                 geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
                 material={materials[planksMaterialName]}
                 localPosition={[0, 0.6, -0.38]}
+                castShadow={false}
                 renderRainWetOverlay
                 snow={snowPresets.giftBox}
                 {...commonSnowProps}
@@ -947,12 +1103,81 @@ function GardenBoxInstances({
                 material={materials[planksMaterialName]}
                 localPosition={[0, 0.6, -0.38]}
                 localRotation={[-Math.PI / 2, 0, 0]}
+                castShadow={false}
                 renderRainWetOverlay
                 snow={snowPresets.giftBox}
                 {...commonSnowProps}
             />
+            <GardenBoxHoverOutlines
+                instances={bodyInstances}
+                nodes={nodes}
+                openGardenBoxBlockId={openGardenBoxBlockId}
+                hoveredGardenBoxBlockId={hoveredGardenBoxBlockId}
+            />
         </>
     );
+}
+
+function GardenBoxHoverOutlines({
+    hoveredGardenBoxBlockId,
+    instances,
+    nodes,
+    openGardenBoxBlockId,
+}: {
+    hoveredGardenBoxBlockId: string | null;
+    instances: EntityBlockInstance[];
+    nodes: GLTFResult['nodes'];
+    openGardenBoxBlockId: string | null;
+}) {
+    const hoveredBlock = useHoveredBlockStore((state) => state.hoveredBlock);
+    const isLocalSandbox = useGameState(
+        (state) => state.localSandboxStorageKey !== null,
+    );
+    const { data: garden } = useCurrentGarden();
+
+    if (isLocalSandbox || garden?.isSandbox) {
+        return null;
+    }
+
+    return instances.map((instance) => {
+        const lidOpen =
+            hoveredGardenBoxBlockId === instance.block.id ||
+            openGardenBoxBlockId === instance.block.id;
+        const hovered = hoveredBlock === instance.block || lidOpen;
+
+        if (!hovered) {
+            return null;
+        }
+
+        return (
+            <HoverOutline
+                key={`GardenBox-hover-${instance.id}`}
+                hovered
+                thickness={7}
+                color="#f8fafc"
+            >
+                <group
+                    position={instance.position}
+                    rotation={[0, instance.rotation * (Math.PI / 2), 0]}
+                >
+                    <mesh
+                        geometry={nodes.GardenBox_Body_Planks.geometry}
+                        raycast={() => null}
+                    >
+                        <meshBasicMaterial visible={false} />
+                    </mesh>
+                    <mesh
+                        geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
+                        position={[0, 0.6, -0.38]}
+                        rotation={lidOpen ? [-Math.PI / 2, 0, 0] : undefined}
+                        raycast={() => null}
+                    >
+                        <meshBasicMaterial visible={false} />
+                    </mesh>
+                </group>
+            </HoverOutline>
+        );
+    });
 }
 
 function PotInstances({

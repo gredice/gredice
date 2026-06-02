@@ -1,6 +1,6 @@
 ---
 name: gredice-public-docs-seo
-description: Use for public Gredice content/SEO in apps/www or status: metadata, structured data, sitemap, Croatian copy, FAQ/legal/product pages, CMS routes.
+description: "Use for public Gredice content/SEO in apps/www or status: metadata, structured data, sitemap, Croatian copy, FAQ/legal/product pages, CMS routes."
 ---
 
 # Gredice Public Docs SEO
