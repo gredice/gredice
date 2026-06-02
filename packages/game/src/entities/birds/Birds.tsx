@@ -137,6 +137,15 @@ type BirdRigParts = {
     walkPoseAmount: number;
 };
 
+const birdDebugBehaviors = [
+    'home',
+    'air',
+    'circle',
+    'tree',
+    'entity',
+    'ground',
+] satisfies BirdBehavior[];
+
 const birdScale = 0.28;
 const birdGroundLift = 0.02;
 const birdHousePerchYOffset = 1.3;
@@ -895,6 +904,72 @@ function chooseManualNextTarget({
     return pickCandidate(alternatives, random) ?? target;
 }
 
+function chooseDebugTarget({
+    behavior,
+    habitat,
+    random,
+    timeOfDay,
+}: {
+    behavior: string;
+    habitat: BirdHabitat;
+    random: () => number;
+    timeOfDay: number;
+}) {
+    const range = getBirdActivityRange(timeOfDay);
+
+    if (behavior === 'home') {
+        return habitat.home;
+    }
+
+    if (behavior === 'air') {
+        return createAirTarget({
+            anchors: getAirAnchorsInRange(habitat, range),
+            home: habitat.home,
+            index: 0,
+            random,
+        });
+    }
+
+    if (behavior === 'circle') {
+        const anchor = pickCandidate(
+            candidatesInRange(habitat.circleAnchors, habitat.home, range),
+            random,
+        );
+        return anchor
+            ? createCircleTarget({ anchor, home: habitat.home, random })
+            : habitat.home;
+    }
+
+    if (behavior === 'tree') {
+        return (
+            pickCandidate(
+                candidatesInRange(habitat.trees, habitat.home, range),
+                random,
+            ) ?? habitat.home
+        );
+    }
+
+    if (behavior === 'entity') {
+        return (
+            pickCandidate(
+                candidatesInRange(habitat.entities, habitat.home, range),
+                random,
+            ) ?? habitat.home
+        );
+    }
+
+    if (behavior === 'ground') {
+        return (
+            pickCandidate(
+                candidatesInRange(habitat.grounds, habitat.home, range),
+                random,
+            ) ?? habitat.home
+        );
+    }
+
+    return null;
+}
+
 function makeMovingState({
     airUntil,
     airWaypointIndex = 0,
@@ -1426,6 +1501,7 @@ function createBirdDebugEntry({
         behavior: runtime.target.behavior,
         activity: getBirdDebugActivity(runtime),
         targetId: runtime.target.id,
+        debugBehaviors: birdDebugBehaviors,
         position: {
             x: roundBirdDebugCoordinate(group.position.x),
             y: roundBirdDebugCoordinate(group.position.y),
@@ -1443,9 +1519,13 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     const runtimeRef = useRef<BirdRuntimeState | null>(null);
     const flappingRef = useRef(false);
     const lastAnimalDebugUpdateRef = useRef(0);
+    const lastDebugCommandSequenceRef = useRef(0);
     const lastDisturbanceSequenceRef = useRef(0);
     const [isFlapping, setIsFlapping] = useState(false);
     const timeOfDay = useGameState((state) => state.timeOfDay);
+    const animalDebugCommand = useGameState(
+        (state) => state.animalDebugCommand,
+    );
     const animalDisturbance = useGameState((state) => state.animalDisturbance);
     const setAnimalDebugEntry = useGameState(
         (state) => state.setAnimalDebugEntry,
@@ -1574,6 +1654,49 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
             group.position.copy(habitat.home.position);
             if (habitat.home.facingYaw !== undefined) {
                 group.rotation.y = habitat.home.facingYaw;
+            }
+        }
+
+        if (
+            animalDebugCommand &&
+            animalDebugCommand.sequence !==
+                lastDebugCommandSequenceRef.current &&
+            animalDebugCommand.species === 'Bird'
+        ) {
+            lastDebugCommandSequenceRef.current = animalDebugCommand.sequence;
+
+            if (
+                !animalDebugCommand.targetId ||
+                animalDebugCommand.targetId === habitat.id
+            ) {
+                const target = chooseDebugTarget({
+                    behavior: animalDebugCommand.behavior,
+                    habitat,
+                    random,
+                    timeOfDay,
+                });
+
+                if (target) {
+                    runtime =
+                        target.behavior !== 'air' &&
+                        target.behavior !== 'circle' &&
+                        group.position.distanceTo(target.position) < 0.08
+                            ? makeSettledState({
+                                  now,
+                                  random,
+                                  target,
+                                  timeOfDay,
+                              })
+                            : makeMovingState({
+                                  from: group.position.clone(),
+                                  now,
+                                  random,
+                                  takeoffLead: false,
+                                  target,
+                                  timeOfDay,
+                              });
+                    runtimeRef.current = runtime;
+                }
             }
         }
 

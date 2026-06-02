@@ -127,6 +127,7 @@ export const automationDefinitions = pgTable(
         status: automationDefinitionStatusEnum('status')
             .notNull()
             .default('draft'),
+        maxConcurrentRuns: integer('max_concurrent_runs').notNull().default(1),
         triggerModuleKey: text('trigger_module_key'),
         triggerEventType: text('trigger_event_type'),
         graph: jsonb('graph')

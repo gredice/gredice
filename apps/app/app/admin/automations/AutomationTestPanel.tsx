@@ -142,7 +142,7 @@ export function AutomationTestPanel({
             </Button>
             {result?.ok ? (
                 <Typography level="body2" className="text-green-700">
-                    Run #{result.runId} završen je statusom {result.status}.
+                    Run #{result.runId} dodan je u red čekanja.
                 </Typography>
             ) : null}
             {result && !result.ok ? (
@@ -222,7 +222,7 @@ export function AutomationRunRetryControls({ runId }: { runId: number }) {
             </Row>
             {result?.ok ? (
                 <Typography level="body3" className="text-green-700">
-                    Run #{result.runId}: {result.status}
+                    Run #{result.runId} dodan je u red čekanja.
                 </Typography>
             ) : null}
             {result && !result.ok ? (

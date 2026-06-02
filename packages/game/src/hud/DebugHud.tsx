@@ -270,6 +270,9 @@ export function DebugHud() {
         (s) => s.setDayNightCycleDisabled,
     );
     const animalDebugEntries = useGameState((s) => s.animalDebugEntries);
+    const triggerAnimalDebugBehavior = useGameState(
+        (s) => s.triggerAnimalDebugBehavior,
+    );
     const editHitboxDebugVisible = useGameState(
         (s) => s.editHitboxDebugVisible,
     );
@@ -809,12 +812,71 @@ export function DebugHud() {
                                                 {entry.behavior} →{' '}
                                                 {entry.targetId || 'none'}
                                             </div>
+                                            {entry.pathfinding ? (
+                                                <div className="mt-1 rounded bg-muted/70 px-1.5 py-1 font-mono text-[10px] text-muted-foreground">
+                                                    pathfinding{' '}
+                                                    {entry.pathfinding.status} ·{' '}
+                                                    {
+                                                        entry.pathfinding
+                                                            .waypointCount
+                                                    }{' '}
+                                                    wp ·{' '}
+                                                    {entry.pathfinding.distance}
+                                                    b ·{' '}
+                                                    {
+                                                        entry.pathfinding
+                                                            .visitedCellCount
+                                                    }{' '}
+                                                    checked ·{' '}
+                                                    {
+                                                        entry.pathfinding
+                                                            .blockedCellCount
+                                                    }{' '}
+                                                    blocked
+                                                    {entry.pathfinding
+                                                        .nextWaypoint
+                                                        ? ` · next ${formatAnimalPosition(entry.pathfinding.nextWaypoint)}`
+                                                        : ''}
+                                                </div>
+                                            ) : null}
                                             <div className="inline-flex items-center gap-1 font-mono text-muted-foreground">
                                                 <MapPin className="size-3 shrink-0" />
                                                 {formatAnimalPosition(
                                                     entry.position,
                                                 )}
                                             </div>
+                                            {entry.debugBehaviors?.length ? (
+                                                <div className="mt-1.5 flex flex-wrap gap-1">
+                                                    {entry.debugBehaviors.map(
+                                                        (behavior) => (
+                                                            <Button
+                                                                key={`${entry.id}-${behavior}`}
+                                                                size="xs"
+                                                                className="h-6 px-1.5 text-[10px]"
+                                                                variant={
+                                                                    entry.behavior ===
+                                                                    behavior
+                                                                        ? 'solid'
+                                                                        : 'outlined'
+                                                                }
+                                                                onClick={() =>
+                                                                    triggerAnimalDebugBehavior(
+                                                                        {
+                                                                            behavior,
+                                                                            species:
+                                                                                entry.species,
+                                                                            targetId:
+                                                                                entry.id,
+                                                                        },
+                                                                    )
+                                                                }
+                                                            >
+                                                                {behavior}
+                                                            </Button>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            ) : null}
                                         </div>
                                     ))}
                                 </Stack>

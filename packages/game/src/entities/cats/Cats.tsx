@@ -25,6 +25,12 @@ import {
     pickCatBehavior,
     shouldCatSeekCover,
 } from './catBehavior';
+import {
+    type CatPathCell,
+    type CatPathResult,
+    type CatPathSurface,
+    findCatPath,
+} from './catPathfinding';
 
 type CatWeatherOverride = Partial<NonNullable<GameState['weather']>>;
 
@@ -37,14 +43,11 @@ type CatTarget = {
     walkPosition?: Vector3;
 };
 
-type CatGroundSurface = {
-    x: number;
-    y: number;
-    z: number;
-};
+type CatGroundSurface = CatPathSurface;
 
 type CatHabitat = {
     id: string;
+    blockedCells: CatPathCell[];
     covers: CatTarget[];
     groundSurfaces: CatGroundSurface[];
     lowEntities: CatTarget[];
@@ -58,6 +61,9 @@ type MovingCatState = {
     duration: number;
     from: Vector3;
     groundSurfaces: CatGroundSurface[];
+    path: Vector3[];
+    pathDistance: number;
+    pathfinding: CatPathResult;
     startedAt: number;
     target: CatTarget;
     to: Vector3;
@@ -76,6 +82,14 @@ type CatAnimationName =
     | 'Cat_Walk'
     | 'Cat_LyingIdle'
     | 'Cat_PreyWatch';
+
+const catDebugBehaviors = [
+    'pillow',
+    'roam',
+    'cover',
+    'low-entity',
+    'stalk-bird',
+] satisfies CatBehavior[];
 
 const clearCatWeather = {
     cloudy: 0,
@@ -296,6 +310,24 @@ function createCatGroundSurfaces(
     return surfaces;
 }
 
+function createCatBlockedCells(stacks: Stack[] | undefined) {
+    const blockedCells: CatPathCell[] = [];
+
+    for (const stack of stacks ?? []) {
+        const topBlock = stack.blocks.at(-1);
+        if (!topBlock || isGroundBlockName(topBlock.name)) {
+            continue;
+        }
+
+        blockedCells.push({
+            x: Math.round(stack.position.x),
+            z: Math.round(stack.position.z),
+        });
+    }
+
+    return blockedCells;
+}
+
 function targetForPillowBlock({
     block,
     blockData,
@@ -406,6 +438,7 @@ function createCatHabitats(
     stacks: Stack[] | undefined,
     blockData: BlockData[] | null | undefined,
 ) {
+    const blockedCells = createCatBlockedCells(stacks);
     const groundSurfaces = createCatGroundSurfaces(stacks, blockData);
     const pillows: CatTarget[] = [];
     const covers: CatTarget[] = [];
@@ -456,6 +489,7 @@ function createCatHabitats(
 
     return pillows.map((pillow) => ({
         id: `cat-${pillow.id}`,
+        blockedCells,
         covers,
         groundSurfaces,
         lowEntities,
@@ -465,10 +499,8 @@ function createCatHabitats(
     }));
 }
 
-function movementDuration(from: Vector3, to: Vector3) {
-    const horizontal = horizontalDistance(from, to);
-
-    return MathUtils.clamp(horizontal / catWalkSpeedBlocksPerSecond, 0.9, 8.5);
+function movementDuration(distance: number) {
+    return MathUtils.clamp(distance / catWalkSpeedBlocksPerSecond, 0.9, 8.5);
 }
 
 function movingCatHorizontalSpeed(runtime: MovingCatState) {
@@ -476,7 +508,61 @@ function movingCatHorizontalSpeed(runtime: MovingCatState) {
         return 0;
     }
 
-    return horizontalDistance(runtime.from, runtime.to) / runtime.duration;
+    return runtime.pathDistance / runtime.duration;
+}
+
+function pathHorizontalDistance(path: Vector3[]) {
+    let distance = 0;
+    for (let index = 1; index < path.length; index += 1) {
+        const previous = path[index - 1];
+        const current = path[index];
+        if (!previous || !current) {
+            continue;
+        }
+        distance += horizontalDistance(previous, current);
+    }
+    return distance;
+}
+
+function vectorFromPathPoint(point: CatPathSurface) {
+    return new Vector3(point.x, point.y, point.z);
+}
+
+function vectorPathFromResult(pathfinding: CatPathResult) {
+    return pathfinding.points.map(vectorFromPathPoint);
+}
+
+function pathPositionAtDistance(path: Vector3[], distance: number) {
+    if (path.length <= 0) {
+        return new Vector3();
+    }
+
+    const firstPoint = path[0];
+    if (!firstPoint || distance <= 0) {
+        return firstPoint?.clone() ?? new Vector3();
+    }
+
+    let remainingDistance = distance;
+    for (let index = 1; index < path.length; index += 1) {
+        const from = path[index - 1];
+        const to = path[index];
+        if (!from || !to) {
+            continue;
+        }
+
+        const segmentDistance = horizontalDistance(from, to);
+        if (segmentDistance <= 0.0001) {
+            continue;
+        }
+
+        if (remainingDistance <= segmentDistance) {
+            return from.clone().lerp(to, remainingDistance / segmentDistance);
+        }
+
+        remainingDistance -= segmentDistance;
+    }
+
+    return path[path.length - 1]?.clone() ?? new Vector3();
 }
 
 function catWalkAnimationTimeScale(
@@ -769,13 +855,75 @@ function chooseManualNextTarget({
     return pickCandidate(alternatives, random) ?? target;
 }
 
+function chooseDebugTarget({
+    behavior,
+    birdGroundEntries,
+    habitat,
+    random,
+    timeOfDay,
+    weather,
+}: {
+    behavior: string;
+    birdGroundEntries: AnimalDebugEntry[];
+    habitat: CatHabitat;
+    random: () => number;
+    timeOfDay: number;
+    weather: CatWeather | null | undefined;
+}) {
+    const range = getCatActivityRange(timeOfDay, weather);
+
+    if (behavior === 'pillow') {
+        return habitat.pillow;
+    }
+
+    if (behavior === 'roam') {
+        return createRoamTarget({ habitat, random, range });
+    }
+
+    if (behavior === 'cover') {
+        return (
+            pickCandidate(
+                candidatesInRange(habitat.covers, habitat.pillow, range),
+                random,
+            ) ?? habitat.pillow
+        );
+    }
+
+    if (behavior === 'low-entity') {
+        return (
+            pickCandidate(
+                candidatesInRange(habitat.lowEntities, habitat.pillow, range),
+                random,
+            ) ?? habitat.pillow
+        );
+    }
+
+    if (behavior === 'stalk-bird') {
+        return (
+            createStalkBirdTarget({
+                birdGroundTargets: getGroundBirdTargets({
+                    birdGroundEntries,
+                    habitat,
+                    range,
+                }),
+                habitat,
+                random,
+            }) ?? habitat.pillow
+        );
+    }
+
+    return null;
+}
+
 function makeMovingState({
+    blockedCells,
     from,
     fromTarget,
     groundSurfaces,
     now,
     target,
 }: {
+    blockedCells?: CatPathCell[];
     from: Vector3;
     fromTarget?: CatTarget;
     groundSurfaces?: CatGroundSurface[];
@@ -792,11 +940,26 @@ function makeMovingState({
         walkTo.y = getCatWalkYAt(walkTo, groundSurfaces);
     }
 
+    const pathfinding = findCatPath({
+        blockedCells: blockedCells ?? [],
+        from: walkFrom,
+        surfaces: resolvedGroundSurfaces,
+        to: walkTo,
+    });
+    const path = vectorPathFromResult(pathfinding);
+    const pathDistance = Math.max(
+        pathfinding.distance,
+        pathHorizontalDistance(path),
+    );
+
     return {
         phase: 'moving',
-        duration: movementDuration(walkFrom, walkTo),
+        duration: movementDuration(pathDistance),
         from: walkFrom,
         groundSurfaces: resolvedGroundSurfaces,
+        path,
+        pathDistance,
+        pathfinding,
         startedAt: now,
         target,
         to: walkTo,
@@ -804,10 +967,8 @@ function makeMovingState({
 }
 
 function movingPositionAt(runtime: MovingCatState, progress: number) {
-    const movementProgress = progress;
-    const position = runtime.from.clone().lerp(runtime.to, movementProgress);
-    const walkDistance =
-        horizontalDistance(runtime.from, runtime.to) * movementProgress;
+    const walkDistance = runtime.pathDistance * progress;
+    const position = pathPositionAtDistance(runtime.path, walkDistance);
     const walkPhase = (walkDistance / catWalkCycleDistance) * fullTurn;
 
     position.y = getCatWalkYAt(position, runtime.groundSurfaces);
@@ -894,6 +1055,22 @@ function roundCatDebugCoordinate(value: number) {
     return Math.round(value * 100) / 100;
 }
 
+function roundCatDebugPoint(point: Vector3) {
+    return {
+        x: roundCatDebugCoordinate(point.x),
+        y: roundCatDebugCoordinate(point.y),
+        z: roundCatDebugCoordinate(point.z),
+    };
+}
+
+function nextPathWaypoint(runtime: MovingCatState, position: Vector3) {
+    return (
+        runtime.path.find(
+            (point) => horizontalDistance(point, position) > 0.12,
+        ) ?? runtime.to
+    );
+}
+
 function createCatDebugEntry({
     group,
     habitat,
@@ -913,11 +1090,22 @@ function createCatDebugEntry({
         behavior: runtime.target.behavior,
         activity: getCatDebugActivity(runtime),
         targetId: runtime.target.id,
-        position: {
-            x: roundCatDebugCoordinate(group.position.x),
-            y: roundCatDebugCoordinate(group.position.y),
-            z: roundCatDebugCoordinate(group.position.z),
-        },
+        debugBehaviors: catDebugBehaviors,
+        pathfinding:
+            runtime.phase === 'moving'
+                ? {
+                      blockedCellCount: runtime.pathfinding.blockedCellCount,
+                      distance: roundCatDebugCoordinate(runtime.pathDistance),
+                      nextWaypoint: roundCatDebugPoint(
+                          nextPathWaypoint(runtime, group.position),
+                      ),
+                      status: runtime.pathfinding.status,
+                      targetCell: runtime.pathfinding.targetCell,
+                      visitedCellCount: runtime.pathfinding.visitedCellCount,
+                      waypointCount: runtime.path.length,
+                  }
+                : undefined,
+        position: roundCatDebugPoint(group.position),
         updatedAt: now,
     };
 }
@@ -972,10 +1160,14 @@ function Cat({
     const randomRef = useRef(createRandom(habitat.seed));
     const runtimeRef = useRef<CatRuntimeState | null>(null);
     const lastAnimalDebugUpdateRef = useRef(0);
+    const lastDebugCommandSequenceRef = useRef(0);
     const activeAnimationRef = useRef<CatAnimationName>('Cat_LyingIdle');
     const [activeAnimation, setActiveAnimation] =
         useState<CatAnimationName>('Cat_LyingIdle');
     const timeOfDay = useGameState((state) => state.timeOfDay);
+    const animalDebugCommand = useGameState(
+        (state) => state.animalDebugCommand,
+    );
     const setAnimalDebugEntry = useGameState(
         (state) => state.setAnimalDebugEntry,
     );
@@ -1064,8 +1256,10 @@ function Cat({
         }
 
         runtimeRef.current = makeMovingState({
+            blockedCells: habitat.blockedCells,
             from: group.position.clone(),
-            fromTarget: runtime.target,
+            fromTarget:
+                runtime.phase === 'settled' ? runtime.target : undefined,
             groundSurfaces: habitat.groundSurfaces,
             now,
             target,
@@ -1111,6 +1305,53 @@ function Cat({
             group.position.copy(habitat.pillow.position);
             if (habitat.pillow.facingYaw !== undefined) {
                 group.rotation.y = habitat.pillow.facingYaw;
+            }
+        }
+
+        if (
+            animalDebugCommand &&
+            animalDebugCommand.sequence !==
+                lastDebugCommandSequenceRef.current &&
+            animalDebugCommand.species === 'Cat'
+        ) {
+            lastDebugCommandSequenceRef.current = animalDebugCommand.sequence;
+
+            if (
+                !animalDebugCommand.targetId ||
+                animalDebugCommand.targetId === habitat.id
+            ) {
+                const target = chooseDebugTarget({
+                    behavior: animalDebugCommand.behavior,
+                    birdGroundEntries,
+                    habitat,
+                    random,
+                    timeOfDay,
+                    weather,
+                });
+
+                if (target) {
+                    runtime =
+                        group.position.distanceTo(target.position) < 0.08
+                            ? makeSettledState({
+                                  now,
+                                  random,
+                                  target,
+                                  timeOfDay,
+                                  weather,
+                              })
+                            : makeMovingState({
+                                  blockedCells: habitat.blockedCells,
+                                  from: group.position.clone(),
+                                  fromTarget:
+                                      runtime.phase === 'settled'
+                                          ? runtime.target
+                                          : undefined,
+                                  groundSurfaces: habitat.groundSurfaces,
+                                  now,
+                                  target,
+                              });
+                    runtimeRef.current = runtime;
+                }
             }
         }
 
@@ -1207,6 +1448,7 @@ function Cat({
         }
 
         runtimeRef.current = makeMovingState({
+            blockedCells: habitat.blockedCells,
             from: group.position.clone(),
             fromTarget: runtime.target,
             groundSurfaces: habitat.groundSurfaces,

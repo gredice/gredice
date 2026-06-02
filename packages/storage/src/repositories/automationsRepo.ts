@@ -1,6 +1,7 @@
 import 'server-only';
 
-import { and, asc, desc, eq, gt, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, lte, or, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import {
     type AutomationDefinitionStatus,
     type AutomationGraph,
@@ -28,12 +29,17 @@ type DomainEventRow = typeof events.$inferSelect;
 const defaultCursorKey = 'domain-events';
 const defaultRunLimit = 50;
 const defaultRunMaxAttempts = 3;
+const automationDefinitionAdvisoryLockNamespace = 707_001;
+
+export const defaultAutomationMaxConcurrentRuns = 1;
+export const maxAutomationMaxConcurrentRuns = 25;
 
 export type AutomationDefinitionInput = {
     key: string;
     name: string;
     description?: string | null;
     status?: AutomationDefinitionStatus;
+    maxConcurrentRuns?: number;
     graph?: AutomationGraph;
     metadata?: AutomationJsonObject;
     createdByUserId?: string | null;
@@ -129,6 +135,8 @@ function automationDefinitionValues(input: AutomationDefinitionInput) {
         name: input.name,
         description: input.description ?? null,
         status: input.status ?? 'draft',
+        maxConcurrentRuns:
+            input.maxConcurrentRuns ?? defaultAutomationMaxConcurrentRuns,
         triggerModuleKey: trigger?.moduleKey ?? null,
         triggerEventType: getTriggerEventTypeFromNode(trigger),
         graph,
@@ -149,6 +157,9 @@ function automationDefinitionUpdateValues(input: AutomationDefinitionUpdate) {
             ? { description: input.description }
             : {}),
         ...(input.status !== undefined ? { status: input.status } : {}),
+        ...(input.maxConcurrentRuns !== undefined
+            ? { maxConcurrentRuns: input.maxConcurrentRuns }
+            : {}),
         ...(graph
             ? {
                   graph,
@@ -192,6 +203,9 @@ export async function upsertAutomationDefinitionByKey(
                 name: values.name,
                 description: values.description,
                 status: values.status,
+                ...(input.maxConcurrentRuns !== undefined
+                    ? { maxConcurrentRuns: values.maxConcurrentRuns }
+                    : {}),
                 triggerModuleKey: values.triggerModuleKey,
                 triggerEventType: values.triggerEventType,
                 graph: values.graph,
@@ -461,45 +475,161 @@ export async function claimDueAutomationRuns({
     lockedBy?: string;
     db?: DatabaseClient;
 } = {}): Promise<SelectAutomationRun[]> {
-    const candidates = await db
-        .select({ id: automationRuns.id })
-        .from(automationRuns)
-        .where(
-            and(
-                inArray(automationRuns.status, ['queued', 'retrying']),
-                lte(automationRuns.nextRunAt, now),
-            ),
-        )
-        .orderBy(asc(automationRuns.nextRunAt), asc(automationRuns.id))
-        .limit(limit);
-
-    const claimed: SelectAutomationRun[] = [];
-    for (const candidate of candidates) {
-        const [updated] = await db
-            .update(automationRuns)
-            .set({
-                status: 'running',
-                attempt: sql`${automationRuns.attempt} + 1`,
-                lockedAt: now,
-                lockedBy,
-                startedAt: now,
-                updatedAt: now,
-            })
-            .where(
-                and(
-                    eq(automationRuns.id, candidate.id),
-                    inArray(automationRuns.status, ['queued', 'retrying']),
-                    lte(automationRuns.nextRunAt, now),
-                ),
-            )
-            .returning();
-
-        if (updated) {
-            claimed.push(updated);
-        }
+    if (limit <= 0) {
+        return [];
     }
 
-    return claimed;
+    const runningAutomationRuns = alias(
+        automationRuns,
+        'running_automation_runs',
+    );
+    const candidatePageSize = Math.max(limit * 4, 50);
+
+    return db.transaction(async (tx) => {
+        const claimed: SelectAutomationRun[] = [];
+        const remainingCapacityByDefinitionId = new Map<number, number>();
+        let cursor: { id: number; nextRunAt: Date } | null = null;
+
+        while (claimed.length < limit) {
+            const candidates = await tx
+                .select({
+                    id: automationRuns.id,
+                    automationDefinitionId:
+                        automationRuns.automationDefinitionId,
+                    nextRunAt: automationRuns.nextRunAt,
+                })
+                .from(automationRuns)
+                .where(
+                    and(
+                        inArray(automationRuns.status, ['queued', 'retrying']),
+                        lte(automationRuns.nextRunAt, now),
+                        cursor
+                            ? or(
+                                  gt(
+                                      automationRuns.nextRunAt,
+                                      cursor.nextRunAt,
+                                  ),
+                                  and(
+                                      eq(
+                                          automationRuns.nextRunAt,
+                                          cursor.nextRunAt,
+                                      ),
+                                      gt(automationRuns.id, cursor.id),
+                                  ),
+                              )
+                            : undefined,
+                    ),
+                )
+                .orderBy(asc(automationRuns.nextRunAt), asc(automationRuns.id))
+                .limit(candidatePageSize);
+
+            if (candidates.length === 0) {
+                break;
+            }
+
+            for (const candidate of candidates) {
+                cursor = {
+                    id: candidate.id,
+                    nextRunAt: candidate.nextRunAt,
+                };
+
+                if (claimed.length >= limit) {
+                    break;
+                }
+
+                let remainingCapacity = remainingCapacityByDefinitionId.get(
+                    candidate.automationDefinitionId,
+                );
+
+                if (remainingCapacity === undefined) {
+                    await tx.execute(
+                        sql`select pg_advisory_xact_lock(${automationDefinitionAdvisoryLockNamespace}, ${candidate.automationDefinitionId});`,
+                    );
+
+                    const [capacity] = await tx
+                        .select({
+                            maxConcurrentRuns:
+                                automationDefinitions.maxConcurrentRuns,
+                            runningCount: sql<number>`count(${runningAutomationRuns.id})::int`,
+                        })
+                        .from(automationDefinitions)
+                        .leftJoin(
+                            runningAutomationRuns,
+                            and(
+                                eq(
+                                    runningAutomationRuns.automationDefinitionId,
+                                    automationDefinitions.id,
+                                ),
+                                eq(runningAutomationRuns.status, 'running'),
+                            ),
+                        )
+                        .where(
+                            eq(
+                                automationDefinitions.id,
+                                candidate.automationDefinitionId,
+                            ),
+                        )
+                        .groupBy(
+                            automationDefinitions.id,
+                            automationDefinitions.maxConcurrentRuns,
+                        )
+                        .limit(1);
+
+                    remainingCapacity = capacity
+                        ? Math.max(
+                              0,
+                              capacity.maxConcurrentRuns -
+                                  Number(capacity.runningCount),
+                          )
+                        : 0;
+                    remainingCapacityByDefinitionId.set(
+                        candidate.automationDefinitionId,
+                        remainingCapacity,
+                    );
+                }
+
+                if (remainingCapacity <= 0) {
+                    continue;
+                }
+
+                const [updated] = await tx
+                    .update(automationRuns)
+                    .set({
+                        status: 'running',
+                        attempt: sql`${automationRuns.attempt} + 1`,
+                        lockedAt: now,
+                        lockedBy,
+                        startedAt: now,
+                        updatedAt: now,
+                    })
+                    .where(
+                        and(
+                            eq(automationRuns.id, candidate.id),
+                            inArray(automationRuns.status, [
+                                'queued',
+                                'retrying',
+                            ]),
+                            lte(automationRuns.nextRunAt, now),
+                        ),
+                    )
+                    .returning();
+
+                if (updated) {
+                    claimed.push(updated);
+                    remainingCapacityByDefinitionId.set(
+                        candidate.automationDefinitionId,
+                        remainingCapacity - 1,
+                    );
+                }
+            }
+
+            if (candidates.length < candidatePageSize) {
+                break;
+            }
+        }
+
+        return claimed;
+    });
 }
 
 export async function recoverStaleAutomationRuns({

@@ -52,6 +52,7 @@ import { AutomationSlidePanel } from './AutomationSlidePanel';
 import {
     type AutomationSaveResult,
     saveAutomationDefinitionAction,
+    updateAutomationStatusAction,
 } from './actions';
 import { automationStatusMeta } from './presentation';
 
@@ -72,6 +73,8 @@ type AutomationFlowEditorProps = {
     initialName: string;
     initialDescription: string | null;
     initialStatus: AutomationDefinitionStatus;
+    initialMaxConcurrentRuns: number;
+    maxConcurrentRunsLimit: number;
     initialGraph: AutomationGraph;
     modules: AutomationModuleMetadata[];
     testPanel?: ReactNode;
@@ -234,12 +237,14 @@ function automationDraftSnapshot({
     description,
     graph,
     key,
+    maxConcurrentRunsInput,
     name,
     status,
 }: {
     description: string;
     graph: AutomationGraph;
     key: string;
+    maxConcurrentRunsInput: string;
     name: string;
     status: AutomationDefinitionStatus;
 }) {
@@ -247,6 +252,7 @@ function automationDraftSnapshot({
         description,
         graph,
         key,
+        maxConcurrentRunsInput,
         name,
         status,
     });
@@ -291,8 +297,10 @@ export function AutomationFlowEditor({
     initialDescription,
     initialGraph,
     initialKey,
+    initialMaxConcurrentRuns,
     initialName,
     initialStatus,
+    maxConcurrentRunsLimit,
     modules,
     testPanel,
 }: AutomationFlowEditorProps) {
@@ -305,9 +313,12 @@ export function AutomationFlowEditor({
         [modules],
     );
     const [name, setName] = useState(initialName);
-    const description = initialDescription ?? '';
+    const [description, setDescription] = useState(initialDescription ?? '');
     const [status, setStatus] =
         useState<AutomationDefinitionStatus>(initialStatus);
+    const [maxConcurrentRunsInput, setMaxConcurrentRunsInput] = useState(
+        initialMaxConcurrentRuns.toString(),
+    );
     const [activePanel, setActivePanel] =
         useState<AutomationEditorPanel | null>(automationId ? null : 'details');
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
@@ -351,10 +362,18 @@ export function AutomationFlowEditor({
                 description,
                 graph: draftGraph,
                 key: automationKey,
+                maxConcurrentRunsInput,
                 name,
                 status,
             }),
-        [automationKey, description, draftGraph, name, status],
+        [
+            automationKey,
+            description,
+            draftGraph,
+            maxConcurrentRunsInput,
+            name,
+            status,
+        ],
     );
     const latestSaveSnapshot = useRef(saveSnapshot);
     const groupedModules = useMemo(
@@ -484,6 +503,7 @@ export function AutomationFlowEditor({
                     description,
                     graph: draftGraph,
                     key: automationKey,
+                    maxConcurrentRunsInput,
                     name,
                     status: draftStatus,
                 });
@@ -497,6 +517,7 @@ export function AutomationFlowEditor({
                 name,
                 description,
                 status: draftStatus,
+                maxConcurrentRuns: Number(maxConcurrentRunsInput),
                 graph: draftGraph,
             });
 
@@ -522,6 +543,7 @@ export function AutomationFlowEditor({
             currentAutomationId,
             description,
             draftGraph,
+            maxConcurrentRunsInput,
             name,
             status,
         ],
@@ -569,22 +591,47 @@ export function AutomationFlowEditor({
     }
 
     function changeDefinitionStatus(nextStatus: AutomationDefinitionStatus) {
-        setStatus(nextStatus);
-        setResult(null);
+        if (!currentAutomationId) {
+            return;
+        }
 
+        const previousStatus = status;
+        const hadUnsavedChanges =
+            lastSavedSnapshot !== null && saveSnapshot !== lastSavedSnapshot;
         const nextSnapshot = automationDraftSnapshot({
             description,
             graph: draftGraph,
             key: automationKey,
+            maxConcurrentRunsInput,
             name,
             status: nextStatus,
         });
 
-        startTransition(() => {
-            void saveDraft({
-                snapshot: nextSnapshot,
-                statusOverride: nextStatus,
-            });
+        setStatus(nextStatus);
+        setResult(null);
+        setAutosaveStatus('saving');
+
+        startTransition(async () => {
+            const statusResult = await updateAutomationStatusAction(
+                currentAutomationId,
+                nextStatus,
+            );
+
+            if (!statusResult.ok) {
+                setStatus(previousStatus);
+                setResult(statusResult);
+                setAutosaveStatus('failed');
+                return;
+            }
+
+            setResult(null);
+            if (hadUnsavedChanges) {
+                setAutosaveStatus('unsaved');
+            } else {
+                setLastSavedSnapshot(nextSnapshot);
+                setAutosaveStatus('saved');
+            }
+            router.refresh();
         });
     }
 
@@ -663,6 +710,37 @@ export function AutomationFlowEditor({
                 }
                 fullWidth
             />
+            <Input
+                label="Paralelna izvođenja"
+                helperText={`Najviše ${maxConcurrentRunsLimit} runova ove automatizacije istovremeno.`}
+                type="number"
+                min={1}
+                max={maxConcurrentRunsLimit}
+                step={1}
+                value={maxConcurrentRunsInput}
+                onChange={(event) => {
+                    setMaxConcurrentRunsInput(event.target.value);
+                    setResult(null);
+                }}
+                fullWidth
+            />
+            <Stack spacing={1}>
+                <label
+                    className="text-sm font-medium"
+                    htmlFor="automation-description"
+                >
+                    Opis
+                </label>
+                <textarea
+                    id="automation-description"
+                    value={description}
+                    onChange={(event) => {
+                        setDescription(event.target.value);
+                        setResult(null);
+                    }}
+                    className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                />
+            </Stack>
             {!currentAutomationId ? (
                 <Button
                     type="button"
