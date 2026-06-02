@@ -53,11 +53,7 @@ export async function ShoppingCartsTable({
                 )}
                 {shoppingCarts.map((cart) => {
                     const user = cart.account?.accountUsers.at(0)?.user;
-                    const itemCount = (
-                        <Chip className="w-fit">
-                            {cart.items.length} stavke
-                        </Chip>
-                    );
+                    const itemCount = <Chip>{cart.items.length} stavke</Chip>;
                     return (
                         <Table.Row key={cart.id}>
                             {showIdColumn && (
@@ -110,7 +106,6 @@ export async function ShoppingCartsTable({
                             </Table.Cell>
                             <Table.Cell>
                                 <Chip
-                                    className="w-fit"
                                     color={
                                         cart.status === 'paid'
                                             ? 'success'

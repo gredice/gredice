@@ -1,11 +1,12 @@
 import { animated } from '@react-spring/three';
-import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
 import { Color, DoubleSide, ShaderMaterial, Vector4 } from 'three';
+import { useBlockData } from '../hooks/useBlockData';
+import { useSceneTimeUniform } from '../scene/SceneTime';
 import { defaultWaterColors } from '../scene/waterColors';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
-import { useStackHeight } from '../utils/getStackHeight';
+import { getStackHeight } from '../utils/getStackHeight';
 import {
     resolveWaterFoamCorners,
     resolveWaterFoamEdges,
@@ -157,6 +158,7 @@ export function useWaterBlockMaterial(
     foamCorners: Vector4 = emptyWaterFoamCorners,
 ) {
     const waterColors = useGameState((state) => state.waterColors);
+    const timeUniform = useSceneTimeUniform();
     const material = useMemo(() => {
         const waterMaterial = new ShaderMaterial({
             vertexShader: waterVertexShader,
@@ -166,7 +168,7 @@ export function useWaterBlockMaterial(
             depthTest: true,
             side: DoubleSide,
             uniforms: {
-                uTime: { value: 0 },
+                uTime: timeUniform,
                 uDeepColor: { value: new Color(defaultWaterColors.deep) },
                 uShallowColor: {
                     value: new Color(defaultWaterColors.shallow),
@@ -181,7 +183,7 @@ export function useWaterBlockMaterial(
         waterMaterial.polygonOffsetFactor = -0.5;
         waterMaterial.polygonOffsetUnits = -0.5;
         return waterMaterial;
-    }, [discardInnerEdges, foamCorners, foamEdges]);
+    }, [discardInnerEdges, foamCorners, foamEdges, timeUniform]);
 
     useEffect(() => {
         material.uniforms.uFoamEdges.value.copy(foamEdges);
@@ -197,24 +199,23 @@ export function useWaterBlockMaterial(
 
     useEffect(() => () => material.dispose(), [material]);
 
-    useFrame(({ clock }) => {
-        material.uniforms.uTime.value = clock.elapsedTime;
-    });
-
     return material;
 }
 
 export function BlockWater({ stack, block, stacks }: EntityInstanceProps) {
-    const currentStackHeight = useStackHeight(stack, block);
+    const { data: blockData } = useBlockData();
+    const currentStackHeight = getStackHeight(blockData, stack, block);
     const foamEdges = useMemo(
-        () => resolveWaterFoamEdges({ block, stack, stacks }),
-        [block, stack, stacks],
+        () => resolveWaterFoamEdges({ block, blockData, stack, stacks }),
+        [block, blockData, stack, stacks],
     );
     const foamCorners = useMemo(
-        () => resolveWaterFoamCorners({ block, stack, stacks }),
-        [block, stack, stacks],
+        () => resolveWaterFoamCorners({ block, blockData, stack, stacks }),
+        [block, blockData, stack, stacks],
     );
-    const includeTop = stack.blocks.indexOf(block) === stack.blocks.length - 1;
+    const waterBlockIndex = stack.blocks.indexOf(block);
+    const includeTop =
+        waterBlockIndex < 0 || waterBlockIndex === stack.blocks.length - 1;
     const geometry = useMemo(
         () => createWaterBlockGeometry(foamEdges, { includeTop }),
         [foamEdges, includeTop],

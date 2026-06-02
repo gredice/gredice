@@ -270,6 +270,9 @@ export function DebugHud() {
         (s) => s.setDayNightCycleDisabled,
     );
     const animalDebugEntries = useGameState((s) => s.animalDebugEntries);
+    const triggerAnimalDebugBehavior = useGameState(
+        (s) => s.triggerAnimalDebugBehavior,
+    );
     const editHitboxDebugVisible = useGameState(
         (s) => s.editHitboxDebugVisible,
     );
@@ -589,32 +592,6 @@ export function DebugHud() {
                 windDirection,
                 snowAccumulation,
             });
-            return;
-        }
-
-        if (weather) {
-            setWeather({
-                cloudy: weather.cloudy ?? 0,
-                rainy: weather.rainy ?? 0,
-                snowy: weather.snowy ?? 0,
-                foggy: weather.foggy ?? 0,
-                thundery:
-                    typeof weather.thundery === 'number'
-                        ? weather.thundery
-                        : undefined,
-                windSpeed:
-                    typeof weather.windSpeed === 'number'
-                        ? weather.windSpeed
-                        : undefined,
-                windDirection:
-                    typeof weather.windDirection === 'number'
-                        ? weather.windDirection
-                        : undefined,
-                snowAccumulation:
-                    typeof weather.snowAccumulation === 'number'
-                        ? weather.snowAccumulation
-                        : undefined,
-            });
         }
     }, [
         overrideWeather,
@@ -626,7 +603,6 @@ export function DebugHud() {
         windSpeed,
         windDirection,
         snowAccumulation,
-        weather,
         setWeather,
     ]);
 
@@ -693,6 +669,12 @@ export function DebugHud() {
         profileSnapshot?.canvasWidth && profileSnapshot.canvasHeight
             ? `${profileSnapshot.canvasWidth}×${profileSnapshot.canvasHeight}`
             : 'n/a';
+    const shadowMapMode =
+        profileSnapshot?.shadowMapAutoUpdate === false
+            ? profileSnapshot.shadowMapDynamicRefreshMs
+                ? `cached · ${profileSnapshot.shadowMapDynamicRefreshMs}ms dynamic`
+                : 'cached'
+            : 'auto';
 
     return (
         <div
@@ -740,9 +722,14 @@ export function DebugHud() {
                                     label="Shadows"
                                     value={
                                         profileSnapshot?.shadowsEnabled
-                                            ? `${profileSnapshot.shadowMapSize}px`
+                                            ? `${profileSnapshot.shadowMapSize}px · ${shadowMapMode} · ${profileSnapshot.shadowMapInvalidationCount ?? 0} invalidations`
                                             : 'off'
                                     }
+                                />
+                                <InfoRow
+                                    icon={Cloud}
+                                    label="Cloud shadows"
+                                    value={`${profileSnapshot?.cloudProjectedShadowCount ?? 0} projected · ${profileSnapshot?.cloudRealShadowCasterCount ?? 0} real`}
                                 />
                                 <InfoRow
                                     icon={Droplets}
@@ -760,6 +747,16 @@ export function DebugHud() {
                                     value={formatMetric(
                                         profileSnapshot?.groundDecorationDensity,
                                     )}
+                                />
+                                <InfoRow
+                                    icon={Fence}
+                                    label="Decor chunks"
+                                    value={
+                                        profileSnapshot?.groundDecorationVisibleCount !==
+                                        undefined
+                                            ? `${profileSnapshot.groundDecorationVisibleCount} visible · ${profileSnapshot.groundDecorationAtlasPageCount ?? 0} pages · ${profileSnapshot.groundDecorationChunkCount ?? 0} chunks`
+                                            : 'n/a'
+                                    }
                                 />
                             </Stack>
                             <Row spacing={1}>
@@ -815,12 +812,71 @@ export function DebugHud() {
                                                 {entry.behavior} →{' '}
                                                 {entry.targetId || 'none'}
                                             </div>
+                                            {entry.pathfinding ? (
+                                                <div className="mt-1 rounded bg-muted/70 px-1.5 py-1 font-mono text-[10px] text-muted-foreground">
+                                                    pathfinding{' '}
+                                                    {entry.pathfinding.status} ·{' '}
+                                                    {
+                                                        entry.pathfinding
+                                                            .waypointCount
+                                                    }{' '}
+                                                    wp ·{' '}
+                                                    {entry.pathfinding.distance}
+                                                    b ·{' '}
+                                                    {
+                                                        entry.pathfinding
+                                                            .visitedCellCount
+                                                    }{' '}
+                                                    checked ·{' '}
+                                                    {
+                                                        entry.pathfinding
+                                                            .blockedCellCount
+                                                    }{' '}
+                                                    blocked
+                                                    {entry.pathfinding
+                                                        .nextWaypoint
+                                                        ? ` · next ${formatAnimalPosition(entry.pathfinding.nextWaypoint)}`
+                                                        : ''}
+                                                </div>
+                                            ) : null}
                                             <div className="inline-flex items-center gap-1 font-mono text-muted-foreground">
                                                 <MapPin className="size-3 shrink-0" />
                                                 {formatAnimalPosition(
                                                     entry.position,
                                                 )}
                                             </div>
+                                            {entry.debugBehaviors?.length ? (
+                                                <div className="mt-1.5 flex flex-wrap gap-1">
+                                                    {entry.debugBehaviors.map(
+                                                        (behavior) => (
+                                                            <Button
+                                                                key={`${entry.id}-${behavior}`}
+                                                                size="xs"
+                                                                className="h-6 px-1.5 text-[10px]"
+                                                                variant={
+                                                                    entry.behavior ===
+                                                                    behavior
+                                                                        ? 'solid'
+                                                                        : 'outlined'
+                                                                }
+                                                                onClick={() =>
+                                                                    triggerAnimalDebugBehavior(
+                                                                        {
+                                                                            behavior,
+                                                                            species:
+                                                                                entry.species,
+                                                                            targetId:
+                                                                                entry.id,
+                                                                        },
+                                                                    )
+                                                                }
+                                                            >
+                                                                {behavior}
+                                                            </Button>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            ) : null}
                                         </div>
                                     ))}
                                 </Stack>

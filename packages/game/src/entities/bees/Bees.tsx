@@ -126,6 +126,14 @@ type BeeRigParts = {
     wingRight: BeeRigNode;
 };
 
+const beeDebugBehaviors = [
+    'flower',
+    'raised-bed-flower',
+    'cactus-flower',
+    'ground-flower',
+    'wander',
+];
+
 const clearBeeWeather = {
     cloudy: 0,
     foggy: 0,
@@ -850,6 +858,32 @@ function chooseManualNextTarget({
     return pickCandidate(alternatives, random) ?? target;
 }
 
+function chooseDebugTarget({
+    behavior,
+    habitatCenter,
+    random,
+    targets,
+}: {
+    behavior: string;
+    habitatCenter: Vector3;
+    random: () => number;
+    targets: BeeTarget[];
+}) {
+    if (behavior === 'wander') {
+        return createWanderTarget(habitatCenter, random);
+    }
+
+    const exactTargets = targets.filter((target) => target.kind === behavior);
+    if (exactTargets.length > 0) {
+        return pickCandidate(exactTargets, random);
+    }
+
+    return (
+        pickCandidate(targets, random) ??
+        createWanderTarget(habitatCenter, random)
+    );
+}
+
 function makeMovingState({
     from,
     now,
@@ -1105,6 +1139,7 @@ function createBeeDebugEntry({
         behavior: runtime.target.kind,
         activity: getBeeDebugActivity(runtime),
         targetId: runtime.target.id,
+        debugBehaviors: beeDebugBehaviors,
         position: {
             x: roundBeeDebugCoordinate(group.position.x),
             y: roundBeeDebugCoordinate(group.position.y),
@@ -1122,7 +1157,11 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
     const randomRef = useRef(createRandom(habitat.seed));
     const runtimeRef = useRef<BeeRuntimeState | null>(null);
     const lastAnimalDebugUpdateRef = useRef(0);
+    const lastDebugCommandSequenceRef = useRef(0);
     const lastDisturbanceSequenceRef = useRef(0);
+    const animalDebugCommand = useGameState(
+        (state) => state.animalDebugCommand,
+    );
     const setAnimalDebugEntry = useGameState(
         (state) => state.setAnimalDebugEntry,
     );
@@ -1213,6 +1252,37 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
             });
             runtimeRef.current = runtime;
             group.position.copy(foragePositionAt(runtime));
+        }
+
+        if (
+            animalDebugCommand &&
+            animalDebugCommand.sequence !==
+                lastDebugCommandSequenceRef.current &&
+            animalDebugCommand.species === 'Bee'
+        ) {
+            lastDebugCommandSequenceRef.current = animalDebugCommand.sequence;
+
+            if (
+                !animalDebugCommand.targetId ||
+                animalDebugCommand.targetId === habitat.id
+            ) {
+                const target = chooseDebugTarget({
+                    behavior: animalDebugCommand.behavior,
+                    habitatCenter: habitat.center,
+                    random,
+                    targets: habitat.targets,
+                });
+
+                if (target) {
+                    runtime = makeMovingState({
+                        from: group.position.clone(),
+                        now,
+                        random,
+                        target,
+                    });
+                    runtimeRef.current = runtime;
+                }
+            }
         }
 
         if (

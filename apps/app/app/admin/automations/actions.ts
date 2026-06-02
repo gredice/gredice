@@ -10,12 +10,12 @@ import {
     automationModuleKeys,
     createAutomationDefinition,
     createAutomationRun,
-    executeAutomationRun,
     getAutomationDefinitionById,
+    getAutomationDefinitionByKey,
     getAutomationRunById,
     getDomainEventById,
     listAutomationRunSteps,
-    startAutomationRun,
+    maxAutomationMaxConcurrentRuns,
     updateAutomationDefinition,
     validateAutomationGraph,
 } from '@gredice/storage';
@@ -50,6 +50,7 @@ export type SaveAutomationDefinitionPayload = {
     name: string;
     description?: string | null;
     status: AutomationDefinitionStatus;
+    maxConcurrentRuns: number;
     graph: AutomationGraph;
 };
 
@@ -83,6 +84,15 @@ function normalizeModuleKind(kind: unknown): AutomationModuleKind | null {
     }
 
     return null;
+}
+
+function normalizeMaxConcurrentRuns(value: unknown) {
+    return typeof value === 'number' &&
+        Number.isInteger(value) &&
+        value >= 1 &&
+        value <= maxAutomationMaxConcurrentRuns
+        ? value
+        : null;
 }
 
 function normalizeGraph(graph: AutomationGraph): AutomationGraph {
@@ -149,6 +159,23 @@ function revalidateAutomationPages(automationId?: number) {
     }
 }
 
+function automationKeyExistsMessage(key: string) {
+    return `Automation key "${key}" already exists.`;
+}
+
+function isAutomationKeyUniqueConstraintError(error: unknown) {
+    if (!isRecord(error)) {
+        return false;
+    }
+
+    const candidate = isRecord(error.cause) ? error.cause : error;
+
+    return (
+        candidate.code === '23505' &&
+        candidate.constraint === 'automation_definitions_key_idx'
+    );
+}
+
 export async function saveAutomationDefinitionAction(
     payload: SaveAutomationDefinitionPayload,
 ): Promise<AutomationSaveResult> {
@@ -158,6 +185,9 @@ export async function saveAutomationDefinitionAction(
     const graph = normalizeGraph(payload.graph);
     const key = payload.key.trim() || slugify(payload.name);
     const name = payload.name.trim();
+    const maxConcurrentRuns = normalizeMaxConcurrentRuns(
+        payload.maxConcurrentRuns,
+    );
 
     if (!key) {
         errors.push('Automation key is required.');
@@ -168,14 +198,30 @@ export async function saveAutomationDefinitionAction(
     if (!status) {
         errors.push('Automation status is invalid.');
     }
+    if (!maxConcurrentRuns) {
+        errors.push(
+            `Automation parallelism must be between 1 and ${maxAutomationMaxConcurrentRuns}.`,
+        );
+    }
 
     const validation = validateAutomationGraph(graph);
     if (!validation.ok) {
         errors.push(...validation.errors);
     }
 
-    if (errors.length > 0 || !status) {
+    if (errors.length > 0 || !status || !maxConcurrentRuns) {
         return { ok: false, errors };
+    }
+
+    const existingDefinition = await getAutomationDefinitionByKey(key);
+    if (
+        existingDefinition &&
+        (!payload.id || existingDefinition.id !== payload.id)
+    ) {
+        return {
+            ok: false,
+            errors: [automationKeyExistsMessage(key)],
+        };
     }
 
     const input = {
@@ -183,16 +229,29 @@ export async function saveAutomationDefinitionAction(
         name,
         description: payload.description?.trim() || null,
         status,
+        maxConcurrentRuns,
         graph,
         updatedByUserId: userId,
     };
 
-    const definition = payload.id
-        ? await updateAutomationDefinition(payload.id, input)
-        : await createAutomationDefinition({
-              ...input,
-              createdByUserId: userId,
-          });
+    let definition: Awaited<ReturnType<typeof updateAutomationDefinition>>;
+    try {
+        definition = payload.id
+            ? await updateAutomationDefinition(payload.id, input)
+            : await createAutomationDefinition({
+                  ...input,
+                  createdByUserId: userId,
+              });
+    } catch (error) {
+        if (isAutomationKeyUniqueConstraintError(error)) {
+            return {
+                ok: false,
+                errors: [automationKeyExistsMessage(key)],
+            };
+        }
+
+        throw error;
+    }
 
     if (!definition) {
         return {
@@ -345,14 +404,8 @@ export async function runAutomationTestAction(
             };
         }
 
-        const started =
-            (await startAutomationRun(run.id, {
-                lockedBy: `app-admin-test:${userId}`,
-            })) ?? run;
-        const result = await executeAutomationRun(started);
-
         revalidateAutomationPages(definition.id);
-        return { ok: true, runId: run.id, status: result.status };
+        return { ok: true, runId: run.id, status: run.status };
     } catch (error) {
         return {
             ok: false,
@@ -363,14 +416,26 @@ export async function runAutomationTestAction(
     }
 }
 
-export async function replayAutomationRunAction(
-    runId: number,
-    dryRun = true,
-): Promise<AutomationRunActionResult> {
+async function runAutomationRunAgain({
+    runId,
+    dryRun,
+    actionName,
+}: {
+    runId: number;
+    dryRun: boolean;
+    actionName: 'replay' | 'retry';
+}): Promise<AutomationRunActionResult> {
     const { userId } = await auth(['admin']);
     const originalRun = await getAutomationRunById(runId);
     if (!originalRun) {
         return { ok: false, errors: ['Automation run was not found.'] };
+    }
+
+    if (actionName === 'retry' && originalRun.status !== 'failed') {
+        return {
+            ok: false,
+            errors: ['Only failed automation runs can be retried.'],
+        };
     }
 
     const definition = await getAutomationDefinitionById(
@@ -385,8 +450,13 @@ export async function replayAutomationRunAction(
         : null;
     const run = await createAutomationRun({
         automationDefinition: definition,
-        source: 'replay',
+        source: dryRun ? 'replay' : 'manual',
         sourceEvent,
+        sourceEventType: originalRun.sourceEventType,
+        sourceAggregateId:
+            originalRun.sourceEventType === 'automation.schedule.monthly'
+                ? null
+                : originalRun.sourceAggregateId,
         parentRunId: originalRun.id,
         input: originalRun.input,
         dryRun,
@@ -396,18 +466,32 @@ export async function replayAutomationRunAction(
     if (!run) {
         return {
             ok: false,
-            errors: ['Automation replay run was not created.'],
+            errors: [`Automation ${actionName} run was not created.`],
         };
     }
 
-    const started =
-        (await startAutomationRun(run.id, {
-            lockedBy: `app-admin-replay:${userId}`,
-        })) ?? run;
-    const result = await executeAutomationRun(started);
-
     revalidateAutomationPages(definition.id);
-    return { ok: true, runId: run.id, status: result.status };
+    return { ok: true, runId: run.id, status: run.status };
+}
+
+export async function replayAutomationRunAction(
+    runId: number,
+): Promise<AutomationRunActionResult> {
+    return runAutomationRunAgain({
+        runId,
+        dryRun: true,
+        actionName: 'replay',
+    });
+}
+
+export async function retryAutomationRunAction(
+    runId: number,
+): Promise<AutomationRunActionResult> {
+    return runAutomationRunAgain({
+        runId,
+        dryRun: false,
+        actionName: 'retry',
+    });
 }
 
 export async function getAutomationRunStepsAction(runId: number) {

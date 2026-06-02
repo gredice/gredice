@@ -1,12 +1,6 @@
 import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardOverflow,
-    CardTitle,
-} from '@gredice/ui/Card';
+import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
@@ -25,6 +19,7 @@ import {
     approveSchedulePlantingTaskAction,
     rejectApprovalRequestAction,
 } from '../../(actions)/approvalActions';
+import { RaisedBedTaskLink } from './RaisedBedTaskLink';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,25 +47,8 @@ export default async function AdminApprovalsPage() {
     const tasks = await getPendingAdminApprovalTasks();
 
     return (
-        <Stack spacing={6}>
-            <Stack spacing={2}>
-                <Typography level="h4" component="h1">
-                    Odobrenja
-                </Typography>
-                <Typography level="body2" className="text-muted-foreground">
-                    Zahtjevi farmera i završeni rasporedni zadaci koji čekaju
-                    administrativnu potvrdu.
-                </Typography>
-            </Stack>
+        <Stack spacing={4}>
             <Card>
-                <CardHeader>
-                    <CardTitle>Zahtjevi na čekanju</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Typography level="body2">
-                        Ukupno {tasks.length} zahtjeva čeka odobrenje.
-                    </Typography>
-                </CardContent>
                 <CardOverflow>
                     <div className="overflow-auto">
                         <Table>
@@ -107,20 +85,36 @@ export default async function AdminApprovalsPage() {
                                                 </Chip>
                                             </Table.Cell>
                                             <Table.Cell>
-                                                <Stack spacing={1}>
-                                                    <Typography
-                                                        level="body2"
-                                                        semiBold
-                                                    >
-                                                        {task.title}
-                                                    </Typography>
-                                                    <Typography
-                                                        level="body3"
-                                                        className="text-muted-foreground"
-                                                    >
-                                                        {task.description}
-                                                    </Typography>
-                                                </Stack>
+                                                <Row
+                                                    spacing={3}
+                                                    alignItems="start"
+                                                >
+                                                    {task.raisedBedId !=
+                                                    null ? (
+                                                        <RaisedBedTaskLink
+                                                            raisedBedId={
+                                                                task.raisedBedId
+                                                            }
+                                                            physicalId={
+                                                                task.raisedBedPhysicalId
+                                                            }
+                                                        />
+                                                    ) : null}
+                                                    <Stack spacing={1}>
+                                                        <Typography
+                                                            level="body2"
+                                                            semiBold
+                                                        >
+                                                            {task.title}
+                                                        </Typography>
+                                                        <Typography
+                                                            level="body3"
+                                                            className="text-muted-foreground"
+                                                        >
+                                                            {task.description}
+                                                        </Typography>
+                                                    </Stack>
+                                                </Row>
                                             </Table.Cell>
                                             <Table.Cell>
                                                 {task.kind ===
@@ -141,6 +135,14 @@ export default async function AdminApprovalsPage() {
                                                                 ).shortLabel
                                                             }
                                                         </Typography>
+                                                        {task.note ? (
+                                                            <Typography
+                                                                level="body3"
+                                                                className="max-w-md whitespace-pre-line text-muted-foreground"
+                                                            >
+                                                                {task.note}
+                                                            </Typography>
+                                                        ) : null}
                                                     </Stack>
                                                 ) : task.kind ===
                                                   'scheduleOperationVerification' ? (

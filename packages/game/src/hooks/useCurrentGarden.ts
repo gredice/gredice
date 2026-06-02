@@ -6,7 +6,11 @@ import {
     localSandboxGardenId,
 } from '../localSandboxGarden';
 import type { Stack } from '../types/Stack';
-import { useGameState, type WinterMode } from '../useGameState';
+import {
+    type MockGardenProfile,
+    useGameState,
+    type WinterMode,
+} from '../useGameState';
 import { useCurrentGardenIdParam } from '../useUrlState';
 import { useGardens, useGardensKeys } from './useGardens';
 
@@ -16,11 +20,13 @@ const GARDEN_POSITION_Z_OFFSET = -1;
 export const currentGardenKeys = (
     winterMode: WinterMode,
     gardenId?: number | null,
+    mockGardenProfile?: MockGardenProfile,
 ) => [
     ...useGardensKeys,
     'current',
     winterMode,
     ...(gardenId != null ? [gardenId] : []),
+    ...(mockGardenProfile != null ? [mockGardenProfile] : []),
 ];
 
 type useCurrentGardenResponse = Omit<
@@ -287,7 +293,210 @@ function mockRaisedBedFields(
     );
 }
 
-function mockGarden(winterMode: WinterMode): useCurrentGardenResponse {
+const denseMockGardenBounds = {
+    max: 12,
+    min: -12,
+};
+
+function mockGardenStackPositionKey(x: number, z: number) {
+    return `${x}:${z}`;
+}
+
+function getDenseMockGroundBlockName(
+    x: number,
+    z: number,
+    winterMode: WinterMode,
+) {
+    if (winterMode === 'winter') {
+        return 'Block_Snow';
+    }
+
+    const value = Math.abs(x * 31 + z * 17) % 20;
+    if (value < 12) {
+        return 'Block_Grass';
+    }
+    if (value < 16) {
+        return 'Block_Ground';
+    }
+    if (value < 19) {
+        return 'Block_Sand';
+    }
+    return 'Block_Water';
+}
+
+function getDenseMockDetailBlockName(x: number, z: number) {
+    const value = Math.abs(x * 13 + z * 7) % 97;
+    if (x === denseMockGardenBounds.min && z === denseMockGardenBounds.min) {
+        return 'GardenBox';
+    }
+    if (value === 0) {
+        return 'Tree';
+    }
+    if (value === 11 || value === 23) {
+        return 'Bush';
+    }
+    if (value === 37) {
+        return 'BirdHouse';
+    }
+    if (value === 53) {
+        return 'StoneMedium';
+    }
+    return null;
+}
+
+function createDenseMockStacks(winterMode: WinterMode): {
+    stackByPosition: Map<string, Stack>;
+    stacks: Stack[];
+} {
+    const stackByPosition = new Map<string, Stack>();
+    const stacks: Stack[] = [];
+
+    for (
+        let x = denseMockGardenBounds.min;
+        x <= denseMockGardenBounds.max;
+        x += 1
+    ) {
+        for (
+            let z = denseMockGardenBounds.min;
+            z <= denseMockGardenBounds.max;
+            z += 1
+        ) {
+            const groundName = getDenseMockGroundBlockName(x, z, winterMode);
+            const stack: Stack = {
+                position: new Vector3(x, 0, z),
+                blocks: [
+                    {
+                        id: `profile-ground:${x}:${z}`,
+                        name: groundName,
+                        rotation: Math.abs(x + z) % 4,
+                    },
+                ],
+            };
+            const detailName = getDenseMockDetailBlockName(x, z);
+            if (detailName) {
+                stack.blocks.push({
+                    id: `profile-detail:${detailName}:${x}:${z}`,
+                    name: detailName,
+                    rotation: Math.abs(x * 3 + z) % 4,
+                });
+            }
+
+            stacks.push(stack);
+            stackByPosition.set(mockGardenStackPositionKey(x, z), stack);
+        }
+    }
+
+    return { stackByPosition, stacks };
+}
+
+function createProfileRaisedBed(
+    id: number,
+    blockId: string,
+    fieldOffset: number,
+    now: string,
+): MockRaisedBed {
+    return {
+        id,
+        name: `Profile raised bed ${id}`,
+        blockId,
+        physicalId: `profile-raised-bed:${id}`,
+        fields: mockRaisedBedFields(id, fieldOffset),
+        appliedOperations: [],
+        status: 'new',
+        abandonReason: null,
+        updatedAt: now,
+        createdAt: now,
+        isValid: true,
+        orientation: 'horizontal',
+    };
+}
+
+function addProfileRaisedBedPair({
+    fieldOffset,
+    id,
+    now,
+    raisedBeds,
+    stackByPosition,
+    x,
+    z,
+}: {
+    fieldOffset: number;
+    id: number;
+    now: string;
+    raisedBeds: useCurrentGardenResponse['raisedBeds'];
+    stackByPosition: Map<string, Stack>;
+    x: number;
+    z: number;
+}) {
+    const firstStack = stackByPosition.get(mockGardenStackPositionKey(x, z));
+    const secondStack = stackByPosition.get(
+        mockGardenStackPositionKey(x, z + 1),
+    );
+    if (!firstStack || !secondStack) {
+        return;
+    }
+
+    const firstBlockId = `profile-raised-bed:${id}:0`;
+    firstStack.blocks.push({
+        id: firstBlockId,
+        name: 'Raised_Bed',
+        rotation: 0,
+    });
+    secondStack.blocks.push({
+        id: `profile-raised-bed:${id}:1`,
+        name: 'Raised_Bed',
+        rotation: 0,
+    });
+    raisedBeds.push(createProfileRaisedBed(id, firstBlockId, fieldOffset, now));
+}
+
+function denseMockGarden(
+    winterMode: WinterMode,
+    profile: Extract<MockGardenProfile, 'dense' | 'plant-heavy'>,
+): useCurrentGardenResponse {
+    const now = new Date().toISOString();
+    const { stackByPosition, stacks } = createDenseMockStacks(winterMode);
+    const raisedBeds: useCurrentGardenResponse['raisedBeds'] = [];
+
+    if (profile === 'plant-heavy') {
+        let raisedBedId = 1;
+        for (let x = -11; x <= 10; x += 4) {
+            for (let z = -11; z <= 10; z += 3) {
+                addProfileRaisedBedPair({
+                    fieldOffset: raisedBedId * 100,
+                    id: raisedBedId,
+                    now,
+                    raisedBeds,
+                    stackByPosition,
+                    x,
+                    z,
+                });
+                raisedBedId += 1;
+            }
+        }
+    }
+
+    return {
+        id: 99998,
+        name:
+            profile === 'plant-heavy'
+                ? 'Profile plant-heavy garden'
+                : 'Profile dense garden',
+        isSandbox: false,
+        stacks,
+        location: { lat: 45.739, lon: 16.572 },
+        raisedBeds,
+    };
+}
+
+function mockGarden(
+    winterMode: WinterMode,
+    profile: MockGardenProfile,
+): useCurrentGardenResponse {
+    if (profile === 'dense' || profile === 'plant-heavy') {
+        return denseMockGarden(winterMode, profile);
+    }
+
     const treeName =
         winterMode === 'holiday'
             ? 'PineAdvent'
@@ -541,6 +750,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
     const localSandboxStorageKey = useGameState(
         (state) => state.localSandboxStorageKey,
     );
+    const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
     const winterMode = useGameState((state) => state.winterMode);
     const isLocalSandbox = localSandboxStorageKey !== null;
     const { data: gardens } = useGardens(isMock || isLocalSandbox);
@@ -557,7 +767,11 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
         (gardens && gardens.length > 0 ? gardens[0].id : null);
 
     return useQuery({
-        queryKey: currentGardenKeys(winterMode, currentGardenId),
+        queryKey: currentGardenKeys(
+            winterMode,
+            currentGardenId,
+            isMock ? mockGardenProfile : undefined,
+        ),
         queryFn: async () => {
             if (localSandboxStorageKey) {
                 return loadLocalSandboxGarden(localSandboxStorageKey);
@@ -565,7 +779,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
 
             if (isMock) {
                 console.debug('Using mock garden data');
-                return mockGarden(winterMode);
+                return mockGarden(winterMode, mockGardenProfile);
             }
 
             if (!gardens) {

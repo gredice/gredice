@@ -4,7 +4,9 @@ Automations are configurable, trusted server-side workflows that react to
 Gredice domain events or scheduled occurrences. The first workflows cover the
 existing planting flow where a `raisedBedField.plantUpdate` event with
 `data.status = "sowed"` queues seasonal watering operations asynchronously, and
-monthly schedules that can create recurring farm operations.
+monthly schedules that can create recurring farm operations. Operation
+completion images can also be reviewed asynchronously for high-confidence plant
+status changes that create pending admin approval requests.
 
 ## Ownership
 
@@ -21,7 +23,7 @@ The schema is defined in
 `packages/storage/src/schema/automationsSchema.ts`.
 
 - `automation_definitions` stores name, key, status, trigger metadata, graph
-  JSON, metadata, and audit timestamps.
+  JSON, max concurrent runs, metadata, and audit timestamps.
 - `automation_runs` stores one async execution with source event/manual test
   context, graph snapshot, status, attempt count, dry-run flag, lock fields,
   input/output snapshots, and error fields.
@@ -45,7 +47,8 @@ bounded phases:
    repeated cron ticks do not duplicate the same period.
 3. Read new domain events after the cursor and enqueue matching enabled
    automation runs.
-4. Recover stale running jobs, claim due queued/retryable runs, and execute them
+4. Recover stale running jobs, claim due queued/retryable runs up to each
+   automation definition's concurrency cap, and execute the claimed batch
    through the graph executor.
 
 When defaults are first installed, the runner initializes the event cursor to
@@ -87,6 +90,10 @@ MVP modules:
   definition.
 - `action.updateRaisedBedFieldPlantStatus`: writes a
   `raisedBedField.plantUpdate` event for an operation target.
+- `action.createPlantStatusRequestsFromImageAnalysis`: reviews hosted
+  raised-bed images from operation completion or raised-bed AI analysis events,
+  then creates pending plant-status approval requests when the visual evidence
+  passes the configured confidence threshold.
 - `action.log`: records a no-op step for diagnostics.
 
 When adding a module, define metadata, config validation, dry-run behavior, and
@@ -123,8 +130,12 @@ Admins manage automations in `apps/app` at `/admin/automations`.
 - The editor uses `@xyflow/react` and stores layout in the definition graph.
 - The right panel is the module store and selected-node configuration surface.
 - Manual test runs can use a recent matching event or synthetic event context.
-  Dry-run is enabled by default.
-- Failed runs can be replayed as a new linked run.
+  Dry-run is enabled by default. The admin app only enqueues these runs; the API
+  automation runner executes them with the same queue path as event and schedule
+  runs.
+- Failed runs can be replayed as a new linked queued run.
+- Definition details include a parallelism setting that controls how many runs
+  from that automation can be in progress at the same time.
 
 ## Validation
 

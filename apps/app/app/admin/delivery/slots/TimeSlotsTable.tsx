@@ -93,7 +93,7 @@ export async function TimeSlotsTable({
                     return (
                         <Table.Row key={slot.id}>
                             <Table.Cell>
-                                <Chip color="primary" className="w-fit">
+                                <Chip color="primary">
                                     {getTypeLabel(slot.type)}
                                 </Chip>
                             </Table.Cell>
@@ -112,10 +112,7 @@ export async function TimeSlotsTable({
                                 </Typography>
                             </Table.Cell>
                             <Table.Cell>
-                                <Chip
-                                    color={getStatusColor(slot.status)}
-                                    className="w-fit"
-                                >
+                                <Chip color={getStatusColor(slot.status)}>
                                     {getStatusLabel(slot.status)}
                                 </Chip>
                             </Table.Cell>

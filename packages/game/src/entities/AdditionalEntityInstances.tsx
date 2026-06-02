@@ -9,6 +9,7 @@ import {
 import type { BufferGeometry } from 'three/src/Three.Core.js';
 import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import type { GameAssetName } from '../data/models';
+import { useBlockData } from '../hooks/useBlockData';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { GLTFResult } from '../models/GameAssets';
 import { snowPresets } from '../snow/snowPresets';
@@ -381,6 +382,7 @@ function BlockGroundInstances({
 }
 
 function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
+    const { data: blockData } = useBlockData();
     const waterInstances = useEntityBlockInstances({
         name: 'Block_Water',
         stacks,
@@ -393,6 +395,7 @@ function WaterBlockInstances({ stacks }: { stacks: Stack[] | undefined }) {
 
     const topSurfaceInstances = waterInstances.filter(isWaterTopSurfaceVisible);
     const groupedInstances = resolveWaterBlockInstanceGroups({
+        blockData,
         instances: topSurfaceInstances,
         stacks,
     });
@@ -432,9 +435,11 @@ function waterFoamMaskKey({
 }
 
 function resolveWaterBlockInstanceGroups({
+    blockData,
     instances,
     stacks,
 }: {
+    blockData: Parameters<typeof resolveWaterFoamEdges>[0]['blockData'];
     instances: EntityBlockInstance[];
     stacks: Stack[] | undefined;
 }) {
@@ -451,11 +456,13 @@ function resolveWaterBlockInstanceGroups({
     for (const instance of instances) {
         const foamEdges = resolveWaterFoamEdges({
             block: instance.block,
+            blockData,
             stack: instance.stack,
             stacks,
         });
         const foamCorners = resolveWaterFoamCorners({
             block: instance.block,
+            blockData,
             stack: instance.stack,
             stacks,
         });
@@ -1624,10 +1631,68 @@ function GiftBoxInstances({
                         snow={snowPresets.giftBox}
                         {...commonSnowProps}
                     />
+                    <GiftBoxHoverOutlines
+                        name={name}
+                        nodes={nodes}
+                        stacks={stacks}
+                    />
                 </Suspense>
             ))}
         </>
     );
+}
+
+function GiftBoxHoverOutlines({
+    name,
+    nodes,
+    stacks,
+}: {
+    name: string;
+    nodes: GLTFResult['nodes'];
+    stacks: Stack[] | undefined;
+}) {
+    const hoveredBlock = useHoveredBlockStore((state) => state.hoveredBlock);
+    const instances = useEntityBlockInstances({
+        name,
+        stacks,
+        yOffset: 0.25,
+    });
+
+    return instances?.map((instance) => {
+        if (hoveredBlock !== instance.block) {
+            return null;
+        }
+
+        return (
+            <HoverOutline key={`GiftBox-hover-${instance.id}`} hovered>
+                <group
+                    position={instance.position}
+                    rotation={[0, instance.rotation * (Math.PI / 2), 0]}
+                >
+                    <mesh
+                        geometry={nodes.GiftBox_Box.geometry}
+                        raycast={() => null}
+                    >
+                        <meshBasicMaterial visible={false} />
+                    </mesh>
+                    <mesh
+                        geometry={nodes.GiftBox_Strip.geometry}
+                        raycast={() => null}
+                    >
+                        <meshBasicMaterial visible={false} />
+                    </mesh>
+                    <mesh
+                        geometry={nodes.GiftBox_Bow.geometry}
+                        position={[0, 0.25, 0]}
+                        rotation={[0, -Math.PI / 4, 0]}
+                        raycast={() => null}
+                    >
+                        <meshBasicMaterial visible={false} />
+                    </mesh>
+                </group>
+            </HoverOutline>
+        );
+    });
 }
 
 function CatPillowInstances({

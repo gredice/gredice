@@ -8,17 +8,11 @@ import {
     listAutomationRunSteps,
     listAutomationRuns,
     listRecentDomainEvents,
+    maxAutomationMaxConcurrentRuns,
 } from '@gredice/storage';
-import { Button } from '@gredice/ui/Button';
-import { Chip } from '@gredice/ui/Chip';
-import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Typography } from '@gredice/ui/Typography';
 import { notFound } from 'next/navigation';
-import {
-    AdminPageHeader,
-    AdminPageTitle,
-} from '../../../../components/admin/navigation';
+import { AdminPageTitle } from '../../../../components/admin/navigation';
 import { auth } from '../../../../lib/auth/auth';
 import { AutomationFlowEditor } from '../AutomationFlowEditor';
 import {
@@ -30,8 +24,6 @@ import {
     AutomationTestPanel,
     type RecentAutomationEvent,
 } from '../AutomationTestPanel';
-import { updateAutomationStatusAction } from '../actions';
-import { automationStatusMeta } from '../presentation';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,19 +78,6 @@ function statusesForRunFilter(
 
 function dateToIso(value: Date | null) {
     return value ? value.toISOString() : null;
-}
-
-function StatusChip({
-    status,
-}: {
-    status: Parameters<typeof automationStatusMeta>[0];
-}) {
-    const meta = automationStatusMeta(status);
-    return (
-        <Chip color={meta.color} size="sm" variant="soft">
-            {meta.label}
-        </Chip>
-    );
 }
 
 export default async function AutomationDetailPage({
@@ -194,69 +173,18 @@ export default async function AutomationDetailPage({
             createdAt: event.createdAt.toISOString(),
         }),
     );
-    const enableAutomationAction = async () => {
-        'use server';
-        await updateAutomationStatusAction(definition.id, 'enabled');
-    };
-    const disableAutomationAction = async () => {
-        'use server';
-        await updateAutomationStatusAction(definition.id, 'disabled');
-    };
-    const archiveAutomationAction = async () => {
-        'use server';
-        await updateAutomationStatusAction(definition.id, 'archived');
-    };
 
     return (
         <Stack spacing={5}>
             <AdminPageTitle title={definition.name} />
-            <AdminPageHeader
-                actions={
-                    <Row spacing={2}>
-                        {definition.status === 'enabled' ? (
-                            <form action={disableAutomationAction}>
-                                <Button type="submit" variant="outlined">
-                                    Isključi
-                                </Button>
-                            </form>
-                        ) : (
-                            <form action={enableAutomationAction}>
-                                <Button type="submit">Uključi</Button>
-                            </form>
-                        )}
-                        {definition.status !== 'archived' ? (
-                            <form action={archiveAutomationAction}>
-                                <Button
-                                    type="submit"
-                                    variant="outlined"
-                                    color="danger"
-                                >
-                                    Arhiviraj
-                                </Button>
-                            </form>
-                        ) : null}
-                    </Row>
-                }
-            />
-
-            <Stack spacing={1}>
-                <Row spacing={2} className="flex-wrap">
-                    <Typography level="h4" component="h1">
-                        {definition.name}
-                    </Typography>
-                    <StatusChip status={definition.status} />
-                </Row>
-                <Typography level="body2" className="text-muted-foreground">
-                    {definition.description || definition.key}
-                </Typography>
-            </Stack>
-
             <AutomationFlowEditor
                 automationId={definition.id}
                 initialKey={definition.key}
                 initialName={definition.name}
                 initialDescription={definition.description}
                 initialStatus={definition.status}
+                initialMaxConcurrentRuns={definition.maxConcurrentRuns}
+                maxConcurrentRunsLimit={maxAutomationMaxConcurrentRuns}
                 initialGraph={definition.graph}
                 modules={modules}
                 testPanel={

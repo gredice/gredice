@@ -139,7 +139,7 @@ export function SandboxEnvironmentResetStory() {
                     setGarden(null);
                     window.setTimeout(
                         () => setGarden({ id: 2, isSandbox: false }),
-                        100,
+                        500,
                     );
                 }}
             />

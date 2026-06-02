@@ -66,9 +66,7 @@ export function SelectEntity({
                 />
             </div>
             {selectedEntity?.state === 'draft' ? (
-                <Chip color="neutral" className="w-fit">
-                    Draft
-                </Chip>
+                <Chip color="neutral">Draft</Chip>
             ) : null}
             {entityTypeName && selectedEntity && (
                 <Link

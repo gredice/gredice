@@ -9,6 +9,7 @@ import { EntityFactory } from '../entities/EntityFactory';
 import { GameFlagsContext } from '../GameFlagsContext';
 import { GameSceneDetailContext } from '../GameSceneDetailContext';
 import { DebugHud } from '../hud/DebugHud';
+import { ParticleSystemProvider } from '../particles/ParticleSystem';
 import { Environment, StaticEnvironment } from '../scene/Environment';
 import type { GameQualityProfile } from '../scene/gameQuality';
 import { Scene } from '../scene/Scene';
@@ -144,7 +145,9 @@ export function EntityViewer({
                             className={className}
                             {...rest}
                         >
-                            {sceneChildren}
+                            <ParticleSystemProvider>
+                                {sceneChildren}
+                            </ParticleSystemProvider>
                         </Scene>
                     </GameSceneDetailContext.Provider>
                     {debugHud && <DebugHud />}

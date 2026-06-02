@@ -1,7 +1,9 @@
 import {
     type AutomationGraph,
     automationModuleKeys,
+    defaultAutomationMaxConcurrentRuns,
     getAutomationModuleMetadata,
+    maxAutomationMaxConcurrentRuns,
 } from '@gredice/storage';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -58,6 +60,8 @@ export default async function AutomationCreatePage() {
                 initialName="Nova automatizacija"
                 initialDescription={null}
                 initialStatus="draft"
+                initialMaxConcurrentRuns={defaultAutomationMaxConcurrentRuns}
+                maxConcurrentRunsLimit={maxAutomationMaxConcurrentRuns}
                 initialGraph={initialGraph}
                 modules={getAutomationModuleMetadata()}
             />

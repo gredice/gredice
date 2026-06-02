@@ -10,19 +10,13 @@ import type {
     AutomationModuleKind,
     AutomationModuleMetadata,
 } from '@gredice/storage';
+import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Button } from '@gredice/ui/Button';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Chip } from '@gredice/ui/Chip';
+import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
-import {
-    Add,
-    Configuration,
-    Delete,
-    Layers,
-    Play,
-    Save,
-    Settings,
-} from '@gredice/ui/icons';
+import { Add, Configuration, Play, Settings } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
@@ -42,12 +36,23 @@ import {
 } from '@xyflow/react';
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
-import { useMemo, useState, useTransition } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    useTransition,
+} from 'react';
+import { AdminPageHeader } from '../../../components/admin/navigation';
+import { AdminBreadcrumbLevelSelector } from '../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { KnownPages } from '../../../src/KnownPages';
+import { AutomationActionsMenu } from './AutomationActionsMenu';
 import { AutomationSlidePanel } from './AutomationSlidePanel';
 import {
     type AutomationSaveResult,
     saveAutomationDefinitionAction,
+    updateAutomationStatusAction,
 } from './actions';
 import { automationStatusMeta } from './presentation';
 
@@ -60,6 +65,7 @@ type FlowNodeData = Record<string, unknown> & {
 
 type FlowNode = Node<FlowNodeData>;
 type AutomationEditorPanel = 'details' | 'modules' | 'settings' | 'testing';
+type AutosaveStatus = 'saved' | 'unsaved' | 'saving' | 'failed';
 
 type AutomationFlowEditorProps = {
     automationId?: number;
@@ -67,17 +73,12 @@ type AutomationFlowEditorProps = {
     initialName: string;
     initialDescription: string | null;
     initialStatus: AutomationDefinitionStatus;
+    initialMaxConcurrentRuns: number;
+    maxConcurrentRunsLimit: number;
     initialGraph: AutomationGraph;
     modules: AutomationModuleMetadata[];
     testPanel?: ReactNode;
 };
-
-const definitionStatusItems = [
-    { value: 'draft', label: 'Skica' },
-    { value: 'enabled', label: 'Uključena' },
-    { value: 'disabled', label: 'Isključena' },
-    { value: 'archived', label: 'Arhivirana' },
-] satisfies Array<{ value: AutomationDefinitionStatus; label: string }>;
 
 function kindLabel(kind: AutomationModuleKind) {
     switch (kind) {
@@ -211,7 +212,7 @@ function panelTitle(panel: AutomationEditorPanel | null) {
         case 'settings':
             return 'Postavke modula';
         case 'testing':
-            return 'Testiranje';
+            return 'Pokreni';
         default:
             return '';
     }
@@ -220,30 +221,59 @@ function panelTitle(panel: AutomationEditorPanel | null) {
 function panelDescription(panel: AutomationEditorPanel | null) {
     switch (panel) {
         case 'details':
-            return 'Naziv, ključ, status i opis automatizacije.';
+            return 'Naziv i ključ automatizacije.';
         case 'modules':
             return 'Dodajte triggere, uvjete i akcije u dijagram.';
         case 'settings':
             return 'Konfiguracija trenutno odabranog modula.';
         case 'testing':
-            return 'Pokrenite probno izvođenje iz sintetičkog ili postojećeg ulaza.';
+            return 'Pokrenite workflow iz sintetičkog ili postojećeg ulaza.';
         default:
             return undefined;
     }
 }
 
+function automationDraftSnapshot({
+    description,
+    graph,
+    key,
+    maxConcurrentRunsInput,
+    name,
+    status,
+}: {
+    description: string;
+    graph: AutomationGraph;
+    key: string;
+    maxConcurrentRunsInput: string;
+    name: string;
+    status: AutomationDefinitionStatus;
+}) {
+    return JSON.stringify({
+        description,
+        graph,
+        key,
+        maxConcurrentRunsInput,
+        name,
+        status,
+    });
+}
+
+function autosaveLabel(status: AutosaveStatus) {
+    switch (status) {
+        case 'failed':
+            return 'Spremanje nije uspjelo.';
+        case 'saving':
+            return 'Spremanje...';
+        case 'unsaved':
+            return 'Nespremljene promjene';
+        case 'saved':
+            return 'Spremljeno';
+    }
+}
+
 function SaveResultNotice({ result }: { result: AutomationSaveResult }) {
     if (result.ok) {
-        return (
-            <div
-                role="status"
-                className="rounded-md border border-green-200 bg-green-50 p-3 text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200"
-            >
-                <Typography level="body2">
-                    Automatizacija je spremljena.
-                </Typography>
-            </div>
-        );
+        return null;
     }
 
     return (
@@ -267,12 +297,17 @@ export function AutomationFlowEditor({
     initialDescription,
     initialGraph,
     initialKey,
+    initialMaxConcurrentRuns,
     initialName,
     initialStatus,
+    maxConcurrentRunsLimit,
     modules,
     testPanel,
 }: AutomationFlowEditorProps) {
     const router = useRouter();
+    const [currentAutomationId, setCurrentAutomationId] =
+        useState(automationId);
+    const [definitionKey, setDefinitionKey] = useState(initialKey);
     const modulesByKey = useMemo(
         () => new Map(modules.map((module) => [module.key, module])),
         [modules],
@@ -281,6 +316,9 @@ export function AutomationFlowEditor({
     const [description, setDescription] = useState(initialDescription ?? '');
     const [status, setStatus] =
         useState<AutomationDefinitionStatus>(initialStatus);
+    const [maxConcurrentRunsInput, setMaxConcurrentRunsInput] = useState(
+        initialMaxConcurrentRuns.toString(),
+    );
     const [activePanel, setActivePanel] =
         useState<AutomationEditorPanel | null>(automationId ? null : 'details');
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
@@ -297,15 +335,47 @@ export function AutomationFlowEditor({
     );
     const [result, setResult] = useState<AutomationSaveResult | null>(null);
     const [jsonError, setJsonError] = useState<string | null>(null);
+    const [autosaveStatus, setAutosaveStatus] =
+        useState<AutosaveStatus>('saved');
+    const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(
+        null,
+    );
     const [isPending, startTransition] = useTransition();
     const selectedNode = nodes.find((node) => node.id === selectedNodeId);
     const selectedModule = selectedNode
         ? modulesByKey.get(selectedNode.data.moduleKey)
         : null;
-    const generatedKey = useMemo(
-        () => slugify(name) || initialKey || 'nova-automatizacija',
-        [initialKey, name],
+    const automationKey = useMemo(
+        () =>
+            currentAutomationId
+                ? definitionKey || initialKey || 'automatizacija'
+                : slugify(name) ||
+                  definitionKey ||
+                  initialKey ||
+                  'nova-automatizacija',
+        [currentAutomationId, definitionKey, initialKey, name],
     );
+    const draftGraph = useMemo(() => flowToGraph(nodes, edges), [nodes, edges]);
+    const saveSnapshot = useMemo(
+        () =>
+            automationDraftSnapshot({
+                description,
+                graph: draftGraph,
+                key: automationKey,
+                maxConcurrentRunsInput,
+                name,
+                status,
+            }),
+        [
+            automationKey,
+            description,
+            draftGraph,
+            maxConcurrentRunsInput,
+            name,
+            status,
+        ],
+    );
+    const latestSaveSnapshot = useRef(saveSnapshot);
     const groupedModules = useMemo(
         () =>
             modules.reduce<
@@ -324,6 +394,16 @@ export function AutomationFlowEditor({
             ),
         [modules],
     );
+
+    useEffect(() => {
+        latestSaveSnapshot.current = saveSnapshot;
+    }, [saveSnapshot]);
+
+    useEffect(() => {
+        if (lastSavedSnapshot === null) {
+            setLastSavedSnapshot(saveSnapshot);
+        }
+    }, [lastSavedSnapshot, saveSnapshot]);
 
     function selectNode(nodeId: string | null) {
         setSelectedNodeId(nodeId);
@@ -344,6 +424,7 @@ export function AutomationFlowEditor({
                 currentEdges,
             ),
         );
+        setResult(null);
     };
 
     function openPanel(panel: AutomationEditorPanel) {
@@ -381,25 +462,6 @@ export function AutomationFlowEditor({
         setResult(null);
     }
 
-    function removeSelectedNode() {
-        if (!selectedNodeId) {
-            return;
-        }
-
-        setNodes((current) =>
-            current.filter((node) => node.id !== selectedNodeId),
-        );
-        setEdges((current) =>
-            current.filter(
-                (edge) =>
-                    edge.source !== selectedNodeId &&
-                    edge.target !== selectedNodeId,
-            ),
-        );
-        setSelectedNodeId(null);
-        setResult(null);
-    }
-
     function updateSelectedConfig(key: string, value: unknown) {
         if (!selectedNodeId) {
             return;
@@ -424,19 +486,103 @@ export function AutomationFlowEditor({
         setResult(null);
     }
 
-    function save() {
-        setJsonError(null);
-        startTransition(async () => {
+    const saveDraft = useCallback(
+        async ({
+            requireLatest = false,
+            snapshot,
+            statusOverride,
+        }: {
+            requireLatest?: boolean;
+            snapshot?: string;
+            statusOverride?: AutomationDefinitionStatus;
+        } = {}) => {
+            const draftStatus = statusOverride ?? status;
+            const draftSnapshot =
+                snapshot ??
+                automationDraftSnapshot({
+                    description,
+                    graph: draftGraph,
+                    key: automationKey,
+                    maxConcurrentRunsInput,
+                    name,
+                    status: draftStatus,
+                });
+
+            setJsonError(null);
+            setAutosaveStatus('saving');
+
             const saveResult = await saveAutomationDefinitionAction({
-                id: automationId,
-                key: generatedKey,
+                id: currentAutomationId,
+                key: automationKey,
                 name,
                 description,
-                status,
-                graph: flowToGraph(nodes, edges),
+                status: draftStatus,
+                maxConcurrentRuns: Number(maxConcurrentRunsInput),
+                graph: draftGraph,
             });
 
-            setResult(saveResult);
+            if (requireLatest && latestSaveSnapshot.current !== draftSnapshot) {
+                return saveResult;
+            }
+
+            if (saveResult.ok) {
+                setResult(null);
+                setAutosaveStatus('saved');
+                setLastSavedSnapshot(draftSnapshot);
+                setCurrentAutomationId(saveResult.automationId);
+                setDefinitionKey(automationKey);
+            } else {
+                setResult(saveResult);
+                setAutosaveStatus('failed');
+            }
+
+            return saveResult;
+        },
+        [
+            automationKey,
+            currentAutomationId,
+            description,
+            draftGraph,
+            maxConcurrentRunsInput,
+            name,
+            status,
+        ],
+    );
+
+    useEffect(() => {
+        if (!currentAutomationId || lastSavedSnapshot === null || jsonError) {
+            return;
+        }
+
+        if (saveSnapshot === lastSavedSnapshot) {
+            setAutosaveStatus('saved');
+            return;
+        }
+
+        setAutosaveStatus('unsaved');
+
+        const timeout = window.setTimeout(() => {
+            void saveDraft({
+                requireLatest: true,
+                snapshot: saveSnapshot,
+            });
+        }, 700);
+
+        return () => window.clearTimeout(timeout);
+    }, [
+        currentAutomationId,
+        jsonError,
+        lastSavedSnapshot,
+        saveDraft,
+        saveSnapshot,
+    ]);
+
+    function save() {
+        startTransition(async () => {
+            const saveResult = await saveDraft({
+                snapshot: saveSnapshot,
+            });
+
             if (saveResult.ok) {
                 router.replace(KnownPages.Automation(saveResult.automationId));
                 router.refresh();
@@ -444,7 +590,103 @@ export function AutomationFlowEditor({
         });
     }
 
+    function changeDefinitionStatus(nextStatus: AutomationDefinitionStatus) {
+        if (!currentAutomationId) {
+            return;
+        }
+
+        const previousStatus = status;
+        const hadUnsavedChanges =
+            lastSavedSnapshot !== null && saveSnapshot !== lastSavedSnapshot;
+        const nextSnapshot = automationDraftSnapshot({
+            description,
+            graph: draftGraph,
+            key: automationKey,
+            maxConcurrentRunsInput,
+            name,
+            status: nextStatus,
+        });
+
+        setStatus(nextStatus);
+        setResult(null);
+        setAutosaveStatus('saving');
+
+        startTransition(async () => {
+            const statusResult = await updateAutomationStatusAction(
+                currentAutomationId,
+                nextStatus,
+            );
+
+            if (!statusResult.ok) {
+                setStatus(previousStatus);
+                setResult(statusResult);
+                setAutosaveStatus('failed');
+                return;
+            }
+
+            setResult(null);
+            if (hadUnsavedChanges) {
+                setAutosaveStatus('unsaved');
+            } else {
+                setLastSavedSnapshot(nextSnapshot);
+                setAutosaveStatus('saved');
+            }
+            router.refresh();
+        });
+    }
+
     const statusMeta = automationStatusMeta(status);
+    const canAutosave = Boolean(currentAutomationId);
+
+    const header = currentAutomationId ? (
+        <AdminPageHeader
+            breadcrumbs={
+                <Row spacing={2} className="min-w-0 items-center">
+                    <div className="min-w-0">
+                        <Breadcrumbs
+                            items={[
+                                {
+                                    label: <AdminBreadcrumbLevelSelector />,
+                                    href: KnownPages.Automations,
+                                },
+                                { label: name },
+                            ]}
+                        />
+                    </div>
+                    <Chip
+                        className="shrink-0"
+                        color={statusMeta.color}
+                        size="sm"
+                        variant="soft"
+                    >
+                        {statusMeta.label}
+                    </Chip>
+                </Row>
+            }
+            actions={
+                <Row spacing={2} className="items-center">
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant={
+                            activePanel === 'details' ? 'soft' : 'outlined'
+                        }
+                        aria-pressed={activePanel === 'details'}
+                        onClick={() => openPanel('details')}
+                        startDecorator={<Settings className="size-4" />}
+                    >
+                        Detalji
+                    </Button>
+                    <AutomationActionsMenu
+                        disabled={isPending}
+                        onStatusChange={changeDefinitionStatus}
+                        status={status}
+                    />
+                </Row>
+            }
+            heading={name}
+        />
+    ) : null;
 
     const detailPanel = (
         <Stack spacing={4}>
@@ -459,20 +701,28 @@ export function AutomationFlowEditor({
             />
             <Input
                 label="Ključ"
-                value={generatedKey}
+                value={automationKey}
                 readOnly
-                helperText="Automatski se generira iz naziva."
+                helperText={
+                    automationId
+                        ? 'Postojeći ključ ostaje nepromijenjen.'
+                        : 'Automatski se generira iz naziva.'
+                }
                 fullWidth
             />
-            <SelectItems<AutomationDefinitionStatus>
-                className="w-full"
-                label="Status"
-                value={status}
-                items={definitionStatusItems}
-                onValueChange={(nextStatus) => {
-                    setStatus(nextStatus);
+            <Input
+                label="Paralelna izvođenja"
+                helperText={`Najviše ${maxConcurrentRunsLimit} runova ove automatizacije istovremeno.`}
+                type="number"
+                min={1}
+                max={maxConcurrentRunsLimit}
+                step={1}
+                value={maxConcurrentRunsInput}
+                onChange={(event) => {
+                    setMaxConcurrentRunsInput(event.target.value);
                     setResult(null);
                 }}
+                fullWidth
             />
             <Stack spacing={1}>
                 <label
@@ -491,15 +741,17 @@ export function AutomationFlowEditor({
                     className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 />
             </Stack>
-            <Button
-                type="button"
-                disabled={isPending}
-                loading={isPending}
-                onClick={save}
-                startDecorator={<Save className="size-4" />}
-            >
-                Spremi
-            </Button>
+            {!currentAutomationId ? (
+                <Button
+                    type="button"
+                    disabled={isPending}
+                    loading={isPending}
+                    onClick={save}
+                    startDecorator={<Add className="size-4" />}
+                >
+                    Kreiraj
+                </Button>
+            ) : null}
         </Stack>
     );
 
@@ -731,52 +983,48 @@ export function AutomationFlowEditor({
 
     return (
         <>
+            {header}
             <Stack spacing={3}>
                 {result ? <SaveResultNotice result={result} /> : null}
 
                 <div className="min-w-0 overflow-hidden rounded-md border bg-background">
-                    <div className="flex flex-col gap-3 border-b px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-                        <Row spacing={2} className="min-w-0 flex-wrap">
-                            <Chip
-                                color={statusMeta.color}
-                                size="sm"
-                                variant="soft"
-                            >
-                                {statusMeta.label}
-                            </Chip>
-                            <Typography level="body2" secondary>
-                                {nodes.length} modula, {edges.length} veza
-                            </Typography>
-                        </Row>
-                        <Row spacing={2} className="flex-wrap">
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant={
-                                    activePanel === 'details'
-                                        ? 'soft'
-                                        : 'outlined'
-                                }
-                                aria-pressed={activePanel === 'details'}
-                                onClick={() => openPanel('details')}
-                                startDecorator={<Settings className="size-4" />}
-                            >
-                                Detalji
-                            </Button>
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant={
-                                    activePanel === 'modules'
-                                        ? 'soft'
-                                        : 'outlined'
-                                }
-                                aria-pressed={activePanel === 'modules'}
-                                onClick={() => openPanel('modules')}
-                                startDecorator={<Layers className="size-4" />}
-                            >
-                                Moduli
-                            </Button>
+                    <div className="flex flex-col gap-3 border-b px-4 py-3 lg:flex-row lg:items-center">
+                        <div className="min-w-0 flex-1">
+                            {canAutosave ? (
+                                <Typography
+                                    level="body3"
+                                    className={
+                                        autosaveStatus === 'failed'
+                                            ? 'text-red-700 dark:text-red-300'
+                                            : 'text-muted-foreground'
+                                    }
+                                >
+                                    {autosaveLabel(autosaveStatus)}
+                                </Typography>
+                            ) : null}
+                        </div>
+                        <Row
+                            spacing={2}
+                            className="ml-auto flex-wrap justify-end"
+                        >
+                            {!currentAutomationId ? (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={
+                                        activePanel === 'details'
+                                            ? 'soft'
+                                            : 'outlined'
+                                    }
+                                    aria-pressed={activePanel === 'details'}
+                                    onClick={() => openPanel('details')}
+                                    startDecorator={
+                                        <Settings className="size-4" />
+                                    }
+                                >
+                                    Detalji
+                                </Button>
+                            ) : null}
                             <Button
                                 type="button"
                                 size="sm"
@@ -806,30 +1054,19 @@ export function AutomationFlowEditor({
                                     onClick={() => openPanel('testing')}
                                     startDecorator={<Play className="size-4" />}
                                 >
-                                    Testiranje
+                                    Pokreni
                                 </Button>
                             ) : null}
-                            <Button
+                            <IconButton
                                 type="button"
                                 size="sm"
-                                variant="outlined"
-                                color="danger"
-                                disabled={!selectedNodeId}
-                                onClick={removeSelectedNode}
-                                startDecorator={<Delete className="size-4" />}
+                                variant="plain"
+                                title="Dodaj modul"
+                                aria-pressed={activePanel === 'modules'}
+                                onClick={() => openPanel('modules')}
                             >
-                                Ukloni
-                            </Button>
-                            <Button
-                                type="button"
-                                size="sm"
-                                disabled={isPending}
-                                loading={isPending}
-                                onClick={save}
-                                startDecorator={<Save className="size-4" />}
-                            >
-                                Spremi
-                            </Button>
+                                <Add className="size-4" />
+                            </IconButton>
                         </Row>
                     </div>
                     <div className="h-[calc(100vh-260px)] min-h-[560px]">

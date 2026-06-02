@@ -1,7 +1,7 @@
 'use client';
 
-import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useState } from 'react';
+import { useSceneTimeUniform } from '../../../scene/SceneTime';
 import { useGameState } from '../../../useGameState';
 import { SeededRNG } from '../lib/rng';
 
@@ -110,12 +110,13 @@ export const plantSwayVertexShader = /* glsl */ `
 
 export function usePlantSway(seed: string, options: PlantSwayOptions) {
     const weather = useGameState((state) => state.weather);
+    const timeUniform = useSceneTimeUniform();
     const prefersReducedMotion = usePrefersReducedMotion();
     const swayDisabled = options.enabled === false || prefersReducedMotion;
     const uniforms = useMemo(() => {
         const rng = new SeededRNG(seed);
         return {
-            uTime: { value: 0 },
+            uTime: timeUniform,
             uSwayAmplitude: {
                 value: swayDisabled ? 0 : options.amplitude,
             },
@@ -124,11 +125,10 @@ export function usePlantSway(seed: string, options: PlantSwayOptions) {
             uWindStrength: { value: 0 },
             uWindDirection: { value: defaultWindDirection() },
         };
-    }, [options.amplitude, options.speed, seed, swayDisabled]);
+    }, [options.amplitude, options.speed, seed, swayDisabled, timeUniform]);
 
-    useFrame(({ clock }) => {
+    useEffect(() => {
         if (swayDisabled) {
-            uniforms.uTime.value = 0;
             uniforms.uSwayAmplitude.value = 0;
             uniforms.uSwaySpeed.value = 0;
             uniforms.uWindStrength.value = 0;
@@ -136,7 +136,6 @@ export function usePlantSway(seed: string, options: PlantSwayOptions) {
             return;
         }
 
-        uniforms.uTime.value = clock.getElapsedTime();
         const windStrength = Math.max(
             0,
             Math.min(1, (weather?.windSpeed ?? 0) / 25),
@@ -152,7 +151,14 @@ export function usePlantSway(seed: string, options: PlantSwayOptions) {
             Math.sin(windDirectionRadians),
             -Math.cos(windDirectionRadians),
         ];
-    });
+    }, [
+        options.amplitude,
+        options.speed,
+        swayDisabled,
+        uniforms,
+        weather?.windDirection,
+        weather?.windSpeed,
+    ]);
 
     return uniforms;
 }

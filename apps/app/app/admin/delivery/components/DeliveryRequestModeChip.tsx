@@ -6,9 +6,5 @@ export function DeliveryRequestModeChip({
 }: {
     mode: string | null | undefined;
 }) {
-    return (
-        <Chip color="primary" className="w-fit">
-            {getDeliveryRequestModeLabel(mode)}
-        </Chip>
-    );
+    return <Chip color="primary">{getDeliveryRequestModeLabel(mode)}</Chip>;
 }

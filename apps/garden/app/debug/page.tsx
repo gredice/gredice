@@ -27,6 +27,12 @@ const debugGroups = [
                 description:
                     'Playable sandbox scene backed by browser local storage.',
             },
+            {
+                href: '/debug/animals',
+                title: 'Animal sandbox',
+                description:
+                    'Animal behavior scene with spawn presets, entity placement, and debug controls.',
+            },
         ],
     },
     {
