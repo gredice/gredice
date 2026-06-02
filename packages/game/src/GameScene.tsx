@@ -39,6 +39,7 @@ import { ParticleSystemProvider } from './particles/ParticleSystem';
 import { Environment } from './scene/Environment';
 import {
     type GameQualityAutoProfileMetrics,
+    type GameQualitySetting,
     type GameQualityTier,
     getGameQualityAutoProfileMetrics,
     resolveGameQualityProfile,
@@ -67,10 +68,13 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     weather?: Partial<GameState['weather']>;
     deferDetails?: boolean;
     quality?: GameQualityTier;
+    initialQualitySetting?: GameQualitySetting;
 
     // Development purposes
     flags?: GameFeatureFlags;
 };
+
+type GameSceneInnerProps = Omit<GameSceneProps, 'initialQualitySetting'>;
 
 function useAutoQualityProfileMetrics(enabled: boolean) {
     const [metrics, setMetrics] = useState<
@@ -158,7 +162,7 @@ export function GameScene({
     weather,
     deferDetails,
     ...rest
-}: GameSceneProps) {
+}: GameSceneInnerProps) {
     useFocusPlacedBlock();
     useRaisedBedCloseup();
     const weatherVisualizationDisabled = useGameState(

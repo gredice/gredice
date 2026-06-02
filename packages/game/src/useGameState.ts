@@ -190,6 +190,7 @@ export function createGameState({
     spriteBaseUrl,
     dayNightCycleDisabled: initialDayNightCycleDisabled,
     freezeTime,
+    initialQualitySetting,
     isMock,
     localSandboxStorageKey,
     winterMode,
@@ -198,6 +199,7 @@ export function createGameState({
     spriteBaseUrl?: string;
     dayNightCycleDisabled?: boolean;
     freezeTime: Date | null;
+    initialQualitySetting?: GameQualitySetting;
     isMock: boolean;
     localSandboxStorageKey?: string;
     winterMode?: WinterMode;
@@ -205,7 +207,7 @@ export function createGameState({
     const dayNightCycleDisabled =
         initialDayNightCycleDisabled ?? isDayNightCycleDisabled();
     const gameQualityCustomProfile = getGameQualityCustomProfile();
-    const gameQualitySetting = getGameQualitySetting();
+    const gameQualitySetting = initialQualitySetting ?? getGameQualitySetting();
     const weatherVisualizationDisabled = isWeatherVisualizationDisabled();
     const now = freezeTime ?? new Date();
     const timeOfDay = resolveGameTimeOfDay(now, dayNightCycleDisabled);
