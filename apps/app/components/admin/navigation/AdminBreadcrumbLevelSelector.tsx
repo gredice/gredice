@@ -10,6 +10,7 @@ import {
     Hammer,
     Home,
     Inbox,
+    Lightning,
     Mail,
     Map as MapIcon,
     Megaphone,
@@ -127,6 +128,7 @@ const breadcrumbSections: {
     {
         title: 'Upravljanje',
         pages: [
+            { ...adminPages.Approvals, icon: <Inbox className="size-4" /> },
             { ...adminPages.Inventory, icon: <Tally3 className="size-4" /> },
             { ...adminPages.Occasions, icon: <Calendar className="size-4" /> },
             { ...adminPages.Schedule, icon: <Calendar className="size-4" /> },
@@ -160,17 +162,21 @@ const breadcrumbSections: {
         ],
     },
     {
-        title: 'Postavke',
-        pages: [
-            { ...adminPages.Settings, icon: <Settings className="size-4" /> },
-        ],
-    },
-    {
         title: 'Sustavi',
         pages: [
+            {
+                ...adminPages.Automations,
+                icon: <Lightning className="size-4" />,
+            },
             { ...adminPages.Sensors, icon: <File className="size-4" /> },
             { ...adminPages.Cache, icon: <File className="size-4" /> },
             { ...adminPages.AiAnalytics, icon: <AI className="size-4" /> },
+        ],
+    },
+    {
+        title: 'Postavke',
+        pages: [
+            { ...adminPages.Settings, icon: <Settings className="size-4" /> },
         ],
     },
 ];
