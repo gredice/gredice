@@ -763,6 +763,63 @@ export async function getFarmAcceptedOperations(
     return operationsWithAggregates;
 }
 
+export async function getFarmAcceptedOperationsByScheduleRange({
+    farmId,
+    from,
+    to,
+}: {
+    farmId: number;
+    from: Date;
+    to: Date;
+}) {
+    const scheduledDateExpression = sql<string>`${events.data} ->> 'scheduledDate'`;
+    const scheduledRows = await storage()
+        .selectDistinct({ id: operations.id })
+        .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .innerJoin(
+            events,
+            and(
+                sql`${events.aggregateId} = cast(${operations.id} as text)`,
+                eq(events.type, knownEventTypes.operations.schedule),
+            ),
+        )
+        .where(
+            and(
+                eq(operationFarmIdExpression(), farmId),
+                eq(operations.isAccepted, true),
+                eq(operations.isDeleted, false),
+                operationLocationIntegrityWhere(),
+                gte(scheduledDateExpression, from.toISOString()),
+                lte(scheduledDateExpression, to.toISOString()),
+            ),
+        );
+    const timestampRows = await storage()
+        .selectDistinct({ id: operations.id })
+        .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .where(
+            and(
+                eq(operationFarmIdExpression(), farmId),
+                eq(operations.isAccepted, true),
+                eq(operations.isDeleted, false),
+                operationLocationIntegrityWhere(),
+                gte(operations.timestamp, from),
+                lte(operations.timestamp, to),
+            ),
+        );
+    const operationIds = Array.from(
+        new Set([
+            ...scheduledRows.map((row) => row.id),
+            ...timestampRows.map((row) => row.id),
+        ]),
+    );
+
+    return getOperationsByIds(operationIds);
+}
+
 export async function getFarmUserAcceptedOperationById(
     userId: string,
     id: number,

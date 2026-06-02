@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    acceptOperation,
     automationEventCursors,
     automationModuleKeys,
     claimDueAutomationRuns,
@@ -19,7 +20,7 @@ import {
     getAutomationEventCursor,
     getAutomationRunWithSteps,
     getEvents,
-    getFarmAcceptedOperations,
+    getFarmAcceptedOperationsByScheduleRange,
     getFarms,
     getOperations,
     getRaisedBed,
@@ -370,6 +371,20 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
             scheduledInDays: 2,
         },
     ];
+    const preexistingFarm = activeFarms[0];
+    assert.ok(preexistingFarm);
+    const preexistingOperationId = await createOperation({
+        entityId: operationConfigs[0].entityId,
+        entityTypeName: operationConfigs[0].entityTypeName,
+        farmId: preexistingFarm.id,
+        timestamp: new Date('2026-05-01T08:00:00.000Z'),
+    });
+    await acceptOperation(preexistingOperationId);
+    await createEvent(
+        knownEvents.operations.scheduledV1(preexistingOperationId.toString(), {
+            scheduledDate: referenceDate.toISOString(),
+        }),
+    );
     const graph = {
         nodes: [
             {
@@ -426,7 +441,8 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
         ).toISOString(),
     );
     for (const farm of activeFarms) {
-        const farmOperations = await getFarmAcceptedOperations(farm.id, {
+        const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
+            farmId: farm.id,
             from: referenceDate,
             to: addUtcDays(referenceDate, 3),
         });
@@ -439,7 +455,18 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
             )
             .sort((left, right) => left.entityId - right.entityId);
 
-        assert.strictEqual(inventoryOperations.length, operationConfigs.length);
+        assert.strictEqual(
+            inventoryOperations.length,
+            operationConfigs.length,
+            `Expected ${operationConfigs.length} inventory operations for farm ${farm.id}, got ${JSON.stringify(
+                inventoryOperations.map((operation) => ({
+                    id: operation.id,
+                    entityId: operation.entityId,
+                    scheduledDate: operation.scheduledDate?.toISOString(),
+                    timestamp: operation.timestamp.toISOString(),
+                })),
+            )}`,
+        );
         assert.deepStrictEqual(
             inventoryOperations.map((operation) =>
                 operation.scheduledDate?.toISOString(),
@@ -454,6 +481,13 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
                 (operation) => operation.farmId === farm.id,
             ),
         );
+        if (farm.id === preexistingFarm.id) {
+            assert.ok(
+                inventoryOperations.some(
+                    (operation) => operation.id === preexistingOperationId,
+                ),
+            );
+        }
     }
 
     const [firstRun] = await listAutomationRuns({
@@ -475,7 +509,8 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
 
     assert.strictEqual(replayResult.status, 'skipped');
     for (const farm of activeFarms) {
-        const farmOperations = await getFarmAcceptedOperations(farm.id, {
+        const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
+            farmId: farm.id,
             from: referenceDate,
             to: addUtcDays(referenceDate, 3),
         });

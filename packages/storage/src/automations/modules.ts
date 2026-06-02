@@ -11,7 +11,7 @@ import { getRaisedBed } from '../repositories/gardensRepo';
 import {
     acceptOperation,
     createOperation,
-    getFarmAcceptedOperations,
+    getFarmAcceptedOperationsByScheduleRange,
     getOperationById,
 } from '../repositories/operationsRepo';
 import { queueSeasonalSowingOfferOperations } from '../repositories/seasonalOffersRepo';
@@ -935,13 +935,12 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
         const repairedScheduledOperationIds: number[] = [];
 
         for (const farm of activeFarms) {
-            const existingOperations = await getFarmAcceptedOperations(
-                farm.id,
-                {
+            const existingOperations =
+                await getFarmAcceptedOperationsByScheduleRange({
+                    farmId: farm.id,
                     from,
                     to,
-                },
-            );
+                });
             const existingOperationsByKey = new Map(
                 existingOperations.flatMap((operation) => {
                     if (
