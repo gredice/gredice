@@ -4,7 +4,9 @@ Automations are configurable, trusted server-side workflows that react to
 Gredice domain events or scheduled occurrences. The first workflows cover the
 existing planting flow where a `raisedBedField.plantUpdate` event with
 `data.status = "sowed"` queues seasonal watering operations asynchronously, and
-monthly schedules that can create recurring farm operations.
+monthly schedules that can create recurring farm operations. Operation
+completion images can also be reviewed asynchronously for high-confidence plant
+status changes that create pending admin approval requests.
 
 ## Ownership
 
@@ -87,6 +89,10 @@ MVP modules:
   definition.
 - `action.updateRaisedBedFieldPlantStatus`: writes a
   `raisedBedField.plantUpdate` event for an operation target.
+- `action.createPlantStatusRequestsFromImageAnalysis`: reviews hosted
+  raised-bed images from operation completion or raised-bed AI analysis events,
+  then creates pending plant-status approval requests when the visual evidence
+  passes the configured confidence threshold.
 - `action.log`: records a no-op step for diagnostics.
 
 When adding a module, define metadata, config validation, dry-run behavior, and

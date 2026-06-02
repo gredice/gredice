@@ -29,6 +29,7 @@ import {
     listAutomationDefinitions,
     listAutomationRuns,
     listEnabledAutomationDefinitionsForEventType,
+    operationImagePlantStatusReviewAutomationGraph,
     processDueAutomationRuns,
     recordAutomationRunStep,
     seasonalSowedWateringAutomationGraph,
@@ -744,6 +745,102 @@ test('plant-status automation skips replay when target status already exists', a
         ).length,
         1,
     );
+});
+
+test('image plant-status review automation previews operation completion images in dry run', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-04-01T08:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'sowed',
+        }),
+    );
+    const raisedBed = await getRaisedBed(raisedBedId);
+    const field = raisedBed?.fields.find(
+        (candidate) => candidate.positionIndex === 0,
+    );
+    assert.ok(field);
+
+    const operationId = await createOperation({
+        accountId,
+        entityId: 1,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId: field.id,
+    });
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: 'automations-test',
+            images: [
+                'https://myegtvromcktt2y7.public.blob.vercel-storage.com/operations/test-field.jpg',
+                'https://example.com/not-gredice-storage.jpg',
+            ],
+        }),
+    );
+    const event = await getLatestEvent(
+        knownEventTypes.operations.complete,
+        operationId.toString(),
+    );
+    const definition = await createAutomationDefinition({
+        key: 'test.image-plant-status-review',
+        name: 'Image plant status review',
+        status: 'enabled',
+        graph: operationImagePlantStatusReviewAutomationGraph(),
+    });
+    const run = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'event',
+        sourceEvent: event,
+        dryRun: true,
+        input: {
+            eventId: event.id,
+            eventType: event.type,
+            aggregateId: event.aggregateId,
+            data:
+                event.data && typeof event.data === 'object'
+                    ? (event.data as Record<string, unknown>)
+                    : {},
+        },
+    });
+    assert.ok(run);
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'succeeded');
+    const runWithSteps = await getAutomationRunWithSteps(startedRun.id);
+    const actionStep = runWithSteps?.steps.find(
+        (step) => step.nodeId === 'review-plant-statuses',
+    );
+    assert.strictEqual(actionStep?.status, 'succeeded');
+    assert.ok(
+        actionStep?.output &&
+            typeof actionStep.output === 'object' &&
+            !Array.isArray(actionStep.output),
+    );
+    assert.strictEqual(
+        Reflect.get(actionStep.output, 'source'),
+        'operationCompletion',
+    );
+    assert.strictEqual(Reflect.get(actionStep.output, 'imageCount'), 1);
+    assert.strictEqual(
+        Reflect.get(actionStep.output, 'skippedInvalidImageCount'),
+        1,
+    );
+    assert.strictEqual(Reflect.get(actionStep.output, 'plantedFieldCount'), 1);
 });
 
 test('automation runner seeds the initial event cursor without backfilling historical events', async () => {

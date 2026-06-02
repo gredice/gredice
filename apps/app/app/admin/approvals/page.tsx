@@ -141,6 +141,14 @@ export default async function AdminApprovalsPage() {
                                                                 ).shortLabel
                                                             }
                                                         </Typography>
+                                                        {task.note ? (
+                                                            <Typography
+                                                                level="body3"
+                                                                className="max-w-md whitespace-pre-line text-muted-foreground"
+                                                            >
+                                                                {task.note}
+                                                            </Typography>
+                                                        ) : null}
                                                     </Stack>
                                                 ) : task.kind ===
                                                   'scheduleOperationVerification' ? (
