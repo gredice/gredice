@@ -6,12 +6,18 @@ import {
 } from '@gredice/storage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Stack } from '@gredice/ui/Stack';
-import { Typography } from '@gredice/ui/Typography';
 import { RaisedBedFieldLocationSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldLocationSelector';
 import { RaisedBedFieldPlantSortSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantSortSelector';
 import { RaisedBedFieldPlantStatusSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantStatusSelector';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
 import { MoveRaisedBedFieldPlantModal } from './MoveRaisedBedFieldPlantModal';
+import {
+    RaisedBedFieldCard,
+    RaisedBedFieldCardGrid,
+    raisedBedFieldCardButtonClassName,
+    raisedBedFieldCardChipClassName,
+    raisedBedFieldCardSelectClassName,
+} from './RaisedBedFieldCard';
 import {
     type RaisedBedFieldDateItem,
     RaisedBedFieldDatesPopover,
@@ -174,8 +180,8 @@ export async function RaisedBedFieldsTable({
     }
 
     return (
-        <Stack spacing={6}>
-            <div className="grid gap-3 grid-cols-3">
+        <Stack spacing={0}>
+            <RaisedBedFieldCardGrid>
                 {orderedPositions.map((positionIndex) => {
                     const positionPlantCycles = [
                         ...(plantCyclesByPosition.get(positionIndex) ?? []),
@@ -294,7 +300,7 @@ export async function RaisedBedFieldsTable({
                         />
                     );
                 })}
-            </div>
+            </RaisedBedFieldCardGrid>
         </Stack>
     );
 }
@@ -379,94 +385,91 @@ function RaisedBedFieldTile({
         },
     ];
 
+    const image =
+        field?.active && sort ? (
+            <PlantOrSortImage
+                plantSort={sort}
+                alt={plantLabel}
+                fill
+                className="object-cover"
+                sizes="(min-width: 1536px) 14rem, (min-width: 1280px) 16rem, (min-width: 768px) 18rem, 50vw"
+            />
+        ) : undefined;
+    const locationControl =
+        field?.active && field.plantSortId ? (
+            <RaisedBedFieldLocationSelector
+                raisedBedId={raisedBedId}
+                positionIndex={positionIndex}
+                sowingLocation={field.sowingLocation}
+                currentLocation={getCurrentLocation(field)}
+                greenhouseCurrentLocationEligible={canFieldCurrentlyBeInGreenhouse(
+                    field,
+                )}
+                className={raisedBedFieldCardChipClassName}
+            />
+        ) : undefined;
+    const fieldBadge =
+        field?.active && activePlantCycle ? (
+            <MoveRaisedBedFieldPlantModal
+                raisedBedId={raisedBedId}
+                sourcePositionIndex={positionIndex}
+                sourcePlantPlaceEventId={activePlantCycle.plantPlaceEventId}
+                sourcePlantLabel={plantLabel}
+                targetOptions={moveTargetOptions}
+                triggerVariant="fieldIndex"
+            />
+        ) : (
+            <div
+                className={`rounded-full px-2 py-1 text-xs font-semibold ${raisedBedFieldCardButtonClassName}`}
+            >
+                {positionIndex + 1}
+            </div>
+        );
+    const historyControl =
+        removedFields.length > 0 ? (
+            <RaisedBedRemovedFieldsModal
+                raisedBedId={raisedBedId}
+                fields={removedFields}
+                targetOptions={moveTargetOptions}
+            />
+        ) : undefined;
+    const plantSortControl = (
+        <RaisedBedFieldPlantSortSelector
+            raisedBedId={raisedBedId}
+            positionIndex={positionIndex}
+            status={field?.plantStatus ?? null}
+            plantSortId={field?.plantSortId}
+            plantSorts={plantSorts}
+            variant="plain"
+            className={raisedBedFieldCardSelectClassName}
+        />
+    );
+    const statusControl =
+        field?.active && field.plantStatus ? (
+            <RaisedBedFieldPlantStatusSelector
+                raisedBedId={raisedBedId}
+                positionIndex={positionIndex}
+                status={field.plantStatus}
+                variant="plain"
+                className={raisedBedFieldCardSelectClassName}
+            />
+        ) : undefined;
+    const datesControl = field?.active ? (
+        <RaisedBedFieldDatesPopover
+            items={dateItems}
+            className={raisedBedFieldCardButtonClassName}
+        />
+    ) : undefined;
+
     return (
-        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border bg-background shadow-xs">
-            <div className="relative min-h-52 flex-1 bg-muted/40">
-                {field?.active && sort ? (
-                    <PlantOrSortImage
-                        plantSort={sort}
-                        alt={plantLabel}
-                        fill
-                        className="object-cover"
-                        sizes="(min-width: 1536px) 14rem, (min-width: 1280px) 16rem, (min-width: 768px) 18rem, 50vw"
-                    />
-                ) : (
-                    <div className="flex h-full items-center justify-center text-muted-foreground">
-                        <Typography level="body2">Nema slike</Typography>
-                    </div>
-                )}
-                {removedFields.length > 0 && (
-                    <div className="absolute bottom-2 left-2">
-                        <RaisedBedRemovedFieldsModal
-                            raisedBedId={raisedBedId}
-                            fields={removedFields}
-                            targetOptions={moveTargetOptions}
-                        />
-                    </div>
-                )}
-                {field?.active && field.plantSortId && (
-                    <div className="absolute top-2 left-2">
-                        <RaisedBedFieldLocationSelector
-                            raisedBedId={raisedBedId}
-                            positionIndex={positionIndex}
-                            sowingLocation={field.sowingLocation}
-                            currentLocation={getCurrentLocation(field)}
-                            greenhouseCurrentLocationEligible={canFieldCurrentlyBeInGreenhouse(
-                                field,
-                            )}
-                        />
-                    </div>
-                )}
-                <div className="absolute bottom-2 right-2">
-                    {field?.active && activePlantCycle ? (
-                        <MoveRaisedBedFieldPlantModal
-                            raisedBedId={raisedBedId}
-                            sourcePositionIndex={positionIndex}
-                            sourcePlantPlaceEventId={
-                                activePlantCycle.plantPlaceEventId
-                            }
-                            sourcePlantLabel={plantLabel}
-                            targetOptions={moveTargetOptions}
-                            triggerVariant="fieldIndex"
-                        />
-                    ) : (
-                        <div className="rounded-full bg-background/90 px-2 py-1 text-xs font-semibold shadow">
-                            #{positionIndex + 1}
-                        </div>
-                    )}
-                </div>
-            </div>
-            <div className="flex flex-col gap-2 px-2 pb-2 pt-0">
-                <RaisedBedFieldPlantSortSelector
-                    raisedBedId={raisedBedId}
-                    positionIndex={positionIndex}
-                    status={field?.plantStatus ?? null}
-                    plantSortId={field?.plantSortId}
-                    plantSorts={plantSorts}
-                    variant="plain"
-                />
-                {field?.active && (
-                    <Stack spacing={2}>
-                        {field.plantStatus && (
-                            <div className="flex items-center gap-2">
-                                <div className="min-w-0 flex-1">
-                                    <RaisedBedFieldPlantStatusSelector
-                                        raisedBedId={raisedBedId}
-                                        positionIndex={positionIndex}
-                                        status={field.plantStatus}
-                                    />
-                                </div>
-                                <RaisedBedFieldDatesPopover items={dateItems} />
-                            </div>
-                        )}
-                        {!field.plantStatus && (
-                            <div className="flex justify-end">
-                                <RaisedBedFieldDatesPopover items={dateItems} />
-                            </div>
-                        )}
-                    </Stack>
-                )}
-            </div>
-        </div>
+        <RaisedBedFieldCard
+            image={image}
+            locationControl={locationControl}
+            fieldBadge={fieldBadge}
+            historyControl={historyControl}
+            plantSortControl={plantSortControl}
+            statusControl={statusControl}
+            datesControl={datesControl}
+        />
     );
 }
