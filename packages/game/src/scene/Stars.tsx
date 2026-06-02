@@ -303,24 +303,19 @@ export function Stars({ visibility = 1 }: StarsProps) {
                 />
                 <bufferAttribute
                     attach="attributes-twinkleColor"
-                    args={[
-                        visibleTwinkleColors,
-                        STAR_RENDERING.positionStride,
-                    ]}
+                    args={[visibleTwinkleColors, STAR_RENDERING.positionStride]}
                     count={visibleCount}
                 />
                 <bufferAttribute
                     attach="attributes-twinkleParams"
-                    args={[
-                        visibleTwinkleParams,
-                        STAR_RENDERING.positionStride,
-                    ]}
+                    args={[visibleTwinkleParams, STAR_RENDERING.positionStride]}
                     count={visibleCount}
                 />
             </bufferGeometry>
             <shaderMaterial
                 uniforms={starUniforms}
-                vertexShader={/* glsl */ `
+                vertexShader={
+                    /* glsl */ `
                     attribute vec3 color;
                     attribute vec3 twinkleColor;
                     attribute vec3 twinkleParams;
@@ -345,8 +340,10 @@ export function Stars({ visibility = 1 }: StarsProps) {
                         gl_PointSize = uPointSize;
                         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
                     }
-                `}
-                fragmentShader={/* glsl */ `
+                `
+                }
+                fragmentShader={
+                    /* glsl */ `
                     uniform float uOpacity;
                     varying vec3 vColor;
 
@@ -360,7 +357,8 @@ export function Stars({ visibility = 1 }: StarsProps) {
                         gl_FragColor = vec4(vColor, pointAlpha * uOpacity);
                         #include <colorspace_fragment>
                     }
-                `}
+                `
+                }
                 transparent
                 depthTest={false}
                 depthWrite={false}

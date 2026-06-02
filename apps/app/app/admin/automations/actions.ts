@@ -11,6 +11,7 @@ import {
     createAutomationDefinition,
     createAutomationRun,
     getAutomationDefinitionById,
+    getAutomationDefinitionByKey,
     getAutomationRunById,
     getDomainEventById,
     listAutomationRunSteps,
@@ -158,6 +159,23 @@ function revalidateAutomationPages(automationId?: number) {
     }
 }
 
+function automationKeyExistsMessage(key: string) {
+    return `Automation key "${key}" already exists.`;
+}
+
+function isAutomationKeyUniqueConstraintError(error: unknown) {
+    if (!isRecord(error)) {
+        return false;
+    }
+
+    const candidate = isRecord(error.cause) ? error.cause : error;
+
+    return (
+        candidate.code === '23505' &&
+        candidate.constraint === 'automation_definitions_key_idx'
+    );
+}
+
 export async function saveAutomationDefinitionAction(
     payload: SaveAutomationDefinitionPayload,
 ): Promise<AutomationSaveResult> {
@@ -195,6 +213,17 @@ export async function saveAutomationDefinitionAction(
         return { ok: false, errors };
     }
 
+    const existingDefinition = await getAutomationDefinitionByKey(key);
+    if (
+        existingDefinition &&
+        (!payload.id || existingDefinition.id !== payload.id)
+    ) {
+        return {
+            ok: false,
+            errors: [automationKeyExistsMessage(key)],
+        };
+    }
+
     const input = {
         key,
         name,
@@ -205,12 +234,24 @@ export async function saveAutomationDefinitionAction(
         updatedByUserId: userId,
     };
 
-    const definition = payload.id
-        ? await updateAutomationDefinition(payload.id, input)
-        : await createAutomationDefinition({
-              ...input,
-              createdByUserId: userId,
-          });
+    let definition: Awaited<ReturnType<typeof updateAutomationDefinition>>;
+    try {
+        definition = payload.id
+            ? await updateAutomationDefinition(payload.id, input)
+            : await createAutomationDefinition({
+                  ...input,
+                  createdByUserId: userId,
+              });
+    } catch (error) {
+        if (isAutomationKeyUniqueConstraintError(error)) {
+            return {
+                ok: false,
+                errors: [automationKeyExistsMessage(key)],
+            };
+        }
+
+        throw error;
+    }
 
     if (!definition) {
         return {
@@ -375,14 +416,26 @@ export async function runAutomationTestAction(
     }
 }
 
-export async function replayAutomationRunAction(
-    runId: number,
-    dryRun = true,
-): Promise<AutomationRunActionResult> {
+async function runAutomationRunAgain({
+    runId,
+    dryRun,
+    actionName,
+}: {
+    runId: number;
+    dryRun: boolean;
+    actionName: 'replay' | 'retry';
+}): Promise<AutomationRunActionResult> {
     const { userId } = await auth(['admin']);
     const originalRun = await getAutomationRunById(runId);
     if (!originalRun) {
         return { ok: false, errors: ['Automation run was not found.'] };
+    }
+
+    if (actionName === 'retry' && originalRun.status !== 'failed') {
+        return {
+            ok: false,
+            errors: ['Only failed automation runs can be retried.'],
+        };
     }
 
     const definition = await getAutomationDefinitionById(
@@ -397,8 +450,13 @@ export async function replayAutomationRunAction(
         : null;
     const run = await createAutomationRun({
         automationDefinition: definition,
-        source: 'replay',
+        source: dryRun ? 'replay' : 'manual',
         sourceEvent,
+        sourceEventType: originalRun.sourceEventType,
+        sourceAggregateId:
+            originalRun.sourceEventType === 'automation.schedule.monthly'
+                ? null
+                : originalRun.sourceAggregateId,
         parentRunId: originalRun.id,
         input: originalRun.input,
         dryRun,
@@ -408,12 +466,32 @@ export async function replayAutomationRunAction(
     if (!run) {
         return {
             ok: false,
-            errors: ['Automation replay run was not created.'],
+            errors: [`Automation ${actionName} run was not created.`],
         };
     }
 
     revalidateAutomationPages(definition.id);
     return { ok: true, runId: run.id, status: run.status };
+}
+
+export async function replayAutomationRunAction(
+    runId: number,
+): Promise<AutomationRunActionResult> {
+    return runAutomationRunAgain({
+        runId,
+        dryRun: true,
+        actionName: 'replay',
+    });
+}
+
+export async function retryAutomationRunAction(
+    runId: number,
+): Promise<AutomationRunActionResult> {
+    return runAutomationRunAgain({
+        runId,
+        dryRun: false,
+        actionName: 'retry',
+    });
 }
 
 export async function getAutomationRunStepsAction(runId: number) {
