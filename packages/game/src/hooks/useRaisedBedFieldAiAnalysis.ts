@@ -4,6 +4,7 @@ import {
     AiAnalysisRequestError,
     getAiAnalysisErrorMessage,
 } from './aiAnalysisError';
+import { serializeAiAnalysisReferenceDate } from './aiAnalysisReferenceDate';
 import { queryKeys as raisedBedAiHistoryQueryKeys } from './useRaisedBedAiHistory';
 import { queryKeys as raisedBedFieldDiaryQueryKeys } from './useRaisedBedFieldDiaryEntries';
 
@@ -19,14 +20,18 @@ export function useRaisedBedFieldAiAnalysis() {
             raisedBedId,
             positionIndex,
             imageUrls,
+            referenceDate,
             onChunk,
         }: {
             gardenId: number;
             raisedBedId: number;
             positionIndex: number;
             imageUrls: string[];
+            referenceDate?: Date | string | null;
             onChunk?: (accumulated: string) => void;
         }) => {
+            const serializedReferenceDate =
+                serializeAiAnalysisReferenceDate(referenceDate);
             const response = await client({
                 auth: 'authenticated',
             }).api.gardens[':gardenId']['raised-beds'][':raisedBedId'].fields[
@@ -39,6 +44,9 @@ export function useRaisedBedFieldAiAnalysis() {
                 },
                 json: {
                     imageUrls,
+                    ...(serializedReferenceDate
+                        ? { referenceDate: serializedReferenceDate }
+                        : {}),
                 },
             });
 

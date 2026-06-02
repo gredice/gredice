@@ -390,6 +390,7 @@ export function RaisedBedFieldDiary({
                           positionIndex={positionIndex}
                           entryName={entry.name}
                           imageUrls={entry.imageUrls}
+                          referenceDate={entry.timestamp}
                           historyEntries={aiHistory?.entries}
                       />
                   );
@@ -431,6 +432,7 @@ export function RaisedBedDiary({
                       raisedBedId={raisedBedId}
                       entryName={entry.name}
                       imageUrls={entry.imageUrls}
+                      referenceDate={entry.timestamp}
                       historyEntries={aiHistory?.entries}
                   />
               );
