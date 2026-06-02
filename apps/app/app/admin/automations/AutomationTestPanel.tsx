@@ -71,7 +71,7 @@ export function AutomationTestPanel({
                     {!selectedEventId ? (
                         <>
                             <Input
-                                label="Aggregate ID"
+                                label="ID agregata"
                                 value={aggregateId}
                                 placeholder="raisedBedId|positionIndex"
                                 onChange={(event) =>
@@ -84,7 +84,7 @@ export function AutomationTestPanel({
                                     className="text-sm font-medium"
                                     htmlFor="automation-test-event-data"
                                 >
-                                    Event data
+                                    Podaci eventa
                                 </label>
                                 <textarea
                                     id="automation-test-event-data"
@@ -101,16 +101,16 @@ export function AutomationTestPanel({
             ) : null}
             {triggerMode === 'schedule' ? (
                 <Typography level="body3" className="text-muted-foreground">
-                    Pokretanje će koristiti sintetički mjesečni schedule run.
+                    Pokretanje će koristiti sintetičko mjesečno izvođenje.
                 </Typography>
             ) : null}
             {triggerMode === 'unsupported' ? (
                 <Typography level="body3" className="text-muted-foreground">
-                    Ovaj tip triggera još nema ulaz za pokretanje.
+                    Ovaj tip okidača još nema ulaz za pokretanje.
                 </Typography>
             ) : null}
             <Checkbox
-                label="Dry-run"
+                label="Probno izvođenje"
                 checked={dryRun}
                 onCheckedChange={(checked) => setDryRun(checked === true)}
             />
@@ -142,7 +142,7 @@ export function AutomationTestPanel({
             </Button>
             {result?.ok ? (
                 <Typography level="body2" className="text-green-700">
-                    Run #{result.runId} dodan je u red čekanja.
+                    Izvođenje #{result.runId} dodano je u red čekanja.
                 </Typography>
             ) : null}
             {result && !result.ok ? (
@@ -160,7 +160,7 @@ export function AutomationTestPanel({
             ) : null}
             {triggerMode === 'domainEvent' && !triggerEventType ? (
                 <Typography level="body3" className="text-muted-foreground">
-                    Trigger nema konfiguriran tip eventa.
+                    Okidač nema konfiguriran tip eventa.
                 </Typography>
             ) : null}
         </Stack>
@@ -192,7 +192,7 @@ export function AutomationRunRetryControls({ runId }: { runId: number }) {
                         })
                     }
                 >
-                    Replay dry-run
+                    Ponovi probno
                 </Button>
                 <Button
                     type="button"
@@ -203,7 +203,7 @@ export function AutomationRunRetryControls({ runId }: { runId: number }) {
                     onClick={() => {
                         if (
                             !confirm(
-                                'Retry will execute this automation for real. Continue?',
+                                'Ponovno pokretanje izvršit će automatizaciju stvarno. Nastaviti?',
                             )
                         ) {
                             return;
@@ -217,12 +217,12 @@ export function AutomationRunRetryControls({ runId }: { runId: number }) {
                         });
                     }}
                 >
-                    Retry
+                    Ponovi stvarno
                 </Button>
             </Row>
             {result?.ok ? (
                 <Typography level="body3" className="text-green-700">
-                    Run #{result.runId} dodan je u red čekanja.
+                    Izvođenje #{result.runId} dodano je u red čekanja.
                 </Typography>
             ) : null}
             {result && !result.ok ? (

@@ -59,7 +59,7 @@ function sourceLabel(source: AutomationRunSource) {
         case 'test':
             return 'Test';
         case 'replay':
-            return 'Replay';
+            return 'Ponovljeno';
     }
 }
 
@@ -139,7 +139,7 @@ export function AutomationJobsQueueTable({
                     <Table>
                         <Table.Header>
                             <Table.Row>
-                                <Table.Head>Job</Table.Head>
+                                <Table.Head>Posao</Table.Head>
                                 <Table.Head>Status</Table.Head>
                                 <Table.Head>Izvor</Table.Head>
                                 <Table.Head>Pokušaji</Table.Head>
@@ -181,7 +181,7 @@ export function AutomationJobsQueueTable({
                                                     level="body3"
                                                     className="text-muted-foreground"
                                                 >
-                                                    Parent #{run.parentRunId}
+                                                    Roditelj #{run.parentRunId}
                                                 </Typography>
                                             ) : null}
                                         </Stack>
@@ -201,7 +201,7 @@ export function AutomationJobsQueueTable({
                                                         color="info"
                                                         variant="soft"
                                                     >
-                                                        Dry-run
+                                                        Probno
                                                     </Chip>
                                                 ) : null}
                                             </Row>

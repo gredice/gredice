@@ -147,7 +147,7 @@ export default async function AutomationsPage({
                 </Typography>
                 <Typography level="body2" className="text-muted-foreground">
                     Definicije, zadnja izvođenja i greške za asinkrone Gredice
-                    workflowe.
+                    tijekove rada.
                 </Typography>
             </Stack>
 
@@ -182,7 +182,7 @@ export default async function AutomationsPage({
                                 className="text-sm font-medium"
                                 htmlFor="triggerEventType"
                             >
-                                Trigger event
+                                Tip eventa okidača
                             </label>
                             <input
                                 id="triggerEventType"
@@ -197,7 +197,7 @@ export default async function AutomationsPage({
                                 className="text-sm font-medium"
                                 htmlFor="runStatus"
                             >
-                                Run status
+                                Status izvođenja
                             </label>
                             <select
                                 id="runStatus"
@@ -311,9 +311,9 @@ export default async function AutomationsPage({
                                 <Table.Row>
                                     <Table.Head>Naziv</Table.Head>
                                     <Table.Head>Status</Table.Head>
-                                    <Table.Head>Trigger</Table.Head>
+                                    <Table.Head>Okidač</Table.Head>
                                     <Table.Head>Akcije</Table.Head>
-                                    <Table.Head>Zadnji run</Table.Head>
+                                    <Table.Head>Zadnje izvođenje</Table.Head>
                                     <Table.Head>Greške</Table.Head>
                                     <Table.Head>Ažurirano</Table.Head>
                                 </Table.Row>
@@ -324,7 +324,7 @@ export default async function AutomationsPage({
                                         <Table.Cell colSpan={7}>
                                             <NoDataPlaceholder>
                                                 Nema automatizacija za odabrane
-                                                filtere.
+                                                filtre.
                                             </NoDataPlaceholder>
                                         </Table.Cell>
                                     </Table.Row>
