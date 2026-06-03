@@ -601,6 +601,7 @@ export async function getSunflowersDailyTotals(filter?: {
         where: and(
             inArray(events.type, [
                 knownEventTypes.accounts.earnSunflowers,
+                knownEventTypes.accounts.earnSunflowerDrop,
                 knownEventTypes.accounts.spendSunflowers,
             ]),
             filter?.from ? gte(events.createdAt, filter.from) : undefined,
@@ -625,7 +626,10 @@ export async function getSunflowersDailyTotals(filter?: {
                 : 0;
         if (event.type === knownEventTypes.accounts.spendSunflowers) {
             existing.spent += amount;
-        } else if (event.type === knownEventTypes.accounts.earnSunflowers) {
+        } else if (
+            event.type === knownEventTypes.accounts.earnSunflowers ||
+            event.type === knownEventTypes.accounts.earnSunflowerDrop
+        ) {
             existing.earned += amount;
         }
 

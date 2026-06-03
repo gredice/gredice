@@ -17,6 +17,11 @@ import {
 import { getStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import {
+    type AnimalDebugPathPoint,
+    AnimalPathDebugIndicator,
+    AnimalTargetDebugMarker,
+} from '../animals/AnimalDebugIndicators';
+import {
     type CatBehavior,
     type CatWeather,
     getCatActivityRange,
@@ -1063,6 +1068,18 @@ function roundCatDebugPoint(point: Vector3) {
     };
 }
 
+function catDebugPathPoint(point: Vector3) {
+    return [
+        roundCatDebugCoordinate(point.x),
+        roundCatDebugCoordinate(point.y),
+        roundCatDebugCoordinate(point.z),
+    ] satisfies AnimalDebugPathPoint;
+}
+
+function catDebugPathKey(path: Vector3[]) {
+    return path.map((point) => catDebugPathPoint(point).join(':')).join('|');
+}
+
 function nextPathWaypoint(runtime: MovingCatState, position: Vector3) {
     return (
         runtime.path.find(
@@ -1157,14 +1174,25 @@ function Cat({
     const { enableDebugHudFlag = false } = useGameFlags();
     const clock = useThree((state) => state.clock);
     const groupRef = useRef<Group>(null);
+    const targetDebugRef = useRef<Group>(null);
     const randomRef = useRef(createRandom(habitat.seed));
     const runtimeRef = useRef<CatRuntimeState | null>(null);
     const lastAnimalDebugUpdateRef = useRef(0);
     const lastDebugCommandSequenceRef = useRef(0);
+    const pathDebugKeyRef = useRef('');
     const activeAnimationRef = useRef<CatAnimationName>('Cat_LyingIdle');
     const [activeAnimation, setActiveAnimation] =
         useState<CatAnimationName>('Cat_LyingIdle');
+    const [pathDebugPoints, setPathDebugPoints] = useState<
+        AnimalDebugPathPoint[]
+    >([]);
     const timeOfDay = useGameState((state) => state.timeOfDay);
+    const animalPathfindingDebugVisible = useGameState(
+        (state) => state.animalPathfindingDebugVisible,
+    );
+    const animalTargetsDebugVisible = useGameState(
+        (state) => state.animalTargetsDebugVisible,
+    );
     const animalDebugCommand = useGameState(
         (state) => state.animalDebugCommand,
     );
@@ -1219,6 +1247,43 @@ function Cat({
 
         return () => removeAnimalDebugEntry(habitat.id);
     }, [enableDebugHudFlag, habitat.id, removeAnimalDebugEntry]);
+
+    useEffect(() => {
+        if (!animalTargetsDebugVisible && targetDebugRef.current) {
+            targetDebugRef.current.visible = false;
+        }
+    }, [animalTargetsDebugVisible]);
+
+    useEffect(() => {
+        if (!animalPathfindingDebugVisible) {
+            pathDebugKeyRef.current = '';
+            setPathDebugPoints([]);
+        }
+    }, [animalPathfindingDebugVisible]);
+
+    const syncDebugIndicators = (runtime: CatRuntimeState | null) => {
+        const targetDebug = targetDebugRef.current;
+        if (targetDebug) {
+            targetDebug.visible = animalTargetsDebugVisible && runtime !== null;
+            if (targetDebug.visible && runtime) {
+                targetDebug.position.copy(runtime.target.position);
+            }
+        }
+
+        const nextPathDebugKey =
+            animalPathfindingDebugVisible && runtime?.phase === 'moving'
+                ? catDebugPathKey(runtime.path)
+                : '';
+
+        if (nextPathDebugKey !== pathDebugKeyRef.current) {
+            pathDebugKeyRef.current = nextPathDebugKey;
+            setPathDebugPoints(
+                animalPathfindingDebugVisible && runtime?.phase === 'moving'
+                    ? runtime.path.map(catDebugPathPoint)
+                    : [],
+            );
+        }
+    };
 
     function handlePointerDown(event: ThreeEvent<PointerEvent>) {
         event.stopPropagation();
@@ -1355,6 +1420,8 @@ function Cat({
             }
         }
 
+        syncDebugIndicators(runtime);
+
         if (runtime.phase === 'moving') {
             setAnimation(getCatAnimationName(runtime));
             syncWalkAnimationSpeed(runtime);
@@ -1476,15 +1543,23 @@ function Cat({
     });
 
     return (
-        // biome-ignore lint/a11y/noStaticElementInteractions: Three.js element is interactive
-        <group
-            ref={groupRef}
-            scale={catScale}
-            onPointerDown={handlePointerDown}
-            onClick={handleClick}
-        >
-            <primitive object={catModel} />
-        </group>
+        <>
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: Three.js element is interactive */}
+            <group
+                ref={groupRef}
+                scale={catScale}
+                onPointerDown={handlePointerDown}
+                onClick={handleClick}
+            >
+                <primitive object={catModel} />
+            </group>
+            <AnimalTargetDebugMarker ref={targetDebugRef} color="#38bdf8" />
+            <AnimalPathDebugIndicator
+                color="#38bdf8"
+                points={pathDebugPoints}
+                visible={animalPathfindingDebugVisible}
+            />
+        </>
     );
 }
 

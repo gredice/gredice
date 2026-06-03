@@ -20,8 +20,10 @@ import {
 } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { SegmentedProgress } from '../../controls/components/SegmentedProgress';
+import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useGardens } from '../../hooks/useGardens';
 import { useInventory } from '../../hooks/useInventory';
+import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useSandboxPlant } from '../../hooks/useSandboxPlant';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import {
@@ -34,6 +36,10 @@ import {
 } from '../../hooks/useShoppingCartTransientHub';
 import { PlantsList } from './PlantsList';
 import { PlantsSortList } from './PlantsSortList';
+import {
+    getNeighborPlantSummaries,
+    getRaisedBedRelationshipBlockCount,
+} from './plantRelationshipSignals';
 
 // Sandbox ("play") gardens let you pick how grown the plant should look. Each
 // preset backdates the sow date so the existing generation rendering draws a
@@ -87,6 +93,11 @@ export function PlantPicker({
         },
     ];
     const { data: cart } = useShoppingCart();
+    const { data: currentGarden } = useCurrentGarden();
+    const raisedBed = currentGarden?.raisedBeds.find(
+        (bed) => bed.id === raisedBedId,
+    );
+    const { data: allSorts } = useAllSorts();
     const setCartItem = useSetShoppingCartItem();
     const { data: inventory } = useInventory();
     // Derive sandbox from the gardens list by id (the picker already receives
@@ -336,6 +347,20 @@ export function PlantPicker({
             item.entityTypeName === 'plantSort' &&
             item.entityId === selectedSortId?.toString(),
     )?.amount;
+    const relationshipBlockCount = getRaisedBedRelationshipBlockCount({
+        cartItems: cart?.items,
+        fields: raisedBed?.fields,
+        positionIndex,
+    });
+    const neighborPlants = getNeighborPlantSummaries({
+        blockCount: relationshipBlockCount,
+        cartItems: cart?.items,
+        fields: raisedBed?.fields,
+        gardenId,
+        positionIndex,
+        raisedBedId,
+        sorts: allSorts,
+    });
 
     return (
         <Modal
@@ -410,7 +435,11 @@ export function PlantPicker({
                     />
                 )}
                 {currentStep === 0 && (
-                    <PlantsList search={search} onChange={handlePlantSelect} />
+                    <PlantsList
+                        neighborPlants={neighborPlants}
+                        search={search}
+                        onChange={handlePlantSelect}
+                    />
                 )}
                 {currentStep === 1 && selectedPlantId && (
                     <>

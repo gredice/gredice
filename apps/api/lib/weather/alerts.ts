@@ -11,7 +11,7 @@ const dhmzCapUrlGroups = [
 
 const defaultAlertRegionCode = 'HR002';
 
-type WeatherAlertFarm = {
+export type WeatherAlertFarm = {
     latitude: number;
     longitude: number;
 };
@@ -220,7 +220,7 @@ function fallbackCroatianEvent(alertType: WeatherAlertType | null) {
     return `Upozorenje za ${label}`;
 }
 
-function severityRank(
+export function weatherAlertSeverityScore(
     alert: Pick<DhmzWeatherAlert, 'awarenessLevel' | 'severity'>,
 ) {
     const awarenessLevel = Number(alert.awarenessLevel?.id);
@@ -240,9 +240,31 @@ function severityRank(
     }
 }
 
+export function isWeatherWarningAlert(
+    alert: Pick<DhmzWeatherAlert, 'awarenessLevel' | 'severity'>,
+) {
+    const color = alert.awarenessLevel?.color?.toLowerCase();
+    if (color === 'green') return false;
+
+    const severityScore = weatherAlertSeverityScore(alert);
+    if (severityScore > 0) return severityScore >= 2;
+
+    if (color === 'yellow' || color === 'orange' || color === 'red') {
+        return true;
+    }
+
+    return false;
+}
+
+export function isActionableWeatherAlert(
+    alert: Pick<DhmzWeatherAlert, 'awarenessLevel' | 'severity'>,
+) {
+    return isWeatherWarningAlert(alert);
+}
+
 function alertSortKey(alert: DhmzWeatherAlert) {
     return [
-        String(4 - severityRank(alert)).padStart(2, '0'),
+        String(4 - weatherAlertSeverityScore(alert)).padStart(2, '0'),
         alert.onset,
         alert.expires,
         alert.id,
@@ -445,6 +467,7 @@ export function filterWeatherAlertsForFarm(
         const expiresMs = new Date(alert.expires).getTime();
         return (
             alert.area.regionCode === regionCode &&
+            isWeatherWarningAlert(alert) &&
             Number.isFinite(onsetMs) &&
             Number.isFinite(expiresMs) &&
             expiresMs > now.getTime() &&

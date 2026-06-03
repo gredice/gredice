@@ -80,6 +80,7 @@ const blockNames = [
     'DeadTreeStump',
     'ShovelSmall',
     'Tulip',
+    'Sunflower',
     'CactusBarrel',
     'CactusColumnCluster',
     'CactusPricklyPear',

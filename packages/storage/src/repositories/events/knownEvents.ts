@@ -2,6 +2,8 @@ import { knownEventTypes } from './knownEventTypes';
 import type {
     AccountAiRequestPayload,
     AccountAssignUserPayload,
+    AccountSunflowerDropEarnPayload,
+    AccountSunflowerDropSpawnPayload,
     AccountSunflowersPayload,
     AdventCalendarOpenPayload,
     ApprovalRequestCreatePayload,
@@ -28,6 +30,10 @@ import type {
     OperationFailPayload,
     OperationSchedulePayload,
     OperationVerifyPayload,
+    PayoutApprovedPayload,
+    PayoutPaidPayload,
+    PayoutRejectedPayload,
+    PayoutRequestedPayload,
     RaisedBedAbandonPayload,
     RaisedBedCreatePayload,
     RaisedBedFieldAiAnalysisPayload,
@@ -41,10 +47,6 @@ import type {
     TransactionCreatePayload,
     TransactionUpdatePayload,
     UserBirthdayRewardPayload,
-    PayoutRequestedPayload,
-    PayoutApprovedPayload,
-    PayoutRejectedPayload,
-    PayoutPaidPayload,
 } from './types';
 
 export const knownEvents = {
@@ -68,6 +70,24 @@ export const knownEvents = {
             data: AccountSunflowersPayload,
         ) => ({
             type: knownEventTypes.accounts.earnSunflowers,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        sunflowerDropSpawnedV1: (
+            aggregateId: string,
+            data: AccountSunflowerDropSpawnPayload,
+        ) => ({
+            type: knownEventTypes.accounts.sunflowerDropSpawn,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        sunflowerDropEarnedV1: (
+            aggregateId: string,
+            data: AccountSunflowerDropEarnPayload,
+        ) => ({
+            type: knownEventTypes.accounts.earnSunflowerDrop,
             version: 1,
             aggregateId,
             data,

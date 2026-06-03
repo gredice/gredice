@@ -1,6 +1,7 @@
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
+import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
 import { useMemo } from 'react';
@@ -18,6 +19,7 @@ import {
     buildSowingOperationItems,
     cartPlantSortEntityType,
     GardenOperationCard,
+    GardenOperationScheduleAction,
     sortNewestFirst,
 } from '../GardenOperationsHud';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
@@ -37,6 +39,20 @@ function buildFieldPositionById(
         (garden?.raisedBeds ?? []).flatMap((raisedBed) =>
             raisedBed.fields.map(
                 (field) => [field.id, field.positionIndex] as const,
+            ),
+        ),
+    );
+}
+
+function buildFieldPlantSortIdById(
+    garden: ReturnType<typeof useCurrentGarden>['data'],
+) {
+    return new Map(
+        (garden?.raisedBeds ?? []).flatMap((raisedBed) =>
+            raisedBed.fields.flatMap((field) =>
+                typeof field.plantSortId === 'number'
+                    ? [[field.id, field.plantSortId] as const]
+                    : [],
             ),
         ),
     );
@@ -151,6 +167,10 @@ export function RaisedBedOperationHistoryList({
         () => buildFieldPositionById(currentGarden),
         [currentGarden],
     );
+    const fieldPlantSortIdById = useMemo(
+        () => buildFieldPlantSortIdById(currentGarden),
+        [currentGarden],
+    );
     const history = useGardenOperations({
         includeCompleted: true,
         pageSize: 20,
@@ -187,16 +207,27 @@ export function RaisedBedOperationHistoryList({
         () =>
             Array.from(
                 new Set(
-                    operations
-                        .filter(
-                            (operation) =>
-                                operation.entityTypeName ===
-                                cartPlantSortEntityType,
-                        )
-                        .map((operation) => operation.entityId),
+                    operations.flatMap((operation) => {
+                        if (
+                            operation.entityTypeName === cartPlantSortEntityType
+                        ) {
+                            return [operation.entityId];
+                        }
+
+                        return operation.raisedBedFieldId
+                            ? [
+                                  fieldPlantSortIdById.get(
+                                      operation.raisedBedFieldId,
+                                  ),
+                              ].filter(
+                                  (plantSortId): plantSortId is number =>
+                                      typeof plantSortId === 'number',
+                              )
+                            : [];
+                    }),
                 ),
             ),
-        [operations],
+        [fieldPlantSortIdById, operations],
     );
     const { data: sowingPlantSorts } = useSorts(
         sowingPlantSortIds.length > 0 ? sowingPlantSortIds : undefined,
@@ -263,13 +294,25 @@ export function RaisedBedOperationHistoryList({
                         ? plantSortById.get(operation.entityId)
                         : undefined;
                 const operationName = operationData?.information.label;
+                const entryName =
+                    operationName ??
+                    plantSortData?.information.name ??
+                    operation.targetLabel;
                 const actionRaisedBedId = operation.raisedBedId ?? raisedBedId;
                 const actionPositionIndex =
                     positionIndex ??
                     (operation.raisedBedFieldId
                         ? fieldPositionById.get(operation.raisedBedFieldId)
                         : undefined);
-                const action =
+                const scheduleAction = !disableActions ? (
+                    <GardenOperationScheduleAction
+                        entryName={entryName}
+                        garden={currentGarden}
+                        operation={operation}
+                        referenceDate={referenceDate}
+                    />
+                ) : undefined;
+                const aiAction =
                     flags.raisedBedImageAI &&
                     !disableActions &&
                     currentGarden &&
@@ -279,11 +322,7 @@ export function RaisedBedOperationHistoryList({
                             gardenId={currentGarden.id}
                             raisedBedId={actionRaisedBedId}
                             positionIndex={actionPositionIndex}
-                            entryName={
-                                operationName ??
-                                plantSortData?.information.name ??
-                                operation.targetLabel
-                            }
+                            entryName={entryName}
                             imageUrls={operation.imageUrls}
                             referenceDate={getOperationReferenceDate(operation)}
                             historyEntries={getAiHistoryForOperation({
@@ -292,6 +331,11 @@ export function RaisedBedOperationHistoryList({
                             })}
                         />
                     ) : undefined;
+                const action = aiAction ? (
+                    <Row spacing={2} className="flex-wrap justify-end">
+                        {aiAction}
+                    </Row>
+                ) : undefined;
 
                 return (
                     <GardenOperationCard
@@ -300,10 +344,21 @@ export function RaisedBedOperationHistoryList({
                         operationName={operationName}
                         operationData={operationData}
                         plantSortData={plantSortData}
+                        targetPlantSortData={
+                            operation.entityTypeName === 'operation' &&
+                            operation.raisedBedFieldId
+                                ? (plantSortById.get(
+                                      fieldPlantSortIdById.get(
+                                          operation.raisedBedFieldId,
+                                      ) ?? 0,
+                                  ) ?? undefined)
+                                : undefined
+                        }
                         currentGarden={currentGarden}
                         referenceDate={referenceDate}
                         progressClassName="md:max-w-80"
                         action={action}
+                        scheduleAction={scheduleAction}
                     />
                 );
             })}

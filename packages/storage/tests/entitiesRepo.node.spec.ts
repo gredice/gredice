@@ -5,7 +5,9 @@ import {
     createAttributeDefinition,
     createEntity,
     deleteAttributeValue,
+    deleteEntity,
     getEntitiesFormatted,
+    getEntityFormatted,
     getEntityIncomingLinks,
     getEntityRaw,
     updateEntity,
@@ -141,6 +143,225 @@ test('CMS entity references are resolved by entity ID', async () => {
             ],
         },
     ]);
+});
+
+type FormattedPlantRelationship = {
+    id: number;
+    slug: string;
+    name: string;
+    relationship: 'companion' | 'antagonist';
+    information?: {
+        name?: string;
+    };
+};
+
+type FormattedPlant = {
+    id: number;
+    information?: {
+        name?: string;
+    };
+    relationships?: {
+        companions?: FormattedPlantRelationship[];
+        antagonists?: FormattedPlantRelationship[];
+    };
+};
+
+async function createPlantRelationshipTestData() {
+    await upsertEntityType({ name: 'plant', label: 'Plant' });
+
+    const nameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: 'plant',
+        dataType: 'text',
+    });
+    const companionDefinitionId = await createAttributeDefinition({
+        category: 'relationships',
+        name: 'companions',
+        label: 'Companions',
+        entityTypeName: 'plant',
+        dataType: 'ref:plant',
+        multiple: true,
+    });
+    const antagonistDefinitionId = await createAttributeDefinition({
+        category: 'relationships',
+        name: 'antagonists',
+        label: 'Antagonists',
+        entityTypeName: 'plant',
+        dataType: 'ref:plant',
+        multiple: true,
+    });
+
+    async function createPlant(name: string, state = 'published') {
+        const id = await createEntity('plant');
+        await upsertAttributeValue({
+            attributeDefinitionId: nameDefinitionId,
+            entityTypeName: 'plant',
+            entityId: id,
+            value: name,
+        });
+        await updateEntity({ id, state });
+        return id;
+    }
+
+    return {
+        antagonistDefinitionId,
+        companionDefinitionId,
+        createPlant,
+    };
+}
+
+test('plant companion relationships are reciprocal and shallow', async () => {
+    createTestDb();
+    const { companionDefinitionId, createPlant } =
+        await createPlantRelationshipTestData();
+    const tomatoId = await createPlant(`Tomato ${randomUUID()}`);
+    const basilId = await createPlant(`Basil ${randomUUID()}`);
+
+    await upsertAttributeValue({
+        attributeDefinitionId: companionDefinitionId,
+        entityTypeName: 'plant',
+        entityId: tomatoId,
+        value: String(basilId),
+    });
+
+    const formattedPlants = await getEntitiesFormatted<FormattedPlant>('plant');
+    const tomato = formattedPlants.find((plant) => plant.id === tomatoId);
+    const basil = formattedPlants.find((plant) => plant.id === basilId);
+
+    assert.deepEqual(
+        tomato?.relationships?.companions?.map((plant) => ({
+            id: plant.id,
+            relationship: plant.relationship,
+            hasNestedInformation: Boolean(plant.information),
+        })),
+        [
+            {
+                id: basilId,
+                relationship: 'companion',
+                hasNestedInformation: false,
+            },
+        ],
+    );
+    assert.deepEqual(
+        basil?.relationships?.companions?.map((plant) => ({
+            id: plant.id,
+            relationship: plant.relationship,
+            hasNestedInformation: Boolean(plant.information),
+        })),
+        [
+            {
+                id: tomatoId,
+                relationship: 'companion',
+                hasNestedInformation: false,
+            },
+        ],
+    );
+
+    const formattedBasil = await getEntityFormatted<FormattedPlant>(basilId);
+    assert.deepEqual(
+        formattedBasil.relationships?.companions?.map((plant) => plant.id),
+        [tomatoId],
+    );
+});
+
+test('plant antagonist relationships are reciprocal', async () => {
+    createTestDb();
+    const { antagonistDefinitionId, createPlant } =
+        await createPlantRelationshipTestData();
+    const tomatoId = await createPlant(`Tomato ${randomUUID()}`);
+    const fennelId = await createPlant(`Fennel ${randomUUID()}`);
+
+    await upsertAttributeValue({
+        attributeDefinitionId: antagonistDefinitionId,
+        entityTypeName: 'plant',
+        entityId: tomatoId,
+        value: String(fennelId),
+    });
+
+    const formattedPlants = await getEntitiesFormatted<FormattedPlant>('plant');
+    const tomato = formattedPlants.find((plant) => plant.id === tomatoId);
+    const fennel = formattedPlants.find((plant) => plant.id === fennelId);
+
+    assert.deepEqual(
+        tomato?.relationships?.antagonists?.map((plant) => ({
+            id: plant.id,
+            relationship: plant.relationship,
+        })),
+        [{ id: fennelId, relationship: 'antagonist' }],
+    );
+    assert.deepEqual(
+        fennel?.relationships?.antagonists?.map((plant) => ({
+            id: plant.id,
+            relationship: plant.relationship,
+        })),
+        [{ id: tomatoId, relationship: 'antagonist' }],
+    );
+});
+
+test('plant relationships filter self links, duplicates, missing, draft, and deleted targets', async () => {
+    createTestDb();
+    const { companionDefinitionId, createPlant } =
+        await createPlantRelationshipTestData();
+    const tomatoId = await createPlant(`Tomato ${randomUUID()}`);
+    const basilId = await createPlant(`Basil ${randomUUID()}`);
+    const draftId = await createPlant(`Draft ${randomUUID()}`, 'draft');
+    const deletedId = await createPlant(`Deleted ${randomUUID()}`);
+    await deleteEntity(deletedId);
+
+    await Promise.all([
+        upsertAttributeValue({
+            attributeDefinitionId: companionDefinitionId,
+            entityTypeName: 'plant',
+            entityId: tomatoId,
+            value: String(basilId),
+        }),
+        upsertAttributeValue({
+            attributeDefinitionId: companionDefinitionId,
+            entityTypeName: 'plant',
+            entityId: tomatoId,
+            value: String(basilId),
+        }),
+        upsertAttributeValue({
+            attributeDefinitionId: companionDefinitionId,
+            entityTypeName: 'plant',
+            entityId: basilId,
+            value: String(tomatoId),
+        }),
+        upsertAttributeValue({
+            attributeDefinitionId: companionDefinitionId,
+            entityTypeName: 'plant',
+            entityId: tomatoId,
+            value: String(tomatoId),
+        }),
+        upsertAttributeValue({
+            attributeDefinitionId: companionDefinitionId,
+            entityTypeName: 'plant',
+            entityId: tomatoId,
+            value: String(draftId),
+        }),
+        upsertAttributeValue({
+            attributeDefinitionId: companionDefinitionId,
+            entityTypeName: 'plant',
+            entityId: tomatoId,
+            value: String(deletedId),
+        }),
+        upsertAttributeValue({
+            attributeDefinitionId: companionDefinitionId,
+            entityTypeName: 'plant',
+            entityId: tomatoId,
+            value: '99999999',
+        }),
+    ]);
+
+    const formattedPlants = await getEntitiesFormatted<FormattedPlant>('plant');
+    const tomato = formattedPlants.find((plant) => plant.id === tomatoId);
+
+    assert.deepEqual(
+        tomato?.relationships?.companions?.map((plant) => plant.id),
+        [basilId],
+    );
 });
 
 test('CMS entity variants inherit parent attributes and allow override reset', async () => {

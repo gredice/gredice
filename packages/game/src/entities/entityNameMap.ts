@@ -55,6 +55,7 @@ import { StoneLarge } from './StoneLarge';
 import { StoneMedium } from './StoneMedium';
 import { StoneSmall } from './StoneSmall';
 import { Stool } from './Stool';
+import { Sunflower } from './Sunflower';
 import { Tree } from './Tree';
 import { Tulip } from './Tulip';
 import { WateringCan } from './WateringCan';
@@ -116,6 +117,7 @@ export const entityNameMap: Record<
     ShovelSmall: ShovelSmall,
     Snowman: Snowman,
     Tulip: Tulip,
+    Sunflower: Sunflower,
     CactusBarrel: Cactus,
     CactusColumnCluster: Cactus,
     CactusPricklyPear: Cactus,

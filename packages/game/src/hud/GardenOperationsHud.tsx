@@ -43,11 +43,17 @@ import { useLiveTime } from '../hooks/useLiveTime';
 import { useOperations } from '../hooks/useOperations';
 import { useSorts } from '../hooks/usePlantSorts';
 import {
+    type DiaryRescheduleTarget,
+    getDiaryRescheduleDisabledReason,
+    isDiaryRescheduleTargetEligible,
+} from '../hooks/useRescheduleDiaryEntry';
+import {
     type ShoppingCartItemData,
     useShoppingCart,
 } from '../hooks/useShoppingCart';
 import { ScrollView } from '../shared-ui/ScrollView';
 import { useShoppingCartOpenParam } from '../useUrlState';
+import { RaisedBedDiaryRescheduleAction } from './raisedBed/RaisedBedDiaryRescheduleAction';
 
 type OperationData = NonNullable<
     ReturnType<typeof useOperations>['data']
@@ -112,6 +118,11 @@ const hiddenFromActive = new Set<GardenOperationStatus>([
     'completed',
     'failed',
     'canceled',
+]);
+const reschedulableActiveStatuses = new Set<GardenOperationStatus>([
+    'planned',
+    'assigned',
+    'confirmed',
 ]);
 const cartOperationEntityType = 'operation' as const;
 export const cartPlantSortEntityType = 'plantSort' as const;
@@ -184,6 +195,15 @@ function formatDate(value?: string | null) {
     return new Date(value).toLocaleDateString('hr-HR', {
         day: 'numeric',
         month: 'long',
+        year: 'numeric',
+    });
+}
+
+function formatCompactDate(value?: string | null) {
+    if (!value) return null;
+    return new Date(value).toLocaleDateString('hr-HR', {
+        day: 'numeric',
+        month: 'numeric',
         year: 'numeric',
     });
 }
@@ -528,6 +548,249 @@ function getOperationTargetDetails(
     };
 }
 
+function getOperationFieldPositionIndex(
+    operation: GardenOperationHudItem,
+    garden: CurrentGardenData | null | undefined,
+) {
+    if (operation.raisedBedFieldId == null) {
+        return undefined;
+    }
+
+    for (const raisedBed of garden?.raisedBeds ?? []) {
+        const field = raisedBed.fields.find(
+            (candidate) => candidate.id === operation.raisedBedFieldId,
+        );
+        if (field) {
+            return field.positionIndex;
+        }
+    }
+
+    return undefined;
+}
+
+function getOperationField(
+    operation: GardenOperationHudItem,
+    garden: CurrentGardenData | null | undefined,
+) {
+    if (operation.raisedBedFieldId == null) {
+        return null;
+    }
+
+    for (const raisedBed of garden?.raisedBeds ?? []) {
+        const field = raisedBed.fields.find(
+            (candidate) => candidate.id === operation.raisedBedFieldId,
+        );
+        if (field) {
+            return field;
+        }
+    }
+
+    return null;
+}
+
+function getOperationFieldPlantSortId(
+    operation: GardenOperationHudItem,
+    garden: CurrentGardenData | null | undefined,
+) {
+    return getOperationField(operation, garden)?.plantSortId ?? null;
+}
+
+export function getGardenOperationRescheduleTarget(
+    operation: GardenOperationHudItem,
+    garden: CurrentGardenData | null | undefined,
+): DiaryRescheduleTarget | null {
+    if (
+        !reschedulableActiveStatuses.has(operation.status) ||
+        operation.completedAt ||
+        operation.verifiedAt ||
+        operation.canceledAt
+    ) {
+        return null;
+    }
+
+    const positionIndex = getOperationFieldPositionIndex(operation, garden);
+
+    if (operation.entityTypeName === cartOperationEntityType) {
+        return {
+            type: 'operation',
+            operationId: operation.id,
+            raisedBedId: operation.raisedBedId,
+            raisedBedFieldId: operation.raisedBedFieldId,
+            positionIndex,
+            scheduledDate: operation.scheduledDate,
+        };
+    }
+
+    if (
+        operation.entityTypeName === cartPlantSortEntityType &&
+        operation.raisedBedId &&
+        typeof positionIndex === 'number'
+    ) {
+        return {
+            type: 'raisedBedFieldPlant',
+            raisedBedId: operation.raisedBedId,
+            positionIndex,
+            scheduledDate: operation.scheduledDate,
+        };
+    }
+
+    return null;
+}
+
+function getOperationDisplayStatus(
+    operation: GardenOperationHudItem,
+    referenceDate: Date,
+): OperationDisplayStatus {
+    return isScheduledUnassignedOperation(operation, referenceDate)
+        ? 'scheduled'
+        : operation.status;
+}
+
+function getLatestStatusHistoryDate(operation: GardenOperationHudItem) {
+    return operation.statusHistory.reduce<string | null>((latest, entry) => {
+        const entryTime = new Date(entry.changedAt).getTime();
+        if (!Number.isFinite(entryTime)) {
+            return latest;
+        }
+
+        if (!latest || entryTime > new Date(latest).getTime()) {
+            return entry.changedAt;
+        }
+
+        return latest;
+    }, null);
+}
+
+function getOperationDisplayStatusDate(
+    operation: GardenOperationHudItem,
+    displayStatus: OperationDisplayStatus,
+) {
+    if (displayStatus === 'scheduled') {
+        return operation.scheduledDate;
+    }
+
+    const matchingHistoryDate = [...operation.statusHistory]
+        .reverse()
+        .find((entry) => entry.status === operation.status)?.changedAt;
+
+    return (
+        matchingHistoryDate ??
+        operation.verifiedAt ??
+        operation.completedAt ??
+        operation.canceledAt ??
+        operation.scheduledAt ??
+        getLatestStatusHistoryDate(operation)
+    );
+}
+
+export function canRescheduleGardenOperation(
+    operation: GardenOperationHudItem,
+    garden: CurrentGardenData | null | undefined,
+    referenceDate: Date,
+) {
+    const target = getGardenOperationRescheduleTarget(operation, garden);
+    return Boolean(
+        target && isDiaryRescheduleTargetEligible(target, referenceDate),
+    );
+}
+
+export function GardenOperationRescheduleAction({
+    entryName,
+    garden,
+    operation,
+    referenceDate,
+    triggerLabel,
+}: {
+    entryName: string;
+    garden: CurrentGardenData | null | undefined;
+    operation: GardenOperationHudItem;
+    referenceDate: Date;
+    triggerLabel?: ReactNode;
+}) {
+    if (!garden) {
+        return null;
+    }
+
+    const target = getGardenOperationRescheduleTarget(operation, garden);
+    if (!target || !isDiaryRescheduleTargetEligible(target, referenceDate)) {
+        return null;
+    }
+
+    return (
+        <RaisedBedDiaryRescheduleAction
+            entryName={entryName}
+            gardenId={garden.id}
+            target={target}
+            triggerLabel={triggerLabel}
+        />
+    );
+}
+
+function isFinishedOperation(operation: GardenOperationHudItem) {
+    return Boolean(
+        operation.completedAt ||
+            operation.verifiedAt ||
+            operation.status === 'completed',
+    );
+}
+
+function OperationScheduleText({ label }: { label: string }) {
+    return (
+        <Row spacing={1} className="min-w-0 text-muted-foreground">
+            <Calendar className="size-3.5 shrink-0" />
+            <Typography level="body3" noWrap className="min-w-0">
+                {label}
+            </Typography>
+        </Row>
+    );
+}
+
+export function GardenOperationScheduleAction({
+    entryName,
+    garden,
+    operation,
+    referenceDate,
+}: {
+    entryName: string;
+    garden: CurrentGardenData | null | undefined;
+    operation: GardenOperationHudItem;
+    referenceDate: Date;
+}) {
+    const scheduledDateLabel = formatDate(operation.scheduledDate);
+
+    if (isFinishedOperation(operation)) {
+        return scheduledDateLabel ? (
+            <OperationScheduleText label={scheduledDateLabel} />
+        ) : null;
+    }
+
+    if (!garden) {
+        return scheduledDateLabel ? (
+            <OperationScheduleText label={scheduledDateLabel} />
+        ) : null;
+    }
+
+    const target = getGardenOperationRescheduleTarget(operation, garden);
+    if (!target) {
+        return scheduledDateLabel ? (
+            <OperationScheduleText label={scheduledDateLabel} />
+        ) : null;
+    }
+
+    return (
+        <RaisedBedDiaryRescheduleAction
+            disabledReason={getDiaryRescheduleDisabledReason(
+                target,
+                referenceDate,
+            )}
+            entryName={entryName}
+            gardenId={garden.id}
+            target={target}
+            triggerLabel={scheduledDateLabel ?? 'Zakaži'}
+        />
+    );
+}
+
 function getCartOperationTargetDetails(
     item: ShoppingCartItemData,
     garden: CurrentGardenData,
@@ -588,6 +851,29 @@ function StatusBadge({
                 {config.label}
             </Typography>
         </Row>
+    );
+}
+
+function OperationStatusSummary({
+    operation,
+    status,
+}: {
+    operation: GardenOperationHudItem;
+    status: OperationDisplayStatus;
+}) {
+    const statusDate = formatCompactDate(
+        getOperationDisplayStatusDate(operation, status),
+    );
+
+    return (
+        <Stack spacing={0.25} className="shrink-0 items-end">
+            <StatusBadge status={status} />
+            {statusDate && (
+                <Typography level="body3" secondary noWrap>
+                    {statusDate}
+                </Typography>
+            )}
+        </Stack>
     );
 }
 
@@ -743,23 +1029,36 @@ function OperationProgress({
     return (
         <SegmentedProgress
             aria-label="Tijek radnje"
-            className={cx('w-full min-w-0 max-w-full px-4 pb-6', className)}
+            className={cx('w-full min-w-0 max-w-full pb-6', className)}
             segments={segments}
         />
     );
 }
 
-function OperationDates({ operation }: { operation: GardenOperationItem }) {
+function OperationSchedule({
+    operation,
+    scheduleAction,
+}: {
+    operation: GardenOperationItem;
+    scheduleAction?: ReactNode;
+}) {
     const scheduledDate = formatDate(operation.scheduledDate);
+
+    if (scheduleAction) {
+        return <div className="w-fit max-w-full">{scheduleAction}</div>;
+    }
 
     if (!scheduledDate) {
         return null;
     }
 
     return (
-        <Typography level="body3" secondary>
-            Zakazano: {scheduledDate}
-        </Typography>
+        <Row spacing={1} className="w-fit max-w-full text-muted-foreground">
+            <Calendar aria-hidden className="size-3.5 shrink-0" />
+            <Typography level="body3" secondary noWrap>
+                {scheduledDate}
+            </Typography>
+        </Row>
     );
 }
 
@@ -823,12 +1122,13 @@ function OperationTargetLabel({
     return (
         <Row
             spacing={1}
-            className="min-w-0 max-w-full items-center"
+            className="min-w-0 max-w-full items-center flex-wrap gap-y-0.5"
             aria-label={targetDetails.fallbackLabel}
         >
-            <Row spacing={1} className="min-w-0 flex-1 items-center">
+            <Row spacing={1} className="min-w-0 items-center">
                 <RaisedBedIcon
                     physicalId={targetDetails.raisedBedPhysicalId}
+                    containerClassName="h-6 w-6 min-w-6 overflow-visible"
                     className={cx(
                         'size-5 text-tertiary-foreground',
                         iconClassName,
@@ -891,23 +1191,87 @@ function getActiveOperationName({
     return `Radnja #${operation.id}`;
 }
 
+function OperationMedia({
+    operationData,
+    plantSortData,
+    targetPlantSortData,
+}: {
+    operationData?: OperationData;
+    plantSortData?: PlantSortData;
+    targetPlantSortData?: PlantSortData;
+}) {
+    const primaryPlantSort = plantSortData ?? targetPlantSortData;
+    const shouldShowOperationBadge = Boolean(
+        operationData && targetPlantSortData,
+    );
+
+    if (primaryPlantSort) {
+        return (
+            <div
+                className="relative size-12 shrink-0"
+                data-operation-media="plant"
+            >
+                <div className="flex size-12 items-center justify-center overflow-hidden rounded-lg bg-card">
+                    <PlantOrSortImage
+                        plantSort={primaryPlantSort}
+                        alt={primaryPlantSort.information.name}
+                        width={44}
+                        height={44}
+                    />
+                </div>
+                {shouldShowOperationBadge && operationData && (
+                    <span
+                        className="-right-1 -top-1 absolute flex size-6 items-center justify-center rounded-full border bg-background text-foreground shadow-xs"
+                        data-operation-media-badge
+                    >
+                        <OperationImage operation={operationData} size={18} />
+                    </span>
+                )}
+            </div>
+        );
+    }
+
+    if (operationData) {
+        return (
+            <div
+                className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-card"
+                data-operation-media="operation"
+            >
+                <OperationImage operation={operationData} size={40} />
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-card">
+            <Typography level="body3" secondary>
+                🌱
+            </Typography>
+        </div>
+    );
+}
+
 export function GardenOperationCard({
     operation,
     operationName,
     operationData,
     plantSortData,
+    targetPlantSortData,
     currentGarden,
     referenceDate,
     progressClassName,
+    scheduleAction,
     action,
 }: {
     operation: GardenOperationHudItem;
     operationName?: string;
     operationData?: OperationData;
     plantSortData?: PlantSortData;
+    targetPlantSortData?: PlantSortData;
     currentGarden?: CurrentGardenData | null;
     referenceDate: Date;
     progressClassName?: string;
+    scheduleAction?: ReactNode;
     action?: ReactNode;
 }) {
     const resolvedOperationName = getActiveOperationName({
@@ -916,10 +1280,8 @@ export function GardenOperationCard({
         plantSortName: plantSortData?.information.name,
     });
     const targetDetails = getOperationTargetDetails(operation, currentGarden);
-    const isScheduledUnassigned = isScheduledUnassignedOperation(
-        operation,
-        referenceDate,
-    );
+    const displayStatus = getOperationDisplayStatus(operation, referenceDate);
+    const isScheduledUnassigned = displayStatus === 'scheduled';
 
     return (
         <div
@@ -931,52 +1293,44 @@ export function GardenOperationCard({
                 alignItems="start"
                 className="w-full min-w-0 max-w-full"
             >
-                <div className="size-12 rounded-lg bg-card flex items-center justify-center overflow-hidden shrink-0">
-                    {plantSortData ? (
-                        <PlantOrSortImage
-                            plantSort={plantSortData}
-                            alt={plantSortData.information.name}
-                            width={40}
-                            height={40}
-                        />
-                    ) : operationData ? (
-                        <OperationImage operation={operationData} size={40} />
-                    ) : (
-                        <Typography level="body3" secondary>
-                            🌱
-                        </Typography>
-                    )}
-                </div>
+                <OperationMedia
+                    operationData={operationData}
+                    plantSortData={plantSortData}
+                    targetPlantSortData={targetPlantSortData}
+                />
                 <Stack
                     spacing={1.5}
                     className="min-w-0 max-w-full flex-1 overflow-hidden"
                 >
-                    <Stack spacing={0.5}>
+                    <Stack spacing={0.75}>
                         <Row
                             spacing={1}
                             alignItems="start"
-                            className="min-w-0 max-w-full flex-wrap gap-y-1"
+                            className="min-w-0 max-w-full gap-y-1"
                         >
-                            <Typography
-                                level="body2"
-                                semiBold
-                                noWrap
-                                className="min-w-0 flex-1"
-                            >
-                                {resolvedOperationName}
-                            </Typography>
-                            <StatusBadge
-                                status={
-                                    isScheduledUnassigned
-                                        ? 'scheduled'
-                                        : operation.status
-                                }
-                                className="shrink-0"
+                            <Stack spacing={0.5} className="min-w-0 flex-1">
+                                <Typography
+                                    level="body2"
+                                    semiBold
+                                    noWrap
+                                    className="min-w-0"
+                                >
+                                    {resolvedOperationName}
+                                </Typography>
+                                <OperationTargetLabel
+                                    targetDetails={targetDetails}
+                                />
+                            </Stack>
+                            <OperationStatusSummary
+                                operation={operation}
+                                status={displayStatus}
                             />
                         </Row>
-                        <OperationTargetLabel targetDetails={targetDetails} />
                     </Stack>
-                    <OperationDates operation={operation} />
+                    <OperationSchedule
+                        operation={operation}
+                        scheduleAction={scheduleAction}
+                    />
                     <OperationEvidence operation={operation} />
                     {!isScheduledUnassigned && (
                         <OperationProgress
@@ -1167,6 +1521,17 @@ function HistoryModal({
                                               )
                                             : undefined
                                     }
+                                    targetPlantSortData={
+                                        operation.entityTypeName ===
+                                        cartOperationEntityType
+                                            ? (plantSortById.get(
+                                                  getOperationFieldPlantSortId(
+                                                      operation,
+                                                      currentGarden,
+                                                  ) ?? 0,
+                                              ) ?? undefined)
+                                            : undefined
+                                    }
                                     currentGarden={currentGarden}
                                     referenceDate={referenceDate}
                                     progressClassName="md:max-w-80"
@@ -1241,8 +1606,28 @@ export function GardenOperationsHud() {
             ),
         [sowingOperations],
     );
-    const { data: sowingPlantSorts } = useSorts(
-        sowingPlantSortIds.length > 0 ? sowingPlantSortIds : undefined,
+    const fieldPlantSortIds = useMemo(
+        () =>
+            Array.from(
+                new Set(
+                    (currentGarden?.raisedBeds ?? []).flatMap((raisedBed) =>
+                        raisedBed.fields.flatMap((field) =>
+                            typeof field.plantSortId === 'number'
+                                ? [field.plantSortId]
+                                : [],
+                        ),
+                    ),
+                ),
+            ),
+        [currentGarden],
+    );
+    const operationPlantSortIds = useMemo(
+        () =>
+            Array.from(new Set([...sowingPlantSortIds, ...fieldPlantSortIds])),
+        [fieldPlantSortIds, sowingPlantSortIds],
+    );
+    const { data: operationPlantSorts } = useSorts(
+        operationPlantSortIds.length > 0 ? operationPlantSortIds : undefined,
     );
 
     const pendingOperations = useMemo(
@@ -1289,12 +1674,12 @@ export function GardenOperationsHud() {
     const plantSortById = useMemo(
         () =>
             new Map(
-                (sowingPlantSorts ?? []).map((plantSort) => [
+                (operationPlantSorts ?? []).map((plantSort) => [
                     plantSort.id,
                     plantSort,
                 ]),
             ),
-        [sowingPlantSorts],
+        [operationPlantSorts],
     );
     const cartOperations = useMemo(() => {
         if (!currentGarden) {
@@ -1425,38 +1810,62 @@ export function GardenOperationsHud() {
                                 )}
                                 {cartOperations.length > 0 &&
                                     pendingOperations.length > 0 && <Divider />}
-                                {pendingOperations.map((operation) => (
-                                    <GardenOperationCard
-                                        key={`${operation.entityTypeName}-${operation.id}`}
-                                        operation={operation}
-                                        operationName={
-                                            operation.entityTypeName ===
-                                            cartOperationEntityType
-                                                ? operationDataById.get(
-                                                      operation.entityId,
-                                                  )?.information.label
-                                                : undefined
-                                        }
-                                        operationData={
-                                            operation.entityTypeName ===
-                                            cartOperationEntityType
-                                                ? operationDataById.get(
-                                                      operation.entityId,
-                                                  )
-                                                : undefined
-                                        }
-                                        plantSortData={
-                                            operation.entityTypeName ===
-                                            cartPlantSortEntityType
-                                                ? plantSortById.get(
-                                                      operation.entityId,
-                                                  )
-                                                : undefined
-                                        }
-                                        currentGarden={currentGarden}
-                                        referenceDate={referenceDate}
-                                    />
-                                ))}
+                                {pendingOperations.map((operation) => {
+                                    const operationData =
+                                        operation.entityTypeName ===
+                                        cartOperationEntityType
+                                            ? operationDataById.get(
+                                                  operation.entityId,
+                                              )
+                                            : undefined;
+                                    const plantSortData =
+                                        operation.entityTypeName ===
+                                        cartPlantSortEntityType
+                                            ? plantSortById.get(
+                                                  operation.entityId,
+                                              )
+                                            : undefined;
+                                    const operationName =
+                                        operationData?.information.label;
+                                    const entryName = getActiveOperationName({
+                                        operation,
+                                        operationName,
+                                        plantSortName:
+                                            plantSortData?.information.name,
+                                    });
+                                    const scheduleAction = (
+                                        <GardenOperationScheduleAction
+                                            entryName={entryName}
+                                            garden={currentGarden}
+                                            operation={operation}
+                                            referenceDate={referenceDate}
+                                        />
+                                    );
+
+                                    return (
+                                        <GardenOperationCard
+                                            key={`${operation.entityTypeName}-${operation.id}`}
+                                            operation={operation}
+                                            operationName={operationName}
+                                            operationData={operationData}
+                                            plantSortData={plantSortData}
+                                            targetPlantSortData={
+                                                operation.entityTypeName ===
+                                                cartOperationEntityType
+                                                    ? (plantSortById.get(
+                                                          getOperationFieldPlantSortId(
+                                                              operation,
+                                                              currentGarden,
+                                                          ) ?? 0,
+                                                      ) ?? undefined)
+                                                    : undefined
+                                            }
+                                            currentGarden={currentGarden}
+                                            referenceDate={referenceDate}
+                                            scheduleAction={scheduleAction}
+                                        />
+                                    );
+                                })}
                             </>
                         )}
                         <div ref={pendingRef} className="h-1" />
