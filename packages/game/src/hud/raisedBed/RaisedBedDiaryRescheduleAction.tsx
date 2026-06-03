@@ -5,6 +5,7 @@ import { Calendar } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@gredice/ui/Tooltip';
 import { Typography } from '@gredice/ui/Typography';
 import { type FormEvent, type ReactNode, useState } from 'react';
 import {
@@ -15,11 +16,13 @@ import {
 } from '../../hooks/useRescheduleDiaryEntry';
 
 export function RaisedBedDiaryRescheduleAction({
+    disabledReason,
     entryName,
     gardenId,
     target,
-    triggerLabel = 'Prerasporedi',
+    triggerLabel,
 }: {
+    disabledReason?: string | null;
     entryName: string;
     gardenId: number;
     target: DiaryRescheduleTarget;
@@ -29,10 +32,43 @@ export function RaisedBedDiaryRescheduleAction({
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const mutation = useRescheduleDiaryEntry(gardenId);
     const minimumDate = getMinimumDiaryRescheduleDateInput();
-    const defaultDate = formatDiaryRescheduleDateInput(
-        new Date(target.scheduledDate),
-    );
+    const hasScheduledDate = Boolean(target.scheduledDate);
+    const defaultDate = target.scheduledDate
+        ? formatDiaryRescheduleDateInput(new Date(target.scheduledDate))
+        : minimumDate;
     const currentValue = defaultDate >= minimumDate ? defaultDate : minimumDate;
+    const actionLabel =
+        triggerLabel ?? (hasScheduledDate ? 'Prerasporedi' : 'Zakaži');
+    const modalActionLabel = hasScheduledDate ? 'Prerasporedi' : 'Zakaži';
+    const triggerButton = (
+        <Button
+            type="button"
+            size="xs"
+            variant="soft"
+            disabled={Boolean(disabledReason)}
+            startDecorator={<Calendar className="size-3.5 shrink-0" />}
+        >
+            {actionLabel}
+        </Button>
+    );
+
+    if (disabledReason) {
+        return (
+            <Tooltip delayDuration={100}>
+                <TooltipTrigger asChild>
+                    <span
+                        className="inline-flex w-fit max-w-full cursor-not-allowed"
+                        title={disabledReason}
+                    >
+                        {triggerButton}
+                    </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <Typography level="body3">{disabledReason}</Typography>
+                </TooltipContent>
+            </Tooltip>
+        );
+    }
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -62,7 +98,7 @@ export function RaisedBedDiaryRescheduleAction({
 
     return (
         <Modal
-            title={`Prerasporedi ${entryName}`}
+            title={`${modalActionLabel} ${entryName}`}
             open={open}
             onOpenChange={(nextOpen) => {
                 setOpen(nextOpen);
@@ -70,23 +106,15 @@ export function RaisedBedDiaryRescheduleAction({
                     setErrorMessage(null);
                 }
             }}
-            trigger={
-                <Button
-                    type="button"
-                    size="xs"
-                    variant="soft"
-                    startDecorator={<Calendar className="size-3.5 shrink-0" />}
-                >
-                    {triggerLabel}
-                </Button>
-            }
+            trigger={triggerButton}
         >
             <form onSubmit={handleSubmit}>
                 <Stack spacing={4}>
                     <Stack spacing={1}>
-                        <Typography level="h5">Prerasporedi</Typography>
+                        <Typography level="h5">{modalActionLabel}</Typography>
                         <Typography level="body2" secondary>
-                            Odaberi novi datum za {entryName}.
+                            Odaberi {hasScheduledDate ? 'novi ' : ''}datum za{' '}
+                            {entryName}.
                         </Typography>
                     </Stack>
 

@@ -11,13 +11,13 @@ export type DiaryRescheduleTarget =
           raisedBedId: number | null;
           raisedBedFieldId: number | null;
           positionIndex?: number;
-          scheduledDate: string;
+          scheduledDate?: string | null;
       }
     | {
           type: 'raisedBedFieldPlant';
           raisedBedId: number;
           positionIndex: number;
-          scheduledDate: string;
+          scheduledDate?: string | null;
       };
 
 const mutationKey = ['gardens', 'diary', 'reschedule'];
@@ -82,6 +82,10 @@ export function isDiaryRescheduleTargetEligible(
         return false;
     }
 
+    if (!target.scheduledDate) {
+        return true;
+    }
+
     const scheduledDate = new Date(target.scheduledDate);
     if (Number.isNaN(scheduledDate.getTime())) {
         return false;
@@ -91,6 +95,29 @@ export function isDiaryRescheduleTargetEligible(
         startOfUtcDay(scheduledDate).getTime() >=
         getMinimumRescheduleDate(referenceDate).getTime()
     );
+}
+
+export function getDiaryRescheduleDisabledReason(
+    target: DiaryRescheduleTarget | undefined,
+    referenceDate = new Date(),
+) {
+    if (!target?.scheduledDate) {
+        return null;
+    }
+
+    const scheduledDate = new Date(target.scheduledDate);
+    if (Number.isNaN(scheduledDate.getTime())) {
+        return 'Datum radnje nije ispravan.';
+    }
+
+    if (
+        startOfUtcDay(scheduledDate).getTime() <
+        getMinimumRescheduleDate(referenceDate).getTime()
+    ) {
+        return 'Datum radnje zakazane za danas više nije moguće promijeniti.';
+    }
+
+    return null;
 }
 
 async function rescheduleOperation({

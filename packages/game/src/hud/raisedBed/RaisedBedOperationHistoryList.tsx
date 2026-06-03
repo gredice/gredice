@@ -17,10 +17,9 @@ import { useSorts } from '../../hooks/usePlantSorts';
 import { useRaisedBedAiHistory } from '../../hooks/useRaisedBedAiHistory';
 import {
     buildSowingOperationItems,
-    canRescheduleGardenOperation,
     cartPlantSortEntityType,
     GardenOperationCard,
-    GardenOperationRescheduleAction,
+    GardenOperationScheduleAction,
     sortNewestFirst,
 } from '../GardenOperationsHud';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
@@ -295,16 +294,6 @@ export function RaisedBedOperationHistoryList({
                         ? plantSortById.get(operation.entityId)
                         : undefined;
                 const operationName = operationData?.information.label;
-                const scheduledDateLabel = operation.scheduledDate
-                    ? new Date(operation.scheduledDate).toLocaleDateString(
-                          'hr-HR',
-                          {
-                              day: 'numeric',
-                              month: 'long',
-                              year: 'numeric',
-                          },
-                      )
-                    : null;
                 const entryName =
                     operationName ??
                     plantSortData?.information.name ??
@@ -315,21 +304,14 @@ export function RaisedBedOperationHistoryList({
                     (operation.raisedBedFieldId
                         ? fieldPositionById.get(operation.raisedBedFieldId)
                         : undefined);
-                const rescheduleAction =
-                    !disableActions &&
-                    canRescheduleGardenOperation(
-                        operation,
-                        currentGarden,
-                        referenceDate,
-                    ) ? (
-                        <GardenOperationRescheduleAction
-                            entryName={entryName}
-                            garden={currentGarden}
-                            operation={operation}
-                            referenceDate={referenceDate}
-                            triggerLabel={scheduledDateLabel}
-                        />
-                    ) : null;
+                const scheduleAction = !disableActions ? (
+                    <GardenOperationScheduleAction
+                        entryName={entryName}
+                        garden={currentGarden}
+                        operation={operation}
+                        referenceDate={referenceDate}
+                    />
+                ) : undefined;
                 const aiAction =
                     flags.raisedBedImageAI &&
                     !disableActions &&
@@ -375,8 +357,8 @@ export function RaisedBedOperationHistoryList({
                         currentGarden={currentGarden}
                         referenceDate={referenceDate}
                         progressClassName="md:max-w-80"
-                        scheduleAction={rescheduleAction ?? undefined}
                         action={action}
+                        scheduleAction={scheduleAction}
                     />
                 );
             })}

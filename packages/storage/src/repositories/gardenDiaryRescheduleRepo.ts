@@ -68,10 +68,7 @@ function assertExistingScheduledDateCanMove(
     referenceDate: Date,
 ) {
     if (!scheduledDate) {
-        throw new GardenDiaryRescheduleError(
-            'Only scheduled planned items can be rescheduled.',
-            409,
-        );
+        return;
     }
 
     if (!isDiaryRescheduleDateAllowed(scheduledDate, referenceDate)) {
