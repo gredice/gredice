@@ -38,6 +38,7 @@ export * from './repositories/eventsRepo';
 export * from './repositories/farmsRepo';
 export * from './repositories/feedbacksRepo';
 export * from './repositories/fiscalizationRepo';
+export * from './repositories/gardenDiaryRescheduleRepo';
 export * from './repositories/gardensRepo';
 export * from './repositories/inventoryManagementRepo';
 export * from './repositories/inventoryRepo';

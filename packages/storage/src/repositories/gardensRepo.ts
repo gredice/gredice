@@ -2831,6 +2831,7 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
             status: operationStatusToLabel(op.status),
             timestamp: op.completedAt ?? op.scheduledDate ?? op.createdAt,
             imageUrls: op.imageUrls,
+            rescheduleTarget: operationDiaryRescheduleTarget(op),
         }))
         .filter((op) => op.name)
         .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
@@ -3319,19 +3320,107 @@ export async function getRaisedBedFieldDiaryEntries(
             status: operationStatusToLabel(op.status),
             timestamp: op.completedAt ?? op.scheduledDate ?? op.createdAt,
             imageUrls: op.imageUrls,
+            rescheduleTarget: operationDiaryRescheduleTarget(op, positionIndex),
         }))
         .filter((op) => op.name)
         .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
-    return [...raisedBedsEventDiaryEntries, ...operationsDiaryEntries].sort(
-        (a, b) => {
-            const aTime =
-                a.timestamp instanceof Date ? a.timestamp.getTime() : 0;
-            const bTime =
-                b.timestamp instanceof Date ? b.timestamp.getTime() : 0;
-            return bTime - aTime;
-        },
+    const plannedFieldDiaryEntry = fieldPlantDiaryEntry(
+        raisedBedId,
+        positionIndex,
+        fields,
     );
+
+    return [
+        ...raisedBedsEventDiaryEntries,
+        ...operationsDiaryEntries,
+        ...(plannedFieldDiaryEntry ? [plannedFieldDiaryEntry] : []),
+    ].sort((a, b) => {
+        const aTime = a.timestamp instanceof Date ? a.timestamp.getTime() : 0;
+        const bTime = b.timestamp instanceof Date ? b.timestamp.getTime() : 0;
+        return bTime - aTime;
+    });
+}
+
+type DiaryRescheduleTarget =
+    | {
+          type: 'operation';
+          operationId: number;
+          raisedBedId: number | null;
+          raisedBedFieldId: number | null;
+          positionIndex?: number;
+          scheduledDate: string;
+      }
+    | {
+          type: 'raisedBedFieldPlant';
+          raisedBedId: number;
+          positionIndex: number;
+          scheduledDate: string;
+      };
+
+type DiaryOperation = Awaited<ReturnType<typeof getOperations>>[number];
+type RaisedBedFieldWithEvents = Awaited<
+    ReturnType<typeof getRaisedBedFieldsWithEvents>
+>[number];
+
+const fieldPlantRescheduleStatuses = new Set(['new', 'planned']);
+
+function operationDiaryRescheduleTarget(
+    operation: DiaryOperation,
+    positionIndex?: number,
+): DiaryRescheduleTarget | undefined {
+    if (operation.status !== 'planned' || !operation.scheduledDate) {
+        return undefined;
+    }
+
+    return {
+        type: 'operation',
+        operationId: operation.id,
+        raisedBedId: operation.raisedBedId,
+        raisedBedFieldId: operation.raisedBedFieldId,
+        ...(positionIndex !== undefined ? { positionIndex } : {}),
+        scheduledDate: operation.scheduledDate.toISOString(),
+    };
+}
+
+function isPlannedFieldPlant(field: RaisedBedFieldWithEvents) {
+    return (
+        field.active &&
+        Boolean(field.plantSortId) &&
+        Boolean(field.plantScheduledDate) &&
+        (!field.plantStatus ||
+            fieldPlantRescheduleStatuses.has(field.plantStatus))
+    );
+}
+
+function fieldPlantDiaryEntry(
+    raisedBedId: number,
+    positionIndex: number,
+    fields: RaisedBedFieldWithEvents[],
+) {
+    const field = fields.find(
+        (candidate) =>
+            candidate.positionIndex === positionIndex &&
+            isPlannedFieldPlant(candidate),
+    );
+    if (!field?.plantScheduledDate) {
+        return null;
+    }
+
+    return {
+        id: -field.id,
+        name: 'Planirano sijanje',
+        description: 'Sijanje biljke je planirano za odabrani datum.',
+        status: 'Planirano',
+        timestamp: field.plantScheduledDate,
+        imageUrls: undefined,
+        rescheduleTarget: {
+            type: 'raisedBedFieldPlant',
+            raisedBedId,
+            positionIndex,
+            scheduledDate: field.plantScheduledDate.toISOString(),
+        } satisfies DiaryRescheduleTarget,
+    };
 }
 
 export async function getRaisedBedAiHistoryEntries(raisedBedId: number) {

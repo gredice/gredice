@@ -15,7 +15,12 @@ import ReactMarkdown from 'react-markdown';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useRaisedBedDiaryEntries } from '../../hooks/useRaisedBedDiaryEntries';
 import { useRaisedBedFieldDiaryEntries } from '../../hooks/useRaisedBedFieldDiaryEntries';
+import {
+    type DiaryRescheduleTarget,
+    isDiaryRescheduleTargetEligible,
+} from '../../hooks/useRescheduleDiaryEntry';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
+import { RaisedBedDiaryRescheduleAction } from './RaisedBedDiaryRescheduleAction';
 
 type DiaryEntry = {
     id: number;
@@ -25,6 +30,7 @@ type DiaryEntry = {
     timestamp: Date;
     imageUrls?: string[] | null;
     isMarkdown?: boolean;
+    rescheduleTarget?: DiaryRescheduleTarget;
 };
 
 type DiaryEntryAiHistory = {
@@ -116,6 +122,38 @@ function DiaryEntryImages({
 
 function diaryEntryImagesClassName(imageUrls?: string[] | null) {
     return cx('w-20 shrink-0', (imageUrls?.length ?? 0) > 1 && 'sm:w-44');
+}
+
+function diaryEntryActions({
+    aiAction,
+    entry,
+    gardenId,
+}: {
+    aiAction?: ReactNode;
+    entry: DiaryEntry;
+    gardenId: number;
+}) {
+    const rescheduleTarget = entry.rescheduleTarget;
+    const rescheduleAction = isDiaryRescheduleTargetEligible(
+        rescheduleTarget,
+    ) ? (
+        <RaisedBedDiaryRescheduleAction
+            entryName={entry.name}
+            gardenId={gardenId}
+            target={rescheduleTarget}
+        />
+    ) : null;
+
+    if (!aiAction && !rescheduleAction) {
+        return null;
+    }
+
+    return (
+        <Row spacing={2} className="flex-wrap items-center">
+            {rescheduleAction}
+            {aiAction}
+        </Row>
+    );
 }
 
 function DiaryList({
@@ -379,23 +417,32 @@ export function RaisedBedFieldDiary({
     const renderEntryAction =
         flags.raisedBedImageAI && !disableActions
             ? (entry: DiaryEntry, aiHistory?: DiaryEntryAiHistory) => {
-                  if (!entry.imageUrls?.length || entry.isMarkdown) {
-                      return null;
-                  }
+                  const aiAction =
+                      entry.imageUrls?.length && !entry.isMarkdown ? (
+                          <RaisedBedDiaryAiAction
+                              gardenId={gardenId}
+                              raisedBedId={raisedBedId}
+                              positionIndex={positionIndex}
+                              entryName={entry.name}
+                              imageUrls={entry.imageUrls}
+                              referenceDate={entry.timestamp}
+                              historyEntries={aiHistory?.entries}
+                          />
+                      ) : undefined;
 
-                  return (
-                      <RaisedBedDiaryAiAction
-                          gardenId={gardenId}
-                          raisedBedId={raisedBedId}
-                          positionIndex={positionIndex}
-                          entryName={entry.name}
-                          imageUrls={entry.imageUrls}
-                          referenceDate={entry.timestamp}
-                          historyEntries={aiHistory?.entries}
-                      />
-                  );
+                  return diaryEntryActions({
+                      aiAction,
+                      entry,
+                      gardenId,
+                  });
               }
-            : undefined;
+            : !disableActions
+              ? (entry: DiaryEntry) =>
+                    diaryEntryActions({
+                        entry,
+                        gardenId,
+                    })
+              : undefined;
 
     return (
         <DiaryList
@@ -422,22 +469,29 @@ export function RaisedBedDiary({
     const flags = useGameFlags();
     const renderEntryAction = flags.raisedBedImageAI
         ? (entry: DiaryEntry, aiHistory?: DiaryEntryAiHistory) => {
-              if (!entry.imageUrls?.length || entry.isMarkdown) {
-                  return null;
-              }
+              const aiAction =
+                  entry.imageUrls?.length && !entry.isMarkdown ? (
+                      <RaisedBedDiaryAiAction
+                          gardenId={gardenId}
+                          raisedBedId={raisedBedId}
+                          entryName={entry.name}
+                          imageUrls={entry.imageUrls}
+                          referenceDate={entry.timestamp}
+                          historyEntries={aiHistory?.entries}
+                      />
+                  ) : undefined;
 
-              return (
-                  <RaisedBedDiaryAiAction
-                      gardenId={gardenId}
-                      raisedBedId={raisedBedId}
-                      entryName={entry.name}
-                      imageUrls={entry.imageUrls}
-                      referenceDate={entry.timestamp}
-                      historyEntries={aiHistory?.entries}
-                  />
-              );
+              return diaryEntryActions({
+                  aiAction,
+                  entry,
+                  gardenId,
+              });
           }
-        : undefined;
+        : (entry: DiaryEntry) =>
+              diaryEntryActions({
+                  entry,
+                  gardenId,
+              });
 
     return (
         <DiaryList
