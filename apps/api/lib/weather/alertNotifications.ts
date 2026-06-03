@@ -6,11 +6,13 @@ import {
     notifications,
     storage,
 } from '@gredice/storage';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import {
     type DhmzWeatherAlert,
     filterWeatherAlertsForFarm,
     getDhmzWeatherAlerts,
+    isWeatherWarningAlert,
+    type WeatherAlertFarm,
 } from './alerts';
 
 export type WeatherAlertNotificationResult = {
@@ -31,8 +33,27 @@ function formatAlertWindow(alert: DhmzWeatherAlert) {
     return `${formatter.format(new Date(alert.onset))} - ${formatter.format(new Date(alert.expires))}`;
 }
 
-function collapseKeyForWeatherAlert(gardenId: number, alert: DhmzWeatherAlert) {
+export function weatherAlertNotificationCollapseKey(
+    alert: Pick<DhmzWeatherAlert, 'deduplicationKey'>,
+) {
+    return `weather-risk:${alert.deduplicationKey}`;
+}
+
+function legacyWeatherAlertNotificationCollapseKey(
+    gardenId: number,
+    alert: Pick<DhmzWeatherAlert, 'deduplicationKey'>,
+) {
     return `weather-risk:${gardenId}:${alert.deduplicationKey}`;
+}
+
+export function weatherAlertNotificationLookupCollapseKeys(
+    gardenId: number,
+    alert: Pick<DhmzWeatherAlert, 'deduplicationKey'>,
+) {
+    return [
+        weatherAlertNotificationCollapseKey(alert),
+        legacyWeatherAlertNotificationCollapseKey(gardenId, alert),
+    ];
 }
 
 function weatherAlertContent(alert: DhmzWeatherAlert) {
@@ -40,11 +61,40 @@ function weatherAlertContent(alert: DhmzWeatherAlert) {
     return `${alert.description} Vrijedi ${formatAlertWindow(alert)}.${instruction}`;
 }
 
-async function notificationExists(accountId: string, collapseKey: string) {
+function dedupeWeatherAlertsByWarning(alerts: DhmzWeatherAlert[]) {
+    const seenAlertKeys = new Set<string>();
+    const dedupedAlerts: DhmzWeatherAlert[] = [];
+
+    for (const alert of alerts) {
+        if (seenAlertKeys.has(alert.deduplicationKey)) continue;
+        seenAlertKeys.add(alert.deduplicationKey);
+        dedupedAlerts.push(alert);
+    }
+
+    return dedupedAlerts;
+}
+
+export function filterWeatherAlertsForNotifications({
+    farm,
+    now,
+    sourceAlerts,
+}: {
+    farm?: WeatherAlertFarm | null;
+    now: Date;
+    sourceAlerts: DhmzWeatherAlert[];
+}) {
+    return dedupeWeatherAlertsByWarning(
+        filterWeatherAlertsForFarm(sourceAlerts, farm, { now }).filter(
+            isWeatherWarningAlert,
+        ),
+    );
+}
+
+async function notificationExists(accountId: string, collapseKeys: string[]) {
     const existing = await storage().query.notifications.findFirst({
         where: and(
             eq(notifications.accountId, accountId),
-            eq(notifications.collapseKey, collapseKey),
+            inArray(notifications.collapseKey, collapseKeys),
         ),
     });
     return Boolean(existing);
@@ -70,16 +120,34 @@ export async function notifyWeatherRiskAlerts({
     let alertsMatched = 0;
     let notificationsCreated = 0;
     let duplicatesSkipped = 0;
+    const processedNotificationKeys = new Set<string>();
 
     for (const garden of gardenRows) {
-        const alerts = filterWeatherAlertsForFarm(sourceAlerts, garden.farm, {
+        const alerts = filterWeatherAlertsForNotifications({
+            farm: garden.farm,
             now,
+            sourceAlerts,
         });
         alertsMatched += alerts.length;
 
         for (const alert of alerts) {
-            const collapseKey = collapseKeyForWeatherAlert(garden.id, alert);
-            if (await notificationExists(garden.accountId, collapseKey)) {
+            const collapseKey = weatherAlertNotificationCollapseKey(alert);
+            const accountNotificationKey = `${garden.accountId}:${collapseKey}`;
+            if (processedNotificationKeys.has(accountNotificationKey)) {
+                duplicatesSkipped += 1;
+                continue;
+            }
+            processedNotificationKeys.add(accountNotificationKey);
+
+            if (
+                await notificationExists(
+                    garden.accountId,
+                    weatherAlertNotificationLookupCollapseKeys(
+                        garden.id,
+                        alert,
+                    ),
+                )
+            ) {
                 duplicatesSkipped += 1;
                 continue;
             }
