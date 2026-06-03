@@ -1784,6 +1784,23 @@ export function deleteNotification(id: string) {
     return storage().delete(notifications).where(eq(notifications.id, id));
 }
 
+export function deleteNotifications(ids: string[]) {
+    if (ids.length === 0) {
+        return Promise.resolve([]);
+    }
+
+    return storage()
+        .delete(notifications)
+        .where(inArray(notifications.id, ids))
+        .returning({
+            id: notifications.id,
+            accountId: notifications.accountId,
+            userId: notifications.userId,
+            gardenId: notifications.gardenId,
+            raisedBedId: notifications.raisedBedId,
+        });
+}
+
 export async function notificationsDigest({
     markSent = true,
     targetHour,
