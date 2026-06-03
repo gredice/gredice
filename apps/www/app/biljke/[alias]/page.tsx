@@ -20,6 +20,7 @@ import { getPlantInforationSections } from './getPlantInforationSections';
 import { HarvestAttributeCards } from './HarvestAttributeCards';
 import { InformationSection } from './InformationSection';
 import { PlantPageHeader } from './PlantPageHeader';
+import { PlantRelationshipsSection } from './PlantRelationshipsSection';
 import { PlantSortsList } from './PlantSortsList';
 import { PlantTips } from './PlantTips';
 import { SowingAttributeCards } from './SowingAttributeCards';
@@ -150,6 +151,9 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                 {(plant.information.tip?.length ?? 0) > 0 && (
                     <PlantTips plant={plant} />
                 )}
+                <PlantRelationshipsSection
+                    relationships={plant.relationships}
+                />
                 <PlantSortsList
                     basePlantName={plant.information.name}
                     basePlantId={plant.id}

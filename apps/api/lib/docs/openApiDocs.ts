@@ -3,6 +3,7 @@ import {
     type ExtendedAttributeDefinition,
     getAttributeDefinitions,
     getEntityTypes,
+    isPlantRelationshipAttributeDefinition,
 } from '@gredice/storage';
 import type { OpenAPIV3_1 } from 'openapi-types';
 
@@ -194,6 +195,16 @@ async function resolvePropertyData(
     attributeDefinition: DirectoryAttributeDefinition,
     loadAttributeDefinitions: AttributeDefinitionLoader = getAttributeDefinitions,
 ) {
+    if (isPlantRelationshipAttributeDefinition(attributeDefinition)) {
+        return {
+            type: 'array',
+            items: {
+                $ref: '#/components/schemas/plant-relationship',
+            },
+            description: attributeDefinition.description || undefined,
+        } satisfies OpenAPIV3_1.SchemaObject;
+    }
+
     if (attributeDefinition.dataType.startsWith('json|')) {
         const propertyData = resolveJsonPropertyData(
             attributeDefinition.dataType.substring(5),
@@ -451,6 +462,36 @@ export async function openApiDocs(
                         },
                     },
                     required: ['url'],
+                },
+                'plant-relationship': {
+                    type: 'object',
+                    properties: {
+                        id: {
+                            type: 'number',
+                        },
+                        slug: {
+                            type: 'string',
+                        },
+                        name: {
+                            type: 'string',
+                        },
+                        latinName: {
+                            type: 'string',
+                        },
+                        image: {
+                            type: 'object',
+                            properties: {
+                                cover: {
+                                    $ref: '#/components/schemas/image',
+                                },
+                            },
+                        },
+                        relationship: {
+                            type: 'string',
+                            enum: ['companion', 'antagonist'],
+                        },
+                    },
+                    required: ['id', 'slug', 'name', 'relationship'],
                 },
             },
         },

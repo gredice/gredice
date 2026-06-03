@@ -10,6 +10,8 @@ import {
     getEntityIncomingLinks,
     getEntityRaw,
     type IncomingEntityLinkGroup,
+    isPlantRelationshipAttributeDefinition,
+    parsePlantRelationshipTargetId,
     type SelectAttributeDefinition,
     type SelectAttributeValue,
     createEntity as storageCreateEntity,
@@ -225,6 +227,48 @@ function entityActionErrorMessage(error: unknown) {
     return 'Promjena statusa nije uspjela.';
 }
 
+async function assertPlantRelationshipValueCanSave({
+    attributeDefinition,
+    attributeValueId,
+    entityId,
+    newValue,
+}: {
+    attributeDefinition: SelectAttributeDefinition;
+    attributeValueId?: number;
+    entityId: number;
+    newValue?: string | null;
+}) {
+    if (!isPlantRelationshipAttributeDefinition(attributeDefinition)) {
+        return;
+    }
+
+    const targetId = parsePlantRelationshipTargetId(newValue);
+    if (!targetId) {
+        return;
+    }
+    if (targetId === entityId) {
+        throw new Error('Biljka ne može biti povezana sama sa sobom.');
+    }
+
+    const [entity, target] = await Promise.all([
+        getEntityRaw(entityId),
+        getEntityRaw(targetId),
+    ]);
+    if (target?.entityTypeName !== 'plant') {
+        throw new Error('Odabrana povezana biljka nije pronađena.');
+    }
+
+    const duplicateValue = entity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinitionId === attributeDefinition.id &&
+            attribute.id !== attributeValueId &&
+            attribute.value === String(targetId),
+    );
+    if (duplicateValue) {
+        throw new Error('Ova povezana biljka već je dodana.');
+    }
+}
+
 export async function updateEntityStateAction(entity: UpdateEntity) {
     await auth(['admin']);
 
@@ -286,6 +330,12 @@ export async function handleValueSave(
     const newAttributeValueValue =
         (newValue?.length ?? 0) <= 0 ? null : newValue;
     const authData = await auth(['admin']);
+    await assertPlantRelationshipValueCanSave({
+        attributeDefinition,
+        attributeValueId,
+        entityId,
+        newValue: newAttributeValueValue,
+    });
 
     await upsertAttributeValue(
         {

@@ -107,6 +107,43 @@ test('buildAttributeDefinitionProperties maps CMS data types to formatted entity
     assert.equal(schemaObject(stageItem.properties?.id).type, 'number');
 });
 
+test('buildAttributeDefinitionProperties maps plant relationships to shallow non-recursive schema', async () => {
+    const result = await buildAttributeDefinitionProperties(
+        [
+            attributeDefinition({
+                category: 'relationships',
+                dataType: 'ref:plant',
+                entityTypeName: 'plant',
+                multiple: true,
+                name: 'companions',
+            }),
+            attributeDefinition({
+                category: 'relationships',
+                dataType: 'ref:plant',
+                entityTypeName: 'plant',
+                multiple: true,
+                name: 'antagonists',
+            }),
+        ],
+        async () => {
+            throw new Error('Plant relationships must not recurse.');
+        },
+    );
+
+    const relationships = schemaObject(result.properties.relationships);
+    const companions = schemaObject(relationships.properties?.companions);
+    const antagonists = schemaObject(relationships.properties?.antagonists);
+
+    assert.equal(companions.type, 'array');
+    assert.deepEqual(companions.items, {
+        $ref: '#/components/schemas/plant-relationship',
+    });
+    assert.equal(antagonists.type, 'array');
+    assert.deepEqual(antagonists.items, {
+        $ref: '#/components/schemas/plant-relationship',
+    });
+});
+
 test('buildAttributeDefinitionProperties fails clearly for unsupported CMS data types', async () => {
     await assert.rejects(
         () =>
