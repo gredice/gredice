@@ -107,16 +107,17 @@ describe('filterWeatherAlertsForNotifications', () => {
 });
 
 describe('weather alert notification collapse keys', () => {
-    it('uses an account-level warning key and keeps legacy garden keys for lookup', () => {
+    it('uses an account-level warning key and keeps all account legacy garden keys for lookup', () => {
         assert.equal(
             weatherAlertNotificationCollapseKey(yellowAlert),
             `weather-risk:${yellowAlert.deduplicationKey}`,
         );
         assert.deepEqual(
-            weatherAlertNotificationLookupCollapseKeys(42, yellowAlert),
+            weatherAlertNotificationLookupCollapseKeys([42, 43], yellowAlert),
             [
                 `weather-risk:${yellowAlert.deduplicationKey}`,
                 `weather-risk:42:${yellowAlert.deduplicationKey}`,
+                `weather-risk:43:${yellowAlert.deduplicationKey}`,
             ],
         );
     });

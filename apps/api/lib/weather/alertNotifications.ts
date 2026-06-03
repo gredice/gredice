@@ -47,12 +47,14 @@ function legacyWeatherAlertNotificationCollapseKey(
 }
 
 export function weatherAlertNotificationLookupCollapseKeys(
-    gardenId: number,
+    gardenIds: number[],
     alert: Pick<DhmzWeatherAlert, 'deduplicationKey'>,
 ) {
     return [
         weatherAlertNotificationCollapseKey(alert),
-        legacyWeatherAlertNotificationCollapseKey(gardenId, alert),
+        ...gardenIds.map((gardenId) =>
+            legacyWeatherAlertNotificationCollapseKey(gardenId, alert),
+        ),
     ];
 }
 
@@ -121,6 +123,13 @@ export async function notifyWeatherRiskAlerts({
     let notificationsCreated = 0;
     let duplicatesSkipped = 0;
     const processedNotificationKeys = new Set<string>();
+    const accountGardenIds = new Map<string, number[]>();
+
+    for (const garden of gardenRows) {
+        const gardenIds = accountGardenIds.get(garden.accountId) ?? [];
+        gardenIds.push(garden.id);
+        accountGardenIds.set(garden.accountId, gardenIds);
+    }
 
     for (const garden of gardenRows) {
         const alerts = filterWeatherAlertsForNotifications({
@@ -143,7 +152,7 @@ export async function notifyWeatherRiskAlerts({
                 await notificationExists(
                     garden.accountId,
                     weatherAlertNotificationLookupCollapseKeys(
-                        garden.id,
+                        accountGardenIds.get(garden.accountId) ?? [garden.id],
                         alert,
                     ),
                 )
