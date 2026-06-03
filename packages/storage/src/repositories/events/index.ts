@@ -27,6 +27,8 @@ export type {
     // Account
     AccountAiRequestPayload,
     AccountAssignUserPayload,
+    AccountSunflowerDropEarnPayload,
+    AccountSunflowerDropSpawnPayload,
     AccountSunflowersPayload,
     AdventAward,
     AdventCalendarOpenPayload,

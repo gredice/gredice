@@ -20,6 +20,7 @@ import {
     instancedBlockNames,
 } from './entities/EntityInstances';
 import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
+import { SunflowerDropReward } from './entities/SunflowerDropReward';
 import type { GameFeatureFlags } from './GameFlagsContext';
 import { GameHud } from './GameHud';
 import { useGameLoading } from './GameLoadingContext';
@@ -316,6 +317,14 @@ export function GameScene({
                                     stacks={garden?.stacks}
                                     renderDetails={renderDetails}
                                 />
+                                {renderDetails && zoom !== 'far' && (
+                                    <Suspense fallback={null}>
+                                        <SunflowerDropReward
+                                            enabled={!isLocalSandbox}
+                                            garden={garden}
+                                        />
+                                    </Suspense>
+                                )}
                                 <BlockInteractionLayer
                                     controlsEnabled={!noControls}
                                     stacks={garden?.stacks}
