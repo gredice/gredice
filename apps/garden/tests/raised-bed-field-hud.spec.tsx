@@ -805,6 +805,55 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         ).toBeLessThanOrEqual(1);
     });
 
+    test('diary tab allows rescheduling future active operation cards', async ({
+        mount,
+        page,
+    }) => {
+        const scenario = plantedGrowingWithOperationHistoryScenario();
+        const operation = scenario.operationHistoryItems?.[0];
+
+        if (!operation) {
+            throw new Error('Expected operation history item.');
+        }
+
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={{
+                    ...scenario,
+                    operationHistoryItems: [
+                        {
+                            ...operation,
+                            scheduledDate: '2026-05-20T00:00:00.000Z',
+                            scheduledAt: '2026-05-19T00:00:00.000Z',
+                            completedAt: null,
+                            verifiedAt: null,
+                            imageUrls: [],
+                            completionNotes: null,
+                        },
+                    ],
+                }}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const dialog = page.getByRole('dialog');
+        await dialog.getByRole('tab', { name: /Dnevnik/ }).click();
+
+        await expect(
+            dialog.getByText('Površinsko zalijevanje gredice (20L)'),
+        ).toBeVisible();
+        await dialog.getByRole('button', { name: 'Prerasporedi' }).click();
+
+        await expect(
+            page.getByText('Novi datum', { exact: true }),
+        ).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: 'Spremi' }),
+        ).toBeVisible();
+    });
+
     test('raised bed diary operation history does not overflow the modal', async ({
         mount,
         page,
