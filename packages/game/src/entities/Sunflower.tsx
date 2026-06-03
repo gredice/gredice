@@ -104,7 +104,7 @@ const centerDotNodeNames = [
 
 const headBackNodeName = 'Sunflower_Head_Back' satisfies SunflowerNodeName;
 const centerNodeName = 'Sunflower_Center' satisfies SunflowerNodeName;
-const sunflowerScale = 0.82;
+const sunflowerScale = 0.656;
 const headPivot = [0, 1.33, 0] satisfies [number, number, number];
 const colors = {
     leaf: '#6f8544',

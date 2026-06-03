@@ -63,7 +63,6 @@ import { findClosestForecastEntry } from '../../../lib/weather/weatherNowContrac
 
 const dailyRewards = [5, 10, 15, 20, 25, 50];
 const DAILY_REWARD_TIME_ZONE = 'Europe/Zagreb';
-const SUNFLOWER_DROP_SPAWN_CHANCE = 0.35;
 const GARDEN_APP_URL =
     process.env.GREDICE_GARDEN_APP_URL ?? 'https://vrt.gredice.com';
 
@@ -539,7 +538,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             const result = await getOrCreateSunflowerDropSpawn({
                 accountId,
-                allowCreate: Math.random() < SUNFLOWER_DROP_SPAWN_CHANCE,
+                allowCreate: true,
                 gardenId,
                 now,
                 sourceBlockId: sourceBlock.id,
