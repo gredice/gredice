@@ -38,6 +38,10 @@ export type EntityStandardized = {
     image?: {
         cover?: { url?: string };
     };
+    relationships?: {
+        companions?: EntityRelationshipSummary[];
+        antagonists?: EntityRelationshipSummary[];
+    };
     prices?: {
         perPlant?: number;
         perOperation?: number;
@@ -49,4 +53,15 @@ export type EntityStandardized = {
         completionAttachNotes?: boolean;
         completionAttachNotesRequired?: boolean;
     };
+};
+
+export type EntityRelationshipSummary = {
+    id: number;
+    slug: string;
+    name: string;
+    latinName?: string;
+    image?: {
+        cover?: { url?: string };
+    };
+    relationship: 'companion' | 'antagonist';
 };

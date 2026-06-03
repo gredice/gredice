@@ -24,7 +24,8 @@
         "test:db:migrate": "bash ./tests/migrateTestDb.sh",
         "test:db:stop": "bash ./tests/stopTestDb.sh",
         "test:node": "bash ./tests/runNodeTests.sh",
-        "notifications:backfill-rollout": "tsx --env-file=.env ./scripts/backfillNotificationRolloutDefaults.ts"
+        "notifications:backfill-rollout": "tsx --env-file=.env ./scripts/backfillNotificationRolloutDefaults.ts",
+        "plant-relationships:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPlantRelationships.ts"
     },
     "devDependencies": {
         "@biomejs/biome": "2.4.16",

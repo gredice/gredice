@@ -6,6 +6,7 @@ import {
     bustCachedByPrefixes,
     cacheKeys,
 } from '../cache/directoriesCached';
+import { plantRelationshipTargetIdForAttributeValue } from '../helpers/plantRelationships';
 import {
     attributeValues,
     entityRevisions,
@@ -36,15 +37,13 @@ export async function upsertAttributeValue(
     actor?: { id?: string; name?: string },
 ) {
     let value = attributeValue.value;
+    const definition = await getAttributeDefinition(
+        attributeValue.attributeDefinitionId,
+    );
 
     // Handle default value - assign default value if value is not provided
-    if (!value) {
-        const definition = await getAttributeDefinition(
-            attributeValue.attributeDefinitionId,
-        );
-        if (definition?.defaultValue) {
-            value = definition.defaultValue;
-        }
+    if (!value && definition?.defaultValue) {
+        value = definition.defaultValue;
     }
 
     const existingValue = attributeValue.id
@@ -52,6 +51,24 @@ export async function upsertAttributeValue(
               where: eq(attributeValues.id, attributeValue.id),
           })
         : undefined;
+    const previousRelationshipTargetId = definition
+        ? plantRelationshipTargetIdForAttributeValue(
+              definition,
+              existingValue?.value,
+          )
+        : null;
+    const nextRelationshipTargetId = definition
+        ? plantRelationshipTargetIdForAttributeValue(definition, value)
+        : null;
+    const impactedRelationshipTargetIds = Array.from(
+        new Set(
+            [previousRelationshipTargetId, nextRelationshipTargetId].filter(
+                (targetId): targetId is number =>
+                    typeof targetId === 'number' &&
+                    targetId !== attributeValue.entityId,
+            ),
+        ),
+    );
 
     await Promise.all([
         storage()
@@ -93,6 +110,9 @@ export async function upsertAttributeValue(
                   cacheKeys.entityTypeName(attributeValue.entityTypeName),
               )
             : undefined,
+        ...impactedRelationshipTargetIds.map((targetId) =>
+            bustCached(cacheKeys.entity(targetId)),
+        ),
         bustCachedByPrefixes(['dashboard:admin:']),
         // Bust cache if value exists
         attributeValue.id
@@ -122,6 +142,11 @@ export async function upsertAttributeValue(
     ]);
 
     await refreshEntitySearchDocumentAfterMutation(attributeValue.entityId);
+    await Promise.all(
+        impactedRelationshipTargetIds.map((targetId) =>
+            refreshEntitySearchDocumentAfterMutation(targetId),
+        ),
+    );
 }
 
 export async function deleteAttributeValue(
@@ -131,6 +156,16 @@ export async function deleteAttributeValue(
     const existingValue = await storage().query.attributeValues.findFirst({
         where: eq(attributeValues.id, id),
     });
+    const definition = existingValue
+        ? await getAttributeDefinition(existingValue.attributeDefinitionId)
+        : undefined;
+    const relationshipTargetId =
+        definition && existingValue
+            ? plantRelationshipTargetIdForAttributeValue(
+                  definition,
+                  existingValue.value,
+              )
+            : null;
 
     await Promise.all([
         storage()
@@ -168,10 +203,20 @@ export async function deleteAttributeValue(
                               ),
                           )
                         : undefined,
+                    relationshipTargetId &&
+                    relationshipTargetId !== attributeValue?.[0]?.entityId
+                        ? bustCached(cacheKeys.entity(relationshipTargetId))
+                        : undefined,
                     bustCachedByPrefixes(['dashboard:admin:']),
                 ]);
             }),
     ]);
 
     await refreshEntitySearchDocumentAfterMutation(existingValue?.entityId);
+    if (
+        relationshipTargetId &&
+        relationshipTargetId !== existingValue?.entityId
+    ) {
+        await refreshEntitySearchDocumentAfterMutation(relationshipTargetId);
+    }
 }
