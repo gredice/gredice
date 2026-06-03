@@ -21,18 +21,32 @@ import {
     directoriesCached,
 } from '../cache/directoriesCached';
 import { getEntityCompleteness } from '../helpers/entityCompleteness';
+import {
+    buildPlantRelationshipReadModel,
+    getPlantRelationshipDefinitions,
+    getPlantRelationshipLinkedEntityIds,
+    isPlantRelationshipAttributeDefinition,
+} from '../helpers/plantRelationships';
 
 const entityCacheTtl = 60 * 60; // 1 hour
 
-async function refreshEntitySearchDocumentAfterMutation(entityId: number) {
+async function refreshEntitySearchDocumentsAfterMutation(entityIds: number[]) {
+    const ids = Array.from(new Set(entityIds));
+    if (ids.length === 0) {
+        return;
+    }
     try {
         const { refreshImpactedEntitySearchDocuments } = await import(
             './entitySearchRepo'
         );
-        await refreshImpactedEntitySearchDocuments(entityId);
+        await Promise.all(
+            ids.map((entityId) =>
+                refreshImpactedEntitySearchDocuments(entityId),
+            ),
+        );
     } catch (error) {
         console.error('Failed to refresh entity search document', {
-            entityId,
+            entityIds: ids,
             error,
         });
     }
@@ -257,8 +271,16 @@ interface EntityWithAttributesAndType extends SelectEntity {
     attributes: EntityAttribute[];
     entityType: SelectEntityType;
 }
-interface EntityTypeCache {
-    [key: string]: Promise<EntityWithAttributesAndType[]>;
+interface EntityExpansionCache {
+    entitiesByType: Record<string, Promise<EntityWithAttributesAndType[]>>;
+    plantRelationshipDefinitions?: Promise<
+        import('../helpers/plantRelationships').PlantRelationshipDefinition[]
+    >;
+    plantRelationshipPublishedPlants?: Promise<EntityWithAttributesAndType[]>;
+}
+
+function createEntityExpansionCache(): EntityExpansionCache {
+    return { entitiesByType: {} };
 }
 
 export type IncomingEntityLinkGroup = {
@@ -277,7 +299,7 @@ export type IncomingEntityLinkGroup = {
 // Update expandEntity to accept a cache
 async function expandEntity(
     entityRaw: EntityWithAttributesAndType | undefined,
-    cache: EntityTypeCache = {},
+    cache: EntityExpansionCache = createEntityExpansionCache(),
 ) {
     if (!entityRaw) {
         return null;
@@ -304,7 +326,10 @@ async function expandEntity(
         updatedAt: entityRaw.updatedAt,
         slug: slugify(entityDisplayNameFromAttributes(entityRaw)),
     };
-    return await expandEntityAttributes(entity, entityRaw.attributes, cache);
+    return await expandEntityAttributes(entity, entityRaw.attributes, cache, {
+        includePlantRelationships: true,
+        sourceEntity: entityRaw,
+    });
 }
 
 // Update expandEntityAttributes to accept a cache
@@ -313,11 +338,22 @@ async function expandEntityAttributes<T extends Record<string, unknown>>(
     attributes: (SelectAttributeValue & {
         attributeDefinition: SelectAttributeDefinition;
     })[],
-    cache: EntityTypeCache = {},
+    cache: EntityExpansionCache = createEntityExpansionCache(),
+    options: {
+        includePlantRelationships?: boolean;
+        sourceEntity?: EntityWithAttributesAndType;
+    } = {},
 ) {
     const expandedEntity = { ...entity };
     // Prepare all attribute expansion promises
     const attributePromises = attributes.map(async (attribute) => {
+        if (
+            isPlantRelationshipAttributeDefinition(
+                attribute.attributeDefinition,
+            )
+        ) {
+            return;
+        }
         // Create category object if it doesn't exist
         if (
             expandedEntity[attribute.attributeDefinition.category] === undefined
@@ -357,6 +393,32 @@ async function expandEntityAttributes<T extends Record<string, unknown>>(
         }
     });
     await Promise.all(attributePromises);
+
+    if (options.includePlantRelationships && options.sourceEntity) {
+        if (!cache.plantRelationshipDefinitions) {
+            cache.plantRelationshipDefinitions =
+                getPlantRelationshipDefinitions();
+        }
+        const definitions = await cache.plantRelationshipDefinitions;
+        if (!cache.plantRelationshipPublishedPlants) {
+            cache.plantRelationshipPublishedPlants = getEntitiesRaw(
+                'plant',
+                'published',
+            ) as Promise<EntityWithAttributesAndType[]>;
+        }
+        const publishedPlants = await cache.plantRelationshipPublishedPlants;
+        const plantRelationships = definitions.length
+            ? await buildPlantRelationshipReadModel(
+                  options.sourceEntity,
+                  publishedPlants,
+              )
+            : null;
+        if (plantRelationships) {
+            (expandedEntity as Record<string, unknown>).relationships =
+                plantRelationships;
+        }
+    }
+
     return expandedEntity;
 }
 
@@ -364,7 +426,7 @@ async function expandEntityAttributes<T extends Record<string, unknown>>(
 async function expandValue(
     value: string | null | undefined,
     attributeDefinition: SelectAttributeDefinition,
-    cache: EntityTypeCache = {},
+    cache: EntityExpansionCache = createEntityExpansionCache(),
 ) {
     if (value === null || value === undefined) {
         return null;
@@ -415,7 +477,7 @@ async function expandValue(
 async function resolveRef(
     value: string | null,
     attributeDefinition: SelectAttributeDefinition,
-    cache: EntityTypeCache = {},
+    cache: EntityExpansionCache = createEntityExpansionCache(),
 ) {
     const refId = parseEntityRefId(value);
     if (refId === null) {
@@ -424,13 +486,13 @@ async function resolveRef(
 
     const refEntityTypeName = attributeDefinition.dataType.split(':')[1];
     const cacheKey = `${refEntityTypeName}:published`;
-    if (!cache[cacheKey]) {
-        cache[cacheKey] = getEntitiesRaw(
+    if (!cache.entitiesByType[cacheKey]) {
+        cache.entitiesByType[cacheKey] = getEntitiesRaw(
             refEntityTypeName,
             'published',
         ) as Promise<EntityWithAttributesAndType[]>;
     }
-    const refEntitiesByType = await cache[cacheKey];
+    const refEntitiesByType = await cache.entitiesByType[cacheKey];
     const refEntity = refEntitiesByType.find((e) => e.id === refId);
     if (!refEntity) {
         return null;
@@ -447,7 +509,7 @@ export async function getEntitiesFormatted<T>(entityTypeName: string) {
     return directoriesCached(
         cacheKeys.entityTypeName(entityTypeName),
         async () => {
-            const cache: EntityTypeCache = {};
+            const cache = createEntityExpansionCache();
             const entities = (await getEntitiesRaw(
                 entityTypeName,
                 'published',
@@ -464,7 +526,7 @@ export async function getEntityFormatted<T>(id: number) {
     return directoriesCached(
         cacheKeys.entity(id),
         async () => {
-            const cache: EntityTypeCache = {};
+            const cache = createEntityExpansionCache();
             const entity = (await getEntityRaw(id)) as
                 | EntityWithAttributesAndType
                 | undefined;
@@ -850,7 +912,20 @@ export async function updateEntity(
         bustCachedByPrefixes(['dashboard:admin:']),
     ]);
 
-    await refreshEntitySearchDocumentAfterMutation(entity.id);
+    const linkedPlantRelationshipEntityIds =
+        previousEntity.entityTypeName === 'plant'
+            ? await getPlantRelationshipLinkedEntityIds(entity.id)
+            : [];
+    await Promise.all(
+        linkedPlantRelationshipEntityIds.map((linkedEntityId) =>
+            bustCached(cacheKeys.entity(linkedEntityId)),
+        ),
+    );
+
+    await refreshEntitySearchDocumentsAfterMutation([
+        entity.id,
+        ...linkedPlantRelationshipEntityIds,
+    ]);
 }
 
 export async function deleteEntity(
@@ -883,7 +958,20 @@ export async function deleteEntity(
         bustCachedByPrefixes(['dashboard:admin:']),
     ]);
 
-    await refreshEntitySearchDocumentAfterMutation(id);
+    const linkedPlantRelationshipEntityIds =
+        entity.entityTypeName === 'plant'
+            ? await getPlantRelationshipLinkedEntityIds(id)
+            : [];
+    await Promise.all(
+        linkedPlantRelationshipEntityIds.map((linkedEntityId) =>
+            bustCached(cacheKeys.entity(linkedEntityId)),
+        ),
+    );
+
+    await refreshEntitySearchDocumentsAfterMutation([
+        id,
+        ...linkedPlantRelationshipEntityIds,
+    ]);
 }
 
 export async function getEntityRevisions(entityId: number) {

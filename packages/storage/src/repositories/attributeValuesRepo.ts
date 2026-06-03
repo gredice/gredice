@@ -6,26 +6,38 @@ import {
     bustCachedByPrefixes,
     cacheKeys,
 } from '../cache/directoriesCached';
+import { getPlantRelationshipMutationEntityIds } from '../helpers/plantRelationships';
 import {
     attributeValues,
     entityRevisions,
     type InsertAttributeValue,
 } from '../schema';
 
-async function refreshEntitySearchDocumentAfterMutation(
-    entityId: number | undefined,
+async function refreshEntitySearchDocumentsAfterMutation(
+    entityIds: (number | undefined)[],
 ) {
-    if (!entityId) {
+    const ids = Array.from(
+        new Set(
+            entityIds.filter((entityId): entityId is number =>
+                Boolean(entityId),
+            ),
+        ),
+    );
+    if (ids.length === 0) {
         return;
     }
     try {
         const { refreshImpactedEntitySearchDocuments } = await import(
             './entitySearchRepo'
         );
-        await refreshImpactedEntitySearchDocuments(entityId);
+        await Promise.all(
+            ids.map((entityId) =>
+                refreshImpactedEntitySearchDocuments(entityId),
+            ),
+        );
     } catch (error) {
         console.error('Failed to refresh entity search document', {
-            entityId,
+            entityIds: ids,
             error,
         });
     }
@@ -36,15 +48,13 @@ export async function upsertAttributeValue(
     actor?: { id?: string; name?: string },
 ) {
     let value = attributeValue.value;
+    const definition = await getAttributeDefinition(
+        attributeValue.attributeDefinitionId,
+    );
 
     // Handle default value - assign default value if value is not provided
-    if (!value) {
-        const definition = await getAttributeDefinition(
-            attributeValue.attributeDefinitionId,
-        );
-        if (definition?.defaultValue) {
-            value = definition.defaultValue;
-        }
+    if (!value && definition?.defaultValue) {
+        value = definition.defaultValue;
     }
 
     const existingValue = attributeValue.id
@@ -52,6 +62,13 @@ export async function upsertAttributeValue(
               where: eq(attributeValues.id, attributeValue.id),
           })
         : undefined;
+    const relationshipEntityIds = await getPlantRelationshipMutationEntityIds({
+        entityId: attributeValue.entityId,
+        entityTypeName: attributeValue.entityTypeName,
+        attributeDefinition: definition,
+        previousValue: existingValue?.value,
+        nextValue: value,
+    });
 
     await Promise.all([
         storage()
@@ -93,6 +110,9 @@ export async function upsertAttributeValue(
                   cacheKeys.entityTypeName(attributeValue.entityTypeName),
               )
             : undefined,
+        ...relationshipEntityIds
+            .filter((entityId) => entityId !== attributeValue.entityId)
+            .map((entityId) => bustCached(cacheKeys.entity(entityId))),
         bustCachedByPrefixes(['dashboard:admin:']),
         // Bust cache if value exists
         attributeValue.id
@@ -121,7 +141,11 @@ export async function upsertAttributeValue(
             : undefined,
     ]);
 
-    await refreshEntitySearchDocumentAfterMutation(attributeValue.entityId);
+    await refreshEntitySearchDocumentsAfterMutation(
+        relationshipEntityIds.length
+            ? relationshipEntityIds
+            : [attributeValue.entityId],
+    );
 }
 
 export async function deleteAttributeValue(
@@ -130,6 +154,16 @@ export async function deleteAttributeValue(
 ) {
     const existingValue = await storage().query.attributeValues.findFirst({
         where: eq(attributeValues.id, id),
+    });
+    const definition = existingValue
+        ? await getAttributeDefinition(existingValue.attributeDefinitionId)
+        : undefined;
+    const relationshipEntityIds = await getPlantRelationshipMutationEntityIds({
+        entityId: existingValue?.entityId,
+        entityTypeName: existingValue?.entityTypeName,
+        attributeDefinition: definition,
+        previousValue: existingValue?.value,
+        nextValue: null,
     });
 
     await Promise.all([
@@ -150,6 +184,9 @@ export async function deleteAttributeValue(
                   nextValue: null,
               })
             : undefined,
+        ...relationshipEntityIds
+            .filter((entityId) => entityId !== existingValue?.entityId)
+            .map((entityId) => bustCached(cacheKeys.entity(entityId))),
         storage()
             .select()
             .from(attributeValues)
@@ -173,5 +210,9 @@ export async function deleteAttributeValue(
             }),
     ]);
 
-    await refreshEntitySearchDocumentAfterMutation(existingValue?.entityId);
+    await refreshEntitySearchDocumentsAfterMutation(
+        relationshipEntityIds.length
+            ? relationshipEntityIds
+            : [existingValue?.entityId],
+    );
 }
