@@ -38,6 +38,18 @@ export function getGardenBaseUrl(): string {
  * @example
  * getRaisedBedCloseupUrl('Moja gredica') // => 'https://vrt.gredice.com?gredica=Moja%20gredica'
  */
-export function getRaisedBedCloseupUrl(raisedBedName: string): string {
-    return `${getGardenBaseUrl()}?gredica=${encodeURIComponent(raisedBedName)}`;
+export function getRaisedBedCloseupUrl(
+    raisedBedName: string,
+    options?: { positionIndex?: number | null },
+): string {
+    const params = [`gredica=${encodeURIComponent(raisedBedName)}`];
+    if (
+        typeof options?.positionIndex === 'number' &&
+        Number.isInteger(options.positionIndex) &&
+        options.positionIndex >= 0
+    ) {
+        params.push(`polje=${(options.positionIndex + 1).toString()}`);
+    }
+
+    return `${getGardenBaseUrl()}?${params.join('&')}`;
 }

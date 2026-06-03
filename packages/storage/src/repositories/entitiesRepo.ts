@@ -21,6 +21,10 @@ import {
     directoriesCached,
 } from '../cache/directoriesCached';
 import { getEntityCompleteness } from '../helpers/entityCompleteness';
+import {
+    buildPlantRelationshipReadModels,
+    isPlantRelationshipAttributeDefinition,
+} from '../helpers/plantRelationships';
 
 const entityCacheTtl = 60 * 60; // 1 hour
 
@@ -318,6 +322,14 @@ async function expandEntityAttributes<T extends Record<string, unknown>>(
     const expandedEntity = { ...entity };
     // Prepare all attribute expansion promises
     const attributePromises = attributes.map(async (attribute) => {
+        if (
+            isPlantRelationshipAttributeDefinition(
+                attribute.attributeDefinition,
+            )
+        ) {
+            return;
+        }
+
         // Create category object if it doesn't exist
         if (
             expandedEntity[attribute.attributeDefinition.category] === undefined
@@ -443,6 +455,34 @@ async function resolveRef(
     );
 }
 
+function applyPlantRelationshipReadModel<T>(
+    entities: T[],
+    rawEntities: EntityWithAttributesAndType[],
+) {
+    const relationshipsByEntityId =
+        buildPlantRelationshipReadModels(rawEntities);
+    return entities.map((entity) => {
+        if (
+            !entity ||
+            typeof entity !== 'object' ||
+            !('id' in entity) ||
+            typeof entity.id !== 'number'
+        ) {
+            return entity;
+        }
+
+        const relationships = relationshipsByEntityId.get(entity.id);
+        if (!relationships) {
+            return entity;
+        }
+
+        return {
+            ...entity,
+            relationships,
+        };
+    }) as T[];
+}
+
 export async function getEntitiesFormatted<T>(entityTypeName: string) {
     return directoriesCached(
         cacheKeys.entityTypeName(entityTypeName),
@@ -452,9 +492,16 @@ export async function getEntitiesFormatted<T>(entityTypeName: string) {
                 entityTypeName,
                 'published',
             )) as EntityWithAttributesAndType[];
-            return (await Promise.all(
+            const formattedEntities = (await Promise.all(
                 entities.map((e) => expandEntity(e, cache)),
             )) as T[];
+            if (entityTypeName === 'plant') {
+                return applyPlantRelationshipReadModel(
+                    formattedEntities,
+                    entities,
+                );
+            }
+            return formattedEntities;
         },
         entityCacheTtl,
     );
@@ -468,7 +515,19 @@ export async function getEntityFormatted<T>(id: number) {
             const entity = (await getEntityRaw(id)) as
                 | EntityWithAttributesAndType
                 | undefined;
-            return (await expandEntity(entity, cache)) as T;
+            const formattedEntity = (await expandEntity(entity, cache)) as T;
+            if (entity?.entityTypeName !== 'plant') {
+                return formattedEntity;
+            }
+
+            const plantEntities = (await getEntitiesRaw(
+                'plant',
+                'published',
+            )) as EntityWithAttributesAndType[];
+            return applyPlantRelationshipReadModel(
+                [formattedEntity],
+                plantEntities,
+            )[0];
         },
         entityCacheTtl,
     );

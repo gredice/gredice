@@ -20,6 +20,11 @@ import {
     instancedBlockNames,
 } from './entities/EntityInstances';
 import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
+import {
+    SunflowerDropFlyAnimation,
+    type SunflowerDropFlyOrigin,
+    SunflowerDropReward,
+} from './entities/SunflowerDropReward';
 import type { GameFeatureFlags } from './GameFlagsContext';
 import { GameHud } from './GameHud';
 import { useGameLoading } from './GameLoadingContext';
@@ -48,6 +53,7 @@ import {
     resolveGameQualityProfile,
 } from './scene/gameQuality';
 import { Scene } from './scene/Scene';
+import type { Stack } from './types/Stack';
 import {
     type GameState,
     type MockGardenProfile,
@@ -73,6 +79,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     mockGarden?: boolean;
     mockGardenProfile?: MockGardenProfile;
     localSandboxStorageKey?: string;
+    localSandboxInitialStacks?: Stack[];
     winterMode?: WinterMode;
     weather?: Partial<GameState['weather']>;
     deferDetails?: boolean;
@@ -188,6 +195,8 @@ export function GameScene({
     );
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
     const renderDetails = useDeferredSceneDetails(deferDetails);
+    const [sunflowerDropFlyOrigin, setSunflowerDropFlyOrigin] =
+        useState<SunflowerDropFlyOrigin | null>(null);
     const autoQualityProfileMetrics = useAutoQualityProfileMetrics(
         quality === undefined && gameQualitySetting === 'auto',
     );
@@ -316,6 +325,17 @@ export function GameScene({
                                     stacks={garden?.stacks}
                                     renderDetails={renderDetails}
                                 />
+                                {renderDetails && zoom !== 'far' && (
+                                    <Suspense fallback={null}>
+                                        <SunflowerDropReward
+                                            enabled={!isLocalSandbox}
+                                            garden={garden}
+                                            onClaimed={
+                                                setSunflowerDropFlyOrigin
+                                            }
+                                        />
+                                    </Suspense>
+                                )}
                                 <BlockInteractionLayer
                                     controlsEnabled={!noControls}
                                     stacks={garden?.stacks}
@@ -354,6 +374,12 @@ export function GameScene({
             </GameSceneDetailContext.Provider>
             {!hideHud && <GameHud flags={flags} noWeather={noWeather} />}
             {hideHud && Boolean(flags?.enableDebugHudFlag) && <DebugHud />}
+            {sunflowerDropFlyOrigin && (
+                <SunflowerDropFlyAnimation
+                    origin={sunflowerDropFlyOrigin}
+                    onDone={() => setSunflowerDropFlyOrigin(null)}
+                />
+            )}
         </div>
     );
 }

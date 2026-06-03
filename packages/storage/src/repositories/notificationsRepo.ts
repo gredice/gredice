@@ -204,21 +204,21 @@ const notificationRolloutPreferenceDefaults: NotificationRolloutPreferenceDefaul
         {
             category: 'weather_alerts',
             channel: 'in_app',
-            defaultEnabled: true,
+            defaultEnabled: false,
             digestEligible: false,
             required: false,
         },
         {
             category: 'weather_alerts',
             channel: 'email',
-            defaultEnabled: true,
+            defaultEnabled: false,
             digestEligible: false,
             required: false,
         },
         {
             category: 'weather_alerts',
             channel: 'push',
-            defaultEnabled: true,
+            defaultEnabled: false,
             digestEligible: false,
             required: false,
         },
@@ -345,6 +345,16 @@ function notificationPreferenceKey(preference: {
     channel: DeliveryChannel;
 }) {
     return `${preference.category}:${preference.channel}`;
+}
+
+function notificationPreferenceDefault(
+    category: string,
+    channel: DeliveryChannel,
+) {
+    return notificationRolloutPreferenceDefaults.find(
+        (preference) =>
+            preference.category === category && preference.channel === channel,
+    );
 }
 
 function notificationRolloutPreferenceRows({
@@ -940,16 +950,19 @@ function isInsideQuietHours(
 
 function decideDeliveryOutcome({
     channel,
+    defaultPreference,
     preference,
     hasPushSubscription,
     now,
 }: {
     channel: DeliveryChannel;
+    defaultPreference?: NotificationRolloutPreferenceDefault;
     preference?: SelectNotificationUserChannelPreference;
     hasPushSubscription: boolean;
     now: Date;
 }): NotificationDeliveryOutcomeDecision {
-    const required = preference?.required ?? false;
+    const required =
+        preference?.required ?? defaultPreference?.required ?? false;
     if (channel === 'push' && !hasPushSubscription) {
         return {
             channel,
@@ -958,7 +971,10 @@ function decideDeliveryOutcome({
             required,
         };
     }
-    if ((preference?.enabled ?? true) === false) {
+    if (
+        (preference?.enabled ?? defaultPreference?.defaultEnabled ?? true) ===
+        false
+    ) {
         return {
             channel,
             outcome: required ? 'required' : 'suppressed',
@@ -1437,6 +1453,10 @@ export async function routeNotificationDelivery(notificationId: string) {
                 return {
                     ...decideDeliveryOutcome({
                         channel,
+                        defaultPreference: notificationPreferenceDefault(
+                            notification.category,
+                            channel,
+                        ),
                         preference: accountPref ?? globalPref,
                         hasPushSubscription:
                             recipient.userId != null &&
@@ -1782,6 +1802,23 @@ export function setAllNotificationsRead(
 
 export function deleteNotification(id: string) {
     return storage().delete(notifications).where(eq(notifications.id, id));
+}
+
+export function deleteNotifications(ids: string[]) {
+    if (ids.length === 0) {
+        return Promise.resolve([]);
+    }
+
+    return storage()
+        .delete(notifications)
+        .where(inArray(notifications.id, ids))
+        .returning({
+            id: notifications.id,
+            accountId: notifications.accountId,
+            userId: notifications.userId,
+            gardenId: notifications.gardenId,
+            raisedBedId: notifications.raisedBedId,
+        });
 }
 
 export async function notificationsDigest({

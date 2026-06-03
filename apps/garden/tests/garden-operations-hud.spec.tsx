@@ -46,22 +46,45 @@ test.describe('Garden operations HUD', () => {
         await expect(page.getByText('Planirano', { exact: true })).toHaveCount(
             0,
         );
+        await expect(page.getByText('Zakazano: 22. svibnja 2026.')).toHaveCount(
+            0,
+        );
+        const operationDateButton = page.getByRole('button', {
+            name: '22. svibnja 2026.',
+        });
+        await expect(operationDateButton).toBeVisible();
         await expect(
-            page.getByText('Zakazano: 22. svibnja 2026.'),
+            page.locator('[data-operation-media="plant"]').first(),
         ).toBeVisible();
         await expect(page.getByText('Sadnja', { exact: true })).toBeVisible();
         await expect(page.getByText('Sadnja: Klasični bosiljak')).toBeVisible();
         await expect(
             page.getByLabel('Raised Bed 1 › Polje 6').first(),
         ).toBeVisible();
+        await expect(page.getByText('Zakazano: 23. svibnja 2026.')).toHaveCount(
+            0,
+        );
         await expect(
-            page.getByText('Zakazano: 23. svibnja 2026.'),
+            page.getByRole('button', { name: '23. svibnja 2026.' }),
         ).toBeVisible();
         await expect(page.getByLabel('Tijek radnje')).toHaveCount(0);
         await expect(page.locator('.animate-progress')).toHaveCount(0);
         await expect(page.getByText(/^Kreirano:/)).toHaveCount(0);
         await expect(page.getByText(/Sljedeći korak/)).toHaveCount(0);
         await expect(page.getByText('Nema nedovršenih radnji.')).toHaveCount(0);
+
+        const rescheduleButtons = page.getByRole('button', {
+            name: /svibnja 2026\./,
+        });
+        await expect(rescheduleButtons).toHaveCount(2);
+
+        await operationDateButton.click();
+        await expect(
+            page.getByText('Novi datum', { exact: true }),
+        ).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: 'Spremi' }),
+        ).toBeVisible();
     });
 
     test('shows completed sowing tasks in operation history', async ({

@@ -1,4 +1,4 @@
-import { Box3, type Ray, Vector3 } from 'three';
+import { Box3, type Object3D, type Ray, Vector3 } from 'three';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 
@@ -29,10 +29,16 @@ export type BlockInteractionLayerBounds = {
     width: number;
 };
 
+type BlockInteractionEventIntersection = {
+    distance: number;
+    object: Object3D;
+};
+
 const hitboxMin = new Vector3();
 const hitboxMax = new Vector3();
 const hitboxIntersection = new Vector3();
 const hitboxBounds = new Box3();
+const closerIntersectionEpsilon = 0.0001;
 
 export function getBlockInteractionRotatedHitboxFootprint(
     target: BlockInteractionLayerTarget,
@@ -134,4 +140,25 @@ export function resolveBlockInteractionLayerTarget(
               target: resolvedTarget,
           }
         : null;
+}
+
+export function hasCloserNonLayerIntersection({
+    intersections,
+    layerObject,
+    ray,
+    resolvedHitPoint,
+}: {
+    intersections: readonly BlockInteractionEventIntersection[];
+    layerObject: Object3D;
+    ray: Ray;
+    resolvedHitPoint: Vector3;
+}) {
+    const resolvedDistance = ray.origin.distanceTo(resolvedHitPoint);
+
+    return intersections.some(
+        (intersection) =>
+            intersection.object !== layerObject &&
+            intersection.distance + closerIntersectionEpsilon <
+                resolvedDistance,
+    );
 }

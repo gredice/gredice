@@ -5,6 +5,7 @@ import {
     getDhmzWeatherAlerts,
     parseDhmzCapAlertXml,
     resolveWeatherAlertRegionCode,
+    weatherAlertSeverityScore,
 } from './alerts';
 
 const sampleCapXml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -64,6 +65,43 @@ const sampleCapXml = `<?xml version="1.0" encoding="UTF-8"?>
     </parameter>
     <area>
       <areaDesc>Zagreb region</areaDesc>
+      <geocode>
+        <valueName>EMMA_ID</valueName>
+        <value>HR002</value>
+      </geocode>
+    </area>
+  </info>
+</alert>`;
+
+const greenCapXml = `<?xml version="1.0" encoding="UTF-8"?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>2.49.0.0.191.0.HR.green-test.LDZM</identifier>
+  <sender>https://meteo.hr</sender>
+  <sent>2026-06-03T17:46:47+02:00</sent>
+  <status>Actual</status>
+  <msgType>Alert</msgType>
+  <scope>Public</scope>
+  <info>
+    <language>hr</language>
+    <category>Met</category>
+    <event>Zeleno upozorenje za vjetar</event>
+    <urgency>Future</urgency>
+    <severity>Minor</severity>
+    <certainty>Likely</certainty>
+    <onset>2026-06-04T00:00:00+02:00</onset>
+    <expires>2026-06-05T00:00:00+02:00</expires>
+    <senderName>DHMZ Državni hidrometeorološki zavod</senderName>
+    <description>Nema upozorenja!</description>
+    <parameter>
+      <valueName>awareness_level</valueName>
+      <value>1; green; Minor</value>
+    </parameter>
+    <parameter>
+      <valueName>awareness_type</valueName>
+      <value>1; Wind</value>
+    </parameter>
+    <area>
+      <areaDesc>Zagrebačka regija</areaDesc>
       <geocode>
         <valueName>EMMA_ID</valueName>
         <value>HR002</value>
@@ -174,5 +212,34 @@ describe('filterWeatherAlertsForFarm', () => {
 
         assert.equal(filtered.length, 1);
         assert.equal(filtered[0]?.language, 'en');
+    });
+
+    it('excludes green no-warning CAP entries', async () => {
+        const alerts = await parseDhmzCapAlertXml(greenCapXml);
+        const firstAlert = alerts[0];
+        assert.ok(firstAlert);
+        assert.equal(weatherAlertSeverityScore(firstAlert), 1);
+
+        const filtered = filterWeatherAlertsForFarm(alerts, bjelovarFarm, {
+            now: new Date('2026-06-03T18:00:00+02:00'),
+        });
+
+        assert.equal(filtered.length, 0);
+    });
+
+    it('keeps real warnings when green entries are present', async () => {
+        const alerts = [
+            ...(await parseDhmzCapAlertXml(sampleCapXml)),
+            ...(await parseDhmzCapAlertXml(greenCapXml)),
+        ];
+        const filtered = filterWeatherAlertsForFarm(alerts, bjelovarFarm, {
+            now: new Date('2026-06-03T08:00:00+02:00'),
+        });
+
+        assert.equal(filtered.length, 1);
+        assert.equal(
+            filtered[0]?.event,
+            'Žuto upozorenje za grmljavinsku oluju',
+        );
     });
 });

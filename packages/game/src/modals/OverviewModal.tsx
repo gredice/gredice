@@ -9,7 +9,9 @@ import { Fragment, useEffect } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import {
     isNotificationsFilter,
+    isNotificationsView,
     notificationsFilterSearchParam,
+    notificationsViewSearchParam,
 } from '../notificationFilters';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
 import { AccountUsersTab } from './components/AccountUsersTab';
@@ -115,10 +117,16 @@ export function OverviewModal() {
     const [notificationsFilterParam] = useSearchParam(
         notificationsFilterSearchParam,
     );
+    const [notificationsViewParam] = useSearchParam(
+        notificationsViewSearchParam,
+    );
     const { track } = useGameAnalytics();
     const notificationsFilter = isNotificationsFilter(notificationsFilterParam)
         ? notificationsFilterParam
         : 'unread';
+    const notificationsView = isNotificationsView(notificationsViewParam)
+        ? notificationsViewParam
+        : 'notifications';
 
     useEffect(() => {
         if (!settingsMode) {
@@ -192,7 +200,10 @@ export function OverviewModal() {
                     {settingsMode === 'dostava' && <DeliveryTab />}
                     {settingsMode === 'zvuk' && <SoundTab />}
                     {settingsMode === 'obavijesti' && (
-                        <NotificationsTab initialFilter={notificationsFilter} />
+                        <NotificationsTab
+                            initialFilter={notificationsFilter}
+                            initialView={notificationsView}
+                        />
                     )}
                     {settingsMode === 'suncokreti' && <SunflowersTab />}
                     {settingsMode === 'postignuca' && <AchievementsTab />}

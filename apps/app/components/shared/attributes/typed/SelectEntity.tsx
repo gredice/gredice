@@ -8,6 +8,8 @@ import type { AttributeInputProps } from '../AttributeInputProps';
 import { getRefEntities } from '../actions/entitiesActions';
 
 export function SelectEntity({
+    blockedValues = [],
+    entityId,
     value,
     onChange,
     attributeDefinition,
@@ -30,15 +32,43 @@ export function SelectEntity({
             });
     }, [entityTypeName]);
 
+    const isPlantRelationship =
+        attributeDefinition?.entityTypeName === 'plant' &&
+        attributeDefinition.category === 'relationships' &&
+        attributeDefinition.dataType === 'ref:plant' &&
+        (attributeDefinition.name === 'companions' ||
+            attributeDefinition.name === 'antagonists');
+    const blockedValueSet = useMemo(
+        () => new Set(blockedValues),
+        [blockedValues],
+    );
+    const selectableEntities = useMemo(() => {
+        if (!entities) {
+            return [];
+        }
+
+        if (!isPlantRelationship) {
+            return entities;
+        }
+
+        return entities.filter((entity) => {
+            const entityValue = entity.id.toString();
+            if (entity.id === entityId) {
+                return false;
+            }
+            return entityValue === value || !blockedValueSet.has(entityValue);
+        });
+    }, [blockedValueSet, entities, entityId, isPlantRelationship, value]);
+
     const items = [
         { value: '-', label: '-' },
-        ...(entities?.map((entity) => ({
+        ...selectableEntities.map((entity) => ({
             value: entity.id.toString(),
             label:
                 entity.state === 'draft'
                     ? `${entity.label} (Draft)`
                     : entity.label,
-        })) ?? []),
+        })),
     ];
 
     const selectedEntity = useMemo(() => {

@@ -92,7 +92,12 @@ export function useBlockPlace() {
     const queueBlockPlacementDropAnimation = useGameState(
         (state) => state.queueBlockPlacementDropAnimation,
     );
-    const gardenQueryKey = currentGardenKeys(winterMode, garden?.id);
+    const gardenQueryKey = currentGardenKeys(
+        winterMode,
+        garden?.id,
+        undefined,
+        localSandboxStorageKey,
+    );
 
     return useMutation({
         mutationKey,

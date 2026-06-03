@@ -690,6 +690,17 @@ export interface components {
             /** Format: uri */
             url: string;
         };
+        "plant-relationship": {
+            id: number;
+            slug: string;
+            name: string;
+            latinName?: string;
+            image?: {
+                cover?: components["schemas"]["image"];
+            };
+            /** @enum {string} */
+            relationship: "companion" | "antagonist";
+        };
         "section-data": {
             component: string;
         } & {
@@ -952,6 +963,12 @@ export interface components {
                 /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
                 cleanHarvest: boolean;
             };
+            relationships?: {
+                /** @description Biljke koje se preporučuju kao dobri susjedi u gredici. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                companions?: components["schemas"]["plant-relationship"][];
+                /** @description Biljke koje se ne preporučuju saditi u neposrednoj blizini. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                antagonists?: components["schemas"]["plant-relationship"][];
+            };
             image: {
                 cover: components["schemas"]["image"];
             };
@@ -1181,6 +1198,12 @@ export interface components {
                         water: string;
                         /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
                         cleanHarvest: boolean;
+                    };
+                    relationships?: {
+                        /** @description Biljke koje se preporučuju kao dobri susjedi u gredici. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                        companions?: components["schemas"]["plant-relationship"][];
+                        /** @description Biljke koje se ne preporučuju saditi u neposrednoj blizini. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                        antagonists?: components["schemas"]["plant-relationship"][];
                     };
                     image: {
                         cover: components["schemas"]["image"];
@@ -1472,6 +1495,12 @@ export interface components {
                         /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
                         cleanHarvest: boolean;
                     };
+                    relationships?: {
+                        /** @description Biljke koje se preporučuju kao dobri susjedi u gredici. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                        companions?: components["schemas"]["plant-relationship"][];
+                        /** @description Biljke koje se ne preporučuju saditi u neposrednoj blizini. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                        antagonists?: components["schemas"]["plant-relationship"][];
+                    };
                     image: {
                         cover: components["schemas"]["image"];
                     };
@@ -1688,6 +1717,12 @@ export interface components {
                                 water: string;
                                 /** @description (da li je polje čisto nakon branja biljke; u suprotnom je pokrebna radnja uklanjanja biljke) */
                                 cleanHarvest: boolean;
+                            };
+                            relationships?: {
+                                /** @description Biljke koje se preporučuju kao dobri susjedi u gredici. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                                companions?: components["schemas"]["plant-relationship"][];
+                                /** @description Biljke koje se ne preporučuju saditi u neposrednoj blizini. Veza se prikazuje obostrano, pa ju treba unijeti samo na jednoj biljci. */
+                                antagonists?: components["schemas"]["plant-relationship"][];
                             };
                             image: {
                                 cover: components["schemas"]["image"];

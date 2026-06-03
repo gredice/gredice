@@ -37,12 +37,14 @@ const MarkdownInput = dynamic(
 );
 
 export function AttributeInput({
+    blockedValues,
     entityType,
     entityId,
     attributeDefinition,
     attributeValue,
     presentation = 'default',
 }: {
+    blockedValues?: string[];
     entityType: string;
     entityId: number;
     attributeDefinition: SelectAttributeDefinition;
@@ -136,6 +138,8 @@ export function AttributeInput({
             <div className="grid w-full max-w-xl grid-cols-[minmax(0,1fr),auto] items-center gap-1">
                 <AttributeInputComponent
                     attributeDefinition={attributeDefinition}
+                    blockedValues={blockedValues}
+                    entityId={entityId}
                     value={attributeValue?.value}
                     onChange={handleChange}
                     schema={schema}
@@ -159,6 +163,8 @@ export function AttributeInput({
         <div className={isTextInput ? 'relative w-full max-w-xl' : 'relative'}>
             <AttributeInputComponent
                 attributeDefinition={attributeDefinition}
+                blockedValues={blockedValues}
+                entityId={entityId}
                 value={attributeValue?.value}
                 onChange={handleChange}
                 schema={schema}

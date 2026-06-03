@@ -22,6 +22,7 @@ export function GameSceneWrapper({
     mockGarden,
     mockGardenProfile,
     localSandboxStorageKey,
+    localSandboxInitialStacks,
     winterMode,
     ...rest
 }: GameSceneProps) {
@@ -35,6 +36,7 @@ export function GameSceneWrapper({
             initialQualitySetting,
             isMock: mockGarden || false,
             localSandboxStorageKey,
+            localSandboxInitialStacks,
             mockGardenProfile,
             winterMode: winterMode ?? 'summer',
         });

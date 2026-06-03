@@ -121,6 +121,7 @@ const items: HudItem[] = [
             { type: 'entity', name: 'DeadTreeTall' },
             { type: 'entity', name: 'DeadTreeStump' },
             { type: 'entity', name: 'Tulip' },
+            { type: 'entity', name: 'Sunflower' },
             { type: 'entity', name: 'CactusBarrel' },
             { type: 'entity', name: 'CactusColumnCluster' },
             { type: 'entity', name: 'CactusPricklyPear' },

@@ -1,6 +1,6 @@
 import type { BlockData } from '@gredice/client';
 
-const localSandboxBlockNames = [
+export const localSandboxBlockNames = [
     'Raised_Bed',
     'Bucket',
     'WateringCan',
@@ -71,7 +71,7 @@ const localSandboxBlockNames = [
     'Block_Snow_Reverse_Corner',
 ] as const;
 
-type LocalSandboxBlockName = (typeof localSandboxBlockNames)[number];
+export type LocalSandboxBlockName = (typeof localSandboxBlockNames)[number];
 
 const createdAt = new Date(0).toISOString();
 

@@ -55,6 +55,7 @@ export const gameAssetModels = {
     Stool: { url: '/assets/models/Stool.glb' },
     Tulip: { url: '/assets/models/Tulip.glb?v=64901b969f37' },
     GardenFlower: { url: '/assets/models/GardenFlower.glb' },
+    Sunflower: { url: '/assets/models/Sunflower.glb' },
     CactusBarrel: { url: '/assets/models/CactusBarrel.glb?v=13eb69f97166' },
     CactusColumnCluster: { url: '/assets/models/CactusColumnCluster.glb' },
     CactusPricklyPear: {
@@ -128,6 +129,7 @@ export const lazyGameAssetNames = [
     'DesertStoneLarge',
     'Stool',
     'Tulip',
+    'Sunflower',
     'CactusBarrel',
     'CactusColumnCluster',
     'CactusPricklyPear',
@@ -191,6 +193,7 @@ export const allGameAssetNames = [
     'Stool',
     'Tulip',
     'GardenFlower',
+    'Sunflower',
     'CactusBarrel',
     'CactusColumnCluster',
     'CactusPricklyPear',

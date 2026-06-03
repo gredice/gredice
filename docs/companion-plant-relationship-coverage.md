@@ -1,0 +1,488 @@
+# Companion Plant Relationship Coverage
+
+Generated: 2026-06-03T12:45:11.694Z
+Mode: dry-run
+
+## Source Notes
+
+This first-release dataset only imports relationships that map cleanly to current published Gredice plant entities. Broad, ambiguous, and conflicting chart recommendations are intentionally skipped for review.
+
+- ufIfasManatee: [UF/IFAS Manatee County Extension companion planting chart](https://www.growables.org/informationVeg/documents/CompanionGuideUF.pdf)
+- virginiaCooperativeExtension: [Virginia Cooperative Extension SPES-620P companion planting chart](https://www.pubs.ext.vt.edu/content/dam/pubs_ext_vt_edu/spes/spes-620/SPES-620.pdf)
+- wvuExtension: [West Virginia University Extension companion planting guidance](https://extension.wvu.edu/lawn-gardening-pests/gardening/garden-management/companion-planting)
+- umnExtension: [University of Minnesota Extension companion planting context](https://extension.umn.edu/planting-and-growing-guides/companion-planting-home-gardens)
+
+Caveat sources:
+
+- [West Virginia University Extension companion planting guidance](https://extension.wvu.edu/lawn-gardening-pests/gardening/garden-management/companion-planting)
+- [University of Minnesota Extension companion planting context](https://extension.umn.edu/planting-and-growing-guides/companion-planting-home-gardens)
+
+## Import Summary
+
+- Relationship pairs in reviewed dataset: 219
+- Created relationships this run: 0
+- Existing relationships skipped: 219
+- Missing referenced plant names: 0
+- Published plants with companion coverage: 38
+- Published plants with antagonist coverage: 26
+- Published plants intentionally left without verified relationships: 9
+
+## Plants Without Verified Relationships
+
+- Artičoka (#432)
+- Bamija (#422)
+- Bob (#318)
+- Korijandar (#442)
+- Ljupčac (#437)
+- Matičnjak (#485)
+- Matovilac (#288)
+- Origano (#447)
+- Rukola (#157)
+
+## Created This Run
+
+- None
+
+## Existing Relationships Skipped
+
+- companions: Rajčica (#7) -> Bosiljak (#287)
+- companions: Mrkva (#3) -> Rajčica (#7)
+- companions: Rajčica (#7) -> Celer (#162)
+- companions: Rajčica (#7) -> Češnjak (#149)
+- companions: Rajčica (#7) -> Luk (#147)
+- companions: Rajčica (#7) -> Luk vlasac (#238)
+- companions: Rajčica (#7) -> Salata (#156)
+- companions: Rajčica (#7) -> Peršin (#148)
+- companions: Paprika (#2) -> Rajčica (#7)
+- companions: Rajčica (#7) -> Čili (#463)
+- companions: Rajčica (#7) -> Krastavac (#150)
+- antagonists: Rajčica (#7) -> Komorač (#165)
+- antagonists: Rajčica (#7) -> Kopar (#434)
+- companions: Paprika (#2) -> Bosiljak (#287)
+- companions: Bosiljak (#287) -> Čili (#463)
+- antagonists: Grah (#153) -> Bosiljak (#287)
+- antagonists: Mahuna (#152) -> Bosiljak (#287)
+- companions: Paprika (#2) -> Luk (#147)
+- companions: Luk (#147) -> Čili (#463)
+- companions: Mrkva (#3) -> Grah (#153)
+- companions: Mrkva (#3) -> Mahuna (#152)
+- companions: Mrkva (#3) -> Grašak (#237)
+- companions: Mrkva (#3) -> Salata (#156)
+- companions: Mrkva (#3) -> Luk (#147)
+- companions: Mrkva (#3) -> Češnjak (#149)
+- companions: Mrkva (#3) -> Poriluk (#159)
+- companions: Mrkva (#3) -> Luk vlasac (#238)
+- companions: Mrkva (#3) -> Brokula (#161)
+- companions: Mrkva (#3) -> Cvjetača (#160)
+- companions: Mrkva (#3) -> Kupus (#154)
+- companions: Mrkva (#3) -> Kelj (#155)
+- companions: Mrkva (#3) -> Kelj pupčar (#512)
+- companions: Mrkva (#3) -> Koraba (#285)
+- companions: Mrkva (#3) -> Raštika (#376)
+- companions: Mrkva (#3) -> Repa (#286)
+- antagonists: Mrkva (#3) -> Kopar (#434)
+- antagonists: Mrkva (#3) -> Celer (#162)
+- antagonists: Mrkva (#3) -> Peršin (#148)
+- companions: Krastavac (#150) -> Grah (#153)
+- companions: Patlidžan (#4) -> Grah (#153)
+- companions: Grah (#153) -> Salata (#156)
+- companions: Grah (#153) -> Rotkvica (#158)
+- companions: Grah (#153) -> Jagoda (#551)
+- companions: Grah (#153) -> Špinat (#164)
+- companions: Grah (#153) -> Celer (#162)
+- companions: Grah (#153) -> Cikla (#163)
+- companions: Grah (#153) -> Grašak (#237)
+- antagonists: Luk (#147) -> Grah (#153)
+- antagonists: Češnjak (#149) -> Grah (#153)
+- antagonists: Grah (#153) -> Poriluk (#159)
+- antagonists: Grah (#153) -> Luk vlasac (#238)
+- antagonists: Grah (#153) -> Komorač (#165)
+- companions: Krastavac (#150) -> Mahuna (#152)
+- companions: Patlidžan (#4) -> Mahuna (#152)
+- companions: Mahuna (#152) -> Salata (#156)
+- companions: Mahuna (#152) -> Rotkvica (#158)
+- companions: Mahuna (#152) -> Jagoda (#551)
+- companions: Mahuna (#152) -> Špinat (#164)
+- companions: Mahuna (#152) -> Celer (#162)
+- companions: Mahuna (#152) -> Cikla (#163)
+- companions: Mahuna (#152) -> Grašak (#237)
+- antagonists: Luk (#147) -> Mahuna (#152)
+- antagonists: Češnjak (#149) -> Mahuna (#152)
+- antagonists: Mahuna (#152) -> Poriluk (#159)
+- antagonists: Mahuna (#152) -> Luk vlasac (#238)
+- antagonists: Mahuna (#152) -> Komorač (#165)
+- companions: Celer (#162) -> Grašak (#237)
+- companions: Krastavac (#150) -> Grašak (#237)
+- companions: Patlidžan (#4) -> Grašak (#237)
+- companions: Peršin (#148) -> Grašak (#237)
+- companions: Rotkvica (#158) -> Grašak (#237)
+- companions: Špinat (#164) -> Grašak (#237)
+- companions: Grašak (#237) -> Jagoda (#551)
+- companions: Grašak (#237) -> Repa (#286)
+- antagonists: Luk (#147) -> Grašak (#237)
+- antagonists: Češnjak (#149) -> Grašak (#237)
+- antagonists: Poriluk (#159) -> Grašak (#237)
+- antagonists: Grašak (#237) -> Luk vlasac (#238)
+- companions: Luk (#147) -> Cikla (#163)
+- companions: Luk (#147) -> Brokula (#161)
+- companions: Luk (#147) -> Cvjetača (#160)
+- companions: Luk (#147) -> Kupus (#154)
+- companions: Luk (#147) -> Kelj (#155)
+- companions: Luk (#147) -> Kelj pupčar (#512)
+- companions: Luk (#147) -> Koraba (#285)
+- companions: Luk (#147) -> Raštika (#376)
+- companions: Luk (#147) -> Repa (#286)
+- companions: Luk (#147) -> Celer (#162)
+- companions: Luk (#147) -> Krastavac (#150)
+- companions: Luk (#147) -> Špinat (#164)
+- companions: Luk (#147) -> Tikva (#399)
+- companions: Luk (#147) -> Tikvice (#151)
+- companions: Luk (#147) -> Jagoda (#551)
+- antagonists: Luk (#147) -> Kadulja (#487)
+- companions: Češnjak (#149) -> Brokula (#161)
+- companions: Češnjak (#149) -> Cvjetača (#160)
+- companions: Češnjak (#149) -> Kupus (#154)
+- companions: Češnjak (#149) -> Kelj (#155)
+- companions: Češnjak (#149) -> Kelj pupčar (#512)
+- companions: Češnjak (#149) -> Koraba (#285)
+- companions: Češnjak (#149) -> Raštika (#376)
+- companions: Češnjak (#149) -> Repa (#286)
+- companions: Poriluk (#159) -> Brokula (#161)
+- companions: Poriluk (#159) -> Cvjetača (#160)
+- companions: Kupus (#154) -> Poriluk (#159)
+- companions: Kelj (#155) -> Poriluk (#159)
+- companions: Poriluk (#159) -> Kelj pupčar (#512)
+- companions: Poriluk (#159) -> Koraba (#285)
+- companions: Poriluk (#159) -> Raštika (#376)
+- companions: Poriluk (#159) -> Repa (#286)
+- companions: Brokula (#161) -> Cikla (#163)
+- companions: Cvjetača (#160) -> Cikla (#163)
+- companions: Kupus (#154) -> Cikla (#163)
+- companions: Kelj (#155) -> Cikla (#163)
+- companions: Cikla (#163) -> Kelj pupčar (#512)
+- companions: Cikla (#163) -> Koraba (#285)
+- companions: Cikla (#163) -> Raštika (#376)
+- companions: Cikla (#163) -> Repa (#286)
+- companions: Salata (#156) -> Cikla (#163)
+- companions: Rotkvica (#158) -> Cikla (#163)
+- companions: Cikla (#163) -> Kadulja (#487)
+- companions: Brokula (#161) -> Celer (#162)
+- companions: Brokula (#161) -> Luk vlasac (#238)
+- companions: Brokula (#161) -> Kamilica (#460)
+- companions: Brokula (#161) -> Kadulja (#487)
+- companions: Brokula (#161) -> Timijan (#452)
+- companions: Salata (#156) -> Brokula (#161)
+- companions: Brokula (#161) -> Špinat (#164)
+- companions: Blitva (#146) -> Brokula (#161)
+- companions: Krastavac (#150) -> Brokula (#161)
+- antagonists: Brokula (#161) -> Jagoda (#551)
+- companions: Cvjetača (#160) -> Celer (#162)
+- companions: Cvjetača (#160) -> Luk vlasac (#238)
+- companions: Cvjetača (#160) -> Kamilica (#460)
+- companions: Cvjetača (#160) -> Kadulja (#487)
+- companions: Cvjetača (#160) -> Timijan (#452)
+- companions: Salata (#156) -> Cvjetača (#160)
+- companions: Cvjetača (#160) -> Špinat (#164)
+- companions: Blitva (#146) -> Cvjetača (#160)
+- companions: Krastavac (#150) -> Cvjetača (#160)
+- antagonists: Cvjetača (#160) -> Jagoda (#551)
+- companions: Kupus (#154) -> Celer (#162)
+- companions: Kupus (#154) -> Luk vlasac (#238)
+- companions: Kupus (#154) -> Kamilica (#460)
+- companions: Kupus (#154) -> Kadulja (#487)
+- companions: Kupus (#154) -> Timijan (#452)
+- companions: Kupus (#154) -> Salata (#156)
+- companions: Kupus (#154) -> Špinat (#164)
+- companions: Blitva (#146) -> Kupus (#154)
+- companions: Krastavac (#150) -> Kupus (#154)
+- antagonists: Kupus (#154) -> Jagoda (#551)
+- companions: Kelj (#155) -> Celer (#162)
+- companions: Kelj (#155) -> Luk vlasac (#238)
+- companions: Kelj (#155) -> Kamilica (#460)
+- companions: Kelj (#155) -> Kadulja (#487)
+- companions: Kelj (#155) -> Timijan (#452)
+- companions: Kelj (#155) -> Salata (#156)
+- companions: Kelj (#155) -> Špinat (#164)
+- companions: Blitva (#146) -> Kelj (#155)
+- companions: Krastavac (#150) -> Kelj (#155)
+- antagonists: Kelj (#155) -> Jagoda (#551)
+- companions: Celer (#162) -> Kelj pupčar (#512)
+- companions: Luk vlasac (#238) -> Kelj pupčar (#512)
+- companions: Kamilica (#460) -> Kelj pupčar (#512)
+- companions: Kadulja (#487) -> Kelj pupčar (#512)
+- companions: Timijan (#452) -> Kelj pupčar (#512)
+- companions: Salata (#156) -> Kelj pupčar (#512)
+- companions: Špinat (#164) -> Kelj pupčar (#512)
+- companions: Blitva (#146) -> Kelj pupčar (#512)
+- companions: Krastavac (#150) -> Kelj pupčar (#512)
+- antagonists: Kelj pupčar (#512) -> Jagoda (#551)
+- companions: Celer (#162) -> Koraba (#285)
+- companions: Luk vlasac (#238) -> Koraba (#285)
+- companions: Koraba (#285) -> Kamilica (#460)
+- companions: Koraba (#285) -> Kadulja (#487)
+- companions: Koraba (#285) -> Timijan (#452)
+- companions: Salata (#156) -> Koraba (#285)
+- companions: Špinat (#164) -> Koraba (#285)
+- companions: Blitva (#146) -> Koraba (#285)
+- companions: Krastavac (#150) -> Koraba (#285)
+- antagonists: Koraba (#285) -> Jagoda (#551)
+- companions: Celer (#162) -> Raštika (#376)
+- companions: Luk vlasac (#238) -> Raštika (#376)
+- companions: Raštika (#376) -> Kamilica (#460)
+- companions: Raštika (#376) -> Kadulja (#487)
+- companions: Raštika (#376) -> Timijan (#452)
+- companions: Salata (#156) -> Raštika (#376)
+- companions: Špinat (#164) -> Raštika (#376)
+- companions: Blitva (#146) -> Raštika (#376)
+- companions: Krastavac (#150) -> Raštika (#376)
+- antagonists: Raštika (#376) -> Jagoda (#551)
+- companions: Celer (#162) -> Repa (#286)
+- companions: Luk vlasac (#238) -> Repa (#286)
+- companions: Repa (#286) -> Kamilica (#460)
+- companions: Repa (#286) -> Kadulja (#487)
+- companions: Repa (#286) -> Timijan (#452)
+- companions: Salata (#156) -> Repa (#286)
+- companions: Špinat (#164) -> Repa (#286)
+- companions: Blitva (#146) -> Repa (#286)
+- companions: Krastavac (#150) -> Repa (#286)
+- antagonists: Repa (#286) -> Jagoda (#551)
+- companions: Mrkva (#3) -> Kadulja (#487)
+- companions: Luk (#147) -> Kamilica (#460)
+- companions: Krastavac (#150) -> Rotkvica (#158)
+- companions: Krastavac (#150) -> Salata (#156)
+- companions: Paprika (#2) -> Patlidžan (#4)
+- companions: Patlidžan (#4) -> Čili (#463)
+- companions: Patlidžan (#4) -> Špinat (#164)
+- antagonists: Patlidžan (#4) -> Komorač (#165)
+- companions: Salata (#156) -> Rotkvica (#158)
+- companions: Salata (#156) -> Jagoda (#551)
+- antagonists: Peršin (#148) -> Salata (#156)
+- companions: Rotkvica (#158) -> Dinja (#429)
+- companions: Rotkvica (#158) -> Špinat (#164)
+- companions: Rotkvica (#158) -> Tikva (#399)
+- companions: Tikvice (#151) -> Rotkvica (#158)
+- companions: Rotkvica (#158) -> Jagoda (#551)
+- companions: Celer (#162) -> Špinat (#164)
+- companions: Špinat (#164) -> Jagoda (#551)
+
+## Dataset Pairs
+
+- antagonists: Brokula (#161) -> Jagoda (#551). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- antagonists: Cvjetača (#160) -> Jagoda (#551). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- antagonists: Češnjak (#149) -> Grah (#153). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- antagonists: Češnjak (#149) -> Grašak (#237). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart.
+- antagonists: Češnjak (#149) -> Mahuna (#152). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- antagonists: Grah (#153) -> Bosiljak (#287). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- antagonists: Grah (#153) -> Komorač (#165). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped. Kept only specific in-repo plant matches instead of applying the broad "most plants dislike fennel" note.
+- antagonists: Grah (#153) -> Luk vlasac (#238). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- antagonists: Grah (#153) -> Poriluk (#159). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- antagonists: Grašak (#237) -> Luk vlasac (#238). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart.
+- antagonists: Kelj pupčar (#512) -> Jagoda (#551). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- antagonists: Kelj (#155) -> Jagoda (#551). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- antagonists: Koraba (#285) -> Jagoda (#551). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- antagonists: Kupus (#154) -> Jagoda (#551). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- antagonists: Luk (#147) -> Grah (#153). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped. Skipped lettuce and onion-family pairs because available charts conflict.
+- antagonists: Luk (#147) -> Grašak (#237). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict.
+- antagonists: Luk (#147) -> Kadulja (#487). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict.
+- antagonists: Luk (#147) -> Mahuna (#152). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped. Skipped lettuce and onion-family pairs because available charts conflict.
+- antagonists: Mahuna (#152) -> Bosiljak (#287). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- antagonists: Mahuna (#152) -> Komorač (#165). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped. Kept only specific in-repo plant matches instead of applying the broad "most plants dislike fennel" note.
+- antagonists: Mahuna (#152) -> Luk vlasac (#238). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- antagonists: Mahuna (#152) -> Poriluk (#159). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- antagonists: Mrkva (#3) -> Celer (#162). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict.
+- antagonists: Mrkva (#3) -> Kopar (#434). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict.
+- antagonists: Mrkva (#3) -> Peršin (#148). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict.
+- antagonists: Patlidžan (#4) -> Komorač (#165). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Kept only specific in-repo plant matches instead of applying the broad "most plants dislike fennel" note.
+- antagonists: Peršin (#148) -> Salata (#156). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict.
+- antagonists: Poriluk (#159) -> Grašak (#237). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart.
+- antagonists: Rajčica (#7) -> Komorač (#165). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato and cabbage-family pairs because available charts conflict. Kept only specific in-repo plant matches instead of applying the broad "most plants dislike fennel" note.
+- antagonists: Rajčica (#7) -> Kopar (#434). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato and cabbage-family pairs because available charts conflict.
+- antagonists: Raštika (#376) -> Jagoda (#551). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- antagonists: Repa (#286) -> Jagoda (#551). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Blitva (#146) -> Brokula (#161). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Blitva (#146) -> Cvjetača (#160). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Blitva (#146) -> Kelj (#155). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Blitva (#146) -> Kelj pupčar (#512). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Blitva (#146) -> Koraba (#285). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Blitva (#146) -> Kupus (#154). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Blitva (#146) -> Raštika (#376). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Blitva (#146) -> Repa (#286). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Bosiljak (#287) -> Čili (#463). Sources: UF/IFAS Manatee County Extension companion planting chart.
+- companions: Brokula (#161) -> Celer (#162). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Brokula (#161) -> Cikla (#163). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Brokula (#161) -> Kadulja (#487). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Brokula (#161) -> Kamilica (#460). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Brokula (#161) -> Luk vlasac (#238). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Brokula (#161) -> Špinat (#164). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Brokula (#161) -> Timijan (#452). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Celer (#162) -> Grašak (#237). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart.
+- companions: Celer (#162) -> Kelj pupčar (#512). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Celer (#162) -> Koraba (#285). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Celer (#162) -> Raštika (#376). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Celer (#162) -> Repa (#286). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Celer (#162) -> Špinat (#164). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped spinach and cabbage-family pairs because available charts conflict.
+- companions: Cikla (#163) -> Kadulja (#487). Sources: UF/IFAS Manatee County Extension companion planting chart.
+- companions: Cikla (#163) -> Kelj pupčar (#512). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Cikla (#163) -> Koraba (#285). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Cikla (#163) -> Raštika (#376). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Cikla (#163) -> Repa (#286). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Cvjetača (#160) -> Celer (#162). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Cvjetača (#160) -> Cikla (#163). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Cvjetača (#160) -> Kadulja (#487). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Cvjetača (#160) -> Kamilica (#460). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Cvjetača (#160) -> Luk vlasac (#238). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Cvjetača (#160) -> Špinat (#164). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Cvjetača (#160) -> Timijan (#452). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Češnjak (#149) -> Brokula (#161). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Češnjak (#149) -> Cvjetača (#160). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Češnjak (#149) -> Kelj (#155). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Češnjak (#149) -> Kelj pupčar (#512). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Češnjak (#149) -> Koraba (#285). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Češnjak (#149) -> Kupus (#154). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Češnjak (#149) -> Raštika (#376). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Češnjak (#149) -> Repa (#286). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Grah (#153) -> Celer (#162). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- companions: Grah (#153) -> Cikla (#163). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- companions: Grah (#153) -> Grašak (#237). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- companions: Grah (#153) -> Jagoda (#551). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- companions: Grah (#153) -> Rotkvica (#158). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped. Skipped carrot and radish because available charts conflict.
+- companions: Grah (#153) -> Salata (#156). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped. Skipped lettuce and onion-family pairs because available charts conflict.
+- companions: Grah (#153) -> Špinat (#164). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped. Skipped spinach and cabbage-family pairs because available charts conflict.
+- companions: Grašak (#237) -> Jagoda (#551). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart.
+- companions: Grašak (#237) -> Repa (#286). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart.
+- companions: Kadulja (#487) -> Kelj pupčar (#512). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kamilica (#460) -> Kelj pupčar (#512). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kelj (#155) -> Celer (#162). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kelj (#155) -> Cikla (#163). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kelj (#155) -> Kadulja (#487). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kelj (#155) -> Kamilica (#460). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kelj (#155) -> Luk vlasac (#238). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kelj (#155) -> Poriluk (#159). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kelj (#155) -> Salata (#156). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kelj (#155) -> Špinat (#164). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kelj (#155) -> Timijan (#452). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Koraba (#285) -> Kadulja (#487). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Koraba (#285) -> Kamilica (#460). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Koraba (#285) -> Timijan (#452). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Krastavac (#150) -> Brokula (#161). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Krastavac (#150) -> Cvjetača (#160). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Krastavac (#150) -> Grah (#153). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped. Skipped cucumber and strong-herb pairs because available charts are broad and conflict.
+- companions: Krastavac (#150) -> Grašak (#237). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped cucumber and strong-herb pairs because available charts are broad and conflict.
+- companions: Krastavac (#150) -> Kelj (#155). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Krastavac (#150) -> Kelj pupčar (#512). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Krastavac (#150) -> Koraba (#285). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Krastavac (#150) -> Kupus (#154). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Krastavac (#150) -> Mahuna (#152). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped. Skipped cucumber and strong-herb pairs because available charts are broad and conflict.
+- companions: Krastavac (#150) -> Raštika (#376). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Krastavac (#150) -> Repa (#286). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Krastavac (#150) -> Rotkvica (#158). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped cucumber and strong-herb pairs because available charts are broad and conflict. Skipped carrot and radish because available charts conflict.
+- companions: Krastavac (#150) -> Salata (#156). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped cucumber and strong-herb pairs because available charts are broad and conflict. Skipped lettuce and onion-family pairs because available charts conflict.
+- companions: Kupus (#154) -> Celer (#162). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kupus (#154) -> Cikla (#163). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kupus (#154) -> Kadulja (#487). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kupus (#154) -> Kamilica (#460). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kupus (#154) -> Luk vlasac (#238). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kupus (#154) -> Poriluk (#159). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kupus (#154) -> Salata (#156). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kupus (#154) -> Špinat (#164). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Kupus (#154) -> Timijan (#452). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Luk vlasac (#238) -> Kelj pupčar (#512). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Luk vlasac (#238) -> Koraba (#285). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Luk vlasac (#238) -> Raštika (#376). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Luk vlasac (#238) -> Repa (#286). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Luk (#147) -> Brokula (#161). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict. Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Luk (#147) -> Celer (#162). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict.
+- companions: Luk (#147) -> Cikla (#163). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict.
+- companions: Luk (#147) -> Cvjetača (#160). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict. Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Luk (#147) -> Čili (#463). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict.
+- companions: Luk (#147) -> Jagoda (#551). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict.
+- companions: Luk (#147) -> Kamilica (#460). Sources: UF/IFAS Manatee County Extension companion planting chart.
+- companions: Luk (#147) -> Kelj (#155). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict. Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Luk (#147) -> Kelj pupčar (#512). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict. Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Luk (#147) -> Koraba (#285). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict. Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Luk (#147) -> Krastavac (#150). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict. Skipped cucumber and strong-herb pairs because available charts are broad and conflict.
+- companions: Luk (#147) -> Kupus (#154). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict. Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Luk (#147) -> Raštika (#376). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict. Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Luk (#147) -> Repa (#286). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict. Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Luk (#147) -> Špinat (#164). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict. Skipped spinach and cabbage-family pairs because available charts conflict.
+- companions: Luk (#147) -> Tikva (#399). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict.
+- companions: Luk (#147) -> Tikvice (#151). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict.
+- companions: Mahuna (#152) -> Celer (#162). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- companions: Mahuna (#152) -> Cikla (#163). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- companions: Mahuna (#152) -> Grašak (#237). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- companions: Mahuna (#152) -> Jagoda (#551). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- companions: Mahuna (#152) -> Rotkvica (#158). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped. Skipped carrot and radish because available charts conflict.
+- companions: Mahuna (#152) -> Salata (#156). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped. Skipped lettuce and onion-family pairs because available charts conflict.
+- companions: Mahuna (#152) -> Špinat (#164). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped. Skipped spinach and cabbage-family pairs because available charts conflict.
+- companions: Mrkva (#3) -> Brokula (#161). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict. Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Mrkva (#3) -> Cvjetača (#160). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict. Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Mrkva (#3) -> Češnjak (#149). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict.
+- companions: Mrkva (#3) -> Grah (#153). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict. Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- companions: Mrkva (#3) -> Grašak (#237). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict.
+- companions: Mrkva (#3) -> Kadulja (#487). Sources: UF/IFAS Manatee County Extension companion planting chart.
+- companions: Mrkva (#3) -> Kelj (#155). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict. Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Mrkva (#3) -> Kelj pupčar (#512). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict. Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Mrkva (#3) -> Koraba (#285). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict. Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Mrkva (#3) -> Kupus (#154). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict. Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Mrkva (#3) -> Luk (#147). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict. Skipped lettuce and onion-family pairs because available charts conflict.
+- companions: Mrkva (#3) -> Luk vlasac (#238). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict.
+- companions: Mrkva (#3) -> Mahuna (#152). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict. Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- companions: Mrkva (#3) -> Poriluk (#159). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict.
+- companions: Mrkva (#3) -> Rajčica (#7). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato and cabbage-family pairs because available charts conflict. Skipped carrot and radish because available charts conflict.
+- companions: Mrkva (#3) -> Raštika (#376). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict. Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Mrkva (#3) -> Repa (#286). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict. Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Mrkva (#3) -> Salata (#156). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict. Skipped lettuce and onion-family pairs because available charts conflict.
+- companions: Paprika (#2) -> Bosiljak (#287). Sources: UF/IFAS Manatee County Extension companion planting chart.
+- companions: Paprika (#2) -> Luk (#147). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict.
+- companions: Paprika (#2) -> Patlidžan (#4). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart.
+- companions: Paprika (#2) -> Rajčica (#7). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato and cabbage-family pairs because available charts conflict.
+- companions: Patlidžan (#4) -> Čili (#463). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart.
+- companions: Patlidžan (#4) -> Grah (#153). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- companions: Patlidžan (#4) -> Grašak (#237). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart.
+- companions: Patlidžan (#4) -> Mahuna (#152). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Generic Gredice bean entities are mapped conservatively; ambiguous pole-bean-only conflicts are skipped.
+- companions: Patlidžan (#4) -> Špinat (#164). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped spinach and cabbage-family pairs because available charts conflict.
+- companions: Peršin (#148) -> Grašak (#237). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart.
+- companions: Poriluk (#159) -> Brokula (#161). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Poriluk (#159) -> Cvjetača (#160). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Poriluk (#159) -> Kelj pupčar (#512). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Poriluk (#159) -> Koraba (#285). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Poriluk (#159) -> Raštika (#376). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Poriluk (#159) -> Repa (#286). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Rajčica (#7) -> Bosiljak (#287). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato and cabbage-family pairs because available charts conflict.
+- companions: Rajčica (#7) -> Celer (#162). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato and cabbage-family pairs because available charts conflict.
+- companions: Rajčica (#7) -> Češnjak (#149). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato and cabbage-family pairs because available charts conflict.
+- companions: Rajčica (#7) -> Čili (#463). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato and cabbage-family pairs because available charts conflict.
+- companions: Rajčica (#7) -> Krastavac (#150). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato and cabbage-family pairs because available charts conflict. Skipped cucumber and strong-herb pairs because available charts are broad and conflict.
+- companions: Rajčica (#7) -> Luk (#147). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato and cabbage-family pairs because available charts conflict. Skipped lettuce and onion-family pairs because available charts conflict.
+- companions: Rajčica (#7) -> Luk vlasac (#238). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato and cabbage-family pairs because available charts conflict.
+- companions: Rajčica (#7) -> Peršin (#148). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato and cabbage-family pairs because available charts conflict.
+- companions: Rajčica (#7) -> Salata (#156). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato and cabbage-family pairs because available charts conflict.
+- companions: Raštika (#376) -> Kadulja (#487). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Raštika (#376) -> Kamilica (#460). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Raštika (#376) -> Timijan (#452). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Repa (#286) -> Kadulja (#487). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Repa (#286) -> Kamilica (#460). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Repa (#286) -> Timijan (#452). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Rotkvica (#158) -> Cikla (#163). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict.
+- companions: Rotkvica (#158) -> Dinja (#429). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict.
+- companions: Rotkvica (#158) -> Grašak (#237). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict.
+- companions: Rotkvica (#158) -> Jagoda (#551). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict.
+- companions: Rotkvica (#158) -> Špinat (#164). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict.
+- companions: Rotkvica (#158) -> Tikva (#399). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict.
+- companions: Salata (#156) -> Brokula (#161). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Salata (#156) -> Cikla (#163). Sources: UF/IFAS Manatee County Extension companion planting chart.
+- companions: Salata (#156) -> Cvjetača (#160). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Salata (#156) -> Jagoda (#551). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict.
+- companions: Salata (#156) -> Kelj pupčar (#512). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Salata (#156) -> Koraba (#285). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Salata (#156) -> Raštika (#376). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Salata (#156) -> Repa (#286). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Salata (#156) -> Rotkvica (#158). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped lettuce and onion-family pairs because available charts conflict. Skipped carrot and radish because available charts conflict.
+- companions: Špinat (#164) -> Grašak (#237). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart.
+- companions: Špinat (#164) -> Jagoda (#551). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped spinach and cabbage-family pairs because available charts conflict.
+- companions: Špinat (#164) -> Kelj pupčar (#512). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Špinat (#164) -> Koraba (#285). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Špinat (#164) -> Raštika (#376). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Špinat (#164) -> Repa (#286). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.
+- companions: Tikvice (#151) -> Rotkvica (#158). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped carrot and radish because available charts conflict.
+- companions: Timijan (#452) -> Kelj pupčar (#512). Sources: UF/IFAS Manatee County Extension companion planting chart; Virginia Cooperative Extension SPES-620P companion planting chart. Notes: Skipped tomato, dill, and generic bean pairs for cabbage-family plants where source charts conflict or only mention pole beans.

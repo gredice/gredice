@@ -21,11 +21,15 @@ export const currentGardenKeys = (
     winterMode: WinterMode,
     gardenId?: number | null,
     mockGardenProfile?: MockGardenProfile,
+    localSandboxStorageKey?: string | null,
 ) => [
     ...useGardensKeys,
     'current',
     winterMode,
     ...(gardenId != null ? [gardenId] : []),
+    ...(localSandboxStorageKey
+        ? ['local-sandbox', localSandboxStorageKey]
+        : []),
     ...(mockGardenProfile != null ? [mockGardenProfile] : []),
 ];
 
@@ -752,6 +756,9 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
     const localSandboxStorageKey = useGameState(
         (state) => state.localSandboxStorageKey,
     );
+    const localSandboxInitialStacks = useGameState(
+        (state) => state.localSandboxInitialStacks,
+    );
     const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
     const winterMode = useGameState((state) => state.winterMode);
     const isLocalSandbox = localSandboxStorageKey !== null;
@@ -773,10 +780,13 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
             winterMode,
             currentGardenId,
             isMock ? mockGardenProfile : undefined,
+            localSandboxStorageKey,
         ),
         queryFn: async () => {
             if (localSandboxStorageKey) {
-                return loadLocalSandboxGarden(localSandboxStorageKey);
+                return loadLocalSandboxGarden(localSandboxStorageKey, {
+                    stacks: localSandboxInitialStacks ?? undefined,
+                });
             }
 
             if (isMock) {
