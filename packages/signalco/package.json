@@ -12,6 +12,7 @@
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
+        "typecheck": "tsc --noEmit --pretty false",
         "regenerate": "pnpm run /^regenerate:.*/",
         "regenerate:directories-api": "pnpm dlx openapi-typescript https://api.signalco.io/api/swagger.yaml -o ./src/lib/signalco-api/v1.d.ts"
     },

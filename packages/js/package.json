@@ -4,12 +4,14 @@
     "private": true,
     "type": "module",
     "exports": {
+        "./package.json": "./package.json",
         "./*": "./src/*/index.ts"
     },
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
         "lint": "biome check --write",
-        "lint:migrate": "biome migrate --write"
+        "lint:migrate": "biome migrate --write",
+        "typecheck": "tsc --noEmit --pretty false"
     },
     "devDependencies": {
         "@biomejs/biome": "2.4.16",

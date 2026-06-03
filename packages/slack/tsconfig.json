@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "lib": ["esnext"],
+        "lib": ["esnext", "DOM"],
         "allowJs": true,
         "skipLibCheck": true,
         "strict": true,
@@ -14,6 +14,6 @@
         "incremental": true,
         "target": "ESNext"
     },
-    "include": ["**/*.ts"],
+    "include": ["src/**/*.ts"],
     "exclude": ["node_modules"]
 }

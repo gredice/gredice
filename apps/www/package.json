@@ -8,6 +8,7 @@
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
         "typecheck": "next typegen && tsc --noEmit --pretty false",
+        "typecheck:tests": "next typegen && tsc --project tsconfig.tests.json --noEmit --pretty false",
         "dev": "node ../../scripts/run-app-command.mjs dev",
         "build": "next build",
         "postbuild": "next-sitemap --config next-sitemap.config.cjs",

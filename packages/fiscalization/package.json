@@ -9,6 +9,7 @@
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
+        "typecheck": "tsc --noEmit --pretty false",
         "test": "node --import tsx --test ./tests/**/*.node.spec.ts",
         "test:unit": "node --import tsx --test ./tests/createSoapRequest.node.spec.ts",
         "test:integration": "node --import tsx --test ./tests/echoRequest.node.spec.ts"

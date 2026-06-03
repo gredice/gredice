@@ -208,7 +208,7 @@ test('createAndSendTestWebPushNotification creates a test notification and repor
             assert.equal(notification.primaryChannel, 'push');
             return 'notification-1';
         },
-        sendQueued: async ({ limit, notificationId }) => {
+        sendQueued: async ({ limit, notificationId } = {}) => {
             assert.equal(limit, 10);
             assert.equal(notificationId, 'notification-1');
             return {

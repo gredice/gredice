@@ -20,6 +20,12 @@ export interface SlackPostMessageResult {
     response?: unknown;
 }
 
+type SlackApiResponse = {
+    ok?: boolean;
+    error?: string;
+    [key: string]: unknown;
+};
+
 const SLACK_API_URL = 'https://slack.com/api/chat.postMessage';
 
 export async function postMessage({
@@ -59,7 +65,9 @@ export async function postMessage({
             }),
         });
 
-        const responseBody = await response.json().catch(() => undefined);
+        const responseBody = (await response
+            .json()
+            .catch(() => undefined)) as SlackApiResponse | undefined;
         if (!response.ok) {
             return {
                 ok: false,

@@ -12,8 +12,9 @@
         "isolatedModules": true,
         "moduleDetection": "force",
         "incremental": true,
-        "target": "ESNext"
+        "target": "ESNext",
+        "types": ["node"]
     },
-    "include": ["**/*.ts"],
+    "include": ["src/**/*.ts"],
     "exclude": ["node_modules"]
 }

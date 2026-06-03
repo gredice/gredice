@@ -6,7 +6,7 @@
         "esModuleInterop": true,
         "incremental": false,
         "isolatedModules": true,
-        "lib": ["es2022"],
+        "lib": ["es2022", "DOM"],
         "module": "esnext",
         "moduleDetection": "force",
         "moduleResolution": "bundler",
@@ -15,6 +15,7 @@
         "skipLibCheck": true,
         "strict": true,
         "target": "ES2022",
+        "types": ["node"],
         "jsx": "react-jsx"
     },
     "include": ["./src/**/*"],

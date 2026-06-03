@@ -1,5 +1,6 @@
 {
     "$schema": "https://openapi.vercel.sh/vercel.json",
+    "ignoreCommand": "node ../../scripts/vercel-ignore-app.mjs api",
     "crons": [
         {
             "path": "/api/stripe/cron",
