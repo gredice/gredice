@@ -7,14 +7,15 @@ const debugGroups = [
         pages: [
             {
                 href: '/debug/entities',
-                title: 'Entity grid',
-                description: 'All registered garden entities in one 3D scene.',
+                title: 'Entity sandbox',
+                description:
+                    'Sandbox scene with all placeable debug blocks in separate stacks.',
             },
             {
-                href: '/debug/entities/FireflyJar?zoom=130&static=1',
-                title: 'Single entity viewer',
+                href: '/debug/entities/FireflyJar',
+                title: 'Single entity sandbox',
                 description:
-                    'One entity rendered with EntityViewer. Replace the path segment with any entity name.',
+                    'One block rendered through the standard sandbox scene. Replace the path segment with any block name.',
             },
         ],
     },

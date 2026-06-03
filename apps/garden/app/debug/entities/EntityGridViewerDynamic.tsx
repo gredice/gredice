@@ -5,7 +5,11 @@ import { useEffect, useState } from 'react';
 type EntityGridViewerComponent =
     typeof import('@gredice/game').EntityGridViewer;
 
-export function EntityGridViewerDynamic() {
+export function EntityGridViewerDynamic({
+    storageKey,
+}: {
+    storageKey: string;
+}) {
     const [EntityGridViewer, setEntityGridViewer] =
         useState<EntityGridViewerComponent | null>(null);
 
@@ -32,6 +36,11 @@ export function EntityGridViewerDynamic() {
     }
 
     return (
-        <EntityGridViewer className="h-full w-full" debugHud showBackground />
+        <EntityGridViewer
+            className="h-full w-full"
+            debugHud
+            localSandboxStorageKey={storageKey}
+            showBackground
+        />
     );
 }

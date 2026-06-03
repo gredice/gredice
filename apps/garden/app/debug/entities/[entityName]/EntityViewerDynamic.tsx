@@ -2,30 +2,27 @@
 
 import { useEffect, useState } from 'react';
 
-type EntityViewerComponent = typeof import('@gredice/game').EntityViewer;
+type EntitySandboxViewerComponent =
+    typeof import('@gredice/game').EntitySandboxViewer;
 
 export function EntityViewerDynamic({
     entityName,
-    noControl,
     rotation,
-    staticEnvironment,
-    zoom,
+    storageKey,
 }: {
     entityName: string;
-    noControl?: boolean;
     rotation?: number;
-    staticEnvironment?: boolean;
-    zoom?: number;
+    storageKey: string;
 }) {
-    const [EntityViewer, setEntityViewer] =
-        useState<EntityViewerComponent | null>(null);
+    const [EntitySandboxViewer, setEntitySandboxViewer] =
+        useState<EntitySandboxViewerComponent | null>(null);
 
     useEffect(() => {
         let isMounted = true;
 
         void import('@gredice/game').then((mod) => {
             if (isMounted) {
-                setEntityViewer(() => mod.EntityViewer);
+                setEntitySandboxViewer(() => mod.EntitySandboxViewer);
             }
         });
 
@@ -34,7 +31,7 @@ export function EntityViewerDynamic({
         };
     }, []);
 
-    if (!EntityViewer) {
+    if (!EntitySandboxViewer) {
         return (
             <div className="flex h-full items-center justify-center text-sm text-neutral-700">
                 Loading entity scene...
@@ -43,15 +40,12 @@ export function EntityViewerDynamic({
     }
 
     return (
-        <EntityViewer
+        <EntitySandboxViewer
             className="h-full w-full"
             debugHud
             entityName={entityName}
-            noControl={noControl}
+            localSandboxStorageKey={storageKey}
             rotation={rotation}
-            showBackground
-            staticEnvironment={staticEnvironment}
-            zoom={zoom}
         />
     );
 }

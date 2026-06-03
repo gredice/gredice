@@ -70,6 +70,34 @@ test('persists local sandbox stacks in local storage', () => {
     });
 });
 
+test('loads provided default local sandbox stacks when storage is empty', () => {
+    withLocalStorage(() => {
+        const initialStacks = [
+            {
+                position: new Vector3(-2, 0, 1),
+                blocks: [
+                    {
+                        id: 'debug-firefly',
+                        name: 'FireflyJar',
+                        rotation: 1,
+                    },
+                ],
+            },
+        ];
+
+        const garden = loadLocalSandboxGarden('test-local-sandbox', {
+            stacks: initialStacks,
+        });
+
+        assert.equal(garden.stacks.length, 1);
+        assert.notEqual(garden.stacks[0], initialStacks[0]);
+        assert.equal(garden.stacks[0]?.position.x, -2);
+        assert.equal(garden.stacks[0]?.position.z, 1);
+        assert.equal(garden.stacks[0]?.blocks[0]?.name, 'FireflyJar');
+        assert.equal(garden.stacks[0]?.blocks[0]?.rotation, 1);
+    });
+});
+
 test('falls back to a playable default local sandbox', () => {
     const garden = createDefaultLocalSandboxGarden();
 

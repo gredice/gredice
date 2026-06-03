@@ -48,6 +48,7 @@ import {
     resolveGameQualityProfile,
 } from './scene/gameQuality';
 import { Scene } from './scene/Scene';
+import type { Stack } from './types/Stack';
 import {
     type GameState,
     type MockGardenProfile,
@@ -73,6 +74,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     mockGarden?: boolean;
     mockGardenProfile?: MockGardenProfile;
     localSandboxStorageKey?: string;
+    localSandboxInitialStacks?: Stack[];
     winterMode?: WinterMode;
     weather?: Partial<GameState['weather']>;
     deferDetails?: boolean;

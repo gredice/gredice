@@ -27,6 +27,11 @@ type StoredLocalSandboxGarden = {
     }>;
 };
 
+type LocalSandboxGardenOptions = {
+    name?: string;
+    stacks?: Stack[];
+};
+
 function createDefaultLocalSandboxStacks(): Stack[] {
     const stacks: Stack[] = [];
 
@@ -48,12 +53,27 @@ function createDefaultLocalSandboxStacks(): Stack[] {
     return stacks;
 }
 
-export function createDefaultLocalSandboxGarden(): LocalSandboxGarden {
+function cloneSandboxStacks(stacks: Stack[]): Stack[] {
+    return stacks.map((stack) => ({
+        position: stack.position.clone(),
+        blocks: stack.blocks.map((block) => ({ ...block })),
+    }));
+}
+
+function resolveDefaultLocalSandboxStacks(stacks: Stack[] | undefined) {
+    return stacks?.length
+        ? cloneSandboxStacks(stacks)
+        : createDefaultLocalSandboxStacks();
+}
+
+export function createDefaultLocalSandboxGarden(
+    options: LocalSandboxGardenOptions = {},
+): LocalSandboxGarden {
     return {
         id: localSandboxGardenId,
-        name: 'Debug sandbox',
+        name: options.name ?? 'Debug sandbox',
         isSandbox: true,
-        stacks: createDefaultLocalSandboxStacks(),
+        stacks: resolveDefaultLocalSandboxStacks(options.stacks),
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds: [],
     };
@@ -100,6 +120,7 @@ function normalizeStoredBlocks(blocks: unknown): Block[] {
 
 function normalizeStoredGarden(
     storedGarden: StoredLocalSandboxGarden,
+    options: LocalSandboxGardenOptions = {},
 ): LocalSandboxGarden {
     const stacks =
         storedGarden.stacks?.flatMap((stack) => {
@@ -118,28 +139,35 @@ function normalizeStoredGarden(
         }) ?? [];
 
     return {
-        ...createDefaultLocalSandboxGarden(),
-        stacks: stacks.length > 0 ? stacks : createDefaultLocalSandboxStacks(),
+        ...createDefaultLocalSandboxGarden(options),
+        stacks:
+            stacks.length > 0
+                ? stacks
+                : resolveDefaultLocalSandboxStacks(options.stacks),
     };
 }
 
-export function loadLocalSandboxGarden(storageKey: string): LocalSandboxGarden {
+export function loadLocalSandboxGarden(
+    storageKey: string,
+    options: LocalSandboxGardenOptions = {},
+): LocalSandboxGarden {
     if (typeof window === 'undefined') {
-        return createDefaultLocalSandboxGarden();
+        return createDefaultLocalSandboxGarden(options);
     }
 
     try {
         const storedValue = window.localStorage.getItem(storageKey);
         if (!storedValue) {
-            return createDefaultLocalSandboxGarden();
+            return createDefaultLocalSandboxGarden(options);
         }
 
         return normalizeStoredGarden(
             JSON.parse(storedValue) as StoredLocalSandboxGarden,
+            options,
         );
     } catch (error) {
         console.warn('Failed to load local sandbox garden', error);
-        return createDefaultLocalSandboxGarden();
+        return createDefaultLocalSandboxGarden(options);
     }
 }
 
@@ -173,9 +201,12 @@ export function persistLocalSandboxGarden(
     }
 }
 
-export function resetLocalSandboxGarden(storageKey: string) {
+export function resetLocalSandboxGarden(
+    storageKey: string,
+    options: LocalSandboxGardenOptions = {},
+) {
     if (typeof window === 'undefined') {
-        return createDefaultLocalSandboxGarden();
+        return createDefaultLocalSandboxGarden(options);
     }
 
     try {
@@ -184,7 +215,7 @@ export function resetLocalSandboxGarden(storageKey: string) {
         console.warn('Failed to reset local sandbox garden', error);
     }
 
-    return createDefaultLocalSandboxGarden();
+    return createDefaultLocalSandboxGarden(options);
 }
 
 export function createLocalSandboxBlockId(blockName: string) {
