@@ -71,6 +71,21 @@ function getElementCenter(element: HTMLElement): Point {
     };
 }
 
+function getFallbackHudTarget(): Point {
+    if (typeof window === 'undefined') {
+        return { x: 0, y: 0 };
+    }
+
+    const isMobile = window.innerWidth < 768;
+    const horizontalOffset = isMobile ? 80 : 120;
+    const verticalOffset = isMobile ? 110 : 80;
+
+    return {
+        x: Math.max(window.innerWidth - horizontalOffset, 0),
+        y: Math.max(verticalOffset, 0),
+    };
+}
+
 function getParticleCount(amount: number) {
     if (!Number.isFinite(amount) || amount <= 0) {
         return 3;
@@ -269,6 +284,26 @@ export function animateSunflowerHudToPoint({
         amount,
         from: getElementCenter(hudElement),
         to,
+    });
+}
+
+export function animateSunflowerPointToHud({
+    amount = 0,
+    from,
+}: {
+    amount?: number;
+    from: Point;
+}) {
+    if (getPrefersReducedMotion() || typeof document === 'undefined') {
+        return;
+    }
+
+    const hudElement = document.querySelector<HTMLElement>(HUD_TARGET_SELECTOR);
+
+    startSunflowerTransfer({
+        amount,
+        from,
+        to: hudElement ? getElementCenter(hudElement) : getFallbackHudTarget(),
     });
 }
 

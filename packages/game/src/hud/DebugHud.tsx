@@ -4,6 +4,7 @@ import { Button } from '@gredice/ui/Button';
 import { DebugPanel, DebugPanelSection } from '@gredice/ui/DebugControls';
 import { IconButton } from '@gredice/ui/IconButton';
 import {
+    AI,
     Cloud,
     Custom,
     Desktop,
@@ -35,16 +36,25 @@ import type {
     ReactNode,
     PointerEvent as ReactPointerEvent,
 } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Vector3 } from 'three';
+import { useBlockData } from '../hooks/useBlockData';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useLiveTime } from '../hooks/useLiveTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
+import { animateSunflowerPointToHud } from '../indicators/SunflowerTransfer/useSunflowerTransferAnimation';
 import {
     type GameProfileMetadata,
     readGameProfileMetadata,
 } from '../scene/gameProfileMetadata';
-import { type AnimalDebugEntry, useGameState } from '../useGameState';
+import { useGameState } from '../useGameState';
 import { clampTimeOfDay, createDateForGameTimeOfDay } from '../utils/timeOfDay';
 import { TimeOfDayVisualization } from './components/TimeOfDayVisualization';
+import {
+    getSpecialEntityDebugEntries,
+    type SpecialEntityDebugEntry,
+    SUNFLOWER_SPECIAL_ENTITY_REWARD_AMOUNT,
+} from './specialEntityDebug';
 
 type IconType = ComponentType<{ className?: string }>;
 
@@ -106,7 +116,7 @@ function formatTemperature(value: number | null | undefined) {
         : 'n/a';
 }
 
-function formatAnimalPosition(position: AnimalDebugEntry['position']) {
+function formatDebugPosition(position: { x: number; y: number; z: number }) {
     return `${formatMetric(position.x)}, ${formatMetric(position.y)}, ${formatMetric(position.z)}`;
 }
 
@@ -287,10 +297,47 @@ export function DebugHud() {
     );
     const gameQualitySetting = useGameState((s) => s.gameQualitySetting);
     const setGameQualitySetting = useGameState((s) => s.setGameQualitySetting);
+    const gameCamera = useGameState((s) => s.gameCamera);
     const frameStats = useFrameStats();
     const profileSnapshot = useProfileHudSnapshot();
 
+    const { data: blockData } = useBlockData();
+    const { data: garden } = useCurrentGarden();
     const { data: weather } = useWeatherNow();
+    const specialEntityDebugEntries = useMemo(
+        () =>
+            getSpecialEntityDebugEntries({
+                blockData,
+                stacks: garden?.stacks,
+            }),
+        [blockData, garden?.stacks],
+    );
+
+    const forceSunflowerReward = useCallback(
+        (entry: SpecialEntityDebugEntry) => {
+            if (!gameCamera) {
+                return;
+            }
+
+            const target = gameCamera.projectToScreen(
+                new Vector3(
+                    entry.position.x,
+                    entry.position.y,
+                    entry.position.z,
+                ),
+            );
+
+            if (!target) {
+                return;
+            }
+
+            animateSunflowerPointToHud({
+                amount: SUNFLOWER_SPECIAL_ENTITY_REWARD_AMOUNT,
+                from: target,
+            });
+        },
+        [gameCamera],
+    );
 
     const panelWrapperRef = useRef<HTMLDivElement>(null);
     const panelSizeRef = useRef({ width: 0, height: 0 });
@@ -835,13 +882,13 @@ export function DebugHud() {
                                                     blocked
                                                     {entry.pathfinding
                                                         .nextWaypoint
-                                                        ? ` · next ${formatAnimalPosition(entry.pathfinding.nextWaypoint)}`
+                                                        ? ` · next ${formatDebugPosition(entry.pathfinding.nextWaypoint)}`
                                                         : ''}
                                                 </div>
                                             ) : null}
                                             <div className="inline-flex items-center gap-1 font-mono text-muted-foreground">
                                                 <MapPin className="size-3 shrink-0" />
-                                                {formatAnimalPosition(
+                                                {formatDebugPosition(
                                                     entry.position,
                                                 )}
                                             </div>
@@ -877,6 +924,59 @@ export function DebugHud() {
                                                     )}
                                                 </div>
                                             ) : null}
+                                        </div>
+                                    ))}
+                                </Stack>
+                            )}
+                        </DebugPanelSection>
+                        <DebugPanelSection title="Special entities" icon={AI}>
+                            {specialEntityDebugEntries.length === 0 ? (
+                                <Typography
+                                    level="body3"
+                                    secondary
+                                    className="italic"
+                                >
+                                    No active special entities
+                                </Typography>
+                            ) : (
+                                <Stack spacing={1}>
+                                    {specialEntityDebugEntries.map((entry) => (
+                                        <div
+                                            key={entry.id}
+                                            className="rounded-md border border-border/50 bg-card/60 p-1.5 text-[11px] leading-tight"
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="inline-flex min-w-0 items-center gap-1 font-medium">
+                                                    <AI className="size-3 shrink-0 text-muted-foreground" />
+                                                    <span className="truncate">
+                                                        {entry.label}
+                                                    </span>
+                                                </span>
+                                                <span className="shrink-0 rounded bg-muted px-1 font-mono">
+                                                    {entry.kind}
+                                                </span>
+                                            </div>
+                                            <div className="mt-0.5 truncate text-muted-foreground">
+                                                {entry.blockName} ·{' '}
+                                                {entry.blockId}
+                                            </div>
+                                            <div className="inline-flex items-center gap-1 font-mono text-muted-foreground">
+                                                <MapPin className="size-3 shrink-0" />
+                                                {formatDebugPosition(
+                                                    entry.position,
+                                                )}
+                                            </div>
+                                            <Button
+                                                size="xs"
+                                                className="mt-1.5 h-6 px-1.5 text-[10px]"
+                                                disabled={!gameCamera}
+                                                variant="outlined"
+                                                onClick={() =>
+                                                    forceSunflowerReward(entry)
+                                                }
+                                            >
+                                                Spawn reward
+                                            </Button>
                                         </div>
                                     ))}
                                 </Stack>
