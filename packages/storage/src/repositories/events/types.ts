@@ -10,6 +10,22 @@ export type AccountSunflowersPayload = {
     reason: string;
 };
 
+export type AccountSunflowerDropSpawnPayload = {
+    amount: number;
+    expiresAt: string;
+    gardenId: number;
+    rewardDate: string;
+    sourceBlockId: string;
+    spawnId: string;
+};
+
+export type AccountSunflowerDropEarnPayload = AccountSunflowersPayload & {
+    gardenId: number;
+    rewardDate: string;
+    sourceBlockId: string;
+    spawnId: string;
+};
+
 export type AiRequestKind = 'raisedBedImageAnalysis';
 
 export type AccountAiRequestPayload = {

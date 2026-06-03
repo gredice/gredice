@@ -3,6 +3,7 @@ import { sendEmail } from '@gredice/email/acs';
 import {
     acceptAccountInvitation,
     cancelAccountInvitation,
+    claimSunflowerDrop,
     createAccountInvitation,
     deleteAccountWithDependencies,
     earnSunflowers,
@@ -14,11 +15,16 @@ import {
     getAccountInvitationsByEmail,
     getAccountReferralState,
     getAccountUsers,
+    getGarden,
+    getGardenBlocks,
+    getOrCreateSunflowerDropSpawn,
     getRaisedBeds,
     getReferralAccountSummary,
     getSunflowers,
     getSunflowersHistory,
     getUser,
+    grediceCached,
+    grediceCacheKeys,
     knownEventTypes,
     REFERRAL_REWARD_AMOUNT,
     ReferralCodeAlreadyExistsError,
@@ -29,6 +35,7 @@ import {
     ReferralCodeReservedError,
     ReferralCodeSelfUseError,
     redeemReferralCodeForAccount,
+    SUNFLOWER_DROP_BLOCK_NAME,
     setReferralCodeForAccount,
     updateAccountTimeZone,
 } from '@gredice/storage';
@@ -50,9 +57,13 @@ import {
     authValidator,
 } from '../../../lib/hono/authValidator';
 import { getPostHogClient } from '../../../lib/posthog-server';
+import { getBjelovarForecast } from '../../../lib/weather/forecast';
+import { populateWeatherFromSymbol } from '../../../lib/weather/populateWeatherFromSymbol';
+import { findClosestForecastEntry } from '../../../lib/weather/weatherNowContract';
 
 const dailyRewards = [5, 10, 15, 20, 25, 50];
 const DAILY_REWARD_TIME_ZONE = 'Europe/Zagreb';
+const SUNFLOWER_DROP_SPAWN_CHANCE = 0.35;
 const GARDEN_APP_URL =
     process.env.GREDICE_GARDEN_APP_URL ?? 'https://vrt.gredice.com';
 
@@ -204,6 +215,42 @@ async function hasActiveRaisedBed(accountId: string) {
         if (raisedBeds.length > 0) return true;
     }
     return false;
+}
+
+async function getSunflowerDropWeather(now: Date) {
+    const forecast = await grediceCached(
+        grediceCacheKeys.forecastBjelovar,
+        getBjelovarForecast,
+        60 * 60,
+    ).catch((error) => {
+        console.warn('Sunflower drop weather unavailable', { error });
+        return null;
+    });
+    const closestEntry = forecast
+        ? findClosestForecastEntry(forecast, now.getTime())
+        : null;
+    if (!closestEntry) {
+        return {
+            sunny: false,
+            symbol: null,
+        };
+    }
+
+    const weather = populateWeatherFromSymbol(closestEntry.symbol);
+    return {
+        sunny:
+            closestEntry.rain <= 0.05 &&
+            weather.cloudy <= 0.2 &&
+            weather.rainy <= 0 &&
+            weather.snowy <= 0 &&
+            weather.foggy <= 0 &&
+            weather.thundery <= 0,
+        symbol: closestEntry.symbol,
+    };
+}
+
+function pickSunflowerBlock<T extends { id: string }>(blocks: T[]) {
+    return blocks[Math.floor(Math.random() * blocks.length)] ?? null;
 }
 
 const app = new Hono<{ Variables: AuthVariables }>()
@@ -436,6 +483,112 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     reason: event.reason,
                 })),
             });
+        },
+    )
+    .get(
+        '/current/sunflowers/drops/gardens/:gardenId',
+        describeRoute({
+            description:
+                'Try to issue a collectible sunflower drop for a sunny garden visit.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const gardenIdParam = context.req.valid('param').gardenId;
+            if (!/^\d+$/.test(gardenIdParam)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            const gardenId = Number.parseInt(gardenIdParam, 10);
+
+            const [garden, gardenBlocks] = await Promise.all([
+                getGarden(gardenId),
+                getGardenBlocks(gardenId),
+            ]);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            if (garden.isSandbox) {
+                return context.json({ spawn: null, reason: 'sandbox' });
+            }
+
+            const sunflowerBlocks = gardenBlocks.filter(
+                (block) => block.name === SUNFLOWER_DROP_BLOCK_NAME,
+            );
+            const sourceBlock = pickSunflowerBlock(sunflowerBlocks);
+            if (!sourceBlock) {
+                return context.json({ spawn: null, reason: 'no_sunflower' });
+            }
+
+            const now = new Date();
+            const weather = await getSunflowerDropWeather(now);
+            if (!weather.sunny) {
+                return context.json({
+                    spawn: null,
+                    reason: 'weather',
+                    weather,
+                });
+            }
+
+            const result = await getOrCreateSunflowerDropSpawn({
+                accountId,
+                allowCreate: Math.random() < SUNFLOWER_DROP_SPAWN_CHANCE,
+                gardenId,
+                now,
+                sourceBlockId: sourceBlock.id,
+            });
+
+            return context.json({
+                ...result,
+                weather,
+            });
+        },
+    )
+    .post(
+        '/current/sunflowers/drops/:spawnId/claim',
+        describeRoute({
+            description:
+                'Claim a server-issued sunflower drop for the current account.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                spawnId: z.uuid(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const { spawnId } = context.req.valid('param');
+            const result = await claimSunflowerDrop({ accountId, spawnId });
+            if (result.status === 'claimed') {
+                return context.json({
+                    amount: result.amount,
+                    status: result.status,
+                });
+            }
+
+            const error = {
+                error: result.reason,
+                status: result.status,
+            };
+
+            if (result.reason === 'not_found') {
+                return context.json(error, 404);
+            }
+            if (result.reason === 'expired') {
+                return context.json(error, 410);
+            }
+
+            return context.json(error, 409);
         },
     )
     .get(
