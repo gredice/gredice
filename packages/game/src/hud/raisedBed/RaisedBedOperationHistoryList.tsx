@@ -45,6 +45,20 @@ function buildFieldPositionById(
     );
 }
 
+function buildFieldPlantSortIdById(
+    garden: ReturnType<typeof useCurrentGarden>['data'],
+) {
+    return new Map(
+        (garden?.raisedBeds ?? []).flatMap((raisedBed) =>
+            raisedBed.fields.flatMap((field) =>
+                typeof field.plantSortId === 'number'
+                    ? [[field.id, field.plantSortId] as const]
+                    : [],
+            ),
+        ),
+    );
+}
+
 function filterOperationsByTarget({
     operations,
     raisedBedId,
@@ -154,6 +168,10 @@ export function RaisedBedOperationHistoryList({
         () => buildFieldPositionById(currentGarden),
         [currentGarden],
     );
+    const fieldPlantSortIdById = useMemo(
+        () => buildFieldPlantSortIdById(currentGarden),
+        [currentGarden],
+    );
     const history = useGardenOperations({
         includeCompleted: true,
         pageSize: 20,
@@ -190,16 +208,27 @@ export function RaisedBedOperationHistoryList({
         () =>
             Array.from(
                 new Set(
-                    operations
-                        .filter(
-                            (operation) =>
-                                operation.entityTypeName ===
-                                cartPlantSortEntityType,
-                        )
-                        .map((operation) => operation.entityId),
+                    operations.flatMap((operation) => {
+                        if (
+                            operation.entityTypeName === cartPlantSortEntityType
+                        ) {
+                            return [operation.entityId];
+                        }
+
+                        return operation.raisedBedFieldId
+                            ? [
+                                  fieldPlantSortIdById.get(
+                                      operation.raisedBedFieldId,
+                                  ),
+                              ].filter(
+                                  (plantSortId): plantSortId is number =>
+                                      typeof plantSortId === 'number',
+                              )
+                            : [];
+                    }),
                 ),
             ),
-        [operations],
+        [fieldPlantSortIdById, operations],
     );
     const { data: sowingPlantSorts } = useSorts(
         sowingPlantSortIds.length > 0 ? sowingPlantSortIds : undefined,
@@ -266,6 +295,16 @@ export function RaisedBedOperationHistoryList({
                         ? plantSortById.get(operation.entityId)
                         : undefined;
                 const operationName = operationData?.information.label;
+                const scheduledDateLabel = operation.scheduledDate
+                    ? new Date(operation.scheduledDate).toLocaleDateString(
+                          'hr-HR',
+                          {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                          },
+                      )
+                    : null;
                 const entryName =
                     operationName ??
                     plantSortData?.information.name ??
@@ -288,6 +327,7 @@ export function RaisedBedOperationHistoryList({
                             garden={currentGarden}
                             operation={operation}
                             referenceDate={referenceDate}
+                            triggerLabel={scheduledDateLabel}
                         />
                     ) : null;
                 const aiAction =
@@ -309,13 +349,11 @@ export function RaisedBedOperationHistoryList({
                             })}
                         />
                     ) : undefined;
-                const action =
-                    rescheduleAction || aiAction ? (
-                        <Row spacing={2} className="flex-wrap justify-end">
-                            {rescheduleAction}
-                            {aiAction}
-                        </Row>
-                    ) : undefined;
+                const action = aiAction ? (
+                    <Row spacing={2} className="flex-wrap justify-end">
+                        {aiAction}
+                    </Row>
+                ) : undefined;
 
                 return (
                     <GardenOperationCard
@@ -324,9 +362,20 @@ export function RaisedBedOperationHistoryList({
                         operationName={operationName}
                         operationData={operationData}
                         plantSortData={plantSortData}
+                        targetPlantSortData={
+                            operation.entityTypeName === 'operation' &&
+                            operation.raisedBedFieldId
+                                ? (plantSortById.get(
+                                      fieldPlantSortIdById.get(
+                                          operation.raisedBedFieldId,
+                                      ) ?? 0,
+                                  ) ?? undefined)
+                                : undefined
+                        }
                         currentGarden={currentGarden}
                         referenceDate={referenceDate}
                         progressClassName="md:max-w-80"
+                        scheduleAction={rescheduleAction ?? undefined}
                         action={action}
                     />
                 );

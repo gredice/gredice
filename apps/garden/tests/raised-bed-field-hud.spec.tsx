@@ -844,7 +844,15 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(
             dialog.getByText('Površinsko zalijevanje gredice (20L)'),
         ).toBeVisible();
-        await dialog.getByRole('button', { name: 'Prerasporedi' }).click();
+        await expect(dialog.getByText('Zakazano:')).toHaveCount(0);
+        await expect(
+            dialog.locator('[data-operation-media="plant"]').first(),
+        ).toBeVisible();
+        await expect(
+            dialog.locator('[data-operation-media-badge]').first(),
+        ).toBeVisible();
+
+        await dialog.getByRole('button', { name: '20. svibnja 2026.' }).click();
 
         await expect(
             page.getByText('Novi datum', { exact: true }),

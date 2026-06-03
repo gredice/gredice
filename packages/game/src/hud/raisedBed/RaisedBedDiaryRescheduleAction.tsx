@@ -6,7 +6,7 @@ import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, type ReactNode, useState } from 'react';
 import {
     type DiaryRescheduleTarget,
     formatDiaryRescheduleDateInput,
@@ -18,10 +18,12 @@ export function RaisedBedDiaryRescheduleAction({
     entryName,
     gardenId,
     target,
+    triggerLabel = 'Prerasporedi',
 }: {
     entryName: string;
     gardenId: number;
     target: DiaryRescheduleTarget;
+    triggerLabel?: ReactNode;
 }) {
     const [open, setOpen] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -75,7 +77,7 @@ export function RaisedBedDiaryRescheduleAction({
                     variant="soft"
                     startDecorator={<Calendar className="size-3.5 shrink-0" />}
                 >
-                    Prerasporedi
+                    {triggerLabel}
                 </Button>
             }
         >
