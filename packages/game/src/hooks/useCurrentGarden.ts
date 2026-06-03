@@ -268,6 +268,7 @@ function mockRaisedBedField(
                 plantDeadDate: undefined,
                 plantHarvestedDate: undefined,
                 plantRemovedDate: undefined,
+                statusChanges: [],
                 stoppedDate: undefined,
                 toBeRemoved: false,
                 assignedUserId: null,

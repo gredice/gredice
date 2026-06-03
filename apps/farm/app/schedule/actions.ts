@@ -8,6 +8,7 @@ import {
     getOperationById,
     getRaisedBed,
     knownEvents,
+    markHarvestTraceLinksPrinted,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
@@ -192,6 +193,17 @@ export async function completeFarmPlanting(
         ),
     );
 
+    revalidateSchedule();
+
+    return { success: true };
+}
+
+export async function markHarvestTraceLabelsPrintedAction(
+    traceLinkIds: number[],
+) {
+    await auth(['admin', 'farmer']);
+
+    await markHarvestTraceLinksPrinted(traceLinkIds);
     revalidateSchedule();
 
     return { success: true };

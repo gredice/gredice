@@ -46,6 +46,7 @@
         "@gredice/directory-types": "workspace:*",
         "@gredice/game": "workspace:*",
         "@gredice/js": "workspace:*",
+        "@gredice/storage": "workspace:*",
         "@gredice/ui": "workspace:*",
         "@playwright/experimental-ct-react": "1.60.0",
         "@playwright/test": "1.60.0",

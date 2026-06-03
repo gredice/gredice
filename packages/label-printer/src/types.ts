@@ -6,6 +6,9 @@ export type FieldOperationLabelData = {
 	detailLabel: string;
 	plantSortName: string;
 	dateLabel?: string;
+	traceUrl?: string;
+	traceLinkId?: number;
+	traceStatus?: "active" | "revoked";
 };
 
 export type HarvestLabelData = {
@@ -14,6 +17,7 @@ export type HarvestLabelData = {
 	plantSortName: string;
 	operationLabel?: string;
 	dateLabel?: string;
+	traceUrl?: string;
 };
 
 export type HarvestLabelPreset = {

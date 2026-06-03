@@ -75,6 +75,31 @@ function getLabelPreviewItems(labels: FieldOperationLabelData[]) {
     return items;
 }
 
+function getTraceLinkIds(labels: FieldOperationLabelData[]) {
+    return Array.from(
+        new Set(
+            labels
+                .map((label) => label.traceLinkId)
+                .filter(
+                    (traceLinkId): traceLinkId is number =>
+                        typeof traceLinkId === 'number',
+                ),
+        ),
+    );
+}
+
+function getTraceStatusLabel(label: FieldOperationLabelData) {
+    if (label.traceUrl) {
+        return 'QR trag uključen';
+    }
+
+    if (label.traceStatus === 'revoked') {
+        return 'QR trag opozvan';
+    }
+
+    return null;
+}
+
 interface FieldOperationPrintModalProps {
     title: string;
     description: ReactNode;
@@ -85,6 +110,7 @@ interface FieldOperationPrintModalProps {
     triggerSize?: ButtonProps['size'];
     triggerClassName?: string;
     printButtonLabel?: string;
+    onPrintSuccess?: (traceLinkIds: number[]) => Promise<unknown>;
 }
 
 export function FieldOperationPrintModal({
@@ -97,6 +123,7 @@ export function FieldOperationPrintModal({
     triggerSize = 'sm',
     triggerClassName,
     printButtonLabel,
+    onPrintSuccess,
 }: FieldOperationPrintModalProps) {
     const labels = Array.isArray(labelData) ? labelData : [labelData];
     const labelPreviewItems = getLabelPreviewItems(labels);
@@ -187,6 +214,17 @@ export function FieldOperationPrintModal({
                     preset: DEFAULT_HARVEST_LABEL_PRESET,
                 });
             }
+
+            const traceLinkIds = getTraceLinkIds(labels);
+            if (traceLinkIds.length > 0 && onPrintSuccess) {
+                try {
+                    await onPrintSuccess(traceLinkIds);
+                } catch {
+                    setActionError(
+                        'Etikete su poslane na pisač, ali status QR traga nije spremljen.',
+                    );
+                }
+            }
             setSuccessMessage(
                 labels.length === 1
                     ? 'Etiketa je poslana na pisač.'
@@ -264,6 +302,14 @@ export function FieldOperationPrintModal({
                                         labelData={item.label}
                                         className="mx-auto block w-full max-w-sm rounded border bg-white shadow-xs"
                                     />
+                                    {getTraceStatusLabel(item.label) && (
+                                        <Typography
+                                            level="body2"
+                                            className="mt-1 text-center text-xs text-muted-foreground"
+                                        >
+                                            {getTraceStatusLabel(item.label)}
+                                        </Typography>
+                                    )}
                                 </div>
                             ))}
                         </div>

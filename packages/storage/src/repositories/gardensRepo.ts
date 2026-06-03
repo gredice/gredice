@@ -93,6 +93,11 @@ type CanonicalRaisedBedField = {
 
 type RaisedBedFieldPlantCycleEvent = typeof events.$inferSelect;
 
+export type RaisedBedFieldPlantStatusChange = {
+    status: string;
+    occurredAt: Date;
+};
+
 export type RaisedBedFieldPlantCycle = {
     aggregateId: string;
     positionIndex: number;
@@ -112,6 +117,7 @@ export type RaisedBedFieldPlantCycle = {
     plantDeadDate?: Date;
     plantHarvestedDate?: Date;
     plantRemovedDate?: Date;
+    statusChanges: RaisedBedFieldPlantStatusChange[];
     stoppedDate?: Date;
     toBeRemoved: boolean;
     assignedUserId?: string | null;
@@ -689,6 +695,7 @@ function summarizePlantCycle(
     let plantDeadDate: Date | undefined;
     let plantHarvestedDate: Date | undefined;
     let plantRemovedDate: Date | undefined;
+    const statusChanges: RaisedBedFieldPlantStatusChange[] = [];
     let active = false;
     let toBeRemoved = false;
     let stoppedDate: Date | undefined;
@@ -772,13 +779,21 @@ function summarizePlantCycle(
         if (
             plantCycleEvent.type === knownEventTypes.raisedBedFields.plantUpdate
         ) {
+            const previousPlantStatus = plantStatus;
+            const nextPlantStatus =
+                typeof data?.status === 'string' ? data.status : undefined;
             let shouldApplyAssignedBy = true;
             const shouldApplyAssignedUsers = isAssignmentEvent(data ?? {});
             const hasAssignedUserIdUpdate =
                 shouldApplyAssignedUsers &&
                 extractAssignedUserId(data?.assignedUserId) !== undefined;
-            plantStatus =
-                typeof data?.status === 'string' ? data.status : plantStatus;
+            if (nextPlantStatus && nextPlantStatus !== previousPlantStatus) {
+                statusChanges.push({
+                    status: nextPlantStatus,
+                    occurredAt: plantCycleEvent.createdAt,
+                });
+            }
+            plantStatus = nextPlantStatus ?? plantStatus;
             if (hasAssignedUserIdUpdate) {
                 const nextAssignedUserId = extractAssignedUserId(
                     data?.assignedUserId,
@@ -873,6 +888,7 @@ function summarizePlantCycle(
         plantDeadDate,
         plantHarvestedDate,
         plantRemovedDate,
+        statusChanges,
         stoppedDate,
         toBeRemoved,
         assignedUserIds: normalizeAssignedUserIds(

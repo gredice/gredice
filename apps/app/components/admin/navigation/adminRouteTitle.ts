@@ -8,6 +8,7 @@ const idRouteTitlePrefixes = new Map([
     ['/admin/communication/emails', 'Email'],
     ['/admin/farms', 'Farma'],
     ['/admin/gardens', 'Vrt'],
+    ['/admin/harvest-traces', 'QR trag'],
     ['/admin/inventory', 'Zaliha'],
     ['/admin/invoices', 'Ponuda'],
     ['/admin/operations', 'Radnja'],

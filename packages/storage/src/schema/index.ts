@@ -8,6 +8,7 @@ export * from './farmsSchema';
 export * from './feedbackSchema';
 export * from './fiscalizationSchema';
 export * from './gardenSchema';
+export * from './harvestTraceSchema';
 export * from './inventoryManagementSchema';
 export * from './invoiceSchema';
 export * from './newsletterSchema';

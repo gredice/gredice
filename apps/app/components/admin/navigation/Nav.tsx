@@ -28,6 +28,7 @@ import {
     Home,
     Inbox,
     Lightning,
+    Link,
     Mail,
     Map as MapIcon,
     Megaphone,
@@ -486,6 +487,7 @@ export function Nav({
                         adminPages.Weather.href,
                         adminPages.Gardens.href,
                         adminPages.RaisedBeds.href,
+                        adminPages.HarvestTraces.href,
                         adminPages.Operations.href,
                         adminPages.FarmerPayouts.href,
                         adminPages.FarmerPrices.href,
@@ -533,6 +535,14 @@ export function Nav({
                         href={adminPages.Operations.href}
                         label={adminPages.Operations.label}
                         icon={<Hammer className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.HarvestTraces.href}
+                        label={adminPages.HarvestTraces.label}
+                        icon={<Link className="size-5" />}
                         onClick={onItemClick}
                         compact={compact}
                         nested

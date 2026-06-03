@@ -1,6 +1,10 @@
+import { buildHarvestTracePublicUrl } from '@gredice/client';
 import { calculatePlantsPerField } from '@gredice/js/plants';
 import type { FieldOperationLabelData } from '@gredice/label-printer';
-import type { EntityStandardized } from '@gredice/storage';
+import {
+    createOrGetHarvestTraceLink,
+    type EntityStandardized,
+} from '@gredice/storage';
 import type { FarmScheduleDayData } from './scheduleData';
 import {
     getFieldPhysicalPositionIndex,
@@ -13,6 +17,7 @@ type FarmOperation = FarmScheduleDayData['scheduledOperations'][number];
 type SowingLabelField = FarmRaisedBedField & {
     physicalPositionIndex: number;
 };
+type HarvestLabelField = FarmRaisedBed['fields'][number];
 
 const SOWING_LABEL_PLANT_LIMIT = 24;
 
@@ -259,24 +264,25 @@ function shouldPrintOperationLabel(
 }
 
 function getOperationDetailLabel(
-    operation: FarmOperation,
     operationData: EntityStandardized | undefined,
 ) {
     return (
         operationData?.information?.label ??
         operationData?.information?.name ??
-        `Operacija ${operation.id}`
+        'Radnja'
     );
 }
 
-function buildHarvestFieldLabel(
+async function buildHarvestFieldLabel(
+    operation: FarmOperation,
     raisedBed: FarmRaisedBed,
-    field: FarmRaisedBed['fields'][number],
+    field: HarvestLabelField,
     raisedBeds: FarmRaisedBed[],
     plantSortById: Map<number, EntityStandardized>,
     detailLabel: string,
     dateLabel: string,
-): FieldOperationLabelData | null {
+    createTraceLink: boolean,
+): Promise<FieldOperationLabelData | null> {
     const plantSortName = field.plantSortId
         ? plantSortById.get(field.plantSortId)?.information?.name
         : undefined;
@@ -285,16 +291,72 @@ function buildHarvestFieldLabel(
         return null;
     }
 
-    return {
+    const fieldLabel = getFieldPhysicalPositionIndex(
+        field,
+        raisedBeds,
+    ).toString();
+    const label: FieldOperationLabelData = {
         raisedBedPhysicalId: raisedBed.physicalId,
-        fieldLabel: getFieldPhysicalPositionIndex(field, raisedBeds).toString(),
+        fieldLabel,
         detailLabel,
         plantSortName,
         dateLabel,
     };
+    if (!createTraceLink) {
+        return label;
+    }
+
+    const sortedPlantCycles = field.plantCycles?.toSorted((left, right) => {
+        const startedAtDifference =
+            left.startedAt.getTime() - right.startedAt.getTime();
+        if (startedAtDifference !== 0) {
+            return startedAtDifference;
+        }
+
+        return left.plantPlaceEventId - right.plantPlaceEventId;
+    });
+    const plantCycle =
+        sortedPlantCycles?.findLast(
+            (cycle) =>
+                cycle.plantSortId === field.plantSortId &&
+                cycle.active !== false,
+        ) ?? sortedPlantCycles?.at(-1);
+    const accountId = operation.accountId ?? raisedBed.accountId;
+    const gardenId = operation.gardenId ?? raisedBed.gardenId;
+
+    if (
+        !accountId ||
+        !gardenId ||
+        !plantCycle ||
+        typeof field.plantSortId !== 'number'
+    ) {
+        return label;
+    }
+
+    const traceLink = await createOrGetHarvestTraceLink({
+        accountId,
+        gardenId,
+        raisedBedId: raisedBed.id,
+        raisedBedFieldId: field.id,
+        fieldPositionIndex: field.positionIndex,
+        fieldLabel,
+        plantPlaceEventId: plantCycle.plantPlaceEventId,
+        plantSortId: field.plantSortId,
+        harvestOperationId: operation.id,
+    });
+
+    return {
+        ...label,
+        traceLinkId: traceLink.id,
+        traceStatus: traceLink.status,
+        traceUrl:
+            traceLink.status === 'active'
+                ? buildHarvestTracePublicUrl(traceLink.publicToken)
+                : undefined,
+    };
 }
 
-function buildOperationLabels(
+async function buildOperationLabels(
     operation: FarmOperation,
     operationData: EntityStandardized | undefined,
     groupedRaisedBeds: FarmRaisedBed[],
@@ -315,7 +377,8 @@ function buildOperationLabels(
         return [];
     }
 
-    const detailLabel = getOperationDetailLabel(operation, operationData);
+    const detailLabel = getOperationDetailLabel(operationData);
+    const createTraceLink = isHarvestOperation(operationData);
     if (operation.raisedBedFieldId) {
         const field = raisedBed.fields.find(
             (candidate) => candidate.id === operation.raisedBedFieldId,
@@ -324,13 +387,15 @@ function buildOperationLabels(
             return [];
         }
 
-        const label = buildHarvestFieldLabel(
+        const label = await buildHarvestFieldLabel(
+            operation,
             raisedBed,
             field,
             groupedRaisedBeds,
             plantSortById,
             detailLabel,
             dateLabel,
+            createTraceLink,
         );
         return label ? [label] : [];
     }
@@ -342,18 +407,24 @@ function buildOperationLabels(
         return [];
     }
 
-    return raisedBed.fields
-        .map((field) =>
+    const labels = await Promise.all(
+        raisedBed.fields.map((field) =>
             buildHarvestFieldLabel(
+                operation,
                 raisedBed,
                 field,
                 groupedRaisedBeds,
                 plantSortById,
                 detailLabel,
                 dateLabel,
+                createTraceLink,
             ),
-        )
-        .filter((label): label is FieldOperationLabelData => label !== null);
+        ),
+    );
+
+    return labels.filter(
+        (label): label is FieldOperationLabelData => label !== null,
+    );
 }
 
 function compareLabelData(
@@ -383,7 +454,7 @@ function compareLabelData(
     });
 }
 
-function buildHarvestLabels(
+async function buildHarvestLabels(
     dayData: FarmScheduleDayData,
     plantSortById: Map<number, EntityStandardized>,
     operationDataById: Map<number, EntityStandardized>,
@@ -413,20 +484,20 @@ function buildHarvestLabels(
         }
 
         labels.push(
-            ...buildOperationLabels(
+            ...(await buildOperationLabels(
                 operation,
                 operationDataById.get(operation.entityId),
                 raisedBedGroup.raisedBeds,
                 plantSortById,
                 dateLabel,
-            ),
+            )),
         );
     }
 
     return labels.sort(compareLabelData);
 }
 
-export function buildScheduleLabelPrintData(
+export async function buildScheduleLabelPrintData(
     dayData: FarmScheduleDayData,
     plantSorts: EntityStandardized[] | null | undefined,
     operationsData: EntityStandardized[] | null | undefined,
@@ -436,7 +507,7 @@ export function buildScheduleLabelPrintData(
     const operationDataById = getEntityById(operationsData);
     const dateLabel = formatScheduleLabelDate(date);
     const sowingLabels = buildSowingLabels(dayData, plantSortById, dateLabel);
-    const harvestLabels = buildHarvestLabels(
+    const harvestLabels = await buildHarvestLabels(
         dayData,
         plantSortById,
         operationDataById,
@@ -447,5 +518,6 @@ export function buildScheduleLabelPrintData(
         labels: [...sowingLabels, ...harvestLabels],
         sowingLabelCount: sowingLabels.length,
         harvestLabelCount: harvestLabels.length,
+        traceLabelCount: harvestLabels.filter((label) => label.traceUrl).length,
     };
 }
