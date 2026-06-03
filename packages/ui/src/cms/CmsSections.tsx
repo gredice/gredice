@@ -1273,7 +1273,7 @@ export function Footer1(props: SectionData) {
                         <div className="flex flex-col items-center gap-8 text-center @[48rem]/cms:flex-row @[48rem]/cms:justify-between">
                             <div>{systemStatus?.asset}</div>
                             <Typography level="body3">
-                                {`Copyright © ${new Date().getFullYear()} ${tagline}. All rights reserved.`}
+                                {`© ${new Date().getFullYear()} ${tagline}. Sva prava pridržana.`}
                             </Typography>
                         </div>
                     </Stack>
