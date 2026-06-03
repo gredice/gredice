@@ -1,6 +1,7 @@
 export * from './achievementsSchema';
 export * from './automationsSchema';
 export * from './cmsSchema';
+export * from './communityEditsSchema';
 export * from './deliverySchema';
 export * from './emailSchema';
 export * from './eventsSchema';

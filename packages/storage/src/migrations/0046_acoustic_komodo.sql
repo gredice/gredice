@@ -1,0 +1,1 @@
+ALTER TABLE "community_edit_request_changes" ADD COLUMN "value_patch" text;

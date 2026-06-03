@@ -5,6 +5,7 @@ const idRouteTitlePrefixes = new Map([
     ['/admin/accounts', 'Račun'],
     ['/admin/automations', 'Automatizacija'],
     ['/admin/cms/pages', 'Stranica'],
+    ['/admin/community-edits', 'Prijedlog zajednice'],
     ['/admin/communication/emails', 'Email'],
     ['/admin/farms', 'Farma'],
     ['/admin/gardens', 'Vrt'],
