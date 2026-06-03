@@ -1,7 +1,4 @@
-import {
-    getGridPositionFromIndex,
-    getPositionIndexFromGrid,
-} from '../../utils/raisedBedOrientation';
+import { getPositionIndexFromGrid } from '../../utils/raisedBedOrientation';
 
 export type PlantRelationshipSignalStatus =
     | 'companion'
@@ -37,6 +34,29 @@ export type NeighborPlantSummary = {
     name: string;
 };
 
+export type RaisedBedFieldRelationshipIndicatorDirection =
+    | 'bottom'
+    | 'bottomLeft'
+    | 'bottomRight'
+    | 'left'
+    | 'right'
+    | 'top'
+    | 'topLeft'
+    | 'topRight';
+
+export type RaisedBedFieldRelationshipIndicatorStatus =
+    | 'antagonist'
+    | 'companion';
+
+export type RaisedBedFieldRelationshipIndicator = {
+    companionPlantNames: string[];
+    direction: RaisedBedFieldRelationshipIndicatorDirection;
+    antagonistPlantNames: string[];
+    neighborPositionIndex: number;
+    positionIndex: number;
+    status: RaisedBedFieldRelationshipIndicatorStatus;
+};
+
 type RaisedBedFieldLike = {
     active?: boolean | null;
     plantSortId?: number | null;
@@ -55,13 +75,13 @@ type ShoppingCartPlantItemLike = {
 type PlantSortLike = {
     id: number;
     information?: {
-        plant?: {
-            id: number;
-            information?: {
-                name?: string | null;
-            } | null;
-        } | null;
+        plant?: PlantRelationshipCandidateLike | null;
     } | null;
+};
+
+type PositionedPlantSummary = {
+    plant: PlantRelationshipCandidateLike;
+    positionIndex: number;
 };
 
 function uniqueValues<T>(values: T[]) {
@@ -92,6 +112,40 @@ function plantSummaryForSort(
     };
 }
 
+function positionedPlantSummaryForSort(
+    positionIndex: number,
+    sortId: number | null,
+    sortsById: Map<number, PlantSortLike>,
+): PositionedPlantSummary | null {
+    if (sortId === null) {
+        return null;
+    }
+
+    const plant = sortsById.get(sortId)?.information?.plant;
+    if (!plant) {
+        return null;
+    }
+
+    return {
+        plant,
+        positionIndex,
+    };
+}
+
+function plantName(plant: PlantRelationshipCandidateLike) {
+    return plant.information?.name ?? `Biljka #${plant.id}`;
+}
+
+function getRaisedBedLocalVisualGridPosition(positionIndex: number) {
+    const baseRow = Math.floor(positionIndex / 3);
+    const baseCol = positionIndex % 3;
+
+    return {
+        col: 2 - baseCol,
+        row: 2 - baseRow,
+    };
+}
+
 export function getRaisedBedNeighborPositionIndices({
     blockCount = 2,
     positionIndex,
@@ -110,10 +164,8 @@ export function getRaisedBedNeighborPositionIndices({
     }
 
     const localPositionIndex = positionIndex % 9;
-    const localPosition = getGridPositionFromIndex(
-        localPositionIndex,
-        'vertical',
-    );
+    const localPosition =
+        getRaisedBedLocalVisualGridPosition(localPositionIndex);
     const visualBlockIndex = normalizedBlockCount - 1 - blockIndex;
     const visualRow = visualBlockIndex * 3 + localPosition.row;
     const totalRows = normalizedBlockCount * 3;
@@ -152,6 +204,78 @@ export function getRaisedBedNeighborPositionIndices({
     }
 
     return uniqueValues(positions).sort((a, b) => a - b);
+}
+
+function getRaisedBedVisualGridPosition({
+    blockCount,
+    positionIndex,
+}: {
+    blockCount: number;
+    positionIndex: number;
+}) {
+    if (!Number.isInteger(positionIndex) || positionIndex < 0) {
+        return null;
+    }
+
+    const normalizedBlockCount = Math.max(1, Math.floor(blockCount));
+    const blockIndex = Math.floor(positionIndex / 9);
+    if (blockIndex >= normalizedBlockCount) {
+        return null;
+    }
+
+    const localPositionIndex = positionIndex % 9;
+    const localPosition =
+        getRaisedBedLocalVisualGridPosition(localPositionIndex);
+    const visualBlockIndex = normalizedBlockCount - 1 - blockIndex;
+
+    return {
+        col: localPosition.col,
+        row: visualBlockIndex * 3 + localPosition.row,
+    };
+}
+
+function raisedBedRelationshipDirection(
+    rowDelta: number,
+    colDelta: number,
+): RaisedBedFieldRelationshipIndicatorDirection | null {
+    if (rowDelta === -1 && colDelta === -1) return 'topLeft';
+    if (rowDelta === -1 && colDelta === 0) return 'top';
+    if (rowDelta === -1 && colDelta === 1) return 'topRight';
+    if (rowDelta === 0 && colDelta === -1) return 'left';
+    if (rowDelta === 0 && colDelta === 1) return 'right';
+    if (rowDelta === 1 && colDelta === -1) return 'bottomLeft';
+    if (rowDelta === 1 && colDelta === 0) return 'bottom';
+    if (rowDelta === 1 && colDelta === 1) return 'bottomRight';
+
+    return null;
+}
+
+function getRaisedBedRelationshipDirection({
+    blockCount,
+    neighborPositionIndex,
+    positionIndex,
+}: {
+    blockCount: number;
+    neighborPositionIndex: number;
+    positionIndex: number;
+}) {
+    const position = getRaisedBedVisualGridPosition({
+        blockCount,
+        positionIndex,
+    });
+    const neighborPosition = getRaisedBedVisualGridPosition({
+        blockCount,
+        positionIndex: neighborPositionIndex,
+    });
+
+    if (!position || !neighborPosition) {
+        return null;
+    }
+
+    return raisedBedRelationshipDirection(
+        neighborPosition.row - position.row,
+        neighborPosition.col - position.col,
+    );
 }
 
 export function getRaisedBedRelationshipBlockCount({
@@ -243,6 +367,187 @@ export function getNeighborPlantSummaries({
     return Array.from(summariesById.values()).sort((a, b) =>
         a.name.localeCompare(b.name, 'hr-HR'),
     );
+}
+
+function getPositionedPlantSummaries({
+    cartItems,
+    fields,
+    gardenId,
+    raisedBedId,
+    sorts,
+}: {
+    cartItems?: ShoppingCartPlantItemLike[] | null;
+    fields?: RaisedBedFieldLike[] | null;
+    gardenId: number;
+    raisedBedId: number;
+    sorts?: PlantSortLike[] | null;
+}) {
+    const sortsById = new Map((sorts ?? []).map((sort) => [sort.id, sort]));
+    const summariesByPosition = new Map<number, PositionedPlantSummary>();
+
+    for (const field of fields ?? []) {
+        if (!field.active) {
+            continue;
+        }
+
+        const summary = positionedPlantSummaryForSort(
+            field.positionIndex,
+            field.plantSortId ?? null,
+            sortsById,
+        );
+        if (summary) {
+            summariesByPosition.set(field.positionIndex, summary);
+        }
+    }
+
+    for (const item of cartItems ?? []) {
+        if (
+            item.entityTypeName !== 'plantSort' ||
+            item.gardenId !== gardenId ||
+            item.raisedBedId !== raisedBedId ||
+            item.status !== 'new' ||
+            typeof item.positionIndex !== 'number'
+        ) {
+            continue;
+        }
+
+        const summary = positionedPlantSummaryForSort(
+            item.positionIndex,
+            parseEntityId(item.entityId),
+            sortsById,
+        );
+        if (summary) {
+            summariesByPosition.set(item.positionIndex, summary);
+        }
+    }
+
+    return summariesByPosition;
+}
+
+function getPairRelationshipStatus({
+    neighbor,
+    plant,
+}: {
+    neighbor: PositionedPlantSummary;
+    plant: PositionedPlantSummary;
+}) {
+    const plantToNeighbor = getPlantRelationshipSignal({
+        candidate: plant.plant,
+        neighborPlants: [
+            {
+                id: neighbor.plant.id,
+                name: plantName(neighbor.plant),
+            },
+        ],
+    });
+    const neighborToPlant = getPlantRelationshipSignal({
+        candidate: neighbor.plant,
+        neighborPlants: [
+            {
+                id: plant.plant.id,
+                name: plantName(plant.plant),
+            },
+        ],
+    });
+    const companionPlantNames = uniqueValues([
+        ...plantToNeighbor.companionNeighborNames,
+        ...neighborToPlant.companionNeighborNames,
+    ]).sort((a, b) => a.localeCompare(b, 'hr-HR'));
+    const antagonistPlantNames = uniqueValues([
+        ...plantToNeighbor.antagonistNeighborNames,
+        ...neighborToPlant.antagonistNeighborNames,
+    ]).sort((a, b) => a.localeCompare(b, 'hr-HR'));
+
+    if (antagonistPlantNames.length > 0) {
+        return {
+            antagonistPlantNames,
+            companionPlantNames,
+            status: 'antagonist',
+        } satisfies Pick<
+            RaisedBedFieldRelationshipIndicator,
+            'antagonistPlantNames' | 'companionPlantNames' | 'status'
+        >;
+    }
+
+    if (companionPlantNames.length > 0) {
+        return {
+            antagonistPlantNames,
+            companionPlantNames,
+            status: 'companion',
+        } satisfies Pick<
+            RaisedBedFieldRelationshipIndicator,
+            'antagonistPlantNames' | 'companionPlantNames' | 'status'
+        >;
+    }
+
+    return null;
+}
+
+export function getRaisedBedFieldRelationshipIndicators({
+    blockCount,
+    cartItems,
+    fields,
+    gardenId,
+    raisedBedId,
+    sorts,
+}: {
+    blockCount?: number;
+    cartItems?: ShoppingCartPlantItemLike[] | null;
+    fields?: RaisedBedFieldLike[] | null;
+    gardenId: number;
+    raisedBedId: number;
+    sorts?: PlantSortLike[] | null;
+}) {
+    const normalizedBlockCount = Math.max(1, Math.floor(blockCount ?? 2));
+    const plantsByPosition = getPositionedPlantSummaries({
+        cartItems,
+        fields,
+        gardenId,
+        raisedBedId,
+        sorts,
+    });
+    const indicators: RaisedBedFieldRelationshipIndicator[] = [];
+
+    for (const [positionIndex, plant] of plantsByPosition) {
+        const neighborPositionIndices = getRaisedBedNeighborPositionIndices({
+            blockCount: normalizedBlockCount,
+            positionIndex,
+        });
+
+        for (const neighborPositionIndex of neighborPositionIndices) {
+            if (positionIndex > neighborPositionIndex) {
+                continue;
+            }
+
+            const neighbor = plantsByPosition.get(neighborPositionIndex);
+            if (!neighbor) {
+                continue;
+            }
+
+            const direction = getRaisedBedRelationshipDirection({
+                blockCount: normalizedBlockCount,
+                neighborPositionIndex,
+                positionIndex,
+            });
+            const relationship = getPairRelationshipStatus({
+                neighbor,
+                plant,
+            });
+
+            if (!direction || !relationship) {
+                continue;
+            }
+
+            indicators.push({
+                ...relationship,
+                direction,
+                neighborPositionIndex,
+                positionIndex,
+            });
+        }
+    }
+
+    return indicators;
 }
 
 export function getPlantRelationshipSignal({

@@ -62,6 +62,7 @@ export {
     GripVertical as Drag,
     Hammer,
     Hash,
+    Heart,
     History,
     Home,
     Hourglass,
