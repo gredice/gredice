@@ -13,15 +13,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useMarkAllNotificationsRead } from '../../hooks/useMarkAllNotificationsRead';
+import {
+    type NotificationPreferenceUpdate,
+    useNotificationPreferences,
+    useSaveNotificationPreferences,
+} from '../../hooks/useNotificationPreferences';
 import { usePushPermissionOnboarding } from '../../hooks/usePushPermissionOnboarding';
 import { NotificationList } from '../../hud/NotificationList';
-import type { NotificationsFilter } from '../../notificationFilters';
+import {
+    isNotificationsView,
+    type NotificationsFilter,
+    type NotificationsView,
+} from '../../notificationFilters';
 
 type ApiClient = ReturnType<typeof clientAuthenticated>;
-
-type NotificationPreferenceUpdate = NonNullable<
-    Parameters<ApiClient['api']['notifications']['preferences']['$put']>[0]
->['json']['preferences'][number];
 
 type PushDeviceUpdate = NonNullable<
     Parameters<ApiClient['api']['notifications']['devices'][':id']['$patch']>[0]
@@ -32,7 +37,6 @@ type DigestFrequency = NonNullable<
 >;
 type DigestPeriod = Exclude<DigestFrequency, 'off'>;
 
-type NotificationsView = 'notifications' | 'settings';
 type NotificationPreferenceItem = {
     category: string;
     channel: NotificationPreferenceUpdate['channel'];
@@ -43,7 +47,6 @@ type NotificationPreferenceItem = {
     quietHoursEligible: boolean;
 };
 
-const notificationPreferencesKey = ['notifications', 'preferences'];
 const notificationDevicesKey = ['notifications', 'devices'];
 const notificationPushStatusKey = ['notifications', 'push-status'];
 const defaultQuietHoursStartMinute = 22 * 60;
@@ -95,7 +98,7 @@ const categoryPreferences: NotificationPreferenceItem[] = [
     {
         category: 'weather_alerts',
         channel: 'push',
-        defaultEnabled: true,
+        defaultEnabled: false,
         description:
             'Upozorenja za grmljavinu, vjetar, kišu, snijeg, poledicu i druge vremenske rizike za regiju vrta.',
         digestEligible: false,
@@ -142,10 +145,6 @@ const digestFrequencyItems: Array<{
     { label: 'Dnevno', value: 'daily' },
     { label: 'Tjedno', value: 'weekly' },
 ];
-
-function isNotificationsView(value: string): value is NotificationsView {
-    return value === 'notifications' || value === 'settings';
-}
 
 function isDigestPeriod(value: string): value is DigestPeriod {
     return digestFrequencyItems.some((item) => item.value === value);
@@ -215,13 +214,15 @@ function pushStatusLabel(status: string | undefined) {
 
 type NotificationsTabProps = {
     initialFilter?: NotificationsFilter;
+    initialView?: NotificationsView;
 };
 
 export function NotificationsTab({
     initialFilter = 'unread',
+    initialView = 'notifications',
 }: NotificationsTabProps = {}) {
     const [activeView, setActiveView] =
-        useState<NotificationsView>('notifications');
+        useState<NotificationsView>(initialView);
     const [notificationsFilter, setNotificationsFilter] =
         useState<NotificationsFilter>(initialFilter);
     const [quietHoursEnabled, setQuietHoursEnabled] = useState(false);
@@ -243,16 +244,11 @@ export function NotificationsTab({
         setNotificationsFilter(initialFilter);
     }, [initialFilter]);
 
-    const preferencesQuery = useQuery({
-        queryKey: notificationPreferencesKey,
-        queryFn: async () => {
-            const response =
-                await clientAuthenticated().api.notifications.preferences.$get();
-            if (!response.ok)
-                throw new Error('Postavke obavijesti nisu učitane');
-            return (await response.json()).preferences;
-        },
-    });
+    useEffect(() => {
+        setActiveView(initialView);
+    }, [initialView]);
+
+    const preferencesQuery = useNotificationPreferences();
 
     const devicesQuery = useQuery({
         queryKey: notificationDevicesKey,
@@ -277,20 +273,7 @@ export function NotificationsTab({
         },
     });
 
-    const savePreferencesMutation = useMutation({
-        mutationFn: async (preferences: NotificationPreferenceUpdate[]) => {
-            const response =
-                await clientAuthenticated().api.notifications.preferences.$put({
-                    json: { preferences },
-                });
-            if (!response.ok)
-                throw new Error('Postavke obavijesti nisu spremljene');
-        },
-        onSuccess: () =>
-            queryClient.invalidateQueries({
-                queryKey: notificationPreferencesKey,
-            }),
-    });
+    const savePreferencesMutation = useSaveNotificationPreferences();
 
     const updateDeviceMutation = useMutation({
         mutationFn: async ({

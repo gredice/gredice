@@ -5,6 +5,7 @@ import {
     getDhmzWeatherAlerts,
     parseDhmzCapAlertXml,
     resolveWeatherAlertRegionCode,
+    weatherAlertSeverityScore,
 } from './alerts';
 
 const sampleCapXml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -215,6 +216,10 @@ describe('filterWeatherAlertsForFarm', () => {
 
     it('excludes green no-warning CAP entries', async () => {
         const alerts = await parseDhmzCapAlertXml(greenCapXml);
+        const firstAlert = alerts[0];
+        assert.ok(firstAlert);
+        assert.equal(weatherAlertSeverityScore(firstAlert), 1);
+
         const filtered = filterWeatherAlertsForFarm(alerts, bjelovarFarm, {
             now: new Date('2026-06-03T18:00:00+02:00'),
         });

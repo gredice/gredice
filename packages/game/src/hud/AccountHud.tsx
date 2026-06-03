@@ -36,6 +36,7 @@ import { KnownPages } from '../knownPages';
 import {
     type NotificationsFilter,
     notificationsFilterSearchParam,
+    notificationsViewSearchParam,
 } from '../notificationFilters';
 import { ProfileAvatar } from '../shared-ui/ProfileAvatar';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
@@ -55,6 +56,7 @@ function useOpenNotificationsOverview() {
                 Array.from(searchParams.entries()),
             );
             next.set('pregled', 'obavijesti');
+            next.set(notificationsViewSearchParam, 'notifications');
 
             if (filter === 'all') {
                 next.set(notificationsFilterSearchParam, filter);

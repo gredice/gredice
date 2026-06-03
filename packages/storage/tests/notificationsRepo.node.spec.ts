@@ -135,6 +135,68 @@ test('createNotification routes and queues deliverable push by default', async (
     );
 });
 
+test('weather alert notifications are suppressed when no preference opt-in exists', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const userName = `push-weather-default-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(userName, 'password');
+    const user = await getUser(userId);
+    assert.ok(user);
+    const accountId = user.accounts[0]?.accountId;
+    assert.ok(accountId);
+
+    await storage()
+        .insert(webPushSubscriptions)
+        .values({
+            id: randomUUID(),
+            accountId,
+            userId,
+            endpoint: `https://example.com/weather-${randomUUID()}`,
+            p256dh: 'k',
+            auth: 'a',
+            enabled: true,
+            permissionState: 'granted',
+        });
+
+    const notificationId = await createNotification({
+        accountId,
+        userId,
+        header: 'Weather alert',
+        content: 'Weather alerts default off',
+        category: 'weather_alerts',
+        timestamp: new Date(),
+    });
+
+    const attempts = await storage()
+        .select({
+            channel: notificationDeliveryAttempts.channel,
+            provider: notificationDeliveryAttempts.provider,
+            providerResponseCode:
+                notificationDeliveryAttempts.providerResponseCode,
+        })
+        .from(notificationDeliveryAttempts)
+        .where(eq(notificationDeliveryAttempts.notificationId, notificationId));
+
+    assert.deepEqual(
+        attempts
+            .filter((attempt) => attempt.provider === 'router')
+            .map((attempt) => ({
+                channel: attempt.channel,
+                reason: attempt.providerResponseCode,
+            }))
+            .sort((left, right) => left.channel.localeCompare(right.channel)),
+        [
+            { channel: 'email', reason: 'preference_disabled' },
+            { channel: 'in_app', reason: 'preference_disabled' },
+            { channel: 'push', reason: 'preference_disabled' },
+        ],
+    );
+    assert.equal(
+        attempts.some((attempt) => attempt.provider === 'web_push_queue'),
+        false,
+    );
+});
+
 test('createNotification expands account-wide push to account users', async () => {
     createTestDb();
     await ensureFarmId();
@@ -1244,9 +1306,9 @@ test('backfillNotificationRolloutDefaults limits subscription updates with batch
             }))
             .sort((left, right) => left.channel.localeCompare(right.channel)),
         [
-            { channel: 'email', enabled: true },
-            { channel: 'in_app', enabled: true },
-            { channel: 'push', enabled: true },
+            { channel: 'email', enabled: false },
+            { channel: 'in_app', enabled: false },
+            { channel: 'push', enabled: false },
         ],
     );
 
