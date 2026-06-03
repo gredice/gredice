@@ -144,7 +144,9 @@ async function applyRaisedBedFieldPlantUpdate({
                     header,
                     content,
                     linkUrl: raisedBed.name
-                        ? getRaisedBedCloseupUrl(raisedBed.name)
+                        ? getRaisedBedCloseupUrl(raisedBed.name, {
+                              positionIndex,
+                          })
                         : undefined,
                     timestamp: new Date(),
                 });
@@ -538,6 +540,11 @@ export async function cancelRaisedBedFieldAction(formData: FormData) {
                   raisedBedId: raisedBed.id,
                   header,
                   content,
+                  linkUrl: raisedBed.name
+                      ? getRaisedBedCloseupUrl(raisedBed.name, {
+                            positionIndex,
+                        })
+                      : undefined,
                   timestamp: new Date(),
               })
             : undefined,

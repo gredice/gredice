@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';
+import { useRaisedBedFieldDetailsParam } from '../../useUrlState';
 import {
     findRaisedBedOccupiedField,
     getRaisedBedFieldPlantHistory,
@@ -26,17 +28,55 @@ export function RaisedBedFieldItem({
 }) {
     const { data: garden, isLoading: isGardenLoading } = useCurrentGarden();
     const { enablePlantHistoryFlag } = useGameFlags();
+    const [fieldDetailsParam, setFieldDetailsParam] =
+        useRaisedBedFieldDetailsParam();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
+
+    const field = findRaisedBedOccupiedField(raisedBed?.fields, positionIndex);
+    const plantHistory = getRaisedBedFieldPlantHistory(
+        raisedBed?.fields,
+        positionIndex,
+    );
+    const visiblePlantHistory = enablePlantHistoryFlag ? plantHistory : [];
+    const hasField = Boolean(field);
+    const focusedPositionIndex =
+        typeof fieldDetailsParam === 'number' && fieldDetailsParam > 0
+            ? fieldDetailsParam - 1
+            : null;
+    const isFieldDetailsFocused = focusedPositionIndex === positionIndex;
+    const focusedHistoryEntry =
+        isFieldDetailsFocused && !hasField && plantHistory.length > 0
+            ? plantHistory[plantHistory.length - 1]
+            : null;
+
+    useEffect(() => {
+        if (
+            !isFieldDetailsFocused ||
+            isGardenLoading ||
+            hasField ||
+            focusedHistoryEntry
+        ) {
+            return;
+        }
+
+        void setFieldDetailsParam(null);
+    }, [
+        focusedHistoryEntry,
+        hasField,
+        isFieldDetailsFocused,
+        isGardenLoading,
+        setFieldDetailsParam,
+    ]);
+
+    function handleFieldDetailsOpenChange(open: boolean) {
+        if (!open && isFieldDetailsFocused) {
+            void setFieldDetailsParam(null);
+        }
+    }
+
     if (!raisedBed) {
         return null;
     }
-
-    const field = findRaisedBedOccupiedField(raisedBed.fields, positionIndex);
-    const plantHistory = getRaisedBedFieldPlantHistory(
-        raisedBed.fields,
-        positionIndex,
-    );
-    const hasField = Boolean(field);
 
     if (isGardenLoading) {
         return (
@@ -49,21 +89,39 @@ export function RaisedBedFieldItem({
 
     if (!hasField) {
         return (
-            <RaisedBedFieldItemEmpty
-                cartPlantItem={cartPlantItem}
-                gardenId={gardenId}
-                plantHistory={enablePlantHistoryFlag ? plantHistory : []}
-                isCartPending={isCartPending}
-                raisedBedId={raisedBedId}
-                positionIndex={positionIndex}
-                isDragging={isDragging}
-            />
+            <>
+                <RaisedBedFieldItemEmpty
+                    cartPlantItem={cartPlantItem}
+                    gardenId={gardenId}
+                    plantHistory={visiblePlantHistory}
+                    isCartPending={isCartPending}
+                    raisedBedId={raisedBedId}
+                    positionIndex={positionIndex}
+                    isDragging={isDragging}
+                />
+                {focusedHistoryEntry && (
+                    <RaisedBedFieldItemPlanted
+                        fieldOverride={focusedHistoryEntry}
+                        isHistorical
+                        onOpenChange={handleFieldDetailsOpenChange}
+                        open
+                        positionIndex={positionIndex}
+                        raisedBedId={raisedBedId}
+                        triggerOverride={null}
+                        triggerVariant="avatar"
+                    />
+                )}
+            </>
         );
     }
 
     return (
         <RaisedBedFieldItemPlanted
-            plantHistory={enablePlantHistoryFlag ? plantHistory : []}
+            onOpenChange={
+                isFieldDetailsFocused ? handleFieldDetailsOpenChange : undefined
+            }
+            open={isFieldDetailsFocused ? true : undefined}
+            plantHistory={visiblePlantHistory}
             raisedBedId={raisedBedId}
             positionIndex={positionIndex}
         />
