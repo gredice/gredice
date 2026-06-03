@@ -2,7 +2,7 @@
 
 import type { ThreeEvent } from '@react-three/fiber';
 import { useLayoutEffect, useMemo, useRef } from 'react';
-import { MeshBasicMaterial, type Vector3 } from 'three';
+import { type Mesh, MeshBasicMaterial, type Vector3 } from 'three';
 import { instancedBlockNames } from '../entities/EntityInstances';
 import { useBlockData } from '../hooks/useBlockData';
 import type { Stack } from '../types/Stack';
@@ -16,6 +16,7 @@ import {
 import {
     type BlockInteractionLayerTarget,
     getBlockInteractionLayerBounds,
+    hasCloserNonLayerIntersection,
     resolveBlockInteractionLayerTarget,
 } from './BlockInteractionResolver';
 
@@ -94,6 +95,7 @@ export function BlockInteractionLayer({
     const { data: blockData } = useBlockData();
     const registry = useBlockInteractionRegistry();
     const hoveredTargetKeyRef = useRef<string | null>(null);
+    const layerRef = useRef<Mesh>(null);
     const view = useGameState((state) => state.view);
     const editHitboxDebugVisible = useGameState(
         (state) => state.editHitboxDebugVisible,
@@ -142,6 +144,18 @@ export function BlockInteractionLayer({
             event.ray,
         );
         if (!resolvedLayerTarget) {
+            return null;
+        }
+
+        if (
+            layerRef.current &&
+            hasCloserNonLayerIntersection({
+                intersections: event.intersections,
+                layerObject: layerRef.current,
+                ray: event.ray,
+                resolvedHitPoint: resolvedLayerTarget.hitPoint,
+            })
+        ) {
             return null;
         }
 
@@ -231,6 +245,7 @@ export function BlockInteractionLayer({
     return (
         // biome-ignore lint/a11y/noStaticElementInteractions: Three.js mesh is the single block interaction plane.
         <mesh
+            ref={layerRef}
             frustumCulled={false}
             onClick={handleClick}
             onPointerDown={handlePointerDown}
