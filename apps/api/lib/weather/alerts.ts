@@ -220,7 +220,7 @@ function fallbackCroatianEvent(alertType: WeatherAlertType | null) {
     return `Upozorenje za ${label}`;
 }
 
-function severityRank(
+export function weatherAlertSeverityScore(
     alert: Pick<DhmzWeatherAlert, 'awarenessLevel' | 'severity'>,
 ) {
     const awarenessLevel = Number(alert.awarenessLevel?.id);
@@ -245,21 +245,26 @@ export function isWeatherWarningAlert(
 ) {
     const color = alert.awarenessLevel?.color?.toLowerCase();
     if (color === 'green') return false;
+
+    const severityScore = weatherAlertSeverityScore(alert);
+    if (severityScore > 0) return severityScore >= 2;
+
     if (color === 'yellow' || color === 'orange' || color === 'red') {
         return true;
     }
 
-    const awarenessLevel = Number(alert.awarenessLevel?.id);
-    if (Number.isFinite(awarenessLevel)) return awarenessLevel > 1;
+    return false;
+}
 
-    const severity = alert.severity?.toLowerCase();
-    if (severity === 'minor') return false;
-    return true;
+export function isActionableWeatherAlert(
+    alert: Pick<DhmzWeatherAlert, 'awarenessLevel' | 'severity'>,
+) {
+    return isWeatherWarningAlert(alert);
 }
 
 function alertSortKey(alert: DhmzWeatherAlert) {
     return [
-        String(4 - severityRank(alert)).padStart(2, '0'),
+        String(4 - weatherAlertSeverityScore(alert)).padStart(2, '0'),
         alert.onset,
         alert.expires,
         alert.id,

@@ -21,8 +21,16 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
-import { type FC, useState } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { type FC, useEffect, useMemo, useState } from 'react';
+import {
+    pushNotificationPreferenceUpdate,
+    useNotificationPreferences,
+    useSaveNotificationPreferences,
+} from '../../../hooks/useNotificationPreferences';
+import { usePushPermissionOnboarding } from '../../../hooks/usePushPermissionOnboarding';
 import { useWeatherNow } from '../../../hooks/useWeatherNow';
+import { notificationsViewSearchParam } from '../../../notificationFilters';
 import { RainIcon } from './icons/RainIcon';
 import { WeatherForecastDays } from './WeatherForecastDetails';
 import { WeatherHistoryPanel } from './WeatherHistoryModal';
@@ -31,6 +39,24 @@ import {
     type WeatherPopoverView,
     WeatherViewToggle,
 } from './WeatherViewToggle';
+
+const weatherAlertPromptChoiceKey = 'game:weather-alerts:prompt-choice';
+
+function readWeatherAlertPromptChoice(): boolean | null {
+    if (typeof window === 'undefined') return null;
+    const value = window.localStorage.getItem(weatherAlertPromptChoiceKey);
+    if (value === 'enabled') return true;
+    if (value === 'disabled') return false;
+    return null;
+}
+
+function writeWeatherAlertPromptChoice(enabled: boolean) {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(
+        weatherAlertPromptChoiceKey,
+        enabled ? 'enabled' : 'disabled',
+    );
+}
 
 export const windDirectionIcons: Record<string, FC> = {
     N: ArrowUp,
@@ -61,6 +87,142 @@ function alertLevelLabel(alert: {
     if (color === 'orange') return 'Narančasto upozorenje';
     if (color === 'red') return 'Crveno upozorenje';
     return alert.awarenessLevel?.label ?? alert.severity ?? 'Upozorenje';
+}
+
+function useNotificationSettingsHref() {
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
+    return useMemo(() => {
+        const next = new URLSearchParams(Array.from(searchParams.entries()));
+        next.set('pregled', 'obavijesti');
+        next.set(notificationsViewSearchParam, 'settings');
+
+        const query = next.toString();
+        return `${pathname}${query ? `?${query}` : ''}`;
+    }, [pathname, searchParams]);
+}
+
+function WeatherAlertPreferencePrompt() {
+    const settingsHref = useNotificationSettingsHref();
+    const pushOnboarding = usePushPermissionOnboarding();
+    const preferencesQuery = useNotificationPreferences();
+    const savePreferencesMutation = useSaveNotificationPreferences();
+    const [localChoice, setLocalChoice] = useState<boolean | null>(null);
+    const [storedChoice, setStoredChoice] = useState<
+        boolean | null | undefined
+    >(undefined);
+
+    useEffect(() => {
+        setStoredChoice(readWeatherAlertPromptChoice());
+    }, []);
+
+    const weatherAlertPreference = preferencesQuery.data?.find(
+        (preference) =>
+            preference.scope === 'global' &&
+            preference.category === 'weather_alerts' &&
+            preference.channel === 'push',
+    );
+    const weatherAlertsEnabled =
+        weatherAlertPreference?.enabled === true || localChoice === true;
+    const hasStoredWeatherAlertChoice =
+        storedChoice !== undefined && storedChoice !== null;
+    const hasWeatherAlertChoice =
+        weatherAlertsEnabled ||
+        localChoice !== null ||
+        hasStoredWeatherAlertChoice;
+    const busy =
+        preferencesQuery.isPending || savePreferencesMutation.isPending;
+
+    const saveWeatherAlertPreference = async (enabled: boolean) => {
+        if (enabled && pushOnboarding.canPrompt) {
+            await pushOnboarding.requestPermission().catch(() => undefined);
+        }
+        await savePreferencesMutation.mutateAsync([
+            pushNotificationPreferenceUpdate({
+                category: 'weather_alerts',
+                enabled,
+            }),
+        ]);
+        writeWeatherAlertPromptChoice(enabled);
+        setStoredChoice(enabled);
+        setLocalChoice(enabled);
+    };
+
+    if (preferencesQuery.isError) {
+        return null;
+    }
+
+    if (weatherAlertsEnabled) {
+        return (
+            <Typography
+                level="body3"
+                secondary
+                className="col-span-full px-4 pb-3 text-xs"
+            >
+                Vremenska upozorenja su uključena.{' '}
+                <Link href={settingsHref} className="underline">
+                    Postavke
+                </Link>
+            </Typography>
+        );
+    }
+
+    if (
+        hasWeatherAlertChoice ||
+        preferencesQuery.isPending ||
+        storedChoice === undefined
+    ) {
+        return null;
+    }
+
+    return (
+        <Stack className="col-span-full px-4 pb-4" spacing={1}>
+            <div className="rounded border border-border/60 bg-muted/20 p-3">
+                <Stack spacing={2}>
+                    <Stack spacing={0.5}>
+                        <Typography level="body2" semiBold>
+                            Primati vremenska upozorenja?
+                        </Typography>
+                        <Typography level="body3" secondary>
+                            Samo žuta, narančasta i crvena upozorenja za regiju
+                            vrta.
+                        </Typography>
+                    </Stack>
+                    <Row justifyContent="end" spacing={2} className="flex-wrap">
+                        <Button
+                            size="sm"
+                            variant="plain"
+                            disabled={busy}
+                            onClick={() =>
+                                void saveWeatherAlertPreference(false).catch(
+                                    () => undefined,
+                                )
+                            }
+                        >
+                            Ne uključuj
+                        </Button>
+                        <Button
+                            size="sm"
+                            disabled={busy}
+                            onClick={() =>
+                                void saveWeatherAlertPreference(true).catch(
+                                    () => undefined,
+                                )
+                            }
+                        >
+                            Uključi
+                        </Button>
+                    </Row>
+                    {savePreferencesMutation.isError && (
+                        <Typography level="body3" secondary>
+                            Postavke obavijesti nisu spremljene.
+                        </Typography>
+                    )}
+                </Stack>
+            </div>
+        </Stack>
+    );
 }
 
 export function WeatherNowDetails({ farmId }: { farmId?: number | null } = {}) {
@@ -227,6 +389,7 @@ export function WeatherNowDetails({ farmId }: { farmId?: number | null } = {}) {
                             ))}
                         </Stack>
                     )}
+                    <WeatherAlertPreferencePrompt />
                     <div className="border-l block md:hidden">
                         <Button
                             variant="plain"
