@@ -16,6 +16,7 @@ export function RaisedBedFieldItem({
     gardenId,
     isCartPending,
     raisedBedId,
+    showPlantHistoryBadges = true,
     positionIndex,
     isDragging,
 }: {
@@ -23,6 +24,7 @@ export function RaisedBedFieldItem({
     gardenId: number;
     cartPlantItem: ShoppingCartItemData | null;
     isCartPending: boolean;
+    showPlantHistoryBadges?: boolean;
     positionIndex: number;
     isDragging?: boolean;
 }) {
@@ -37,7 +39,8 @@ export function RaisedBedFieldItem({
         raisedBed?.fields,
         positionIndex,
     );
-    const visiblePlantHistory = enablePlantHistoryFlag ? plantHistory : [];
+    const visiblePlantHistory =
+        enablePlantHistoryFlag && showPlantHistoryBadges ? plantHistory : [];
     const hasField = Boolean(field);
     const focusedPositionIndex =
         typeof fieldDetailsParam === 'number' && fieldDetailsParam > 0

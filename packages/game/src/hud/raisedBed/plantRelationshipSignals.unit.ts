@@ -4,6 +4,7 @@ import {
     getNeighborPlantSummaries,
     getPlantRelationshipSignal,
     getPlantRelationshipSignalSortScore,
+    getRaisedBedFieldRelationshipIndicators,
     getRaisedBedNeighborPositionIndices,
     getRaisedBedRelationshipBlockCount,
 } from './plantRelationshipSignals';
@@ -122,6 +123,85 @@ describe('getNeighborPlantSummaries', () => {
         assert.deepEqual(neighborPlants, [
             { id: 100, name: 'Bosiljak' },
             { id: 101, name: 'Komorač' },
+        ]);
+    });
+});
+
+describe('getRaisedBedFieldRelationshipIndicators', () => {
+    it('creates edge indicators for companion and antagonist neighbors', () => {
+        const indicators = getRaisedBedFieldRelationshipIndicators({
+            blockCount: 2,
+            gardenId: 1,
+            raisedBedId: 2,
+            fields: [
+                {
+                    active: true,
+                    plantSortId: 10,
+                    positionIndex: 4,
+                },
+                {
+                    active: true,
+                    plantSortId: 11,
+                    positionIndex: 5,
+                },
+                {
+                    active: true,
+                    plantSortId: 12,
+                    positionIndex: 1,
+                },
+            ],
+            sorts: [
+                {
+                    id: 10,
+                    information: {
+                        plant: {
+                            id: 100,
+                            information: { name: 'Rajčica' },
+                            relationships: {
+                                companions: [{ id: 101, name: 'Bosiljak' }],
+                                antagonists: [{ id: 102, name: 'Komorač' }],
+                            },
+                        },
+                    },
+                },
+                {
+                    id: 11,
+                    information: {
+                        plant: {
+                            id: 101,
+                            information: { name: 'Bosiljak' },
+                        },
+                    },
+                },
+                {
+                    id: 12,
+                    information: {
+                        plant: {
+                            id: 102,
+                            information: { name: 'Komorač' },
+                        },
+                    },
+                },
+            ],
+        });
+
+        assert.deepEqual(indicators, [
+            {
+                antagonistPlantNames: [],
+                companionPlantNames: ['Bosiljak'],
+                direction: 'left',
+                neighborPositionIndex: 5,
+                positionIndex: 4,
+                status: 'companion',
+            },
+            {
+                antagonistPlantNames: ['Komorač'],
+                companionPlantNames: [],
+                direction: 'top',
+                neighborPositionIndex: 4,
+                positionIndex: 1,
+                status: 'antagonist',
+            },
         ]);
     });
 });
