@@ -1,7 +1,12 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
 import * as ReactQuery from '@tanstack/react-query';
-import type { PropsWithChildren } from 'react';
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
+import { type PropsWithChildren, useMemo } from 'react';
 import { PlantPicker } from '../../../packages/game/src/hud/raisedBed/RaisedBedPlantPicker';
+import {
+    createGameState,
+    GameStateContext,
+} from '../../../packages/game/src/useGameState';
 
 const now = '2026-05-13T00:00:00.000Z';
 
@@ -152,12 +157,50 @@ function createPlantPickerQueryClient() {
             },
         },
     });
+    const garden = {
+        id: 1,
+        name: 'Mock vrt',
+        stacks: [],
+        location: { lat: 45.739, lon: 16.572 },
+        raisedBeds: [
+            {
+                id: 1,
+                name: 'Mock gredica',
+                blockId: 'raised-bed-1',
+                physicalId: '1',
+                fields: Array.from({ length: 18 }, (_, index) => ({
+                    id: index + 1,
+                    positionIndex: index,
+                    active: true,
+                    plantSortId: null,
+                    plantStatus: null,
+                    plantSowedAt: null,
+                    plantReadyToHarvestAt: null,
+                    plantHarvestedAt: null,
+                    plantRemovedAt: null,
+                    plantSort: null,
+                    plantStage: null,
+                    plantStageId: null,
+                    plantStageUpdatedAt: null,
+                    plantSowingLocation: 'direct',
+                })),
+                appliedOperations: [],
+                status: 'new' as const,
+                abandonReason: null,
+                isValid: true,
+                orientation: 'horizontal' as const,
+                createdAt: now,
+                updatedAt: now,
+            },
+        ],
+    };
 
     queryClient.setQueryData(['currentUser'], { id: 'test-user' });
     queryClient.setQueryData(
         ['gardens'],
         [{ id: 1, name: 'Mock vrt', isSandbox: false, createdAt: now }],
     );
+    queryClient.setQueryData(['gardens', 'current', 'summer', 1], garden);
     queryClient.setQueryData(['shopping-cart'], {
         id: 1,
         items: [],
@@ -172,10 +215,26 @@ function createPlantPickerQueryClient() {
 }
 
 function PlantPickerTestProviders({ children }: PropsWithChildren) {
+    const queryClient = useMemo(() => createPlantPickerQueryClient(), []);
+    const gameStore = useMemo(
+        () =>
+            createGameState({
+                appBaseUrl: 'http://localhost',
+                freezeTime: new Date('2026-05-13T12:00:00.000Z'),
+                isMock: false,
+                winterMode: 'summer',
+            }),
+        [],
+    );
+
     return (
-        <ReactQuery.QueryClientProvider client={createPlantPickerQueryClient()}>
-            {children}
-        </ReactQuery.QueryClientProvider>
+        <NuqsTestingAdapter>
+            <ReactQuery.QueryClientProvider client={queryClient}>
+                <GameStateContext.Provider value={gameStore}>
+                    {children}
+                </GameStateContext.Provider>
+            </ReactQuery.QueryClientProvider>
+        </NuqsTestingAdapter>
     );
 }
 
