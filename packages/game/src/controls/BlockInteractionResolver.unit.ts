@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { Ray, Vector3 } from 'three';
+import { Object3D, Ray, Vector3 } from 'three';
 import {
     type BlockInteractionLayerTarget,
     getBlockInteractionLayerBounds,
     getBlockInteractionRotatedHitboxFootprint,
+    hasCloserNonLayerIntersection,
     resolveBlockInteractionLayerTarget,
 } from './BlockInteractionResolver';
 
@@ -172,6 +173,58 @@ describe('resolveBlockInteractionLayerTarget', () => {
                 height: 2.48,
                 width: 1.46,
             },
+        );
+    });
+});
+
+describe('hasCloserNonLayerIntersection', () => {
+    it('detects a foreground object closer than the resolved layer target', () => {
+        const layerObject = new Object3D();
+        const foregroundObject = new Object3D();
+        const ray = new Ray(new Vector3(0, 0, 0), new Vector3(0, 0, 1));
+
+        assert.equal(
+            hasCloserNonLayerIntersection({
+                intersections: [
+                    {
+                        distance: 1,
+                        object: layerObject,
+                    },
+                    {
+                        distance: 2,
+                        object: foregroundObject,
+                    },
+                ],
+                layerObject,
+                ray,
+                resolvedHitPoint: new Vector3(0, 0, 3),
+            }),
+            true,
+        );
+    });
+
+    it('ignores the layer receiver and farther intersections', () => {
+        const layerObject = new Object3D();
+        const backgroundObject = new Object3D();
+        const ray = new Ray(new Vector3(0, 0, 0), new Vector3(0, 0, 1));
+
+        assert.equal(
+            hasCloserNonLayerIntersection({
+                intersections: [
+                    {
+                        distance: 1,
+                        object: layerObject,
+                    },
+                    {
+                        distance: 4,
+                        object: backgroundObject,
+                    },
+                ],
+                layerObject,
+                ray,
+                resolvedHitPoint: new Vector3(0, 0, 3),
+            }),
+            false,
         );
     });
 });
