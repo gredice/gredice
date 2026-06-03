@@ -35,7 +35,12 @@ export function useBlockDelete() {
         (state) => state.localSandboxStorageKey,
     );
     const winterMode = useGameState((state) => state.winterMode);
-    const gardenQueryKey = currentGardenKeys(winterMode, garden?.id);
+    const gardenQueryKey = currentGardenKeys(
+        winterMode,
+        garden?.id,
+        undefined,
+        localSandboxStorageKey,
+    );
 
     return useMutation({
         mutationKey,

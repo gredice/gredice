@@ -19,6 +19,7 @@ import {
 } from './scene/gameQuality';
 import { defaultWaterColors, type WaterColors } from './scene/waterColors';
 import type { Block } from './types/Block';
+import type { Stack } from './types/Stack';
 import { getAudioConfig } from './utils/audioConfig';
 import {
     isDayNightCycleDisabled,
@@ -136,6 +137,7 @@ export type GameState = {
     spriteBaseUrl: string;
     audio: GameAudio;
     localSandboxStorageKey: string | null;
+    localSandboxInitialStacks: Stack[] | null;
     freezeTime?: Date | null;
     setFreezeTime: (freezeTime: Date | null) => void;
     dayNightCycleDisabled: boolean;
@@ -229,6 +231,7 @@ export function createGameState({
     initialQualitySetting,
     isMock,
     localSandboxStorageKey,
+    localSandboxInitialStacks,
     mockGardenProfile,
     winterMode,
 }: {
@@ -239,6 +242,7 @@ export function createGameState({
     initialQualitySetting?: GameQualitySetting;
     isMock: boolean;
     localSandboxStorageKey?: string;
+    localSandboxInitialStacks?: Stack[];
     mockGardenProfile?: MockGardenProfile;
     winterMode?: WinterMode;
 }) {
@@ -259,6 +263,7 @@ export function createGameState({
         spriteBaseUrl: spriteBaseUrl ?? appBaseUrl,
         audio: createGameAudio(getAudioConfig()),
         localSandboxStorageKey: localSandboxStorageKey ?? null,
+        localSandboxInitialStacks: localSandboxInitialStacks ?? null,
         freezeTime,
         setFreezeTime: (freezeTime) => {
             const referenceTime = freezeTime ?? new Date();
