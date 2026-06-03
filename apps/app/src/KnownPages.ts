@@ -7,6 +7,9 @@ export const KnownPages = {
     Settings: '/admin/settings',
     Directories: '/admin/directories',
     DirectoriesActivity: '/admin/directories/activity',
+    CommunityEdits: '/admin/community-edits',
+    CommunityEdit: (requestId: number) =>
+        `/admin/community-edits/${requestId}` as Route,
     CmsPages: '/admin/cms/pages',
     CmsPageCreate: '/admin/cms/pages/create',
     CmsPageEdit: (pageId: number) => `/admin/cms/pages/${pageId}/edit` as Route,

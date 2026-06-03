@@ -5,6 +5,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { CommunityEditButton } from '../../../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../../../components/shared/feedback/FeedbackModal';
 import { StructuredDataScript } from '../../../../../components/shared/seo/StructuredDataScript';
 import { getPlantSortsData } from '../../../../../lib/plants/getPlantSortsData';
@@ -168,7 +169,8 @@ export default async function PlantSortPage(
         }
     };
 
-    const sortUrl = `https://www.gredice.com${KnownPages.PlantSort(alias, sortData.information.name)}`;
+    const sortPath = KnownPages.PlantSort(alias, sortData.information.name);
+    const sortUrl = `https://www.gredice.com${sortPath}`;
     const hasPerPlantPrice = typeof basePlantData.prices?.perPlant === 'number';
 
     if (!hasPerPlantPrice) {
@@ -259,6 +261,14 @@ export default async function PlantSortPage(
                     ]}
                 />
                 <PlantPageHeader plant={basePlantData} sort={sortData} />
+                <Row className="justify-end">
+                    <CommunityEditButton
+                        buttonStyle="button"
+                        entityTypeName="plantSort"
+                        entityId={sortData.id}
+                        publicPath={sortPath}
+                    />
+                </Row>
                 {informationSections
                     .filter((section) => section.avaialble)
                     .map((section) => (
@@ -273,6 +283,10 @@ export default async function PlantSortPage(
                             attributeCards={getAttributeCardsForSection(
                                 section.id,
                             )}
+                            editEntityTypeName="plantSort"
+                            editEntityId={sortData.id}
+                            editPublicPath={sortPath}
+                            editSectionKey={section.id}
                         />
                     ))}
                 {(basePlantData.information.tip?.length ?? 0) > 0 && (

@@ -1,6 +1,6 @@
 import 'server-only';
-import { eq } from 'drizzle-orm';
-import { getAttributeDefinition, storage } from '..';
+import { and, eq } from 'drizzle-orm';
+import { storage } from '..';
 import {
     bustCached,
     bustCachedByPrefixes,
@@ -8,10 +8,89 @@ import {
 } from '../cache/directoriesCached';
 import { plantRelationshipTargetIdForAttributeValue } from '../helpers/plantRelationships';
 import {
+    attributeDefinitions,
     attributeValues,
     entityRevisions,
     type InsertAttributeValue,
 } from '../schema';
+
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = TransactionClient | StorageClient;
+
+export type AttributeValueMutationSideEffects = {
+    dashboardAdmin: boolean;
+    entityIds: Set<number>;
+    entityTypeNames: Set<string>;
+    searchEntityIds: Set<number>;
+};
+
+export function createAttributeValueMutationSideEffects(): AttributeValueMutationSideEffects {
+    return {
+        dashboardAdmin: false,
+        entityIds: new Set(),
+        entityTypeNames: new Set(),
+        searchEntityIds: new Set(),
+    };
+}
+
+function addAttributeValueMutationSideEffects(
+    sideEffects: AttributeValueMutationSideEffects,
+    input: {
+        entityId?: number | null;
+        entityTypeName?: string | null;
+        relatedEntityIds?: number[];
+    },
+) {
+    if (input.entityId) {
+        sideEffects.entityIds.add(input.entityId);
+        sideEffects.searchEntityIds.add(input.entityId);
+    }
+    if (input.entityTypeName) {
+        sideEffects.entityTypeNames.add(input.entityTypeName);
+    }
+    for (const entityId of input.relatedEntityIds ?? []) {
+        sideEffects.entityIds.add(entityId);
+        sideEffects.searchEntityIds.add(entityId);
+    }
+    sideEffects.dashboardAdmin = true;
+}
+
+export async function flushAttributeValueMutationSideEffects(
+    sideEffects: AttributeValueMutationSideEffects,
+) {
+    await Promise.all([
+        ...Array.from(sideEffects.entityIds).map((entityId) =>
+            bustCached(cacheKeys.entity(entityId)),
+        ),
+        ...Array.from(sideEffects.entityTypeNames).map((entityTypeName) =>
+            bustCached(cacheKeys.entityTypeName(entityTypeName)),
+        ),
+        sideEffects.dashboardAdmin
+            ? bustCachedByPrefixes(['dashboard:admin:'])
+            : undefined,
+    ]);
+
+    await Promise.all(
+        Array.from(sideEffects.searchEntityIds).map((entityId) =>
+            refreshEntitySearchDocumentAfterMutation(entityId),
+        ),
+    );
+}
+
+async function getAttributeDefinitionForMutation(
+    db: DatabaseClient,
+    id: number,
+) {
+    return db.query.attributeDefinitions.findFirst({
+        where: and(
+            eq(attributeDefinitions.id, id),
+            eq(attributeDefinitions.isDeleted, false),
+        ),
+    });
+}
 
 async function refreshEntitySearchDocumentAfterMutation(
     entityId: number | undefined,
@@ -35,9 +114,17 @@ async function refreshEntitySearchDocumentAfterMutation(
 export async function upsertAttributeValue(
     attributeValue: InsertAttributeValue,
     actor?: { id?: string; name?: string },
+    options?: {
+        db?: DatabaseClient;
+        sideEffects?: AttributeValueMutationSideEffects;
+    },
 ) {
+    const db = options?.db ?? storage();
+    const sideEffects =
+        options?.sideEffects ?? createAttributeValueMutationSideEffects();
     let value = attributeValue.value;
-    const definition = await getAttributeDefinition(
+    const definition = await getAttributeDefinitionForMutation(
+        db,
         attributeValue.attributeDefinitionId,
     );
 
@@ -47,7 +134,7 @@ export async function upsertAttributeValue(
     }
 
     const existingValue = attributeValue.id
-        ? await storage().query.attributeValues.findFirst({
+        ? await db.query.attributeValues.findFirst({
               where: eq(attributeValues.id, attributeValue.id),
           })
         : undefined;
@@ -71,7 +158,7 @@ export async function upsertAttributeValue(
     );
 
     await Promise.all([
-        storage()
+        db
             .insert(attributeValues)
             .values({
                 ...attributeValue,
@@ -85,79 +172,52 @@ export async function upsertAttributeValue(
                 },
             }),
         attributeValue.entityId
-            ? storage()
-                  .insert(entityRevisions)
-                  .values({
-                      entityId: attributeValue.entityId,
-                      entityTypeName: attributeValue.entityTypeName,
-                      action: existingValue
-                          ? 'attribute.updated'
-                          : 'attribute.created',
-                      actorId: actor?.id,
-                      actorName: actor?.name,
-                      attributeValueId: attributeValue.id,
-                      attributeDefinitionId:
-                          attributeValue.attributeDefinitionId,
-                      previousValue: existingValue?.value ?? null,
-                      nextValue: value ?? null,
-                  })
-            : undefined,
-        attributeValue.entityId
-            ? bustCached(cacheKeys.entity(attributeValue.entityId))
-            : undefined,
-        attributeValue.entityTypeName
-            ? bustCached(
-                  cacheKeys.entityTypeName(attributeValue.entityTypeName),
-              )
-            : undefined,
-        ...impactedRelationshipTargetIds.map((targetId) =>
-            bustCached(cacheKeys.entity(targetId)),
-        ),
-        bustCachedByPrefixes(['dashboard:admin:']),
-        // Bust cache if value exists
-        attributeValue.id
-            ? storage()
-                  .select()
-                  .from(attributeValues)
-                  .where(eq(attributeValues.id, attributeValue.id))
-                  .then((attributeValue) => {
-                      return Promise.all([
-                          attributeValue?.[0].entityId
-                              ? bustCached(
-                                    cacheKeys.entity(
-                                        attributeValue?.[0]?.entityId,
-                                    ),
-                                )
-                              : undefined,
-                          attributeValue?.[0].entityTypeName
-                              ? bustCached(
-                                    cacheKeys.entityTypeName(
-                                        attributeValue?.[0].entityTypeName,
-                                    ),
-                                )
-                              : undefined,
-                      ]);
-                  })
+            ? db.insert(entityRevisions).values({
+                  entityId: attributeValue.entityId,
+                  entityTypeName: attributeValue.entityTypeName,
+                  action: existingValue
+                      ? 'attribute.updated'
+                      : 'attribute.created',
+                  actorId: actor?.id,
+                  actorName: actor?.name,
+                  attributeValueId: attributeValue.id,
+                  attributeDefinitionId: attributeValue.attributeDefinitionId,
+                  previousValue: existingValue?.value ?? null,
+                  nextValue: value ?? null,
+              })
             : undefined,
     ]);
 
-    await refreshEntitySearchDocumentAfterMutation(attributeValue.entityId);
-    await Promise.all(
-        impactedRelationshipTargetIds.map((targetId) =>
-            refreshEntitySearchDocumentAfterMutation(targetId),
-        ),
-    );
+    addAttributeValueMutationSideEffects(sideEffects, {
+        entityId: attributeValue.entityId ?? existingValue?.entityId,
+        entityTypeName:
+            attributeValue.entityTypeName ?? existingValue?.entityTypeName,
+        relatedEntityIds: impactedRelationshipTargetIds,
+    });
+    if (!options?.sideEffects) {
+        await flushAttributeValueMutationSideEffects(sideEffects);
+    }
 }
 
 export async function deleteAttributeValue(
     id: number,
     actor?: { id?: string; name?: string },
+    options?: {
+        db?: DatabaseClient;
+        sideEffects?: AttributeValueMutationSideEffects;
+    },
 ) {
-    const existingValue = await storage().query.attributeValues.findFirst({
+    const db = options?.db ?? storage();
+    const sideEffects =
+        options?.sideEffects ?? createAttributeValueMutationSideEffects();
+    const existingValue = await db.query.attributeValues.findFirst({
         where: eq(attributeValues.id, id),
     });
     const definition = existingValue
-        ? await getAttributeDefinition(existingValue.attributeDefinitionId)
+        ? await getAttributeDefinitionForMutation(
+              db,
+              existingValue.attributeDefinitionId,
+          )
         : undefined;
     const relationshipTargetId =
         definition && existingValue
@@ -168,12 +228,12 @@ export async function deleteAttributeValue(
             : null;
 
     await Promise.all([
-        storage()
+        db
             .update(attributeValues)
             .set({ isDeleted: true })
             .where(eq(attributeValues.id, id)),
         existingValue
-            ? storage().insert(entityRevisions).values({
+            ? db.insert(entityRevisions).values({
                   entityId: existingValue.entityId,
                   entityTypeName: existingValue.entityTypeName,
                   action: 'attribute.deleted',
@@ -185,38 +245,18 @@ export async function deleteAttributeValue(
                   nextValue: null,
               })
             : undefined,
-        storage()
-            .select()
-            .from(attributeValues)
-            .where(eq(attributeValues.id, id))
-            .then((attributeValue) => {
-                return Promise.all([
-                    attributeValue?.[0]?.entityId
-                        ? bustCached(
-                              cacheKeys.entity(attributeValue[0].entityId),
-                          )
-                        : undefined,
-                    attributeValue?.[0]?.entityTypeName
-                        ? bustCached(
-                              cacheKeys.entityTypeName(
-                                  attributeValue[0].entityTypeName,
-                              ),
-                          )
-                        : undefined,
-                    relationshipTargetId &&
-                    relationshipTargetId !== attributeValue?.[0]?.entityId
-                        ? bustCached(cacheKeys.entity(relationshipTargetId))
-                        : undefined,
-                    bustCachedByPrefixes(['dashboard:admin:']),
-                ]);
-            }),
     ]);
 
-    await refreshEntitySearchDocumentAfterMutation(existingValue?.entityId);
-    if (
-        relationshipTargetId &&
-        relationshipTargetId !== existingValue?.entityId
-    ) {
-        await refreshEntitySearchDocumentAfterMutation(relationshipTargetId);
+    addAttributeValueMutationSideEffects(sideEffects, {
+        entityId: existingValue?.entityId,
+        entityTypeName: existingValue?.entityTypeName,
+        relatedEntityIds:
+            relationshipTargetId &&
+            relationshipTargetId !== existingValue?.entityId
+                ? [relationshipTargetId]
+                : [],
+    });
+    if (!options?.sideEffects) {
+        await flushAttributeValueMutationSideEffects(sideEffects);
     }
 }

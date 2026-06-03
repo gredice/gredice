@@ -21,6 +21,7 @@ import {
     Bank,
     Calendar,
     Cloud,
+    Edit,
     Euro,
     Fence,
     File,
@@ -292,6 +293,13 @@ export function Nav({
                     href={adminPages.DirectoriesActivity.href}
                     label={adminPages.DirectoriesActivity.label}
                     icon={<File className="size-5" />}
+                    onClick={onItemClick}
+                    compact={compact}
+                />
+                <NavItem
+                    href={adminPages.CommunityEdits.href}
+                    label={adminPages.CommunityEdits.label}
+                    icon={<Edit className="size-5" />}
                     onClick={onItemClick}
                     compact={compact}
                 />

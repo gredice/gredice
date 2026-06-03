@@ -715,6 +715,9 @@ importers:
 
   apps/www:
     dependencies:
+      '@mdxeditor/editor':
+        specifier: 4.0.1
+        version: 4.0.1(@codemirror/language@6.12.3)(@lezer/highlight@1.2.3)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(yjs@13.6.27)
       '@opentelemetry/api-logs':
         specifier: 0.218.0
         version: 0.218.0

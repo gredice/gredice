@@ -7,6 +7,10 @@ export const adminPages = {
         href: KnownPages.DirectoriesActivity,
         label: 'Aktivnosti',
     },
+    CommunityEdits: {
+        href: KnownPages.CommunityEdits,
+        label: 'Prijedlozi zajednice',
+    },
     CmsPages: { href: KnownPages.CmsPages, label: 'Stranice' },
     Accounts: { href: KnownPages.Accounts, label: 'Korisnički računi' },
     Achievements: { href: KnownPages.Achievements, label: 'Postignuća' },
@@ -66,6 +70,7 @@ export const adminBreadcrumbPages = [
     adminPages.Dashboard,
     adminPages.Directories,
     adminPages.DirectoriesActivity,
+    adminPages.CommunityEdits,
     adminPages.CmsPages,
     adminPages.Accounts,
     adminPages.Achievements,
