@@ -1,6 +1,7 @@
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
+import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
 import { useMemo } from 'react';
@@ -16,8 +17,10 @@ import { useSorts } from '../../hooks/usePlantSorts';
 import { useRaisedBedAiHistory } from '../../hooks/useRaisedBedAiHistory';
 import {
     buildSowingOperationItems,
+    canRescheduleGardenOperation,
     cartPlantSortEntityType,
     GardenOperationCard,
+    GardenOperationRescheduleAction,
     sortNewestFirst,
 } from '../GardenOperationsHud';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
@@ -263,13 +266,31 @@ export function RaisedBedOperationHistoryList({
                         ? plantSortById.get(operation.entityId)
                         : undefined;
                 const operationName = operationData?.information.label;
+                const entryName =
+                    operationName ??
+                    plantSortData?.information.name ??
+                    operation.targetLabel;
                 const actionRaisedBedId = operation.raisedBedId ?? raisedBedId;
                 const actionPositionIndex =
                     positionIndex ??
                     (operation.raisedBedFieldId
                         ? fieldPositionById.get(operation.raisedBedFieldId)
                         : undefined);
-                const action =
+                const rescheduleAction =
+                    !disableActions &&
+                    canRescheduleGardenOperation(
+                        operation,
+                        currentGarden,
+                        referenceDate,
+                    ) ? (
+                        <GardenOperationRescheduleAction
+                            entryName={entryName}
+                            garden={currentGarden}
+                            operation={operation}
+                            referenceDate={referenceDate}
+                        />
+                    ) : null;
+                const aiAction =
                     flags.raisedBedImageAI &&
                     !disableActions &&
                     currentGarden &&
@@ -279,11 +300,7 @@ export function RaisedBedOperationHistoryList({
                             gardenId={currentGarden.id}
                             raisedBedId={actionRaisedBedId}
                             positionIndex={actionPositionIndex}
-                            entryName={
-                                operationName ??
-                                plantSortData?.information.name ??
-                                operation.targetLabel
-                            }
+                            entryName={entryName}
                             imageUrls={operation.imageUrls}
                             referenceDate={getOperationReferenceDate(operation)}
                             historyEntries={getAiHistoryForOperation({
@@ -291,6 +308,13 @@ export function RaisedBedOperationHistoryList({
                                 entries: aiHistoryEntries,
                             })}
                         />
+                    ) : undefined;
+                const action =
+                    rescheduleAction || aiAction ? (
+                        <Row spacing={2} className="flex-wrap justify-end">
+                            {rescheduleAction}
+                            {aiAction}
+                        </Row>
                     ) : undefined;
 
                 return (

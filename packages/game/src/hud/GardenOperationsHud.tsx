@@ -43,11 +43,16 @@ import { useLiveTime } from '../hooks/useLiveTime';
 import { useOperations } from '../hooks/useOperations';
 import { useSorts } from '../hooks/usePlantSorts';
 import {
+    type DiaryRescheduleTarget,
+    isDiaryRescheduleTargetEligible,
+} from '../hooks/useRescheduleDiaryEntry';
+import {
     type ShoppingCartItemData,
     useShoppingCart,
 } from '../hooks/useShoppingCart';
 import { ScrollView } from '../shared-ui/ScrollView';
 import { useShoppingCartOpenParam } from '../useUrlState';
+import { RaisedBedDiaryRescheduleAction } from './raisedBed/RaisedBedDiaryRescheduleAction';
 
 type OperationData = NonNullable<
     ReturnType<typeof useOperations>['data']
@@ -112,6 +117,11 @@ const hiddenFromActive = new Set<GardenOperationStatus>([
     'completed',
     'failed',
     'canceled',
+]);
+const reschedulableActiveStatuses = new Set<GardenOperationStatus>([
+    'planned',
+    'assigned',
+    'confirmed',
 ]);
 const cartOperationEntityType = 'operation' as const;
 export const cartPlantSortEntityType = 'plantSort' as const;
@@ -526,6 +536,109 @@ function getOperationTargetDetails(
         raisedBedPhysicalId: raisedBed.physicalId,
         fallbackLabel: formatRaisedBedTargetLabel(raisedBed.name, fieldLabel),
     };
+}
+
+function getOperationFieldPositionIndex(
+    operation: GardenOperationHudItem,
+    garden: CurrentGardenData | null | undefined,
+) {
+    if (operation.raisedBedFieldId == null) {
+        return undefined;
+    }
+
+    for (const raisedBed of garden?.raisedBeds ?? []) {
+        const field = raisedBed.fields.find(
+            (candidate) => candidate.id === operation.raisedBedFieldId,
+        );
+        if (field) {
+            return field.positionIndex;
+        }
+    }
+
+    return undefined;
+}
+
+export function getGardenOperationRescheduleTarget(
+    operation: GardenOperationHudItem,
+    garden: CurrentGardenData | null | undefined,
+): DiaryRescheduleTarget | null {
+    if (
+        !operation.scheduledDate ||
+        !reschedulableActiveStatuses.has(operation.status) ||
+        operation.completedAt ||
+        operation.verifiedAt ||
+        operation.canceledAt
+    ) {
+        return null;
+    }
+
+    const positionIndex = getOperationFieldPositionIndex(operation, garden);
+
+    if (operation.entityTypeName === cartOperationEntityType) {
+        return {
+            type: 'operation',
+            operationId: operation.id,
+            raisedBedId: operation.raisedBedId,
+            raisedBedFieldId: operation.raisedBedFieldId,
+            positionIndex,
+            scheduledDate: operation.scheduledDate,
+        };
+    }
+
+    if (
+        operation.entityTypeName === cartPlantSortEntityType &&
+        operation.raisedBedId &&
+        typeof positionIndex === 'number'
+    ) {
+        return {
+            type: 'raisedBedFieldPlant',
+            raisedBedId: operation.raisedBedId,
+            positionIndex,
+            scheduledDate: operation.scheduledDate,
+        };
+    }
+
+    return null;
+}
+
+export function canRescheduleGardenOperation(
+    operation: GardenOperationHudItem,
+    garden: CurrentGardenData | null | undefined,
+    referenceDate: Date,
+) {
+    const target = getGardenOperationRescheduleTarget(operation, garden);
+    return Boolean(
+        target && isDiaryRescheduleTargetEligible(target, referenceDate),
+    );
+}
+
+export function GardenOperationRescheduleAction({
+    entryName,
+    garden,
+    operation,
+    referenceDate,
+}: {
+    entryName: string;
+    garden: CurrentGardenData | null | undefined;
+    operation: GardenOperationHudItem;
+    referenceDate: Date;
+}) {
+    if (!garden) {
+        return null;
+    }
+
+    const target = getGardenOperationRescheduleTarget(operation, garden);
+    if (!target || !isDiaryRescheduleTargetEligible(target, referenceDate)) {
+        return null;
+    }
+
+    return (
+        <RaisedBedDiaryRescheduleAction
+            entryName={entryName}
+            gardenId={garden.id}
+            target={target}
+        />
+    );
 }
 
 function getCartOperationTargetDetails(
@@ -1425,38 +1538,55 @@ export function GardenOperationsHud() {
                                 )}
                                 {cartOperations.length > 0 &&
                                     pendingOperations.length > 0 && <Divider />}
-                                {pendingOperations.map((operation) => (
-                                    <GardenOperationCard
-                                        key={`${operation.entityTypeName}-${operation.id}`}
-                                        operation={operation}
-                                        operationName={
-                                            operation.entityTypeName ===
-                                            cartOperationEntityType
-                                                ? operationDataById.get(
-                                                      operation.entityId,
-                                                  )?.information.label
-                                                : undefined
-                                        }
-                                        operationData={
-                                            operation.entityTypeName ===
-                                            cartOperationEntityType
-                                                ? operationDataById.get(
-                                                      operation.entityId,
-                                                  )
-                                                : undefined
-                                        }
-                                        plantSortData={
-                                            operation.entityTypeName ===
-                                            cartPlantSortEntityType
-                                                ? plantSortById.get(
-                                                      operation.entityId,
-                                                  )
-                                                : undefined
-                                        }
-                                        currentGarden={currentGarden}
-                                        referenceDate={referenceDate}
-                                    />
-                                ))}
+                                {pendingOperations.map((operation) => {
+                                    const operationData =
+                                        operation.entityTypeName ===
+                                        cartOperationEntityType
+                                            ? operationDataById.get(
+                                                  operation.entityId,
+                                              )
+                                            : undefined;
+                                    const plantSortData =
+                                        operation.entityTypeName ===
+                                        cartPlantSortEntityType
+                                            ? plantSortById.get(
+                                                  operation.entityId,
+                                              )
+                                            : undefined;
+                                    const operationName =
+                                        operationData?.information.label;
+                                    const entryName = getActiveOperationName({
+                                        operation,
+                                        operationName,
+                                        plantSortName:
+                                            plantSortData?.information.name,
+                                    });
+                                    const action = canRescheduleGardenOperation(
+                                        operation,
+                                        currentGarden,
+                                        referenceDate,
+                                    ) ? (
+                                        <GardenOperationRescheduleAction
+                                            entryName={entryName}
+                                            garden={currentGarden}
+                                            operation={operation}
+                                            referenceDate={referenceDate}
+                                        />
+                                    ) : undefined;
+
+                                    return (
+                                        <GardenOperationCard
+                                            key={`${operation.entityTypeName}-${operation.id}`}
+                                            operation={operation}
+                                            operationName={operationName}
+                                            operationData={operationData}
+                                            plantSortData={plantSortData}
+                                            currentGarden={currentGarden}
+                                            referenceDate={referenceDate}
+                                            action={action}
+                                        />
+                                    );
+                                })}
                             </>
                         )}
                         <div ref={pendingRef} className="h-1" />

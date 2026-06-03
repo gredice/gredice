@@ -62,6 +62,19 @@ test.describe('Garden operations HUD', () => {
         await expect(page.getByText(/^Kreirano:/)).toHaveCount(0);
         await expect(page.getByText(/Sljedeći korak/)).toHaveCount(0);
         await expect(page.getByText('Nema nedovršenih radnji.')).toHaveCount(0);
+
+        const rescheduleButtons = page.getByRole('button', {
+            name: 'Prerasporedi',
+        });
+        await expect(rescheduleButtons).toHaveCount(2);
+
+        await rescheduleButtons.first().click();
+        await expect(
+            page.getByText('Novi datum', { exact: true }),
+        ).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: 'Spremi' }),
+        ).toBeVisible();
     });
 
     test('shows completed sowing tasks in operation history', async ({
