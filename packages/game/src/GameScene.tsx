@@ -20,7 +20,11 @@ import {
     instancedBlockNames,
 } from './entities/EntityInstances';
 import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
-import { SunflowerDropReward } from './entities/SunflowerDropReward';
+import {
+    SunflowerDropFlyAnimation,
+    type SunflowerDropFlyOrigin,
+    SunflowerDropReward,
+} from './entities/SunflowerDropReward';
 import type { GameFeatureFlags } from './GameFlagsContext';
 import { GameHud } from './GameHud';
 import { useGameLoading } from './GameLoadingContext';
@@ -189,6 +193,8 @@ export function GameScene({
     );
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
     const renderDetails = useDeferredSceneDetails(deferDetails);
+    const [sunflowerDropFlyOrigin, setSunflowerDropFlyOrigin] =
+        useState<SunflowerDropFlyOrigin | null>(null);
     const autoQualityProfileMetrics = useAutoQualityProfileMetrics(
         quality === undefined && gameQualitySetting === 'auto',
     );
@@ -322,6 +328,9 @@ export function GameScene({
                                         <SunflowerDropReward
                                             enabled={!isLocalSandbox}
                                             garden={garden}
+                                            onClaimed={
+                                                setSunflowerDropFlyOrigin
+                                            }
                                         />
                                     </Suspense>
                                 )}
@@ -363,6 +372,12 @@ export function GameScene({
             </GameSceneDetailContext.Provider>
             {!hideHud && <GameHud flags={flags} noWeather={noWeather} />}
             {hideHud && Boolean(flags?.enableDebugHudFlag) && <DebugHud />}
+            {sunflowerDropFlyOrigin && (
+                <SunflowerDropFlyAnimation
+                    origin={sunflowerDropFlyOrigin}
+                    onDone={() => setSunflowerDropFlyOrigin(null)}
+                />
+            )}
         </div>
     );
 }

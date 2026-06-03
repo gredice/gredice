@@ -37,6 +37,8 @@ type SunflowerDropPlacement = {
     stack: Stack;
 };
 
+export type SunflowerDropFlyOrigin = { x: number; y: number };
+
 function hashString(value: string) {
     let hash = 0;
     for (let index = 0; index < value.length; index += 1) {
@@ -61,12 +63,12 @@ function findSunflowerDropPlacement(
     return null;
 }
 
-function SunflowerDropFlyAnimation({
+export function SunflowerDropFlyAnimation({
     onDone,
     origin,
 }: {
     onDone: () => void;
-    origin: { x: number; y: number };
+    origin: SunflowerDropFlyOrigin;
 }) {
     const { props, run } = useAnimateFlyToSunflowersHud({ duration: 850 });
 
@@ -101,7 +103,7 @@ function SunflowerDropAtPlacement({
     placement,
     spawn,
 }: {
-    onClaimed: (origin: { x: number; y: number }) => void;
+    onClaimed: (origin: SunflowerDropFlyOrigin) => void;
     onRejected: () => void;
     placement: SunflowerDropPlacement;
     spawn: SunflowerDropSpawn;
@@ -186,14 +188,13 @@ function SunflowerDropAtPlacement({
 export function SunflowerDropReward({
     enabled,
     garden,
+    onClaimed,
 }: {
     enabled: boolean;
     garden: SunflowerDropGarden | null | undefined;
+    onClaimed?: (origin: SunflowerDropFlyOrigin) => void;
 }) {
     const [claimedSpawnId, setClaimedSpawnId] = useState<string | null>(null);
-    const [flyOrigin, setFlyOrigin] = useState<{ x: number; y: number } | null>(
-        null,
-    );
     const sunflowerDrop = useSunflowerDrop(
         garden?.id,
         enabled && Boolean(garden) && !garden?.isSandbox,
@@ -222,14 +223,8 @@ export function SunflowerDropReward({
                     spawn={spawn}
                     onClaimed={(origin) => {
                         setClaimedSpawnId(spawn.spawnId);
-                        setFlyOrigin(origin);
+                        onClaimed?.(origin);
                     }}
-                />
-            )}
-            {flyOrigin && (
-                <SunflowerDropFlyAnimation
-                    origin={flyOrigin}
-                    onDone={() => setFlyOrigin(null)}
                 />
             )}
         </>
