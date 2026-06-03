@@ -47,6 +47,20 @@ export function useRaisedBedCloseupParam() {
     return useQueryState('gredica', parseAsString);
 }
 
+const raisedBedCloseupParamParsers = {
+    gredica: parseAsString,
+    polje: parseAsInteger,
+};
+
+export function useRaisedBedCloseupParams() {
+    return useQueryStates(raisedBedCloseupParamParsers);
+}
+
+// Raised bed field details parameter (Croatian: "polje" = field)
+export function useRaisedBedFieldDetailsParam() {
+    return useQueryState('polje', parseAsInteger);
+}
+
 // Gift box modal parameter (Croatian: "poklon-kutija" = gift box)
 export function useGiftBoxParam() {
     return useQueryState('poklon-kutija', parseAsString);
@@ -63,6 +77,7 @@ export const urlStateSerializer = createSerializer({
     ruksak: parseAsBoolean,
     'ruksak-kartica': parseAsString,
     gredica: parseAsString,
+    polje: parseAsInteger,
     'poklon-kutija': parseAsString,
     vrt: parseAsInteger,
 });

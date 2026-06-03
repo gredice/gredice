@@ -2,21 +2,37 @@ import { decodeUriComponentSafe } from '@gredice/js/uri';
 import { useEffect, useMemo } from 'react';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useGameState } from './useGameState';
-import { useRaisedBedCloseupParam } from './useUrlState';
+import {
+    useRaisedBedCloseupParam,
+    useRaisedBedCloseupParams,
+    useRaisedBedFieldDetailsParam,
+} from './useUrlState';
 
 export function useRemoveRaisedBedCloseupParam() {
-    const [, setGredica] = useRaisedBedCloseupParam();
-    return { mutate: () => setGredica(null) };
+    const [, setRaisedBedCloseupParams] = useRaisedBedCloseupParams();
+    return {
+        mutate: () => setRaisedBedCloseupParams({ gredica: null, polje: null }),
+    };
 }
 
 export function useSetRaisedBedCloseupParam() {
-    const [, setGredica] = useRaisedBedCloseupParam();
-    return { mutate: (value: string) => setGredica(value) };
+    const [, setRaisedBedCloseupParams] = useRaisedBedCloseupParams();
+    return {
+        mutate: (value: string, positionIndex?: number | null) =>
+            setRaisedBedCloseupParams({
+                gredica: value,
+                polje:
+                    typeof positionIndex === 'number'
+                        ? positionIndex + 1
+                        : null,
+            }),
+    };
 }
 
 export function useRaisedBedCloseup() {
     const { data: garden } = useCurrentGarden();
     const [raisedBedParam, setRaisedBedParam] = useRaisedBedCloseupParam();
+    const [, setFieldDetailsParam] = useRaisedBedFieldDetailsParam();
     const setView = useGameState((state) => state.setView);
     const closeupBlock = useGameState((state) => state.closeupBlock);
     const view = useGameState((state) => state.view);
@@ -53,6 +69,7 @@ export function useRaisedBedCloseup() {
                 setView({ view: 'normal' });
             }
             setRaisedBedParam(null);
+            setFieldDetailsParam(null);
             return;
         }
 
@@ -65,6 +82,7 @@ export function useRaisedBedCloseup() {
                 setView({ view: 'normal' });
             }
             setRaisedBedParam(null);
+            setFieldDetailsParam(null);
             return;
         }
 
@@ -80,6 +98,7 @@ export function useRaisedBedCloseup() {
         closeupBlock?.id,
         garden,
         raisedBedParam,
+        setFieldDetailsParam,
         setRaisedBedParam,
         setView,
         view,

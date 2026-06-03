@@ -46,6 +46,20 @@ function normalizeCompletionNotes(notes?: string) {
     return normalizedNotes;
 }
 
+function buildRaisedBedNotificationLink(
+    raisedBedName: string | null | undefined,
+    positionIndex: number | null | undefined,
+) {
+    if (!raisedBedName) {
+        return undefined;
+    }
+
+    return getRaisedBedCloseupUrl(
+        raisedBedName,
+        typeof positionIndex === 'number' ? { positionIndex } : undefined,
+    );
+}
+
 async function assertRaisedBedAllowsNewOperation(raisedBedId?: number) {
     if (!raisedBedId) {
         return;
@@ -113,7 +127,7 @@ export async function createOperationAction(formData: FormData) {
             ? new Date(formData.get('timestamp') as string)
             : undefined,
     };
-    await assertRaisedBedAllowsNewOperation(operation.raisedBedId);
+    await assertRaisedBedAllowsNewOperation(operation.raisedBedId ?? undefined);
     const operationId = await createOperation(operation);
     if (scheduledDate) {
         await createEvent(
@@ -610,15 +624,15 @@ async function buildOperationCompletionNotification(
                 `Raised bed with ID ${operation.raisedBedId} not found.`,
             );
         } else {
-            if (raisedBed.name) {
-                linkUrl = getRaisedBedCloseupUrl(raisedBed.name);
-            }
-
             const positionIndex = operation.raisedBedFieldId
                 ? raisedBed.fields.find(
                       (field) => field.id === operation.raisedBedFieldId,
                   )?.positionIndex
                 : null;
+            linkUrl = buildRaisedBedNotificationLink(
+                raisedBed.name,
+                positionIndex,
+            );
             if (typeof positionIndex === 'number') {
                 content = `Danas je na gredici **${raisedBed.name}** za polje **${positionIndex + 1}** odrađeno **${operationData?.information?.label}**.`;
             } else {
@@ -833,6 +847,7 @@ export async function cancelOperationAction(formData: FormData) {
     const operationData = await getEntityFormatted<EntityStandardized>(
         operation.entityId,
     );
+    let linkUrl: string | undefined;
 
     // Calculate refund amount (operation price in sunflowers - multiplied by 1000 as per checkout logic)
     const refundAmount = operationData?.prices?.perOperation
@@ -858,6 +873,10 @@ export async function cancelOperationAction(formData: FormData) {
             } else {
                 content = `Radnja **${operationData?.information?.label}** na gredici **${raisedBed.name}** je otkazana.`;
             }
+            linkUrl = buildRaisedBedNotificationLink(
+                raisedBed.name,
+                positionIndex,
+            );
         }
     }
 
@@ -897,6 +916,7 @@ export async function cancelOperationAction(formData: FormData) {
                   raisedBedId: operation.raisedBedId,
                   header,
                   content,
+                  linkUrl,
                   timestamp: new Date(),
               })
             : undefined,
