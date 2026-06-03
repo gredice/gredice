@@ -17,6 +17,7 @@ import {
 } from 'drizzle-orm';
 import type { EntityStandardized } from '../@types/EntityStandardized';
 import {
+    farmUsers,
     gardens,
     type HarvestTraceLinkStatus,
     harvestTraceLinks,
@@ -1263,6 +1264,20 @@ async function getAdminSummaryRows(filter: HarvestTraceLinkAdminFilter = {}) {
                   sql`${raisedBeds.physicalId} ilike ${queryPattern}`,
               )
         : undefined;
+    const scanStateFilter =
+        filter.scanState === 'scanned'
+            ? sql`exists (
+                  select 1
+                  from ${harvestTraceScans}
+                  where ${harvestTraceScans.harvestTraceLinkId} = ${harvestTraceLinks.id}
+              )`
+            : filter.scanState === 'not-scanned'
+              ? sql`not exists (
+                    select 1
+                    from ${harvestTraceScans}
+                    where ${harvestTraceScans.harvestTraceLinkId} = ${harvestTraceLinks.id}
+                )`
+              : undefined;
 
     return storage()
         .select({
@@ -1277,7 +1292,7 @@ async function getAdminSummaryRows(filter: HarvestTraceLinkAdminFilter = {}) {
             raisedBedFields,
             eq(harvestTraceLinks.raisedBedFieldId, raisedBedFields.id),
         )
-        .where(and(statusFilter, searchFilter))
+        .where(and(statusFilter, searchFilter, scanStateFilter))
         .orderBy(desc(harvestTraceLinks.createdAt), desc(harvestTraceLinks.id))
         .limit(Math.min(Math.max(filter.limit ?? 100, 1), 250));
 }
@@ -1348,17 +1363,7 @@ export async function getHarvestTraceLinksAdmin(
     filter: HarvestTraceLinkAdminFilter = {},
 ) {
     const rows = await getAdminSummaryRows(filter);
-    const summaries = await toAdminSummaries(rows);
-
-    if (filter.scanState === 'scanned') {
-        return summaries.filter((summary) => summary.scanCount > 0);
-    }
-
-    if (filter.scanState === 'not-scanned') {
-        return summaries.filter((summary) => summary.scanCount === 0);
-    }
-
-    return summaries;
+    return toAdminSummaries(rows);
 }
 
 export async function getHarvestTraceLinkAdminDetail(id: number) {
@@ -1422,6 +1427,50 @@ export async function markHarvestTraceLinksPrinted(linkIds: number[]) {
         .returning({ id: harvestTraceLinks.id });
 
     return rows.length;
+}
+
+export async function getFarmUserPrintableHarvestTraceLinkIds(
+    userId: string,
+    linkIds: number[],
+) {
+    const uniqueIds = Array.from(
+        new Set(linkIds.filter((id) => positiveInteger(id))),
+    );
+    if (uniqueIds.length === 0) {
+        return [];
+    }
+
+    const rows = await storage()
+        .select({ id: harvestTraceLinks.id })
+        .from(harvestTraceLinks)
+        .innerJoin(gardens, eq(harvestTraceLinks.gardenId, gardens.id))
+        .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
+        .innerJoin(raisedBeds, eq(harvestTraceLinks.raisedBedId, raisedBeds.id))
+        .innerJoin(
+            operations,
+            eq(harvestTraceLinks.harvestOperationId, operations.id),
+        )
+        .where(
+            and(
+                inArray(harvestTraceLinks.id, uniqueIds),
+                eq(farmUsers.userId, userId),
+                eq(gardens.isDeleted, false),
+                eq(gardens.isSandbox, false),
+                eq(raisedBeds.isDeleted, false),
+                eq(operations.isAccepted, true),
+                eq(operations.isDeleted, false),
+                eq(operations.raisedBedId, harvestTraceLinks.raisedBedId),
+                or(
+                    isNull(operations.raisedBedFieldId),
+                    eq(
+                        operations.raisedBedFieldId,
+                        harvestTraceLinks.raisedBedFieldId,
+                    ),
+                ),
+            ),
+        );
+
+    return rows.map((row) => row.id);
 }
 
 export async function getHarvestTraceLinksForTarget(input: {

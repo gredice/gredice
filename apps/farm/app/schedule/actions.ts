@@ -4,6 +4,7 @@ import {
     buildRaisedBedFieldPlantUpdatePayload,
     createEvent,
     getFarmUserAcceptedOperationById,
+    getFarmUserPrintableHarvestTraceLinkIds,
     getFarmUserRaisedBeds,
     getOperationById,
     getRaisedBed,
@@ -201,9 +202,20 @@ export async function completeFarmPlanting(
 export async function markHarvestTraceLabelsPrintedAction(
     traceLinkIds: number[],
 ) {
-    await auth(['admin', 'farmer']);
+    const {
+        user: { role },
+        userId,
+    } = await auth(['admin', 'farmer']);
 
-    await markHarvestTraceLinksPrinted(traceLinkIds);
+    const printableTraceLinkIds =
+        role === 'admin'
+            ? traceLinkIds
+            : await getFarmUserPrintableHarvestTraceLinkIds(
+                  userId,
+                  traceLinkIds,
+              );
+
+    await markHarvestTraceLinksPrinted(printableTraceLinkIds);
     revalidateSchedule();
 
     return { success: true };

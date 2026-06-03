@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     acceptOperation,
+    assignUserToFarm,
     createAttributeDefinition,
     createEntity,
     createEvent,
@@ -10,7 +11,9 @@ import {
     createOperation,
     createOrGetHarvestTraceLink,
     events,
+    getFarmUserPrintableHarvestTraceLinkIds,
     getHarvestTraceLinkAdminDetail,
+    getHarvestTraceLinksAdmin,
     getPublicHarvestTraceByToken,
     harvestTraceLinks,
     knownEvents,
@@ -23,6 +26,7 @@ import {
     upsertAttributeValue,
     upsertEntityType,
     upsertRaisedBedField,
+    users,
 } from '@gredice/storage';
 import { asc, eq } from 'drizzle-orm';
 import {
@@ -281,10 +285,11 @@ async function createHarvestTraceFixture() {
         `Trace block ${randomUUID()}`,
     );
     const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    const raisedBedPhysicalId = `TRACE-${randomUUID().slice(0, 8)}`;
 
     await storage()
         .update(raisedBeds)
-        .set({ name: 'Zapadna gredica', physicalId: 'TRACE-1' })
+        .set({ name: 'Zapadna gredica', physicalId: raisedBedPhysicalId })
         .where(eq(raisedBeds.id, raisedBedId));
     await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
     await upsertRaisedBedField({ raisedBedId, positionIndex: 1 });
@@ -434,13 +439,79 @@ async function createHarvestTraceFixture() {
 
     return {
         accountId,
+        farmId,
+        gardenId,
+        harvestEntityId,
         harvestOperationId,
         link,
         plantPlaceEventId,
         plantSortId,
+        raisedBedPhysicalId,
         raisedBedFieldId: tracedField.id,
         raisedBedId,
     };
+}
+
+async function createAdditionalHarvestTraceLink(
+    fixture: Awaited<ReturnType<typeof createHarvestTraceFixture>>,
+    createdAt: Date,
+) {
+    const plantPlaceEventId = await insertRaisedBedFieldEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(`${fixture.raisedBedId}|0`, {
+            plantSortId: fixture.plantSortId.toString(),
+            scheduledDate: null,
+            sowingLocation: 'direct',
+        }),
+        createdAt,
+    );
+    const harvestOperationId = await createAcceptedOperation({
+        accountId: fixture.accountId,
+        farmId: fixture.farmId,
+        gardenId: fixture.gardenId,
+        raisedBedId: fixture.raisedBedId,
+        raisedBedFieldId: fixture.raisedBedFieldId,
+        entityId: fixture.harvestEntityId,
+        timestamp: createdAt,
+        completedAt: createdAt,
+    });
+    const link = await createOrGetHarvestTraceLink({
+        accountId: fixture.accountId,
+        gardenId: fixture.gardenId,
+        raisedBedId: fixture.raisedBedId,
+        raisedBedFieldId: fixture.raisedBedFieldId,
+        fieldPositionIndex: 0,
+        fieldLabel: '1',
+        plantPlaceEventId,
+        plantSortId: fixture.plantSortId,
+        harvestOperationId,
+    });
+
+    await storage()
+        .update(harvestTraceLinks)
+        .set({ createdAt, updatedAt: createdAt })
+        .where(eq(harvestTraceLinks.id, link.id));
+
+    return link;
+}
+
+async function createTestFarmUser(farmId?: number) {
+    const userId = randomUUID();
+    await storage()
+        .insert(users)
+        .values({
+            id: userId,
+            userName: `trace-${userId}@example.com`,
+            displayName: 'Trace Farmer',
+            role: 'farmer',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+    if (farmId !== undefined) {
+        await assignUserToFarm(farmId, userId);
+    }
+
+    return userId;
 }
 
 test('createOrGetHarvestTraceLink reuses the same public token for the same harvest target', async () => {
@@ -468,13 +539,16 @@ test('getPublicHarvestTraceByToken includes raised-bed operations and excludes o
 
     assert.ok(trace);
     assert.equal(trace.title, 'Matovilac');
-    assert.equal(trace.context.raisedBedPhysicalId, 'TRACE-1');
+    assert.equal(
+        trace.context.raisedBedPhysicalId,
+        fixture.raisedBedPhysicalId,
+    );
     assert.equal(trace.context.raisedBedName, 'Zapadna gredica');
     assert.equal(trace.context.fieldLabel, '1');
     assert.deepEqual(
         trace.timeline.find((item) => item.plantStatus === 'sowed')?.location,
         {
-            raisedBedPhysicalId: 'TRACE-1',
+            raisedBedPhysicalId: fixture.raisedBedPhysicalId,
             raisedBedName: 'Zapadna gredica',
             fieldLabel: '1',
         },
@@ -584,6 +658,63 @@ test('recordHarvestTraceScan records active scan stats for admin audit', async (
     await updateHarvestTraceLinkStatus(fixture.link.id, 'revoked');
     const revokedScan = await recordHarvestTraceScan(fixture.link.publicToken);
     assert.equal(revokedScan, null);
+});
+
+test('getHarvestTraceLinksAdmin applies scan-state filters before limiting rows', async () => {
+    const fixture = await createHarvestTraceFixture();
+    const scannedAt = new Date('2026-06-01T08:00:00.000Z');
+
+    await storage()
+        .update(harvestTraceLinks)
+        .set({ createdAt: scannedAt, updatedAt: scannedAt })
+        .where(eq(harvestTraceLinks.publicToken, fixture.link.publicToken));
+    await recordHarvestTraceScan(fixture.link.publicToken);
+    await createAdditionalHarvestTraceLink(
+        fixture,
+        new Date('2026-06-03T08:00:00.000Z'),
+    );
+    await createAdditionalHarvestTraceLink(
+        fixture,
+        new Date('2026-06-02T08:00:00.000Z'),
+    );
+
+    const scanned = await getHarvestTraceLinksAdmin({
+        query: fixture.raisedBedPhysicalId,
+        scanState: 'scanned',
+        limit: 1,
+    });
+    const notScanned = await getHarvestTraceLinksAdmin({
+        query: fixture.raisedBedPhysicalId,
+        scanState: 'not-scanned',
+        limit: 1,
+    });
+
+    assert.equal(scanned[0]?.publicToken, fixture.link.publicToken);
+    assert.equal(scanned[0]?.scanCount, 1);
+    assert.equal(notScanned.length, 1);
+    assert.notEqual(notScanned[0]?.publicToken, fixture.link.publicToken);
+    assert.equal(notScanned[0]?.scanCount, 0);
+});
+
+test('getFarmUserPrintableHarvestTraceLinkIds only returns links visible to the farmer', async () => {
+    const fixture = await createHarvestTraceFixture();
+    const farmUserId = await createTestFarmUser(fixture.farmId);
+    const otherFarmUserId = await createTestFarmUser();
+
+    assert.deepEqual(
+        await getFarmUserPrintableHarvestTraceLinkIds(farmUserId, [
+            fixture.link.id,
+            -1,
+            fixture.link.id,
+        ]),
+        [fixture.link.id],
+    );
+    assert.deepEqual(
+        await getFarmUserPrintableHarvestTraceLinkIds(otherFarmUserId, [
+            fixture.link.id,
+        ]),
+        [],
+    );
 });
 
 test('invalid harvest trace tokens are ignored', async () => {
