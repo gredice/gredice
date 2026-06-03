@@ -14,6 +14,7 @@ import {
 } from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
+import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
 import { waterBlockName } from '../waterBlockFoam';
 import {
     type BirdBehavior,
@@ -1515,6 +1516,7 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     const gltf = useGameGLTF('BirdSmall');
     const clock = useThree((state) => state.clock);
     const groupRef = useRef<Group>(null);
+    const targetDebugRef = useRef<Group>(null);
     const randomRef = useRef(createRandom(habitat.seed));
     const runtimeRef = useRef<BirdRuntimeState | null>(null);
     const flappingRef = useRef(false);
@@ -1523,6 +1525,9 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     const lastDisturbanceSequenceRef = useRef(0);
     const [isFlapping, setIsFlapping] = useState(false);
     const timeOfDay = useGameState((state) => state.timeOfDay);
+    const animalTargetsDebugVisible = useGameState(
+        (state) => state.animalTargetsDebugVisible,
+    );
     const animalDebugCommand = useGameState(
         (state) => state.animalDebugCommand,
     );
@@ -1592,6 +1597,24 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     useEffect(() => {
         return () => removeAnimalDebugEntry(habitat.id);
     }, [habitat.id, removeAnimalDebugEntry]);
+
+    useEffect(() => {
+        if (!animalTargetsDebugVisible && targetDebugRef.current) {
+            targetDebugRef.current.visible = false;
+        }
+    }, [animalTargetsDebugVisible]);
+
+    const syncDebugTarget = (runtime: BirdRuntimeState | null) => {
+        const targetDebug = targetDebugRef.current;
+        if (!targetDebug) {
+            return;
+        }
+
+        targetDebug.visible = animalTargetsDebugVisible && runtime !== null;
+        if (targetDebug.visible && runtime) {
+            targetDebug.position.copy(runtime.target.position);
+        }
+    };
 
     function handlePointerDown(event: ThreeEvent<PointerEvent>) {
         event.stopPropagation();
@@ -1743,6 +1766,8 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
                 runtimeRef.current = runtime;
             }
         }
+
+        syncDebugTarget(runtime);
 
         if (runtime.phase === 'circling') {
             const progress = MathUtils.clamp(
@@ -2009,15 +2034,18 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     });
 
     return (
-        // biome-ignore lint/a11y/noStaticElementInteractions: Three.js element is interactive
-        <group
-            ref={groupRef}
-            scale={birdScale}
-            onPointerDown={handlePointerDown}
-            onClick={handleClick}
-        >
-            <primitive object={birdModel.scene} />
-        </group>
+        <>
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: Three.js element is interactive */}
+            <group
+                ref={groupRef}
+                scale={birdScale}
+                onPointerDown={handlePointerDown}
+                onClick={handleClick}
+            >
+                <primitive object={birdModel.scene} />
+            </group>
+            <AnimalTargetDebugMarker ref={targetDebugRef} color="#fb7185" />
+        </>
     );
 }
 
