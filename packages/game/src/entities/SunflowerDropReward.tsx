@@ -1,8 +1,8 @@
-import { Image as DreiImage } from '@react-three/drei';
-import type { ThreeEvent } from '@react-three/fiber';
+import { animated, useSpring } from '@react-spring/three';
+import { type ThreeEvent, useFrame } from '@react-three/fiber';
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
-import { Vector3 } from 'three';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Group } from 'three';
 import {
     useClaimSunflowerDrop,
     useSunflowerDrop,
@@ -12,10 +12,16 @@ import {
     useAnimateFlyToSunflowersHud,
 } from '../indicators/AnimateFlyTo';
 import { ParticleType, useParticles } from '../particles/ParticleSystem';
-import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 import { useStackHeight } from '../utils/getStackHeight';
+import { HoverOutline } from './helpers/HoverOutline';
 import { SunflowerHeadModel } from './Sunflower';
+import {
+    findSunflowerDropPlacement,
+    getSunflowerDropPosition,
+    getSunflowerDropSpawnDelayMs,
+    type SunflowerDropPlacement,
+} from './sunflowerDropRewardCore';
 
 type SunflowerDropGarden = {
     id: number;
@@ -32,35 +38,20 @@ type SunflowerDropSpawn = {
     spawnId: string;
 };
 
-type SunflowerDropPlacement = {
-    block: Block;
-    stack: Stack;
-};
-
 export type SunflowerDropFlyOrigin = { x: number; y: number };
 
-function hashString(value: string) {
-    let hash = 0;
-    for (let index = 0; index < value.length; index += 1) {
-        hash = (hash * 31 + value.charCodeAt(index)) % 100_000;
-    }
-    return hash / 100_000;
-}
+const sunflowerDropLandingHeight = 0.9;
+const sunflowerDropBounceLift = 0.04;
+const sunflowerDropBounceSpeed = 2.1;
+const sunflowerDropBounceScale = 0.025;
+const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
 
-function findSunflowerDropPlacement(
-    stacks: Stack[],
-    sourceBlockId: string,
-): SunflowerDropPlacement | null {
-    for (const stack of stacks) {
-        const block = stack.blocks.find(
-            (candidate) => candidate.id === sourceBlockId,
-        );
-        if (block) {
-            return { block, stack };
-        }
-    }
-
-    return null;
+function prefersReducedMotion() {
+    return (
+        typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia(reducedMotionQuery).matches
+    );
 }
 
 export function SunflowerDropFlyAnimation({
@@ -110,37 +101,78 @@ function SunflowerDropAtPlacement({
 }) {
     const claimSunflowerDrop = useClaimSunflowerDrop();
     const { spawn: spawnParticles } = useParticles();
+    const reduceMotion = useMemo(prefersReducedMotion, []);
+    const rewardRef = useRef<Group>(null);
+    const [hovered, setHovered] = useState(false);
+    const [hasLanded, setHasLanded] = useState(reduceMotion);
     const stackHeight = useStackHeight(placement.stack, placement.block);
     const drop = useMemo(() => {
-        const hash = hashString(spawn.spawnId);
-        const angle = hash * Math.PI * 2;
-        const radius = 0.34 + hashString(`${spawn.spawnId}:radius`) * 0.14;
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
+        return getSunflowerDropPosition({
+            placement,
+            spawnId: spawn.spawnId,
+            stackHeight,
+        });
+    }, [placement, spawn.spawnId, stackHeight]);
+    const [{ dropOffsetY }, landingApi] = useSpring(() => ({
+        config: {
+            mass: 0.15,
+            tension: 170,
+            friction: 13,
+        },
+        dropOffsetY: reduceMotion ? 0 : sunflowerDropLandingHeight,
+    }));
 
-        return {
-            particlePosition: new Vector3(
-                placement.stack.position.x + x,
-                stackHeight + 0.12,
-                placement.stack.position.z + z,
-            ),
-            position: [
-                placement.stack.position.x + x,
-                stackHeight + 0.085,
-                placement.stack.position.z + z,
-            ] satisfies [number, number, number],
-            rotation: [-Math.PI / 2, 0, angle + Math.PI * 0.15] satisfies [
-                number,
-                number,
-                number,
-            ],
+    useEffect(() => {
+        let active = true;
+        setHasLanded(reduceMotion);
+
+        if (reduceMotion) {
+            landingApi.set({ dropOffsetY: 0 });
+            return () => {
+                active = false;
+            };
+        }
+
+        landingApi.set({ dropOffsetY: sunflowerDropLandingHeight });
+        void landingApi.start({
+            dropOffsetY: 0,
+            onRest: () => {
+                if (active) {
+                    setHasLanded(true);
+                }
+            },
+        });
+
+        return () => {
+            active = false;
+            landingApi.stop();
         };
-    }, [
-        placement.stack.position.x,
-        placement.stack.position.z,
-        spawn.spawnId,
-        stackHeight,
-    ]);
+    }, [landingApi, reduceMotion]);
+
+    useFrame(({ clock }) => {
+        const reward = rewardRef.current;
+        if (!reward) {
+            return;
+        }
+
+        if (reduceMotion || !hasLanded) {
+            reward.position.y = 0;
+            reward.scale.setScalar(1);
+            return;
+        }
+
+        const bounce =
+            ((Math.sin(
+                clock.elapsedTime * sunflowerDropBounceSpeed + drop.phase,
+            ) +
+                1) /
+                2) *
+            sunflowerDropBounceLift;
+        reward.position.y = bounce;
+        reward.scale.setScalar(
+            1 + (bounce / sunflowerDropBounceLift) * sunflowerDropBounceScale,
+        );
+    });
 
     function handleClick(event: ThreeEvent<MouseEvent>) {
         event.stopPropagation();
@@ -155,6 +187,7 @@ function SunflowerDropAtPlacement({
 
         claimSunflowerDrop.mutate(spawn.spawnId, {
             onSuccess: () => {
+                setHovered(false);
                 spawnParticles(ParticleType.Leaf, drop.particlePosition, 12);
                 onClaimed(origin);
             },
@@ -162,27 +195,64 @@ function SunflowerDropAtPlacement({
         });
     }
 
+    function handlePointerEnter(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+        setHovered(true);
+    }
+
+    function handlePointerLeave(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+        setHovered(false);
+    }
+
     return (
-        <group>
-            <SunflowerHeadModel
+        <HoverOutline color="white" hovered={hovered} thickness={7}>
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: Three.js group uses raycast picking for the collectible model. */}
+            <group
                 onClick={handleClick}
-                position={drop.position}
-                rotation={drop.rotation}
-                scale={0.34}
-            />
-            <DreiImage
-                url="https://cdn.gredice.com/sunflower-large.svg"
-                transparent
-                position={[
-                    drop.position[0],
-                    drop.position[1] + 0.18,
-                    drop.position[2],
-                ]}
-                scale={0.18}
-                raycast={() => null}
-            />
-        </group>
+                onPointerEnter={handlePointerEnter}
+                onPointerLeave={handlePointerLeave}
+            >
+                <animated.group position-y={dropOffsetY}>
+                    <group
+                        position={drop.position}
+                        rotation={drop.rotation}
+                        scale={0.34}
+                    >
+                        <group ref={rewardRef}>
+                            <SunflowerHeadModel />
+                        </group>
+                    </group>
+                </animated.group>
+            </group>
+        </HoverOutline>
     );
+}
+
+function useSunflowerDropSpawnReady({
+    enabled,
+    gardenId,
+}: {
+    enabled: boolean;
+    gardenId: number | null | undefined;
+}) {
+    const [ready, setReady] = useState(false);
+
+    useEffect(() => {
+        setReady(false);
+
+        if (!enabled || gardenId == null || typeof window === 'undefined') {
+            return;
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            setReady(true);
+        }, getSunflowerDropSpawnDelayMs());
+
+        return () => window.clearTimeout(timeoutId);
+    }, [enabled, gardenId]);
+
+    return ready;
 }
 
 export function SunflowerDropReward({
@@ -195,11 +265,12 @@ export function SunflowerDropReward({
     onClaimed?: (origin: SunflowerDropFlyOrigin) => void;
 }) {
     const [claimedSpawnId, setClaimedSpawnId] = useState<string | null>(null);
-    const sunflowerDrop = useSunflowerDrop(
-        garden?.id,
-        enabled && Boolean(garden) && !garden?.isSandbox,
-    );
-    const spawn = sunflowerDrop.data?.spawn ?? null;
+    const spawnReady = useSunflowerDropSpawnReady({
+        enabled: enabled && Boolean(garden) && !garden?.isSandbox,
+        gardenId: garden?.id,
+    });
+    const sunflowerDrop = useSunflowerDrop(garden?.id, spawnReady);
+    const spawn = spawnReady ? (sunflowerDrop.data?.spawn ?? null) : null;
 
     useEffect(() => {
         if (claimedSpawnId && spawn?.spawnId !== claimedSpawnId) {
@@ -216,6 +287,7 @@ export function SunflowerDropReward({
         <>
             {spawn && placement && claimedSpawnId !== spawn.spawnId && (
                 <SunflowerDropAtPlacement
+                    key={spawn.spawnId}
                     onRejected={() => {
                         void sunflowerDrop.refetch();
                     }}

@@ -20,7 +20,7 @@ const blockName = 'Sunflower';
 const entityTypeName = 'block';
 
 const sunflowerAttributes = {
-    'attributes.height': '1.25',
+    'attributes.height': '1',
     'attributes.stackable': 'false',
     'attributes.type': 'decoration',
     'functions.raisedBed': 'false',
